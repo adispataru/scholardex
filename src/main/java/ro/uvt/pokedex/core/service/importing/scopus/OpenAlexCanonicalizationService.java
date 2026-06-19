@@ -108,7 +108,10 @@ public class OpenAlexCanonicalizationService {
                 applyOpenAlexFields(target, source, doiNormalized, canonicalPublicationId);
                 result.markUpdated();
             } else {
-                // Foreign (Scopus/user-defined) pub: enrich provenance only, never overwrite its richer content.
+                // Foreign (Scopus/user-defined) pub: enrich provenance only, never overwrite its richer content —
+                // except the citation count, where OpenAlex's broader index is usually MORE complete. Surface the
+                // best-available count with a monotonic max so the reported "Times cited" never regresses.
+                bumpCitedByCount(target, source.getCitedByCount());
                 sourceLinkService.link(
                         ScholardexEntityType.PUBLICATION,
                         SOURCE_OPENALEX,
@@ -140,6 +143,22 @@ public class OpenAlexCanonicalizationService {
      * field) and are written only when OpenAlex actually flagged one (so a now-empty payload never wipes a prior
      * capture); {@code citedByCount} and the rest always reflect the latest OpenAlex state.
      */
+    /**
+     * Surface OpenAlex's citation count onto a foreign (Scopus/user-defined) pub WITHOUT touching its other content:
+     * a monotonic max so the reported "Times cited" reflects the best-available source and never regresses. No-op
+     * when OpenAlex has no higher count.
+     */
+    private void bumpCitedByCount(ScholardexPublicationFact target, Integer openAlexCount) {
+        if (openAlexCount == null) {
+            return;
+        }
+        int current = target.getCitedByCount() == null ? 0 : target.getCitedByCount();
+        if (openAlexCount > current) {
+            target.setCitedByCount(openAlexCount);
+            scholardexPublicationFactRepository.save(target);
+        }
+    }
+
     private void applyOpenAlexFields(
             ScholardexPublicationFact fact, OpenAlexPublicationFact source, String doiNormalized, String canonicalId) {
         if (fact.getCreatedAt() == null) {

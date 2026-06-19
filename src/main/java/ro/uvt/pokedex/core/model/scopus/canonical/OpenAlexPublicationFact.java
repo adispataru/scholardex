@@ -57,6 +57,14 @@ public class OpenAlexPublicationFact {
     private List<String> referencedWorks = new ArrayList<>();
 
     /**
+     * Incoming citers — the OpenAlex work ids that cite THIS work (Ext A completeness). Populated only on synced
+     * researcher works, by a per-paper {@code cites:} query so attribution is exact. Stored durably so the
+     * citation edge build re-derives incoming edges on a full rebuild without re-fetching — this captures the
+     * citers whose own {@code referenced_works} omit this paper (OpenAlex cites-index ⊋ stored reference lists).
+     */
+    private List<String> citedByWorkIds = new ArrayList<>();
+
+    /**
      * Platform researchers who synced this work via their own ORCID — canonical author id + the ORCID that drove
      * the sync. The canonicalization attaches one authorship edge per researcher (visibility) and uses the ORCID to
      * (a) seed it onto the canonical author and (b) dedup the researcher-is-corresponding case. Append-only;

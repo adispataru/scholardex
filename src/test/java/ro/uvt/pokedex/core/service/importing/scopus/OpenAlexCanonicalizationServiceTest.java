@@ -61,6 +61,46 @@ class OpenAlexCanonicalizationServiceTest {
     }
 
     @Test
+    void linkingToForeignPubSurfacesOpenAlexCitationCountAsMonotonicMax() {
+        OpenAlexPublicationFact source = source("W1", "10.1/known", "A paper", "sauth_self");
+        source.setCitedByCount(120); // OpenAlex's broader index
+        ScholardexPublicationFact existing = new ScholardexPublicationFact();
+        existing.setId("spub_existing");
+        existing.setSource("SCOPUS");
+        existing.setTitle("Scopus title");
+        existing.setCitedByCount(40); // lower Scopus count
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/known")).thenReturn(List.of(existing));
+
+        service.rebuildCanonicalFacts();
+
+        // citedByCount bumped to the OpenAlex max and persisted; richer content (title) untouched; still a link.
+        verify(scholardexPublicationFactRepository).save(argThat(p ->
+                "spub_existing".equals(p.getId()) && Integer.valueOf(120).equals(p.getCitedByCount())
+                        && "Scopus title".equals(p.getTitle())));
+        verify(sourceLinkService).link(eq(ScholardexEntityType.PUBLICATION), eq("OPENALEX"), eq("W1"),
+                eq("spub_existing"), any(), any(), any(), any(), eq(false));
+        verify(publicationWriter, never()).upsertAndLinkSource(any(), any(), any());
+    }
+
+    @Test
+    void linkingToForeignPubKeepsHigherExistingCitationCount() {
+        OpenAlexPublicationFact source = source("W1", "10.1/known", "A paper", "sauth_self");
+        source.setCitedByCount(10); // lower than the existing Scopus count
+        ScholardexPublicationFact existing = new ScholardexPublicationFact();
+        existing.setId("spub_existing");
+        existing.setSource("SCOPUS");
+        existing.setCitedByCount(99);
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/known")).thenReturn(List.of(existing));
+
+        service.rebuildCanonicalFacts();
+
+        // No regression: the higher existing count stays, no save.
+        verify(scholardexPublicationFactRepository, never()).save(any());
+    }
+
+    @Test
     void doiMatchingAnOpenAlexOwnedPublicationRefreshesItInPlace() {
         OpenAlexPublicationFact source = source("W9", "10.1/owned", "Updated title", "sauth_self");
         source.setCitedByCount(42);

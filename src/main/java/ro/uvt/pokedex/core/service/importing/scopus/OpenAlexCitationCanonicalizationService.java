@@ -43,6 +43,7 @@ import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSuppo
 public class OpenAlexCitationCanonicalizationService {
 
     private static final String SOURCE_OPENALEX = "OPENALEX";
+    private static final String OPENALEX_URL_PREFIX = "https://openalex.org/";
     private static final int LOOKUP_CHUNK = 1_000;
 
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
@@ -71,8 +72,18 @@ public class OpenAlexCitationCanonicalizationService {
         String correlationId = syncedFacts.getFirst().getSourceCorrelationId();
         Set<String> syncedIds = syncedFacts.stream().map(OpenAlexPublicationFact::getSourceRecordId).collect(Collectors.toSet());
 
-        // (A) INCOMING: works that cite the synced papers — mint them; their referencedWorks carry the back-edge.
-        List<OpenAlexWorksResponse.OpenAlexWork> citingWorks = openAlexClient.fetchCitingWorks(syncedIds);
+        // (A) INCOMING: per-paper cites: query so attribution is EXACT — store the citers durably on each synced
+        // fact (citedByWorkIds) and mint them. This captures citers whose own referenced_works omit the paper
+        // (OpenAlex cites-index ⊋ stored reference lists), which a batched query + referenced_works could not.
+        List<OpenAlexWorksResponse.OpenAlexWork> citingWorks = new ArrayList<>();
+        for (OpenAlexPublicationFact syncedFact : syncedFacts) {
+            List<OpenAlexWorksResponse.OpenAlexWork> citers =
+                    openAlexClient.fetchCitingWorks(List.of(syncedFact.getSourceRecordId()));
+            syncedFact.setCitedByWorkIds(citers.stream().map(w -> bareWorkId(w.getId()))
+                    .filter(id -> id != null && !id.isBlank()).distinct().collect(Collectors.toList()));
+            openAlexPublicationFactRepository.save(syncedFact);
+            citingWorks.addAll(citers);
+        }
         List<String> citingIds = openAlexImportService.upsertNeighborWorks(citingWorks, batchId, correlationId);
 
         // (B) OUTGOING: referenced (cited) papers not yet known — fetch + mint them.
@@ -113,21 +124,37 @@ public class OpenAlexCitationCanonicalizationService {
             if (fact.getReferencedWorks() != null) {
                 involved.addAll(fact.getReferencedWorks());
             }
+            if (fact.getCitedByWorkIds() != null) {
+                involved.addAll(fact.getCitedByWorkIds());
+            }
         }
         Map<String, String> canonicalByWorkId = resolveCanonicalByWorkId(involved);
 
         for (OpenAlexPublicationFact fact : facts) {
-            String citingCanonical = canonicalByWorkId.get(fact.getSourceRecordId());
-            if (citingCanonical == null || fact.getReferencedWorks() == null) {
+            String factCanonical = canonicalByWorkId.get(fact.getSourceRecordId());
+            if (factCanonical == null) {
                 continue;
             }
             result.markProcessed();
-            for (String referencedId : fact.getReferencedWorks()) {
-                String citedCanonical = canonicalByWorkId.get(referencedId);
-                if (citedCanonical == null || citedCanonical.equals(citingCanonical)) {
-                    continue; // referenced work not in our corpus, or self-loop
+            // OUTGOING: F cites R (from F's own reference list).
+            if (fact.getReferencedWorks() != null) {
+                for (String referencedId : fact.getReferencedWorks()) {
+                    String citedCanonical = canonicalByWorkId.get(referencedId);
+                    if (citedCanonical == null || citedCanonical.equals(factCanonical)) {
+                        continue; // referenced work not in our corpus, or self-loop
+                    }
+                    writeCitation(citedCanonical, factCanonical, fact.getSourceRecordId(), fact, result);
                 }
-                writeCitation(citedCanonical, citingCanonical, fact, result);
+            }
+            // INCOMING: C cites F (from the per-paper cites: attribution stored on synced facts).
+            if (fact.getCitedByWorkIds() != null) {
+                for (String citerId : fact.getCitedByWorkIds()) {
+                    String citingCanonical = canonicalByWorkId.get(citerId);
+                    if (citingCanonical == null || citingCanonical.equals(factCanonical)) {
+                        continue; // citer not in our corpus, or self-loop
+                    }
+                    writeCitation(factCanonical, citingCanonical, citerId, fact, result);
+                }
             }
         }
         log.info("OpenAlex citation edge build: facts={} canonicalWorks={} edgesWritten={} skipped={}",
@@ -151,7 +178,8 @@ public class OpenAlexCitationCanonicalizationService {
         return map;
     }
 
-    private void writeCitation(String citedPublicationId, String citingPublicationId, OpenAlexPublicationFact citing, ImportProcessingResult result) {
+    private void writeCitation(String citedPublicationId, String citingPublicationId, String citingWorkId,
+                               OpenAlexPublicationFact provenance, ImportProcessingResult result) {
         String edgeId = "scit_" + shortHash(citedPublicationId + "|" + citingPublicationId);
         if (citationFactRepository.findById(edgeId).isPresent()) {
             result.markSkipped("citation-edge-already-known");
@@ -164,12 +192,20 @@ public class OpenAlexCitationCanonicalizationService {
         fact.setCitedPublicationId(citedPublicationId);
         fact.setCitingPublicationId(citingPublicationId);
         fact.setSource(SOURCE_OPENALEX);
-        fact.setSourceRecordId(citing.getSourceRecordId() + "::cites::" + citedPublicationId);
-        fact.setSourceEventId(citing.getSourceEventId());
-        fact.setSourceBatchId(citing.getSourceBatchId());
-        fact.setSourceCorrelationId(citing.getSourceCorrelationId());
+        fact.setSourceRecordId(citingWorkId + "::cites::" + citedPublicationId);
+        fact.setSourceEventId(provenance.getSourceEventId());
+        fact.setSourceBatchId(provenance.getSourceBatchId());
+        fact.setSourceCorrelationId(provenance.getSourceCorrelationId());
         fact.setUpdatedAt(now);
         citationFactRepository.save(fact);
         result.markImported();
+    }
+
+    private static String bareWorkId(String id) {
+        if (id == null) {
+            return null;
+        }
+        String trimmed = id.trim();
+        return trimmed.startsWith(OPENALEX_URL_PREFIX) ? trimmed.substring(OPENALEX_URL_PREFIX.length()) : trimmed;
     }
 }

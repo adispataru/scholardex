@@ -57,6 +57,25 @@ class OpenAlexCitationCanonicalizationServiceTest {
     }
 
     @Test
+    void buildsIncomingEdgeFromCitedByWorkIdsEvenWhenCitersReferenceListOmitsThePaper() {
+        // The synced paper W1 knows (via per-paper cites:) that Wciter cites it — but Wciter is a bare neighbor with
+        // an empty reference list, so ONLY citedByWorkIds can produce the incoming edge.
+        OpenAlexPublicationFact mine = fact("W1");
+        mine.setCitedByWorkIds(new java.util.ArrayList<>(List.of("Wciter")));
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(mine));
+        when(sourceLinkRepository.findByEntityTypeAndSourceRecordIdIn(eq(ScholardexEntityType.PUBLICATION), any()))
+                .thenReturn(List.of(link("W1", "spub_mine"), link("Wciter", "spub_citer")));
+        when(citationFactRepository.findById(anyString())).thenReturn(Optional.empty());
+
+        service.rebuildCitationFacts();
+
+        verify(citationFactRepository).save(argThat(c ->
+                "spub_citer".equals(c.getCitingPublicationId())
+                        && "spub_mine".equals(c.getCitedPublicationId())
+                        && "OPENALEX".equals(c.getSource())));
+    }
+
+    @Test
     void skipsWhenCitingWorkIsNotCanonical() {
         OpenAlexPublicationFact citing = fact("W9", "R1");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(citing));
