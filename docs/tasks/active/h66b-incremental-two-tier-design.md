@@ -492,6 +492,23 @@ interface EntityBuilder {
      Pre-existing finding: ~6 bootstrap `authorship_facts` reference non-existent authors (seed-data integrity gap,
      independent of this work).
 
+   **Stage 2 — DOI-keyed OpenAlex citations (2026-06-19, commit `67a0d84`).** The pivot's original goal. A synced
+   work's `referenced_works` are bare OpenAlex ids, and only ~1% (5/508) are in our set — so resolving citation
+   endpoints needs DOIs. `OpenAlexClient.fetchWorksByIds` batch-fetches (`ids.openalex:` OR-filter, ≤100/req) and a
+   durable `openalex.work_doi` cache stores workId→doi so references aren't re-fetched across researchers or a full
+   rebuild (null cached for deleted/no-DOI works). `OpenAlexCitationCanonicalizationService` resolves each synced
+   work's canonical pub (via the OPENALEX publication source-link), resolves each referenced work's DOI, matches it
+   against the 85k-DOI canonical corpus, and writes `ScholardexCitationFact(citing=work, cited=ref, source=OPENALEX)`
+   for edges whose **both** endpoints are canonical (skips out-of-corpus / shared-container DOIs / self-loops). A
+   DOI-keyed path beside the EID-keyed Scopus one; coverage grows with corpus coverage. Wired into the on-demand sync
+   (after pub resolve, before projections) and the `runFull` replay.
+   - **Validated live:** 508 referenced ids batch-fetched (479 returned, 29 deleted→null; 462 with DOIs) → **26
+     citation edges** linking the researcher's papers to cited pubs in the corpus (vs 5 without the fetch); 0
+     cited/citing orphans, 0 self-loops.
+   - **⬜ Follow-ups:** incoming citations (`cites:` filter — who cites the researcher, for impact metrics) and
+     optionally minting out-of-corpus cited papers would raise coverage beyond the in-corpus 6%; surface the OpenAlex
+     citation count / graph in reporting.
+
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
 All of Phase 4a is validated only against the isolated `scholardex_h66` Mongo / `core_h66` Postgres. Full test
