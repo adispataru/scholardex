@@ -412,12 +412,13 @@ interface EntityBuilder {
      on re-sync, because DOI'd works minted by a *prior* run re-LINK (resolve finds them by DOI) rather than re-mint,
      and LINK doesn't mutate. A fresh full rebuild re-mints all OpenAlex pubs and would populate them; the unit test
      covers the mint-population logic directly.
-   - **⬜ Follow-up surfaced — OpenAlex-owned pubs never refresh on re-sync.** `resolve()` link branch treats an
-     existing match as foreign (no mutation) even when `target.source == OPENALEX` (a pub OpenAlex itself minted).
-     So a re-sync of a DOI'd OpenAlex work links it to itself and never refreshes `citedByCount`,
-     `correspondingAuthors`, etc. (frozen at first mint). Proper fix: in the link branch, if the matched pub is
-     OPENALEX-sourced, UPDATE it (re-apply mint fields) instead of link-only; keep link-only for foreign (Scopus)
-     pubs. This is also where corresponding-author data would reach pre-existing DOI'd mints without a full rebuild.
+   - **✅ Resolved — OpenAlex-owned pubs now refresh on re-sync (commit `80f0a90`).** The `resolve()` link branch
+     now checks ownership: if the DOI-matched pub is `source == OPENALEX` (one OpenAlex itself minted) it is UPDATED
+     in place via the shared `applyOpenAlexFields` helper (refreshing `citedByCount`, `correspondingAuthors`, title,
+     …); foreign (Scopus/user-defined) pubs keep the link-only, no-clobber path. Validated live: a previously-frozen
+     minted LNCS pub (`10.1007/978-3-030-48340-1_35`) refreshed `correspondingAuthors=[]` → `["Domenico Talia"]`,
+     minted pubs carrying corresponding authors went 1→3 with no re-mint, split unchanged (10 minted), 0 orphans.
+     (Minor cosmetic: a refresh is counted in the scheduler's `linked` bucket via `markUpdated`, not split out.)
 
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
