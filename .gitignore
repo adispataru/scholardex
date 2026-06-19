@@ -60,3 +60,6 @@ scopus-python/__pycache__/*
 scopus-python/complete_scopus_with_citing_and_date_verified_sp.json
 arcmutate-licence.txt
 /publications_with_publishers.csv
+
+# local prod-config backups (mongodump/EJSON of indicators etc.)
+backups/

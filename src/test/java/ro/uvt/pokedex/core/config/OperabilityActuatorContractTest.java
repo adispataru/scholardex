@@ -89,14 +89,27 @@ class OperabilityActuatorContractTest {
 
     @Test
     void healthProbesArePubliclyAccessible() throws Exception {
+        // This is an ACCESS-control contract (no auth required), not a readiness assertion. The aggregate /health may
+        // be 503 OUT_OF_SERVICE on a fresh db (the startup indicator is gated on an admin user + critical readiness),
+        // which is still "publicly accessible" — the contrast is metricsEndpointRequiresAuthentication (302 -> /login).
         mockMvc.perform(get("/actuator/health"))
-                .andExpect(status().isOk());
+                .andExpect(result -> {
+                    int s = result.getResponse().getStatus();
+                    org.junit.jupiter.api.Assertions.assertTrue(s == 200 || s == 503,
+                            "health probe must be publicly accessible (200 UP or 503 OUT_OF_SERVICE), got " + s);
+                });
 
+        // Liveness is always UP (the app is running); readiness legitimately reports 503 until the app is ready
+        // (fresh db). Both must be reachable without auth.
         mockMvc.perform(get("/actuator/health/liveness"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/actuator/health/readiness"))
-                .andExpect(status().isOk());
+                .andExpect(result -> {
+                    int s = result.getResponse().getStatus();
+                    org.junit.jupiter.api.Assertions.assertTrue(s == 200 || s == 503,
+                            "readiness probe must be publicly accessible (200 or 503), got " + s);
+                });
     }
 
     @Test

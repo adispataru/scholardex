@@ -14,6 +14,9 @@ public abstract class MongoIntegrationTestBase {
 
     @DynamicPropertySource
     static void overrideMongoProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", MONGO_CONTAINER::getReplicaSetUrl);
+        // Spring Boot 4 binds the Mongo URI from `spring.mongodb.uri`; the legacy `spring.data.mongodb.uri` is inert
+        // here (see application.properties). Registering the live key is what actually points integration tests at the
+        // isolated Testcontainer — otherwise they fall through to the application.properties default (a REAL db).
+        registry.add("spring.mongodb.uri", MONGO_CONTAINER::getReplicaSetUrl);
     }
 }
