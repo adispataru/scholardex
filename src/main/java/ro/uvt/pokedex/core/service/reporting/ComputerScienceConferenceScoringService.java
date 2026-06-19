@@ -403,13 +403,29 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (evidence == null) {
             return null;
         }
+        String title = null;
         if (evidence.getConferenceName() != null && !evidence.getConferenceName().isBlank()) {
-            return evidence.getConferenceName().trim();
+            title = evidence.getConferenceName().trim();
+        } else if (evidence.getBooktitle() != null && !evidence.getBooktitle().isBlank()) {
+            title = evidence.getBooktitle().trim();
         }
-        if (evidence.getBooktitle() != null && !evidence.getBooktitle().isBlank()) {
-            return evidence.getBooktitle().trim();
+        // H66B Phase 4b: lead with DBLP's authoritative conference acronym (the conf/X stream key, e.g. conf/iccs ->
+        // ICCS). DBLP identifies the acronym precisely where our title-heuristic struggles; seeding it as the first
+        // token makes the acronym a top match candidate, while the booktitle stays as fallback context.
+        String acronym = dblpStreamAcronym(evidence.getSeries());
+        if (acronym == null) {
+            return title;
         }
-        return null;
+        return title == null ? acronym : acronym + " " + title;
+    }
+
+    /** The DBLP conference-series acronym from the stream key: {@code conf/iccs} -> {@code ICCS}; null if not conf/X. */
+    private static String dblpStreamAcronym(String series) {
+        if (series == null || !series.startsWith("conf/")) {
+            return null;
+        }
+        String stream = series.substring("conf/".length()).trim();
+        return stream.isEmpty() ? null : stream.toUpperCase(java.util.Locale.ROOT);
     }
 
     private ConferenceMatch resolveConferenceMatch(String publicationName, ConferenceScoreTrace trace) {

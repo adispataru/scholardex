@@ -128,6 +128,38 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void resolvesViaDblpStreamAcronymWhenEvidenceCarriesOnlyTheConfStreamKey() {
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication("pub-cp-iccs", null, "forum-x", "2016-01-01", null, "cp",
+                List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Lecture Notes in Computer Science"); // venue yields no usable acronym
+        when(cacheService.getForum("forum-x")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setAcronym("ICCS");
+        ranking.setName("International Conference on Computational Science");
+        CoreConferenceRanking.YearlyRanking rank2016 = new CoreConferenceRanking.YearlyRanking();
+        rank2016.setRank(CoreConferenceRanking.Rank.B);
+        ranking.setYearlyRankings(Map.of(2016, rank2016));
+        when(cacheService.getConferenceRankings("ICCS")).thenReturn(List.of(ranking));
+
+        // Evidence carries ONLY the conf/X stream key — no conferenceName/booktitle. Resolution must come from it.
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-cp-iccs");
+        evidence.setSeries("conf/iccs");
+        when(dblpEvidenceRepository.findByPublicationId("pub-cp-iccs")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(4.0, score.getScore());
+        assertEquals("DBLP+CORE", score.getScoringSource());
+        assertEquals("ICCS", service.getLastTraceForTests().dblpConferenceTitle());
+    }
+
+    @Test
     void resolvesConferenceWhenNormalizedNameMatches() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
