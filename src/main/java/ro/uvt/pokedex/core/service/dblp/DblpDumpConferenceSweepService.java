@@ -52,11 +52,9 @@ public class DblpDumpConferenceSweepService {
     private static final Pattern NAMED_ENTITY_PATTERN = Pattern.compile("&([A-Za-z][A-Za-z0-9]+);");
     private static final Pattern STRAY_AMPERSAND_PATTERN =
             Pattern.compile("&(?!(#\\d+;|#x[0-9A-Fa-f]+;|[A-Za-z][A-Za-z0-9]+;))");
-    private static final int SANITIZER_READ_AHEAD = 8192;
-    private static final int SANITIZER_MAX_CARRY = 64;
+    // The longest plausible HTML named entity is short; anything past this after a bare '&' is not a partial entity.
+    private static final int MAX_ENTITY_TAIL = 16;
     private static final Map<String, String> XML_ENTITY_REPLACEMENTS = createEntityReplacements();
-    private static final List<String> RELAXED_XML_LIMIT_PROPERTIES = List.of(
-            "jdk.xml.maxGeneralEntitySizeLimit", "jdk.xml.totalEntitySizeLimit", "jdk.xml.entityExpansionLimit");
 
     private final DblpConferenceCandidateDetector candidateDetector;
     private final ScholardexPublicationFactRepository publicationFactRepository;
@@ -80,9 +78,12 @@ public class DblpDumpConferenceSweepService {
             log.warn("DBLP dump sweep skipped: dump file not found at {}", dumpPath);
             return result;
         }
+        // DBLP's dump is Latin-1 and references DTD-declared HTML named entities; we read Latin-1 (1:1, never throws)
+        // and strip those entities up front (see EntitySanitizingReader) so the parser runs with DTD + external
+        // entities OFF — XXE-safe — without choking on the undeclared references.
         try (InputStream fileInput = Files.newInputStream(dumpPath);
              InputStream gzipInput = new GZIPInputStream(fileInput);
-             Reader sanitizedReader = new NamedEntitySanitizingReader(new InputStreamReader(gzipInput, StandardCharsets.UTF_8))) {
+             Reader sanitizedReader = new EntitySanitizingReader(new InputStreamReader(gzipInput, StandardCharsets.ISO_8859_1))) {
             XMLStreamReader reader = createXmlInputFactory().createXMLStreamReader(sanitizedReader);
             runSweep(reader, result);
             reader.close();
@@ -235,15 +236,11 @@ public class DblpDumpConferenceSweepService {
     private XMLInputFactory createXmlInputFactory() {
         XMLInputFactory factory = XMLInputFactory.newFactory();
         factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, false);
+        // XXE hardening: no DOCTYPE processing, no external entity/DTD resolution. The JDK's DEFAULT entity-expansion
+        // limits are left in place (a deliberate fix over the prior code, which set them to 0 = unlimited); with DTD
+        // off there are no entities to expand, so the defaults never bite while still guarding against malformed input.
         factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
         factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
-        for (String property : RELAXED_XML_LIMIT_PROPERTIES) {
-            try {
-                factory.setProperty(property, 0);
-            } catch (IllegalArgumentException ex) {
-                log.debug("DBLP XML parser property unsupported: {}", property);
-            }
-        }
         return factory;
     }
 
@@ -291,16 +288,22 @@ public class DblpDumpConferenceSweepService {
         return v;
     }
 
-    static final class NamedEntitySanitizingReader extends Reader {
+    /**
+     * Replaces DBLP's HTML named entities ({@code &uuml;} …) — which reference DTD declarations we deliberately do not
+     * load — with safe equivalents BEFORE the XML parser sees them. Reads in <b>fixed-size chunks</b> (bounded memory,
+     * indifferent to line length — DBLP has multi-hundred-MB lines, so a line-oriented reader would buffer the whole
+     * file), holding back across a chunk boundary only a short trailing run that could be a partial {@code &entity;}.
+     * Tolerant by design: an unrecognized entity becomes a space rather than failing a multi-GB parse (a stricter
+     * parser would abort the whole stream on one unexpected entity).
+     */
+    static final class EntitySanitizingReader extends Reader {
         private final Reader delegate;
-        private final char[] readBuffer = new char[SANITIZER_READ_AHEAD];
+        private final char[] chunk = new char[8192];
         private final StringBuilder carry = new StringBuilder();
-        private String output = "";
-        private int outputIndex = 0;
-        private boolean eof;
-        private int consecutiveZeroReads;
+        private String pending = "";
+        private int pendingIndex;
 
-        NamedEntitySanitizingReader(Reader delegate) {
+        EntitySanitizingReader(Reader delegate) {
             this.delegate = delegate;
         }
 
@@ -309,85 +312,61 @@ public class DblpDumpConferenceSweepService {
             if (len == 0) {
                 return 0;
             }
-            int written = 0;
-            int loopGuard = 0;
-            int maxLoops = Math.max(64, len * 8);
-            while (written < len) {
-                if (loopGuard++ > maxLoops) {
-                    throw new IOException("NamedEntitySanitizingReader exceeded read loop guard");
-                }
-                if (outputIndex < output.length()) {
-                    int chunk = Math.min(len - written, output.length() - outputIndex);
-                    output.getChars(outputIndex, outputIndex + chunk, cbuf, off + written);
-                    outputIndex += chunk;
-                    written += chunk;
-                    continue;
-                }
-                if (!fillOutput()) {
-                    return written == 0 ? -1 : written;
+            while (pendingIndex >= pending.length()) {
+                if (!fill()) {
+                    return -1;
                 }
             }
-            return written;
+            int n = Math.min(len, pending.length() - pendingIndex);
+            pending.getChars(pendingIndex, pendingIndex + n, cbuf, off);
+            pendingIndex += n;
+            return n;
         }
 
-        private boolean fillOutput() throws IOException {
-            int loopGuard = 0;
-            int maxLoops = Math.max(256, readBuffer.length * 2);
+        /** Pull the next sanitized run into {@code pending}; returns false only at end of input. */
+        private boolean fill() throws IOException {
             while (true) {
-                if (loopGuard++ > maxLoops) {
-                    throw new IOException("NamedEntitySanitizingReader exceeded fill loop guard");
-                }
-                if (eof && carry.isEmpty()) {
-                    return false;
-                }
-                int read = delegate.read(readBuffer);
-                if (read == -1) {
-                    eof = true;
+                int read = delegate.read(chunk);
+                if (read < 0) {
                     if (carry.isEmpty()) {
                         return false;
                     }
-                    output = sanitizeNamedEntities(carry.toString());
+                    pending = sanitizeNamedEntities(carry.toString()); // flush any trailing partial entity
                     carry.setLength(0);
-                    outputIndex = 0;
-                    return !output.isEmpty();
-                }
-                if (read == 0) {
-                    if (++consecutiveZeroReads >= 2) {
-                        return false;
-                    }
-                    continue;
-                }
-                consecutiveZeroReads = 0;
-                carry.append(readBuffer, 0, read);
-                int safeLength = computeSafeLength(carry);
-                if (safeLength <= 0) {
-                    continue;
-                }
-                String chunk = carry.substring(0, safeLength);
-                carry.delete(0, safeLength);
-                output = sanitizeNamedEntities(chunk);
-                outputIndex = 0;
-                if (!output.isEmpty()) {
+                    pendingIndex = 0;
                     return true;
                 }
+                if (read == 0) {
+                    continue; // a transient empty read from the delegate — ask again
+                }
+                carry.append(chunk, 0, read);
+                int safe = safeSplit(carry);
+                if (safe <= 0) {
+                    continue; // the whole buffer is a (still-incomplete) entity tail — read more
+                }
+                pending = sanitizeNamedEntities(carry.substring(0, safe));
+                carry.delete(0, safe);
+                pendingIndex = 0;
+                return true;
             }
         }
 
-        private int computeSafeLength(StringBuilder value) {
-            int length = value.length();
-            int lastAmpersand = value.lastIndexOf("&");
-            if (lastAmpersand < 0) {
-                return length;
+        /**
+         * The length safe to emit now: everything, unless the buffer ends with a short {@code &…} run that has no
+         * closing {@code ;} yet — that trailing run might be an entity completed in the next chunk, so hold it back.
+         */
+        private static int safeSplit(StringBuilder s) {
+            int len = s.length();
+            int amp = s.lastIndexOf("&");
+            if (amp < 0 || len - amp > MAX_ENTITY_TAIL) {
+                return len; // no '&', or the trailing '&…' is too long to be an entity — all safe
             }
-            if (length - lastAmpersand > SANITIZER_MAX_CARRY) {
-                return length;
-            }
-            for (int i = lastAmpersand; i < length; i++) {
-                if (value.charAt(i) == ';') {
-                    return length;
+            for (int i = amp; i < len; i++) {
+                if (s.charAt(i) == ';') {
+                    return len; // the trailing entity is complete — all safe
                 }
             }
-            return lastAmpersand;
+            return amp; // hold back the incomplete trailing entity
         }
 
         @Override
