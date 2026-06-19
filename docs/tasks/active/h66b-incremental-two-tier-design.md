@@ -539,9 +539,13 @@ interface EntityBuilder {
      count stayed the lower Scopus number. `OpenAlexCanonicalizationService.bumpCitedByCount` now surfaces OpenAlex's
      broader count onto a linked foreign pub as a **monotonic max** — never clobbering richer content, never
      regressing. Validated: researcher's reported citations rose 13→15 papers, sum 50→68.
-   - **⬜ Remaining:** the per-paper `cites:` adds ~N API calls/sync (one per synced work) — fine for a background
-     task but worth a batched-discovery + per-paper-attribution optimization if sync latency matters. A researcher
-     in-corpus h-index / citation-network view is still unbuilt (data is all present in `scholardex_citation_fact`).
+   - **Batched-discovery optimization (commit `3f6f79c`):** the per-paper `cites:` (one call set per synced work) was
+     replaced by ONE batched `cites:W1|W2|…` query (ids ≤50/filter, cursor-paged) that discovers all citers at once;
+     each citer is attributed EXACTLY to the synced papers it names via `referenced_works ∩ synced` → `citedByWorkIds`.
+     Validated: `cites:` calls **26 → 1**, `citedByWorkIds` = 97 (byte-identical to per-paper), 734 edges unchanged.
+     Trade: a purely-asymmetric citer (cites-index only, not in its own reference list) is unattributed — empirically 0.
+   - **⬜ Remaining:** a researcher in-corpus h-index / citation-network view is still unbuilt (the data is all present
+     in `scholardex_citation_fact` + `citedByWorkIds`).
 
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
