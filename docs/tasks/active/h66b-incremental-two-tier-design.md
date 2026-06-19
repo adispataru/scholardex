@@ -505,9 +505,28 @@ interface EntityBuilder {
    - **Validated live:** 508 referenced ids batch-fetched (479 returned, 29 deleted→null; 462 with DOIs) → **26
      citation edges** linking the researcher's papers to cited pubs in the corpus (vs 5 without the fetch); 0
      cited/citing orphans, 0 self-loops.
-   - **⬜ Follow-ups:** incoming citations (`cites:` filter — who cites the researcher, for impact metrics) and
-     optionally minting out-of-corpus cited papers would raise coverage beyond the in-corpus 6%; surface the OpenAlex
-     citation count / graph in reporting.
+   **Stage 2 Ext A/B — full citation graph: incoming + outgoing mint (2026-06-19, commit `565a2a2`).** Stage 2 only
+   linked papers already in the corpus (~6% of references) and captured zero incoming citations. Both gaps closed by
+   **expanding the citation neighborhood** around a researcher's works. Shared primitive
+   (`OpenAlexImportService.upsertNeighborWorks`): cited/citing third-party works are upserted as **bare**
+   `openalex.publication_facts` (bibliographic + venue + referencedWorks; NO authorships → no corresponding/bridge, NO
+   synced researchers) — durable so they survive a full rebuild, recursion bounded by minting exactly one level out.
+   - **Ext B (outgoing):** mint each referenced paper not yet known (`OpenAlexClient.fetchWorksByIds`) so the
+     researcher's reference edges resolve instead of being dropped.
+   - **Ext A (incoming):** `OpenAlexClient.fetchCitingWorks` (`cites:W1|W2` filter, cursor-paged) discovers the works
+     that cite the researcher's papers; mint them too.
+   - **Unified edge rule:** for every source-fact F and every referenced work R it names, write
+     `ScholardexCitationFact(citing=F, cited=R)` iff BOTH resolve to canonical pubs (via OPENALEX publication
+     source-links). `cites:` is used only for *discovery* (which papers to mint); `referenced_works` *defines* the
+     edge — so the on-demand graph and the full-rebuild graph are identical and idempotent. The Stage-2 `work_doi`
+     cache was retired (neighbors are durable source-facts now).
+   - **Validated live:** 95 citing + 471 referenced works minted (+498 pubs); **26 → 734 edges** = 522 outgoing + 56
+     incoming + 5 self + 151 neighbor-neighbor; 0 orphans, 0 self-loops.
+   - **⬜ Follow-up — incoming completeness:** incoming is conservative (56 edges vs 95 `cites:` hits) because ~40% of
+     citers' own `referenced_works` don't name the paper (OpenAlex cites-index ⊋ stored reference lists, often via
+     duplicate work ids). Recovering them durably needs per-paper `cites:` attribution stored on our side (e.g. a
+     `citedByWorkIds` field on the synced fact) so the edge re-derives on rebuild. Also: surface the citation count /
+     graph in PG projections + reporting.
 
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
