@@ -55,6 +55,27 @@ class AdminInitializationSecurityContractTest {
     private PostgresOperationalStatusService postgresOperationalStatusService;
     @MockitoBean
     private UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
+    // H66B: remaining AdminInitializationController collaborators — required so the @WebMvcTest context loads.
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.ScopusDataService scopusDataService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService wosImportEventIngestionService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ForumReconcileAuditService forumReconcileAuditService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ErihOnboardingService erihOnboardingService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.DoajOnboardingService doajOnboardingService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService scholardexForumDeduplicationService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
 
     @Test
     void nonAdminCannotAccessInitializationPage() throws Exception {
