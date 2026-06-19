@@ -3221,3 +3221,53 @@ Archived from `TASKS.md` on 2026-06-14. Closed task doc: `docs/tasks/closed/h59-
   - 0-score drilldown display fix (categorized publications the formula scored 0 are now shown, de-emphasised) is **publications-only**; citations/activities still filter `authorScore > 0`, and the H50 export (`UserReportFacade:581`) was intentionally left filtering by author score — revisit if parity is wanted.
   - Supervisor scope is unit-tested but never exercised in a live supervisor session (`agent-dev` always injects admin).
   - No single-indicator export link in the delegated drilldown (it targeted the principal's own data, so it is gated off).
+
+## H66 / H66B Canonical Forum Registry + Entity-Oriented Multi-Source Builders
+
+Archived from `TASKS.md` on 2026-06-19 after the multi-source ingest, prod cutover, and closeout completed.
+Closed task docs: `docs/tasks/closed/h66-curated-allowlists.md`, `docs/tasks/closed/h66b-entity-oriented-builders.md`,
+`docs/tasks/closed/h66b-incremental-two-tier-design.md`. From-scratch build procedure: `docs/rebuild-runbook.md`.
+
+- [x] `H66` Canonical forum registry (multi-source identity + rankings + indexing). *(completed via H66B, 2026-06-19)*
+  Goal: make the canonical forum a first-class, multi-source registry; retire the fuzzy ISSN/name resolver that
+  silently scored ~39 forums to 0 by joining rankings/indexing on the stored `wosForumIds`/`scopusForumIds` FK.
+  Outcome: Moves A (CiteScore/MJL/DOAJ/ERIH loaders), B (forum-keyed FK projection + scoring, the bug-killer),
+  C (resolve-or-enrich + dedup) shipped; Move D (forums-first from the Scopus Source List) + Move E (book
+  registry) + the by-source→by-entity re-architecture pivoted into H66B and completed there.
+
+- [x] `H66B` Entity-oriented canonical builders + multi-source ingest (OpenAlex + DBLP). *(completed 2026-06-19)*
+  Goal: reorganize the canonicalization layer from by-source to by-entity (ForumBuilder → RankingBuilder →
+  PublicationBuilder → CitationBuilder, + BookBuilder), then add OpenAlex (Phase 4a) and DBLP (Phase 4b) as
+  canonical sources, and cut over to a real prod database.
+  Outcome:
+  - **Phase 4a OpenAlex** — DOI-primary identity, OpenAlex publication source, corresponding authors, positional
+    ORCID bridge, ORCID + fuzzy author reconcile (co-author-overlap tiering), full citation graph
+    (incoming + outgoing, cited-by surfaced in projection/workspace), Stage-3 ISSN venue resolve.
+  - **Phase 4b DBLP** — CS conference identity: per-paper keyless API + a corpus-matched dump sweep (stream the
+    995MB dump once, match against our corpus by DOI + gated title; store nothing extra). Authoritative `conf/X`
+    acronym wired into CORE scoring. Hardened the StAX reader (fixed-chunk, not line-based — the dump has
+    multi-hundred-MB lines).
+  - **Prod cutover** — fixed the Spring Boot 4 Mongo key (`spring.mongodb.uri`, not the inert legacy
+    `spring.data.mongodb.uri`; default db `scholardex`), wiped the old throwaway `test` "prod", and rebuilt from
+    scratch with the **self-contained** `POST /rebuildAllDerived?confirmation=RESET` (imports Source List +
+    CiteScore + Books + MJL + DOAJ + ERIH from config, ingests Scopus + WoS, builds facts → forums-first
+    canonical → projections). Result: **92,526 pubs / 69,933 forums** (2× the old 32,714, via the full Source
+    List backbone) / projections populated / admin bootstrapped / health UP. DBLP sweep then added **853 conf/X
+    forums + 2,256 conference papers**.
+  - **Author dedup** — flipped `core.author-reconcile.fuzzy-apply=true` after a 30/30 STRONG spot-check and wired
+    `forumReconcileService.reconcile()` into the tail of `rebuildAllDerivedFromSource()`; merged 951 duplicate
+    authors live (216,258 → 215,307). OpenAlex polite-pool `mailto` set to `${admin.email}`.
+  Key commits: `c30f8f5` (runbook), `1f8a77c` (author dedup + reconcile-in-rebuild), `e7c44ee` (mailto),
+  `42474be`/`08ecb47` (closeout status). Full suite green (~2,280 tests).
+  Handover / deferred:
+  - **Scoring rework for the multi-source layer → `H69`** (conf/X acronym + multi-source forums need the scorer
+    revisited, incl. the deferred miscoded-subtype dispatch); **researcher h-index / citation-network view → `H67`**.
+  - **DBLP/Stage-3 refinements (deferred, none blocking):** DBLP↔Scopus conference-forum dedup (Tier-1 reconcile);
+    fold the DBLP dump sweep into the full-rebuild path (still an admin trigger); DBLP rate-limit tuning; Stage-3
+    warm-load if Tier-2 latency matters; optional lean dump-derived fast index. Pick these up under a new task if
+    they become relevant.
+  - **Known residue (low priority):** `user_defined.*` data-loss on full rebuild (chipped `task_cccc209c`, latent —
+    no user data in the fresh db yet); corresponding-flag / reconcile-conflict read surface; ~6 seed-data orphan
+    authorships. Decision-0 authorship-decision remap is **moot** (the wipe removed the old user-state).
+  - **Memory gotchas captured:** Boot-4 Mongo key (`spring-boot-4-mongo-config-key`), DBLP long-line dump reader
+    (`dblp-dump-long-lines`), `@WebMvcTest` mock completeness, verify-code-path-before-rebuild.
