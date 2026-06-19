@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface ScholardexAuthorFactRepository extends MongoRepository<ScholardexAuthorFact, String> {
     Optional<ScholardexAuthorFact> findByScopusAuthorIdsContains(String scopusAuthorId);
+    Optional<ScholardexAuthorFact> findByOrcidIdsContains(String orcid);
+    Optional<ScholardexAuthorFact> findByOpenAlexAuthorIdsContains(String openAlexAuthorId);
     List<ScholardexAuthorFact> findBySourceBatchId(String sourceBatchId);
     List<ScholardexAuthorFact> findByScopusAuthorIdsIn(Collection<String> scopusAuthorIds);
     List<ScholardexAuthorFact> findByIdIn(Collection<String> ids);

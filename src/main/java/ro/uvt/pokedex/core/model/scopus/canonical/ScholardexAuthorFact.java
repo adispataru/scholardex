@@ -21,6 +21,10 @@ public class ScholardexAuthorFact {
     private List<String> wosAuthorIds = new ArrayList<>();
     private List<String> googleScholarAuthorIds = new ArrayList<>();
     private List<String> userSourceAuthorIds = new ArrayList<>();
+    /** H66B Phase 4a: ORCID iDs aggregated onto this canonical author (cross-source identity key). */
+    private List<String> orcidIds = new ArrayList<>();
+    /** H66B Phase 4a: OpenAlex author ids (A…) aggregated onto this canonical author. */
+    private List<String> openAlexAuthorIds = new ArrayList<>();
     private String displayName;
     private List<String> alternativeNames = new ArrayList<>();
     private String nameNormalized;

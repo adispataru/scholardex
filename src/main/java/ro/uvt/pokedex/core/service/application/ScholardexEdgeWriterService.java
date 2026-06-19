@@ -47,12 +47,24 @@ public class ScholardexEdgeWriterService {
     private final MongoTemplate mongoTemplate;
 
     public EdgeWriteResult upsertAuthorshipEdge(EdgeWriteCommand command) {
+        return upsertAuthorshipEdge(command, null);
+    }
+
+    /**
+     * As {@link #upsertAuthorshipEdge(EdgeWriteCommand)}, but stamps the corresponding-author flag when
+     * {@code corresponding} is non-null (H66B Phase 4a). Passing {@code null} preserves the existing flag value,
+     * so callers that don't know corresponding-status leave it untouched.
+     */
+    public EdgeWriteResult upsertAuthorshipEdge(EdgeWriteCommand command, Boolean corresponding) {
         if (isBlank(command.leftId()) || isBlank(command.rightId()) || isBlank(command.source())) {
             return EdgeWriteResult.invalid("missing-authorship-key");
         }
         ScholardexAuthorshipFact edge = authorshipFactRepository
                 .findByPublicationIdAndAuthorIdAndSource(command.leftId(), command.rightId(), command.source())
                 .orElseGet(ScholardexAuthorshipFact::new);
+        if (corresponding != null) {
+            edge.setCorresponding(corresponding);
+        }
         boolean created = edge.getId() == null;
         String deterministicId = buildAuthorshipId(command.leftId(), command.rightId(), command.source());
         if (created) {

@@ -26,6 +26,8 @@ public class ScholardexAuthorshipFact implements HasEdgeLineageFields {
     private String sourceCorrelationId;
     private String linkState;
     private String linkReason;
+    /** H66B Phase 4a: this author is a corresponding author of the publication (per the source, e.g. OpenAlex is_corresponding). */
+    private Boolean corresponding;
     private Instant createdAt;
     private Instant updatedAt;
     /** Builder-logic version that produced this fact (H54.6b). */

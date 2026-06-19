@@ -40,14 +40,14 @@ public class OpenAlexImportService {
             if (workId == null || workId.isBlank()) {
                 continue;
             }
-            upsert(work, workId, researcherAuthorId, batchId, correlationId);
+            upsert(work, workId, orcid, researcherAuthorId, batchId, correlationId);
             workIds.add(workId);
         }
         log.info("OpenAlex import for ORCID {} upserted {} source facts (batch {})", orcid, workIds.size(), batchId);
         return workIds;
     }
 
-    private void upsert(OpenAlexWorksResponse.OpenAlexWork work, String workId, String researcherAuthorId,
+    private void upsert(OpenAlexWorksResponse.OpenAlexWork work, String workId, String syncOrcid, String researcherAuthorId,
                         String batchId, String correlationId) {
         OpenAlexPublicationFact fact = openAlexPublicationFactRepository.findBySourceRecordId(workId)
                 .orElseGet(OpenAlexPublicationFact::new);
@@ -71,28 +71,32 @@ public class OpenAlexImportService {
 
         List<String> authorNames = new ArrayList<>();
         List<String> authorOrcids = new ArrayList<>();
-        List<String> correspondingNames = new ArrayList<>();
+        List<OpenAlexPublicationFact.CorrespondingAuthorRef> correspondingAuthors = new ArrayList<>();
         if (work.getAuthorships() != null) {
             for (OpenAlexWorksResponse.Authorship authorship : work.getAuthorships()) {
                 if (authorship == null || authorship.getAuthor() == null) {
                     continue;
                 }
                 String name = authorship.getAuthor().getDisplay_name();
+                String authorOrcid = OrcidSupport.normalize(authorship.getAuthor().getOrcid());
                 if (name != null && !name.isBlank()) {
                     authorNames.add(name);
-                    if (Boolean.TRUE.equals(authorship.getIs_corresponding())) {
-                        correspondingNames.add(name);
-                    }
                 }
-                String authorOrcid = OrcidSupport.normalize(authorship.getAuthor().getOrcid());
                 if (authorOrcid != null) {
                     authorOrcids.add(authorOrcid);
+                }
+                if (Boolean.TRUE.equals(authorship.getIs_corresponding())) {
+                    OpenAlexPublicationFact.CorrespondingAuthorRef ref = new OpenAlexPublicationFact.CorrespondingAuthorRef();
+                    ref.setDisplayName(name);
+                    ref.setOrcid(authorOrcid);
+                    ref.setOpenAlexAuthorId(stripPrefix(authorship.getAuthor().getId(), OPENALEX_ID_PREFIX));
+                    correspondingAuthors.add(ref);
                 }
             }
         }
         fact.setAuthorDisplayNames(authorNames);
         fact.setAuthorOrcids(authorOrcids);
-        fact.setCorrespondingAuthorNames(correspondingNames);
+        fact.setCorrespondingAuthors(correspondingAuthors);
         fact.setAuthorCount(authorNames.isEmpty() ? null : authorNames.size());
         fact.setCreator(authorNames.isEmpty() ? null : authorNames.getFirst());
 
@@ -120,13 +124,18 @@ public class OpenAlexImportService {
         }
         fact.setReferencedWorks(referenced);
 
-        // Append-only set of syncing researchers (a work can be synced by several co-authors on the platform).
-        Set<String> synced = new LinkedHashSet<>(
-                fact.getSyncedResearcherAuthorIds() == null ? List.of() : fact.getSyncedResearcherAuthorIds());
-        if (researcherAuthorId != null && !researcherAuthorId.isBlank()) {
-            synced.add(researcherAuthorId);
+        // Append-only set of syncing researchers (a work can be synced by several co-authors on the platform),
+        // keyed by canonical author id and carrying the ORCID that drove the sync.
+        List<OpenAlexPublicationFact.SyncedResearcher> synced = new ArrayList<>(
+                fact.getSyncedResearchers() == null ? List.of() : fact.getSyncedResearchers());
+        if (researcherAuthorId != null && !researcherAuthorId.isBlank()
+                && synced.stream().noneMatch(s -> researcherAuthorId.equals(s.getCanonicalAuthorId()))) {
+            OpenAlexPublicationFact.SyncedResearcher sr = new OpenAlexPublicationFact.SyncedResearcher();
+            sr.setCanonicalAuthorId(researcherAuthorId);
+            sr.setOrcid(syncOrcid);
+            synced.add(sr);
         }
-        fact.setSyncedResearcherAuthorIds(new ArrayList<>(synced));
+        fact.setSyncedResearchers(synced);
 
         fact.setBuilderVersion(BUILDER_VERSION);
         fact.setLastMaterializedAt(now);

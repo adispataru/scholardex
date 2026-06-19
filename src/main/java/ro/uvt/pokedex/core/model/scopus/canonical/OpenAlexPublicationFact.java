@@ -46,8 +46,11 @@ public class OpenAlexPublicationFact {
     private List<String> authorDisplayNames = new ArrayList<>();
     /** Co-author ORCIDs where OpenAlex provides them (deferred bridging input). */
     private List<String> authorOrcids = new ArrayList<>();
-    /** Display names of authorships OpenAlex flags is_corresponding (sparse; populates minted pubs' correspondingAuthors). */
-    private List<String> correspondingAuthorNames = new ArrayList<>();
+    /**
+     * Authorships OpenAlex flags {@code is_corresponding}, with the identity needed to resolve each to a canonical
+     * author (H66B Phase 4a id-based model). Sparse — OpenAlex corresponding-author coverage is partial.
+     */
+    private List<CorrespondingAuthorRef> correspondingAuthors = new ArrayList<>();
 
     // Venue (Stage 3 — ofOpenAlex forum resolve)
     private String hostVenueName;
@@ -57,11 +60,27 @@ public class OpenAlexPublicationFact {
     private List<String> referencedWorks = new ArrayList<>();
 
     /**
-     * Canonical author ids of platform researchers who synced this work via their own ORCID. The
-     * canonicalization attaches one authorship edge per id, so a minted work is visible in the researcher's
-     * workspace without resolving OpenAlex's fragmented author entities. Append-only across syncs.
+     * Platform researchers who synced this work via their own ORCID — canonical author id + the ORCID that drove
+     * the sync. The canonicalization attaches one authorship edge per researcher (visibility) and uses the ORCID to
+     * (a) seed it onto the canonical author and (b) dedup the researcher-is-corresponding case. Append-only;
+     * durable so the full-rebuild replay can re-seed + re-resolve. Replaces the prior id-only list.
      */
-    private List<String> syncedResearcherAuthorIds = new ArrayList<>();
+    private List<SyncedResearcher> syncedResearchers = new ArrayList<>();
+
+    /** OpenAlex corresponding-author identity (id-resolvable). */
+    @Data
+    public static class CorrespondingAuthorRef {
+        private String displayName;
+        private String orcid;            // normalized bare, when OpenAlex provides it
+        private String openAlexAuthorId; // A…, the OpenAlex author entity id
+    }
+
+    /** A platform researcher who synced this work, with the identity needed to seed/dedup. */
+    @Data
+    public static class SyncedResearcher {
+        private String canonicalAuthorId;
+        private String orcid;
+    }
 
     private String lastPayloadHash;
     private Instant lastMaterializedAt;

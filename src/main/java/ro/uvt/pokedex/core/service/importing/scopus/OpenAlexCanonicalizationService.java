@@ -48,6 +48,7 @@ public class OpenAlexCanonicalizationService {
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeWriterService edgeWriterService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
+    private final ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver authorResolver;
 
     /** Full-rebuild replay: canonicalize every OpenAlex source-fact. */
     public ImportProcessingResult rebuildCanonicalFacts() {
@@ -130,7 +131,7 @@ public class OpenAlexCanonicalizationService {
             result.markImported();
         }
 
-        writeSelfAuthorshipEdges(source, canonicalPublicationId);
+        writeAuthorshipEdges(source, canonicalPublicationId);
     }
 
     /**
@@ -151,9 +152,8 @@ public class OpenAlexCanonicalizationService {
         fact.setTitleNormalized(ScholardexPublicationCanonicalizationService.normalizeTitle(source.getTitle()));
         fact.setCreator(source.getCreator());
         fact.setAuthorCount(source.getAuthorCount());
-        if (source.getCorrespondingAuthorNames() != null && !source.getCorrespondingAuthorNames().isEmpty()) {
-            fact.setCorrespondingAuthors(new ArrayList<>(source.getCorrespondingAuthorNames()));
-        }
+        // Corresponding authors are no longer denormalized as name strings here — they are modeled id-based as
+        // `corresponding=true` authorship edges to canonical authors (writeAuthorshipEdges).
         fact.setCoverDate(source.getCoverDate());
         fact.setCitedByCount(source.getCitedByCount());
         fact.setOpenAccess(source.getOpenAccess());
@@ -172,34 +172,62 @@ public class OpenAlexCanonicalizationService {
     }
 
     /**
-     * One {@code OPENALEX} authorship edge per syncing researcher's canonical author id, so a work synced by a
-     * researcher's own ORCID is visible in their workspace regardless of Scopus attribution. Source-scoped key
-     * ⇒ no collision with Scopus authorship edges.
+     * Write the {@code OPENALEX} authorship edges for a work (H66B Phase 4a, id-based corresponding model):
+     * <ol>
+     *   <li>seed each syncing researcher's ORCID onto their canonical author (so corresponding-author resolution
+     *       dedups against them instead of minting a duplicate);</li>
+     *   <li>resolve each {@code is_corresponding} authorship to a canonical author (by ORCID → OpenAlex id → mint);</li>
+     *   <li>write one edge per author in (syncing researchers ∪ resolved corresponding authors), stamping
+     *       {@code corresponding=true} exactly on the resolved corresponding authors.</li>
+     * </ol>
+     * The syncing-researcher edges keep works visible in the researcher's workspace; the {@code (pub, author,
+     * source)} key means OPENALEX edges coexist with Scopus ones. If the researcher IS the corresponding author,
+     * resolution lands on their (now ORCID-seeded) canonical author, so the single edge is marked corresponding —
+     * no duplicate.
      */
-    private void writeSelfAuthorshipEdges(OpenAlexPublicationFact source, String canonicalPublicationId) {
+    private void writeAuthorshipEdges(OpenAlexPublicationFact source, String canonicalPublicationId) {
         if (isBlank(canonicalPublicationId)) {
             return;
         }
-        Set<String> authorIds = new LinkedHashSet<>();
-        if (source.getSyncedResearcherAuthorIds() != null) {
-            for (String authorId : source.getSyncedResearcherAuthorIds()) {
+        // 1) Seed ORCIDs onto the syncing researchers' canonical authors.
+        List<String> syncingAuthorIds = new ArrayList<>();
+        if (source.getSyncedResearchers() != null) {
+            for (OpenAlexPublicationFact.SyncedResearcher researcher : source.getSyncedResearchers()) {
+                if (researcher == null || isBlank(researcher.getCanonicalAuthorId())) {
+                    continue;
+                }
+                authorResolver.attachOrcid(researcher.getCanonicalAuthorId(), researcher.getOrcid());
+                syncingAuthorIds.add(researcher.getCanonicalAuthorId());
+            }
+        }
+        // 2) Resolve corresponding authorships to canonical author ids.
+        Set<String> correspondingAuthorIds = new LinkedHashSet<>();
+        if (source.getCorrespondingAuthors() != null) {
+            for (OpenAlexPublicationFact.CorrespondingAuthorRef ref : source.getCorrespondingAuthors()) {
+                String authorId = authorResolver.resolveOrMint(ref, source.getSourceBatchId(), source.getSourceCorrelationId());
                 if (!isBlank(authorId)) {
-                    authorIds.add(authorId);
+                    correspondingAuthorIds.add(authorId);
                 }
             }
         }
-        for (String authorId : authorIds) {
-            edgeWriterService.upsertAuthorshipEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
-                    canonicalPublicationId,
-                    authorId,
-                    SOURCE_OPENALEX,
-                    source.getSourceRecordId() + "::author::" + authorId,
-                    source.getSourceEventId(),
-                    source.getSourceBatchId(),
-                    source.getSourceCorrelationId(),
-                    ScholardexSourceLinkService.STATE_LINKED,
-                    LINK_REASON_OPENALEX_AUTHORSHIP,
-                    false));
+        // 3) One edge per author, corresponding flag set on the resolved corresponding authors.
+        Set<String> edgeAuthorIds = new LinkedHashSet<>(syncingAuthorIds);
+        edgeAuthorIds.addAll(correspondingAuthorIds);
+        for (String authorId : edgeAuthorIds) {
+            boolean corresponding = correspondingAuthorIds.contains(authorId);
+            edgeWriterService.upsertAuthorshipEdge(
+                    new ScholardexEdgeWriterService.EdgeWriteCommand(
+                            canonicalPublicationId,
+                            authorId,
+                            SOURCE_OPENALEX,
+                            source.getSourceRecordId() + "::author::" + authorId,
+                            source.getSourceEventId(),
+                            source.getSourceBatchId(),
+                            source.getSourceCorrelationId(),
+                            ScholardexSourceLinkService.STATE_LINKED,
+                            LINK_REASON_OPENALEX_AUTHORSHIP,
+                            false),
+                    corresponding ? Boolean.TRUE : Boolean.FALSE);
         }
     }
 
