@@ -54,7 +54,8 @@ class DblpDumpConferenceSweepServiceTest {
     @Test
     void matchesOnlyConferenceRecordsForOurCandidatesAndRoutesThroughApplyMatch() throws Exception {
         ScholardexPublicationFact candidate = pub("p1", "10.1007/conf-ica3pp-2019-42");
-        when(candidateDetector.detect(any())).thenReturn(List.of(candidate));
+        when(publicationFactRepository.findAll()).thenReturn(List.of(candidate)); // match-all indexes the whole corpus
+        when(candidateDetector.detect(any())).thenReturn(List.of());             // detector only tags caught-vs-new
         when(resolveService.applyMatch(any(), anyString(), anyString(), any(), any(), any(), anyString(), anyString()))
                 .thenReturn(true);
 
@@ -75,7 +76,8 @@ class DblpDumpConferenceSweepServiceTest {
         candidate.setTitleNormalized(ro.uvt.pokedex.core.service.importing.scopus
                 .ScholardexPublicationCanonicalizationService.normalizeTitle("Some unrelated conference paper"));
         candidate.setCoverDate("2021-01-01");
-        when(candidateDetector.detect(any())).thenReturn(List.of(candidate));
+        when(publicationFactRepository.findAll()).thenReturn(List.of(candidate));
+        when(candidateDetector.detect(any())).thenReturn(List.of());
         when(resolveService.applyMatch(any(), anyString(), anyString(), any(), any(), any(), anyString(), anyString()))
                 .thenReturn(true);
 
@@ -91,6 +93,18 @@ class DblpDumpConferenceSweepServiceTest {
         field.setAccessible(true);
         field.set(service, "test-dump");
         return XMLInputFactory.newFactory().createXMLStreamReader(new StringReader(xml));
+    }
+
+    @org.junit.jupiter.api.Test
+    void titleGateRejectsFrontMatterAndShortTitlesButKeepsRealOnes() {
+        // front-matter + short titles collide across conferences -> never trusted for a title match
+        org.assertj.core.api.Assertions.assertThat(DblpDumpConferenceSweepService.isSpecificTitle("preface")).isFalse();
+        org.assertj.core.api.Assertions.assertThat(DblpDumpConferenceSweepService.isSpecificTitle("editorial")).isFalse();
+        org.assertj.core.api.Assertions.assertThat(DblpDumpConferenceSweepService.isSpecificTitle("message from the chairs")).isFalse();
+        org.assertj.core.api.Assertions.assertThat(DblpDumpConferenceSweepService.isSpecificTitle("mobile edge")).isFalse(); // 2 words
+        // a specific multi-word paper title is trusted
+        org.assertj.core.api.Assertions.assertThat(
+                DblpDumpConferenceSweepService.isSpecificTitle("simulating user interaction in digital libraries")).isTrue();
     }
 
     private ScholardexPublicationFact pub(String id, String doiNormalized) {

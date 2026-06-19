@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -54,6 +55,13 @@ public class DblpDumpConferenceSweepService {
             Pattern.compile("&(?!(#\\d+;|#x[0-9A-Fa-f]+;|[A-Za-z][A-Za-z0-9]+;))");
     // The longest plausible HTML named entity is short; anything past this after a bare '&' is not a partial entity.
     private static final int MAX_ENTITY_TAIL = 16;
+    // Title-match gate: exact title+year is only trusted for SPECIFIC titles. Short / front-matter titles ("Preface",
+    // "Editorial" …) collide across unrelated conferences, so they may match by DOI but never by title.
+    private static final int MIN_TITLE_WORDS = 4;
+    private static final Pattern GENERIC_TITLE = Pattern.compile(
+            "^(preface|editorial|foreword|introduction|keynote|welcome|index|errata|corrigendum|addendum"
+                    + "|message from|table of contents|front matter|back matter|opening|closing"
+                    + "|program committee|organi(s|z)ing committee|panel|tutorial|abstract|title page)\\b");
     private static final Map<String, String> XML_ENTITY_REPLACEMENTS = createEntityReplacements();
 
     private final DblpConferenceCandidateDetector candidateDetector;
@@ -95,25 +103,33 @@ public class DblpDumpConferenceSweepService {
 
     /** Core streaming + matching (package-private for testing with a hand-built reader). */
     void runSweep(XMLStreamReader reader, ImportProcessingResult result) throws XMLStreamException {
-        List<ScholardexPublicationFact> candidates =
-                candidateDetector.detect(publicationFactRepository.findAll());
+        // MATCH-ALL: index the WHOLE corpus, not a pre-filtered candidate set — DBLP's CS-only coverage IS the filter
+        // (only conf/X records trigger a match, so journals / non-CS papers never match). The detector set is still
+        // computed, but only to TAG each match as already-caught vs newly-found — the live recall measurement.
+        List<ScholardexPublicationFact> pubs = new java.util.ArrayList<>(publicationFactRepository.findAll());
+        Set<String> detectorCandidateIds = candidateDetector.detect(pubs).stream()
+                .map(ScholardexPublicationFact::getId).collect(Collectors.toSet());
         Map<String, ScholardexPublicationFact> byDoi = new HashMap<>();
         Map<String, ScholardexPublicationFact> byTitleYear = new HashMap<>();
-        for (ScholardexPublicationFact pub : candidates) {
+        for (ScholardexPublicationFact pub : pubs) {
             if (pub.getDoiNormalized() != null) {
                 byDoi.putIfAbsent(pub.getDoiNormalized(), pub);
             }
             String tyk = titleYearKey(pub.getTitleNormalized(), parseYear(pub.getCoverDate()));
-            if (tyk != null) {
+            if (tyk != null && isSpecificTitle(pub.getTitleNormalized())) { // gate the FP-prone title path
                 byTitleYear.putIfAbsent(tyk, pub);
             }
         }
-        log.info("DBLP dump sweep: candidates={} byDoi={} byTitleYear={}", candidates.size(), byDoi.size(), byTitleYear.size());
+        log.info("DBLP dump sweep (match-all): corpus={} byDoi={} byTitleYear={} detectorWouldFlag={}",
+                pubs.size(), byDoi.size(), byTitleYear.size(), detectorCandidateIds.size());
         if (byDoi.isEmpty() && byTitleYear.isEmpty()) {
             return;
         }
 
         Set<String> resolvedPubIds = new HashSet<>();
+        int byDoiHits = 0;
+        int byTitleHits = 0;
+        int newlyFound = 0; // matched but the narrow detector would NOT have flagged — the recall gap
         long scanned = 0L;
         while (reader.hasNext()) {
             if (reader.next() != XMLStreamConstants.START_ELEMENT) {
@@ -145,11 +161,20 @@ public class DblpDumpConferenceSweepService {
             if (resolveService.applyMatch(match, record.dblpKey(), record.booktitle(),
                     record.doiNormalized(), record.title(), record.year(), method, dumpVersion)) {
                 result.markImported();
+                if ("dump-doi".equals(method)) {
+                    byDoiHits++;
+                } else {
+                    byTitleHits++;
+                }
+                if (!detectorCandidateIds.contains(match.getId())) {
+                    newlyFound++;
+                }
             } else {
                 result.markSkipped("dblp-dump-not-a-conference pub=" + match.getId());
             }
         }
-        log.info("DBLP dump sweep complete: scanned={} resolved={}", scanned, result.getImportedCount());
+        log.info("DBLP dump sweep complete: scanned={} resolved={} (byDoi={} byTitle={} newBeyondDetector={})",
+                scanned, result.getImportedCount(), byDoiHits, byTitleHits, newlyFound);
     }
 
     private static String titleYearKey(String titleNormalized, Integer year) {
@@ -157,6 +182,17 @@ public class DblpDumpConferenceSweepService {
             return null;
         }
         return titleNormalized + "|" + year;
+    }
+
+    /** A title specific enough to trust an exact title+year match: not front-matter, and at least a few words. */
+    static boolean isSpecificTitle(String titleNormalized) {
+        if (titleNormalized == null || titleNormalized.isBlank()) {
+            return false;
+        }
+        if (GENERIC_TITLE.matcher(titleNormalized).find()) {
+            return false;
+        }
+        return titleNormalized.trim().split("\\s+").length >= MIN_TITLE_WORDS;
     }
 
     // ----- recovered DBLP dump reading machinery (verbatim from the retired streamer, pre-3b396b1) -----
