@@ -3,12 +3,15 @@ package ro.uvt.pokedex.core.service.dblp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblpEvidenceRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.service.application.ForumIdentityNormalization;
 import ro.uvt.pokedex.core.service.dblp.dto.DblpSearchResponse;
 import ro.uvt.pokedex.core.service.importing.BuilderVersion;
@@ -48,10 +51,49 @@ public class DblpConferenceResolveService {
     private final ScholardexPublicationFactRepository publicationFactRepository;
     private final ScholardexForumFactRepository forumFactRepository;
     private final ScholardexPublicationDblpEvidenceRepository evidenceRepository;
+    private final ScholardexSourceLinkRepository sourceLinkRepository;
 
     /** Admin batch sweep — resolve every hidden-conference candidate in the corpus (replaces the dump sweep). */
     public ImportProcessingResult resolveAll() {
         return resolve(publicationFactRepository.findAll());
+    }
+
+    /**
+     * Full-rebuild durability: {@code forum_facts} is wiped + rebuilt by {@code runFull}, but the DBLP evidence is
+     * durable — so re-mint each conf/X forum and re-stamp its publication's {@code forumId} straight from the stored
+     * evidence, with NO DBLP API calls. Keeps the conference venues alive across a rebuild for free.
+     */
+    public ImportProcessingResult rebuildFromEvidence() {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        Instant now = Instant.now();
+        for (ScholardexPublicationDblpEvidence ev : evidenceRepository.findAll()) {
+            String streamKey = ev.getSeries();
+            if (streamKey == null || streamKey.isBlank() || ev.getPublicationId() == null) {
+                continue;
+            }
+            result.markProcessed();
+            String forumId = findOrMintConferenceForum(streamKey, ev.getConferenceName(), now);
+            publicationFactRepository.findById(ev.getPublicationId()).ifPresent(pub -> {
+                pub.setForumId(forumId);
+                publicationFactRepository.save(pub);
+                result.markImported();
+            });
+        }
+        log.info("DBLP rebuild from evidence: evidence={} venuesRelinked={}",
+                result.getProcessedCount(), result.getImportedCount());
+        return result;
+    }
+
+    /** On-demand entry for the OpenAlex sync: resolve the canonical pubs behind the just-synced OpenAlex works. */
+    public ImportProcessingResult resolveByOpenAlexWorkIds(Collection<String> openAlexWorkIds) {
+        if (openAlexWorkIds == null || openAlexWorkIds.isEmpty()) {
+            return new ImportProcessingResult(20);
+        }
+        List<String> pubIds = sourceLinkRepository
+                .findByEntityTypeAndSourceRecordIdIn(ScholardexEntityType.PUBLICATION, openAlexWorkIds).stream()
+                .filter(l -> "OPENALEX".equals(l.getSource()) && l.getCanonicalEntityId() != null)
+                .map(ScholardexSourceLink::getCanonicalEntityId).distinct().toList();
+        return resolve(publicationFactRepository.findAllById(pubIds));
     }
 
     /** Tier-2 — resolve the hidden-conference candidates among the given (e.g. just-synced) publications. */

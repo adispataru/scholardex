@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,6 +32,7 @@ class DblpConferenceResolveServiceTest {
     @Mock private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock private ScholardexForumFactRepository forumFactRepository;
     @Mock private ScholardexPublicationDblpEvidenceRepository evidenceRepository;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository sourceLinkRepository;
 
     @InjectMocks private DblpConferenceResolveService service;
 
@@ -86,6 +88,24 @@ class DblpConferenceResolveServiceTest {
         verify(evidenceRepository, never()).save(any());
         verify(forumFactRepository, never()).save(any());
         verify(publicationFactRepository, never()).save(any());
+    }
+
+    @Test
+    void rebuildFromEvidenceRelinksForumsWithoutHittingTheApi() {
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence ev =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence();
+        ev.setPublicationId("p9");
+        ev.setSeries("conf/iccs");
+        ev.setConferenceName("ICCS");
+        when(evidenceRepository.findAll()).thenReturn(List.of(ev));
+        when(forumFactRepository.findByDblpIdsContaining("conf/iccs")).thenReturn(Optional.empty());
+        when(publicationFactRepository.findById("p9")).thenReturn(Optional.of(pub("p9", null)));
+
+        service.rebuildFromEvidence();
+
+        verify(forumFactRepository).save(argThat(f -> f.getDblpIds().contains("conf/iccs")));
+        verify(publicationFactRepository).save(argThat(p -> p.getForumId() != null && p.getForumId().startsWith("sforum_")));
+        verifyNoInteractions(dblpClient); // durability path is API-free
     }
 
     private ScholardexPublicationFact pub(String id, String doi) {

@@ -34,6 +34,7 @@ public class OpenAlexUpdateScheduler {
     private final OpenAlexImportService importService;
     private final OpenAlexCanonicalizationService canonicalizationService;
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService citationCanonicalizationService;
+    private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     private final ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService projectionBuilderService;
 
     @Value("${openalex.update.max-attempts:3}")
@@ -83,13 +84,16 @@ public class OpenAlexUpdateScheduler {
         ImportProcessingResult result = canonicalizationService.resolve(workIds);
         // Build DOI-keyed citation edges for the synced works (resolves referenced-work DOIs against the corpus).
         ImportProcessingResult citationResult = citationCanonicalizationService.resolve(workIds);
+        // Phase 4b: resolve hidden-conference venues for the synced works via the DBLP API (conf/X forum + forumId).
+        ImportProcessingResult dblpResult = dblpConferenceResolveService.resolveByOpenAlexWorkIds(workIds);
         // Refresh read-projections so the synced works are visible in the researcher's workspace.
         projectionBuilderService.rebuildViews();
 
         task.setStatus(Status.COMPLETED);
         task.setMessage("Synced " + workIds.size() + " works (imported=" + result.getImportedCount()
                 + ", linked=" + result.getUpdatedCount() + ", skipped=" + result.getSkippedCount()
-                + ", citationEdges=" + citationResult.getImportedCount() + ")");
+                + ", citationEdges=" + citationResult.getImportedCount()
+                + ", dblpConferences=" + dblpResult.getImportedCount() + ")");
         task.setExecutionDate(LocalDate.now(Z).toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);

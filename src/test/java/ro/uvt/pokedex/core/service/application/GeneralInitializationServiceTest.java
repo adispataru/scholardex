@@ -48,7 +48,7 @@ class GeneralInitializationServiceTest {
     @Mock
     private SenseRankingService senseRankingService;
     @Mock
-    private DblpPublicationEnrichmentService dblpPublicationEnrichmentService;
+    private ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     @Mock
     private DomainRepository domainRepository;
     @Mock
@@ -69,7 +69,7 @@ class GeneralInitializationServiceTest {
                 cncsisService,
                 coreConferenceRankingService,
                 senseRankingService,
-                dblpPublicationEnrichmentService,
+                dblpConferenceResolveService,
                 domainRepository,
                 meterRegistry,
                 startupReadinessTracker
@@ -99,17 +99,17 @@ class GeneralInitializationServiceTest {
     }
 
     @Test
-    void dblpLnChapterEnrichmentDelegatesToConfiguredService() {
-        when(dblpPublicationEnrichmentService.runConfiguredEnrichment())
-                .thenReturn(new DblpPublicationEnrichmentService.DblpEnrichmentRunSummary(
-                        "/tmp/dblp.xml.gz", "march-2026", 3, 42L, 1, 1, 0, 1, 0, 0
-                ));
+    void dblpConferenceResolveDelegatesToTheApiSweep() {
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result =
+                new ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult(20);
+        result.markImported();
+        when(dblpConferenceResolveService.resolveAll()).thenReturn(result);
 
         GeneralInitializationService.GeneralInitializationStepResult step = service.runDblpLnChapterEnrichment();
 
         assertThat(step.success()).isTrue();
-        assertThat(step.message()).contains("march-2026");
-        verify(dblpPublicationEnrichmentService).runConfiguredEnrichment();
+        assertThat(step.message()).contains("resolved=1");
+        verify(dblpConferenceResolveService).resolveAll();
     }
 
     @Test

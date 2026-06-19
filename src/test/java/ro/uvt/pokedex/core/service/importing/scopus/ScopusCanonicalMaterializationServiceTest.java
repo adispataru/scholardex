@@ -41,6 +41,8 @@ class ScopusCanonicalMaterializationServiceTest {
     private UserDefinedCanonicalizationService userDefinedCanonicalizationService;
     @Mock
     private OpenAlexCanonicalizationService openAlexCanonicalizationService;
+    @org.mockito.Mock
+    private ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     @Mock
     private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock
@@ -278,6 +280,7 @@ class ScopusCanonicalMaterializationServiceTest {
                 publicationCanonicalizationService,
                 userDefinedCanonicalizationService,
                 openAlexCanonicalizationService,
+                dblpConferenceResolveService,
                 citationCanonicalizationService,
                 sourceLinkService,
                 edgeReconciliationService,
@@ -294,6 +297,7 @@ class ScopusCanonicalMaterializationServiceTest {
                 publicationCanonicalizationService,
                 userDefinedCanonicalizationService,
                 openAlexCanonicalizationService,
+                dblpConferenceResolveService,
                 citationCanonicalizationService,
                 sourceLinkService,
                 edgeReconciliationService,

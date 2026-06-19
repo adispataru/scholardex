@@ -23,6 +23,7 @@ public class ScopusCanonicalMaterializationService {
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final UserDefinedCanonicalizationService userDefinedCanonicalizationService;
     private final OpenAlexCanonicalizationService openAlexCanonicalizationService;
+    private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -64,6 +65,11 @@ public class ScopusCanonicalMaterializationService {
         ImportProcessingResult canonicalOpenAlexResult = incrementalBatchRun
                 ? new ImportProcessingResult(0)
                 : openAlexCanonicalizationService.rebuildCanonicalFacts();
+        // H66B Phase 4b: re-link DBLP conference forums + forumId from durable evidence (no API) after the OpenAlex
+        // replay reset OpenAlex-conference pubs' forumId. Full-maintenance only, mirroring the OpenAlex replay above.
+        if (!incrementalBatchRun) {
+            dblpConferenceResolveService.rebuildFromEvidence();
+        }
         ImportProcessingResult canonicalCitationResult = buildInputs.canonicalCitationResult();
         ScholardexSourceLinkService.ImportRepairSummary sourceLinkRepair = effectiveOptions.reconcileSourceLinks()
                 ? sourceLinkService.reconcileLinks()

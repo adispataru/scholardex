@@ -33,7 +33,7 @@ public class GeneralInitializationService {
     private final CNCSISService cncsisService;
     private final CoreConferenceRankingService coreConferenceRankingService;
     private final SenseRankingService senseRankingService;
-    private final DblpPublicationEnrichmentService dblpPublicationEnrichmentService;
+    private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     private final DomainRepository domainRepository;
     private final MeterRegistry meterRegistry;
     private final StartupReadinessTracker startupReadinessTracker;
@@ -112,9 +112,13 @@ public class GeneralInitializationService {
     }
 
     public GeneralInitializationStepResult runDblpLnChapterEnrichment() {
-        return runStep("dblp-ln-chapter-enrichment", false, "dblp-ln-chapter-enrichment", () ->
-                dblpPublicationEnrichmentService.runConfiguredEnrichment().formatForMessage()
-        );
+        // H66B Phase 4b: the whole-dump streamer is retired — this admin step now runs the per-paper DBLP API sweep
+        // over every hidden-conference candidate (mints conf/X forums + writes the same scorer-compatible evidence).
+        return runStep("dblp-conference-resolve", false, "dblp-conference-resolve", () -> {
+            var result = dblpConferenceResolveService.resolveAll();
+            return "dblp conference resolve completed: resolved=" + result.getImportedCount()
+                    + " skipped=" + result.getSkippedCount();
+        });
     }
 
     private void createSpecialDomainIfNotExist() {
