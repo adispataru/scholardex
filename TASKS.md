@@ -48,11 +48,18 @@ Done history moved to `TASKS-done.md`.
   incoming+outgoing, cited-by surfacing, Stage-3 ISSN venue resolve) and **4b DBLP** (CS conference identity:
   per-paper API + corpus-matched dump sweep, **match-all → 2,351 conferences / 878 forums**, authoritative
   `conf/X` acronym into CORE scoring). Design + evidence in `docs/tasks/active/h66b-incremental-two-tier-design.md`.
+  **PROD CUTOVER DONE (2026-06-19):** wiped the old throwaway `test` "prod", moved to a real `scholardex` db via
+  the corrected `spring.mongodb.uri` (Boot-4 key), and rebuilt from scratch with the self-contained
+  `/rebuildAllDerived?confirmation=RESET` — **92,526 pubs / 69,933 forums (2× richer via the full Source List) /
+  projections populated**, admin bootstrapped, health UP. DBLP dump sweep then added **853 conf/X forums + 2,256
+  conference papers**. Procedure documented in `docs/rebuild-runbook.md` (commit `c30f8f5`).
   **Remaining closeout (none block further dev; full prod-readiness checklist in that doc):**
-  - **Prod cutover prereqs:** Decision-0 **authorship-decision remap** (DOI-primary changed pub ids; ~75 user-state
-    rows — hard prereq); **user-defined data-loss bug** on full rebuild (chipped `task_cccc209c`); author-reconcile
-    not in `runFull`; **`fuzzy-apply` flip** (spot-check 896 STRONG first); OpenAlex `mailto` blank; corresponding-flag
-    / reconcile-conflict read surface; ~6 seed-data orphan authorships.
+  - ✅ **author-reconcile wired into `runFull`** + **`fuzzy-apply` flipped on** after a 30/30 STRONG spot-check
+    (commit `1f8a77c`): 951 duplicate authors merged live (216,258 → 215,307); MEDIUM pairs still review-gated.
+  - ✅ **Decision-0 authorship-decision remap — MOOT** (the wipe removed the old user-state; fresh db starts clean).
+  - **Still open (low priority):** **user-defined data-loss bug** on full rebuild (chipped `task_cccc209c`, latent —
+    no user data yet); OpenAlex `mailto` blank (set before bulk sync); corresponding-flag / reconcile-conflict read
+    surface; ~6 seed-data orphan authorships.
   - **Feature follow-ups:** scoring rework → **`H69`**; researcher in-corpus h-index / citation-network view → **`H67`**;
     DBLP↔Scopus conference forum dedup (Tier-1 reconcile); DBLP dump sweep into the full-rebuild path; DBLP rate-limit
     tuning; Stage-3 warm-load if Tier-2 latency matters; optional lean dump-derived fast index (scoped, deferred).
