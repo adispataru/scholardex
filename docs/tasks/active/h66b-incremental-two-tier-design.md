@@ -622,6 +622,24 @@ rate-limit-free SOURCE feeding the same resolve outputs; the per-paper API stays
 - **Validated** against the real 995MB dump: 2,786 candidates → scanned **12,377,080 records in ~2.5 min** → **440
   resolved** (vs 1 before the API 429'd); conf-series forums **1→234**, pubs on a DBLP conference forum **1→441**. CS
   conference scoring untouched (same `DblpEvidence` interface). ~16% match rate is expected — DBLP is CS-only.
+#### Match-all + DBLP-acronym-wins (2026-06-19, commits `5238723` `64eed06`)
+
+The cp/ch+LNCS detector had only **~19% recall** — it ignored the ~11,669 cp/ch pubs already sitting on a
+proceedings-series forum (ACM ICPS, AISC, SCI, *Proceedings of Science*, …), the real hidden conferences.
+- **Match-all:** the dump sweep now indexes the **whole corpus** (not the detector's candidates) — DBLP's CS-only
+  coverage IS the filter (only conf/X records match; journals/non-CS never do). Same single pass. The detector is kept
+  only to TAG matches caught-vs-new (live recall metric). **Title false-positive gate** (measured: generic front-matter
+  like "Preface"/editorials collided across conferences): a title+year match is trusted only for SPECIFIC titles
+  (≥4 words, not front-matter); DOI matches stay unconditional. **Validated:** narrow 441/234 → match-all **2,351
+  resolved / 878 forums** (5.3×); by DOI 2,159 (exact), by title 192 (gated from 214, 0 "Preface" FPs left).
+- **DBLP acronym wins in scoring:** `ComputerScienceConferenceScoringService.resolveDblpConferenceTitle` now leads with
+  the authoritative conf/X stream acronym (`conf/iccs` → `ICCS`) ahead of its fragile title-heuristic extraction
+  (booktitle kept as fallback). Tested: a pub with only the stream key resolves to the right CORE rank.
+- **⬜ Deferred (needs dispatch investigation):** trusting a conf/X forum for pubs MISCODED as non-conference subtypes
+  (`ar`) — line 86 gates on subtype cp/LNCS; must confirm whether a miscoded pub even reaches this scorer (vs a journal
+  scorer, risking double-counting) before widening it. Also: forum dedup of DBLP conf/X vs existing Scopus conference
+  forums (Tier-1 reconcile).
+
 - **⬜ Notes:** the dump sweep mints forums + writes evidence but is **not** in the full-rebuild path — `rebuildFromEvidence`
   (already wired into runFull/materialization) re-links forums from the durable evidence, so a rebuild keeps them
   without re-streaming. Re-run the admin sweep when a new monthly dump is dropped in. Acronym-vs-booktitle naming
