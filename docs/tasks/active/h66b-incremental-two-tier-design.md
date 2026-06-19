@@ -597,27 +597,30 @@ not the ISSN merge-engine path).
   acronym matching quality (DBLP `venue` is the acronym) should be spot-checked against the scorer. DBLP has **no API
   key / no paid tier** — it is keyless by design, and Dagstuhl steers high-volume users to the dump (below).
 
-#### ⬜ Planned follow-up — corpus-matched dump sweep (scoped 2026-06-19, decisions locked, NOT yet built)
+#### Corpus-matched dump sweep — the rate-limit-free bulk path (2026-06-19, commit `cd71e9e`)
 
-A bulk `resolveAll()` sweep is API-rate-limited into incremental convergence. Fix: for the bulk case, stream the DBLP
-dump **once, matched against OUR candidate set**, and keep only the conf/X entities for papers we actually have —
-storing nothing extra (a full ~3-4M-doc DBLP index was considered and **rejected as overkill**: we only care about our
-own papers). Mechanically this is the *retired streamer's match logic* recovered from git, but fixed: an explicit
+A per-paper API `resolveAll()` is rate-limited into incremental convergence (DBLP throttles a single IP hard). Fix for
+the bulk case: stream the DBLP dump **once, matched against OUR candidate set**, keeping only the conf/X entities for
+papers we actually have — **nothing about the dump is stored** (a full ~3-4M-doc DBLP index was considered and rejected
+as overkill). Mechanically this is the *retired streamer's match logic* recovered verbatim, but fixed: an explicit
 once-per-dump admin sweep (not a per-run cost) that now emits **forums + forumId**, not just evidence. It is a second,
-rate-limit-free SOURCE for the same resolve outputs; the per-paper API stays for on-demand syncs and post-dump papers.
+rate-limit-free SOURCE feeding the same resolve outputs; the per-paper API stays for on-demand syncs + post-dump papers.
 
-- **Locked decisions:** match by **DOI + titleNormalized** (covers DOI-less conference pubs); **explicit admin sweep
-  only** (drop in the monthly dump, click run — no scheduler); **no new storage / no index collection** — reuse the
-  existing `writeEvidence` + `findOrMintConferenceForum` outputs.
-- **`DblpDumpConferenceSweepService.sweep()`:** (1) run the detector → candidate set; build in-memory `doi→pub` and
-  `(titleNormalized,year)→pub` maps (bounded by our corpus, thousands). (2) **stream the dump once** — recover the
-  StAX reader + malformed-entity sanitizer + crossref→booktitle resolution **verbatim from the pre-`3b396b1` commit**
-  (deleted `DblpPublicationEnrichmentService`); conference name from inline `<booktitle>`, falling back to the
-  `crossref→proceedings` booktitle (the old two-pass map). (3) on a DOI/title match → reuse `writeEvidence` +
-  `findOrMintConferenceForum` + stamp `forumId`. (4) admin step + `dblp.dump.file`/`dblp.dump.version` config.
-- **Effort:** ~half a day (one service reusing existing outputs + an admin step). **Risk:** dump-XML fragility
-  (mitigated by the recovered sanitizer); proceedings/booktitle crossref edge cases. **Non-goals:** no per-run
-  streaming; no stored DBLP index; API stays as fallback; CS conferences only.
+- **Refactor:** `DblpConferenceResolveService.applyMatch(pub, dblpKey, conferenceName, doi, title, year, method,
+  dumpVersion)` is the single place the conference outputs are written (scorer-compatible evidence + conf/X forum +
+  forumId), shared by the API resolve and the dump sweep; `writeEvidence` is now primitive-based.
+- **`DblpDumpConferenceSweepService`:** detector → in-memory `doi→pub` + `(titleNormalized,year)→pub` maps; stream the
+  dump once (conference records only) with the StAX reader + malformed-entity sanitizer **recovered verbatim from the
+  pre-`3b396b1` commit**; conference name from the inline `<booktitle>` (clean acronym, e.g. ICA3PP); match by DOI then
+  title+year; route through `applyMatch`; each pub resolved at most once. The admin "DBLP" step runs this sweep; config
+  `dblp.dump.file`/`dblp.dump.version`.
+- **Validated** against the real 995MB dump: 2,786 candidates → scanned **12,377,080 records in ~2.5 min** → **440
+  resolved** (vs 1 before the API 429'd); conf-series forums **1→234**, pubs on a DBLP conference forum **1→441**. CS
+  conference scoring untouched (same `DblpEvidence` interface). ~16% match rate is expected — DBLP is CS-only.
+- **⬜ Notes:** the dump sweep mints forums + writes evidence but is **not** in the full-rebuild path — `rebuildFromEvidence`
+  (already wired into runFull/materialization) re-links forums from the durable evidence, so a rebuild keeps them
+  without re-streaming. Re-run the admin sweep when a new monthly dump is dropped in. Acronym-vs-booktitle naming
+  differs slightly between the dump (booktitle) and API (`venue`) sources — both feed the scorer, which normalizes.
 
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
