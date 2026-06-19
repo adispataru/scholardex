@@ -597,27 +597,27 @@ not the ISSN merge-engine path).
   acronym matching quality (DBLP `venue` is the acronym) should be spot-checked against the scorer. DBLP has **no API
   key / no paid tier** — it is keyless by design, and Dagstuhl steers high-volume users to the dump (below).
 
-#### ⬜ Planned follow-up — dump-derived fast index (scoped 2026-06-19, decisions locked, NOT yet built)
+#### ⬜ Planned follow-up — corpus-matched dump sweep (scoped 2026-06-19, decisions locked, NOT yet built)
 
-A bulk `resolveAll()` sweep is API-rate-limited into incremental convergence. Fix: amortize the dump. Parse the DBLP
-dump **once per release** into a durable lookup table; every resolve becomes an indexed Mongo read; the API stays as
-the fallback for papers newer than the dump. This is **not** the retired per-run streamer — the stream cost is paid
-once per dump version, not per sweep. `conf/X` is already our conference identity, so the index is just a third, fast
-source feeding the same `findOrMintConferenceForum`.
+A bulk `resolveAll()` sweep is API-rate-limited into incremental convergence. Fix: for the bulk case, stream the DBLP
+dump **once, matched against OUR candidate set**, and keep only the conf/X entities for papers we actually have —
+storing nothing extra (a full ~3-4M-doc DBLP index was considered and **rejected as overkill**: we only care about our
+own papers). Mechanically this is the *retired streamer's match logic* recovered from git, but fixed: an explicit
+once-per-dump admin sweep (not a per-run cost) that now emits **forums + forumId**, not just evidence. It is a second,
+rate-limit-free SOURCE for the same resolve outputs; the per-paper API stays for on-demand syncs and post-dump papers.
 
-- **Locked decisions:** index covers **DOI + titleNormalized** (full coverage, incl. DOI-less conference pubs);
-  rebuild is an **explicit admin step only** (drop in the monthly dump, click rebuild — no scheduler).
-- **Data model:** durable `dblp.conference_index` (NOT in the full-rebuild wipe set) — one doc per DBLP conference
-  record `{ doi(idx), titleNormalized(idx), year, streamKey "conf/X", conferenceName, dumpVersion }`. ~3-4M docs
-  (multi-GB — confirm disk before building).
-- **Components:** (1) `DblpDumpIndexBuilder` — streams the dump once; **recover the StAX reader + malformed-entity
-  sanitizer + crossref→booktitle resolution verbatim from the pre-`3b396b1` commit** (the deleted
-  `DblpPublicationEnrichmentService`); two-pass (proceedings-key→booktitle map, then `inproceedings` → conf/X +
-  conferenceName). (2) `DblpConferenceIndexRepository` (`findByDoi`, `findByTitleNormalizedAndYear`). (3) tiered
-  lookup in `DblpConferenceResolveService` — index first, API on miss (the *only* change to existing resolve logic;
-  find-or-mint untouched). (4) admin "rebuild DBLP index" step + `dblp.dump.file`/`dblp.dump.version` config.
-- **Effort:** ~1-1.5 days (the builder is the bulk). **Risk:** dump XML fragility (mitigated by the proven sanitizer),
-  disk for the index. **Non-goals:** no per-run streaming; API stays as fallback; CS conferences only.
+- **Locked decisions:** match by **DOI + titleNormalized** (covers DOI-less conference pubs); **explicit admin sweep
+  only** (drop in the monthly dump, click run — no scheduler); **no new storage / no index collection** — reuse the
+  existing `writeEvidence` + `findOrMintConferenceForum` outputs.
+- **`DblpDumpConferenceSweepService.sweep()`:** (1) run the detector → candidate set; build in-memory `doi→pub` and
+  `(titleNormalized,year)→pub` maps (bounded by our corpus, thousands). (2) **stream the dump once** — recover the
+  StAX reader + malformed-entity sanitizer + crossref→booktitle resolution **verbatim from the pre-`3b396b1` commit**
+  (deleted `DblpPublicationEnrichmentService`); conference name from inline `<booktitle>`, falling back to the
+  `crossref→proceedings` booktitle (the old two-pass map). (3) on a DOI/title match → reuse `writeEvidence` +
+  `findOrMintConferenceForum` + stamp `forumId`. (4) admin step + `dblp.dump.file`/`dblp.dump.version` config.
+- **Effort:** ~half a day (one service reusing existing outputs + an admin step). **Risk:** dump-XML fragility
+  (mitigated by the recovered sanitizer); proceedings/booktitle crossref edge cases. **Non-goals:** no per-run
+  streaming; no stored DBLP index; API stays as fallback; CS conferences only.
 
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
