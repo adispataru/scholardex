@@ -19,6 +19,7 @@ import java.util.List;
 @CompoundIndex(name = "uniq_scholardex_forum_scopus_id", def = "{'scopusForumIds': 1}", unique = true, partialFilter = "{'scopusForumIds': {'$type': 'string'}}")
 @CompoundIndex(name = "uniq_scholardex_forum_wos_id", def = "{'wosForumIds': 1}", unique = true, partialFilter = "{'wosForumIds': {'$type': 'string'}}")
 @CompoundIndex(name = "uniq_scholardex_forum_openalex_id", def = "{'openAlexIds': 1}", unique = true, partialFilter = "{'openAlexIds': {'$type': 'string'}}")
+@CompoundIndex(name = "uniq_scholardex_forum_dblp_id", def = "{'dblpIds': 1}", unique = true, partialFilter = "{'dblpIds': {'$type': 'string'}}")
 public class ScholardexForumFact {
     @Id
     private String id;
@@ -33,6 +34,8 @@ public class ScholardexForumFact {
     private List<String> doajIds = new ArrayList<>();
     /** H66B Phase 4a Stage 3: OpenAlex venue ids (S…) — create-or-match identity source, ISSN-gated. */
     private List<String> openAlexIds = new ArrayList<>();
+    /** H66B Phase 4b: DBLP conference-series stream keys (conf/X) — the CS conference identity source (no ISSN). */
+    private List<String> dblpIds = new ArrayList<>();
 
     /** H66 A1: C-scalar — normalized venue kind (journal/book-series/conference/trade), from CiteScore (A2). */
     private String forumType;

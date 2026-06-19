@@ -18,6 +18,8 @@ public class CoreApplication {
     private String scopusServiceURL;
     @Value("${openalex.api.base-url:https://api.openalex.org}")
     private String openAlexBaseUrl;
+    @Value("${dblp.api.base-url:https://dblp.org}")
+    private String dblpBaseUrl;
     public static void main(String[] args) {
         SpringApplication.run(CoreApplication.class, args);
     }
@@ -45,6 +47,19 @@ public class CoreApplication {
         return WebClient.builder()
                 .exchangeStrategies(strategies)
                 .baseUrl(openAlexBaseUrl)
+                .build();
+    }
+
+    @Bean
+    public WebClient dblpWebClient() {
+        // DBLP is a keyless public REST API; a search response is small, but keep a generous buffer (H66B Phase 4b).
+        final int size = (int) DataSize.ofMegabytes(16).toBytes();
+        final ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
+                .build();
+        return WebClient.builder()
+                .exchangeStrategies(strategies)
+                .baseUrl(dblpBaseUrl)
                 .build();
     }
 
