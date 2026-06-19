@@ -43,6 +43,19 @@ Done history moved to `TASKS-done.md`.
   layer is reorganized. Subsumes H66 Move D (D5 orchestration, D6 MJL coverage, D7 config) + Move E (book
   registry) + D2 (CiteScore-as-rankings). Verified against the 448-conflict 2026-06-17 baseline + the
   reconcile-audit harness. Planning doc at `docs/tasks/active/h66b-entity-oriented-builders.md`.
+  **Status (2026-06-19): Phase 4 (multi-source ingest) DONE + live-validated** — **4a OpenAlex** (DOI-primary
+  identity, publication source, corresponding authors, ORCID bridge, author reconcile, full citation graph
+  incoming+outgoing, cited-by surfacing, Stage-3 ISSN venue resolve) and **4b DBLP** (CS conference identity:
+  per-paper API + corpus-matched dump sweep, **match-all → 2,351 conferences / 878 forums**, authoritative
+  `conf/X` acronym into CORE scoring). Design + evidence in `docs/tasks/active/h66b-incremental-two-tier-design.md`.
+  **Remaining closeout (none block further dev; full prod-readiness checklist in that doc):**
+  - **Prod cutover prereqs:** Decision-0 **authorship-decision remap** (DOI-primary changed pub ids; ~75 user-state
+    rows — hard prereq); **user-defined data-loss bug** on full rebuild (chipped `task_cccc209c`); author-reconcile
+    not in `runFull`; **`fuzzy-apply` flip** (spot-check 896 STRONG first); OpenAlex `mailto` blank; corresponding-flag
+    / reconcile-conflict read surface; ~6 seed-data orphan authorships.
+  - **Feature follow-ups:** scoring rework → **`H69`**; researcher in-corpus h-index / citation-network view → **`H67`**;
+    DBLP↔Scopus conference forum dedup (Tier-1 reconcile); DBLP dump sweep into the full-rebuild path; DBLP rate-limit
+    tuning; Stage-3 warm-load if Tier-2 latency matters; optional lean dump-derived fast index (scoped, deferred).
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
@@ -57,6 +70,22 @@ Done history moved to `TASKS-done.md`.
   **Da/Nu** qualitative gates, cross-criterion compensation. Modest config-level extensions on the existing
   per-position threshold model. Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica. Planning doc at
   `docs/tasks/active/h68-criteria-extensions.md`.
+
+- [ ] `H69` Scoring rework for the multi-source canonical layer (after H66B Phase 4).
+  Goal: rework the scoring services to fully consume the new multi-source signals now in the canonical layer —
+  **OpenAlex** (citation graph, incoming `cited_by`, ISSN venue identity) and **DBLP** (CS conference identity +
+  authoritative `conf/X` acronym, ~2,351 conferences resolved). The acronym already leads CORE matching
+  (`ComputerScienceConferenceScoringService`, commit `64eed06`); the rest is unbuilt. Threads:
+  **(1)** scorer **dispatch/routing review** — a DBLP-confirmed conference miscoded as a non-conference subtype
+  (`ar`, or sitting on a proceedings-series forum) is routed to the wrong scorer; trust the `conf/X` forum / DBLP
+  evidence to score it as a conference regardless of subtype, **without double-counting** (confirm how a pub is
+  assigned to exactly one scorer first — the deferred half of "DBLP acronym wins").
+  **(2)** citation-driven criteria — feed OpenAlex `cited_by` / the in-corpus citation graph into citation-count
+  indicators and into **H67** (h-index); pick the citation source per domain.
+  **(3)** forum **dedup** impact — ensure a conference resolved via DBLP `conf/X` and the same conference via a
+  Scopus forum score identically (Tier-1 reconcile merges them).
+  **(4)** **regression sweep** — re-score across domains after the match-all + acronym changes and confirm no
+  score regressions vs the pre-Phase-4 baseline. Depends on H66B Phase 4 (done) + interacts with H67.
 
 - [ ] `H65` Physics (Fizică/FF) report — DOCX export. **Postponed behind H63 + H64.**
   Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template). Scoped this session;
