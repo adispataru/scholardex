@@ -108,16 +108,14 @@ class OpenAlexCanonicalizationServiceTest {
         // A corresponding co-author (distinct from the syncing researcher) resolves to a canonical author id and
         // gets an edge flagged corresponding=true; the syncing researcher gets a normal (corresponding=false) edge.
         OpenAlexPublicationFact source = source("W3", "10.1/coauthored", "Co-authored paper", "sauth_self");
-        OpenAlexPublicationFact.CorrespondingAuthorRef ref = new OpenAlexPublicationFact.CorrespondingAuthorRef();
-        ref.setDisplayName("Corr Coauthor");
-        ref.setOrcid("0000-0002-1825-0097");
-        source.setCorrespondingAuthors(List.of(ref));
+        source.setAuthorships(List.of(authorship("Corr Coauthor", "0000-0002-1825-0097", "A1", true)));
         ScholardexPublicationFact owned = new ScholardexPublicationFact();
         owned.setId("spub_owned");
         owned.setSource("OPENALEX");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/coauthored")).thenReturn(List.of(owned));
-        when(authorResolver.resolveOrMint(eq(ref), any(), any())).thenReturn("sauth_coauthor");
+        when(authorResolver.resolveOrMint(eq("Corr Coauthor"), eq("0000-0002-1825-0097"), eq("A1"), any(), any()))
+                .thenReturn("sauth_coauthor");
 
         service.rebuildCanonicalFacts();
 
@@ -132,17 +130,15 @@ class OpenAlexCanonicalizationServiceTest {
         // ORCID seeding makes the corresponding author resolve to the syncing researcher's own canonical author,
         // so there is ONE edge, flagged corresponding=true — not a duplicate.
         OpenAlexPublicationFact source = source("W4", "10.1/selfcorr", "My own paper", "sauth_self");
-        OpenAlexPublicationFact.CorrespondingAuthorRef ref = new OpenAlexPublicationFact.CorrespondingAuthorRef();
-        ref.setDisplayName("Me");
-        ref.setOrcid("0000-0002-0702-6276");
-        source.setCorrespondingAuthors(List.of(ref));
+        source.setAuthorships(List.of(authorship("Me", "0000-0002-0702-6276", "A1", true)));
         source.getSyncedResearchers().getFirst().setOrcid("0000-0002-0702-6276");
         ScholardexPublicationFact owned = new ScholardexPublicationFact();
         owned.setId("spub_owned");
         owned.setSource("OPENALEX");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/selfcorr")).thenReturn(List.of(owned));
-        when(authorResolver.resolveOrMint(eq(ref), any(), any())).thenReturn("sauth_self"); // resolves to the researcher
+        when(authorResolver.resolveOrMint(eq("Me"), eq("0000-0002-0702-6276"), eq("A1"), any(), any()))
+                .thenReturn("sauth_self"); // resolves to the researcher
 
         service.rebuildCanonicalFacts();
 
@@ -172,6 +168,30 @@ class OpenAlexCanonicalizationServiceTest {
         verify(edgeWriterService, never()).upsertAuthorshipEdge(any(), any());
     }
 
+    @Test
+    void linkedPublicationTriggersThePositionalOrcidBridge() {
+        // A DOI-linked Scopus pub (existing pub carries ordered authorIds) triggers the bridge with the OpenAlex
+        // author names + orcids; a minted pub (no authorIds) would not.
+        OpenAlexPublicationFact source = source("W6", "10.1/linked", "Linked paper", "sauth_self");
+        source.setAuthorships(List.of(
+                authorship("Ionut Sandric", "0000-0002-9292-9479", "A1", false),
+                authorship("Marc Frincu", "0000-0003-1034-8409", "A2", false)));
+        ScholardexPublicationFact scopusPub = new ScholardexPublicationFact();
+        scopusPub.setId("spub_scopus");
+        scopusPub.setSource("SCOPUS");
+        scopusPub.setAuthorIds(List.of("sauth_a", "sauth_b"));
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/linked")).thenReturn(List.of(scopusPub));
+        when(scholardexPublicationFactRepository.findById("spub_scopus")).thenReturn(java.util.Optional.of(scopusPub));
+
+        service.rebuildCanonicalFacts();
+
+        verify(authorResolver).bridgeOrcidsByPosition(
+                eq(List.of("sauth_a", "sauth_b")),
+                eq(List.of("Ionut Sandric", "Marc Frincu")),
+                eq(java.util.Arrays.asList("0000-0002-9292-9479", "0000-0003-1034-8409")));
+    }
+
     private OpenAlexPublicationFact source(String workId, String doiNormalized, String title, String researcherAuthorId) {
         OpenAlexPublicationFact fact = new OpenAlexPublicationFact();
         fact.setSourceRecordId(workId);
@@ -184,5 +204,14 @@ class OpenAlexCanonicalizationServiceTest {
         researcher.setCanonicalAuthorId(researcherAuthorId);
         fact.setSyncedResearchers(new java.util.ArrayList<>(List.of(researcher)));
         return fact;
+    }
+
+    private OpenAlexPublicationFact.AuthorRef authorship(String name, String orcid, String openAlexId, boolean corresponding) {
+        OpenAlexPublicationFact.AuthorRef ref = new OpenAlexPublicationFact.AuthorRef();
+        ref.setDisplayName(name);
+        ref.setOrcid(orcid);
+        ref.setOpenAlexAuthorId(openAlexId);
+        ref.setCorresponding(corresponding);
+        return ref;
     }
 }

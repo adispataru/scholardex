@@ -174,21 +174,25 @@ public class OpenAlexCanonicalizationService {
     /**
      * Write the {@code OPENALEX} authorship edges for a work (H66B Phase 4a, id-based corresponding model):
      * <ol>
-     *   <li>seed each syncing researcher's ORCID onto their canonical author (so corresponding-author resolution
-     *       dedups against them instead of minting a duplicate);</li>
-     *   <li>resolve each {@code is_corresponding} authorship to a canonical author (by ORCID → OpenAlex id → mint);</li>
+     *   <li>seed each syncing researcher's ORCID onto their canonical author;</li>
+     *   <li><b>positional ORCID bridge</b> — for a DOI-linked pub (its canonical fact already carries the ordered
+     *       Scopus {@code authorIds}), seed each OpenAlex ORCID onto the Scopus author at the same position (Scopus
+     *       and OpenAlex agree on author order — validated 29/29), guarded by equal author count + per-position
+     *       surname agreement. This makes Scopus authors ORCID-keyed so the next step dedups against them;</li>
+     *   <li>resolve each {@code is_corresponding} authorship to a canonical author (by ORCID → OpenAlex id → mint) —
+     *       after bridging, ORCID resolution lands on the existing Scopus author rather than minting a duplicate;</li>
      *   <li>write one edge per author in (syncing researchers ∪ resolved corresponding authors), stamping
      *       {@code corresponding=true} exactly on the resolved corresponding authors.</li>
      * </ol>
-     * The syncing-researcher edges keep works visible in the researcher's workspace; the {@code (pub, author,
-     * source)} key means OPENALEX edges coexist with Scopus ones. If the researcher IS the corresponding author,
-     * resolution lands on their (now ORCID-seeded) canonical author, so the single edge is marked corresponding —
-     * no duplicate.
+     * The {@code (pub, author, source)} key means OPENALEX edges coexist with Scopus ones.
      */
     private void writeAuthorshipEdges(OpenAlexPublicationFact source, String canonicalPublicationId) {
         if (isBlank(canonicalPublicationId)) {
             return;
         }
+        List<OpenAlexPublicationFact.AuthorRef> authorships =
+                source.getAuthorships() == null ? List.of() : source.getAuthorships();
+
         // 1) Seed ORCIDs onto the syncing researchers' canonical authors.
         List<String> syncingAuthorIds = new ArrayList<>();
         if (source.getSyncedResearchers() != null) {
@@ -200,17 +204,29 @@ public class OpenAlexCanonicalizationService {
                 syncingAuthorIds.add(researcher.getCanonicalAuthorId());
             }
         }
-        // 2) Resolve corresponding authorships to canonical author ids.
+
+        // 2) Positional ORCID bridge onto the linked Scopus pub's authors (runs before corresponding resolution).
+        ScholardexPublicationFact pub = scholardexPublicationFactRepository.findById(canonicalPublicationId).orElse(null);
+        if (pub != null && pub.getAuthorIds() != null && !pub.getAuthorIds().isEmpty() && !authorships.isEmpty()) {
+            List<String> openAlexNames = authorships.stream().map(OpenAlexPublicationFact.AuthorRef::getDisplayName).toList();
+            List<String> openAlexOrcids = authorships.stream().map(OpenAlexPublicationFact.AuthorRef::getOrcid).toList();
+            authorResolver.bridgeOrcidsByPosition(pub.getAuthorIds(), openAlexNames, openAlexOrcids);
+        }
+
+        // 3) Resolve corresponding authorships to canonical author ids.
         Set<String> correspondingAuthorIds = new LinkedHashSet<>();
-        if (source.getCorrespondingAuthors() != null) {
-            for (OpenAlexPublicationFact.CorrespondingAuthorRef ref : source.getCorrespondingAuthors()) {
-                String authorId = authorResolver.resolveOrMint(ref, source.getSourceBatchId(), source.getSourceCorrelationId());
-                if (!isBlank(authorId)) {
-                    correspondingAuthorIds.add(authorId);
-                }
+        for (OpenAlexPublicationFact.AuthorRef ref : authorships) {
+            if (!ref.isCorresponding()) {
+                continue;
+            }
+            String authorId = authorResolver.resolveOrMint(
+                    ref.getDisplayName(), ref.getOrcid(), ref.getOpenAlexAuthorId(),
+                    source.getSourceBatchId(), source.getSourceCorrelationId());
+            if (!isBlank(authorId)) {
+                correspondingAuthorIds.add(authorId);
             }
         }
-        // 3) One edge per author, corresponding flag set on the resolved corresponding authors.
+        // 4) One edge per author, corresponding flag set on the resolved corresponding authors.
         Set<String> edgeAuthorIds = new LinkedHashSet<>(syncingAuthorIds);
         edgeAuthorIds.addAll(correspondingAuthorIds);
         for (String authorId : edgeAuthorIds) {

@@ -69,36 +69,25 @@ public class OpenAlexImportService {
         fact.setCitedByCount(work.getCited_by_count());
         fact.setOpenAccess(work.getOpen_access() == null ? null : work.getOpen_access().getIs_oa());
 
-        List<String> authorNames = new ArrayList<>();
-        List<String> authorOrcids = new ArrayList<>();
-        List<OpenAlexPublicationFact.CorrespondingAuthorRef> correspondingAuthors = new ArrayList<>();
+        List<OpenAlexPublicationFact.AuthorRef> authorships = new ArrayList<>();
         if (work.getAuthorships() != null) {
+            int position = 0;
             for (OpenAlexWorksResponse.Authorship authorship : work.getAuthorships()) {
                 if (authorship == null || authorship.getAuthor() == null) {
                     continue;
                 }
-                String name = authorship.getAuthor().getDisplay_name();
-                String authorOrcid = OrcidSupport.normalize(authorship.getAuthor().getOrcid());
-                if (name != null && !name.isBlank()) {
-                    authorNames.add(name);
-                }
-                if (authorOrcid != null) {
-                    authorOrcids.add(authorOrcid);
-                }
-                if (Boolean.TRUE.equals(authorship.getIs_corresponding())) {
-                    OpenAlexPublicationFact.CorrespondingAuthorRef ref = new OpenAlexPublicationFact.CorrespondingAuthorRef();
-                    ref.setDisplayName(name);
-                    ref.setOrcid(authorOrcid);
-                    ref.setOpenAlexAuthorId(stripPrefix(authorship.getAuthor().getId(), OPENALEX_ID_PREFIX));
-                    correspondingAuthors.add(ref);
-                }
+                OpenAlexPublicationFact.AuthorRef ref = new OpenAlexPublicationFact.AuthorRef();
+                ref.setPosition(position++);
+                ref.setDisplayName(authorship.getAuthor().getDisplay_name());
+                ref.setOrcid(OrcidSupport.normalize(authorship.getAuthor().getOrcid()));
+                ref.setOpenAlexAuthorId(stripPrefix(authorship.getAuthor().getId(), OPENALEX_ID_PREFIX));
+                ref.setCorresponding(Boolean.TRUE.equals(authorship.getIs_corresponding()));
+                authorships.add(ref);
             }
         }
-        fact.setAuthorDisplayNames(authorNames);
-        fact.setAuthorOrcids(authorOrcids);
-        fact.setCorrespondingAuthors(correspondingAuthors);
-        fact.setAuthorCount(authorNames.isEmpty() ? null : authorNames.size());
-        fact.setCreator(authorNames.isEmpty() ? null : authorNames.getFirst());
+        fact.setAuthorships(authorships);
+        fact.setAuthorCount(authorships.isEmpty() ? null : authorships.size());
+        fact.setCreator(authorships.isEmpty() ? null : authorships.getFirst().getDisplayName());
 
         if (work.getPrimary_location() != null && work.getPrimary_location().getSource() != null) {
             OpenAlexWorksResponse.OpenAlexSource src = work.getPrimary_location().getSource();

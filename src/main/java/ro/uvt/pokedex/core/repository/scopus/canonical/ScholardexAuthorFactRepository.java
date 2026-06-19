@@ -9,8 +9,10 @@ import java.util.Optional;
 
 public interface ScholardexAuthorFactRepository extends MongoRepository<ScholardexAuthorFact, String> {
     Optional<ScholardexAuthorFact> findByScopusAuthorIdsContains(String scopusAuthorId);
-    Optional<ScholardexAuthorFact> findByOrcidIdsContains(String orcid);
-    Optional<ScholardexAuthorFact> findByOpenAlexAuthorIdsContains(String openAlexAuthorId);
+    // NOT Optional: an ORCID / OpenAlex id can transiently sit on several author records (the duplicate situation
+    // the author-reconcile resolves), so these must tolerate multiplicity rather than throw "non unique result".
+    List<ScholardexAuthorFact> findByOrcidIdsContains(String orcid);
+    List<ScholardexAuthorFact> findByOpenAlexAuthorIdsContains(String openAlexAuthorId);
     List<ScholardexAuthorFact> findBySourceBatchId(String sourceBatchId);
     List<ScholardexAuthorFact> findByScopusAuthorIdsIn(Collection<String> scopusAuthorIds);
     List<ScholardexAuthorFact> findByIdIn(Collection<String> ids);

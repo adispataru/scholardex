@@ -42,15 +42,12 @@ public class OpenAlexPublicationFact {
     private Integer citedByCount;
     private Boolean openAccess;
 
-    /** Co-author display names (Stage 1 stores them; canonical co-author bridging is deferred). */
-    private List<String> authorDisplayNames = new ArrayList<>();
-    /** Co-author ORCIDs where OpenAlex provides them (deferred bridging input). */
-    private List<String> authorOrcids = new ArrayList<>();
     /**
-     * Authorships OpenAlex flags {@code is_corresponding}, with the identity needed to resolve each to a canonical
-     * author (H66B Phase 4a id-based model). Sparse — OpenAlex corresponding-author coverage is partial.
+     * The work's full author list in OpenAlex order, with the identity needed to (a) resolve corresponding authors
+     * to canonical authors and (b) positionally bridge ORCIDs onto the matching Scopus authors of a DOI-linked pub
+     * (Scopus and OpenAlex agree on author order — validated 29/29). H66B Phase 4a.
      */
-    private List<CorrespondingAuthorRef> correspondingAuthors = new ArrayList<>();
+    private List<AuthorRef> authorships = new ArrayList<>();
 
     // Venue (Stage 3 — ofOpenAlex forum resolve)
     private String hostVenueName;
@@ -67,12 +64,14 @@ public class OpenAlexPublicationFact {
      */
     private List<SyncedResearcher> syncedResearchers = new ArrayList<>();
 
-    /** OpenAlex corresponding-author identity (id-resolvable). */
+    /** One OpenAlex authorship in author order, id-resolvable. */
     @Data
-    public static class CorrespondingAuthorRef {
+    public static class AuthorRef {
+        private int position;            // 0-based author order (for the positional ORCID bridge)
         private String displayName;
         private String orcid;            // normalized bare, when OpenAlex provides it
         private String openAlexAuthorId; // A…, the OpenAlex author entity id
+        private boolean corresponding;   // OpenAlex is_corresponding flag
     }
 
     /** A platform researcher who synced this work, with the identity needed to seed/dedup. */

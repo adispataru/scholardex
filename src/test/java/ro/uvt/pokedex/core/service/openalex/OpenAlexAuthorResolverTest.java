@@ -5,7 +5,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 
@@ -31,9 +30,9 @@ class OpenAlexAuthorResolverTest {
     @Test
     void resolvesByOrcidToAnExistingCanonicalAuthor() {
         ScholardexAuthorFact existing = author("sauth_scopus", "0000-0002-0702-6276");
-        when(authorRepository.findByOrcidIdsContains("0000-0002-0702-6276")).thenReturn(Optional.of(existing));
+        when(authorRepository.findByOrcidIdsContains("0000-0002-0702-6276")).thenReturn(List.of(existing));
 
-        String id = resolver.resolveOrMint(ref("Me", "0000-0002-0702-6276", "A123"), "batch", "corr");
+        String id = resolver.resolveOrMint("Me", "0000-0002-0702-6276", "A123", "batch", "corr");
 
         assertEquals("sauth_scopus", id);
         // Found by ORCID; the OpenAlex id is enriched onto the existing author, no new mint.
@@ -42,11 +41,11 @@ class OpenAlexAuthorResolverTest {
 
     @Test
     void mintsWhenNoIdKeyMatches() {
-        when(authorRepository.findByOrcidIdsContains(any())).thenReturn(Optional.empty());
-        when(authorRepository.findByOpenAlexAuthorIdsContains(any())).thenReturn(Optional.empty());
+        when(authorRepository.findByOrcidIdsContains(any())).thenReturn(List.of());
+        when(authorRepository.findByOpenAlexAuthorIdsContains(any())).thenReturn(List.of());
         when(authorRepository.findById(any())).thenReturn(Optional.empty());
 
-        String id = resolver.resolveOrMint(ref("New Person", "0000-0001-2345-6789", "A999"), "batch", "corr");
+        String id = resolver.resolveOrMint("New Person", "0000-0001-2345-6789", "A999", "batch", "corr");
 
         assertTrue(id != null && id.startsWith("sauth_"));
         verify(authorRepository).save(argThat(a ->
@@ -57,8 +56,23 @@ class OpenAlexAuthorResolverTest {
     }
 
     @Test
+    void resolvePrefersTheEstablishedScopusAuthorWhenAnOrcidIsSharedByMultiple() {
+        // The bridge can transiently leave an ORCID on both a Scopus author and an OpenAlex twin (pre-reconcile);
+        // resolution must tolerate it (not throw) and prefer the established Scopus author.
+        ScholardexAuthorFact openAlexTwin = author("sauth_openalex", "0000-0002-0702-6276"); // no scopusAuthorIds
+        ScholardexAuthorFact scopusTwin = author("sauth_scopus", "0000-0002-0702-6276");
+        scopusTwin.setScopusAuthorIds(new ArrayList<>(List.of("12345")));
+        when(authorRepository.findByOrcidIdsContains("0000-0002-0702-6276"))
+                .thenReturn(List.of(openAlexTwin, scopusTwin)); // OpenAlex twin listed first
+
+        String id = resolver.resolveOrMint("Me", "0000-0002-0702-6276", "A1", "batch", "corr");
+
+        assertEquals("sauth_scopus", id);
+    }
+
+    @Test
     void nameOnlyRefIsNotIdResolvable() {
-        assertNull(resolver.resolveOrMint(ref("Anon", null, null), "batch", "corr"));
+        assertNull(resolver.resolveOrMint("Anon", null, null, "batch", "corr"));
         verify(authorRepository, never()).save(any());
     }
 
@@ -72,6 +86,55 @@ class OpenAlexAuthorResolverTest {
         verify(authorRepository).save(argThat(a -> a.getOrcidIds().contains("0000-0002-0702-6276")));
     }
 
+    @Test
+    void positionalBridgeSeedsOrcidsOntoScopusAuthorsAtMatchingPositions() {
+        // Scopus "Last, First" vs OpenAlex "First Last" — same order, diacritics differ; positions 0,1 match,
+        // position 2 has no OpenAlex ORCID (skipped). Count guard satisfied (3==3).
+        ScholardexAuthorFact a0 = author("sauth_0", null); a0.setDisplayName("Șandric, Ionuț");
+        ScholardexAuthorFact a1 = author("sauth_1", null); a1.setDisplayName("Frîncu, Marc Eduard");
+        ScholardexAuthorFact a2 = author("sauth_2", null); a2.setDisplayName("Selea, Teodora");
+        when(authorRepository.findByIdIn(List.of("sauth_0", "sauth_1", "sauth_2")))
+                .thenReturn(List.of(a0, a1, a2));
+
+        int seeded = resolver.bridgeOrcidsByPosition(
+                List.of("sauth_0", "sauth_1", "sauth_2"),
+                List.of("Ionut Sandric", "Marc Frincu", "Teodora Selea"),
+                java.util.Arrays.asList("0000-0002-9292-9479", "0000-0003-1034-8409", null));
+
+        assertEquals(2, seeded);
+        verify(authorRepository).save(argThat(a -> "sauth_0".equals(a.getId()) && a.getOrcidIds().contains("0000-0002-9292-9479")));
+        verify(authorRepository).save(argThat(a -> "sauth_1".equals(a.getId()) && a.getOrcidIds().contains("0000-0003-1034-8409")));
+    }
+
+    @Test
+    void positionalBridgeIsSkippedOnAuthorCountMismatch() {
+        int seeded = resolver.bridgeOrcidsByPosition(
+                List.of("sauth_0", "sauth_1"),
+                List.of("Only One"),
+                List.of("0000-0002-9292-9479"));
+        assertEquals(0, seeded);
+        verify(authorRepository, never()).findByIdIn(any());
+    }
+
+    @Test
+    void positionalBridgeSkipsAPositionWhoseSurnameDisagrees() {
+        ScholardexAuthorFact a0 = author("sauth_0", null); a0.setDisplayName("Smith, John");
+        when(authorRepository.findByIdIn(List.of("sauth_0"))).thenReturn(List.of(a0));
+
+        int seeded = resolver.bridgeOrcidsByPosition(
+                List.of("sauth_0"), List.of("Jane Doe"), List.of("0000-0002-9292-9479"));
+
+        assertEquals(0, seeded);
+        verify(authorRepository, never()).save(any());
+    }
+
+    @Test
+    void surnameMatchesHandlesOrderSwapAndDiacritics() {
+        assertTrue(OpenAlexAuthorResolver.surnameMatches("Șandric, Ionuț", "Ionut Sandric"));
+        assertTrue(OpenAlexAuthorResolver.surnameMatches("Filelis-Papadopoulos, Christos K.", "Christos K. Filelis‐Papadopoulos"));
+        assertTrue(!OpenAlexAuthorResolver.surnameMatches("Smith, John", "Jane Doe"));
+    }
+
     private ScholardexAuthorFact author(String id, String orcid) {
         ScholardexAuthorFact a = new ScholardexAuthorFact();
         a.setId(id);
@@ -81,13 +144,5 @@ class OpenAlexAuthorResolverTest {
             a.getOrcidIds().add(orcid);
         }
         return a;
-    }
-
-    private OpenAlexPublicationFact.CorrespondingAuthorRef ref(String name, String orcid, String openAlexId) {
-        OpenAlexPublicationFact.CorrespondingAuthorRef ref = new OpenAlexPublicationFact.CorrespondingAuthorRef();
-        ref.setDisplayName(name);
-        ref.setOrcid(orcid);
-        ref.setOpenAlexAuthorId(openAlexId);
-        return ref;
     }
 }
