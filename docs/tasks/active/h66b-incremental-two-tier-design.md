@@ -454,6 +454,30 @@ interface EntityBuilder {
      threading). (c) Profile-ORCID seeding becomes optional (the bridge covers co-authors automatically). (d)
      Author-model full-rebuild durability wired + unit-covered, not yet re-proven live.
 
+   **Stage 1.4 — author reconcile (2026-06-19, commits `0cc2177` + `f653d5d` + Stage C).** Tier-1 author dedup,
+   `AuthorReconcileService` mirroring the forum dedup (`repointReferences`). Two passes:
+   - **ORCID pass (Stage A):** cluster authors by shared ORCID, merge each (ORCID is unique to a person). Survivor =
+     established Scopus author; folds id-lists/names/affiliations; re-points authorship + author-affiliation +
+     pub-author-affiliation edges, `ScholardexPublicationFact.authorIds[]`, AUTHOR source-links,
+     `User.primaryScholardexAuthorId`, and `openalex.publication_facts.syncedResearchers` (with authorship-edge
+     collision dedup + corresponding-flag OR). **Safety:** a shared ORCID with incompatible given names is NOT
+     merged — quarantined as `AUTHOR_SHARED_ORCID_NAME_MISMATCH`. Validated live: two "Dragan, Ioan" Scopus authors
+     merged (ids folded, 12 edges consolidated, 0 new orphans); a different-given-name pair quarantined.
+   - **Fuzzy pass (Stage B):** for the ORCID-less majority. Cluster by order-insensitive normalized name; within a
+     cluster, merge subgroups that **share ≥1 affiliation** AND pass the **hard block** (no two members co-appear on
+     a publication ⇒ provably different people; union-find + component-wide block check). **Dry-run by default**
+     (`core.author-reconcile.fuzzy-apply=false`) — emits `AUTHOR_FUZZY_MERGE_CANDIDATE` conflicts to inspect before
+     enabling auto-merge. Validated live (dry-run): 200,204 name clusters → **1,815 candidates** in ~22s, 0 merged;
+     samples are real dups incl. encoding-mangled ("A°kesson"/"Ã…kesson"→Åkesson) and name-order variants.
+   - **Stage C — wiring:** both passes run inside `ForumReconcileService.reconcile` (nightly scheduler + manual
+     `POST /forum/reconcile`), before the projection rebuild. Idempotent → safe on the reconcile cadence and after a
+     full rebuild. Manual triggers also exposed: `POST /author/reconcile` (ORCID) and `/author/reconcile/fuzzy`.
+   - **⬜ Follow-ups:** inspect the 1,815 fuzzy candidates (esp. initials-only names — higher false-merge risk) then
+     flip `fuzzy-apply=true`; the residual `AUTHOR_SHARED_ORCID_NAME_MISMATCH` quarantines need a review surface;
+     the author reconcile isn't inside `runFull` (relies on the next reconcile cadence — eventual-consistency, same
+     as the forum reconcile). Pre-existing finding: ~6 bootstrap `authorship_facts` reference non-existent authors
+     (a seed-data integrity gap, independent of this work).
+
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
 - **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm
