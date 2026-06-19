@@ -52,6 +52,7 @@ public class AuthorReconcileService {
     static final String SOURCE_SCHOLARDEX = "SCHOLARDEX";
     static final String REASON_SHARED_ORCID_NAME_MISMATCH = "AUTHOR_SHARED_ORCID_NAME_MISMATCH";
     static final String REASON_FUZZY_MERGE_CANDIDATE = "AUTHOR_FUZZY_MERGE_CANDIDATE";
+    static final String REASON_FUZZY_MERGE_REVIEW = "AUTHOR_FUZZY_MERGE_REVIEW";
     private static final String STATUS_OPEN = "OPEN";
 
     private final ScholardexAuthorFactRepository authorRepository;
@@ -71,6 +72,19 @@ public class AuthorReconcileService {
      */
     @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.fuzzy-apply:false}")
     private boolean fuzzyApply;
+
+    /**
+     * Shared-co-author count at/above which two same-name authors are confidently the same person (auto-merge).
+     * The decisive corroborator: empirically, same name + same institution but zero co-author overlap is two
+     * different people (e.g. "Chen, Xi" ×7), while a high overlap is the same person even for initials-only names
+     * (e.g. "Bickley, A. A." sharing 127 co-authors).
+     */
+    @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.coauthor-strong-threshold:3}")
+    private int coauthorStrongThreshold;
+
+    /** Same-name clusters larger than this are not auto-disambiguated (bounds the O(k²) cost) — reviewed instead. */
+    @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.max-cluster-size:50}")
+    private int maxClusterSize;
 
     /** ORCID pass: merge canonical authors that share an ORCID (name-compatible), quarantine the rest. */
     public ImportProcessingResult reconcileByOrcid(String batchId, String correlationId) {
@@ -126,73 +140,121 @@ public class AuthorReconcileService {
             }
         }
 
-        int mergeGroups = 0;
+        int strongGroups = 0;
+        int mediumPairs = 0;
+        int oversized = 0;
         for (List<ScholardexAuthorFact> cluster : byName.values()) {
             List<ScholardexAuthorFact> members = dedupById(cluster);
             if (members.size() < 2) {
                 continue;
             }
-            for (List<ScholardexAuthorFact> group : corroboratedSubgroups(members)) {
-                if (group.size() < 2) {
-                    continue;
-                }
+            if (members.size() > maxClusterSize) {
+                // Too ambiguous (e.g. a very common name) to auto-disambiguate in one pass — flag for review.
+                quarantine(members, REASON_FUZZY_MERGE_REVIEW, batchId, correlationId, now, result);
+                oversized++;
+                continue;
+            }
+            ClusterAnalysis analysis = analyzeCluster(members);
+            // STRONG: high co-author overlap -> confidently the same person.
+            for (List<ScholardexAuthorFact> group : analysis.strongGroups()) {
                 result.markProcessed();
-                mergeGroups++;
+                strongGroups++;
                 if (fuzzyApply) {
                     mergeCluster(group, now, result);
                 } else {
                     quarantine(group, REASON_FUZZY_MERGE_CANDIDATE, batchId, correlationId, now, result);
                 }
             }
+            // MEDIUM: some overlap but below the bar -> always queued for human review, never auto-merged.
+            for (List<ScholardexAuthorFact> pair : analysis.mediumPairs()) {
+                mediumPairs++;
+                quarantine(pair, REASON_FUZZY_MERGE_REVIEW, batchId, correlationId, now, result);
+            }
+            // REJECT (zero co-author overlap) -> dropped; same name + institution is not enough.
         }
-        log.info("Author reconcile (fuzzy name pass, apply={}) complete: nameClusters={} mergeGroups={} merged~={} reported={}",
-                fuzzyApply, byName.size(), mergeGroups, result.getImportedCount(), result.getSkippedCount());
+        log.info("Author reconcile (fuzzy name pass, apply={}, coauthorStrongThreshold={}) complete: "
+                        + "nameClusters={} strongGroups={} mediumPairs={} oversizedClusters={} merged~={} quarantined={}",
+                fuzzyApply, coauthorStrongThreshold, byName.size(), strongGroups, mediumPairs, oversized,
+                result.getImportedCount(), result.getSkippedCount());
         return result;
     }
 
     /**
-     * Partition a same-name cluster into mergeable subgroups via union-find on the relation "share an affiliation AND
-     * do not co-appear on a publication". A connected component is emitted only if the hard block holds across ALL
-     * its pairs (transitivity could otherwise pull two co-appearing members into one group).
+     * Tier a same-name cluster by co-author overlap. For each pair that passes the same-publication hard block:
+     * shared co-authors ≥ {@code coauthorStrongThreshold} is a STRONG link (union-find → merge group); 1..threshold-1
+     * is a MEDIUM review pair; 0 is rejected (same name + institution but no collaboration ⇒ different people).
+     * Affiliation is no longer a gate — co-author overlap is the decisive corroborator, and it also catches people
+     * who changed institutions (no shared affiliation but high overlap).
      */
-    private List<List<ScholardexAuthorFact>> corroboratedSubgroups(List<ScholardexAuthorFact> members) {
+    private ClusterAnalysis analyzeCluster(List<ScholardexAuthorFact> members) {
         int n = members.size();
-        Map<String, java.util.Set<String>> pubsByAuthor = new java.util.HashMap<>();
-        for (ScholardexAuthorFact a : members) {
+        List<java.util.Set<String>> pubSets = new ArrayList<>(n);
+        List<java.util.Set<String>> coauthorSets = new ArrayList<>(n);
+        java.util.Set<String> memberIds = new java.util.HashSet<>();
+        members.forEach(m -> memberIds.add(m.getId()));
+        for (ScholardexAuthorFact m : members) {
             java.util.Set<String> pubs = new java.util.HashSet<>();
-            for (ScholardexPublicationFact pub : publicationRepository.findByAuthorIdsContains(a.getId())) {
+            java.util.Set<String> coauthors = new java.util.HashSet<>();
+            for (ScholardexPublicationFact pub : publicationRepository.findByAuthorIdsContains(m.getId())) {
                 pubs.add(pub.getId());
+                for (String authorId : safe(pub.getAuthorIds())) {
+                    if (!memberIds.contains(authorId)) {
+                        coauthors.add(authorId);
+                    }
+                }
             }
-            pubsByAuthor.put(a.getId(), pubs);
+            pubSets.add(pubs);
+            coauthorSets.add(coauthors);
         }
+
         int[] parent = new int[n];
         for (int i = 0; i < n; i++) {
             parent[i] = i;
         }
+        List<int[]> mediumPairIndexes = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             for (int j = i + 1; j < n; j++) {
-                if (sharesAffiliation(members.get(i), members.get(j)) && !coAppear(members.get(i), members.get(j), pubsByAuthor)) {
+                if (intersects(pubSets.get(i), pubSets.get(j))) {
+                    continue; // hard block: co-appear on a paper => different people
+                }
+                int shared = intersectionSize(coauthorSets.get(i), coauthorSets.get(j));
+                if (shared >= coauthorStrongThreshold) {
                     union(parent, i, j);
+                } else if (shared >= 1) {
+                    mediumPairIndexes.add(new int[]{i, j});
                 }
             }
         }
+
         Map<Integer, List<ScholardexAuthorFact>> components = new java.util.LinkedHashMap<>();
+        Map<Integer, List<Integer>> componentIndexes = new java.util.LinkedHashMap<>();
         for (int i = 0; i < n; i++) {
-            components.computeIfAbsent(find(parent, i), k -> new ArrayList<>()).add(members.get(i));
+            int root = find(parent, i);
+            components.computeIfAbsent(root, k -> new ArrayList<>()).add(members.get(i));
+            componentIndexes.computeIfAbsent(root, k -> new ArrayList<>()).add(i);
         }
-        List<List<ScholardexAuthorFact>> safe = new ArrayList<>();
-        for (List<ScholardexAuthorFact> component : components.values()) {
-            if (component.size() >= 2 && componentRespectsHardBlock(component, pubsByAuthor)) {
-                safe.add(component);
+        List<List<ScholardexAuthorFact>> strongGroups = new ArrayList<>();
+        for (Map.Entry<Integer, List<ScholardexAuthorFact>> e : components.entrySet()) {
+            if (e.getValue().size() >= 2 && componentRespectsHardBlock(componentIndexes.get(e.getKey()), pubSets)) {
+                strongGroups.add(e.getValue());
             }
         }
-        return safe;
+        List<List<ScholardexAuthorFact>> mediumGroups = new ArrayList<>();
+        for (int[] pair : mediumPairIndexes) {
+            if (find(parent, pair[0]) != find(parent, pair[1])) { // not already merging via a strong path
+                mediumGroups.add(List.of(members.get(pair[0]), members.get(pair[1])));
+            }
+        }
+        return new ClusterAnalysis(strongGroups, mediumGroups);
     }
 
-    private boolean componentRespectsHardBlock(List<ScholardexAuthorFact> component, Map<String, java.util.Set<String>> pubsByAuthor) {
-        for (int i = 0; i < component.size(); i++) {
-            for (int j = i + 1; j < component.size(); j++) {
-                if (coAppear(component.get(i), component.get(j), pubsByAuthor)) {
+    private record ClusterAnalysis(List<List<ScholardexAuthorFact>> strongGroups, List<List<ScholardexAuthorFact>> mediumPairs) {
+    }
+
+    private boolean componentRespectsHardBlock(List<Integer> idx, List<java.util.Set<String>> pubSets) {
+        for (int i = 0; i < idx.size(); i++) {
+            for (int j = i + 1; j < idx.size(); j++) {
+                if (intersects(pubSets.get(idx.get(i)), pubSets.get(idx.get(j)))) {
                     return false; // two members on the same paper => different people => don't merge this group
                 }
             }
@@ -200,16 +262,27 @@ public class AuthorReconcileService {
         return true;
     }
 
-    private boolean sharesAffiliation(ScholardexAuthorFact a, ScholardexAuthorFact b) {
-        java.util.Set<String> aff = new java.util.HashSet<>(safe(a.getAffiliationIds()));
-        aff.retainAll(safe(b.getAffiliationIds()));
-        return !aff.isEmpty();
+    private static boolean intersects(java.util.Set<String> a, java.util.Set<String> b) {
+        java.util.Set<String> small = a.size() <= b.size() ? a : b;
+        java.util.Set<String> large = small == a ? b : a;
+        for (String x : small) {
+            if (large.contains(x)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private boolean coAppear(ScholardexAuthorFact a, ScholardexAuthorFact b, Map<String, java.util.Set<String>> pubsByAuthor) {
-        java.util.Set<String> pubs = new java.util.HashSet<>(pubsByAuthor.getOrDefault(a.getId(), java.util.Set.of()));
-        pubs.retainAll(pubsByAuthor.getOrDefault(b.getId(), java.util.Set.of()));
-        return !pubs.isEmpty();
+    private static int intersectionSize(java.util.Set<String> a, java.util.Set<String> b) {
+        java.util.Set<String> small = a.size() <= b.size() ? a : b;
+        java.util.Set<String> large = small == a ? b : a;
+        int count = 0;
+        for (String x : small) {
+            if (large.contains(x)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static int find(int[] parent, int i) {

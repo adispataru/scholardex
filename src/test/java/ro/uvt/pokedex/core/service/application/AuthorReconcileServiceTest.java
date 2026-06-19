@@ -144,12 +144,14 @@ class AuthorReconcileServiceTest {
     }
 
     @Test
-    void fuzzyDryRunReportsCorroboratedSameNameAuthorsWithoutMerging() {
-        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
-        ScholardexAuthorFact b = sameName("sauth_b", "aff_uvt"); // shared affiliation, no shared pub
-        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", false);
+    void fuzzyStrongCoauthorOverlapIsReportedInDryRun() {
+        // 'a' and 'b' (same name) share 3 co-authors and no publication => STRONG => reported, not merged.
+        ScholardexAuthorFact a = sameName("sauth_a");
+        ScholardexAuthorFact b = sameName("sauth_b");
+        setFuzzy(false, 3);
         when(authorRepository.findAll()).thenReturn(List.of(a, b));
-        when(publicationRepository.findByAuthorIdsContains(anyString())).thenReturn(List.of());
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "c1", "c2", "c3")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "c1", "c2", "c3")));
 
         service.reconcileByName("batch", "corr");
 
@@ -159,13 +161,14 @@ class AuthorReconcileServiceTest {
     }
 
     @Test
-    void fuzzyApplyMergesCorroboratedSameNameAuthors() {
-        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
+    void fuzzyStrongCoauthorOverlapMergesWhenApplied() {
+        ScholardexAuthorFact a = sameName("sauth_a");
         a.setScopusAuthorIds(new ArrayList<>(List.of("111")));
-        ScholardexAuthorFact b = sameName("sauth_b", "aff_uvt");
-        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", true);
+        ScholardexAuthorFact b = sameName("sauth_b");
+        setFuzzy(true, 3);
         when(authorRepository.findAll()).thenReturn(List.of(a, b));
-        when(publicationRepository.findByAuthorIdsContains(anyString())).thenReturn(List.of());
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "c1", "c2", "c3")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "c1", "c2", "c3")));
 
         service.reconcileByName("batch", "corr");
 
@@ -174,41 +177,69 @@ class AuthorReconcileServiceTest {
     }
 
     @Test
+    void fuzzyRejectsZeroCoauthorOverlapEvenWhenApplied() {
+        // Same name, same institution would not matter — zero shared co-authors => different people => dropped.
+        ScholardexAuthorFact a = sameName("sauth_a");
+        ScholardexAuthorFact b = sameName("sauth_b");
+        setFuzzy(true, 3);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "x1")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "y1")));
+
+        service.reconcileByName("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository, never()).save(any());
+    }
+
+    @Test
+    void fuzzyMediumCoauthorOverlapIsQueuedForReviewNotMerged() {
+        // 1 shared co-author (< threshold 3) => MEDIUM => review conflict, never auto-merged even with apply=true.
+        ScholardexAuthorFact a = sameName("sauth_a");
+        ScholardexAuthorFact b = sameName("sauth_b");
+        setFuzzy(true, 3);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "c1", "x2")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "c1", "y2")));
+
+        service.reconcileByName("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository).save(argThat(c -> "AUTHOR_FUZZY_MERGE_REVIEW".equals(c.getReasonCode())));
+    }
+
+    @Test
     void fuzzyHardBlocksWhenSameNameAuthorsCoAppearOnAPublication() {
-        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
-        ScholardexAuthorFact b = sameName("sauth_b", "aff_uvt");
-        ScholardexPublicationFact shared = new ScholardexPublicationFact();
-        shared.setId("spub_shared");
-        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", true);
+        ScholardexAuthorFact a = sameName("sauth_a");
+        ScholardexAuthorFact b = sameName("sauth_b");
+        ScholardexPublicationFact shared = pub("spub_shared", "sauth_a", "sauth_b", "c1", "c2", "c3");
+        setFuzzy(true, 3);
         when(authorRepository.findAll()).thenReturn(List.of(a, b));
         when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(shared));
         when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(shared));
 
         service.reconcileByName("batch", "corr");
 
-        // Co-author on the same paper => provably different people => never merged.
+        // Co-appear on the same paper => provably different people => never merged, even with high overlap.
         verify(authorRepository, never()).deleteById(anyString());
         verify(identityConflictRepository, never()).save(any());
     }
 
-    @Test
-    void fuzzyDoesNotMergeSameNameAuthorsWithoutSharedAffiliation() {
-        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
-        ScholardexAuthorFact b = sameName("sauth_b", "aff_mit"); // different affiliation
-        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", true);
-        when(authorRepository.findAll()).thenReturn(List.of(a, b));
-        when(publicationRepository.findByAuthorIdsContains(anyString())).thenReturn(List.of());
-
-        service.reconcileByName("batch", "corr");
-
-        verify(authorRepository, never()).deleteById(anyString());
-        verify(identityConflictRepository, never()).save(any());
+    private void setFuzzy(boolean apply, int threshold) {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", apply);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "coauthorStrongThreshold", threshold);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "maxClusterSize", 50);
     }
 
-    private ScholardexAuthorFact sameName(String id, String affiliationId) {
-        ScholardexAuthorFact a = author(id, "Dragan, Ioan", null);
-        a.setAffiliationIds(new ArrayList<>(List.of(affiliationId)));
-        return a;
+    private ScholardexPublicationFact pub(String id, String... authorIds) {
+        ScholardexPublicationFact p = new ScholardexPublicationFact();
+        p.setId(id);
+        p.setAuthorIds(new ArrayList<>(List.of(authorIds)));
+        return p;
+    }
+
+    private ScholardexAuthorFact sameName(String id) {
+        return author(id, "Dragan, Ioan", null);
     }
 
     private ScholardexAuthorFact author(String id, String displayName, String orcid) {
