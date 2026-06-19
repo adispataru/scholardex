@@ -567,6 +567,35 @@ interface EntityBuilder {
      fine for a background task; revisit if Tier-2 sync latency matters. **Phase 4a (OpenAlex) is now functionally
      complete** — citations, authors, cited-by, and venue identity all resolved.
 
+### Phase 4b — DBLP as the CS conference-identity source (2026-06-19, commits `6a4e5ee` `1caf730` `3b396b1`)
+
+The only source that knows the real conference behind an LNCS chapter. Replaces the 777-LOC whole-dump streaming
+band-aid (`DblpPublicationEnrichmentService`, now deleted) with per-paper DBLP API resolution; **net −1,120 LOC**.
+Reuses the Stage-3 venue seam (conference-grain: `dblpIds` stream key `conf/X`, no ISSN → find-or-mint by stream key,
+not the ISSN merge-engine path).
+
+- **Plumbing:** `ScholardexForumFact.dblpIds` (+ partial-unique index) + `findByDblpIdsContaining`; `DblpClient`
+  (`/search/publ/api`, throttled + 429-retry, empty-on-error so DBLP downtime never breaks a sync);
+  `conferenceStreamKey()` derives `conf/<stream>`, null for journals/books.
+- **Unified candidate detector** (both signals): conference-shaped (subtype `cp`/`ch` / `proceedings`) AND lacking a
+  real conference forum (null = OpenAlex ISSN-less tail Stage 3 left; or a Lecture-Notes book series = Scopus LNCS
+  tail). Resolved venues left alone.
+- **`DblpConferenceResolveService`** — per candidate: DBLP lookup (DOI with exact-DOI confirmation, then title+year),
+  conference hits only → BOTH (a) scorer-compatible `DblpEvidence` (same interface `ComputerScienceConferenceScoringService`
+  reads — CS conference scoring untouched), and (b) find-or-mint the `conf/X` forum, stamped onto `forumId`.
+- **Wired:** on-demand (`resolveByOpenAlexWorkIds` in the OpenAlex scheduler); admin sweep (`resolveAll`, replacing the
+  dump step); **full-rebuild durability** — `forum_facts` is wiped but `DblpEvidence` is durable, so
+  `rebuildFromEvidence()` re-mints forums + re-links `forumId` from evidence with NO API, wired into `runFull` +
+  full-maintenance materialization.
+- **Validated:** candidates=2 (the ISSN-less conference pubs Stage 3 left null) → *"Online resource coalition
+  reorganization"* (subtype cp) now points at a minted **ICA3PP** conference forum (`conf/ica3pp`) with API evidence;
+  the 2nd hit DBLP's rate limit and was gracefully deferred (re-resolves next sweep — `forumId` stays null so the
+  detector finds it again).
+- **⬜ DBLP rate limiting** is the real operational constraint: DBLP throttles a single IP hard, so a large sweep
+  resolves *incrementally* across runs, not all at once. `dblp.api.min-interval-ms` (default 3000) tunes politeness;
+  honoring `Retry-After` + persistent retry across sweeps would raise single-run coverage. The conference-name → CORE
+  acronym matching quality (DBLP `venue` is the acronym) should be spot-checked against the scorer.
+
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
 All of Phase 4a is validated only against the isolated `scholardex_h66` Mongo / `core_h66` Postgres. Full test
