@@ -64,6 +64,7 @@ public class PipelineRebuildService {
     private final org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
     private final ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
     private final ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
+    private final ForumReconcileService forumReconcileService;
 
     // H66B M8-B: the DOAJ/ERIH reference snapshots are match-only inputs to the forum build (read by the
     // ERIH/DOAJ onboarding inside the Scopus forum build). Folding their import into the unified DAG means one
@@ -81,13 +82,15 @@ public class PipelineRebuildService {
             OwnedCollectionRegistry ownedCollectionRegistry,
             org.springframework.data.mongodb.core.MongoTemplate mongoTemplate,
             ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService,
-            ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService) {
+            ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService,
+            ForumReconcileService forumReconcileService) {
         this.scopusRebuild = scopusRebuild;
         this.wosRebuild = wosRebuild;
         this.ownedCollectionRegistry = ownedCollectionRegistry;
         this.mongoTemplate = mongoTemplate;
         this.doajDataService = doajDataService;
         this.erihDataService = erihDataService;
+        this.forumReconcileService = forumReconcileService;
     }
 
     /**
@@ -133,6 +136,14 @@ public class PipelineRebuildService {
         // re-importing here keeps the unified rebuild's registry complete and current.
         ingestReferenceFeedsIfConfigured();
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runFull();
+
+        // H66B closeout: end the from-scratch build in a reconciled state instead of waiting for the nightly
+        // sweep. reconcile() re-runs the (idempotent) forum dedup, then the author ORCID + fuzzy passes, then
+        // rebuilds the projections so any author merges are reflected in reporting. With fuzzy-apply=true this is
+        // what actually deduplicates same-person author splits a fresh rebuild would otherwise leave behind.
+        ForumReconcileService.ForumReconcileResult reconcile = forumReconcileService.reconcile("full-rebuild");
+        LOG.info("Pipeline rebuild: post-rebuild reconcile complete (projectionProcessed={} errors={}).",
+                reconcile.projection().getProcessedCount(), reconcile.projection().getErrorCount());
 
         LOG.info("Pipeline rebuild complete.");
         return new PipelineRebuildResult(wos, scopus);
