@@ -4,6 +4,15 @@ Status: **design + phase-1 started**. Companion to [h66b-entity-oriented-builder
 (M1–M10 + M8-B, full-feed validation PASS). This doc defines how the *same* canonical pipeline serves both the
 one-time initialization build and ongoing incremental updates without rebuilding the whole registry.
 
+> ⚠️ **Operating rule — ALWAYS trace the code path before kicking off a rebuild.** A full rebuild on
+> `scholardex_h66` is ~28 minutes. Before firing one to validate a change, confirm the entry point you're testing
+> (`rebuildAllDerived` → `PipelineRebuildService.rebuildAllDerivedFromSource` → `ScopusBigBangMigrationService.runFull`)
+> actually invokes the code you edited — `runFull` calls the canonicalization builders **directly** and bypasses
+> `ScopusCanonicalMaterializationService.rebuildFactsAndViews`, so a hook wired only into the latter never runs in a
+> full rebuild. We burned a 28-min rebuild on exactly this (Phase 4a OpenAlex replay; fix `55843e8`). Grep the
+> rebuild call chain for your new method first; the cost of a wrong path is half an hour, the cost of the check is
+> 30 seconds.
+
 ## Problem
 
 The full rebuild is validated, but the live system mutates continuously:
