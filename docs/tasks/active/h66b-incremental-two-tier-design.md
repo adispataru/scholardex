@@ -433,13 +433,26 @@ interface EntityBuilder {
      (syncing researcher ∪ corresponding author) with the flag on the corresponding ones.
    - **Validated live:** 9 `corresponding=true` edges; the syncing researcher's Scopus author ORCID-seeded + deduped
      (not minted); 4 corresponding co-authors minted as canonical authors keyed by ORCID + OpenAlex id; **0 orphans**.
-   - **⬜ Follow-ups:** (a) **author-reconcile** — the 4 minted authors (`scopusIds=0`) are likely duplicates of
-     existing Scopus authors (UVT co-authors); a Tier-1 author reconcile (merge by ORCID once Scopus authors carry
-     one, else fuzzy name+affiliation) collapses them — same eventual-consistency pattern as forums/pubs.
-     (b) **Seed ORCID from researcher profiles** on full rebuild (currently seeded only via the per-work
-     `syncedResearchers`; a profile sweep would seed all researchers up front). (c) Surface `corresponding` in the
-     read projection/reports. (d) Full-rebuild durability of the author model is wired (rides `rebuildCanonicalFacts`)
-     + unit-covered, but not yet re-proven live.
+   **Stage 1.3 — positional ORCID bridge (2026-06-19, commit `16437bd`).** The scalable ORCID acquisition the
+   author model needed. Scopus and OpenAlex agree on author order (validated 29/29 across 4 papers), so on a
+   DOI-linked pub position `i` is the same person on both sides → seed `orcid[i]` onto the Scopus author
+   `authorIds[i]`. Runs in `writeAuthorshipEdges` **before** corresponding resolution, guarded by equal author count
+   + per-position surname match (Scopus "Last, First" vs OpenAlex "First Last", NFKD-folded). The source-fact now
+   stores the full ordered `authorships` list. **Fix found in validation:** the id-key finders had to return `List`,
+   not `Optional` — an ORCID transiently sits on several authors (the dup awaiting reconcile), which threw
+   "non unique result"; `resolveOrMint` now prefers the established Scopus author.
+   - **Validated live:** one researcher's sync ORCID-seeded **34 Scopus authors** (the 16-author paper: 10 seeded,
+     **0 surname mismatches** across every paper); minted authors **4→1** and mergeable twin pairs **0** — because
+     Scopus authors get ORCIDs *before* corresponding resolution, the bridge **prevents** the duplicates instead of
+     creating dedup debt. 0 orphans.
+   - **⬜ Remaining follow-ups (much smaller now):** (a) **author-reconcile** — now only the residual OpenAlex-only
+     authors (no Scopus counterpart on any linked pub) need merging, and they're already ORCID-keyed, so it's a clean
+     ORCID merge using the forum `repointReferences` pattern (re-point authorship/affiliation edges +
+     `ScholardexPublicationFact.authorIds` + `primaryScholardexAuthorId`). Validation also confirmed: **deleting an
+     author without re-pointing its edges orphans them** — so the reconcile MUST repoint. (b) Surface `corresponding`
+     in the read projection (needs a PG `corresponding` column on `scholardex_authorship_fact` + projection
+     threading). (c) Profile-ORCID seeding becomes optional (the bridge covers co-authors automatically). (d)
+     Author-model full-rebuild durability wired + unit-covered, not yet re-proven live.
 
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
