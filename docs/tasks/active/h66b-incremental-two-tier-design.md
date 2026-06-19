@@ -492,6 +492,35 @@ interface EntityBuilder {
      Pre-existing finding: ~6 bootstrap `authorship_facts` reference non-existent authors (seed-data integrity gap,
      independent of this work).
 
+## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
+
+All of Phase 4a is validated only against the isolated `scholardex_h66` Mongo / `core_h66` Postgres. Full test
+suite is green (2,269 tests, 0 failures). Before any prod cutover, these obligations must be handled — they do not
+block further dev on the branch but must not be lost:
+
+- [ ] **Decision 0 — authorship-decision remap (hard prereq).** DOI-primary changes canonical pub ids; prod
+      `scholardex.publication_authorship_decisions` (76 rows, 75 DOI-bearing) is user state the rebuild does NOT
+      regenerate. One-shot migration: recompute the new id from each row's `snapshot.{eid,doi}` and rewrite
+      `publicationId`. Must run with the DOI-primary cutover or the decisions strand.
+- [ ] **User-defined data loss on full rebuild (pre-existing bug, chipped `task_cccc209c`).** `rebuildAllDerived`
+      wipes `user_defined.publication_facts`/`forum_facts` but `runFull` never rebuilds them. Fix before relying on a
+      full rebuild in prod (mirror the Phase-4a OpenAlex durability fix `55843e8`).
+- [ ] **Author reconcile is not inside `runFull`.** It rides the reconcile cadence (nightly / manual
+      `/forum/reconcile`) — eventual consistency, same as the forum reconcile. Confirm that's acceptable for prod or
+      add it to `runFull`.
+- [ ] **`core.author-reconcile.fuzzy-apply` flip = a deliberate prod step.** Spot-check the 896 STRONG candidates
+      (esp. initials-only) first; the merge mutates the author graph and is hard to reverse. Dry-run conflicts are
+      the inspection surface.
+- [ ] **OpenAlex polite-pool `openalex.api.mailto` is blank.** Set a contact email for prod (OpenAlex-recommended;
+      moves requests to the faster polite pool).
+- [ ] **Author-model full-rebuild durability not re-proven live** (wired into `runFull` via the OpenAlex replay +
+      unit-covered; bridge re-seeds ORCIDs, reconcile re-merges on cadence). A live rebuild would confirm.
+- [ ] **`corresponding` flag + reconcile conflicts have no read surface.** The PG `scholardex_authorship_fact` has no
+      `corresponding` column; `AUTHOR_FUZZY_MERGE_REVIEW` / `AUTHOR_SHARED_ORCID_NAME_MISMATCH` need an admin review
+      UI. Additive, non-blocking.
+- [ ] **Pre-existing seed-data gap:** ~6 bootstrap `authorship_facts` reference non-existent authors (independent of
+      this work).
+
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
 - **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm
