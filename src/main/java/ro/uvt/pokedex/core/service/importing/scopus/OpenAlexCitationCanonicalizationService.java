@@ -72,19 +72,31 @@ public class OpenAlexCitationCanonicalizationService {
         String correlationId = syncedFacts.getFirst().getSourceCorrelationId();
         Set<String> syncedIds = syncedFacts.stream().map(OpenAlexPublicationFact::getSourceRecordId).collect(Collectors.toSet());
 
-        // (A) INCOMING: per-paper cites: query so attribution is EXACT — store the citers durably on each synced
-        // fact (citedByWorkIds) and mint them. This captures citers whose own referenced_works omit the paper
-        // (OpenAlex cites-index ⊋ stored reference lists), which a batched query + referenced_works could not.
-        List<OpenAlexWorksResponse.OpenAlexWork> citingWorks = new ArrayList<>();
-        for (OpenAlexPublicationFact syncedFact : syncedFacts) {
-            List<OpenAlexWorksResponse.OpenAlexWork> citers =
-                    openAlexClient.fetchCitingWorks(List.of(syncedFact.getSourceRecordId()));
-            syncedFact.setCitedByWorkIds(citers.stream().map(w -> bareWorkId(w.getId()))
-                    .filter(id -> id != null && !id.isBlank()).distinct().collect(Collectors.toList()));
-            openAlexPublicationFactRepository.save(syncedFact);
-            citingWorks.addAll(citers);
-        }
+        // (A) INCOMING: ONE batched cites: query (cites:W1|W2|… cursor-paged, ids batched internally) discovers all
+        // citers; attribute each EXACTLY to the synced papers it names via referenced_works ∩ synced, and store the
+        // result durably as citedByWorkIds. This is one call set instead of one-per-paper. Trade: a purely-asymmetric
+        // citer (names us in OpenAlex's cites-index but not in its own reference list) is not attributed — empirically
+        // ~0; the edge build's neighbor-referencedWorks pass wouldn't reach it either, so the graph stays consistent.
+        List<OpenAlexWorksResponse.OpenAlexWork> citingWorks = openAlexClient.fetchCitingWorks(syncedIds);
         List<String> citingIds = openAlexImportService.upsertNeighborWorks(citingWorks, batchId, correlationId);
+        Map<String, List<String>> citersByPaper = new HashMap<>();
+        for (OpenAlexWorksResponse.OpenAlexWork citer : citingWorks) {
+            String citerId = bareWorkId(citer.getId());
+            if (citerId == null || citer.getReferenced_works() == null) {
+                continue;
+            }
+            for (String ref : citer.getReferenced_works()) {
+                String refId = bareWorkId(ref);
+                if (syncedIds.contains(refId)) {
+                    citersByPaper.computeIfAbsent(refId, k -> new ArrayList<>()).add(citerId);
+                }
+            }
+        }
+        for (OpenAlexPublicationFact syncedFact : syncedFacts) {
+            syncedFact.setCitedByWorkIds(citersByPaper.getOrDefault(syncedFact.getSourceRecordId(), List.of())
+                    .stream().distinct().collect(Collectors.toList()));
+            openAlexPublicationFactRepository.save(syncedFact);
+        }
 
         // (B) OUTGOING: referenced (cited) papers not yet known — fetch + mint them.
         Set<String> referencedIds = new LinkedHashSet<>();
