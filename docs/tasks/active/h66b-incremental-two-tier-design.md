@@ -610,10 +610,15 @@ rate-limit-free SOURCE feeding the same resolve outputs; the per-paper API stays
   dumpVersion)` is the single place the conference outputs are written (scorer-compatible evidence + conf/X forum +
   forumId), shared by the API resolve and the dump sweep; `writeEvidence` is now primitive-based.
 - **`DblpDumpConferenceSweepService`:** detector → in-memory `doi→pub` + `(titleNormalized,year)→pub` maps; stream the
-  dump once (conference records only) with the StAX reader + malformed-entity sanitizer **recovered verbatim from the
-  pre-`3b396b1` commit**; conference name from the inline `<booktitle>` (clean acronym, e.g. ICA3PP); match by DOI then
-  title+year; route through `applyMatch`; each pub resolved at most once. The admin "DBLP" step runs this sweep; config
-  `dblp.dump.file`/`dblp.dump.version`.
+  dump once (conference records only); conference name from the inline `<booktitle>` (clean acronym, e.g. ICA3PP);
+  match by DOI then title+year; route through `applyMatch`; each pub resolved at most once. The admin "DBLP" step runs
+  this sweep; config `dblp.dump.file`/`dblp.dump.version`.
+- **XML reader (hardened, commit `45da223`):** DTD + external entities OFF (XXE-safe); the prior code's
+  `jdk.xml.*Limit=0` (unlimited entity expansion) footgun removed — JDK-safe defaults stand. The ~150-line hand-rolled
+  char-buffer sanitizer was replaced by a small **fixed-chunk** `EntitySanitizingReader` (8 KB chunks, holds back only
+  a short partial-`&entity;` tail across the boundary; tolerant — unknown entity → space). **Gotcha:** a line-oriented
+  reader is NOT viable — the DBLP dump has multi-hundred-MB lines, so `readLine` buffers the whole file and hangs
+  (~9.75M records in); the fixed-chunk reader is bounded-memory and line-length-indifferent. Decode is ISO-8859-1.
 - **Validated** against the real 995MB dump: 2,786 candidates → scanned **12,377,080 records in ~2.5 min** → **440
   resolved** (vs 1 before the API 429'd); conf-series forums **1→234**, pubs on a DBLP conference forum **1→441**. CS
   conference scoring untouched (same `DblpEvidence` interface). ~16% match rate is expected — DBLP is CS-only.
