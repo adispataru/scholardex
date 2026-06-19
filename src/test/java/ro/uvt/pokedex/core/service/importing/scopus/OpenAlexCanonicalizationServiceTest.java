@@ -61,6 +61,7 @@ class OpenAlexCanonicalizationServiceTest {
     @Test
     void doiWithNoExistingPublicationMints() {
         OpenAlexPublicationFact source = source("W2", "10.1/new", "Fresh paper", "author-1");
+        source.setCorrespondingAuthorNames(List.of("Jane Corresponding"));
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/new")).thenReturn(List.of());
         when(publicationCanonicalizationService.buildCanonicalPublicationId(
@@ -72,7 +73,8 @@ class OpenAlexCanonicalizationServiceTest {
         verify(publicationWriter).upsertAndLinkSource(
                 argThat(fact -> "spub_minted".equals(fact.getId())
                         && "10.1/new".equals(fact.getDoiNormalized())
-                        && "Fresh paper".equals(fact.getTitle())),
+                        && "Fresh paper".equals(fact.getTitle())
+                        && fact.getCorrespondingAuthors().equals(List.of("Jane Corresponding"))),
                 argThat(prov -> "OPENALEX".equals(prov.source()) && "W2".equals(prov.sourceRecordId())),
                 eq("openalex-fact-bridge"));
         verify(edgeWriterService).upsertAuthorshipEdge(argThat(cmd ->

@@ -129,6 +129,11 @@ public class OpenAlexCanonicalizationService {
             fact.setTitleNormalized(titleNormalized);
             fact.setCreator(source.getCreator());
             fact.setAuthorCount(source.getAuthorCount());
+            // Corresponding authors are name strings (same shape as the Scopus field); only populate on MINT —
+            // linked Scopus pubs keep their own (richer, denser) corresponding-author data, never clobbered.
+            if (source.getCorrespondingAuthorNames() != null && !source.getCorrespondingAuthorNames().isEmpty()) {
+                fact.setCorrespondingAuthors(new ArrayList<>(source.getCorrespondingAuthorNames()));
+            }
             fact.setCoverDate(source.getCoverDate());
             fact.setCitedByCount(source.getCitedByCount());
             fact.setOpenAccess(source.getOpenAccess());

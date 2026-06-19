@@ -49,6 +49,7 @@ public class OpenAlexWorksResponse {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Authorship {
         private Author author;
+        private Boolean is_corresponding;
     }
 
     @Data

@@ -46,6 +46,8 @@ public class OpenAlexPublicationFact {
     private List<String> authorDisplayNames = new ArrayList<>();
     /** Co-author ORCIDs where OpenAlex provides them (deferred bridging input). */
     private List<String> authorOrcids = new ArrayList<>();
+    /** Display names of authorships OpenAlex flags is_corresponding (sparse; populates minted pubs' correspondingAuthors). */
+    private List<String> correspondingAuthorNames = new ArrayList<>();
 
     // Venue (Stage 3 — ofOpenAlex forum resolve)
     private String hostVenueName;

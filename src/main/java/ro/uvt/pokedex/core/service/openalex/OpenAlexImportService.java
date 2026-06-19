@@ -71,6 +71,7 @@ public class OpenAlexImportService {
 
         List<String> authorNames = new ArrayList<>();
         List<String> authorOrcids = new ArrayList<>();
+        List<String> correspondingNames = new ArrayList<>();
         if (work.getAuthorships() != null) {
             for (OpenAlexWorksResponse.Authorship authorship : work.getAuthorships()) {
                 if (authorship == null || authorship.getAuthor() == null) {
@@ -79,6 +80,9 @@ public class OpenAlexImportService {
                 String name = authorship.getAuthor().getDisplay_name();
                 if (name != null && !name.isBlank()) {
                     authorNames.add(name);
+                    if (Boolean.TRUE.equals(authorship.getIs_corresponding())) {
+                        correspondingNames.add(name);
+                    }
                 }
                 String authorOrcid = OrcidSupport.normalize(authorship.getAuthor().getOrcid());
                 if (authorOrcid != null) {
@@ -88,6 +92,7 @@ public class OpenAlexImportService {
         }
         fact.setAuthorDisplayNames(authorNames);
         fact.setAuthorOrcids(authorOrcids);
+        fact.setCorrespondingAuthorNames(correspondingNames);
         fact.setAuthorCount(authorNames.isEmpty() ? null : authorNames.size());
         fact.setCreator(authorNames.isEmpty() ? null : authorNames.getFirst());
 
