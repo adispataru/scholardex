@@ -132,6 +132,67 @@ public class OpenAlexImportService {
         openAlexPublicationFactRepository.save(fact);
     }
 
+    /**
+     * Upsert "neighbor" works (cited/citing third-party papers, H66B Phase 4a Ext A/B) as <b>bare</b> source-facts:
+     * bibliographic + venue + {@code referencedWorks} only — NO authorships (so no corresponding-author resolution /
+     * bridge) and NO synced researchers. {@code referencedWorks} ARE kept so a <i>citing</i> neighbor's edges to our
+     * papers re-derive on a full rebuild; recursion is prevented by only ever <i>minting</i> one level out (the edge
+     * build links existing canonical pubs, it never mints). Existing source-facts (already synced or previously
+     * minted) are skipped — returns the touched ids.
+     */
+    public List<String> upsertNeighborWorks(List<OpenAlexWorksResponse.OpenAlexWork> works, String batchId, String correlationId) {
+        List<String> workIds = new ArrayList<>();
+        Instant now = Instant.now();
+        for (OpenAlexWorksResponse.OpenAlexWork work : works) {
+            String workId = stripPrefix(work.getId(), OPENALEX_ID_PREFIX);
+            if (workId == null || workId.isBlank()) {
+                continue;
+            }
+            workIds.add(workId);
+            if (openAlexPublicationFactRepository.findBySourceRecordId(workId).isPresent()) {
+                continue; // already a source-fact (synced or previously minted) — don't downgrade it to bare
+            }
+            OpenAlexPublicationFact fact = new OpenAlexPublicationFact();
+            fact.setCreatedAt(now);
+            fact.setSource(SOURCE_OPENALEX);
+            fact.setSourceRecordId(workId);
+            fact.setSourceEventId(workId);
+            fact.setSourceBatchId(batchId);
+            fact.setSourceCorrelationId(correlationId);
+            fact.setOpenalexWorkId(workId);
+            fact.setDoi(work.getDoi());
+            fact.setTitle(firstNonBlank(work.getTitle(), work.getDisplay_name()));
+            fact.setPublicationYear(work.getPublication_year());
+            fact.setCoverDate(work.getPublication_year() == null ? null : work.getPublication_year() + "-01-01");
+            fact.setType(work.getType());
+            fact.setCitedByCount(work.getCited_by_count());
+            fact.setOpenAccess(work.getOpen_access() == null ? null : work.getOpen_access().getIs_oa());
+            if (work.getAuthorships() != null && !work.getAuthorships().isEmpty()
+                    && work.getAuthorships().getFirst().getAuthor() != null) {
+                fact.setCreator(work.getAuthorships().getFirst().getAuthor().getDisplay_name());
+                fact.setAuthorCount(work.getAuthorships().size());
+            }
+            if (work.getPrimary_location() != null && work.getPrimary_location().getSource() != null) {
+                fact.setHostVenueName(work.getPrimary_location().getSource().getDisplay_name());
+            }
+            List<String> referenced = new ArrayList<>();
+            if (work.getReferenced_works() != null) {
+                for (String ref : work.getReferenced_works()) {
+                    String refId = stripPrefix(ref, OPENALEX_ID_PREFIX);
+                    if (refId != null && !refId.isBlank()) {
+                        referenced.add(refId);
+                    }
+                }
+            }
+            fact.setReferencedWorks(referenced);
+            fact.setBuilderVersion(BUILDER_VERSION);
+            fact.setLastMaterializedAt(now);
+            fact.setUpdatedAt(now);
+            openAlexPublicationFactRepository.save(fact);
+        }
+        return workIds;
+    }
+
     private static String stripPrefix(String value, String prefix) {
         if (value == null) {
             return null;

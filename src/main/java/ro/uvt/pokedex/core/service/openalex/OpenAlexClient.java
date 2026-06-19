@@ -104,4 +104,43 @@ public class OpenAlexClient {
         log.info("OpenAlex batch fetch by id: requested={} returned={}", distinct.size(), works.size());
         return works;
     }
+
+    /**
+     * Fetch the works that CITE any of the given works (incoming citations, H66B Phase 4a Ext A) via the
+     * {@code cites:W1|W2|…} filter — cursor-paginated, cited ids batched (≤50/filter). Each returned work carries its
+     * own {@code referenced_works}, so the caller can tell which of the cited ids it cites.
+     */
+    public List<OpenAlexWorksResponse.OpenAlexWork> fetchCitingWorks(java.util.Collection<String> citedWorkIds) {
+        List<OpenAlexWorksResponse.OpenAlexWork> works = new ArrayList<>();
+        List<String> distinct = citedWorkIds.stream().filter(id -> id != null && !id.isBlank()).distinct().toList();
+        for (int from = 0; from < distinct.size(); from += 50) {
+            List<String> batch = distinct.subList(from, Math.min(from + 50, distinct.size()));
+            String filter = "cites:" + String.join("|", batch);
+            String cursor = "*";
+            int page = 0;
+            while (cursor != null && !cursor.isBlank() && page < maxPages) {
+                final String currentCursor = cursor;
+                OpenAlexWorksResponse response = openAlexWebClient.get()
+                        .uri(builder -> {
+                            builder.path("/works").queryParam("filter", filter)
+                                    .queryParam("per-page", perPage).queryParam("cursor", currentCursor);
+                            if (mailto != null && !mailto.isBlank()) {
+                                builder.queryParam("mailto", mailto);
+                            }
+                            return builder.build();
+                        })
+                        .retrieve()
+                        .bodyToMono(OpenAlexWorksResponse.class)
+                        .block();
+                if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
+                    break;
+                }
+                works.addAll(response.getResults());
+                cursor = response.getMeta() == null ? null : response.getMeta().getNext_cursor();
+                page++;
+            }
+        }
+        log.info("OpenAlex fetch citing-works for {} cited ids: returned={}", distinct.size(), works.size());
+        return works;
+    }
 }

@@ -4,17 +4,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexWorkDoi;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexWorkDoiRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.openalex.OpenAlexClient;
+import ro.uvt.pokedex.core.service.openalex.OpenAlexImportService;
 import ro.uvt.pokedex.core.service.openalex.dto.OpenAlexWorksResponse;
 
 import java.time.Instant;
@@ -25,15 +23,19 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.shortHash;
 
 /**
- * H66B Phase 4a Stage 2 — DOI-keyed OpenAlex citation edges. A synced work's {@code referenced_works} are bare
- * OpenAlex ids; this builder resolves their DOIs (fetch + durable {@code openalex.work_doi} cache), matches each DOI
- * against the canonical publication corpus, and writes a {@code ScholardexCitationFact} (citing = the synced work's
- * canonical pub, cited = the referenced pub) for every edge whose <b>both</b> endpoints are canonical. A new
- * DOI-keyed path beside the EID-keyed Scopus citation builder; edges to papers outside the corpus are skipped.
+ * H66B Phase 4a Stage 2 (+ Ext A/B) — the OpenAlex citation graph. A citation is one rule: source-fact F cites
+ * referenced work R ⇒ {@code ScholardexCitationFact(citing=F, cited=R)} whenever both resolve to canonical pubs.
+ *
+ * <p>The on-demand path first <b>expands the citation neighborhood</b> around a researcher's synced works so those
+ * endpoints exist: (B) mint each referenced (cited) paper, and (A) fetch the works that CITE the synced papers
+ * (OpenAlex {@code cites:} filter) and mint them too — both as bare neighbor source-facts. Then it builds edges. The
+ * full-rebuild path skips fetching (neighbors are durable source-facts) and just rebuilds edges. Edges only ever link
+ * <i>already-canonical</i> pubs — minting is one level out, so the graph never expands recursively.
  */
 @Slf4j
 @Service
@@ -41,121 +43,115 @@ import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSuppo
 public class OpenAlexCitationCanonicalizationService {
 
     private static final String SOURCE_OPENALEX = "OPENALEX";
+    private static final int LOOKUP_CHUNK = 1_000;
 
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
-    private final OpenAlexWorkDoiRepository workDoiRepository;
+    private final OpenAlexImportService openAlexImportService;
     private final OpenAlexClient openAlexClient;
-    private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    private final OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ScholardexCitationFactRepository citationFactRepository;
-    private final ScholardexSourceLinkService sourceLinkService;
+    private final ScholardexSourceLinkRepository sourceLinkRepository;
 
-    /** Full-rebuild replay: build DOI-keyed citation edges for every OpenAlex source-fact. */
+    /** Full-rebuild replay: rebuild edges from all (durable) OpenAlex source-facts — no fetching. */
     public ImportProcessingResult rebuildCitationFacts() {
-        return build(new ArrayList<>(openAlexPublicationFactRepository.findAll()));
+        return buildEdges(new ArrayList<>(openAlexPublicationFactRepository.findAll()));
     }
 
-    /** On-demand: build citation edges for just the works touched by a sync batch. */
-    public ImportProcessingResult resolve(Collection<String> sourceRecordIds) {
-        if (sourceRecordIds == null || sourceRecordIds.isEmpty()) {
+    /** On-demand: expand the neighborhood around the synced works (mint cited + citing papers), then build edges. */
+    public ImportProcessingResult resolve(Collection<String> syncedWorkIds) {
+        if (syncedWorkIds == null || syncedWorkIds.isEmpty()) {
             return new ImportProcessingResult(20);
         }
-        return build(new ArrayList<>(openAlexPublicationFactRepository.findBySourceRecordIdIn(sourceRecordIds)));
+        List<OpenAlexPublicationFact> syncedFacts =
+                new ArrayList<>(openAlexPublicationFactRepository.findBySourceRecordIdIn(syncedWorkIds));
+        if (syncedFacts.isEmpty()) {
+            return new ImportProcessingResult(20);
+        }
+        String batchId = syncedFacts.getFirst().getSourceBatchId();
+        String correlationId = syncedFacts.getFirst().getSourceCorrelationId();
+        Set<String> syncedIds = syncedFacts.stream().map(OpenAlexPublicationFact::getSourceRecordId).collect(Collectors.toSet());
+
+        // (A) INCOMING: works that cite the synced papers — mint them; their referencedWorks carry the back-edge.
+        List<OpenAlexWorksResponse.OpenAlexWork> citingWorks = openAlexClient.fetchCitingWorks(syncedIds);
+        List<String> citingIds = openAlexImportService.upsertNeighborWorks(citingWorks, batchId, correlationId);
+
+        // (B) OUTGOING: referenced (cited) papers not yet known — fetch + mint them.
+        Set<String> referencedIds = new LinkedHashSet<>();
+        for (OpenAlexPublicationFact fact : syncedFacts) {
+            if (fact.getReferencedWorks() != null) {
+                referencedIds.addAll(fact.getReferencedWorks());
+            }
+        }
+        Set<String> alreadyKnown = openAlexPublicationFactRepository.findBySourceRecordIdIn(referencedIds).stream()
+                .map(OpenAlexPublicationFact::getSourceRecordId).collect(Collectors.toSet());
+        Set<String> missing = new LinkedHashSet<>(referencedIds);
+        missing.removeAll(alreadyKnown);
+        if (!missing.isEmpty()) {
+            openAlexImportService.upsertNeighborWorks(openAlexClient.fetchWorksByIds(missing), batchId, correlationId);
+        }
+
+        // Canonicalize the freshly-minted neighbors so they (and their OPENALEX source-links) exist.
+        Set<String> neighborIds = new LinkedHashSet<>(citingIds);
+        neighborIds.addAll(referencedIds);
+        if (!neighborIds.isEmpty()) {
+            openAlexCanonicalizationService.resolve(neighborIds);
+        }
+
+        // Build edges over the synced works (outgoing) + the citing neighbors (incoming).
+        List<OpenAlexPublicationFact> edgeFacts = new ArrayList<>(syncedFacts);
+        edgeFacts.addAll(openAlexPublicationFactRepository.findBySourceRecordIdIn(citingIds));
+        return buildEdges(edgeFacts);
     }
 
-    private ImportProcessingResult build(List<OpenAlexPublicationFact> citingWorks) {
+    /** For every fact F and every referenced work R it cites, write the edge when both resolve to canonical pubs. */
+    private ImportProcessingResult buildEdges(List<OpenAlexPublicationFact> facts) {
         ImportProcessingResult result = new ImportProcessingResult(20);
 
-        // 1) Collect referenced work ids and ensure their DOIs are cached (fetch the missing ones).
-        Set<String> referencedIds = new LinkedHashSet<>();
-        for (OpenAlexPublicationFact work : citingWorks) {
-            if (work.getReferencedWorks() != null) {
-                work.getReferencedWorks().stream().filter(id -> id != null && !id.isBlank()).forEach(referencedIds::add);
+        Set<String> involved = new LinkedHashSet<>();
+        for (OpenAlexPublicationFact fact : facts) {
+            involved.add(fact.getSourceRecordId());
+            if (fact.getReferencedWorks() != null) {
+                involved.addAll(fact.getReferencedWorks());
             }
         }
-        Map<String, String> doiByWorkId = ensureReferencedDoisCached(referencedIds);
+        Map<String, String> canonicalByWorkId = resolveCanonicalByWorkId(involved);
 
-        // 2) For each citing work, resolve its own canonical pub, then each referenced work by DOI; write the edge
-        //    when both endpoints are canonical (and distinct).
-        for (OpenAlexPublicationFact work : citingWorks) {
-            result.markProcessed();
-            String citingCanonicalId = resolveCanonicalByOpenAlexWorkId(work.getSourceRecordId());
-            if (citingCanonicalId == null || work.getReferencedWorks() == null) {
+        for (OpenAlexPublicationFact fact : facts) {
+            String citingCanonical = canonicalByWorkId.get(fact.getSourceRecordId());
+            if (citingCanonical == null || fact.getReferencedWorks() == null) {
                 continue;
             }
-            for (String referencedId : work.getReferencedWorks()) {
-                String referencedDoi = ScholardexPublicationCanonicalizationService.normalizeDoi(doiByWorkId.get(referencedId));
-                if (referencedDoi == null) {
-                    continue; // referenced work has no DOI (or we couldn't fetch it)
+            result.markProcessed();
+            for (String referencedId : fact.getReferencedWorks()) {
+                String citedCanonical = canonicalByWorkId.get(referencedId);
+                if (citedCanonical == null || citedCanonical.equals(citingCanonical)) {
+                    continue; // referenced work not in our corpus, or self-loop
                 }
-                List<ScholardexPublicationFact> cited = scholardexPublicationFactRepository.findAllByDoiNormalized(referencedDoi);
-                if (cited.size() != 1) {
-                    continue; // not in our corpus, or shared/container DOI (ambiguous) — skip
-                }
-                String citedCanonicalId = cited.getFirst().getId();
-                if (citedCanonicalId == null || citedCanonicalId.equals(citingCanonicalId)) {
-                    continue; // no self-citation edge
-                }
-                writeCitation(citedCanonicalId, citingCanonicalId, work, result);
+                writeCitation(citedCanonical, citingCanonical, fact, result);
             }
         }
-        log.info("OpenAlex citation build: citingWorks={} referencedIds={} doisCached={} edgesWritten={} skipped={}",
-                citingWorks.size(), referencedIds.size(), doiByWorkId.size(), result.getImportedCount(), result.getSkippedCount());
+        log.info("OpenAlex citation edge build: facts={} canonicalWorks={} edgesWritten={} skipped={}",
+                facts.size(), canonicalByWorkId.size(), result.getImportedCount(), result.getSkippedCount());
         return result;
     }
 
-    /** Load cached DOIs for the referenced ids; fetch + persist the missing ones (caching null for no-DOI works). */
-    private Map<String, String> ensureReferencedDoisCached(Set<String> referencedIds) {
-        Map<String, String> doiByWorkId = new HashMap<>();
-        if (referencedIds.isEmpty()) {
-            return doiByWorkId;
-        }
-        Set<String> missing = new LinkedHashSet<>(referencedIds);
-        for (OpenAlexWorkDoi cached : workDoiRepository.findByIdIn(referencedIds)) {
-            doiByWorkId.put(cached.getId(), cached.getDoi());
-            missing.remove(cached.getId());
-        }
-        if (!missing.isEmpty()) {
-            Instant now = Instant.now();
-            Set<String> returned = new LinkedHashSet<>();
-            for (OpenAlexWorksResponse.OpenAlexWork work : openAlexClient.fetchWorksByIds(missing)) {
-                String workId = stripPrefix(work.getId());
-                if (workId == null) {
-                    continue;
-                }
-                returned.add(workId);
-                persistCache(workId, work.getDoi(), now);
-                doiByWorkId.put(workId, work.getDoi());
-            }
-            // Ids OpenAlex didn't return (deleted/merged) — cache null so we don't re-fetch them.
-            for (String id : missing) {
-                if (!returned.contains(id)) {
-                    persistCache(id, null, now);
-                    doiByWorkId.put(id, null);
+    /** Resolve OpenAlex work ids → canonical pub ids via the OPENALEX publication source-links (chunked $in). */
+    private Map<String, String> resolveCanonicalByWorkId(Set<String> workIds) {
+        Map<String, String> map = new HashMap<>();
+        List<String> ids = new ArrayList<>(workIds);
+        for (int from = 0; from < ids.size(); from += LOOKUP_CHUNK) {
+            List<String> chunk = ids.subList(from, Math.min(from + LOOKUP_CHUNK, ids.size()));
+            for (ScholardexSourceLink link : sourceLinkRepository
+                    .findByEntityTypeAndSourceRecordIdIn(ScholardexEntityType.PUBLICATION, chunk)) {
+                if (SOURCE_OPENALEX.equals(link.getSource()) && link.getCanonicalEntityId() != null) {
+                    map.put(link.getSourceRecordId(), link.getCanonicalEntityId());
                 }
             }
         }
-        return doiByWorkId;
+        return map;
     }
 
-    private void persistCache(String workId, String doi, Instant now) {
-        OpenAlexWorkDoi entry = workDoiRepository.findById(workId).orElseGet(OpenAlexWorkDoi::new);
-        entry.setId(workId);
-        entry.setDoi(doi);
-        entry.setFetchedAt(now);
-        workDoiRepository.save(entry);
-    }
-
-    private String resolveCanonicalByOpenAlexWorkId(String workId) {
-        if (workId == null || workId.isBlank()) {
-            return null;
-        }
-        return sourceLinkService.findByKey(ScholardexEntityType.PUBLICATION, SOURCE_OPENALEX, workId)
-                .map(link -> link.getCanonicalEntityId())
-                .filter(id -> id != null && !id.isBlank())
-                .orElse(null);
-    }
-
-    private void writeCitation(String citedPublicationId, String citingPublicationId, OpenAlexPublicationFact work, ImportProcessingResult result) {
+    private void writeCitation(String citedPublicationId, String citingPublicationId, OpenAlexPublicationFact citing, ImportProcessingResult result) {
         String edgeId = "scit_" + shortHash(citedPublicationId + "|" + citingPublicationId);
         if (citationFactRepository.findById(edgeId).isPresent()) {
             result.markSkipped("citation-edge-already-known");
@@ -168,21 +164,12 @@ public class OpenAlexCitationCanonicalizationService {
         fact.setCitedPublicationId(citedPublicationId);
         fact.setCitingPublicationId(citingPublicationId);
         fact.setSource(SOURCE_OPENALEX);
-        fact.setSourceRecordId(work.getSourceRecordId() + "::cites::" + citedPublicationId);
-        fact.setSourceEventId(work.getSourceEventId());
-        fact.setSourceBatchId(work.getSourceBatchId());
-        fact.setSourceCorrelationId(work.getSourceCorrelationId());
+        fact.setSourceRecordId(citing.getSourceRecordId() + "::cites::" + citedPublicationId);
+        fact.setSourceEventId(citing.getSourceEventId());
+        fact.setSourceBatchId(citing.getSourceBatchId());
+        fact.setSourceCorrelationId(citing.getSourceCorrelationId());
         fact.setUpdatedAt(now);
         citationFactRepository.save(fact);
         result.markImported();
-    }
-
-    private static String stripPrefix(String value) {
-        if (value == null) {
-            return null;
-        }
-        String v = value.trim();
-        String prefix = "https://openalex.org/";
-        return v.startsWith(prefix) ? v.substring(prefix.length()) : v;
     }
 }

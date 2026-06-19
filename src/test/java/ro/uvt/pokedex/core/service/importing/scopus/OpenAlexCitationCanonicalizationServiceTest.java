@@ -7,15 +7,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexWorkDoiRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.service.openalex.OpenAlexClient;
-import ro.uvt.pokedex.core.service.openalex.dto.OpenAlexWorksResponse;
+import ro.uvt.pokedex.core.service.openalex.OpenAlexImportService;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,79 +29,71 @@ import static org.mockito.Mockito.when;
 class OpenAlexCitationCanonicalizationServiceTest {
 
     @Mock private OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
-    @Mock private OpenAlexWorkDoiRepository workDoiRepository;
+    @Mock private OpenAlexImportService openAlexImportService;
     @Mock private OpenAlexClient openAlexClient;
-    @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    @Mock private OpenAlexCanonicalizationService openAlexCanonicalizationService;
     @Mock private ScholardexCitationFactRepository citationFactRepository;
-    @Mock private ScholardexSourceLinkService sourceLinkService;
+    @Mock private ScholardexSourceLinkRepository sourceLinkRepository;
 
     @InjectMocks private OpenAlexCitationCanonicalizationService service;
 
     @Test
-    void writesEdgeForAReferencedWorkInTheCorpusAndSkipsOnesOutside() {
-        OpenAlexPublicationFact citing = new OpenAlexPublicationFact();
-        citing.setSourceRecordId("W1");
-        citing.setReferencedWorks(new java.util.ArrayList<>(List.of("RinCorpus", "RoutsideCorpus")));
+    void buildsEdgeWhenBothEndpointsAreCanonicalAndSkipsOutOfCorpusRefs() {
+        // Citing work W1 cites RinCorpus (canonical) and RoutsideCorpus (no source-link => not canonical).
+        OpenAlexPublicationFact citing = fact("W1", "RinCorpus", "RoutsideCorpus");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(citing));
-
-        // DOI cache: RinCorpus is cached; RoutsideCorpus is missing -> fetched.
-        when(workDoiRepository.findByIdIn(any())).thenReturn(List.of(workDoi("RinCorpus", "10.1/cited")));
-        when(workDoiRepository.findById("RoutsideCorpus")).thenReturn(Optional.empty());
-        when(openAlexClient.fetchWorksByIds(any())).thenReturn(List.of(work("RoutsideCorpus", "10.1/outside")));
-
-        // The citing work resolves to its canonical pub via the OPENALEX source-link.
-        ScholardexSourceLink link = new ScholardexSourceLink();
-        link.setCanonicalEntityId("spub_citing");
-        when(sourceLinkService.findByKey(ScholardexEntityType.PUBLICATION, "OPENALEX", "W1")).thenReturn(Optional.of(link));
-
-        // RinCorpus's DOI matches one canonical pub; RoutsideCorpus matches none.
-        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/cited"))
-                .thenReturn(List.of(pub("spub_cited")));
-        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/outside")).thenReturn(List.of());
+        when(sourceLinkRepository.findByEntityTypeAndSourceRecordIdIn(eq(ScholardexEntityType.PUBLICATION), any()))
+                .thenReturn(List.of(link("W1", "spub_citing"), link("RinCorpus", "spub_cited")));
         when(citationFactRepository.findById(anyString())).thenReturn(Optional.empty());
 
         service.rebuildCitationFacts();
 
-        // Edge written for the in-corpus reference: citing W1 -> cited spub_cited.
         verify(citationFactRepository).save(argThat(c ->
                 "spub_citing".equals(c.getCitingPublicationId())
                         && "spub_cited".equals(c.getCitedPublicationId())
                         && "OPENALEX".equals(c.getSource())));
-        // The missing referenced DOI was fetched and cached.
-        verify(workDoiRepository).save(argThat(d -> "RoutsideCorpus".equals(d.getId()) && "10.1/outside".equals(d.getDoi())));
+        // Only one edge — RoutsideCorpus had no canonical mapping.
+        verify(citationFactRepository).save(any());
     }
 
     @Test
-    void skipsWhenTheCitingWorkHasNoCanonicalPublication() {
-        OpenAlexPublicationFact citing = new OpenAlexPublicationFact();
-        citing.setSourceRecordId("W9");
-        citing.setReferencedWorks(new java.util.ArrayList<>(List.of("R1")));
+    void skipsWhenCitingWorkIsNotCanonical() {
+        OpenAlexPublicationFact citing = fact("W9", "R1");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(citing));
-        when(workDoiRepository.findByIdIn(any())).thenReturn(List.of(workDoi("R1", "10.1/x")));
-        when(sourceLinkService.findByKey(ScholardexEntityType.PUBLICATION, "OPENALEX", "W9")).thenReturn(Optional.empty());
+        when(sourceLinkRepository.findByEntityTypeAndSourceRecordIdIn(eq(ScholardexEntityType.PUBLICATION), any()))
+                .thenReturn(List.of(link("R1", "spub_r1"))); // W9 itself has no canonical link
 
         service.rebuildCitationFacts();
 
         verify(citationFactRepository, never()).save(any());
     }
 
-    private ScholardexPublicationFact pub(String id) {
-        ScholardexPublicationFact p = new ScholardexPublicationFact();
-        p.setId(id);
-        return p;
+    @Test
+    void skipsSelfCitation() {
+        OpenAlexPublicationFact citing = fact("W1", "Rself");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(citing));
+        // Both the work and its reference resolve to the SAME canonical pub (a metadata duplicate) -> no self-loop.
+        when(sourceLinkRepository.findByEntityTypeAndSourceRecordIdIn(eq(ScholardexEntityType.PUBLICATION), any()))
+                .thenReturn(List.of(link("W1", "spub_same"), link("Rself", "spub_same")));
+
+        service.rebuildCitationFacts();
+
+        verify(citationFactRepository, never()).save(any());
     }
 
-    private ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexWorkDoi workDoi(String id, String doi) {
-        ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexWorkDoi d = new ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexWorkDoi();
-        d.setId(id);
-        d.setDoi(doi);
-        return d;
+    private OpenAlexPublicationFact fact(String workId, String... referencedWorks) {
+        OpenAlexPublicationFact f = new OpenAlexPublicationFact();
+        f.setSourceRecordId(workId);
+        f.setReferencedWorks(new java.util.ArrayList<>(List.of(referencedWorks)));
+        return f;
     }
 
-    private OpenAlexWorksResponse.OpenAlexWork work(String id, String doi) {
-        OpenAlexWorksResponse.OpenAlexWork w = new OpenAlexWorksResponse.OpenAlexWork();
-        w.setId("https://openalex.org/" + id);
-        w.setDoi(doi);
-        return w;
+    private ScholardexSourceLink link(String workId, String canonicalId) {
+        ScholardexSourceLink l = new ScholardexSourceLink();
+        l.setEntityType(ScholardexEntityType.PUBLICATION);
+        l.setSource("OPENALEX");
+        l.setSourceRecordId(workId);
+        l.setCanonicalEntityId(canonicalId);
+        return l;
     }
 }
