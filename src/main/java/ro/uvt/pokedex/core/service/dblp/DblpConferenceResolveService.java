@@ -120,17 +120,32 @@ public class DblpConferenceResolveService {
             result.markSkipped("dblp-no-conference-match pub=" + pub.getId());
             return;
         }
-        String streamKey = DblpClient.conferenceStreamKey(hit.getKey());
-        if (streamKey == null) {
+        boolean applied = applyMatch(pub, hit.getKey(), hit.getVenue(), hit.getDoi(), hit.getTitle(),
+                parseYear(hit.getYear()), matchMethod, "api");
+        if (applied) {
+            result.markImported();
+        } else {
             result.markSkipped("dblp-not-a-conference pub=" + pub.getId());
-            return;
+        }
+    }
+
+    /**
+     * Apply a confirmed DBLP match to a publication — the single place the conference outputs are written, shared by
+     * the API resolve and the dump sweep. On a real conference ({@code conf/X}) it writes scorer-compatible evidence,
+     * find-or-mints the conference-series forum, and stamps {@code forumId}; returns {@code false} (no-op) otherwise.
+     */
+    public boolean applyMatch(ScholardexPublicationFact pub, String dblpKey, String conferenceName,
+                              String doi, String title, Integer year, String matchMethod, String dumpVersion) {
+        String streamKey = DblpClient.conferenceStreamKey(dblpKey);
+        if (streamKey == null) {
+            return false;
         }
         Instant now = Instant.now();
-        writeEvidence(pub, hit, streamKey, matchMethod, now);
-        String forumId = findOrMintConferenceForum(streamKey, hit.getVenue(), now);
+        writeEvidence(pub.getId(), dblpKey, streamKey, conferenceName, doi, title, year, matchMethod, dumpVersion, now);
+        String forumId = findOrMintConferenceForum(streamKey, conferenceName, now);
         pub.setForumId(forumId);
         publicationFactRepository.save(pub);
-        result.markImported();
+        return true;
     }
 
     /** Confident DOI match: search by the pub's DOI and accept a conference hit whose DOI equals it. */
@@ -197,23 +212,23 @@ public class DblpConferenceResolveService {
         return forum.getId();
     }
 
-    private void writeEvidence(ScholardexPublicationFact pub, DblpSearchResponse.DblpInfo hit, String streamKey,
-                               String matchMethod, Instant now) {
-        ScholardexPublicationDblpEvidence ev = evidenceRepository.findByPublicationId(pub.getId())
+    private void writeEvidence(String publicationId, String dblpKey, String streamKey, String conferenceName,
+                               String doi, String title, Integer year, String matchMethod, String dumpVersion, Instant now) {
+        ScholardexPublicationDblpEvidence ev = evidenceRepository.findByPublicationId(publicationId)
                 .orElseGet(ScholardexPublicationDblpEvidence::new);
         if (ev.getCreatedAt() == null) {
             ev.setCreatedAt(now);
         }
-        ev.setPublicationId(pub.getId());
-        ev.setDblpKey(hit.getKey());
-        ev.setDumpVersion("api"); // sourced from the live API, not the dump
+        ev.setPublicationId(publicationId);
+        ev.setDblpKey(dblpKey);
+        ev.setDumpVersion(dumpVersion); // "api" (live API) or the dump version string (corpus-matched sweep)
         ev.setMatchMethod(matchMethod);
-        ev.setDoi(hit.getDoi());
-        ev.setTitle(hit.getTitle());
-        ev.setYear(parseYear(hit.getYear()));
-        ev.setConferenceName(hit.getVenue()); // the title ComputerScienceConferenceScoringService matches to CORE
+        ev.setDoi(doi);
+        ev.setTitle(title);
+        ev.setYear(year);
+        ev.setConferenceName(conferenceName); // the title ComputerScienceConferenceScoringService matches to CORE
         ev.setSeries(streamKey);
-        ev.setSourceUrl(hit.getUrl());
+        ev.setSourceUrl(dblpKey == null ? null : "https://dblp.org/rec/" + dblpKey + ".html");
         ev.setUpdatedAt(now);
         evidenceRepository.save(ev);
     }

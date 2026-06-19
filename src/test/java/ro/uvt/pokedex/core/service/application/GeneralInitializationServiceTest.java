@@ -48,7 +48,7 @@ class GeneralInitializationServiceTest {
     @Mock
     private SenseRankingService senseRankingService;
     @Mock
-    private ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
+    private ro.uvt.pokedex.core.service.dblp.DblpDumpConferenceSweepService dblpDumpConferenceSweepService;
     @Mock
     private DomainRepository domainRepository;
     @Mock
@@ -69,7 +69,7 @@ class GeneralInitializationServiceTest {
                 cncsisService,
                 coreConferenceRankingService,
                 senseRankingService,
-                dblpConferenceResolveService,
+                dblpDumpConferenceSweepService,
                 domainRepository,
                 meterRegistry,
                 startupReadinessTracker
@@ -99,17 +99,17 @@ class GeneralInitializationServiceTest {
     }
 
     @Test
-    void dblpConferenceResolveDelegatesToTheApiSweep() {
+    void dblpConferenceResolveDelegatesToTheDumpSweep() {
         ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result =
                 new ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult(20);
         result.markImported();
-        when(dblpConferenceResolveService.resolveAll()).thenReturn(result);
+        when(dblpDumpConferenceSweepService.sweep()).thenReturn(result);
 
         GeneralInitializationService.GeneralInitializationStepResult step = service.runDblpLnChapterEnrichment();
 
         assertThat(step.success()).isTrue();
         assertThat(step.message()).contains("resolved=1");
-        verify(dblpConferenceResolveService).resolveAll();
+        verify(dblpDumpConferenceSweepService).sweep();
     }
 
     @Test

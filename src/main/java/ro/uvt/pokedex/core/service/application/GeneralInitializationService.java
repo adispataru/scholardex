@@ -33,7 +33,7 @@ public class GeneralInitializationService {
     private final CNCSISService cncsisService;
     private final CoreConferenceRankingService coreConferenceRankingService;
     private final SenseRankingService senseRankingService;
-    private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
+    private final ro.uvt.pokedex.core.service.dblp.DblpDumpConferenceSweepService dblpDumpConferenceSweepService;
     private final DomainRepository domainRepository;
     private final MeterRegistry meterRegistry;
     private final StartupReadinessTracker startupReadinessTracker;
@@ -112,11 +112,12 @@ public class GeneralInitializationService {
     }
 
     public GeneralInitializationStepResult runDblpLnChapterEnrichment() {
-        // H66B Phase 4b: the whole-dump streamer is retired — this admin step now runs the per-paper DBLP API sweep
-        // over every hidden-conference candidate (mints conf/X forums + writes the same scorer-compatible evidence).
+        // H66B Phase 4b: this admin step runs the corpus-matched DBLP dump sweep — the rate-limit-free BULK path that
+        // streams the configured dump once, matching our hidden-conference candidates (mints conf/X forums + writes
+        // scorer-compatible evidence). The per-paper API path covers on-demand syncs + papers newer than the dump.
         return runStep("dblp-conference-resolve", false, "dblp-conference-resolve", () -> {
-            var result = dblpConferenceResolveService.resolveAll();
-            return "dblp conference resolve completed: resolved=" + result.getImportedCount()
+            var result = dblpDumpConferenceSweepService.sweep();
+            return "dblp dump sweep completed: resolved=" + result.getImportedCount()
                     + " skipped=" + result.getSkippedCount();
         });
     }
