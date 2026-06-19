@@ -91,6 +91,8 @@ class RankingViewSecurityContractTest {
     private AdminDashboardService adminDashboardService;
     @MockitoBean
     private GroupManagementFacade groupManagementFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.StaffImportService staffImportService;
 
     @BeforeEach
     void setupDefaults() {

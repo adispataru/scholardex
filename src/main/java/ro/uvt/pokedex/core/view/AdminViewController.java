@@ -11,13 +11,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.org.DivisionType;
 import ro.uvt.pokedex.core.model.org.OrgDivision;
+import ro.uvt.pokedex.core.service.importing.StaffImportService;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind;
@@ -60,7 +64,13 @@ public class AdminViewController {
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final AdminDashboardService adminDashboardService;
     private final GroupManagementFacade groupManagementFacade;
+    private final StaffImportService staffImportService;
     private final String Country = "Romania";
+
+    @Value("${h07.staff.import.max-bytes:2097152}")
+    private long staffImportMaxBytes;
+    @Value("${h07.staff.import.allowed-content-types:text/csv,application/vnd.ms-excel}")
+    private String staffImportAllowedContentTypes;
 
     @GetMapping()
     public String showDashboard(Model model) {
@@ -542,6 +552,55 @@ public class AdminViewController {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
         return "redirect:/admin/divisions";
+    }
+
+    @PostMapping("/divisions/import")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public String importStaff(@RequestParam("file") MultipartFile file,
+                              @RequestParam("institutionId") String institutionId,
+                              RedirectAttributes redirectAttributes) {
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Please select a CSV file to upload.");
+            return "redirect:/admin/divisions";
+        }
+        if (institutionId == null || institutionId.isBlank()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Target institution is required.");
+            return "redirect:/admin/divisions";
+        }
+        if (file.getSize() > staffImportMaxBytes) {
+            redirectAttributes.addFlashAttribute("errorMessage", "CSV file is too large.");
+            return "redirect:/admin/divisions";
+        }
+        if (!hasCsvExtension(file.getOriginalFilename())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Only .csv files are allowed.");
+            return "redirect:/admin/divisions";
+        }
+        if (!isAllowedCsvContentType(file.getContentType())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Unsupported CSV content type.");
+            return "redirect:/admin/divisions";
+        }
+        try {
+            StaffImportService.StaffImportResult result = staffImportService.importStaffFromCsv(file, institutionId);
+            String attribute = result.skipped.isEmpty() ? "successMessage" : "errorMessage";
+            redirectAttributes.addFlashAttribute(attribute, result.toSummaryMessage());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "An error occurred while importing staff: " + e.getMessage());
+            log.error("Staff import failed: fileName={}, size={}", file.getOriginalFilename(), file.getSize(), e);
+        }
+        return "redirect:/admin/divisions";
+    }
+
+    private boolean hasCsvExtension(String filename) {
+        return filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".csv");
+    }
+
+    private boolean isAllowedCsvContentType(String contentType) {
+        if (contentType == null) return false;
+        return Arrays.stream(staffImportAllowedContentTypes.split(","))
+                .map(s -> s.trim().toLowerCase(Locale.ROOT))
+                .anyMatch(allowed -> allowed.equals(contentType.toLowerCase(Locale.ROOT)));
     }
 
     // -------- Departments --------

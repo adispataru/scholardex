@@ -20,6 +20,9 @@
                         <a href="#" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createDivisionModal">
                             <i class="fa-solid fa-plus fa-sm text-white-50"></i> Create division
                         </a>
+                        <a href="#" class="btn btn-secondary btn-sm" data-toggle="modal" data-target="#importStaffModal">
+                            <i class="fa-solid fa-file-csv fa-sm text-white-50"></i> Import staff
+                        </a>
                     </div>
                 </div>
 
@@ -190,6 +193,40 @@
                     <div class="modal-footer app-form-actions">
                         <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import staff modal -->
+<div class="modal fade app-modal" id="importStaffModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import staff from CSV</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/divisions/import}" method="post" enctype="multipart/form-data">
+                    <div class="form-group app-form-field app-form-section">
+                        <div class="app-form-section__header">
+                            <h6 class="app-form-section__title">CSV import</h6>
+                            <p class="app-form-section__description">Required columns: <code>Faculty,Department,Email,Last Name,First Name,Position[,Id SCOPUS]</code>. Faculty and Department are matched by name within the target institution and <strong>created if they don't exist yet</strong> (Faculty → a FACULTY division). <code>Id SCOPUS</code> is an optional <code>;</code>-separated list.</p>
+                        </div>
+                        <label for="importStaffInstitutionId">Target institution</label>
+                        <select class="form-control" id="importStaffInstitutionId" name="institutionId" required>
+                            <option th:each="inst : ${institutions}" th:value="${inst.id}" th:text="${inst.name}"></option>
+                        </select>
+                        <label for="staffFile" class="mt-3">CSV File</label>
+                        <input type="file" class="form-control-file" id="staffFile" name="file" accept=".csv" required>
+                    </div>
+                    <div class="modal-footer app-form-actions">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Import</button>
                     </div>
                 </form>
             </div>
