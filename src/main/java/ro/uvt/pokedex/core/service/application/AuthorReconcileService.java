@@ -54,6 +54,7 @@ public class AuthorReconcileService {
     static final String REASON_FUZZY_MERGE_CANDIDATE = "AUTHOR_FUZZY_MERGE_CANDIDATE";
     static final String REASON_FUZZY_MERGE_REVIEW = "AUTHOR_FUZZY_MERGE_REVIEW";
     static final String REASON_OVERSPLIT_MERGE_CANDIDATE = "AUTHOR_OVERSPLIT_MERGE_CANDIDATE";
+    static final String REASON_OVERSPLIT_MERGE_REVIEW = "AUTHOR_OVERSPLIT_MERGE_REVIEW";
     private static final String STATUS_OPEN = "OPEN";
 
     private final ScholardexAuthorFactRepository authorRepository;
@@ -225,10 +226,14 @@ public class AuthorReconcileService {
             for (List<ScholardexAuthorFact> group : overSplitGroups(members)) {
                 result.markProcessed();
                 mergeGroups++;
-                if (affiliationApply) {
+                if (!affiliationApply) {
+                    quarantine(group, REASON_OVERSPLIT_MERGE_CANDIDATE, batchId, correlationId, now, result);
+                } else if (isAutoMergeableOverSplit(group)) {
                     mergeCluster(group, now, result);
                 } else {
-                    quarantine(group, REASON_OVERSPLIT_MERGE_CANDIDATE, batchId, correlationId, now, result);
+                    // common initials-only name (e.g. "Wang, J.") shared by many in mega-author papers — name +
+                    // affiliation + co-author can't safely disambiguate; leave for human review.
+                    quarantine(group, REASON_OVERSPLIT_MERGE_REVIEW, batchId, correlationId, now, result);
                 }
             }
         }
@@ -236,6 +241,36 @@ public class AuthorReconcileService {
                         + "mergeGroups={} merged~={} candidates={}",
                 affiliationApply, byName.size(), mergeGroups, result.getImportedCount(), result.getSkippedCount());
         return result;
+    }
+
+    /**
+     * Safety guard for auto-merge: only merge an over-split group when its identity is distinctive enough that
+     * name+affiliation+co-author can't be coincidence. True when EITHER the members carry differing display strings
+     * (a formatting / order / diacritic variant — a strong same-person signal, e.g. "Aguilar–Saavedra" vs
+     * "Aguilar-Saavedra"), OR the shared name has ≥2 multi-letter tokens (a full given name or double surname, e.g.
+     * "Cotăescu, Ion I."). Excludes identical single-surname + single-initial names ("Wang, J." ×6) that many
+     * distinct people share in mega-author papers — those go to review, never auto-merge.
+     */
+    private boolean isAutoMergeableOverSplit(List<ScholardexAuthorFact> group) {
+        long distinctNames = group.stream()
+                .map(a -> a.getDisplayName() == null ? "" : a.getDisplayName().trim())
+                .distinct().count();
+        if (distinctNames > 1) {
+            return true;
+        }
+        String name = group.getFirst().getDisplayName();
+        if (name == null) {
+            return false;
+        }
+        String folded = Normalizer.normalize(name, Normalizer.Form.NFKD).replaceAll("\\p{M}+", "");
+        String[] tokens = folded.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", " ").trim().split("\\s+");
+        int multiLetter = 0;
+        for (String t : tokens) {
+            if (t.length() >= 2) {
+                multiLetter++;
+            }
+        }
+        return multiLetter >= 2;
     }
 
     /** Subgroups of a same-name cluster whose members pairwise share ≥1 affiliation AND ≥1 co-author. */

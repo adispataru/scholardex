@@ -302,6 +302,44 @@ class AuthorReconcileServiceTest {
         verify(identityConflictRepository, never()).save(any());
     }
 
+    @Test
+    void overSplitReviewsCommonInitialsOnlyNameInsteadOfMergingWhenApplied() {
+        // "Wang, J." ×2: identical display + single-surname + single-initial => many distinct people share it =>
+        // not auto-mergeable even with apply=true => REVIEW, never deleted.
+        ScholardexAuthorFact a = author("sauth_a", "Wang, J.", null);
+        a.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        ScholardexAuthorFact b = author("sauth_b", "Wang, J.", null);
+        b.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        setOverSplit(true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "c1")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "c1")));
+
+        service.reconcileByNameAndAffiliation("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository).save(argThat(c -> "AUTHOR_OVERSPLIT_MERGE_REVIEW".equals(c.getReasonCode())));
+    }
+
+    @Test
+    void overSplitMergesInitialsOnlyNameWhenTheDisplayStringsDiffer() {
+        // "Aguilar–Saavedra, J. A." (en-dash) vs "Aguilar-Saavedra, J. A." (hyphen): initials-only but the strings
+        // differ => a formatting variant of one person => auto-mergeable.
+        ScholardexAuthorFact a = author("sauth_a", "Aguilar–Saavedra, J. A.", null);
+        a.setScopusAuthorIds(new ArrayList<>(List.of("111")));
+        a.setAffiliationIds(new ArrayList<>(List.of("saff_cern")));
+        ScholardexAuthorFact b = author("sauth_b", "Aguilar-Saavedra, J. A.", null);
+        b.setAffiliationIds(new ArrayList<>(List.of("saff_cern")));
+        setOverSplit(true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "c1")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "c1")));
+
+        service.reconcileByNameAndAffiliation("batch", "corr");
+
+        verify(authorRepository).deleteById("sauth_b");
+    }
+
     private void setOverSplit(boolean apply) {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "affiliationApply", apply);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "maxClusterSize", 50);
