@@ -30,6 +30,21 @@ Done history moved to `TASKS-done.md`.
   not the transient publicationId) — spans the decision model + lookups + filter, and DOI-primary identity keeps
   re-synced ids stable, largely mitigating it; pick up as a focused follow-up if it recurs.
 
+- [ ] `H71` Cross-source author dedup for OpenAlex co-authors (affiliation-driven). Problem: the OpenAlex author
+  resolver matches on **exact id keys only** (ORCID → OpenAlex author-id → else mint), so the same person splits into
+  duplicates across sources — e.g. "Bogdan Tudor Tulbure" (OpenAlex, ORCID, no Scopus id) vs "Tulbure, Bogdan T."
+  (Scopus, no ORCID), and OpenAlex itself splits a person across author-ids on preprint vs published versions. One
+  researcher's by-ORCID sync brings co-author ORCIDs onto the **OpenAlex** records only, never onto the ORCID-less
+  Scopus records, and the positional ORCID bridge only fires on DOI-**linked** pubs — so ORCID alone can't bridge.
+  **Affiliation is the load-bearing signal.** Surfaced/amplified by the full-author fix (`2e4f0bf`), which mints all
+  co-authors of OpenAlex-owned pubs.
+  Plan: **(1) capture affiliation — DONE (`7261e08`)**: OpenAlex authorship institutions/raw-affiliation/country now
+  persisted on `OpenAlexPublicationFact.AuthorRef` + accumulated onto `ScholardexAuthorFact.openAlexAffiliationNames`
+  (mint + enrich). **(2)** name + affiliation + co-author-overlap merge in `AuthorReconcileService` using the captured
+  names — the primary cross-source fix (note: Romanian diacritics ş/ș/ţ/ț must be folded). **(3)** ORCID-cluster merge
+  as a secondary cleanup of OpenAlex-internal ORCID dupes. Open question to verify under step 2: rule out any actual
+  Scopus-data loss in the Bianca Spătaru case (minting is non-destructive; a reconcile merge takes the union).
+
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
   (nothing computes it today). Needed by chimie (≥13/9 WoS), geografie (Hirsch excl. self-cit), fizica (h
