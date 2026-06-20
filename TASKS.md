@@ -9,6 +9,19 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H70` Researcher onboarding wizard (+ de-tangle the publication-claim tool). Replace the confusing
+  all-controls-at-once onboarding in the workspace **Profile & Sync** tab with a **resume-aware stepped modal**
+  (Scopus ids → ORCID → confirm/deny affiliations → match Scholardex author record(s) → recommended bulk publication
+  auto-claim), and **separate onboarding from ongoing claim management**. Root cause of today's confusion: a hidden
+  gate (`requiresAffiliationScopeConfirmation`) welds affiliation setup to the claim tool. Login is **Keycloak SSO**;
+  imports assume SSO. Decided: add `confirmedScholardexAuthorIds` (list) + keep `primaryScholardexAuthorId` as the
+  designated one (multiple author records, non-destructive — no canonical merge from a user action); auto-claim
+  confidence = **author-id + affiliation overlap only (ignore names — artefacts)**; **fix the claim-tool bugs**
+  (re-sync orphaned decisions, bulk-rejects-if-any-decision, gate-throws-instead-of-guiding) as part of this. The
+  staff import already resolves 51/55 by scopus id, so onboarding is mostly confirm + enrich + claim, not link.
+  Planning doc at `docs/tasks/active/h70-researcher-onboarding-wizard.md`. Relates to **H20** (Google Scholar
+  onboarding) and gates clean reporting before scoring (H69).
+
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
   (nothing computes it today). Needed by chimie (≥13/9 WoS), geografie (Hirsch excl. self-cit), fizica (h
