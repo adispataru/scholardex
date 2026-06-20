@@ -21,6 +21,14 @@ Done history moved to `TASKS-done.md`.
   staff import already resolves 51/55 by scopus id, so onboarding is mostly confirm + enrich + claim, not link.
   Planning doc at `docs/tasks/active/h70-researcher-onboarding-wizard.md`. Relates to **H20** (Google Scholar
   onboarding) and gates clean reporting before scoring (H69).
+  **Status (2026-06-20): all 5 slices shipped + live-validated.** S1 model/resolve/step-engine (`14c24e5`);
+  S2 wizard shell + steps 1–3 (`668c5c2`) + completeness-card/launcher fix (`e718df7`); S3 author-record matcher
+  with confidence preview (`12dfe2c`); S4 publication auto-claim engine, terminal step (`e6084b4`); S5 claim-tool
+  de-tangle — bulk idempotency + the gate now returns a 409 `requiresOnboarding` that routes to the wizard
+  (`884dd1d`). Validated end-to-end on a real researcher (florin): ORCID→OpenAlex enrich, author match (18 pubs),
+  auto-claim recommends all 18. **Deferred:** bug #1 (decision continuity across re-sync keyed on stable doi/eid,
+  not the transient publicationId) — spans the decision model + lookups + filter, and DOI-primary identity keeps
+  re-synced ids stable, largely mitigating it; pick up as a focused follow-up if it recurs.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
