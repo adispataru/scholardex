@@ -69,6 +69,10 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
     private long heartbeatSeconds;
 
+    /** H72 slice 1: drop ad-hoc Scopus afids from author affiliations (keep only verified {@code 60…}). Reversible. */
+    @Value("${scopus.affiliation.verified-only:true}")
+    private boolean verifiedOnlyAffiliations;
+
     public ScholardexAuthorCanonicalizationService(
             ScopusAuthorFactRepository scopusAuthorFactRepository,
             ScholardexAuthorFactRepository scholardexAuthorFactRepository,
@@ -482,11 +486,17 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
             return new AffiliationBridgeResult(List.of(), List.of(), List.of());
         }
         String sourceToken = sourceLinkService.normalizeSource(source);
+        boolean dropAdHocScopus = verifiedOnlyAffiliations && SOURCE_SCOPUS.equals(sourceToken);
         Map<String, AffiliationBridgeEntry> byCanonicalId = new LinkedHashMap<>();
         LinkedHashSet<String> pendingSource = new LinkedHashSet<>();
         for (String rawAffiliationId : sourceAffiliationIds) {
             String sourceAffiliationId = normalizeBlank(rawAffiliationId);
             if (sourceAffiliationId == null) {
+                continue;
+            }
+            // H72 slice 1: ad-hoc Scopus afids never become a canonical affiliation, so don't bridge/fallback them
+            // onto the author either (the fallback path would otherwise re-introduce the dropped id).
+            if (dropAdHocScopus && !CanonicalizationSupport.isVerifiedScopusAffiliationId(sourceAffiliationId)) {
                 continue;
             }
             Optional<ScholardexSourceLink> resolved = resolveAffiliationSourceLink(source, sourceAffiliationId, context);

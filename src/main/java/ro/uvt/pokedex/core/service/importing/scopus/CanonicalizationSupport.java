@@ -85,6 +85,16 @@ public final class CanonicalizationSupport {
         return value == null || value.trim().isEmpty();
     }
 
+    /**
+     * H72: a Scopus <em>verified</em> institution profile (afid {@code 60…}, 8 digits) vs an <em>ad-hoc</em>
+     * raw-string id ({@code 1xxxxxxxx}, 9 digits) that Scopus mints when it can't match a profile. The verified tier
+     * is one record per real institution; the ad-hoc tier is unresolved fragmentation we drop from the canonical
+     * graph. Boundary measured clean on the live corpus (16,616 verified vs 12,490 ad-hoc, zero {@code 6[1-9]}).
+     */
+    public static boolean isVerifiedScopusAffiliationId(String afid) {
+        return afid != null && afid.trim().startsWith("60");
+    }
+
     public static int normalizeStartBatch(Integer startBatchOverride, int checkpointLastCompletedBatch, boolean useCheckpoint) {
         if (startBatchOverride != null) {
             return Math.max(0, startBatchOverride);

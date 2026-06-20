@@ -454,6 +454,51 @@ class ScholardexAffiliationCanonicalizationServiceTest {
     }
 
     @Test
+    void processSourceFactDropsAdHocAfidWhenVerifiedOnly() {
+        // H72 slice 1: an ad-hoc afid (9-digit 1xxxxxxxx) is dropped, never minted as a canonical affiliation;
+        // a verified afid (60…) proceeds normally.
+        ScholardexAffiliationCanonicalizationService service = new ScholardexAffiliationCanonicalizationService(
+                scopusAffiliationFactRepository,
+                scholardexAffiliationFactRepository,
+                sourceLinkService,
+                identityConflictRepository,
+                checkpointService
+        );
+        ReflectionTestUtils.setField(service, "verifiedOnly", true);
+
+        // ad-hoc -> skipped, nothing queued, no source-link work
+        Object adHocCtx = ReflectionTestUtils.invokeMethod(service, "createChunkContext");
+        ScopusAffiliationFact adHoc = new ScopusAffiliationFact();
+        adHoc.setAfid("112945959");
+        adHoc.setName("West University of Timisoara");
+        adHoc.setSource("SCOPUS");
+        ImportProcessingResult adHocResult = new ImportProcessingResult(10);
+        ReflectionTestUtils.invokeMethod(service, "processSourceFact", adHoc, adHocResult, adHocCtx);
+
+        assertEquals(1, adHocResult.getSkippedCount());
+        @SuppressWarnings("unchecked")
+        Map<String, ScholardexAffiliationFact> adHocSaves =
+                (Map<String, ScholardexAffiliationFact>) ReflectionTestUtils.getField(adHocCtx, "pendingAffiliationSaves");
+        assertTrue(adHocSaves.isEmpty());
+
+        // verified -> proceeds (queues a canonical save), proving the gate is afid-specific not blanket
+        Object verCtx = ReflectionTestUtils.invokeMethod(service, "createChunkContext");
+        ScopusAffiliationFact verified = new ScopusAffiliationFact();
+        verified.setAfid("60000434");
+        verified.setName("Universitatea de Vest din Timisoara");
+        verified.setSource("SCOPUS");
+        when(sourceLinkService.normalizeSource("SCOPUS")).thenReturn("SCOPUS");
+        ImportProcessingResult verResult = new ImportProcessingResult(10);
+        ReflectionTestUtils.invokeMethod(service, "processSourceFact", verified, verResult, verCtx);
+
+        assertEquals(0, verResult.getSkippedCount());
+        @SuppressWarnings("unchecked")
+        Map<String, ScholardexAffiliationFact> verSaves =
+                (Map<String, ScholardexAffiliationFact>) ReflectionTestUtils.getField(verCtx, "pendingAffiliationSaves");
+        assertTrue(!verSaves.isEmpty());
+    }
+
+    @Test
     void rebuildCanonicalAffiliationFactsFromScopusFactsUsesDefaultWrapperAndSortsByAfid() {
         ScholardexAffiliationCanonicalizationService service = new ScholardexAffiliationCanonicalizationService(
                 scopusAffiliationFactRepository,

@@ -54,6 +54,13 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
     private long heartbeatSeconds;
 
+    /**
+     * H72 slice 1: when true (default), only Scopus <em>verified</em> institution profiles (afid {@code 60…}) are
+     * canonicalized; ad-hoc raw-string afids ({@code 1xxxxxxxx}) are dropped from the canonical graph. Reversible.
+     */
+    @Value("${scopus.affiliation.verified-only:true}")
+    private boolean verifiedOnly;
+
     public ScholardexAffiliationCanonicalizationService(
             ScopusAffiliationFactRepository scopusAffiliationFactRepository,
             ScholardexAffiliationFactRepository scholardexAffiliationFactRepository,
@@ -203,6 +210,14 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
         if (sourceFact == null || sourceRecordId == null) {
             if (result != null) {
                 result.markSkipped("missing scopus affiliation id");
+            }
+            return;
+        }
+
+        // H72 slice 1: drop ad-hoc afids — never mint a canonical entity for a raw-string id Scopus couldn't resolve.
+        if (verifiedOnly && !CanonicalizationSupport.isVerifiedScopusAffiliationId(sourceRecordId)) {
+            if (result != null) {
+                result.markSkipped("ad-hoc-affiliation-dropped:" + sourceRecordId);
             }
             return;
         }

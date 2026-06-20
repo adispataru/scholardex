@@ -83,6 +83,10 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
 
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
     private long heartbeatSeconds;
+
+    /** H72 slice 1: drop ad-hoc Scopus afids from pub→author→affiliation edges (keep only verified {@code 60…}). */
+    @Value("${scopus.affiliation.verified-only:true}")
+    private boolean verifiedOnlyAffiliations;
     @Value("${scopus.canonical.telemetry.load-progress-record-interval:10000}")
     private int loadProgressRecordInterval;
 
@@ -790,6 +794,13 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             for (String sourceAffiliationId : sourceAffiliationIds) {
                 String normalizedSourceAffiliationId = normalizeBlank(sourceAffiliationId, context);
                 if (normalizedSourceAffiliationId == null) {
+                    continue;
+                }
+                // H72 slice 1: skip ad-hoc Scopus afids before resolving — no edge, and (vs. letting it fall through)
+                // no spurious AFFILIATION_UNRESOLVED conflict for an id we intentionally dropped.
+                if (verifiedOnlyAffiliations
+                        && SOURCE_SCOPUS.equals(sourceLinkService.normalizeSource(fact.getSource()))
+                        && !CanonicalizationSupport.isVerifiedScopusAffiliationId(normalizedSourceAffiliationId)) {
                     continue;
                 }
                 String canonicalAffiliationId = resolveCanonicalAffiliationId(

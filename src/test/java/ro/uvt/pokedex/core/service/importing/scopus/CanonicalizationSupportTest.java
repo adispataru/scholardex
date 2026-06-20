@@ -45,6 +45,13 @@ class CanonicalizationSupportTest {
         assertEquals(12L, CanonicalizationSupport.nanosToMillis(12_900_000L));
         assertEquals(List.of(), CanonicalizationSupport.safeList(null));
         assertEquals(List.of("a"), CanonicalizationSupport.safeList(List.of("a")));
+
+        // H72: verified Scopus institution profiles (60…) vs ad-hoc raw-string ids (1xxxxxxxx)
+        assertTrue(CanonicalizationSupport.isVerifiedScopusAffiliationId("60000434"));
+        assertTrue(CanonicalizationSupport.isVerifiedScopusAffiliationId(" 60091123 "));
+        assertFalse(CanonicalizationSupport.isVerifiedScopusAffiliationId("112945959"));
+        assertFalse(CanonicalizationSupport.isVerifiedScopusAffiliationId("122024502"));
+        assertFalse(CanonicalizationSupport.isVerifiedScopusAffiliationId(null));
     }
 
     @Test
