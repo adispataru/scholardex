@@ -72,7 +72,17 @@ change across a career).
 
 ## Design
 
-### Slice 1 — Verified-only affiliations
+### Slice 1 — Verified-only affiliations — DONE (`4b7b76c`, full-rebuild validated 2026-06-20)
+Live result after `POST /rebuildAllDerived?confirmation=RESET` (~36 min, from the 461M Scopus JSON):
+affiliations **29,106 → 16,427**, all carrying a verified `60…` id (0 non-`60`); author→affiliation edges
+279,639 → 247,572; pub→author→affiliation 756,002 → 710,106; verified UVT retains 2,327 authors. Slice-2
+enabler confirmed: the over-split UVT authors (Megan/Cotăescu/Puta old+new AU-IDs) now share the single verified
+UVT affiliation, and 20 same-name UVT groups / 41 authors are clean merge candidates. (16,427 < the ~16,616
+estimate because a from-scratch rebuild reconstructs only from the JSON, dropping incrementally-added affiliations
+e.g. staff-CSV.) **Caveat:** the from-scratch rebuild re-derives Scopus+WoS only — it does NOT re-run the OpenAlex
+sync, so OpenAlex-owned pubs/authors (the source facts survive the wipe) must be re-synced to reappear in canonical.
+
+Implementation detail (as shipped):
 Drop the ad-hoc tier at canonicalization so it never becomes a canonical entity or an edge.
 - `ScholardexAffiliationCanonicalizationService`: only mint a canonical affiliation for afids matching `^60`. Ad-hoc
   afids resolve to **no** canonical affiliation.
