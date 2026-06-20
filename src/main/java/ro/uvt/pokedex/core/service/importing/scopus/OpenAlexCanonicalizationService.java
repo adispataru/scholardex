@@ -246,22 +246,31 @@ public class OpenAlexCanonicalizationService {
             authorResolver.bridgeOrcidsByPosition(pub.getAuthorIds(), openAlexNames, openAlexOrcids);
         }
 
-        // 3) Resolve corresponding authorships to canonical author ids.
+        // 3) Resolve authorships to canonical authors. For an OpenAlex-OWNED pub (we mint it; OpenAlex is its
+        //    authority) resolve the FULL ordered author list. For a FOREIGN (Scopus-owned) pub resolve only the
+        //    corresponding authors — enrichment that must never clobber the richer Scopus author list.
+        boolean openAlexOwned = pub != null && SOURCE_OPENALEX.equals(pub.getSource());
+        LinkedHashSet<String> resolvedAuthorIds = new LinkedHashSet<>();   // OpenAlex author order
         Set<String> correspondingAuthorIds = new LinkedHashSet<>();
         for (OpenAlexPublicationFact.AuthorRef ref : authorships) {
-            if (!ref.isCorresponding()) {
+            boolean corresponding = ref.isCorresponding();
+            if (!openAlexOwned && !corresponding) {
                 continue;
             }
             String authorId = authorResolver.resolveOrMint(
                     ref.getDisplayName(), ref.getOrcid(), ref.getOpenAlexAuthorId(),
                     source.getSourceBatchId(), source.getSourceCorrelationId());
             if (!isBlank(authorId)) {
-                correspondingAuthorIds.add(authorId);
+                resolvedAuthorIds.add(authorId);
+                if (corresponding) {
+                    correspondingAuthorIds.add(authorId);
+                }
             }
         }
-        // 4) One edge per author, corresponding flag set on the resolved corresponding authors.
-        Set<String> edgeAuthorIds = new LinkedHashSet<>(syncingAuthorIds);
-        edgeAuthorIds.addAll(correspondingAuthorIds);
+
+        // 4) One edge per author (syncing researchers ∪ resolved authors), corresponding flag where applicable.
+        LinkedHashSet<String> edgeAuthorIds = new LinkedHashSet<>(syncingAuthorIds);
+        edgeAuthorIds.addAll(resolvedAuthorIds);
         for (String authorId : edgeAuthorIds) {
             boolean corresponding = correspondingAuthorIds.contains(authorId);
             edgeWriterService.upsertAuthorshipEdge(
@@ -279,19 +288,22 @@ public class OpenAlexCanonicalizationService {
                     corresponding ? Boolean.TRUE : Boolean.FALSE);
         }
 
-        // 5) Denormalize the resolved authors onto the canonical pub's authorIds[]. The projection and the
-        //    researcher workspace read authorIds (not the authorship edges), so without this an OpenAlex-minted
-        //    pub has an empty author list and never surfaces. Merge-only — never drop a foreign pub's authors.
-        if (!edgeAuthorIds.isEmpty()) {
-            ScholardexPublicationFact target = pub != null ? pub
-                    : scholardexPublicationFactRepository.findById(canonicalPublicationId).orElse(null);
-            if (target != null) {
-                LinkedHashSet<String> merged = new LinkedHashSet<>(
-                        target.getAuthorIds() == null ? List.of() : target.getAuthorIds());
-                if (merged.addAll(edgeAuthorIds)) {
-                    target.setAuthorIds(new ArrayList<>(merged));
-                    scholardexPublicationFactRepository.save(target);
-                }
+        // 5) Denormalize onto the canonical pub's authorIds[] (the projection/workspace read this, not the edges).
+        //    OWNED: set the full OpenAlex author list, in order (resolved first; syncing researchers appended as a
+        //    safety net so they're never lost). FOREIGN: merge-only — never drop a foreign pub's authors.
+        if (!edgeAuthorIds.isEmpty() && pub != null) {
+            LinkedHashSet<String> desired;
+            if (openAlexOwned) {
+                desired = new LinkedHashSet<>(resolvedAuthorIds);
+                desired.addAll(syncingAuthorIds);
+            } else {
+                desired = new LinkedHashSet<>(pub.getAuthorIds() == null ? List.of() : pub.getAuthorIds());
+                desired.addAll(edgeAuthorIds);
+            }
+            List<String> current = pub.getAuthorIds() == null ? List.of() : pub.getAuthorIds();
+            if (!new ArrayList<>(desired).equals(current)) {
+                pub.setAuthorIds(new ArrayList<>(desired));
+                scholardexPublicationFactRepository.save(pub);
             }
         }
     }

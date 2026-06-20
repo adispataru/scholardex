@@ -274,6 +274,62 @@ class OpenAlexCanonicalizationServiceTest {
                 "spub_owned".equals(p.getId()) && p.getAuthorIds().contains("sauth_self")));
     }
 
+    @Test
+    void openAlexOwnedPubGetsTheFullResolvedAuthorListNotJustTheResearcher() {
+        // The bug: a minted OpenAlex pub listed only the syncing/corresponding author. OpenAlex owns it, so the
+        // full author list must be resolved into authorIds[].
+        OpenAlexPublicationFact source = source("W8", "10.1/multi", "Multi-author paper", "sauth_self");
+        source.setAuthorships(List.of(
+                authorship("Me", "0000-0002-0702-6276", "A1", true),
+                authorship("Co One", null, "A2", false),
+                authorship("Co Two", null, "A3", false)));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned2");
+        owned.setSource("OPENALEX");
+        owned.setAuthorIds(new java.util.ArrayList<>());
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/multi")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned2")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any())).thenReturn("sauth_self");
+        when(authorResolver.resolveOrMint(eq("Co One"), any(), eq("A2"), any(), any())).thenReturn("sauth_co1");
+        when(authorResolver.resolveOrMint(eq("Co Two"), any(), eq("A3"), any(), any())).thenReturn("sauth_co2");
+
+        service.rebuildCanonicalFacts();
+
+        verify(scholardexPublicationFactRepository).save(argThat(p ->
+                "spub_owned2".equals(p.getId())
+                        && p.getAuthorIds().equals(List.of("sauth_self", "sauth_co1", "sauth_co2"))));
+        // an edge per author
+        verify(edgeWriterService).upsertAuthorshipEdge(argThat(cmd -> "sauth_co1".equals(cmd.rightId())), eq(Boolean.FALSE));
+        verify(edgeWriterService).upsertAuthorshipEdge(argThat(cmd -> "sauth_co2".equals(cmd.rightId())), eq(Boolean.FALSE));
+    }
+
+    @Test
+    void foreignScopusPubKeepsItsAuthorsAndOnlyAddsCorresponding() {
+        // A foreign (Scopus) pub must NOT have its author list replaced by OpenAlex — only the corresponding
+        // author is added (enrichment), co-authors are not clobbered.
+        OpenAlexPublicationFact source = source("W9", "10.1/foreign", "Scopus paper", "sauth_self");
+        source.setAuthorships(List.of(
+                authorship("Me", "0000-0002-0702-6276", "A1", true),
+                authorship("Other", null, "A2", false)));
+        ScholardexPublicationFact scopus = new ScholardexPublicationFact();
+        scopus.setId("spub_scopus2");
+        scopus.setSource("SCOPUS");
+        scopus.setAuthorIds(new java.util.ArrayList<>(List.of("sauth_a", "sauth_b")));
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/foreign")).thenReturn(List.of(scopus));
+        when(scholardexPublicationFactRepository.findById("spub_scopus2")).thenReturn(java.util.Optional.of(scopus));
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any())).thenReturn("sauth_self");
+
+        service.rebuildCanonicalFacts();
+
+        // existing Scopus authors kept; only the corresponding researcher added; the non-corresponding "Other" not resolved
+        verify(scholardexPublicationFactRepository).save(argThat(p ->
+                "spub_scopus2".equals(p.getId())
+                        && p.getAuthorIds().equals(List.of("sauth_a", "sauth_b", "sauth_self"))));
+        verify(authorResolver, org.mockito.Mockito.never()).resolveOrMint(eq("Other"), any(), any(), any(), any());
+    }
+
     private OpenAlexPublicationFact source(String workId, String doiNormalized, String title, String researcherAuthorId) {
         OpenAlexPublicationFact fact = new OpenAlexPublicationFact();
         fact.setSourceRecordId(workId);
