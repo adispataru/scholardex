@@ -307,6 +307,7 @@ function _renderPage() {
             selectablePagePubs.forEach(pub => _selectedPendingIds.delete(pub.id));
         }
         _renderPage();
+        _refreshReviewSummary();
     });
 
     // Pagination
@@ -399,6 +400,7 @@ function _appendRow(tbody, pub) {
             _selectedPendingIds.delete(pub.id);
         }
         _renderPage();
+        _refreshReviewSummary();
     });
 
     tbody.appendChild(tr);
@@ -932,6 +934,21 @@ function _wireReviewSummaryEvents() {
         _selectedPendingIds.clear();
         _renderAll();
     });
+}
+
+/**
+ * Re-render just the review-summary/triage bar in place (so the bulk-action bar appears/updates as soon as the
+ * selection changes) without a full _renderAll. The filter + bulk buttons use direct listeners, so re-wire them.
+ */
+function _refreshReviewSummary() {
+    const existing = _mount.querySelector('.app-ws-pubs__triage-bar');
+    if (!existing) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = _buildReviewSummary();
+    const next = tmp.firstElementChild;
+    if (!next) return;
+    existing.replaceWith(next);
+    _wireReviewSummaryEvents();
 }
 
 function _buildReviewSummary() {
