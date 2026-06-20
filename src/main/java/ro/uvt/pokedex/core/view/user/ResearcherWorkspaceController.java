@@ -266,27 +266,18 @@ public class ResearcherWorkspaceController {
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        try {
-            var decision = publicationAuthorshipDecisionService.upsertDecision(
-                    userOpt.get().getEmail(),
-                    id,
-                    ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED,
-                    request != null ? request.reason() : null
-            );
-            return ResponseEntity.ok(new AuthorshipDecisionResponse(
-                    id,
-                    PublicationAuthorshipReviewState.Status.CONFIRMED,
-                    decision.getReason(),
-                    decision.getUpdatedAt()
-            ));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthorshipDecisionResponse(
-                    id,
-                    PublicationAuthorshipReviewState.Status.PENDING,
-                    ex.getMessage(),
-                    null
-            ));
-        }
+        var decision = publicationAuthorshipDecisionService.upsertDecision(
+                userOpt.get().getEmail(),
+                id,
+                ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED,
+                request != null ? request.reason() : null
+        );
+        return ResponseEntity.ok(new AuthorshipDecisionResponse(
+                id,
+                PublicationAuthorshipReviewState.Status.CONFIRMED,
+                decision.getReason(),
+                decision.getUpdatedAt()
+        ));
     }
 
     @PostMapping("/publications/{id}/authorship/reject")
@@ -299,27 +290,18 @@ public class ResearcherWorkspaceController {
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        try {
-            var decision = publicationAuthorshipDecisionService.upsertDecision(
-                    userOpt.get().getEmail(),
-                    id,
-                    ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.REJECTED,
-                    request != null ? request.reason() : null
-            );
-            return ResponseEntity.ok(new AuthorshipDecisionResponse(
-                    id,
-                    PublicationAuthorshipReviewState.Status.REJECTED,
-                    decision.getReason(),
-                    decision.getUpdatedAt()
-            ));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthorshipDecisionResponse(
-                    id,
-                    PublicationAuthorshipReviewState.Status.PENDING,
-                    ex.getMessage(),
-                    null
-            ));
-        }
+        var decision = publicationAuthorshipDecisionService.upsertDecision(
+                userOpt.get().getEmail(),
+                id,
+                ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.REJECTED,
+                request != null ? request.reason() : null
+        );
+        return ResponseEntity.ok(new AuthorshipDecisionResponse(
+                id,
+                PublicationAuthorshipReviewState.Status.REJECTED,
+                decision.getReason(),
+                decision.getUpdatedAt()
+        ));
     }
 
     @DeleteMapping("/publications/{id}/authorship")
@@ -1037,6 +1019,18 @@ public class ResearcherWorkspaceController {
             String id,
             Map<String, String> fields,
             Map<String, String> referenceFields) {}
+
+    /**
+     * H70: the authorship-decision endpoints hit the affiliation-confirmation gate before onboarding is done.
+     * Rather than a 500, return a structured 409 the claim UI uses to route the researcher into the wizard.
+     */
+    @ExceptionHandler(ro.uvt.pokedex.core.service.application.AffiliationConfirmationRequiredException.class)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> handleAffiliationConfirmationRequired(
+            ro.uvt.pokedex.core.service.application.AffiliationConfirmationRequiredException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("requiresOnboarding", true, "message", ex.getMessage()));
+    }
 
     record WorkspaceProfileViewModel(
             User.ResearcherProfile researcher,

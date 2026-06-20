@@ -174,14 +174,15 @@ class ResearcherWorkspaceControllerContractTest {
                 eq(List.of("p1")),
                 eq(PublicationAuthorshipDecision.Status.REJECTED),
                 eq("not mine")))
-                .thenThrow(new IllegalStateException("Confirm your current and past affiliations in the profile tab before reviewing publication authorship."));
+                .thenThrow(new ro.uvt.pokedex.core.service.application.AffiliationConfirmationRequiredException(
+                        "Confirm your affiliations in the onboarding setup before reviewing publications."));
 
         mockMvc.perform(post("/user/workspace/publications/authorship/bulk")
                         .with(authenticatedUser("u@uvt.ro"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"publicationIds\":[\"p1\"],\"action\":\"REJECT\",\"reason\":\"not mine\"}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.failures[0].message").value("Confirm your current and past affiliations in the profile tab before reviewing publication authorship."));
+                .andExpect(jsonPath("$.requiresOnboarding").value(true));
     }
 
     @Test
@@ -231,15 +232,15 @@ class ResearcherWorkspaceControllerContractTest {
     void confirmAuthorshipEndpointReturnsConflictWhenAffiliationScopeIsUnconfirmed() throws Exception {
         when(publicationAuthorshipDecisionService.upsertDecision(
                 eq("u@uvt.ro"), eq("p1"), eq(PublicationAuthorshipDecision.Status.CONFIRMED), eq("mine")))
-                .thenThrow(new IllegalStateException("Confirm your current and past affiliations in the profile tab before reviewing publication authorship."));
+                .thenThrow(new ro.uvt.pokedex.core.service.application.AffiliationConfirmationRequiredException(
+                        "Confirm your affiliations in the onboarding setup before reviewing publications."));
 
         mockMvc.perform(post("/user/workspace/publications/p1/authorship/confirm")
                         .with(authenticatedUser("u@uvt.ro"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"mine\"}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.reason").value("Confirm your current and past affiliations in the profile tab before reviewing publication authorship."));
+                .andExpect(jsonPath("$.requiresOnboarding").value(true));
     }
 
     @Test

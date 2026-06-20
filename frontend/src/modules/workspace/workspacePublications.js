@@ -649,6 +649,22 @@ function _savePub(pubId, detailTr) {
         });
 }
 
+/**
+ * H70: if a decision hits the affiliation-confirmation gate (409 requiresOnboarding), route the researcher
+ * into the onboarding wizard instead of showing a generic error. Returns true when it handled the response.
+ */
+async function _routedToOnboarding(res) {
+    if (res.status !== 409) return false;
+    let body = null;
+    try { body = await res.clone().json(); } catch (_) { body = null; }
+    if (body?.requiresOnboarding) {
+        window.appToast?.show({ message: 'Finish your onboarding setup to review publications.', tone: 'info' });
+        window.appWorkspaceOnboarding?.open();
+        return true;
+    }
+    return false;
+}
+
 function _saveAuthorshipDecision(pubId, action, detailTr) {
     const feedback = detailTr.querySelector('.app-ws-pubs__authorship-feedback');
     const endpoint = action === 'confirm'
@@ -661,10 +677,14 @@ function _saveAuthorshipDecision(pubId, action, detailTr) {
         body: JSON.stringify({ reason: null }),
     })
         .then(async res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                if (await _routedToOnboarding(res)) return null;
+                throw new Error(`HTTP ${res.status}`);
+            }
             return res.json();
         })
         .then(state => {
+            if (!state) return;   // routed to onboarding
             _pendingRejectId = null;
             _setReviewState(pubId, state);
             window.appToast?.show({ message: action === 'confirm' ? 'Authorship confirmed.' : 'Authorship rejected.', tone: 'success' });
@@ -731,14 +751,20 @@ function _runBulkAuthorshipDecision(action) {
         }),
     })
         .then(async res => {
-            const body = await res.json();
+            const body = await res.json().catch(() => null);
             if (!res.ok) {
+                if (body?.requiresOnboarding) {
+                    window.appToast?.show({ message: 'Finish your onboarding setup to review publications.', tone: 'info' });
+                    window.appWorkspaceOnboarding?.open();
+                    return null;
+                }
                 const message = body?.failures?.[0]?.message ?? `HTTP ${res.status}`;
                 throw new Error(message);
             }
             return body;
         })
         .then(body => {
+            if (!body) return;   // routed to onboarding
             const updatedStates = Array.isArray(body.updatedStates) ? body.updatedStates : [];
             const failures = Array.isArray(body.failures) ? body.failures : [];
             const succeededIds = Array.isArray(body.succeededIds) ? body.succeededIds : [];

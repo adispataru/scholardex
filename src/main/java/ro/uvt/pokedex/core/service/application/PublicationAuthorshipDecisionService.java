@@ -80,7 +80,7 @@ public class PublicationAuthorshipDecisionService {
         User user = userRepository.findById(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
         if (requiresAffiliationScopeConfirmation(user)) {
-            throw new IllegalStateException("Confirm your current and past affiliations in the profile tab before reviewing publication authorship.");
+            throw new AffiliationConfirmationRequiredException("Confirm your affiliations in the onboarding setup before reviewing publications.");
         }
         ScholardexPublicationFact publication = publicationFactRepository.findById(publicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Publication not found: " + publicationId));
@@ -119,7 +119,7 @@ public class PublicationAuthorshipDecisionService {
         User user = userRepository.findById(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
         if (requiresAffiliationScopeConfirmation(user)) {
-            throw new IllegalStateException("Confirm your current and past affiliations in the profile tab before reviewing publication authorship.");
+            throw new AffiliationConfirmationRequiredException("Confirm your affiliations in the onboarding setup before reviewing publications.");
         }
 
         Map<String, PublicationAuthorshipDecision> succeeded = new LinkedHashMap<>();
@@ -136,21 +136,13 @@ public class PublicationAuthorshipDecisionService {
             return new BulkDecisionResult(succeeded, failed);
         }
 
-        List<PublicationAuthorshipDecision> existingDecisions =
-                decisionRepository.findByUserEmailAndPublicationIdIn(userEmail, normalizedPublicationIds);
-        Map<String, PublicationAuthorshipDecision> decisionsByPublicationId = new LinkedHashMap<>();
-        existingDecisions.forEach(decision -> decisionsByPublicationId.put(decision.getPublicationId(), decision));
-
+        // Idempotent: a bulk decision is the user's explicit choice, so re-deciding an already-decided
+        // publication just upserts (no "only pending can be reviewed in bulk" rejection).
         for (String publicationId : normalizedPublicationIds) {
-            PublicationAuthorshipDecision existing = decisionsByPublicationId.get(publicationId);
-            if (existing != null && existing.getStatus() != null) {
-                failed.add(new DecisionFailure(publicationId, "Only pending publications can be reviewed in bulk."));
-                continue;
-            }
             try {
                 PublicationAuthorshipDecision saved = upsertDecisionInternal(userEmail, publicationId, status, reason);
                 succeeded.put(publicationId, saved);
-            } catch (IllegalArgumentException | IllegalStateException ex) {
+            } catch (IllegalArgumentException ex) {
                 failed.add(new DecisionFailure(publicationId, ex.getMessage()));
             }
         }

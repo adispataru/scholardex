@@ -186,8 +186,8 @@ class PublicationAuthorshipDecisionServiceTest {
                 "spub_1",
                 PublicationAuthorshipDecision.Status.CONFIRMED,
                 null
-        )).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Confirm your current and past affiliations");
+        )).isInstanceOf(AffiliationConfirmationRequiredException.class)
+                .hasMessageContaining("Confirm your affiliations");
 
         verify(publicationFactRepository, never()).findById(any());
         verify(decisionRepository, never()).save(any());
@@ -223,16 +223,19 @@ class PublicationAuthorshipDecisionServiceTest {
     }
 
     @Test
-    void bulkDecisionProcessesPendingItemsBestEffort() {
+    void bulkDecisionReDecidesAlreadyDecidedItemsIdempotently() {
+        // H70: a bulk decision is the user's explicit choice — an already-rejected pub is re-confirmed, not failed.
         User user = user("user@example.com", "researcher-1", "sauth_primary");
-        ScholardexPublicationFact pending = publication("spub_1", "Paper title", "2-s2.0-1", "10.1000/test", List.of("sauth_primary"));
+        ScholardexPublicationFact p1 = publication("spub_1", "Paper one", "2-s2.0-1", "10.1000/1", List.of("sauth_primary"));
+        ScholardexPublicationFact p2 = publication("spub_2", "Paper two", "2-s2.0-2", "10.1000/2", List.of("sauth_primary"));
 
         when(userRepository.findById("user@example.com")).thenReturn(Optional.of(user));
-        when(decisionRepository.findByUserEmailAndPublicationIdIn("user@example.com", java.util.Set.of("spub_1", "spub_2")))
-                .thenReturn(List.of(existingDecision("user@example.com", "spub_2", PublicationAuthorshipDecision.Status.REJECTED)));
-        when(publicationFactRepository.findById("spub_1")).thenReturn(Optional.of(pending));
+        when(publicationFactRepository.findById("spub_1")).thenReturn(Optional.of(p1));
+        when(publicationFactRepository.findById("spub_2")).thenReturn(Optional.of(p2));
         when(decisionRepository.findByUserEmailAndPublicationId("user@example.com", "spub_1")).thenReturn(Optional.empty());
-        when(authorshipFactRepository.findByPublicationId("spub_1")).thenReturn(List.of());
+        when(decisionRepository.findByUserEmailAndPublicationId("user@example.com", "spub_2"))
+                .thenReturn(Optional.of(existingDecision("user@example.com", "spub_2", PublicationAuthorshipDecision.Status.REJECTED)));
+        when(authorshipFactRepository.findByPublicationId(any())).thenReturn(List.of());
         when(decisionRepository.save(any(PublicationAuthorshipDecision.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PublicationAuthorshipDecisionService.BulkDecisionResult result = service.upsertBulkDecisions(
@@ -242,9 +245,10 @@ class PublicationAuthorshipDecisionServiceTest {
                 "mine"
         );
 
-        assertThat(result.succeededByPublicationId()).containsOnlyKeys("spub_1");
-        assertThat(result.succeededByPublicationId().get("spub_1").getStatus()).isEqualTo(PublicationAuthorshipDecision.Status.CONFIRMED);
-        assertThat(result.failures()).containsExactly(new PublicationAuthorshipDecisionService.DecisionFailure("spub_2", "Only pending publications can be reviewed in bulk."));
+        assertThat(result.succeededByPublicationId()).containsOnlyKeys("spub_1", "spub_2");
+        assertThat(result.succeededByPublicationId().get("spub_2").getStatus())
+                .isEqualTo(PublicationAuthorshipDecision.Status.CONFIRMED);
+        assertThat(result.failures()).isEmpty();
         verify(userIndicatorResultService).invalidateLatestResults("user@example.com");
         verify(userIndividualReportRunService).invalidateLatestRuns("user@example.com");
     }
@@ -262,10 +266,10 @@ class PublicationAuthorshipDecisionServiceTest {
                 List.of("spub_1"),
                 PublicationAuthorshipDecision.Status.CONFIRMED,
                 null
-        )).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Confirm your current and past affiliations");
+        )).isInstanceOf(AffiliationConfirmationRequiredException.class)
+                .hasMessageContaining("Confirm your affiliations");
 
-        verify(decisionRepository, never()).findByUserEmailAndPublicationIdIn(any(), any());
+        verify(decisionRepository, never()).save(any());
     }
 
     private PublicationAuthorshipDecision existingDecision(String userEmail,
