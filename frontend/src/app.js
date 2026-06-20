@@ -18,6 +18,7 @@ import './styles/error-pages.css';
 import './styles/workspace-publications.css';
 import './styles/workspace-activities.css';
 import './styles/workspace-profile.css';
+import './styles/workspace-onboarding.css';
 import './styles/shared-shortcuts.css';
 import './styles/shared-confirm-dialog.css';
 import './styles/shared-toasts.css';
@@ -63,6 +64,7 @@ import { initWorkspaceNotifications } from './modules/workspace/workspaceNotific
 import { initWorkspacePublications } from './modules/workspace/workspacePublications';
 import { initWorkspaceActivities } from './modules/workspace/workspaceActivities';
 import { initWorkspaceProfile } from './modules/workspace/workspaceProfile';
+import { initWorkspaceOnboarding } from './modules/workspace/workspaceOnboarding';
 
 window.Chart = Chart;
 window.appChartTheme = {
@@ -91,6 +93,7 @@ initWorkspaceNotifications();
 initWorkspacePublications();
 initWorkspaceActivities();
 initWorkspaceProfile();
+initWorkspaceOnboarding();
 initAdminUsers();
 window.initAdminBulkSelect = initAdminBulkSelect;
 window.initAdminColumnToggle = initAdminColumnToggle;

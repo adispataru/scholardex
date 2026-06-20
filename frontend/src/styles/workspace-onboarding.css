@@ -1,0 +1,198 @@
+/* workspace-onboarding.css — H70 onboarding wizard modal */
+
+.app-onb__steps {
+  display: flex;
+  list-style: none;
+  margin: 0 0 0.5rem 0;
+  padding: 0;
+  gap: 0.25rem;
+}
+
+.app-onb__step {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+  min-width: 0;
+}
+
+.app-onb__step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--app-color-surface-muted, #eef0f3);
+  color: var(--app-color-text-muted, #6b7280);
+  border: 1px solid var(--app-color-border, #d6dae0);
+}
+
+.app-onb__step-label {
+  font-size: 0.72rem;
+  color: var(--app-color-text-muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.app-onb__step--active .app-onb__step-dot {
+  background: var(--app-color-primary, #2563eb);
+  color: #fff;
+  border-color: var(--app-color-primary, #2563eb);
+}
+
+.app-onb__step--active .app-onb__step-label {
+  color: var(--app-color-text, #1f2937);
+  font-weight: 600;
+}
+
+.app-onb__step--done .app-onb__step-dot {
+  background: var(--app-color-success, #16a34a);
+  color: #fff;
+  border-color: var(--app-color-success, #16a34a);
+}
+
+.app-onb__progress {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--app-color-surface-muted, #eef0f3);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.app-onb__progress-fill {
+  height: 100%;
+  background: var(--app-color-primary, #2563eb);
+  transition: width 0.2s ease;
+}
+
+.app-onb__panel {
+  padding: 0.25rem 0 0.5rem 0;
+}
+
+.app-onb__panel-title {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.app-onb__panel-help {
+  margin: 0 0 0.9rem 0;
+  font-size: 0.82rem;
+  color: var(--app-color-text-muted, #6b7280);
+}
+
+.app-onb__field {
+  margin-bottom: 0.9rem;
+}
+
+.app-onb__label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.app-onb__hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--app-color-text-muted, #6b7280);
+}
+
+.app-onb__id-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.app-onb__id-row .form-control {
+  flex: 1 1 auto;
+}
+
+.app-onb__id-remove {
+  flex: 0 0 auto;
+  line-height: 1;
+  padding: 0 0.55rem;
+}
+
+.app-onb__add {
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.app-onb__aff-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--app-color-border, #e5e7eb);
+}
+
+.app-onb__aff-row:last-child {
+  border-bottom: none;
+}
+
+.app-onb__aff-name {
+  font-size: 0.84rem;
+  min-width: 0;
+}
+
+.app-onb__aff-loc {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--app-color-text-muted, #6b7280);
+}
+
+.app-onb__aff-choice {
+  display: flex;
+  gap: 0.7rem;
+  flex: 0 0 auto;
+}
+
+.app-onb__aff-opt {
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.app-onb__panel--soon {
+  text-align: center;
+  padding: 1.5rem 0.5rem;
+}
+
+.app-onb__soon-icon {
+  font-size: 2rem;
+  color: var(--app-color-text-muted, #9ca3af);
+  margin-bottom: 0.6rem;
+}
+
+.app-onb__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--app-color-border, #e5e7eb);
+}
+
+.app-onb__footer-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.app-onb__dismiss {
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted, #6b7280);
+}

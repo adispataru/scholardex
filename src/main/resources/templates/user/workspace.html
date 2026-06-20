@@ -416,6 +416,25 @@
     </div>
 </div>
 
+<!-- H70 onboarding wizard (rendered by workspaceOnboarding.js) -->
+<div class="modal fade app-modal app-modal-shell" id="ws-onboarding-modal" tabindex="-1" role="dialog"
+     aria-hidden="true" aria-labelledby="ws-onboarding-title" data-app-modal-shell>
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ws-onboarding-title">Set up your researcher profile</h5>
+                <button class="close" type="button" data-dismiss="modal" data-modal-close aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div data-onb-toast class="alert alert-warning py-2 px-3 mb-2" hidden></div>
+                <div data-onboarding-body></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script th:inline="javascript">
     // Seed global data BEFORE app.js runs so modules that read these at
     // initialisation time (workspaceOverview.js chart init) find the values ready.

@@ -79,6 +79,8 @@ class ResearcherWorkspaceControllerContractTest {
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     @MockitoBean
     private ScholardexProjectionReadService scholardexProjectionReadService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService researcherOnboardingService;
 
     @Test
     void workspaceTemplateUsesSharedSearchInputFragment() throws Exception {

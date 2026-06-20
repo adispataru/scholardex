@@ -67,6 +67,7 @@ public class ResearcherWorkspaceController {
     private final PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
+    private final ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService researcherOnboardingService;
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
@@ -429,7 +430,8 @@ public class ResearcherWorkspaceController {
                     profile, completeness,
                     tasksVm.tasks(), tasksVm.citationsTasks(),
                     observedAffiliations,
-                    requiresAffiliationConfirmation(profile)
+                    requiresAffiliationConfirmation(profile),
+                    researcherOnboardingService.evaluate(profile)   // H70: drives the onboarding wizard
             ));
         }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
@@ -962,7 +964,8 @@ public class ResearcherWorkspaceController {
             List<ScopusPublicationUpdate> pubTasks,
             List<ScopusCitationsUpdate> citeTasks,
             List<ScholardexAffiliationView> observedAffiliations,
-            boolean affiliationConfirmationRequired) {}
+            boolean affiliationConfirmationRequired,
+            ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService.OnboardingStatus onboarding) {}
 
     record ProfileSaveRequest(
             String firstName,
