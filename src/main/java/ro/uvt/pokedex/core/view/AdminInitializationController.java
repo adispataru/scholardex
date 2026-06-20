@@ -425,6 +425,17 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    @PostMapping("/author/reconcile/affiliation")
+    public String runAuthorOverSplitReconcile(RedirectAttributes redirectAttributes) {
+        var result = authorReconcileService.reconcileByNameAndAffiliation("admin-manual", "admin-manual");
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Author reconcile (name+affiliation over-split pass) complete. mergeGroups=" + result.getProcessedCount()
+                        + ", authorsMerged=" + result.getImportedCount()
+                        + ", reportedCandidates=" + result.getSkippedCount()
+                        + " (dry-run unless core.author-reconcile.affiliation-apply=true).");
+        return "redirect:/admin/initialization";
+    }
+
     @PostMapping("/wos/importMjl")
     public String runWosImportMjl(
             @RequestParam(name = "dir", defaultValue = "data/wos/mjl") String dir,

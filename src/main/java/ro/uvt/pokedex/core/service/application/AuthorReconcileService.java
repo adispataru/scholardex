@@ -53,6 +53,7 @@ public class AuthorReconcileService {
     static final String REASON_SHARED_ORCID_NAME_MISMATCH = "AUTHOR_SHARED_ORCID_NAME_MISMATCH";
     static final String REASON_FUZZY_MERGE_CANDIDATE = "AUTHOR_FUZZY_MERGE_CANDIDATE";
     static final String REASON_FUZZY_MERGE_REVIEW = "AUTHOR_FUZZY_MERGE_REVIEW";
+    static final String REASON_OVERSPLIT_MERGE_CANDIDATE = "AUTHOR_OVERSPLIT_MERGE_CANDIDATE";
     private static final String STATUS_OPEN = "OPEN";
 
     private final ScholardexAuthorFactRepository authorRepository;
@@ -85,6 +86,14 @@ public class AuthorReconcileService {
     /** Same-name clusters larger than this are not auto-disambiguated (bounds the O(k²) cost) — reviewed instead. */
     @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.max-cluster-size:50}")
     private int maxClusterSize;
+
+    /**
+     * H72 slice 2 over-split pass: when {@code true} merge same-name AU-IDs sharing a verified affiliation + ≥1
+     * co-author; when {@code false} (default) dry-run — emit {@code AUTHOR_OVERSPLIT_MERGE_CANDIDATE} conflicts for
+     * inspection before auto-merge is enabled.
+     */
+    @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.affiliation-apply:false}")
+    private boolean affiliationApply;
 
     /** ORCID pass: merge canonical authors that share an ORCID (name-compatible), quarantine the rest. */
     public ImportProcessingResult reconcileByOrcid(String batchId, String correlationId) {
@@ -177,6 +186,100 @@ public class AuthorReconcileService {
                 fuzzyApply, coauthorStrongThreshold, byName.size(), strongGroups, mediumPairs, oversized,
                 result.getImportedCount(), result.getSkippedCount());
         return result;
+    }
+
+    /**
+     * H72 slice 2 — over-split merge pass. Scopus over-splits one researcher into an old + new AU-ID; after the
+     * verified-only affiliation cut (slice 1) those ids reliably share a real institution. Cluster by normalized
+     * name, then merge subgroups that share BOTH an affiliation AND ≥1 co-author.
+     *
+     * <p>Two deliberate departures from the fuzzy pass:
+     * <ul>
+     *   <li><b>No same-publication hard block.</b> Over-split ids co-appear on a paper (the same person listed
+     *       twice — verified empirically: Megan/Cotăescu), which the hard block would misread as "different people".</li>
+     *   <li><b>Affiliation + ≥1 co-author is the signal.</b> The ≥1 shared-co-author requirement excludes the
+     *       "Chen, Xi ×7 at one institution, zero collaboration = different people" trap that name+affiliation alone
+     *       falls into.</li>
+     * </ul>
+     * Dry-run unless {@code core.author-reconcile.affiliation-apply=true}: candidates are reported as
+     * {@code AUTHOR_OVERSPLIT_MERGE_CANDIDATE} conflicts.
+     */
+    public ImportProcessingResult reconcileByNameAndAffiliation(String batchId, String correlationId) {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        Instant now = Instant.now();
+
+        Map<String, List<ScholardexAuthorFact>> byName = new TreeMap<>();
+        for (ScholardexAuthorFact author : authorRepository.findAll()) {
+            String key = nameKey(author.getDisplayName());
+            if (!key.isEmpty()) {
+                byName.computeIfAbsent(key, k -> new ArrayList<>()).add(author);
+            }
+        }
+
+        int mergeGroups = 0;
+        for (List<ScholardexAuthorFact> cluster : byName.values()) {
+            List<ScholardexAuthorFact> members = dedupById(cluster);
+            if (members.size() < 2 || members.size() > maxClusterSize) {
+                continue;
+            }
+            for (List<ScholardexAuthorFact> group : overSplitGroups(members)) {
+                result.markProcessed();
+                mergeGroups++;
+                if (affiliationApply) {
+                    mergeCluster(group, now, result);
+                } else {
+                    quarantine(group, REASON_OVERSPLIT_MERGE_CANDIDATE, batchId, correlationId, now, result);
+                }
+            }
+        }
+        log.info("Author reconcile (name+affiliation over-split pass, apply={}) complete: nameClusters={} "
+                        + "mergeGroups={} merged~={} candidates={}",
+                affiliationApply, byName.size(), mergeGroups, result.getImportedCount(), result.getSkippedCount());
+        return result;
+    }
+
+    /** Subgroups of a same-name cluster whose members pairwise share ≥1 affiliation AND ≥1 co-author. */
+    private List<List<ScholardexAuthorFact>> overSplitGroups(List<ScholardexAuthorFact> members) {
+        int n = members.size();
+        List<java.util.Set<String>> affSets = new ArrayList<>(n);
+        List<java.util.Set<String>> coauthorSets = new ArrayList<>(n);
+        java.util.Set<String> memberIds = new java.util.HashSet<>();
+        members.forEach(m -> memberIds.add(m.getId()));
+        for (ScholardexAuthorFact m : members) {
+            affSets.add(new java.util.HashSet<>(safe(m.getAffiliationIds())));
+            java.util.Set<String> coauthors = new java.util.HashSet<>();
+            for (ScholardexPublicationFact pub : publicationRepository.findByAuthorIdsContains(m.getId())) {
+                for (String authorId : safe(pub.getAuthorIds())) {
+                    if (!memberIds.contains(authorId)) {
+                        coauthors.add(authorId);
+                    }
+                }
+            }
+            coauthorSets.add(coauthors);
+        }
+        int[] parent = new int[n];
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (intersects(affSets.get(i), affSets.get(j))
+                        && intersectionSize(coauthorSets.get(i), coauthorSets.get(j)) >= 1) {
+                    union(parent, i, j);
+                }
+            }
+        }
+        Map<Integer, List<ScholardexAuthorFact>> components = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            components.computeIfAbsent(find(parent, i), k -> new ArrayList<>()).add(members.get(i));
+        }
+        List<List<ScholardexAuthorFact>> groups = new ArrayList<>();
+        for (List<ScholardexAuthorFact> g : components.values()) {
+            if (g.size() >= 2) {
+                groups.add(g);
+            }
+        }
+        return groups;
     }
 
     /**

@@ -43,9 +43,15 @@ public class ForumReconcileService {
         // reflected in reporting. ORCID pass merges (idempotent); the fuzzy pass is dry-run unless flagged on.
         ImportProcessingResult authorOrcid = authorReconcileService.reconcileByOrcid(RECONCILE_BATCH, "reconcile-" + reason);
         ImportProcessingResult authorFuzzy = authorReconcileService.reconcileByName(RECONCILE_BATCH, "reconcile-" + reason);
-        log.info("Author reconcile within forum reconcile: orcidMerged={} orcidQuarantined={} fuzzyMerged={} fuzzyReported={}",
+        // H72 slice 2: over-split merge (same name + verified affiliation + ≥1 co-author). Dry-run unless
+        // core.author-reconcile.affiliation-apply=true, so it is a safe candidate-emitter until enabled.
+        ImportProcessingResult authorOverSplit =
+                authorReconcileService.reconcileByNameAndAffiliation(RECONCILE_BATCH, "reconcile-" + reason);
+        log.info("Author reconcile within forum reconcile: orcidMerged={} orcidQuarantined={} fuzzyMerged={} "
+                        + "fuzzyReported={} overSplitMerged={} overSplitCandidates={}",
                 authorOrcid.getImportedCount(), authorOrcid.getSkippedCount(),
-                authorFuzzy.getImportedCount(), authorFuzzy.getSkippedCount());
+                authorFuzzy.getImportedCount(), authorFuzzy.getSkippedCount(),
+                authorOverSplit.getImportedCount(), authorOverSplit.getSkippedCount());
         ImportProcessingResult projection = projectionBuilderService.rebuildViews();
 
         long durationNanos = System.nanoTime() - startedAtNanos;

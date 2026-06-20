@@ -225,6 +225,88 @@ class AuthorReconcileServiceTest {
         verify(identityConflictRepository, never()).save(any());
     }
 
+    // ── H72 slice 2: over-split (name + verified affiliation + ≥1 co-author) ──────────────────────────────
+
+    @Test
+    void overSplitMergesSameNameSharedAffiliationAndOneCoauthorEvenWhenTheyCoAppear() {
+        // The Megan/Cotăescu case: same person, two AU-IDs, share UVT + co-authors, and CO-APPEAR on a paper
+        // (Scopus listed them twice). The fuzzy pass hard-blocks this; the over-split pass must still merge.
+        ScholardexAuthorFact a = sameName("sauth_a");
+        a.setScopusAuthorIds(new ArrayList<>(List.of("111")));
+        a.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        ScholardexAuthorFact b = sameName("sauth_b");
+        b.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        setOverSplit(true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        ScholardexPublicationFact shared = pub("spub_shared", "sauth_a", "sauth_b", "c1");
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(shared));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(shared));
+
+        service.reconcileByNameAndAffiliation("batch", "corr");
+
+        verify(authorRepository).deleteById("sauth_b"); // 'a' wins (has a scopus id); merged despite co-appearance
+    }
+
+    @Test
+    void overSplitReportsCandidateInDryRun() {
+        ScholardexAuthorFact a = sameName("sauth_a");
+        a.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        ScholardexAuthorFact b = sameName("sauth_b");
+        b.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        setOverSplit(false);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "c1")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "c1")));
+
+        service.reconcileByNameAndAffiliation("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository).save(argThat(c -> "AUTHOR_OVERSPLIT_MERGE_CANDIDATE".equals(c.getReasonCode())
+                && c.getCandidateCanonicalIds().contains("sauth_a") && c.getCandidateCanonicalIds().contains("sauth_b")));
+    }
+
+    @Test
+    void overSplitExcludesSharedAffiliationWithZeroSharedCoauthors() {
+        // The "Chen, Xi ×7 at one institution" trap: same name + same affiliation but ZERO collaboration => different
+        // people => not merged, not even reported.
+        ScholardexAuthorFact a = sameName("sauth_a");
+        a.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        ScholardexAuthorFact b = sameName("sauth_b");
+        b.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        setOverSplit(true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "x1")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "y1")));
+
+        service.reconcileByNameAndAffiliation("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository, never()).save(any());
+    }
+
+    @Test
+    void overSplitRequiresASharedAffiliation() {
+        // Same name + a shared co-author but DIFFERENT affiliations => not the over-split signature => not merged.
+        ScholardexAuthorFact a = sameName("sauth_a");
+        a.setAffiliationIds(new ArrayList<>(List.of("saff_x")));
+        ScholardexAuthorFact b = sameName("sauth_b");
+        b.setAffiliationIds(new ArrayList<>(List.of("saff_y")));
+        setOverSplit(true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", "sauth_a", "c1")));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", "sauth_b", "c1")));
+
+        service.reconcileByNameAndAffiliation("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository, never()).save(any());
+    }
+
+    private void setOverSplit(boolean apply) {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "affiliationApply", apply);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "maxClusterSize", 50);
+    }
+
     private void setFuzzy(boolean apply, int threshold) {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", apply);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "coauthorStrongThreshold", threshold);
