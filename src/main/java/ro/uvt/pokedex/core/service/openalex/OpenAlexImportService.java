@@ -82,6 +82,20 @@ public class OpenAlexImportService {
                 ref.setOrcid(OrcidSupport.normalize(authorship.getAuthor().getOrcid()));
                 ref.setOpenAlexAuthorId(stripPrefix(authorship.getAuthor().getId(), OPENALEX_ID_PREFIX));
                 ref.setCorresponding(Boolean.TRUE.equals(authorship.getIs_corresponding()));
+                // H71: capture per-authorship affiliation — the reconciler's cross-source dedup signal.
+                if (authorship.getInstitutions() != null) {
+                    authorship.getInstitutions().stream()
+                            .filter(i -> i != null && i.getDisplay_name() != null && !i.getDisplay_name().isBlank())
+                            .forEach(i -> ref.getInstitutionNames().add(i.getDisplay_name().trim()));
+                }
+                if (authorship.getRaw_affiliation_strings() != null) {
+                    authorship.getRaw_affiliation_strings().stream()
+                            .filter(s -> s != null && !s.isBlank())
+                            .forEach(s -> ref.getRawAffiliations().add(s.trim()));
+                }
+                if (authorship.getCountries() != null && !authorship.getCountries().isEmpty()) {
+                    ref.setCountryCode(authorship.getCountries().getFirst());
+                }
                 authorships.add(ref);
             }
         }

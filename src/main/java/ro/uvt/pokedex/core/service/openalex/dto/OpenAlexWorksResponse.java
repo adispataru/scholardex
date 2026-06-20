@@ -50,6 +50,9 @@ public class OpenAlexWorksResponse {
     public static class Authorship {
         private Author author;
         private Boolean is_corresponding;
+        private List<Institution> institutions;       // OpenAlex-resolved orgs (display_name + ROR)
+        private List<String> raw_affiliation_strings;  // verbatim affiliation lines as printed on the paper
+        private List<String> countries;                // ISO-3166 alpha-2 codes
     }
 
     @Data
@@ -58,6 +61,15 @@ public class OpenAlexWorksResponse {
         private String id;
         private String display_name;
         private String orcid;              // https://orcid.org/...
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Institution {
+        private String id;                 // https://openalex.org/I...
+        private String display_name;
+        private String ror;                // https://ror.org/...
+        private String country_code;       // ISO-3166 alpha-2
     }
 
     @Data

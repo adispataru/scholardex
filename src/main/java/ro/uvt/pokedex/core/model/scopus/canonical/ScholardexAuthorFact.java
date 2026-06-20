@@ -30,6 +30,12 @@ public class ScholardexAuthorFact {
     private String nameNormalized;
     private List<String> affiliationIds = new ArrayList<>();
     private List<String> pendingAffiliationSourceIds = new ArrayList<>();
+    /**
+     * H71: OpenAlex institution display names observed for this author across synced works. Not yet resolved to
+     * canonical {@link #affiliationIds} (no OpenAlex slot on the affiliation graph yet) — kept as the cross-source
+     * dedup hint the author reconciler compares against a Scopus author's affiliation names.
+     */
+    private List<String> openAlexAffiliationNames = new ArrayList<>();
     private String sourceEventId;
     private String source;
     private String sourceRecordId;

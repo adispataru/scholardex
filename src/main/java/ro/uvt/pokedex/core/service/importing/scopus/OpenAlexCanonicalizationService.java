@@ -259,7 +259,7 @@ public class OpenAlexCanonicalizationService {
             }
             String authorId = authorResolver.resolveOrMint(
                     ref.getDisplayName(), ref.getOrcid(), ref.getOpenAlexAuthorId(),
-                    source.getSourceBatchId(), source.getSourceCorrelationId());
+                    ref.getInstitutionNames(), source.getSourceBatchId(), source.getSourceCorrelationId());
             if (!isBlank(authorId)) {
                 resolvedAuthorIds.add(authorId);
                 if (corresponding) {

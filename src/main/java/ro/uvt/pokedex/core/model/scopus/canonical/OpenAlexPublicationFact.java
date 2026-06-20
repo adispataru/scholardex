@@ -81,6 +81,10 @@ public class OpenAlexPublicationFact {
         private String orcid;            // normalized bare, when OpenAlex provides it
         private String openAlexAuthorId; // A…, the OpenAlex author entity id
         private boolean corresponding;   // OpenAlex is_corresponding flag
+        // Affiliation (H71): the signal the author reconciler needs to dedup co-authors across sources.
+        private List<String> institutionNames = new ArrayList<>(); // OpenAlex-resolved org display names
+        private List<String> rawAffiliations = new ArrayList<>();   // verbatim affiliation strings on the paper
+        private String countryCode;                                 // primary authorship country (ISO alpha-2)
     }
 
     /** A platform researcher who synced this work, with the identity needed to seed/dedup. */

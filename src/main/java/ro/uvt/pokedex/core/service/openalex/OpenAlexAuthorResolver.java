@@ -29,21 +29,31 @@ public class OpenAlexAuthorResolver {
 
     private final ScholardexAuthorFactRepository authorRepository;
 
-    /** Find-or-mint a canonical author by its id keys; {@code null} if it has no id-resolvable identity. */
+    /** Back-compat overload: resolve-or-mint with no affiliation hints. */
     public String resolveOrMint(String displayName, String orcidRaw, String openAlexAuthorIdRaw, String batchId, String correlationId) {
+        return resolveOrMint(displayName, orcidRaw, openAlexAuthorIdRaw, List.of(), batchId, correlationId);
+    }
+
+    /**
+     * Find-or-mint a canonical author by its id keys; {@code null} if it has no id-resolvable identity. H71:
+     * {@code affiliationNames} (OpenAlex institution display names for this authorship) are accumulated onto the
+     * author as the reconciler's cross-source dedup hint — on both the mint and the enrich path.
+     */
+    public String resolveOrMint(String displayName, String orcidRaw, String openAlexAuthorIdRaw,
+                                List<String> affiliationNames, String batchId, String correlationId) {
         String orcid = blankToNull(orcidRaw);
         String openAlexAuthorId = blankToNull(openAlexAuthorIdRaw);
 
         if (orcid != null) {
             ScholardexAuthorFact byOrcid = preferEstablished(authorRepository.findByOrcidIdsContains(orcid));
             if (byOrcid != null) {
-                return enrich(byOrcid, orcid, openAlexAuthorId);
+                return enrich(byOrcid, orcid, openAlexAuthorId, affiliationNames);
             }
         }
         if (openAlexAuthorId != null) {
             ScholardexAuthorFact byOpenAlex = preferEstablished(authorRepository.findByOpenAlexAuthorIdsContains(openAlexAuthorId));
             if (byOpenAlex != null) {
-                return enrich(byOpenAlex, orcid, openAlexAuthorId);
+                return enrich(byOpenAlex, orcid, openAlexAuthorId, affiliationNames);
             }
         }
         if (orcid == null && openAlexAuthorId == null) {
@@ -60,6 +70,7 @@ public class OpenAlexAuthorResolver {
         author.setId(canonicalId);
         addUnique(author.getOrcidIds(), orcid);
         addUnique(author.getOpenAlexAuthorIds(), openAlexAuthorId);
+        addAffiliationNames(author, affiliationNames);
         if (isBlank(author.getDisplayName()) && !isBlank(displayName)) {
             author.setDisplayName(displayName);
             author.setNameNormalized(CanonicalizationSupport.normalizeToken(displayName));
@@ -186,14 +197,29 @@ public class OpenAlexAuthorResolver {
     }
 
     /** Attach any missing id keys to a matched author and persist if changed; returns its id. */
-    private String enrich(ScholardexAuthorFact author, String orcid, String openAlexAuthorId) {
+    private String enrich(ScholardexAuthorFact author, String orcid, String openAlexAuthorId, List<String> affiliationNames) {
         boolean changed = addUnique(author.getOrcidIds(), orcid);
         changed |= addUnique(author.getOpenAlexAuthorIds(), openAlexAuthorId);
+        changed |= addAffiliationNames(author, affiliationNames);
         if (changed) {
             author.setUpdatedAt(Instant.now());
             authorRepository.save(author);
         }
         return author.getId();
+    }
+
+    /** H71: accumulate OpenAlex institution display names onto the author (deduped, blanks skipped). */
+    private boolean addAffiliationNames(ScholardexAuthorFact author, List<String> affiliationNames) {
+        if (affiliationNames == null || affiliationNames.isEmpty()) {
+            return false;
+        }
+        boolean changed = false;
+        for (String name : affiliationNames) {
+            if (!isBlank(name)) {
+                changed |= addUnique(author.getOpenAlexAffiliationNames(), name.trim());
+            }
+        }
+        return changed;
     }
 
     private String buildOpenAlexAuthorId(String orcid, String openAlexAuthorId) {

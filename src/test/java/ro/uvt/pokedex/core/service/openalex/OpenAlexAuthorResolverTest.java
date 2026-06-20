@@ -135,6 +135,32 @@ class OpenAlexAuthorResolverTest {
         assertTrue(!OpenAlexAuthorResolver.surnameMatches("Smith, John", "Jane Doe"));
     }
 
+    @Test
+    void mintCapturesOpenAlexAffiliationNames() {
+        when(authorRepository.findByOrcidIdsContains(any())).thenReturn(List.of());
+        when(authorRepository.findByOpenAlexAuthorIdsContains(any())).thenReturn(List.of());
+        when(authorRepository.findById(any())).thenReturn(Optional.empty());
+
+        resolver.resolveOrMint("Bogdan Tudor Tulbure", "0000-0001-8101-1753", "A77",
+                List.of("West University of Timișoara"), "batch", "corr");
+
+        verify(authorRepository).save(argThat(a ->
+                a.getOpenAlexAffiliationNames().contains("West University of Timișoara")));
+    }
+
+    @Test
+    void enrichAccumulatesAffiliationNamesOntoTheExistingAuthor() {
+        ScholardexAuthorFact existing = author("sauth_scopus", "0000-0001-8101-1753");
+        when(authorRepository.findByOrcidIdsContains("0000-0001-8101-1753")).thenReturn(List.of(existing));
+
+        resolver.resolveOrMint("Tulbure, Bogdan T.", "0000-0001-8101-1753", "A77",
+                List.of("West University of Timișoara"), "batch", "corr");
+
+        verify(authorRepository).save(argThat(a ->
+                "sauth_scopus".equals(a.getId())
+                        && a.getOpenAlexAffiliationNames().contains("West University of Timișoara")));
+    }
+
     private ScholardexAuthorFact author(String id, String orcid) {
         ScholardexAuthorFact a = new ScholardexAuthorFact();
         a.setId(id);

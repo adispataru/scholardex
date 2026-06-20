@@ -177,7 +177,7 @@ class OpenAlexCanonicalizationServiceTest {
         owned.setSource("OPENALEX");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/coauthored")).thenReturn(List.of(owned));
-        when(authorResolver.resolveOrMint(eq("Corr Coauthor"), eq("0000-0002-1825-0097"), eq("A1"), any(), any()))
+        when(authorResolver.resolveOrMint(eq("Corr Coauthor"), eq("0000-0002-1825-0097"), eq("A1"), any(), any(), any()))
                 .thenReturn("sauth_coauthor");
 
         service.rebuildCanonicalFacts();
@@ -200,7 +200,7 @@ class OpenAlexCanonicalizationServiceTest {
         owned.setSource("OPENALEX");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/selfcorr")).thenReturn(List.of(owned));
-        when(authorResolver.resolveOrMint(eq("Me"), eq("0000-0002-0702-6276"), eq("A1"), any(), any()))
+        when(authorResolver.resolveOrMint(eq("Me"), eq("0000-0002-0702-6276"), eq("A1"), any(), any(), any()))
                 .thenReturn("sauth_self"); // resolves to the researcher
 
         service.rebuildCanonicalFacts();
@@ -290,9 +290,9 @@ class OpenAlexCanonicalizationServiceTest {
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/multi")).thenReturn(List.of(owned));
         when(scholardexPublicationFactRepository.findById("spub_owned2")).thenReturn(java.util.Optional.of(owned));
-        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any())).thenReturn("sauth_self");
-        when(authorResolver.resolveOrMint(eq("Co One"), any(), eq("A2"), any(), any())).thenReturn("sauth_co1");
-        when(authorResolver.resolveOrMint(eq("Co Two"), any(), eq("A3"), any(), any())).thenReturn("sauth_co2");
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any())).thenReturn("sauth_self");
+        when(authorResolver.resolveOrMint(eq("Co One"), any(), eq("A2"), any(), any(), any())).thenReturn("sauth_co1");
+        when(authorResolver.resolveOrMint(eq("Co Two"), any(), eq("A3"), any(), any(), any())).thenReturn("sauth_co2");
 
         service.rebuildCanonicalFacts();
 
@@ -319,7 +319,7 @@ class OpenAlexCanonicalizationServiceTest {
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/foreign")).thenReturn(List.of(scopus));
         when(scholardexPublicationFactRepository.findById("spub_scopus2")).thenReturn(java.util.Optional.of(scopus));
-        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any())).thenReturn("sauth_self");
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any())).thenReturn("sauth_self");
 
         service.rebuildCanonicalFacts();
 
@@ -327,7 +327,7 @@ class OpenAlexCanonicalizationServiceTest {
         verify(scholardexPublicationFactRepository).save(argThat(p ->
                 "spub_scopus2".equals(p.getId())
                         && p.getAuthorIds().equals(List.of("sauth_a", "sauth_b", "sauth_self"))));
-        verify(authorResolver, org.mockito.Mockito.never()).resolveOrMint(eq("Other"), any(), any(), any(), any());
+        verify(authorResolver, org.mockito.Mockito.never()).resolveOrMint(eq("Other"), any(), any(), any(), any(), any());
     }
 
     private OpenAlexPublicationFact source(String workId, String doiNormalized, String title, String researcherAuthorId) {
