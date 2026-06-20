@@ -239,6 +239,28 @@
   opacity: 0.45;
 }
 
+.app-onb__claim-samples {
+  list-style: none;
+  margin: 0.4rem 0 0 0;
+  padding: 0;
+}
+
+.app-onb__claim-sample {
+  font-size: 0.78rem;
+  color: var(--app-color-text, #374151);
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--app-color-border, #f0f1f3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-onb__claim-more {
+  font-size: 0.74rem;
+  color: var(--app-color-text-muted, #6b7280);
+  padding: 0.3rem 0 0 0;
+}
+
 .app-onb__panel--soon {
   text-align: center;
   padding: 1.5rem 0.5rem;

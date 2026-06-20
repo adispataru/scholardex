@@ -29,11 +29,14 @@ const STEPS = [
 const INTERACTIVE = new Set(['IDENTITY_IDS', 'ORCID', 'AFFILIATIONS', 'AUTHOR_MATCH']);
 const CANDIDATES_URL = '/user/workspace/profile/author-candidates';
 const AUTHOR_MATCH_URL = '/user/workspace/profile/author-match';
+const RECOMMENDATIONS_URL = '/user/workspace/profile/claim-recommendations';
+const CLAIM_APPLY_URL = '/user/workspace/profile/claim-apply';
 
 let _data = null;        // last /profile response
 let _profile = null;     // mutable working copy of the editable fields
 let _candidates = null;  // author-match candidates (lazy-loaded for step 4; null = not yet fetched)
 let _authorMatch = { confirmedAuthorIds: [], primaryAuthorId: null };
+let _recommendations = null;  // claim recommendations (lazy-loaded for step 5)
 let _stepIndex = 0;
 let _busy = false;
 
@@ -57,6 +60,7 @@ function _load(forceOpen) {
             _seedWorkingProfile(data?.researcher);
             _candidates = null;   // refetched per open
             _authorMatch = { confirmedAuthorIds: [], primaryAuthorId: null };
+            _recommendations = null;
             const onboarding = data?.onboarding ?? null;
             if (!forceOpen && (onboarding?.complete ?? true)) return;   // nothing to do
             _stepIndex = Math.max(0, _indexOfStep(onboarding?.nextStep) ?? 0);
@@ -91,6 +95,7 @@ function _render() {
     body.innerHTML = _buildStepper() + _buildStepBody(step) + _buildFooter(step);
     _wire(modal, step);
     if (step.key === 'AUTHOR_MATCH' && _candidates === null) _loadCandidates();
+    if (step.key === 'PUBLICATION_CLAIM' && _recommendations === null) _loadRecommendations();
 }
 
 function _buildStepper() {
@@ -114,6 +119,7 @@ function _buildStepBody(step) {
         case 'ORCID': return _buildOrcidStep();
         case 'AFFILIATIONS': return _buildAffiliationsStep();
         case 'AUTHOR_MATCH': return _buildAuthorMatchStep();
+        case 'PUBLICATION_CLAIM': return _buildClaimStep();
         default: return _buildComingSoon(step);
     }
 }
@@ -267,6 +273,59 @@ function _saveAuthorMatch() {
         .then((r) => (r.ok ? r : Promise.reject(new Error(`HTTP ${r.status}`))));
 }
 
+function _buildClaimStep() {
+    const header = '<h6 class="app-onb__panel-title">Claim your publications</h6>';
+    if (_recommendations === null) {
+        return `<div class="app-onb__panel">${header}
+          <div class="app-skeleton-block" style="height:5rem;border-radius:var(--app-radius-card)"></div></div>`;
+    }
+    const r = _recommendations;
+    const count = (r.recommendedConfirmIds || []).length;
+    const titles = r.sampleTitles || [];
+    if (count === 0) {
+        return `<div class="app-onb__panel">${header}
+          <p class="app-onb__panel-help">Nothing to auto-claim right now${r.reviewCount
+            ? ` — ${r.reviewCount} publication(s) need a manual look in your publications list`
+            : ''}. Finishing marks your setup complete; you can review publications any time.</p></div>`;
+    }
+    const samples = titles.map((t) => `<li class="app-onb__claim-sample">${_esc(t)}</li>`).join('');
+    const more = count > titles.length
+        ? `<li class="app-onb__claim-more">…and ${count - titles.length} more</li>` : '';
+    return `<div class="app-onb__panel">${header}
+      <p class="app-onb__panel-help">We found <strong>${count}</strong> publication${count === 1 ? '' : 's'}
+        attributed to your author record at your confirmed affiliations — high confidence these are yours.${r.reviewCount
+          ? ` Another <strong>${r.reviewCount}</strong> need a manual look and will wait in your publications list.`
+          : ''}</p>
+      ${samples ? `<ul class="app-onb__claim-samples">${samples}${more}</ul>` : ''}
+    </div>`;
+}
+
+function _loadRecommendations() {
+    fetch(RECOMMENDATIONS_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+        .then((r) => { _recommendations = r || _emptyRecs(); })
+        .catch((err) => { console.error('claim recommendations load failed', err); _recommendations = _emptyRecs(); })
+        .finally(() => { if (STEPS[_stepIndex]?.key === 'PUBLICATION_CLAIM') _render(); });
+}
+
+function _emptyRecs() {
+    return { recommendedConfirmIds: [], reviewCount: 0, sampleTitles: [] };
+}
+
+function _applyClaim(confirmRecommended) {
+    if (_busy) return;
+    _busy = true;
+    fetch(CLAIM_APPLY_URL, { method: 'POST', headers: postJsonHeaders(), body: JSON.stringify({ confirmRecommended }) })
+        .then((res) => (res.ok ? res : Promise.reject(new Error(`HTTP ${res.status}`))))
+        .then(() => {
+            _busy = false;
+            // Server set onboardingCompletedAt — refresh the profile card and close.
+            document.dispatchEvent(new CustomEvent('ws-onboarding-updated'));
+            if (window.appModal) window.appModal.close(MODAL_ID);
+        })
+        .catch((err) => { _busy = false; console.error('claim apply failed', err); _toast('Could not finish — please retry.'); });
+}
+
 function _buildComingSoon(step) {
     return `<div class="app-onb__panel app-onb__panel--soon">
       <i class="fa-regular fa-clock app-onb__soon-icon"></i>
@@ -277,6 +336,7 @@ function _buildComingSoon(step) {
 }
 
 function _buildFooter(step) {
+    if (step.key === 'PUBLICATION_CLAIM') return _buildClaimFooter();
     const isFirst = _stepIndex === 0;
     const interactive = INTERACTIVE.has(step.key);
     const nextLabel = step.key === 'AUTHOR_MATCH' ? 'Confirm &amp; continue'
@@ -286,6 +346,21 @@ function _buildFooter(step) {
       <div class="app-onb__footer-nav">
         ${isFirst ? '' : '<button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>Back</button>'}
         <button type="button" class="btn btn-primary btn-sm" data-onb-next>${nextLabel}</button>
+      </div>
+    </div>`;
+}
+
+function _buildClaimFooter() {
+    const count = _recommendations ? (_recommendations.recommendedConfirmIds || []).length : 0;
+    const primaryLabel = count > 0 ? `Confirm ${count} &amp; finish` : 'Finish';
+    const skip = count > 0
+        ? '<button type="button" class="btn btn-link btn-sm" data-onb-skip-claim>Finish without claiming</button>' : '';
+    return `<div class="app-onb__footer">
+      <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>Finish later</button>
+      <div class="app-onb__footer-nav">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>Back</button>
+        ${skip}
+        <button type="button" class="btn btn-primary btn-sm" data-onb-finish>${primaryLabel}</button>
       </div>
     </div>`;
 }
@@ -314,6 +389,8 @@ function _wire(modal, step) {
         rb.addEventListener('change', () => _captureAuthorMatch(modal)));
     modal.querySelector('[data-onb-back]')?.addEventListener('click', () => { _stepIndex = Math.max(0, _stepIndex - 1); _render(); });
     modal.querySelector('[data-onb-next]')?.addEventListener('click', () => _next(modal, step));
+    modal.querySelector('[data-onb-finish]')?.addEventListener('click', () => _applyClaim(true));
+    modal.querySelector('[data-onb-skip-claim]')?.addEventListener('click', () => _applyClaim(false));
     modal.querySelectorAll('[data-onb-dismiss]').forEach((b) => b.addEventListener('click', _dismiss));
 }
 

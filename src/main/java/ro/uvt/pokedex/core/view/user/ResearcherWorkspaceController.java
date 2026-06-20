@@ -69,6 +69,7 @@ public class ResearcherWorkspaceController {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService researcherOnboardingService;
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;
+    private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
@@ -511,6 +512,48 @@ public class ResearcherWorkspaceController {
         user.setResearcherProfile(profile);
         userRepository.save(user);
         return ResponseEntity.ok(Map.of("confirmed", confirmed.size(), "primary", primary == null ? "" : primary));
+    }
+
+    // ── JSON: onboarding publication auto-claim (H70 step 5, terminal) ────
+    @GetMapping("/profile/claim-recommendations")
+    @ResponseBody
+    public ResponseEntity<ro.uvt.pokedex.core.service.application.onboarding.ClaimRecommendations> getClaimRecommendations(
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = userRepository.findById(userOpt.get().getEmail()).orElse(userOpt.get());
+        return ResponseEntity.ok(
+                onboardingClaimRecommendationService.recommend(user.getEmail(), user.getResearcherProfile()));
+    }
+
+    @PostMapping("/profile/claim-apply")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> applyClaimRecommendations(
+            @RequestBody(required = false) ClaimApplyRequest request, Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = userRepository.findById(userOpt.get().getEmail()).orElse(userOpt.get());
+        User.ResearcherProfile profile = user.getResearcherProfile();
+        if (profile == null) return ResponseEntity.unprocessableEntity().build();
+
+        boolean confirmRecommended = request == null || request.confirmRecommended() == null
+                || request.confirmRecommended();
+        int confirmed = 0;
+        if (confirmRecommended) {
+            var recommendations = onboardingClaimRecommendationService.recommend(user.getEmail(), profile);
+            if (!recommendations.recommendedConfirmIds().isEmpty()) {
+                publicationAuthorshipDecisionService.upsertBulkDecisions(
+                        user.getEmail(), recommendations.recommendedConfirmIds(),
+                        ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED,
+                        "Onboarding auto-claim");
+                confirmed = recommendations.recommendedConfirmIds().size();
+            }
+        }
+        // Terminal step — mark onboarding finished.
+        profile.setOnboardingCompletedAt(Instant.now());
+        user.setResearcherProfile(profile);
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("confirmed", confirmed));
     }
 
     // ── JSON: trigger Scopus publication sync ─────────────────────────────
@@ -1018,6 +1061,8 @@ public class ResearcherWorkspaceController {
     record AuthorMatchRequest(
         List<String> confirmedAuthorIds,
         String primaryAuthorId) {}
+
+    record ClaimApplyRequest(Boolean confirmRecommended) {}
 
     record SyncRequest(
         String scopusId,
