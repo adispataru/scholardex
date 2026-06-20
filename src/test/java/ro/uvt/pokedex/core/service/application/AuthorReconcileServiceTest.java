@@ -340,9 +340,36 @@ class AuthorReconcileServiceTest {
         verify(authorRepository).deleteById("sauth_b");
     }
 
+    @Test
+    void overSplitIgnoresCoauthorsFromMegaAuthorPapers() {
+        // Same name + same affiliation, but their ONLY shared co-author comes from a 25-author paper => not a real
+        // collaboration signal => excluded => not merged, not reported. (Wang/Huang ×N mega-collab class.)
+        ScholardexAuthorFact a = sameName("sauth_a");
+        a.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        ScholardexAuthorFact b = sameName("sauth_b");
+        b.setAffiliationIds(new ArrayList<>(List.of("saff_uvt")));
+        setOverSplit(true);
+        String[] mega = new String[22];
+        mega[0] = "sauth_a";
+        for (int i = 1; i < 22; i++) {
+            mega[i] = "c" + i; // 22 authors total (> 20)
+        }
+        String[] megaB = mega.clone();
+        megaB[0] = "sauth_b";
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(pub("pA", mega)));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(pub("pB", megaB)));
+
+        service.reconcileByNameAndAffiliation("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository, never()).save(any());
+    }
+
     private void setOverSplit(boolean apply) {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "affiliationApply", apply);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "maxClusterSize", 50);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "coauthorMaxPaperAuthors", 20);
     }
 
     private void setFuzzy(boolean apply, int threshold) {

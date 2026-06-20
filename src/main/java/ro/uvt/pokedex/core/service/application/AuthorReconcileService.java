@@ -96,6 +96,15 @@ public class AuthorReconcileService {
     @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.affiliation-apply:false}")
     private boolean affiliationApply;
 
+    /**
+     * H72 slice 2: a co-author drawn from a paper with more than this many authors does not count toward the
+     * over-split shared-co-author signal. Mega-author papers (HEP collaborations, hundreds–thousands of authors)
+     * make everyone trivially "co-author" everyone, which manufactured false merges of common initials-only names
+     * ("Wang, J." ×6 shared 96 → 0 once excluded). Real small-team collaboration is the meaningful identity signal.
+     */
+    @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.coauthor-max-paper-authors:20}")
+    private int coauthorMaxPaperAuthors;
+
     /** ORCID pass: merge canonical authors that share an ORCID (name-compatible), quarantine the rest. */
     public ImportProcessingResult reconcileByOrcid(String batchId, String correlationId) {
         ImportProcessingResult result = new ImportProcessingResult(20);
@@ -284,7 +293,11 @@ public class AuthorReconcileService {
             affSets.add(new java.util.HashSet<>(safe(m.getAffiliationIds())));
             java.util.Set<String> coauthors = new java.util.HashSet<>();
             for (ScholardexPublicationFact pub : publicationRepository.findByAuthorIdsContains(m.getId())) {
-                for (String authorId : safe(pub.getAuthorIds())) {
+                List<String> pubAuthors = safe(pub.getAuthorIds());
+                if (coauthorMaxPaperAuthors > 0 && pubAuthors.size() > coauthorMaxPaperAuthors) {
+                    continue; // mega-author paper: co-authorship here is not an identity signal
+                }
+                for (String authorId : pubAuthors) {
                     if (!memberIds.contains(authorId)) {
                         coauthors.add(authorId);
                     }
