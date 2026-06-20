@@ -255,6 +255,25 @@ class OpenAlexCanonicalizationServiceTest {
                 eq(java.util.Arrays.asList("0000-0002-9292-9479", "0000-0003-1034-8409")));
     }
 
+    @Test
+    void denormalizesResolvedAuthorsOntoTheCanonicalPubAuthorIdsSoTheySurface() {
+        // The bug fix: an OpenAlex-owned pub had an empty authorIds[] (only authorship edges), so it never
+        // surfaced in the projection/workspace. The syncing researcher must land in authorIds[].
+        OpenAlexPublicationFact source = source("W7", "10.1/mine", "Decentralized cloud", "sauth_self");
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        owned.setAuthorIds(new java.util.ArrayList<>());   // empty before the fix
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/mine")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+
+        service.rebuildCanonicalFacts();
+
+        verify(scholardexPublicationFactRepository).save(argThat(p ->
+                "spub_owned".equals(p.getId()) && p.getAuthorIds().contains("sauth_self")));
+    }
+
     private OpenAlexPublicationFact source(String workId, String doiNormalized, String title, String researcherAuthorId) {
         OpenAlexPublicationFact fact = new OpenAlexPublicationFact();
         fact.setSourceRecordId(workId);

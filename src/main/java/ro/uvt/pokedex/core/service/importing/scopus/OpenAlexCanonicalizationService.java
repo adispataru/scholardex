@@ -278,6 +278,22 @@ public class OpenAlexCanonicalizationService {
                             false),
                     corresponding ? Boolean.TRUE : Boolean.FALSE);
         }
+
+        // 5) Denormalize the resolved authors onto the canonical pub's authorIds[]. The projection and the
+        //    researcher workspace read authorIds (not the authorship edges), so without this an OpenAlex-minted
+        //    pub has an empty author list and never surfaces. Merge-only — never drop a foreign pub's authors.
+        if (!edgeAuthorIds.isEmpty()) {
+            ScholardexPublicationFact target = pub != null ? pub
+                    : scholardexPublicationFactRepository.findById(canonicalPublicationId).orElse(null);
+            if (target != null) {
+                LinkedHashSet<String> merged = new LinkedHashSet<>(
+                        target.getAuthorIds() == null ? List.of() : target.getAuthorIds());
+                if (merged.addAll(edgeAuthorIds)) {
+                    target.setAuthorIds(new ArrayList<>(merged));
+                    scholardexPublicationFactRepository.save(target);
+                }
+            }
+        }
     }
 
     private static boolean isBlank(String value) {
