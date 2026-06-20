@@ -31,6 +31,19 @@ class ResearcherAuthorLookupServiceTest {
     }
 
     @Test
+    void resolveAuthorLookupKeysIncludesConfirmedScholardexAuthorIdsAfterPrimary() {
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setPrimaryScholardexAuthorId("author-primary");
+        profile.setConfirmedScholardexAuthorIds(List.of("author-primary", " author-2 ", "author-3"));
+        profile.setScopusId(List.of("sc-1"));
+
+        List<String> keys = service.resolveAuthorLookupKeys(profile);
+
+        // primary first, then the confirmed set (deduped against primary), then source ids
+        assertEquals(List.of("author-primary", "author-2", "author-3", "sc-1"), keys);
+    }
+
+    @Test
     void resolveAuthorLookupKeysSkipsNullCollectionsAndBlankValues() {
         User.ResearcherProfile profile = new User.ResearcherProfile();
         profile.setPrimaryScholardexAuthorId(" ");

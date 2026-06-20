@@ -94,9 +94,18 @@ public class User implements UserDetails {
         /** ORCID iD (bare 16-digit form, e.g. 0000-0002-1825-0097). 1:1 per researcher; drives the OpenAlex author sync (H66B Phase 4a). */
         private String orcid;
         private String primaryScholardexAuthorId;
+        /**
+         * The canonical Scholardex author records the researcher has confirmed as theirs (H70 onboarding).
+         * A researcher can map to several author facts (e.g. name-order splits across sources);
+         * {@link #primaryScholardexAuthorId} is the designated one of this set. Non-destructive — the records are
+         * not merged, just pooled for lookup.
+         */
+        private List<String> confirmedScholardexAuthorIds = new ArrayList<>();
         private List<String> currentAffiliationIds = new ArrayList<>();
         private List<String> pastAffiliationIds = new ArrayList<>();
         private Instant affiliationsConfirmedAt;
+        /** Set when the researcher finishes the H70 onboarding wizard (its terminal publication-claim step). */
+        private Instant onboardingCompletedAt;
         private Position position;
 
         public String getName() {

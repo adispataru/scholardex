@@ -16,6 +16,7 @@ public class ResearcherAuthorLookupService {
         }
         LinkedHashSet<String> keys = new LinkedHashSet<>();
         add(keys, profile.getPrimaryScholardexAuthorId());
+        addAll(keys, profile.getConfirmedScholardexAuthorIds());
         addAll(keys, profile.getScopusId());
         addAll(keys, profile.getWosId());
         add(keys, profile.getScholarId());
