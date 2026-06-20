@@ -26,10 +26,14 @@ const STEPS = [
     { key: 'AUTHOR_MATCH', label: 'Author record' },
     { key: 'PUBLICATION_CLAIM', label: 'Publications' }
 ];
-const INTERACTIVE = new Set(['IDENTITY_IDS', 'ORCID', 'AFFILIATIONS']);
+const INTERACTIVE = new Set(['IDENTITY_IDS', 'ORCID', 'AFFILIATIONS', 'AUTHOR_MATCH']);
+const CANDIDATES_URL = '/user/workspace/profile/author-candidates';
+const AUTHOR_MATCH_URL = '/user/workspace/profile/author-match';
 
 let _data = null;        // last /profile response
 let _profile = null;     // mutable working copy of the editable fields
+let _candidates = null;  // author-match candidates (lazy-loaded for step 4; null = not yet fetched)
+let _authorMatch = { confirmedAuthorIds: [], primaryAuthorId: null };
 let _stepIndex = 0;
 let _busy = false;
 
@@ -51,6 +55,8 @@ function _load(forceOpen) {
         .then((data) => {
             _data = data;
             _seedWorkingProfile(data?.researcher);
+            _candidates = null;   // refetched per open
+            _authorMatch = { confirmedAuthorIds: [], primaryAuthorId: null };
             const onboarding = data?.onboarding ?? null;
             if (!forceOpen && (onboarding?.complete ?? true)) return;   // nothing to do
             _stepIndex = Math.max(0, _indexOfStep(onboarding?.nextStep) ?? 0);
@@ -84,6 +90,7 @@ function _render() {
     const step = STEPS[_stepIndex];
     body.innerHTML = _buildStepper() + _buildStepBody(step) + _buildFooter(step);
     _wire(modal, step);
+    if (step.key === 'AUTHOR_MATCH' && _candidates === null) _loadCandidates();
 }
 
 function _buildStepper() {
@@ -106,6 +113,7 @@ function _buildStepBody(step) {
         case 'IDENTITY_IDS': return _buildIdentityStep();
         case 'ORCID': return _buildOrcidStep();
         case 'AFFILIATIONS': return _buildAffiliationsStep();
+        case 'AUTHOR_MATCH': return _buildAuthorMatchStep();
         default: return _buildComingSoon(step);
     }
 }
@@ -192,6 +200,73 @@ function _affRadio(id, value, label, selected) {
     </label>`;
 }
 
+function _buildAuthorMatchStep() {
+    const header = '<h6 class="app-onb__panel-title">Match your author record</h6>';
+    if (_candidates === null) {
+        return `<div class="app-onb__panel">${header}
+          <div class="app-skeleton-block" style="height:5rem;border-radius:var(--app-radius-card)"></div></div>`;
+    }
+    if (!_candidates.length) {
+        return `<div class="app-onb__panel">${header}
+          <p class="app-onb__panel-help">No author records resolved from your identifiers yet. Add a Scopus id or
+            ORCID in the earlier steps (and let the sync finish), then return here.</p></div>`;
+    }
+    const confirmedSet = new Set(_authorMatch.confirmedAuthorIds);
+    const rows = _candidates.map((c) => {
+        const checked = confirmedSet.has(c.authorId);
+        const affs = (c.affiliations || []).map((a) => `<span class="app-onb__cand-aff">${_esc(a)}</span>`).join('');
+        return `<div class="app-onb__cand" data-cand-id="${_esc(c.authorId)}">
+          <label class="app-onb__cand-pick">
+            <input type="checkbox" data-cand-confirm value="${_esc(c.authorId)}" ${checked ? 'checked' : ''}>
+          </label>
+          <div class="app-onb__cand-body">
+            <div class="app-onb__cand-head">
+              <span class="app-onb__cand-name">${_esc(c.name || c.authorId)}</span>
+              <span class="app-onb__cand-count">${Number(c.publicationCount) || 0} pub${c.publicationCount === 1 ? '' : 's'}</span>
+            </div>
+            ${affs ? `<div class="app-onb__cand-affs">${affs}</div>` : ''}
+            <label class="app-onb__cand-primary${checked ? '' : ' app-onb__cand-primary--off'}">
+              <input type="radio" name="onb-primary" data-cand-primary value="${_esc(c.authorId)}"
+                     ${_authorMatch.primaryAuthorId === c.authorId ? 'checked' : ''} ${checked ? '' : 'disabled'}> Primary
+            </label>
+          </div>
+        </div>`;
+    }).join('');
+    return `<div class="app-onb__panel">${header}
+      <p class="app-onb__panel-help">These canonical author records resolved from your identifiers. Tick the ones
+        that are you — the publication count and affiliations help you tell — and mark your main record as primary.</p>
+      ${rows}
+    </div>`;
+}
+
+function _loadCandidates() {
+    fetch(CANDIDATES_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then((list) => {
+            _candidates = Array.isArray(list) ? list : [];
+            // Seed the selection: keep already-confirmed; otherwise pre-tick the most-published record (top of the
+            // list) as a sensible, reviewable default. Primary defaults to the first selected.
+            const pre = _candidates.filter((c) => c.alreadyConfirmed).map((c) => c.authorId);
+            const seed = pre.length ? pre : _candidates.slice(0, 1).map((c) => c.authorId);
+            _authorMatch = { confirmedAuthorIds: seed, primaryAuthorId: seed[0] ?? null };
+        })
+        .catch((err) => { console.error('author candidates load failed', err); _candidates = []; })
+        .finally(() => { if (STEPS[_stepIndex]?.key === 'AUTHOR_MATCH') _render(); });
+}
+
+function _captureAuthorMatch(modal) {
+    const confirmed = [...modal.querySelectorAll('[data-cand-confirm]:checked')].map((i) => i.value);
+    let primary = modal.querySelector('[data-cand-primary]:checked')?.value ?? null;
+    if (primary && !confirmed.includes(primary)) primary = null;
+    if (!primary && confirmed.length) primary = confirmed[0];
+    _authorMatch = { confirmedAuthorIds: confirmed, primaryAuthorId: primary };
+}
+
+function _saveAuthorMatch() {
+    return fetch(AUTHOR_MATCH_URL, { method: 'POST', headers: postJsonHeaders(), body: JSON.stringify(_authorMatch) })
+        .then((r) => (r.ok ? r : Promise.reject(new Error(`HTTP ${r.status}`))));
+}
+
 function _buildComingSoon(step) {
     return `<div class="app-onb__panel app-onb__panel--soon">
       <i class="fa-regular fa-clock app-onb__soon-icon"></i>
@@ -204,7 +279,7 @@ function _buildComingSoon(step) {
 function _buildFooter(step) {
     const isFirst = _stepIndex === 0;
     const interactive = INTERACTIVE.has(step.key);
-    const nextLabel = step.key === 'AFFILIATIONS' ? 'Save &amp; finish setup'
+    const nextLabel = step.key === 'AUTHOR_MATCH' ? 'Confirm &amp; continue'
         : interactive ? 'Save &amp; continue' : 'Done';
     return `<div class="app-onb__footer">
       <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>Finish later</button>
@@ -233,6 +308,10 @@ function _wire(modal, step) {
             const idx = [...row.parentElement.children].indexOf(row);
             if (field && idx >= 0) { _profile[field].splice(idx, 1); _render(); }
         }));
+    modal.querySelectorAll('[data-cand-confirm]').forEach((cb) =>
+        cb.addEventListener('change', () => { _captureAuthorMatch(modal); _render(); }));
+    modal.querySelectorAll('[data-cand-primary]').forEach((rb) =>
+        rb.addEventListener('change', () => _captureAuthorMatch(modal)));
     modal.querySelector('[data-onb-back]')?.addEventListener('click', () => { _stepIndex = Math.max(0, _stepIndex - 1); _render(); });
     modal.querySelector('[data-onb-next]')?.addEventListener('click', () => _next(modal, step));
     modal.querySelectorAll('[data-onb-dismiss]').forEach((b) => b.addEventListener('click', _dismiss));
@@ -243,8 +322,8 @@ function _next(modal, step) {
     if (!INTERACTIVE.has(step.key)) { _advance(); return; }
     _busy = true;
     _captureStep(modal, step);
-    const confirmAffiliations = step.key === 'AFFILIATIONS';
-    _save(confirmAffiliations)
+    const savePromise = step.key === 'AUTHOR_MATCH' ? _saveAuthorMatch() : _save(step.key === 'AFFILIATIONS');
+    savePromise
         .then(() => (step.key === 'ORCID' && _profile.orcid ? _triggerOpenAlex() : Promise.resolve()))
         .then(() => _refreshStatus())
         .then(() => { _busy = false; _advance(); })
@@ -266,6 +345,8 @@ function _captureStep(modal, step) {
         });
         _profile.currentAffiliationIds = current;
         _profile.pastAffiliationIds = past;
+    } else if (step.key === 'AUTHOR_MATCH') {
+        _captureAuthorMatch(modal);
     }
 }
 

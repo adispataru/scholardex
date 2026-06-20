@@ -54,6 +54,15 @@ public class ScholardexProjectionReadService {
         return findAllPublicationsByAuthorsIn(List.of(authorId));
     }
 
+    /** Count-only (id set size) — cheap enough to call per candidate author in the onboarding matcher. */
+    public int countPublicationsByAuthor(String authorId) {
+        List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, List.of(authorId));
+        if (resolvedAuthorIds.isEmpty()) {
+            return 0;
+        }
+        return postgresProjectionReadPort.findPublicationIdsByAuthorIdIn(resolvedAuthorIds).size();
+    }
+
     public List<ScholardexPublicationView> findAllPublicationsByAffiliationsContaining(String affiliationId) {
         List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(affiliationId));
         if (resolvedAffiliationIds.isEmpty()) {

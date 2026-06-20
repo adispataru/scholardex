@@ -68,6 +68,7 @@ public class ResearcherWorkspaceController {
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService researcherOnboardingService;
+    private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
@@ -474,6 +475,42 @@ public class ResearcherWorkspaceController {
         }
         userRepository.save(user);
         return ResponseEntity.ok().build();
+    }
+
+    // ── JSON: onboarding author-match (H70 step 4) ────────────────────────
+    @GetMapping("/profile/author-candidates")
+    @ResponseBody
+    public ResponseEntity<List<ro.uvt.pokedex.core.service.application.onboarding.AuthorCandidate>> getAuthorCandidates(
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = userRepository.findById(userOpt.get().getEmail()).orElse(userOpt.get());
+        return ResponseEntity.ok(onboardingAuthorCandidateService.candidatesFor(user.getResearcherProfile()));
+    }
+
+    @PostMapping("/profile/author-match")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> saveAuthorMatch(
+            @RequestBody AuthorMatchRequest request, Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = userRepository.findById(userOpt.get().getEmail()).orElse(userOpt.get());
+        User.ResearcherProfile profile = user.getResearcherProfile();
+        if (profile == null) return ResponseEntity.unprocessableEntity().build();
+
+        List<String> confirmed = request.confirmedAuthorIds() == null ? List.of()
+                : request.confirmedAuthorIds().stream()
+                        .filter(s -> s != null && !s.isBlank()).map(String::trim).distinct().toList();
+        profile.setConfirmedScholardexAuthorIds(new ArrayList<>(confirmed));
+        // The primary must be one of the confirmed set; fall back to the first confirmed, else clear it.
+        String primary = request.primaryAuthorId() != null ? request.primaryAuthorId().trim() : null;
+        if (primary == null || !confirmed.contains(primary)) {
+            primary = confirmed.isEmpty() ? null : confirmed.get(0);
+        }
+        profile.setPrimaryScholardexAuthorId(primary);
+        user.setResearcherProfile(profile);
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("confirmed", confirmed.size(), "primary", primary == null ? "" : primary));
     }
 
     // ── JSON: trigger Scopus publication sync ─────────────────────────────
@@ -977,6 +1014,10 @@ public class ResearcherWorkspaceController {
             List<String> currentAffiliationIds,
             List<String> pastAffiliationIds,
             Boolean confirmAffiliationScope) {}
+
+    record AuthorMatchRequest(
+        List<String> confirmedAuthorIds,
+        String primaryAuthorId) {}
 
     record SyncRequest(
         String scopusId,
