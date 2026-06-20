@@ -40,10 +40,22 @@ Done history moved to `TASKS-done.md`.
   co-authors of OpenAlex-owned pubs.
   Plan: **(1) capture affiliation — DONE (`7261e08`)**: OpenAlex authorship institutions/raw-affiliation/country now
   persisted on `OpenAlexPublicationFact.AuthorRef` + accumulated onto `ScholardexAuthorFact.openAlexAffiliationNames`
-  (mint + enrich). **(2)** name + affiliation + co-author-overlap merge in `AuthorReconcileService` using the captured
-  names — the primary cross-source fix (note: Romanian diacritics ş/ș/ţ/ț must be folded). **(3)** ORCID-cluster merge
-  as a secondary cleanup of OpenAlex-internal ORCID dupes. Open question to verify under step 2: rule out any actual
-  Scopus-data loss in the Bianca Spătaru case (minting is non-destructive; a reconcile merge takes the union).
+  (mint + enrich). **Steps 2–3 SUPERSEDED by `H72`.** Investigation (2026-06-20) showed cross-source author dedup is
+  gated on a clean *affiliation* graph, and the right first move is Scopus-internal (verified-tier cleanup), not
+  OpenAlex name matching — see H72. The OpenAlex ROR/ORCID enrichment becomes H72 slice 3, onto a clean base.
+
+- [ ] `H72` Scopus verified-tier entity resolution (drop ad-hoc affiliations, merge over-split authors). The canonical
+  author/affiliation layer relabels Scopus 1:1 instead of resolving (29,106 affiliations, **0** ever merged; afid-keyed
+  canonical ids structurally prevent merge; no affiliation dedup pass exists). Proven on live data that name/co-occurrence
+  merging is unsafe (both directions leak — collaborations, hospital↔university, shared city/topic tokens, cross-language).
+  The safe signal is Scopus's own **verified** tier (`afid ^60`, 57%, one record per real institution) vs the **ad-hoc**
+  tier (`1xxxxxxxx`, 43% raw-string noise). **Slice 1:** mint canonical affiliations + edges only for verified afids, drop
+  ad-hoc → 29,106 → 16,616 clean institutions, ~0 subject cost (1 UVT author of 2,559). **Slice 2:** merge same-person
+  over-split AU-IDs (no droppable tier — Scopus over-splits old+new ids; 52 same-name groups / 106 AU-IDs at UVT) using
+  *same name + shared verified affiliation* + same-pub hard-block; durable across rebuild; retire the scopus-id-on-profile
+  band-aid. **Slice 3 (later):** OpenAlex ROR/ORCID enrichment onto the clean base (folds in H71 steps 2–3). Scopus-indexed
+  signal routes via the forum (venue-in-Scopus-source), not per-pub. Plan + evidence:
+  `docs/tasks/active/h72-scopus-verified-entity-resolution.md`.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
