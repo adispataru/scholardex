@@ -346,6 +346,24 @@ function _buildSyncSection(data) {
     const pubTable = _buildTaskTable('publication-tasks', data?.pubTasks, ['Scopus ID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
     const citeTable = _buildTaskTable('citation-tasks', data?.citeTasks, ['Scopus ID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
 
+    const orcid = (data?.researcher?.orcid ?? '').trim();
+    const openAlexSection = `<div class="app-ws-prof__section">
+      <div class="app-ws-prof__section-header">
+        <i class="fa-solid fa-arrows-rotate" style="color:var(--app-color-text-muted);font-size:.85rem"></i>
+        <h2 class="app-ws-prof__section-title">OpenAlex</h2>
+      </div>
+      <div class="app-ws-prof__section-body">
+        <p class="app-ws-prof__task-subsection-title" style="margin:0 0 .5rem 0">
+          Pull your corresponding-author and citation data from OpenAlex by ORCID${orcid ? '' : ' — add your ORCID in the profile above first'}.</p>
+        <div class="app-ws-prof__sync-actions">
+          <button class="btn btn-sm btn-outline-primary" data-openalex-sync ${orcid ? '' : 'disabled'}>
+            <i class="fa-solid fa-arrows-rotate"></i> Update from OpenAlex
+          </button>
+          <span class="app-ws-prof__openalex-feedback" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>`;
+
     return `<div class="app-ws-prof__section">
       <div class="app-ws-prof__section-header">
         <i class="fa-solid fa-rotate" style="color:var(--app-color-text-muted);font-size:.85rem"></i>
@@ -362,7 +380,7 @@ function _buildSyncSection(data) {
           ${citeTable}
         </div>
       </div>
-    </div>`;
+    </div>` + openAlexSection;
 }
 
 function _buildTaskTable(tableId, tasks, cols) {
@@ -458,6 +476,12 @@ function _wireEvents() {
         const removeBtn = e.target.closest('[data-remove-id-row]');
         if (removeBtn) {
             removeBtn.closest('.app-ws-prof__id-entry-row')?.remove();
+            return;
+        }
+
+        const openAlexBtn = e.target.closest('[data-openalex-sync]');
+        if (openAlexBtn) {
+            _triggerOpenAlexSync(openAlexBtn);
             return;
         }
 
@@ -609,6 +633,27 @@ function _triggerSync(type, scopusId, btn) {
         .catch((err) => {
             if (btn) btn.disabled = false;
             _showSyncError(btn, err?.message);
+        });
+}
+
+function _triggerOpenAlexSync(btn) {
+    const feedback = btn?.parentElement?.querySelector('.app-ws-prof__openalex-feedback');
+    const setFeedback = (msg, color) => { if (feedback) { feedback.textContent = msg; feedback.style.cssText = `font-size:.78rem;margin-left:.5rem;color:${color}`; } };
+    if (btn) btn.disabled = true;
+    setFeedback('Starting…', 'var(--app-color-text-muted)');
+    fetch('/user/workspace/profile/sync/openalex-authors', { method: 'POST', headers: _postHeaders() })
+        .then((r) => {
+            if (r.status === 422) throw new Error('Add a valid ORCID to your profile first.');
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json().catch(() => ({}));
+        })
+        .then(() => {
+            if (btn) btn.disabled = false;
+            setFeedback('Update started — your works will appear after it runs.', 'var(--app-color-success)');
+        })
+        .catch((err) => {
+            if (btn) btn.disabled = false;
+            setFeedback(err?.message || 'Could not start the update.', 'var(--app-color-danger)');
         });
 }
 

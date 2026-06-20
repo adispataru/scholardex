@@ -14,7 +14,6 @@ import { postJsonHeaders } from '../shared/fetchUtils';
 
 const PROFILE_URL = '/user/workspace/profile';
 const SAVE_URL = '/user/workspace/profile/save';
-const OPENALEX_SYNC_URL = '/user/workspace/profile/sync/openalex-authors';
 const MODAL_ID = 'ws-onboarding-modal';
 const SNOOZE_KEY = 'wsOnboardingSnoozed';
 
@@ -157,7 +156,7 @@ function _buildOrcidStep() {
     return `<div class="app-onb__panel">
       <h6 class="app-onb__panel-title">Your ORCID iD</h6>
       <p class="app-onb__panel-help">ORCID lets us pull corresponding-author and citation data from OpenAlex.
-        Saving here kicks off a background sync.</p>
+        Once you've finished setup, run that update anytime with <strong>Update from OpenAlex</strong> in Profile &amp; Sync.</p>
       <div class="app-onb__field">
         <label class="app-onb__label" for="onb-orcid">ORCID</label>
         <input type="text" class="form-control form-control-sm" id="onb-orcid"
@@ -401,7 +400,6 @@ function _next(modal, step) {
     _captureStep(modal, step);
     const savePromise = step.key === 'AUTHOR_MATCH' ? _saveAuthorMatch() : _save(step.key === 'AFFILIATIONS');
     savePromise
-        .then(() => (step.key === 'ORCID' && _profile.orcid ? _triggerOpenAlex() : Promise.resolve()))
         .then(() => _refreshStatus())
         .then(() => { _busy = false; _advance(); })
         .catch((err) => { _busy = false; console.error('onboarding step save failed', err); _toast('Could not save — please retry.'); });
@@ -457,11 +455,6 @@ function _save(confirmAffiliationScope) {
             confirmAffiliationScope: !!confirmAffiliationScope
         })
     }).then((r) => (r.ok ? r : Promise.reject(new Error(`HTTP ${r.status}`))));
-}
-
-function _triggerOpenAlex() {
-    // Best-effort — a missing/invalid ORCID returns 422; don't block the wizard on it.
-    return fetch(OPENALEX_SYNC_URL, { method: 'POST', headers: postJsonHeaders() }).catch(() => {});
 }
 
 function _refreshStatus() {
