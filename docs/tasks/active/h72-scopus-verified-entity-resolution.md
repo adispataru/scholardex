@@ -95,7 +95,22 @@ Drop the ad-hoc tier at canonicalization so it never becomes a canonical entity 
 - **Verify:** projection + scoring still build; the 16,616-institution graph is intact; the 52 UVT collision groups
   now share a single verified affiliation id; re-run a full rebuild and confirm the counts are durable.
 
-### Slice 2 — Merge over-split authors (verified-affiliation corroborated)
+### Slice 2 — Merge over-split authors (verified-affiliation corroborated) — DONE (`3e5dc11`/`4aa3404`/`40cb8f3`, applied + live-validated 2026-06-21)
+`reconcileByNameAndAffiliation`: clusters by name, merges subgroups sharing a verified affiliation + ≥1 co-author,
+**hard-block relaxed** (over-split ids co-appear on a paper — the same person listed twice, verified on
+Megan/Cotăescu). Two safety gates, both found necessary by the dry-run:
+- **>20-author co-author exclusion** — a co-author from a mega-author paper doesn't count (HEP collaborations make
+  everyone trivially co-author everyone). Killed the false-positive class at the root: Wang J. ×6 shared 96 → 0,
+  Huang Y. ×5 shared 119 → 0; true over-splits keep their small-team overlap. 483 → 423 candidates.
+- **Name-specificity guard** — auto-merge only distinctive names (≥2 multi-letter tokens) or differing display
+  strings (a real variant); identical single-surname+initial names ("Wang, J.") go to `AUTHOR_OVERSPLIT_MERGE_REVIEW`.
+
+Enabled via `core.author-reconcile.affiliation-apply=true` and wired into the reconcile chain (durable across
+rebuild). Apply run: **405 groups merged, 22 → review**, author_facts 215,345 → 214,940. UVT subjects collapsed to
+one canonical author each (Megan/Cotăescu/Puta — both Scopus ids on one record), retiring the per-researcher
+scopus-id band-aid's need. 11 unit tests. Projection rebuilt from the merged canonical.
+
+Implementation detail (original plan):
 A reconcile pass (extend `AuthorReconcileService`) that merges AU-IDs which are:
 `same normalized name` **AND** `share ≥1 verified affiliation id`, guarded by the existing **same-publication
 hard-block** (two authors on one paper ⇒ different people) and co-author overlap as a secondary signal. Merge
