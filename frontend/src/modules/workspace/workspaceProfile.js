@@ -12,6 +12,8 @@ let _delegateController = null;
 
 export function initWorkspaceProfile() {
     window.appWorkspaceProfile = { init: _init };
+    // Refresh the completeness card after the onboarding wizard saves/closes.
+    document.addEventListener('ws-onboarding-updated', () => { if (_panel) _init(_panel); });
 }
 
 function _init(panel) {
@@ -87,41 +89,55 @@ function _renderAll() {
 }
 
 function _buildCompletenessCard(researcher, completeness) {
+    // H70: drive the card from the onboarding wizard status (5 steps), not the legacy 4-field metric, so the
+    // tab and the wizard agree. Incomplete steps link into the wizard rather than the inline edit form.
+    const onboarding = _data?.onboarding ?? null;
+    if (onboarding) {
+        const pct = Math.min(100, Math.max(0, onboarding.percentComplete ?? 0));
+        const done = new Set(onboarding.completedSteps ?? []);
+        const steps = [
+            { key: 'IDENTITY_IDS', label: 'Author identifiers' },
+            { key: 'ORCID', label: 'ORCID linked' },
+            { key: 'AFFILIATIONS', label: 'Affiliations confirmed' },
+            { key: 'AUTHOR_MATCH', label: 'Author record matched' },
+            { key: 'PUBLICATION_CLAIM', label: 'Publications reviewed' }
+        ];
+        const items = steps.map((s) => {
+            if (done.has(s.key)) {
+                return `<li class="app-ws-prof__checklist-item">
+                  <span class="app-ws-prof__checklist-icon--done"><i class="fa-solid fa-check"></i></span>
+                  <span class="app-ws-prof__checklist-label--done">${_esc(s.label)}</span>
+                </li>`;
+            }
+            return `<li class="app-ws-prof__checklist-item">
+              <span class="app-ws-prof__checklist-icon--missing"><i class="fa-solid fa-circle-exclamation"></i></span>
+              <span class="app-ws-prof__checklist-label--missing">${_esc(s.label)}</span>
+              <button type="button" class="app-ws-prof__checklist-link" data-onboarding-open>Continue &rsaquo;</button>
+            </li>`;
+        }).join('');
+        const fillClass = pct >= 100
+            ? 'app-ws-prof__progress-fill app-ws-prof__progress-fill--complete'
+            : 'app-ws-prof__progress-fill';
+        const cta = onboarding.complete ? ''
+            : `<button type="button" class="btn btn-sm btn-primary mt-2" data-onboarding-open>Continue setup</button>`;
+        return `<div class="app-ws-prof__completeness">
+          <div class="app-ws-prof__completeness-header">
+            <p class="app-ws-prof__completeness-title">Onboarding</p>
+            <span class="app-ws-prof__completeness-score">${pct}%<span class="app-ws-prof__completeness-score-label">complete</span></span>
+          </div>
+          <div class="app-ws-prof__progress-track">
+            <div class="${fillClass}" style="width:${pct}%"></div>
+          </div>
+          <ul class="app-ws-prof__checklist">${items}</ul>
+          ${cta}
+        </div>`;
+    }
+
+    // Legacy fallback (onboarding status absent).
     const pct = Math.min(100, Math.max(0, completeness ?? 0));
     const fillClass = pct >= 100
         ? 'app-ws-prof__progress-fill app-ws-prof__progress-fill--complete'
         : 'app-ws-prof__progress-fill';
-    const scopusIds = _asArray(researcher?.scopusId);
-    const wosIds = _asArray(researcher?.wosId);
-    const checks = [
-        { label: 'First name', done: !!researcher?.firstName?.trim(), anchor: 'ws-prof-edit-firstName' },
-        { label: 'Last name', done: !!researcher?.lastName?.trim(), anchor: 'ws-prof-edit-lastName' },
-        {
-            label: 'Research identity linked',
-            done: scopusIds.length > 0 || wosIds.length > 0 || ((researcher?.primaryScholardexAuthorId ?? '').trim().length > 0),
-            anchor: 'ws-prof-edit-scopusId'
-        },
-        {
-            label: 'Affiliations confirmed',
-            done: !!researcher?.affiliationsConfirmedAt,
-            anchor: 'ws-prof-affiliation-scope'
-        }
-    ];
-
-    const checklistItems = checks.map((c) => {
-        if (c.done) {
-            return `<li class="app-ws-prof__checklist-item">
-              <span class="app-ws-prof__checklist-icon--done"><i class="fa-solid fa-check"></i></span>
-              <span class="app-ws-prof__checklist-label--done">${_esc(c.label)}</span>
-            </li>`;
-        }
-        return `<li class="app-ws-prof__checklist-item">
-          <span class="app-ws-prof__checklist-icon--missing"><i class="fa-solid fa-circle-exclamation"></i></span>
-          <span class="app-ws-prof__checklist-label--missing">${_esc(c.label)}</span>
-          <a class="app-ws-prof__checklist-link" href="#${c.anchor}" data-prof-checklist-anchor="${c.anchor}">Add &rsaquo;</a>
-        </li>`;
-    }).join('');
-
     return `<div class="app-ws-prof__completeness">
       <div class="app-ws-prof__completeness-header">
         <p class="app-ws-prof__completeness-title">Profile completeness</p>
@@ -130,7 +146,6 @@ function _buildCompletenessCard(researcher, completeness) {
       <div class="app-ws-prof__progress-track">
         <div class="${fillClass}" style="width:${pct}%"></div>
       </div>
-      <ul class="app-ws-prof__checklist">${checklistItems}</ul>
     </div>`;
 }
 
@@ -418,6 +433,13 @@ function _wireEvents() {
     const { signal } = _delegateController;
 
     root.addEventListener('click', (e) => {
+        const onboardingOpen = e.target.closest('[data-onboarding-open]');
+        if (onboardingOpen) {
+            e.preventDefault();
+            window.appWorkspaceOnboarding?.open();
+            return;
+        }
+
         const anchor = e.target.closest('[data-prof-checklist-anchor]');
         if (anchor) {
             e.preventDefault();
