@@ -85,6 +85,9 @@ public class OpenAlexPublicationFact {
         private List<String> institutionNames = new ArrayList<>(); // OpenAlex-resolved org display names
         private List<String> rawAffiliations = new ArrayList<>();   // verbatim affiliation strings on the paper
         private String countryCode;                                 // primary authorship country (ISO alpha-2)
+        // H72 slice 3a: bare ROR ids (e.g. "03r6neh61") of this authorship's institutions — the cross-source
+        // affiliation key bridged onto verified Scopus affiliations on DOI-linked pubs.
+        private List<String> institutionRors = new ArrayList<>();
     }
 
     /** A platform researcher who synced this work, with the identity needed to seed/dedup. */

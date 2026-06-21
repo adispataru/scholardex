@@ -27,6 +27,7 @@ public class OpenAlexImportService {
     private static final Logger log = LoggerFactory.getLogger(OpenAlexImportService.class);
     private static final String SOURCE_OPENALEX = "OPENALEX";
     private static final String OPENALEX_ID_PREFIX = "https://openalex.org/";
+    private static final String ROR_ID_PREFIX = "https://ror.org/";
     private static final String BUILDER_VERSION = "openalex-source-fact-v1";
 
     private final OpenAlexClient openAlexClient;
@@ -87,6 +88,10 @@ public class OpenAlexImportService {
                     authorship.getInstitutions().stream()
                             .filter(i -> i != null && i.getDisplay_name() != null && !i.getDisplay_name().isBlank())
                             .forEach(i -> ref.getInstitutionNames().add(i.getDisplay_name().trim()));
+                    // H72 slice 3a: bare ROR id (strip the https://ror.org/ prefix) — the cross-source affiliation key.
+                    authorship.getInstitutions().stream()
+                            .filter(i -> i != null && i.getRor() != null && !i.getRor().isBlank())
+                            .forEach(i -> ref.getInstitutionRors().add(stripPrefix(i.getRor().trim(), ROR_ID_PREFIX)));
                 }
                 if (authorship.getRaw_affiliation_strings() != null) {
                     authorship.getRaw_affiliation_strings().stream()

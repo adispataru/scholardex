@@ -21,6 +21,11 @@ public class ScholardexAffiliationFact {
     private List<String> wosAffiliationIds = new ArrayList<>();
     private List<String> googleScholarAffiliationIds = new ArrayList<>();
     private List<String> userSourceAffiliationIds = new ArrayList<>();
+    /**
+     * H72 slice 3: bare ROR ids (e.g. "03r6neh61") bridged from OpenAlex onto this verified institution — the
+     * cross-source affiliation key. OpenAlex/ROR resolve here one-to-one, unlike the cross-language Scopus names.
+     */
+    private List<String> rorIds = new ArrayList<>();
     private String name;
     private String nameNormalized;
     private String city;
