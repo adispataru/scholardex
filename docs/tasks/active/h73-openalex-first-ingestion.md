@@ -144,7 +144,51 @@ One replayable importer reading the three local inputs in a single flow:
   aliases, geo); referenced-only filter; missing-institution inline fallback; rebuild
   replay includes the step and the backbone precedes Scopus affiliation canon.
 
-### Slice 2 — Scopus affiliations resolve INTO the backbone (alias matcher inverted)
+### Slice 2 — OpenAlex is the backbone for publications, authors, AND affiliations (EPIC, decided 2026-06-21)
+Expanded from "Scopus affiliations resolve into the ROR backbone" to **full OpenAlex-as-backbone**: where
+OpenAlex has data, its identities (DOI / ORCID / ROR) and fields are authoritative; Scopus plugs in or fills the
+gaps. Then a **rebuild-from-scratch** validates the new order.
+
+**Grounding facts (verified):**
+- **Publications already merge by DOI** — `buildCanonicalPublicationId` is DOI-first (`doi|…` → eid → wos → title),
+  so Scopus + OpenAlex with the same DOI are already ONE `spub_<hash(doi)>`. So pub "backbone" = **field
+  precedence**, not identity. The **OpenAlex canon already runs LAST** (after the Scopus build), so it can *take
+  over* authority by overwriting — no risky reorder of the Scopus monolith needed for pubs.
+- OpenAlex is UVT-scoped (11,656 UVT works) vs Scopus full corpus (92,526 canonical pubs); OpenAlex is **not** a
+  superset. Backbone = OpenAlex-authoritative-where-present, Scopus fills the no-DOI / OpenAlex-absent tail.
+- **Authors are the hard case** — Scopus AU-ID-keyed (`sauth_<hash(scopus|auid)>`) vs OpenAlex ORCID/OpenAlex-id-keyed;
+  different schemes → no auto-merge, only the ORCID positional bridge. H72 found cross-source author dedup
+  low-yield/unsafe. **Decided: full author inversion** (OpenAlex authors primary, Scopus AU-IDs resolve in) — highest
+  risk; gated behind a dry-run.
+
+**Dry-run findings (2026-06-21, read-only on the live canonical data):**
+- **S2.2 pub precedence is strongly justified.** Over 55,855 shared-DOI pubs: OpenAlex citation count > Scopus on
+  **77.8%** (+560,684 citations Scopus misses); author lists **98.7% equal**; corresponding author Scopus 0% →
+  OpenAlex **72.7%**; ≥1 author ORCID on **95.5%**.
+- **Author inversion is safe via the POSITIONAL bridge, not name matching.** The earlier homonym dry-run
+  (10.3% shared names, clusters to 54) measured corpus-wide name matching — which is NOT what we do. The
+  positional bridge compares author *i* of *one shared paper* across both sources (equal-count + per-position
+  surname guard), so homonyms never collide. The 98.7% equal-author-count means nearly all shared-pub authors
+  bridge cleanly; Scopus-only-pub authors just mint (no inversion).
+
+**Sub-slices (corrected — pub precedence + author attach are ONE operation, both need the reorder):**
+- **S2.1 — Affiliations → ROR backbone.** `ScholardexAffiliationCanonicalizationService`: each verified afid
+  (`60…`) alias-matches the backbone (built slice 1) → add afid to `scopusAffiliationIds`, else mint afid-keyed.
+  Retire `ScholardexAffiliationRorBridgeService` + clear noisy `rorIds`. **Standalone** — a separate canon pass,
+  independent of pub/author processing, works in the current order.
+- **S2.2 — Pub + author inversion (the coupled core).** Reorder so the OpenAlex canon mints canonical pubs +
+  authors **first**; then the Scopus pub canon **resolves into** the existing canonical pub by DOI: OpenAlex
+  field precedence (title/venue/citations + author list authoritative; Scopus adds `eid` + Scopus-only fields)
+  **AND** positional attachment of each Scopus AU-ID to the existing scholardex author at position *i*
+  (equal-count + surname guard). Scopus-only / OpenAlex-absent pubs mint as today. Pub-resolve, author-attach,
+  and the reorder are inseparable — a partial state duplicates authors. (Absorbs the old S2.2 + S2.3 + reorder.)
+- **S2.3 — Rebuild-from-scratch + validate.** Run `rebuildAllDerived` end-to-end (~75+ min), validate counts +
+  spot-checks. The reorder's real proof.
+
+Implementation order: **S2.1 → S2.2 → S2.3 rebuild.** Start with the standalone affiliation pass, then the
+coupled inversion, then the rebuild.
+
+### (original) Slice 2 — Scopus affiliations resolve INTO the backbone (alias matcher inverted)
 - Change `ScholardexAffiliationCanonicalizationService` so each **verified** Scopus
   affiliation (`afid ^60`) resolves against the backbone via the 3-tier alias matcher:
   1. exact alias (display_name + alternatives + acronyms),
