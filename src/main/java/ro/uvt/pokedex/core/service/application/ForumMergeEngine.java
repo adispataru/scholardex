@@ -211,12 +211,18 @@ public class ForumMergeEngine {
         LinkedHashSet<String> normalizedIssns = normalizedIssnSet(
                 ctx.primaryIssnIndex, record.issn(), record.eIssn(), record.aliasIssns(), null, null, null);
 
-        // Fan-out match: every forum sharing an ISSN token is tagged with this source's id.
+        // Match: tag the forum(s) sharing an ISSN token with this source's id.
         if (!normalizedIssns.isEmpty()) {
             List<ScholardexForumFact> matches = ctx.forumIndex.findCandidates(normalizedIssns, null);
             if (!matches.isEmpty()) {
+                // OPENALEX's openAlexIds carries a UNIQUE index, so a venue must tag AT MOST ONE forum — fanning
+                // it onto a split journal's several forum records would violate uniqueness. ERIH/DOAJ FKs are
+                // non-unique, so they keep the original fan-out (split-journal signal). Idempotent either way.
+                List<ScholardexForumFact> targets = idType == ForumSourceRecord.ForumIdType.OPENALEX
+                        ? singleTagTarget(matches, sourceRecordId)
+                        : matches;
                 boolean changed = false;
-                for (ScholardexForumFact forum : matches) {
+                for (ScholardexForumFact forum : targets) {
                     if (addExternalId(forum, idType, sourceRecordId)) {
                         forum.setUpdatedAt(now);
                         ctx.dirtyForums.put(forum.getId(), forum);
@@ -592,6 +598,23 @@ public class ForumMergeEngine {
     }
 
     /** Add the external id to the forum's per-source FK list (`erihIds`/`doajIds`) if absent (kept sorted). */
+    /**
+     * H73 slice 3: pick the single forum an OpenAlex venue should tag (its {@code openAlexIds} index is unique, so
+     * the id must live on at most one forum). Idempotent: if a match already carries the id, return that one so the
+     * tag is a no-op; otherwise the lowest-id match (deterministic across runs).
+     */
+    static List<ScholardexForumFact> singleTagTarget(List<ScholardexForumFact> matches, String openAlexId) {
+        for (ScholardexForumFact forum : matches) {
+            if (forum.getOpenAlexIds() != null && forum.getOpenAlexIds().contains(openAlexId)) {
+                return List.of(forum);
+            }
+        }
+        return matches.stream()
+                .min(Comparator.comparing(ScholardexForumFact::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(List::of)
+                .orElse(List.of());
+    }
+
     private static boolean addExternalId(ScholardexForumFact forum, ForumSourceRecord.ForumIdType idType, String externalId) {
         List<String> ids = switch (idType) {
             case ERIH -> {

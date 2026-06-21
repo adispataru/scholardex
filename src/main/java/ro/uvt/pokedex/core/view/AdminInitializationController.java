@@ -45,6 +45,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.ScholardexAffiliationRorBridgeService affiliationRorBridgeService;
     private final ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
+    private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
 
     @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.works-file:}")
     private String openAlexWorksFile;
@@ -439,6 +440,23 @@ public class AdminInitializationController {
 
     private static java.nio.file.Path pathOrNull(String path) {
         return path == null || path.isBlank() ? null : java.nio.file.Path.of(path);
+    }
+
+    /**
+     * H73 slice 3 — manual trigger for OpenAlex canonicalization (source facts → canonical pubs/authors +
+     * authorship and pub→author→affiliation edges). Lets the OpenAlex canonical layer (incl. the new affiliation
+     * edges) be (re)built on demand without a full ~36-min rebuild. Run after {@code /openalex/bulkImport}.
+     */
+    @PostMapping("/openalex/canonicalize")
+    public String runOpenAlexCanonicalize(RedirectAttributes redirectAttributes) {
+        var result = openAlexCanonicalizationService.rebuildCanonicalFacts();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "OpenAlex canonicalization complete. processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount() + ".");
+        return "redirect:/admin/initialization";
     }
 
     @PostMapping("/author/reconcile")

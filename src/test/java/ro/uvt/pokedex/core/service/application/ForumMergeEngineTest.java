@@ -42,6 +42,27 @@ class ForumMergeEngineTest {
     }
 
     @Test
+    void singleTagTargetPicksOneForumWhenSeveralMatch_andIsIdempotent() {
+        // H73 slice 3: OpenAlex openAlexIds is a UNIQUE index, so a venue matching a split journal's two forum
+        // records must tag AT MOST ONE — fan-out would violate uniqueness (the live DuplicateKey crash).
+        ScholardexForumFact a = new ScholardexForumFact();
+        a.setId("sforum_a");
+        ScholardexForumFact b = new ScholardexForumFact();
+        b.setId("sforum_b");
+
+        // neither tagged yet → exactly one chosen (deterministic: lowest id)
+        List<ScholardexForumFact> chosen = ForumMergeEngine.singleTagTarget(List.of(b, a), "S100");
+        assertEquals(1, chosen.size());
+        assertEquals("sforum_a", chosen.getFirst().getId());
+
+        // already tagged on one match → that one returned (idempotent no-op)
+        b.setOpenAlexIds(new ArrayList<>(List.of("S100")));
+        List<ScholardexForumFact> existing = ForumMergeEngine.singleTagTarget(List.of(a, b), "S100");
+        assertEquals(1, existing.size());
+        assertEquals("sforum_b", existing.getFirst().getId());
+    }
+
+    @Test
     void mergeForumAppliesScopusPreferredIssnNameAggAndAliases() {
         ForumMergeEngine engine = engine();
         ScholardexForumFact target = new ScholardexForumFact();

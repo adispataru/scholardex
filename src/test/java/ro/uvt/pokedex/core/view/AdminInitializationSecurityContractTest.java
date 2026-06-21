@@ -80,6 +80,8 @@ class AdminInitializationSecurityContractTest {
     private ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
 
     @Test
     void nonAdminCannotAccessInitializationPage() throws Exception {
