@@ -42,6 +42,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.DoajOnboardingService doajOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService scholardexForumDeduplicationService;
     private final ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
+    private final ro.uvt.pokedex.core.service.application.ScholardexAffiliationRorBridgeService affiliationRorBridgeService;
     private final ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
 
     @GetMapping
@@ -433,6 +434,15 @@ public class AdminInitializationController {
                         + ", authorsMerged=" + result.getImportedCount()
                         + ", reportedCandidates=" + result.getSkippedCount()
                         + " (dry-run unless core.author-reconcile.affiliation-apply=true).");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/affiliation/ror-bridge")
+    public String runAffiliationRorBridge(RedirectAttributes redirectAttributes) {
+        int tagged = affiliationRorBridgeService.bridgeRorsFromOpenAlex("admin-manual");
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Affiliation ROR bridge complete. verifiedAffiliationsTagged=" + tagged
+                        + " (OpenAlex ROR bridged onto Scopus affiliations via DOI-linked pubs).");
         return "redirect:/admin/initialization";
     }
 

@@ -75,6 +75,8 @@ class AdminInitializationSecurityContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ScholardexAffiliationRorBridgeService affiliationRorBridgeService;
+    @MockitoBean
     private ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
 
     @Test

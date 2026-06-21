@@ -146,7 +146,7 @@ public class OpenAlexAuthorResolver {
     }
 
     /** Surname agreement: Scopus "Last, First" surname vs OpenAlex "First Last" final token, normalization-insensitive. */
-    static boolean surnameMatches(String scopusName, String openAlexName) {
+    public static boolean surnameMatches(String scopusName, String openAlexName) {
         String a = normalizeSurname(scopusSurname(scopusName));
         String b = normalizeSurname(openAlexSurname(openAlexName));
         return !a.isEmpty() && a.equals(b);
