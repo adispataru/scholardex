@@ -9,6 +9,46 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H73` OpenAlex-first ingestion (UVT 1-hop corpus + ROR affiliation backbone). Ingest the locally-held
+  OpenAlex UVT neighborhood + institution backbone into the canonical layer **from files already on disk**
+  (`data/openalex/`, ~2.7 GB, git-ignored, regenerable from `scopus-python/openalex_fetch_{uvt,citations}.py`) —
+  no further API fetching/spend. Have: `uvt_works.jsonl` (11,656 full pubs), `uvt_citing_works.jsonl` (105,766
+  unique incoming citers — 4,404 are UVT, 101,362 external), reference DNA edges (321,810 edges / 203,721 unique
+  targets, only 8,756 already held), institutions fixture (121,512; 121,511 ROR, 121,509 alias-bearing).
+  **Key finding: 0/121,512 OpenAlex institutions carry a Scopus id** → no afid→ROR id-join; matching is name/alias-based.
+  **Load-bearing decision (2026-06-21): OpenAlex-first affiliation backbone.** OpenAlex institutions are the **primary**
+  source for `ScholardexAffiliationFact` — they derive the backbone (ROR-keyed `@Id`) **first**; Scopus affiliation
+  facts then resolve **into** it (alias-match → add afid to `scopusAffiliationIds`) or mint their own if Scopus-only.
+  ROR is canonical, afid secondary — inverts the rejected "Scopus spine + ROR tag". The model already supports it
+  (`ScholardexAffiliationFact` has scopus/wos/googleScholar/user id slots + `rorIds` + `aliases`); direct precedent is
+  **authors** (Scopus + OpenAlex resolve-or-mint into one `ScholardexAuthorFact`). **Delivers the affiliation merges
+  afid-keying structurally blocked** (two afids → one ROR = original H72 goal), fixes the e-Austria/UVT cross-tag,
+  collapses cross-language names under one ROR. Other decisions: **absorb the H63 corresponding/last-author/ORCID
+  backfill** (bulk works carry `authorships[]`); **broad forums-first reorder stays H74** (H73 makes only the narrow
+  "OpenAlex-institution canon before Scopus-affiliation canon" ordering change); **retire
+  `ScholardexAffiliationRorBridgeService` + clear noisy positional `rorIds`**; **backbone scope = referenced-only**
+  (works-seeded: the corpus references 24,296 institutions, 24,233 = 99.7% in-snapshot → backbone, vs 121k full;
+  fixture stays on disk). Slices:
+  **(1)** one replayable OpenAlex bulk importer — pass 1 reads `uvt_works` + `uvt_citing_works` → `openalex.*`
+  source facts via `OpenAlexImportService` + H63 backfill + collects referenced institution ids; pass 2 reads
+  `institutions/*.gz`, keeps only referenced ids → backbone `ScholardexAffiliationFact`s (ROR-keyed, aliases from
+  `display_name_alternatives`); wired into `rebuildAllDerived`, backbone derived before Scopus affiliation canon;
+  **(2)** Scopus affiliations resolve INTO the backbone via the 3-tier alias matcher (exact-alias → simplification →
+  country-gated Jaccard≥0.8 + city) — plug afid into `scopusAffiliationIds` or mint Scopus-only; retire the positional
+  bridge + clear noisy `rorIds`;
+  **(3)** DNA edge layer — persist `referenced_works` IDs + materialize 17,130 internal UVT↔UVT edges (both ends
+  already canonical), zero foreign minting. Out of scope: external hydration (194,965 bare IDs). Upstream of
+  **H69**/**H67** (citation graph). Planning doc at `docs/tasks/active/h73-openalex-first-ingestion.md`.
+  **Status (2026-06-21): slice 1 DONE + live-validated** (114s run: works=11,656 w/ H63 corresponding on 6,723,
+  citers=105,766 bare, backbone=24,232 ROR-keyed affiliations; affiliation_facts 16,427→40,659, Scopus untouched).
+  Next: slice 2 (Scopus afids resolve into the backbone).
+
+- [ ] `H74` Pipeline reorder (forums → institutions+affiliations → pubs+authors). Structural change to the
+  reconcile/rebuild chain ordering so canonicalization runs forums first, then institutions+affiliations (on the
+  H73 ROR backbone), then publications+authors against the clean affiliation graph. Carved out of **H73** to isolate
+  the chain-ordering risk; do after H73's additive import/ROR/DNA slices land and validate. Touches
+  `ForumReconcileService` + the `rebuildAllDerived` step ordering. Planning doc TBD.
+
 - [ ] `H70` Researcher onboarding wizard (+ de-tangle the publication-claim tool). Replace the confusing
   all-controls-at-once onboarding in the workspace **Profile & Sync** tab with a **resume-aware stepped modal**
   (Scopus ids → ORCID → confirm/deny affiliations → match Scholardex author record(s) → recommended bulk publication
@@ -56,6 +96,10 @@ Done history moved to `TASKS-done.md`.
   band-aid. **Slice 3 (later):** OpenAlex ROR/ORCID enrichment onto the clean base (folds in H71 steps 2–3). Scopus-indexed
   signal routes via the forum (venue-in-Scopus-source), not per-pub. Plan + evidence:
   `docs/tasks/active/h72-scopus-verified-entity-resolution.md`.
+  **Status (2026-06-21): slices 1–3 shipped + live-validated** (affiliations 29,106→16,427; 405 over-split authors
+  merged; UVT ROR-tagged). **Slice-3 mechanism superseded by `H73`:** the positional `ScholardexAffiliationRorBridgeService`
+  was noisy (cross-tagged e-Austria's ROR onto UVT) — H73 slice 2 replaces it with the OpenAlex-institution alias matcher
+  and retires the bridge + clears the noisy `rorIds`. Ready to close out to `TASKS-done.md` once H73 slice 2 lands.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
@@ -131,6 +175,10 @@ Done history moved to `TASKS-done.md`.
   expose on `ScoringPublicationReadModel` → upgrade physics P from first-author-only to first-or-corresponding.
   Exit criteria: UVT pubs carry corresponding author where OpenAlex declares it (ORCID-matched), partial
   coverage handled with first-author fallback. Planning doc at `docs/tasks/active/h63-openalex-enrichment.md`.
+  **Scope update (2026-06-21):** the **bulk backfill is absorbed into `H73` slice 3** (the bulk OpenAlex importer) — the local
+  `data/openalex/uvt_works.jsonl` already carries `authorships[].is_corresponding` + ORCID + `author_position`,
+  so H73's bulk import populates corresponding/last-author at ingest. H63 shrinks to the **incremental DOI-keyed
+  path for newly-added pubs** + the scoring-surface wiring (read model + physics P upgrade).
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.

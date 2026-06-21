@@ -44,6 +44,14 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
     private final ro.uvt.pokedex.core.service.application.ScholardexAffiliationRorBridgeService affiliationRorBridgeService;
     private final ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
+    private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
+
+    @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.works-file:}")
+    private String openAlexWorksFile;
+    @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.citers-file:}")
+    private String openAlexCitersFile;
+    @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.institutions-dir:}")
+    private String openAlexInstitutionsDir;
 
     @GetMapping
     public String showInitializationPage(Model model) {
@@ -403,6 +411,34 @@ public class AdminInitializationController {
                         + ", projectionRows=" + result.projection().getProcessedCount()
                         + ", projectionErrors=" + result.projection().getErrorCount());
         return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H73 slice 1 — manual trigger for the file-driven OpenAlex bulk import (works + citers → source facts;
+     * referenced institutions → ROR affiliation backbone), reading the configured {@code core.openalex.bulk.*}
+     * paths. Lets the bulk import + backbone be (re)built on demand without a full ~36-min rebuild.
+     */
+    @PostMapping("/openalex/bulkImport")
+    public String runOpenAlexBulkImport(RedirectAttributes redirectAttributes) {
+        java.nio.file.Path works = pathOrNull(openAlexWorksFile);
+        java.nio.file.Path citers = pathOrNull(openAlexCitersFile);
+        java.nio.file.Path institutions = pathOrNull(openAlexInstitutionsDir);
+        try {
+            var r = openAlexBulkImportService.importAll(works, citers, institutions,
+                    "openalex-bulk-manual", "admin-manual");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "OpenAlex bulk import complete. works=" + r.worksImported()
+                            + ", citers=" + r.citersImported()
+                            + ", referencedInstitutions=" + r.referencedInstitutions()
+                            + ", backboneAffiliations=" + r.backboneInstitutions() + ".");
+        } catch (java.io.IOException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "OpenAlex bulk import failed: " + e.getMessage());
+        }
+        return "redirect:/admin/initialization";
+    }
+
+    private static java.nio.file.Path pathOrNull(String path) {
+        return path == null || path.isBlank() ? null : java.nio.file.Path.of(path);
     }
 
     @PostMapping("/author/reconcile")

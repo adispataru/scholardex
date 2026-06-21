@@ -40,6 +40,8 @@ class PipelineRebuildServiceTest {
     private ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
     @Mock
     private ForumReconcileService forumReconcileService;
+    @Mock
+    private ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
 
     /** A non-null reconcile result so the post-rebuild reconcile step can read its projection counts. */
     private static ForumReconcileService.ForumReconcileResult noopReconcile() {
@@ -52,7 +54,7 @@ class PipelineRebuildServiceTest {
         when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
         when(forumReconcileService.reconcile(anyString())).thenReturn(noopReconcile());
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
 
         PipelineRebuildService.PipelineRebuildResult result = service.rebuildAllDerivedFromSource();
 
@@ -74,7 +76,7 @@ class PipelineRebuildServiceTest {
         java.nio.file.Path erih = java.nio.file.Files.createTempFile("erih", ".jsonl");
         try {
             PipelineRebuildService service =
-                    new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService);
+                    new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
             org.springframework.test.util.ReflectionTestUtils.setField(service, "doajFile", doaj.toString());
             org.springframework.test.util.ReflectionTestUtils.setField(service, "erihFile", erih.toString());
             org.springframework.test.util.ReflectionTestUtils.setField(service, "referenceAsOf", "2026");
@@ -102,7 +104,7 @@ class PipelineRebuildServiceTest {
         when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
         when(forumReconcileService.reconcile(anyString())).thenReturn(noopReconcile());
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
 
         service.rebuildAllDerivedFromSource();
 
@@ -114,7 +116,7 @@ class PipelineRebuildServiceTest {
         doThrow(new IllegalArgumentException("foreign collection"))
                 .when(ownedCollectionRegistry).assertAllWipeable(any());
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
 
         assertThatThrownBy(service::rebuildAllDerivedFromSource)
                 .isInstanceOf(IllegalArgumentException.class);
@@ -126,7 +128,7 @@ class PipelineRebuildServiceTest {
         OwnedCollectionRegistry allOwned =
                 new OwnedCollectionRegistry(PipelineRebuildService.MANAGED_DERIVED_COLLECTIONS);
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, allOwned, mongoTemplate, doajDataService, erihDataService, forumReconcileService);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, allOwned, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
 
         assertThatCode(service::validateManagedCollectionsAreOwned).doesNotThrowAnyException();
     }
@@ -136,7 +138,7 @@ class PipelineRebuildServiceTest {
         Set<String> missingOne = new HashSet<>(PipelineRebuildService.MANAGED_DERIVED_COLLECTIONS);
         missingOne.remove("scholardex.source_links");
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, new OwnedCollectionRegistry(missingOne), mongoTemplate, doajDataService, erihDataService, forumReconcileService);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, new OwnedCollectionRegistry(missingOne), mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
 
         assertThatThrownBy(service::validateManagedCollectionsAreOwned)
                 .isInstanceOf(IllegalArgumentException.class)

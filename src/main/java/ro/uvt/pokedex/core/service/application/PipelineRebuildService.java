@@ -65,6 +65,7 @@ public class PipelineRebuildService {
     private final ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
     private final ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
     private final ForumReconcileService forumReconcileService;
+    private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
 
     // H66B M8-B: the DOAJ/ERIH reference snapshots are match-only inputs to the forum build (read by the
     // ERIH/DOAJ onboarding inside the Scopus forum build). Folding their import into the unified DAG means one
@@ -76,6 +77,16 @@ public class PipelineRebuildService {
     @org.springframework.beans.factory.annotation.Value("${h66.reference.as-of:2026}")
     private String referenceAsOf;
 
+    // H73 slice 1: file-driven OpenAlex bulk import (works + citers → source facts; referenced institutions →
+    // ROR affiliation backbone). Blank paths skip the step (like the DOAJ/ERIH feeds). The backbone is derived
+    // BEFORE the Scopus build so the Scopus affiliation canon (slice 2) can resolve afids into it.
+    @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.works-file:}")
+    private String openAlexWorksFile;
+    @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.citers-file:}")
+    private String openAlexCitersFile;
+    @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.institutions-dir:}")
+    private String openAlexInstitutionsDir;
+
     public PipelineRebuildService(
             ScopusBigBangMigrationService scopusRebuild,
             WosBigBangMigrationService wosRebuild,
@@ -83,7 +94,8 @@ public class PipelineRebuildService {
             org.springframework.data.mongodb.core.MongoTemplate mongoTemplate,
             ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService,
             ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService,
-            ForumReconcileService forumReconcileService) {
+            ForumReconcileService forumReconcileService,
+            ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService) {
         this.scopusRebuild = scopusRebuild;
         this.wosRebuild = wosRebuild;
         this.ownedCollectionRegistry = ownedCollectionRegistry;
@@ -91,6 +103,7 @@ public class PipelineRebuildService {
         this.doajDataService = doajDataService;
         this.erihDataService = erihDataService;
         this.forumReconcileService = forumReconcileService;
+        this.openAlexBulkImportService = openAlexBulkImportService;
     }
 
     /**
@@ -135,6 +148,9 @@ public class PipelineRebuildService {
         // onboarding reads them). These collections are not source-replayed (not in the managed wipe set), so
         // re-importing here keeps the unified rebuild's registry complete and current.
         ingestReferenceFeedsIfConfigured();
+        // H73 slice 1: import the OpenAlex works/citers source facts + derive the ROR affiliation backbone
+        // BEFORE the Scopus build, so Scopus affiliations can resolve into the backbone (slice 2).
+        ingestOpenAlexBulkIfConfigured();
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runFull();
 
         // H66B closeout: end the from-scratch build in a reconciled state instead of waiting for the nightly
@@ -165,6 +181,32 @@ public class PipelineRebuildService {
         } else if (erihFile != null && !erihFile.isBlank()) {
             LOG.warn("Unified rebuild ERIH ingest skipped: file not found ({})", erihFile);
         }
+    }
+
+    private void ingestOpenAlexBulkIfConfigured() {
+        boolean anyConfigured = (openAlexWorksFile != null && !openAlexWorksFile.isBlank())
+                || (openAlexCitersFile != null && !openAlexCitersFile.isBlank())
+                || (openAlexInstitutionsDir != null && !openAlexInstitutionsDir.isBlank());
+        if (!anyConfigured) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        java.nio.file.Path works = pathOrNull(openAlexWorksFile);
+        java.nio.file.Path citers = pathOrNull(openAlexCitersFile);
+        java.nio.file.Path institutions = pathOrNull(openAlexInstitutionsDir);
+        try {
+            var r = openAlexBulkImportService.importAll(works, citers, institutions,
+                    "openalex-bulk-" + now, "full-rebuild");
+            LOG.info("Unified rebuild OpenAlex bulk ingest: works={} citers={} referencedInstitutions={} backbone={}",
+                    r.worksImported(), r.citersImported(), r.referencedInstitutions(), r.backboneInstitutions());
+        } catch (java.io.IOException e) {
+            LOG.error("Unified rebuild OpenAlex bulk ingest failed", e);
+            throw new IllegalStateException("OpenAlex bulk ingest failed", e);
+        }
+    }
+
+    private static java.nio.file.Path pathOrNull(String path) {
+        return path == null || path.isBlank() ? null : java.nio.file.Path.of(path);
     }
 
     private boolean isReadableFile(String path) {

@@ -33,6 +33,21 @@ public class OpenAlexImportService {
     private final OpenAlexClient openAlexClient;
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
 
+    /**
+     * H73 slice 1 — upsert a single <b>full</b> OpenAlex work parsed from the local bulk corpus
+     * ({@code data/openalex/uvt_works.jsonl}). Same mapping as the per-researcher path (authorships,
+     * corresponding/positional H63 backfill, venue, referenced works) but with no syncing researcher.
+     * Idempotent on the work id. Returns the stripped work id, or {@code null} if the record has no id.
+     */
+    public String importFullWork(OpenAlexWorksResponse.OpenAlexWork work, String batchId, String correlationId) {
+        String workId = stripPrefix(work.getId(), OPENALEX_ID_PREFIX);
+        if (workId == null || workId.isBlank()) {
+            return null;
+        }
+        upsert(work, workId, null, null, batchId, correlationId);
+        return workId;
+    }
+
     public List<String> importByOrcid(String orcid, String researcherAuthorId, String batchId, String correlationId) {
         List<OpenAlexWorksResponse.OpenAlexWork> works = openAlexClient.fetchWorksByOrcid(orcid);
         List<String> workIds = new ArrayList<>(works.size());
