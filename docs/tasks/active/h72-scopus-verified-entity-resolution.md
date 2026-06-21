@@ -123,7 +123,24 @@ adds the verified-affiliation corroborator that was missing.
 - **Retire the band-aid:** once researchers resolve to one canonical author carrying all their scopus ids, remove the
   scopus-ids-on-researcher-profile workaround (or keep it as a confirmation seed, decided during build).
 
-### Slice 3 — (later, separate) OpenAlex ROR/ORCID enrichment onto the clean base
+### Slice 3 — OpenAlex ROR affiliation enrichment — DONE (3a `9e5ebff`, 3b `7cbb12e`, live-validated 2026-06-21)
+Reassessment (after re-sync): cross-source *author* dedup is low-yield — only 37 OpenAlex-minted authors, and **zero**
+exact-name-match a Scopus author (they differ by name form: "Bogdan Tudor Tulbure" vs "Tulbure, Bogdan T."), so 3c/3d
+(cross-source author merge) were **dropped** as not worth it (the 37 are harmless external co-authors; subjects are
+clean). Built the affiliation half only:
+- **3a:** `OpenAlexPublicationFact.AuthorRef.institutionRors` (bare ROR, stripped of `https://ror.org/`) captured in
+  `OpenAlexImportService`; `ScholardexAffiliationFact.rorIds` slot.
+- **3b:** `ScholardexAffiliationRorBridgeService` — for each DOI-linked OpenAlex work, positional surname-guarded match
+  to the Scopus pub's authors; where the authorship has exactly one ROR and the Scopus author has exactly one affiliation
+  on that pub, tag that verified affiliation's `rorIds`. Conservative + idempotent. Wired into the reconcile chain
+  (durable) + `POST /affiliation/ror-bridge`.
+
+Live: 16 of florin's foreign DOI-linked pubs → 9 verified affiliations tagged, incl. UVT `60000434` →
+`["0583a0t97", e-Austria's 03r6neh61]`. **Known imprecision:** the 1-affiliation/1-ROR guard can attach a co-located
+institution's ROR (UVT picked up e-Austria's) — accepted, because adding a name-compat guard would defeat ROR's
+cross-language purpose. ROR is now the cross-source affiliation key; grows as researchers onboard. (Original detail:)
+
+### Slice 3 original sketch — OpenAlex ROR/ORCID enrichment onto the clean base
 Bridge ROR onto verified affiliations and ORCID onto authors via the DOI-linked sync, recovering the few relevant
 institutions Scopus didn't verify and collapsing any cross-language residue — now matching one-to-one onto a clean
 verified tier, not a fragmented one. Out of scope here; documented so the seam is intentional.
