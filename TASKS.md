@@ -43,9 +43,14 @@ Done history moved to `TASKS-done.md`.
   **(4)** DNA edge layer — persist `referenced_works` IDs + materialize 17,130 internal UVT↔UVT edges (both ends
   already canonical), zero foreign minting. Out of scope: external hydration (194,965 bare IDs). Upstream of
   **H69**/**H67** (citation graph). Planning doc at `docs/tasks/active/h73-openalex-first-ingestion.md`.
-  **Status (2026-06-21): slice 1 DONE + live-validated** (114s run: works=11,656 w/ H63 corresponding on 6,723,
-  citers=105,766 bare, backbone=24,232 ROR-keyed affiliations; affiliation_facts 16,427→40,659, Scopus untouched).
-  Next: slice 2 (Scopus afids resolve into the backbone).
+  **Status (2026-06-21): slices 1 + 3 DONE + live-validated.** S1 (114s): works=11,656 w/ H63 corresponding on
+  6,723, citers=105,766, backbone=24,232 ROR affiliations. S3 (citers full + pub→author→affiliation edges; bulk-mode
+  canon ~30.6 min, was ~10h): 166,224 OpenAlex authors, 337,397 pub→author→affiliation + 247,743 author→affiliation
+  edges → 21,032 ROR backbone institutions. Perf fixes: missing `orcidIds`/`openAlexAuthorIds` indexes +
+  `doiNormalized` made non-unique (book-chapter container DOIs are legit) + in-memory author preload + batched
+  affiliation inserts. **S3.5 DONE** (unit-tested): authorship edges batched (`batchUpsertAuthorshipEdges` +
+  optional `correspondingKeys` set) — last per-record hot path closed; live timing TBD next bulk run. Follow-up:
+  malformed-DOI normalize cleanup. **Next: slice 2** (Scopus afids resolve into the backbone).
 
 - [ ] `H74` Pipeline reorder (forums → institutions+affiliations → pubs+authors). Structural change to the
   reconcile/rebuild chain ordering so canonicalization runs forums first, then institutions+affiliations (on the

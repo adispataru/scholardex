@@ -163,7 +163,27 @@ One replayable importer reading the three local inputs in a single flow:
 - Tests: plug-in (afid added to backbone), mint (Scopus-only), cross-language collapse,
   country gate rejects same-token cross-country, edges point at ROR-keyed canonical.
 
-### Slice 3 — OpenAlex pub→author→affiliation edges (UVT works **and** citers)
+### Slice 3 — OpenAlex pub→author→affiliation edges (UVT works **and** citers) — DONE (live-validated 2026-06-21)
+Shipped: citers imported full; `OpenAlexCanonicalizationService` emits author→affiliation +
+pub→author→affiliation edges resolving `institutionRors` → ROR backbone. **Bulk-mode canon**
+(`OpenAlexAuthorResolver.BulkContext` in-memory author index + batched affiliation-edge inserts)
++ the missing `orcidIds`/`openAlexAuthorIds` indexes + `doiNormalized` made non-unique took the
+full canon from a projected ~10h (O(N²) unindexed author scans) to **~30.6 min**.
+**Live run:** 166,224 OpenAlex authors (total 217k→381,120); **337,397 pub→author→affiliation**
++ 247,743 author→affiliation edges resolving to **21,032 ROR backbone institutions** (citer
+institutions — the "who cites UVT, from where" graph); 38,994 UVT works contribute
+corresponding-author edges; 301,621 authorship edges. Two follow-ups noted below.
+
+**Follow-ups:**
+- **S3.5 — batch authorship edges. DONE (unit-tested 2026-06-21, no live run yet).**
+  `batchUpsertAuthorshipEdges` gained an optional `correspondingKeys` Set (stamps
+  `corresponding=true` for `pub|author` keys in the set); bulk canon accumulates +
+  batches authorship edges alongside affiliation edges. Closes the last per-record
+  hot path; live timing to be confirmed on the next bulk run.
+- Malformed-DOI normalization (`10.5380/raega` carried a concatenated `eissn:…`) — minor
+  data-quality cleanup in `normalizeDoi`. Still open.
+
+Original plan:
 The "authored this paper while at this institution" edge
 (`ScholardexPublicationAuthorAffiliationFact`) is built from **Scopus only** today —
 `OpenAlexCanonicalizationService` calls only `upsertAuthorshipEdge` (pub→author), never
