@@ -81,8 +81,6 @@ class AdminInitializationControllerContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
     @MockitoBean
-    private ro.uvt.pokedex.core.service.application.ScholardexAffiliationRorBridgeService affiliationRorBridgeService;
-    @MockitoBean
     private ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;

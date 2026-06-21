@@ -47,9 +47,19 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
     private static final String PIPELINE_KEY = ScholardexCanonicalBuildCheckpointService.AFFILIATION_PIPELINE_KEY;
     private static final String LINK_REASON_SCOPUS_BRIDGE = "scopus-affiliation-bridge";
     private static final String CONFLICT_SOURCE_ID_COLLISION = "SOURCE_ID_COLLISION";
+    private static final String SOURCE_OPENALEX = "OPENALEX";
 
     private final ScopusAffiliationFactRepository scopusAffiliationFactRepository;
     private final ScholardexAffiliationFactRepository scholardexAffiliationFactRepository;
+
+    /**
+     * H73 S2.1: when true (default), a verified Scopus afid alias-matches the OpenAlex ROR <b>backbone</b> (slice 1)
+     * and plugs into that record (`scopusAffiliationIds`, keeping OpenAlex name/country authoritative) instead of
+     * minting an afid-keyed Scopus-only affiliation. Built once per run from the OPENALEX-source backbone.
+     */
+    @Value("${scopus.affiliation.ror-backbone-match:true}")
+    private boolean rorBackboneMatchEnabled;
+    private ScopusAffiliationRorMatcher rorMatcher;
 
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
     private long heartbeatSeconds;
@@ -124,6 +134,19 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
                 mode,
                 sourceBatchIdFilter,
                 facts.size(), nanosToMillis(System.nanoTime() - startedAtNanos));
+        // H73 S2.1: build the ROR backbone matcher once per run from the OpenAlex-source affiliation records.
+        if (rorBackboneMatchEnabled) {
+            List<ScholardexAffiliationFact> backbone = new ArrayList<>();
+            for (ScholardexAffiliationFact f : scholardexAffiliationFactRepository.findAll()) {
+                if (SOURCE_OPENALEX.equals(f.getSource())) {
+                    backbone.add(f);
+                }
+            }
+            rorMatcher = ScopusAffiliationRorMatcher.build(backbone);
+            log.info("ROR backbone matcher built from {} OpenAlex-source affiliations", backbone.size());
+        } else {
+            rorMatcher = null;
+        }
         return facts;
     }
 
@@ -249,34 +272,56 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
             return;
         }
 
+        // H73 S2.1: when this afid hasn't been canonicalized before, try to plug it into the OpenAlex ROR backbone
+        // (alias match). Existing source-link / by-source mappings win first (idempotent re-runs).
+        ScholardexAffiliationFact backboneMatch = (sourceLinkCanonicalId.isPresent() || existingCanonicalId.isPresent()
+                || rorMatcher == null)
+                ? null
+                : rorMatcher.match(sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry());
+
         String canonicalId = sourceLinkCanonicalId
                 .or(() -> existingCanonicalId)
-                .orElseGet(() -> buildCanonicalAffiliationId(sourceRecordId, sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry()));
+                .orElseGet(() -> backboneMatch != null
+                        ? backboneMatch.getId()
+                        : buildCanonicalAffiliationId(sourceRecordId, sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry()));
 
         ScholardexAffiliationFact target = context.pendingAffiliationSaves.get(canonicalId);
         if (target == null) {
             target = context.affiliationByCanonicalId.get(canonicalId);
         }
+        if (target == null && backboneMatch != null) {
+            // Plugging into a backbone record: fetch the current state (may already carry earlier afids from a prior
+            // chunk) so we never overwrite it with the matcher's build-time copy.
+            target = scholardexAffiliationFactRepository.findById(canonicalId).orElse(backboneMatch);
+        }
         if (target == null) {
             target = new ScholardexAffiliationFact();
         }
         boolean created = target.getId() == null;
+        // A pre-existing OpenAlex-source record IS the ROR backbone — enrich it, don't clobber (OpenAlex precedence).
+        boolean backbone = !created && SOURCE_OPENALEX.equals(target.getSource());
         Instant now = Instant.now();
         if (target.getCreatedAt() == null) {
             target.setCreatedAt(now);
         }
         target.setId(canonicalId);
         addUnique(target.getScopusAffiliationIds(), sourceRecordId);
-        target.setName(sourceFact.getName());
-        target.setNameNormalized(normalizeName(sourceFact.getName()));
-        target.setCity(sourceFact.getCity());
-        target.setCountry(sourceFact.getCountry());
-        addUnique(target.getAliases(), normalizeAlias(sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry()));
-        target.setSourceEventId(sourceFact.getSourceEventId());
-        target.setSource(sourceFact.getSource());
-        target.setSourceRecordId(sourceRecordId);
-        target.setSourceBatchId(sourceFact.getSourceBatchId());
-        target.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
+        if (backbone) {
+            // Keep OpenAlex name / nameNormalized / city / country / source / rorIds authoritative; record the Scopus
+            // name as an alias so future Scopus afids with the same name still resolve here.
+            addUnique(target.getAliases(), normalizeAlias(sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry()));
+        } else {
+            target.setName(sourceFact.getName());
+            target.setNameNormalized(normalizeName(sourceFact.getName()));
+            target.setCity(sourceFact.getCity());
+            target.setCountry(sourceFact.getCountry());
+            addUnique(target.getAliases(), normalizeAlias(sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry()));
+            target.setSourceEventId(sourceFact.getSourceEventId());
+            target.setSource(sourceFact.getSource());
+            target.setSourceRecordId(sourceRecordId);
+            target.setSourceBatchId(sourceFact.getSourceBatchId());
+            target.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
+        }
         target.setUpdatedAt(now);
         context.pendingAffiliationSaves.put(target.getId(), target);
         context.affiliationByCanonicalId.put(target.getId(), target);

@@ -19,7 +19,6 @@ class ForumReconcileServiceTest {
 
     @Mock private ScholardexForumBuilder forumBuilder;
     @Mock private AuthorReconcileService authorReconcileService;
-    @Mock private ScholardexAffiliationRorBridgeService affiliationRorBridgeService;
     @Mock private ScholardexProjectionBuilderService projectionBuilderService;
 
     private ImportProcessingResult res(int processed, int imported, int updated, int skipped, int errors) {
@@ -47,7 +46,7 @@ class ForumReconcileServiceTest {
         when(projectionBuilderService.rebuildViews()).thenReturn(res(100, 0, 0, 0, 0));
 
         ForumReconcileService.ForumReconcileResult out =
-                new ForumReconcileService(forumBuilder, authorReconcileService, affiliationRorBridgeService, projectionBuilderService).reconcile("admin-manual");
+                new ForumReconcileService(forumBuilder, authorReconcileService, projectionBuilderService).reconcile("admin-manual");
 
         // Tier-1 reconcile: global forum build, then author reconcile, then the projection refresh so the merges show.
         InOrder order = inOrder(forumBuilder, authorReconcileService, projectionBuilderService);

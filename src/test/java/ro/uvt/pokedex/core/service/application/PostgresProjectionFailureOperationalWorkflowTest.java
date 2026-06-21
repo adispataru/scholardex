@@ -91,7 +91,6 @@ class PostgresProjectionFailureOperationalWorkflowTest {
                 mock(ro.uvt.pokedex.core.service.application.DoajOnboardingService.class),
                 mock(ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService.class),
                 mock(ro.uvt.pokedex.core.service.application.ForumReconcileService.class),
-                mock(ro.uvt.pokedex.core.service.application.ScholardexAffiliationRorBridgeService.class),
                 mock(ro.uvt.pokedex.core.service.application.AuthorReconcileService.class),
                 mock(ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService.class),
                 mock(ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService.class)

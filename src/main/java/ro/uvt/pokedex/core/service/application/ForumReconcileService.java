@@ -31,7 +31,6 @@ public class ForumReconcileService {
 
     private final ScholardexForumBuilder forumBuilder;
     private final AuthorReconcileService authorReconcileService;
-    private final ScholardexAffiliationRorBridgeService affiliationRorBridgeService;
     private final ScholardexProjectionBuilderService projectionBuilderService;
 
     public ForumReconcileResult reconcile(String reason) {
@@ -53,9 +52,8 @@ public class ForumReconcileService {
                 authorOrcid.getImportedCount(), authorOrcid.getSkippedCount(),
                 authorFuzzy.getImportedCount(), authorFuzzy.getSkippedCount(),
                 authorOverSplit.getImportedCount(), authorOverSplit.getSkippedCount());
-        // H72 slice 3b: bridge OpenAlex ROR onto verified Scopus affiliations (cross-source affiliation key).
-        int rorTagged = affiliationRorBridgeService.bridgeRorsFromOpenAlex("reconcile-" + reason);
-        log.info("Affiliation ROR bridge within forum reconcile: affiliationsTagged={}", rorTagged);
+        // H73 S2.1: the positional OpenAlex ROR bridge is retired — verified Scopus afids now plug into the ROR
+        // backbone at affiliation-canonicalization time (ScholardexAffiliationCanonicalizationService alias match).
         ImportProcessingResult projection = projectionBuilderService.rebuildViews();
 
         long durationNanos = System.nanoTime() - startedAtNanos;
