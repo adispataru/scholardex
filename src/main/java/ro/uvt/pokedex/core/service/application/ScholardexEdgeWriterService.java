@@ -118,6 +118,21 @@ public class ScholardexEdgeWriterService {
             java.util.Map<String, ScholardexAuthorshipFact> preloadedByNaturalKey,
             boolean allowFallbackLookup
     ) {
+        return batchUpsertAuthorshipEdges(commands, null, preloadedByNaturalKey, allowFallbackLookup);
+    }
+
+    /**
+     * H73 slice 3 (S3.5): batch authorship-edge upsert that also stamps the corresponding-author flag — an edge is
+     * marked {@code corresponding=true} when its {@code publicationId|authorId} is in {@code correspondingKeys}
+     * (null = leave the flag untouched, as the no-flag overload does). Lets the bulk OpenAlex canon batch authorship
+     * edges instead of one find+save per edge while preserving the H66B corresponding-author signal.
+     */
+    public BatchEdgeWriteResult batchUpsertAuthorshipEdges(
+            List<EdgeWriteCommand> commands,
+            java.util.Set<String> correspondingKeys,
+            java.util.Map<String, ScholardexAuthorshipFact> preloadedByNaturalKey,
+            boolean allowFallbackLookup
+    ) {
         // H58: edges no longer carry a separate source link. The edge fact itself holds the lineage +
         // linkState (HasEdgeLineageFields) and drives the no-op skip; the edge id is deterministic, so a
         // relink to a different canonical id is impossible (the EDGE_CANONICAL_ID_MISMATCH guard remains).
@@ -184,6 +199,9 @@ public class ScholardexEdgeWriterService {
             }
             edge.setPublicationId(command.leftId());
             edge.setAuthorId(command.rightId());
+            if (correspondingKeys != null && correspondingKeys.contains(command.leftId() + "|" + command.rightId())) {
+                edge.setCorresponding(true);
+            }
             boolean lineageChanged = created || isLineageChanged(edge, command);
             if (lineageChanged) {
                 applyLineage(edge, command, now);

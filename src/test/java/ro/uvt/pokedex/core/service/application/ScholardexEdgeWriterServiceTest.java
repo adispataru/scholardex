@@ -137,6 +137,24 @@ class ScholardexEdgeWriterServiceTest {
     }
 
     @Test
+    void batchUpsertAuthorshipEdgesStampsCorrespondingFromKeys() {
+        // H73 S3.5: the batch sets corresponding=true only for edges whose "pub|author" key is in the set.
+        List<ScholardexEdgeWriterService.EdgeWriteCommand> cmds = List.of(
+                authorshipCommand("p1", "a1", "OPENALEX", "rec-1"),
+                authorshipCommand("p1", "a2", "OPENALEX", "rec-2"));
+
+        service.batchUpsertAuthorshipEdges(cmds, java.util.Set.of("p1|a1"), null, false);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ScholardexAuthorshipFact>> captor = ArgumentCaptor.forClass(List.class);
+        verify(authorshipFactRepository).insert(captor.capture());
+        ScholardexAuthorshipFact a1 = captor.getValue().stream().filter(e -> "a1".equals(e.getAuthorId())).findFirst().orElseThrow();
+        ScholardexAuthorshipFact a2 = captor.getValue().stream().filter(e -> "a2".equals(e.getAuthorId())).findFirst().orElseThrow();
+        assertEquals(Boolean.TRUE, a1.getCorresponding());            // in the keys set
+        assertFalse(Boolean.TRUE.equals(a2.getCorresponding()));      // not in the set → untouched (null)
+    }
+
+    @Test
     void upsertAuthorAffiliationEdgeCreatesDeterministicEdgeFactAndNoSourceLink() {
         when(authorAffiliationFactRepository.findByAuthorIdAndAffiliationIdAndSource("a1", "f1", "SCOPUS"))
                 .thenReturn(Optional.empty());

@@ -86,7 +86,7 @@ public class OpenAlexCanonicalizationService {
         }
         if (state != null) {
             authorResolver.flushBulkContext(state.authorCtx);
-            flushAffiliationEdges(state);
+            flushBulkEdges(state);
         }
         return result;
     }
@@ -98,6 +98,8 @@ public class OpenAlexCanonicalizationService {
      */
     private static final class BulkCanonState {
         private final OpenAlexAuthorResolver.BulkContext authorCtx;
+        private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> authorship = new LinkedHashMap<>();
+        private final Set<String> correspondingAuthorshipKeys = new LinkedHashSet<>();
         private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> authorAffiliation = new LinkedHashMap<>();
         private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> publicationAuthorAffiliation = new LinkedHashMap<>();
 
@@ -108,7 +110,10 @@ public class OpenAlexCanonicalizationService {
 
     private static final int EDGE_FLUSH_CHUNK = 5000;
 
-    private void flushAffiliationEdges(BulkCanonState state) {
+    private void flushBulkEdges(BulkCanonState state) {
+        // Authorship edges (S3.5): batched, with the corresponding flag stamped from the accumulated keys.
+        flushEdgeChunks(new ArrayList<>(state.authorship.values()),
+                chunk -> edgeWriterService.batchUpsertAuthorshipEdges(chunk, state.correspondingAuthorshipKeys, null, false));
         flushEdgeChunks(new ArrayList<>(state.authorAffiliation.values()),
                 chunk -> edgeWriterService.batchUpsertAuthorAffiliationEdges(chunk, null, false));
         flushEdgeChunks(new ArrayList<>(state.publicationAuthorAffiliation.values()),
@@ -323,19 +328,27 @@ public class OpenAlexCanonicalizationService {
         edgeAuthorIds.addAll(resolvedAuthorIds);
         for (String authorId : edgeAuthorIds) {
             boolean corresponding = correspondingAuthorIds.contains(authorId);
-            edgeWriterService.upsertAuthorshipEdge(
-                    new ScholardexEdgeWriterService.EdgeWriteCommand(
-                            canonicalPublicationId,
-                            authorId,
-                            SOURCE_OPENALEX,
-                            source.getSourceRecordId() + "::author::" + authorId,
-                            source.getSourceEventId(),
-                            source.getSourceBatchId(),
-                            source.getSourceCorrelationId(),
-                            ScholardexSourceLinkService.STATE_LINKED,
-                            LINK_REASON_OPENALEX_AUTHORSHIP,
-                            false),
-                    corresponding ? Boolean.TRUE : Boolean.FALSE);
+            ScholardexEdgeWriterService.EdgeWriteCommand command = new ScholardexEdgeWriterService.EdgeWriteCommand(
+                    canonicalPublicationId,
+                    authorId,
+                    SOURCE_OPENALEX,
+                    source.getSourceRecordId() + "::author::" + authorId,
+                    source.getSourceEventId(),
+                    source.getSourceBatchId(),
+                    source.getSourceCorrelationId(),
+                    ScholardexSourceLinkService.STATE_LINKED,
+                    LINK_REASON_OPENALEX_AUTHORSHIP,
+                    false);
+            if (state != null) {
+                // S3.5: accumulate for a batched insert; the corresponding flag is carried by key.
+                String key = canonicalPublicationId + "|" + authorId;
+                state.authorship.putIfAbsent(key, command);
+                if (corresponding) {
+                    state.correspondingAuthorshipKeys.add(key);
+                }
+            } else {
+                edgeWriterService.upsertAuthorshipEdge(command, corresponding ? Boolean.TRUE : Boolean.FALSE);
+            }
         }
 
         // 5) Denormalize onto the canonical pub's authorIds[] (the projection/workspace read this, not the edges).

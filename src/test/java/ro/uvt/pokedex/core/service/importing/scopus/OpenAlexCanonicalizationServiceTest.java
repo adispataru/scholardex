@@ -55,11 +55,12 @@ class OpenAlexCanonicalizationServiceTest {
                 eq(ScholardexEntityType.PUBLICATION), eq("OPENALEX"), eq("W1"), eq("spub_existing"),
                 eq("openalex-fact-bridge"), any(), any(), any(), eq(false));
         verify(publicationWriter, never()).upsertAndLinkSource(any(), any(), any());
-        // Self-authorship edge to the syncing researcher (not flagged corresponding here).
-        verify(edgeWriterService).upsertAuthorshipEdge(
-                argThat(cmd -> "spub_existing".equals(cmd.leftId()) && "sauth_self".equals(cmd.rightId())
-                        && "OPENALEX".equals(cmd.source())),
-                eq(Boolean.FALSE));
+        // Self-authorship edge to the syncing researcher (batched in bulk mode; not corresponding).
+        verify(edgeWriterService).batchUpsertAuthorshipEdges(
+                argThat(cmds -> cmds.stream().anyMatch(c -> "spub_existing".equals(c.leftId())
+                        && "sauth_self".equals(c.rightId()) && "OPENALEX".equals(c.source()))),
+                argThat(keys -> !keys.contains("spub_existing|sauth_self")),
+                any(), eq(false));
     }
 
     @Test
@@ -161,9 +162,10 @@ class OpenAlexCanonicalizationServiceTest {
                         && "Fresh paper".equals(fact.getTitle())),
                 argThat(prov -> "OPENALEX".equals(prov.source()) && "W2".equals(prov.sourceRecordId())),
                 eq("openalex-fact-bridge"));
-        verify(edgeWriterService).upsertAuthorshipEdge(
-                argThat(cmd -> "spub_minted".equals(cmd.leftId()) && "sauth_self".equals(cmd.rightId())),
-                eq(Boolean.FALSE));
+        verify(edgeWriterService).batchUpsertAuthorshipEdges(
+                argThat(cmds -> cmds.stream().anyMatch(c -> "spub_minted".equals(c.leftId()) && "sauth_self".equals(c.rightId()))),
+                argThat(keys -> !keys.contains("spub_minted|sauth_self")),
+                any(), eq(false));
     }
 
     @Test
@@ -182,10 +184,11 @@ class OpenAlexCanonicalizationServiceTest {
 
         service.rebuildCanonicalFacts();
 
-        verify(edgeWriterService).upsertAuthorshipEdge(
-                argThat(cmd -> "sauth_coauthor".equals(cmd.rightId())), eq(Boolean.TRUE));
-        verify(edgeWriterService).upsertAuthorshipEdge(
-                argThat(cmd -> "sauth_self".equals(cmd.rightId())), eq(Boolean.FALSE));
+        verify(edgeWriterService).batchUpsertAuthorshipEdges(
+                argThat(cmds -> cmds.stream().anyMatch(c -> "sauth_coauthor".equals(c.rightId()))
+                        && cmds.stream().anyMatch(c -> "sauth_self".equals(c.rightId()))),
+                argThat(keys -> keys.contains("spub_owned|sauth_coauthor") && !keys.contains("spub_owned|sauth_self")),
+                any(), eq(false));
     }
 
     @Test
@@ -207,9 +210,11 @@ class OpenAlexCanonicalizationServiceTest {
 
         // ORCID seeded onto the researcher's author, and exactly one edge — flagged corresponding.
         verify(authorResolver).attachOrcid(eq("sauth_self"), eq("0000-0002-0702-6276"), any());
-        verify(edgeWriterService).upsertAuthorshipEdge(
-                argThat(cmd -> "sauth_self".equals(cmd.rightId())), eq(Boolean.TRUE));
-        verify(edgeWriterService, never()).upsertAuthorshipEdge(any(), eq(Boolean.FALSE));
+        // One authorship edge, flagged corresponding via the keys set (batched in bulk mode).
+        verify(edgeWriterService).batchUpsertAuthorshipEdges(
+                argThat(cmds -> cmds.size() == 1 && "sauth_self".equals(cmds.getFirst().rightId())),
+                argThat(keys -> keys.contains("spub_owned|sauth_self")),
+                any(), eq(false));
     }
 
     @Test
@@ -300,9 +305,12 @@ class OpenAlexCanonicalizationServiceTest {
         verify(scholardexPublicationFactRepository).save(argThat(p ->
                 "spub_owned2".equals(p.getId())
                         && p.getAuthorIds().equals(List.of("sauth_self", "sauth_co1", "sauth_co2"))));
-        // an edge per author
-        verify(edgeWriterService).upsertAuthorshipEdge(argThat(cmd -> "sauth_co1".equals(cmd.rightId())), eq(Boolean.FALSE));
-        verify(edgeWriterService).upsertAuthorshipEdge(argThat(cmd -> "sauth_co2".equals(cmd.rightId())), eq(Boolean.FALSE));
+        // an edge per author (batched in bulk mode; none corresponding)
+        verify(edgeWriterService).batchUpsertAuthorshipEdges(
+                argThat(cmds -> cmds.stream().anyMatch(c -> "sauth_co1".equals(c.rightId()))
+                        && cmds.stream().anyMatch(c -> "sauth_co2".equals(c.rightId()))),
+                argThat(keys -> !keys.contains("spub_owned2|sauth_co1") && !keys.contains("spub_owned2|sauth_co2")),
+                any(), eq(false));
     }
 
     @Test
