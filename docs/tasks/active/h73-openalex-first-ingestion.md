@@ -172,10 +172,13 @@ gaps. Then a **rebuild-from-scratch** validates the new order.
   bridge cleanly; Scopus-only-pub authors just mint (no inversion).
 
 **Sub-slices (corrected — pub precedence + author attach are ONE operation, both need the reorder):**
-- **S2.1 — Affiliations → ROR backbone.** `ScholardexAffiliationCanonicalizationService`: each verified afid
-  (`60…`) alias-matches the backbone (built slice 1) → add afid to `scopusAffiliationIds`, else mint afid-keyed.
-  Retire `ScholardexAffiliationRorBridgeService` + clear noisy `rorIds`. **Standalone** — a separate canon pass,
-  independent of pub/author processing, works in the current order.
+- **S2.1 — Affiliations → ROR backbone. DONE (unit-tested 2026-06-21, commit 87f7b73; live via S2.3 rebuild).**
+  `ScopusAffiliationRorMatcher` (3-tier: exact alias → simplification → country-gated Jaccard≥0.8+city) +
+  `ScholardexAffiliationCanonicalizationService` integration: first-seen verified afid alias-matches the backbone →
+  `saff_<ror>` + plug afid into `scopusAffiliationIds`, enrich-only (OpenAlex name/country authoritative); no match →
+  mint afid-keyed. Config `scopus.affiliation.ror-backbone-match` (default on). Retired
+  `ScholardexAffiliationRorBridgeService` (deleted; removed from reconcile chain + endpoint); noisy positional
+  `rorIds` clear on the S2.3 rebuild.
 - **S2.2 — Pub + author inversion (the coupled core).** Reorder so the OpenAlex canon mints canonical pubs +
   authors **first**; then the Scopus pub canon **resolves into** the existing canonical pub by DOI: OpenAlex
   field precedence (title/venue/citations + author list authoritative; Scopus adds `eid` + Scopus-only fields)
