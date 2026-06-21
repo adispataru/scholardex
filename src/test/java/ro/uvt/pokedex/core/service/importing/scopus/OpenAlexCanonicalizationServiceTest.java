@@ -177,7 +177,7 @@ class OpenAlexCanonicalizationServiceTest {
         owned.setSource("OPENALEX");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/coauthored")).thenReturn(List.of(owned));
-        when(authorResolver.resolveOrMint(eq("Corr Coauthor"), eq("0000-0002-1825-0097"), eq("A1"), any(), any(), any()))
+        when(authorResolver.resolveOrMint(eq("Corr Coauthor"), eq("0000-0002-1825-0097"), eq("A1"), any(), any(), any(), any()))
                 .thenReturn("sauth_coauthor");
 
         service.rebuildCanonicalFacts();
@@ -200,13 +200,13 @@ class OpenAlexCanonicalizationServiceTest {
         owned.setSource("OPENALEX");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/selfcorr")).thenReturn(List.of(owned));
-        when(authorResolver.resolveOrMint(eq("Me"), eq("0000-0002-0702-6276"), eq("A1"), any(), any(), any()))
+        when(authorResolver.resolveOrMint(eq("Me"), eq("0000-0002-0702-6276"), eq("A1"), any(), any(), any(), any()))
                 .thenReturn("sauth_self"); // resolves to the researcher
 
         service.rebuildCanonicalFacts();
 
         // ORCID seeded onto the researcher's author, and exactly one edge — flagged corresponding.
-        verify(authorResolver).attachOrcid("sauth_self", "0000-0002-0702-6276");
+        verify(authorResolver).attachOrcid(eq("sauth_self"), eq("0000-0002-0702-6276"), any());
         verify(edgeWriterService).upsertAuthorshipEdge(
                 argThat(cmd -> "sauth_self".equals(cmd.rightId())), eq(Boolean.TRUE));
         verify(edgeWriterService, never()).upsertAuthorshipEdge(any(), eq(Boolean.FALSE));
@@ -252,7 +252,8 @@ class OpenAlexCanonicalizationServiceTest {
         verify(authorResolver).bridgeOrcidsByPosition(
                 eq(List.of("sauth_a", "sauth_b")),
                 eq(List.of("Ionut Sandric", "Marc Frincu")),
-                eq(java.util.Arrays.asList("0000-0002-9292-9479", "0000-0003-1034-8409")));
+                eq(java.util.Arrays.asList("0000-0002-9292-9479", "0000-0003-1034-8409")),
+                any());
     }
 
     @Test
@@ -290,9 +291,9 @@ class OpenAlexCanonicalizationServiceTest {
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/multi")).thenReturn(List.of(owned));
         when(scholardexPublicationFactRepository.findById("spub_owned2")).thenReturn(java.util.Optional.of(owned));
-        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any())).thenReturn("sauth_self");
-        when(authorResolver.resolveOrMint(eq("Co One"), any(), eq("A2"), any(), any(), any())).thenReturn("sauth_co1");
-        when(authorResolver.resolveOrMint(eq("Co Two"), any(), eq("A3"), any(), any(), any())).thenReturn("sauth_co2");
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any(), any())).thenReturn("sauth_self");
+        when(authorResolver.resolveOrMint(eq("Co One"), any(), eq("A2"), any(), any(), any(), any())).thenReturn("sauth_co1");
+        when(authorResolver.resolveOrMint(eq("Co Two"), any(), eq("A3"), any(), any(), any(), any())).thenReturn("sauth_co2");
 
         service.rebuildCanonicalFacts();
 
@@ -319,7 +320,7 @@ class OpenAlexCanonicalizationServiceTest {
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/foreign")).thenReturn(List.of(scopus));
         when(scholardexPublicationFactRepository.findById("spub_scopus2")).thenReturn(java.util.Optional.of(scopus));
-        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any())).thenReturn("sauth_self");
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any(), any())).thenReturn("sauth_self");
 
         service.rebuildCanonicalFacts();
 
@@ -327,7 +328,7 @@ class OpenAlexCanonicalizationServiceTest {
         verify(scholardexPublicationFactRepository).save(argThat(p ->
                 "spub_scopus2".equals(p.getId())
                         && p.getAuthorIds().equals(List.of("sauth_a", "sauth_b", "sauth_self"))));
-        verify(authorResolver, org.mockito.Mockito.never()).resolveOrMint(eq("Other"), any(), any(), any(), any(), any());
+        verify(authorResolver, org.mockito.Mockito.never()).resolveOrMint(eq("Other"), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -345,15 +346,19 @@ class OpenAlexCanonicalizationServiceTest {
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/aff")).thenReturn(List.of(owned));
         when(scholardexPublicationFactRepository.findById("spub_aff")).thenReturn(java.util.Optional.of(owned));
-        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any())).thenReturn("sauth_self");
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any(), any())).thenReturn("sauth_self");
 
         service.rebuildCanonicalFacts();
 
         String affId = CanonicalizationSupport.buildRorBackboneAffiliationId("0583a0t97");
-        verify(edgeWriterService).upsertAuthorAffiliationEdge(argThat(cmd ->
-                "sauth_self".equals(cmd.leftId()) && affId.equals(cmd.rightId())));
-        verify(edgeWriterService).upsertPublicationAuthorAffiliationEdge(argThat(cmd ->
-                "spub_aff".equals(cmd.publicationId()) && "sauth_self".equals(cmd.leftId()) && affId.equals(cmd.rightId())));
+        // Bulk mode (rebuildCanonicalFacts): affiliation edges are accumulated and flushed via the batch APIs.
+        verify(edgeWriterService).batchUpsertAuthorAffiliationEdges(argThat(cmds ->
+                cmds.stream().anyMatch(c -> "sauth_self".equals(c.leftId()) && affId.equals(c.rightId()))),
+                any(), eq(false));
+        verify(edgeWriterService).batchUpsertPublicationAuthorAffiliationEdges(argThat(cmds ->
+                cmds.stream().anyMatch(c -> "spub_aff".equals(c.publicationId())
+                        && "sauth_self".equals(c.leftId()) && affId.equals(c.rightId()))),
+                any(), eq(false));
     }
 
     private OpenAlexPublicationFact source(String workId, String doiNormalized, String title, String researcherAuthorId) {

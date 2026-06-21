@@ -14,11 +14,15 @@ import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.time.Instant;
+import ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -54,28 +58,68 @@ public class OpenAlexCanonicalizationService {
     private final ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService forumOnboardingService;
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
 
-    /** Full-rebuild replay: canonicalize every OpenAlex source-fact. */
+    /**
+     * Full-rebuild replay: canonicalize every OpenAlex source-fact. Runs in <b>bulk mode</b> (H73 slice 3):
+     * an in-memory author index (no per-author repo lookups) + batched affiliation-edge writes — necessary at
+     * the citer-full scale (~113k pubs, ~645k authorships).
+     */
     public ImportProcessingResult rebuildCanonicalFacts() {
-        return canonicalize(new ArrayList<>(openAlexPublicationFactRepository.findAll()));
+        return canonicalize(new ArrayList<>(openAlexPublicationFactRepository.findAll()), true);
     }
 
-    /** On-demand (Tier-2): canonicalize just the source-facts touched by a sync batch. */
+    /** On-demand (Tier-2): canonicalize just the source-facts touched by a sync batch (per-call repo path). */
     public ImportProcessingResult resolve(Collection<String> sourceRecordIds) {
         if (sourceRecordIds == null || sourceRecordIds.isEmpty()) {
             return new ImportProcessingResult(20);
         }
-        return canonicalize(new ArrayList<>(openAlexPublicationFactRepository.findBySourceRecordIdIn(sourceRecordIds)));
+        return canonicalize(new ArrayList<>(openAlexPublicationFactRepository.findBySourceRecordIdIn(sourceRecordIds)), false);
     }
 
-    private ImportProcessingResult canonicalize(List<OpenAlexPublicationFact> sources) {
+    private ImportProcessingResult canonicalize(List<OpenAlexPublicationFact> sources, boolean bulk) {
         ImportProcessingResult result = new ImportProcessingResult(20);
         // Stage 3: resolve/mint the host-venue forums first (ISSN-gated, flushed) so canonicalizeOne can stamp forumId.
         forumOnboardingService.onboard(sources);
         sources.sort(Comparator.comparing(OpenAlexPublicationFact::getSourceRecordId, Comparator.nullsLast(String::compareTo)));
+        BulkCanonState state = bulk ? new BulkCanonState(authorResolver.primeBulkContext()) : null;
         for (OpenAlexPublicationFact source : sources) {
-            canonicalizeOne(source, result);
+            canonicalizeOne(source, result, state);
+        }
+        if (state != null) {
+            authorResolver.flushBulkContext(state.authorCtx);
+            flushAffiliationEdges(state);
         }
         return result;
+    }
+
+    /**
+     * H73 slice 3: per-run bulk accumulators — the in-memory author index plus the affiliation-edge commands,
+     * deduped by natural key so a recurring (author, affiliation) edge is written once across the whole run
+     * (the batch insert path assumes the canonical edges were wiped first, which the full rebuild guarantees).
+     */
+    private static final class BulkCanonState {
+        private final OpenAlexAuthorResolver.BulkContext authorCtx;
+        private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> authorAffiliation = new LinkedHashMap<>();
+        private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> publicationAuthorAffiliation = new LinkedHashMap<>();
+
+        BulkCanonState(OpenAlexAuthorResolver.BulkContext authorCtx) {
+            this.authorCtx = authorCtx;
+        }
+    }
+
+    private static final int EDGE_FLUSH_CHUNK = 5000;
+
+    private void flushAffiliationEdges(BulkCanonState state) {
+        flushEdgeChunks(new ArrayList<>(state.authorAffiliation.values()),
+                chunk -> edgeWriterService.batchUpsertAuthorAffiliationEdges(chunk, null, false));
+        flushEdgeChunks(new ArrayList<>(state.publicationAuthorAffiliation.values()),
+                chunk -> edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(chunk, null, false));
+    }
+
+    private void flushEdgeChunks(List<ScholardexEdgeWriterService.EdgeWriteCommand> commands,
+                                 java.util.function.Consumer<List<ScholardexEdgeWriterService.EdgeWriteCommand>> flush) {
+        for (int i = 0; i < commands.size(); i += EDGE_FLUSH_CHUNK) {
+            flush.accept(commands.subList(i, Math.min(i + EDGE_FLUSH_CHUNK, commands.size())));
+        }
     }
 
     /** Stage 3: resolve a publication's host venue to its canonical forum via the venue's openAlexIds tag. */
@@ -87,7 +131,7 @@ public class OpenAlexCanonicalizationService {
                 .map(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact::getId).orElse(null);
     }
 
-    private void canonicalizeOne(OpenAlexPublicationFact source, ImportProcessingResult result) {
+    private void canonicalizeOne(OpenAlexPublicationFact source, ImportProcessingResult result, BulkCanonState state) {
         result.markProcessed();
         String workId = source.getSourceRecordId();
         if (isBlank(workId)) {
@@ -149,7 +193,7 @@ public class OpenAlexCanonicalizationService {
             result.markImported();
         }
 
-        writeAuthorshipEdges(source, canonicalPublicationId);
+        writeAuthorshipEdges(source, canonicalPublicationId, state);
     }
 
     /**
@@ -221,10 +265,11 @@ public class OpenAlexCanonicalizationService {
      * </ol>
      * The {@code (pub, author, source)} key means OPENALEX edges coexist with Scopus ones.
      */
-    private void writeAuthorshipEdges(OpenAlexPublicationFact source, String canonicalPublicationId) {
+    private void writeAuthorshipEdges(OpenAlexPublicationFact source, String canonicalPublicationId, BulkCanonState state) {
         if (isBlank(canonicalPublicationId)) {
             return;
         }
+        OpenAlexAuthorResolver.BulkContext authorCtx = state == null ? null : state.authorCtx;
         List<OpenAlexPublicationFact.AuthorRef> authorships =
                 source.getAuthorships() == null ? List.of() : source.getAuthorships();
 
@@ -235,7 +280,7 @@ public class OpenAlexCanonicalizationService {
                 if (researcher == null || isBlank(researcher.getCanonicalAuthorId())) {
                     continue;
                 }
-                authorResolver.attachOrcid(researcher.getCanonicalAuthorId(), researcher.getOrcid());
+                authorResolver.attachOrcid(researcher.getCanonicalAuthorId(), researcher.getOrcid(), authorCtx);
                 syncingAuthorIds.add(researcher.getCanonicalAuthorId());
             }
         }
@@ -245,7 +290,7 @@ public class OpenAlexCanonicalizationService {
         if (pub != null && pub.getAuthorIds() != null && !pub.getAuthorIds().isEmpty() && !authorships.isEmpty()) {
             List<String> openAlexNames = authorships.stream().map(OpenAlexPublicationFact.AuthorRef::getDisplayName).toList();
             List<String> openAlexOrcids = authorships.stream().map(OpenAlexPublicationFact.AuthorRef::getOrcid).toList();
-            authorResolver.bridgeOrcidsByPosition(pub.getAuthorIds(), openAlexNames, openAlexOrcids);
+            authorResolver.bridgeOrcidsByPosition(pub.getAuthorIds(), openAlexNames, openAlexOrcids, authorCtx);
         }
 
         // 3) Resolve authorships to canonical authors. For an OpenAlex-OWNED pub (we mint it; OpenAlex is its
@@ -261,7 +306,7 @@ public class OpenAlexCanonicalizationService {
             }
             String authorId = authorResolver.resolveOrMint(
                     ref.getDisplayName(), ref.getOrcid(), ref.getOpenAlexAuthorId(),
-                    ref.getInstitutionNames(), source.getSourceBatchId(), source.getSourceCorrelationId());
+                    ref.getInstitutionNames(), source.getSourceBatchId(), source.getSourceCorrelationId(), authorCtx);
             if (!isBlank(authorId)) {
                 resolvedAuthorIds.add(authorId);
                 if (corresponding) {
@@ -269,7 +314,7 @@ public class OpenAlexCanonicalizationService {
                 }
                 // H73 slice 3: "authored this paper while at this institution" — resolve each authorship's
                 // OpenAlex institution ROR to the ROR-keyed backbone affiliation and emit the affiliation edges.
-                upsertAffiliationEdges(canonicalPublicationId, authorId, ref.getInstitutionRors(), source);
+                upsertAffiliationEdges(canonicalPublicationId, authorId, ref.getInstitutionRors(), source, state);
             }
         }
 
@@ -319,7 +364,8 @@ public class OpenAlexCanonicalizationService {
      * Deduplicates RORs within the authorship; skips blanks.
      */
     private void upsertAffiliationEdges(String canonicalPublicationId, String authorId,
-                                        java.util.List<String> institutionRors, OpenAlexPublicationFact source) {
+                                        java.util.List<String> institutionRors, OpenAlexPublicationFact source,
+                                        BulkCanonState state) {
         if (institutionRors == null || institutionRors.isEmpty()) {
             return;
         }
@@ -329,7 +375,7 @@ public class OpenAlexCanonicalizationService {
                 continue;
             }
             String affiliationId = CanonicalizationSupport.buildRorBackboneAffiliationId(ror);
-            edgeWriterService.upsertAuthorAffiliationEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
+            ScholardexEdgeWriterService.EdgeWriteCommand authorAff = new ScholardexEdgeWriterService.EdgeWriteCommand(
                     authorId,
                     affiliationId,
                     SOURCE_OPENALEX,
@@ -339,8 +385,8 @@ public class OpenAlexCanonicalizationService {
                     source.getSourceCorrelationId(),
                     ScholardexSourceLinkService.STATE_LINKED,
                     LINK_REASON_OPENALEX_AFFILIATION,
-                    false));
-            edgeWriterService.upsertPublicationAuthorAffiliationEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                    false);
+            ScholardexEdgeWriterService.EdgeWriteCommand pubAuthorAff = new ScholardexEdgeWriterService.EdgeWriteCommand(
                     canonicalPublicationId,
                     authorId,
                     affiliationId,
@@ -351,7 +397,17 @@ public class OpenAlexCanonicalizationService {
                     source.getSourceCorrelationId(),
                     ScholardexSourceLinkService.STATE_LINKED,
                     LINK_REASON_OPENALEX_AFFILIATION,
-                    false));
+                    false);
+            if (state != null) {
+                // Bulk mode: dedup by natural key (a recurring author↔affiliation across papers writes once) and
+                // flush as batched inserts at the end of the run.
+                state.authorAffiliation.putIfAbsent(authorId + "|" + affiliationId, authorAff);
+                state.publicationAuthorAffiliation.putIfAbsent(
+                        canonicalPublicationId + "|" + authorId + "|" + affiliationId, pubAuthorAff);
+            } else {
+                edgeWriterService.upsertAuthorAffiliationEdge(authorAff);
+                edgeWriterService.upsertPublicationAuthorAffiliationEdge(pubAuthorAff);
+            }
         }
     }
 

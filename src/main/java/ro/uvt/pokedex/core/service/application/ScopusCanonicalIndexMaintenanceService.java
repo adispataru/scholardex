@@ -79,6 +79,10 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_CANON_AUTHOR_NAME_NORMALIZED = "idx_scholardex_author_name_normalized";
     static final String IDX_CANON_AUTHOR_AFFILIATIONS = "idx_scholardex_author_affiliations";
     static final String IDX_CANON_AUTHOR_PENDING_AFF_SOURCE_IDS = "idx_scholardex_author_pending_aff_source_ids";
+    // H73 slice 3: the OpenAlex author resolver looks up by orcidIds / openAlexAuthorIds on every authorship;
+    // unindexed these were full collection scans (catastrophic at the citer-full scale — ~1.3M scans).
+    static final String IDX_CANON_AUTHOR_ORCID_IDS = "idx_scholardex_author_orcid_ids";
+    static final String IDX_CANON_AUTHOR_OPENALEX_IDS = "idx_scholardex_author_openalex_ids";
 
     static final String IDX_CANON_AFFILIATION_SCOPUS = "uniq_scholardex_affiliation_scopus_id";
     static final String IDX_CANON_AFFILIATION_NAME_NORMALIZED = "idx_scholardex_affiliation_name_normalized";
@@ -243,7 +247,10 @@ public class ScopusCanonicalIndexMaintenanceService {
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_USER, true, true, List.of(field("userSourceId"))),
                 created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_DOI_NORMALIZED, true, true, List.of(field("doiNormalized"))),
+        // H73 slice 3: NON-unique. Canonical pubs legitimately share a normalized DOI — book chapters under one
+        // container/book DOI (e.g. 10.1201/b13111 = 12 chapters) — which the canon's findAllByDoiNormalized→List
+        // + byDoi.size()>1 quarantine handles by design. A unique index contradicts that and fails to build.
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_DOI_NORMALIZED, false, List.of(field("doiNormalized"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_TITLE_NORMALIZED, false, List.of(field("titleNormalized"))),
                 created, present, invalid, errors);
@@ -284,6 +291,10 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_SCOPUS, true, true, List.of(field("scopusAuthorIds"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_NAME_NORMALIZED, false, List.of(field("nameNormalized"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_ORCID_IDS, false, List.of(field("orcidIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_OPENALEX_IDS, false, List.of(field("openAlexAuthorIds"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_AFFILIATIONS, false, List.of(field("affiliationIds"))),
                 created, present, invalid, errors);
