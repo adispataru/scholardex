@@ -114,7 +114,7 @@ class OpenAlexBulkImportServiceTest {
     // ── works (full) + citers (bare) + referenced-id collection ───────────────
 
     @Test
-    void importAllReadsWorksFullCitersBareAndCollectsInstitutionIds() throws IOException {
+    void importAllReadsWorksAndCitersFullAndCollectsInstitutionIds() throws IOException {
         Path works = Files.createTempFile("uvt-works", ".jsonl");
         Files.writeString(works,
                 "{\"id\":\"https://openalex.org/W1\",\"title\":\"P1\"," +
@@ -130,14 +130,13 @@ class OpenAlexBulkImportServiceTest {
                 "{\"id\":\"https://openalex.org/I1\",\"ror\":\"https://ror.org/aaa\",\"display_name\":\"Uni One\"}",
                 "{\"id\":\"https://openalex.org/I2\",\"ror\":\"https://ror.org/bbb\",\"display_name\":\"Uni Two\"}"));
 
-        when(openAlexImportService.importFullWork(any(), anyString(), anyString())).thenReturn("W1");
-        when(openAlexImportService.upsertNeighborWorks(any(), anyString(), anyString())).thenReturn(List.of("W2"));
+        when(openAlexImportService.importFullWork(any(), anyString(), anyString())).thenReturn("W1", "W2");
 
         var result = service().importAll(works, citers, instDir, "batch", "corr");
 
-        // uvt work goes through the FULL path; citer through the BARE neighbor path
-        verify(openAlexImportService, times(1)).importFullWork(any(), anyString(), anyString());
-        verify(openAlexImportService, times(1)).upsertNeighborWorks(any(), anyString(), anyString());
+        // H73 slice 3: BOTH uvt works and citers go through the FULL path (citers no longer bare)
+        verify(openAlexImportService, times(2)).importFullWork(any(), anyString(), anyString());
+        verify(openAlexImportService, never()).upsertNeighborWorks(any(), anyString(), anyString());
         assertThat(result.worksImported()).isEqualTo(1);
         assertThat(result.citersImported()).isEqualTo(1);
         // both I1 (from works) and I2 (from citers) are collected → both backboned

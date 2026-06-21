@@ -51,7 +51,6 @@ public class OpenAlexBulkImportService {
     private static final String OPENALEX_ID_PREFIX = "https://openalex.org/";
     private static final String ROR_ID_PREFIX = "https://ror.org/";
     private static final String BUILDER_VERSION = "openalex-bulk-import-v1";
-    private static final int CITER_BATCH = 500;
     private static final int BACKBONE_SAVE_BATCH = 1000;
 
     private final OpenAlexImportService openAlexImportService;
@@ -106,7 +105,7 @@ public class OpenAlexBulkImportService {
         return count;
     }
 
-    // ── Citers (bare neighbors) ───────────────────────────────────────────────
+    // ── Citers (full — H73 slice 3: store authorships so pub→author→affiliation edges build) ──
 
     private int importCitersFile(Path citersFile, Set<String> referenced, String batchId, String correlationId)
             throws IOException {
@@ -115,7 +114,6 @@ public class OpenAlexBulkImportService {
             return 0;
         }
         int count = 0;
-        List<OpenAlexWorksResponse.OpenAlexWork> batch = new ArrayList<>(CITER_BATCH);
         try (BufferedReader reader = Files.newBufferedReader(citersFile, StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null) {
@@ -124,20 +122,17 @@ public class OpenAlexBulkImportService {
                 }
                 OpenAlexWorksResponse.OpenAlexWork work = objectMapper.readValue(line, OpenAlexWorksResponse.OpenAlexWork.class);
                 collectInstitutionIds(work, referenced);
-                batch.add(work);
-                if (batch.size() >= CITER_BATCH) {
-                    count += openAlexImportService.upsertNeighborWorks(batch, batchId, correlationId).size();
-                    batch.clear();
-                    if (count % 10_000 == 0) {
-                        log.info("OpenAlex bulk import: {} citers processed...", count);
-                    }
+                // H73 slice 3: citers are imported FULL (with authorships) so their authors/affiliations
+                // canonicalize and the pub→author→affiliation edges build — not bare neighbors anymore.
+                if (openAlexImportService.importFullWork(work, batchId, correlationId) != null) {
+                    count++;
+                }
+                if (count % 10_000 == 0 && count > 0) {
+                    log.info("OpenAlex bulk import: {} citers processed (full)...", count);
                 }
             }
         }
-        if (!batch.isEmpty()) {
-            count += openAlexImportService.upsertNeighborWorks(batch, batchId, correlationId).size();
-        }
-        log.info("OpenAlex bulk import: {} citers processed from {}", count, citersFile.getFileName());
+        log.info("OpenAlex bulk import: {} citers processed (full) from {}", count, citersFile.getFileName());
         return count;
     }
 
@@ -249,7 +244,7 @@ public class OpenAlexBulkImportService {
 
     /** ROR-derived canonical affiliation id — same namespace/scheme as the Scopus afid-derived id. */
     public static String buildRorBackboneId(String strippedRor) {
-        return "saff_" + CanonicalizationSupport.shortHash("ror|" + CanonicalizationSupport.normalizeToken(strippedRor));
+        return CanonicalizationSupport.buildRorBackboneAffiliationId(strippedRor);
     }
 
     private static void addAliases(ScholardexAffiliationFact fact, List<String> values) {

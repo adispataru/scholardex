@@ -81,6 +81,16 @@ public final class CanonicalizationSupport {
         return sha256Hex(value).substring(0, 24);
     }
 
+    /**
+     * H73: ROR-derived canonical affiliation id for the OpenAlex institution backbone — same {@code saff_} namespace
+     * and {@code shortHash} scheme as the Scopus afid-derived id ({@code "scopus|" + afid}), so a Scopus afid that
+     * alias-matches a ROR institution (slice 2) plugs into the SAME canonical record. {@code strippedRor} is the bare
+     * ROR (no {@code https://ror.org/} prefix), e.g. {@code 0583a0t97}.
+     */
+    public static String buildRorBackboneAffiliationId(String strippedRor) {
+        return "saff_" + shortHash("ror|" + normalizeToken(strippedRor));
+    }
+
     public static boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }

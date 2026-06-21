@@ -330,6 +330,32 @@ class OpenAlexCanonicalizationServiceTest {
         verify(authorResolver, org.mockito.Mockito.never()).resolveOrMint(eq("Other"), any(), any(), any(), any(), any());
     }
 
+    @Test
+    void openAlexAuthorshipEmitsAffiliationEdgesToTheRorBackbone() {
+        // H73 slice 3: a resolved authorship with an OpenAlex institution ROR emits both the author→affiliation
+        // and pub→author→affiliation edges, pointing at the ROR-keyed backbone affiliation id.
+        OpenAlexPublicationFact source = source("W20", "10.1/aff", "Aff paper", "sauth_self");
+        OpenAlexPublicationFact.AuthorRef ref = authorship("Me", "0000-0002-0702-6276", "A1", true);
+        ref.getInstitutionRors().add("0583a0t97");
+        source.setAuthorships(List.of(ref));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_aff");
+        owned.setSource("OPENALEX");
+        owned.setAuthorIds(new java.util.ArrayList<>());
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/aff")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_aff")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any())).thenReturn("sauth_self");
+
+        service.rebuildCanonicalFacts();
+
+        String affId = CanonicalizationSupport.buildRorBackboneAffiliationId("0583a0t97");
+        verify(edgeWriterService).upsertAuthorAffiliationEdge(argThat(cmd ->
+                "sauth_self".equals(cmd.leftId()) && affId.equals(cmd.rightId())));
+        verify(edgeWriterService).upsertPublicationAuthorAffiliationEdge(argThat(cmd ->
+                "spub_aff".equals(cmd.publicationId()) && "sauth_self".equals(cmd.leftId()) && affId.equals(cmd.rightId())));
+    }
+
     private OpenAlexPublicationFact source(String workId, String doiNormalized, String title, String researcherAuthorId) {
         OpenAlexPublicationFact fact = new OpenAlexPublicationFact();
         fact.setSourceRecordId(workId);

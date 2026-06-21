@@ -163,7 +163,30 @@ One replayable importer reading the three local inputs in a single flow:
 - Tests: plug-in (afid added to backbone), mint (Scopus-only), cross-language collapse,
   country gate rejects same-token cross-country, edges point at ROR-keyed canonical.
 
-### Slice 3 — DNA edge layer (free, no minting)
+### Slice 3 — OpenAlex pub→author→affiliation edges (UVT works **and** citers)
+The "authored this paper while at this institution" edge
+(`ScholardexPublicationAuthorAffiliationFact`) is built from **Scopus only** today —
+`OpenAlexCanonicalizationService` calls only `upsertAuthorshipEdge` (pub→author), never
+`upsertAuthorAffiliationEdge`. This slice builds it from OpenAlex, for both UVT works and
+citers (decided 2026-06-21: citers carry the edge too).
+- **Make bulk citers FULL** (reverses slice-1 bare neighbors): import citers via the full
+  upsert so their `authorships[]` + `institutionRors` are stored. Cost: ~295,167 citer
+  authors minted, ~707,835 pub→author→affiliation edges — roughly **doubles** the author
+  graph (214,934→~510k) and the affiliation-edge graph (710,097→~1.42M).
+- Extend `OpenAlexCanonicalizationService` to also emit author→affiliation +
+  pub→author→affiliation edges (`EdgeWriterService.upsertAuthorAffiliationEdge`),
+  resolving each authorship's `institutionRors` → the ROR backbone affiliation
+  (`saff_<hash(ror)>`). 551,101 of 645,622 citer authorship rows carry an institution.
+- **Citer authors: full reconcile participation** (decided 2026-06-21) — no external flag;
+  they flow through the ORCID/fuzzy/over-split passes like any author. Note: the reconcile
+  passes now run over ~510k authors (slower; the H72 name/`>20-author` guards still apply).
+- Citation edges (citer→UVT) are already built by `OpenAlexCitationCanonicalizationService`
+  in `runFull()` (existing machinery) — this slice adds the *affiliation* edge, not citations.
+- Tests: citer full-import stores authorships; author→affiliation + pub→author→affiliation
+  edges emitted for an OpenAlex authorship; institutionRor resolves to the backbone
+  affiliation id; uvt + citer both covered.
+
+### Slice 4 — DNA edge layer (free, no minting)
 - Persist `referenced_works` IDs on each UVT publication fact.
 - Materialize the **internal UVT↔UVT** citation edges (17,130 outgoing / 4,404→3,929
   works; both ends already canonical) as resolved links.

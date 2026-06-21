@@ -36,7 +36,11 @@ Done history moved to `TASKS-done.md`.
   **(2)** Scopus affiliations resolve INTO the backbone via the 3-tier alias matcher (exact-alias → simplification →
   country-gated Jaccard≥0.8 + city) — plug afid into `scopusAffiliationIds` or mint Scopus-only; retire the positional
   bridge + clear noisy `rorIds`;
-  **(3)** DNA edge layer — persist `referenced_works` IDs + materialize 17,130 internal UVT↔UVT edges (both ends
+  **(3)** OpenAlex pub→author→affiliation edges (UVT works AND citers) — make bulk citers FULL (reverses slice-1 bare;
+  ~295k citer authors, ~708k edges, ~doubles the graph), extend `OpenAlexCanonicalizationService` to emit
+  author→affiliation + pub→author→affiliation edges resolving `institutionRors`→backbone; citer authors get FULL
+  reconcile participation (no external flag, ~510k authors through the passes);
+  **(4)** DNA edge layer — persist `referenced_works` IDs + materialize 17,130 internal UVT↔UVT edges (both ends
   already canonical), zero foreign minting. Out of scope: external hydration (194,965 bare IDs). Upstream of
   **H69**/**H67** (citation graph). Planning doc at `docs/tasks/active/h73-openalex-first-ingestion.md`.
   **Status (2026-06-21): slice 1 DONE + live-validated** (114s run: works=11,656 w/ H63 corresponding on 6,723,

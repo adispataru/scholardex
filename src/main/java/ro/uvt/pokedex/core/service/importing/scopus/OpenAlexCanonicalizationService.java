@@ -40,6 +40,8 @@ public class OpenAlexCanonicalizationService {
     public static final String SOURCE_OPENALEX = "OPENALEX";
     private static final String LINK_REASON_OPENALEX_PUBLICATION = "openalex-fact-bridge";
     private static final String LINK_REASON_OPENALEX_AUTHORSHIP = "openalex-authorship-self";
+    // H73 slice 3: the "authored this paper while at this institution" edge from OpenAlex authorship institutions.
+    private static final String LINK_REASON_OPENALEX_AFFILIATION = "openalex-authorship-affiliation";
     private static final String REASON_PUBLICATION_DOI_AMBIGUOUS = "OPENALEX_PUBLICATION_DOI_AMBIGUOUS";
 
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
@@ -265,6 +267,9 @@ public class OpenAlexCanonicalizationService {
                 if (corresponding) {
                     correspondingAuthorIds.add(authorId);
                 }
+                // H73 slice 3: "authored this paper while at this institution" — resolve each authorship's
+                // OpenAlex institution ROR to the ROR-keyed backbone affiliation and emit the affiliation edges.
+                upsertAffiliationEdges(canonicalPublicationId, authorId, ref.getInstitutionRors(), source);
             }
         }
 
@@ -305,6 +310,48 @@ public class OpenAlexCanonicalizationService {
                 pub.setAuthorIds(new ArrayList<>(desired));
                 scholardexPublicationFactRepository.save(pub);
             }
+        }
+    }
+
+    /**
+     * H73 slice 3: for one resolved authorship, emit the author→affiliation and pub→author→affiliation edges to the
+     * ROR-keyed backbone affiliation ({@code saff_<hash(ror)>}) for each OpenAlex institution ROR on the authorship.
+     * Deduplicates RORs within the authorship; skips blanks.
+     */
+    private void upsertAffiliationEdges(String canonicalPublicationId, String authorId,
+                                        java.util.List<String> institutionRors, OpenAlexPublicationFact source) {
+        if (institutionRors == null || institutionRors.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (String ror : institutionRors) {
+            if (isBlank(ror) || !seen.add(ror)) {
+                continue;
+            }
+            String affiliationId = CanonicalizationSupport.buildRorBackboneAffiliationId(ror);
+            edgeWriterService.upsertAuthorAffiliationEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                    authorId,
+                    affiliationId,
+                    SOURCE_OPENALEX,
+                    source.getSourceRecordId() + "::authoraff::" + authorId + "::" + affiliationId,
+                    source.getSourceEventId(),
+                    source.getSourceBatchId(),
+                    source.getSourceCorrelationId(),
+                    ScholardexSourceLinkService.STATE_LINKED,
+                    LINK_REASON_OPENALEX_AFFILIATION,
+                    false));
+            edgeWriterService.upsertPublicationAuthorAffiliationEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                    canonicalPublicationId,
+                    authorId,
+                    affiliationId,
+                    SOURCE_OPENALEX,
+                    source.getSourceRecordId() + "::pubauthoraff::" + authorId + "::" + affiliationId,
+                    source.getSourceEventId(),
+                    source.getSourceBatchId(),
+                    source.getSourceCorrelationId(),
+                    ScholardexSourceLinkService.STATE_LINKED,
+                    LINK_REASON_OPENALEX_AFFILIATION,
+                    false));
         }
     }
 
