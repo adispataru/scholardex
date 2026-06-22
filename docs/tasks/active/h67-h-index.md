@@ -110,6 +110,13 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
     counts ANY `wosForumIds` venue, which **includes ESCI** (Emerging Sources). RO criteria usually mean the WoS
     **Core Collection** (SCIE/SSCI/AHCI). So WOS_VENUE likely should be Core-only (or split Core vs ESCI) — a real
     accuracy refinement, since today's WoS h is "WoS-incl-ESCI".
+    **Year-true (stronger):** `scholardex_forum_category_view`/`_metric_view` are YEAR-TRUE (SCIE/SSCI from 1997, AHCI
+    2021+, ESCI 2023+), so criteria-grade WoS-Core classification should be temporal — count a citation as WoS-Core iff
+    the **citing venue was in SCIE/SSCI/AHCI in the citing paper's year** (citation-time), reusing the same year-true
+    JCR views the journal scorers already use for AIS/IF/quartile-at-publication. That makes the accurate WoS-Core h
+    inherently the 2/2b graph walk (per-citation year×venue lookup), not a precomputed scalar (S1's `wos_citation_count`
+    is the current-membership fast approx). Decide "in Core when?" (citation-time vs current) + a pre-coverage-year
+    fallback before S4b.
   - **S4b — per-domain activation (data, later).** Insert the HIndex indicator rows into chimie (≥13/9 WoS),
     geografie (WoS, self-cit-excluded), fizica criteria with per-position thresholds from the standards assessment;
     the istorie "h OR citations" gate needs **H68**.
