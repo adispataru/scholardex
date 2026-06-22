@@ -5,9 +5,11 @@ import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport;
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.normalizeBlank;
@@ -121,6 +124,241 @@ public class CanonicalGraphBuilder {
                     sa.getSourceEventId(), sa.getSourceBatchId(), sa.getSourceCorrelationId(), false));
         }
         return new AffiliationBuildResult(new ArrayList<>(byCanonicalId.values()), sourceLinks);
+    }
+
+    // ── Authors (Stage 2, core identity): seed nodes + positional bridge union-find, OpenAlex-keyed ─────────────
+
+    /** Key tier for the canonical id of a merged component: ORCID > OpenAlex-id > Scopus (OpenAlex-first). */
+    private enum KeyTier { ORCID, OPENALEX, SCOPUS }
+
+    /** Mutable accumulator for one author seed node (a union-find element). */
+    private static final class AuthorNode {
+        final String id;
+        final KeyTier tier;
+        final java.util.LinkedHashSet<String> scopusAuthorIds = new java.util.LinkedHashSet<>();
+        final java.util.LinkedHashSet<String> orcidIds = new java.util.LinkedHashSet<>();
+        final java.util.LinkedHashSet<String> openAlexAuthorIds = new java.util.LinkedHashSet<>();
+        final java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        String displayName;
+
+        AuthorNode(String id, KeyTier tier) {
+            this.id = id;
+            this.tier = tier;
+        }
+    }
+
+    public record AuthorBuildResult(List<ScholardexAuthorFact> authors,
+                                    List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinks,
+                                    Map<String, List<String>> pubAuthorIds) {
+    }
+
+    /**
+     * Build the canonical author graph (core cross-source identity; fuzzy/over-split reconcile deferred): seed a node
+     * per Scopus AU-ID + per OpenAlex authorship (ORCID/OpenAlex-id keyed), union Scopus↔OpenAlex authors via the
+     * positional bridge on shared-DOI papers (equal count + surname match), and resolve each component to one
+     * {@link ScholardexAuthorFact}. The component's canonical id is OpenAlex-keyed when an ORCID/OpenAlex node is
+     * present (the S2.2 inversion). Returns authors + AUTHOR source-links + the {@code pub.authorIds[]} denormalization.
+     */
+    public AuthorBuildResult buildAuthors(List<ScopusAuthorFact> scopusAuthors,
+                                          List<ScopusPublicationFact> scopusPubs,
+                                          List<OpenAlexPublicationFact> openAlexPubs) {
+        Map<String, AuthorNode> nodes = new LinkedHashMap<>();
+        Map<String, String> auidToNode = new java.util.HashMap<>();
+        Map<String, String> scopusNameByAuid = new java.util.HashMap<>();
+
+        // Seed Scopus nodes.
+        for (ScopusAuthorFact sa : scopusAuthors) {
+            String auid = normalizeBlank(sa.getAuthorId());
+            if (auid == null) {
+                continue;
+            }
+            String nodeId = "sauth_" + shortHash("scopus|" + normalizeToken(auid));
+            AuthorNode node = nodes.computeIfAbsent(nodeId, id -> new AuthorNode(id, KeyTier.SCOPUS));
+            node.scopusAuthorIds.add(auid);
+            rememberName(node, sa.getName());
+            auidToNode.put(auid, nodeId);
+            if (sa.getName() != null) {
+                scopusNameByAuid.put(auid, sa.getName());
+            }
+        }
+        // Seed OpenAlex nodes from authorships across all OpenAlex pubs.
+        for (OpenAlexPublicationFact pub : openAlexPubs) {
+            if (pub.getAuthorships() == null) {
+                continue;
+            }
+            for (OpenAlexPublicationFact.AuthorRef ref : pub.getAuthorships()) {
+                String nodeId = openAlexNodeId(ref.getOrcid(), ref.getOpenAlexAuthorId());
+                if (nodeId == null) {
+                    continue; // name-only authorship: not id-resolvable
+                }
+                KeyTier tier = !isBlank(ref.getOrcid()) ? KeyTier.ORCID : KeyTier.OPENALEX;
+                AuthorNode node = nodes.computeIfAbsent(nodeId, id -> new AuthorNode(id, tier));
+                if (!isBlank(ref.getOrcid())) {
+                    node.orcidIds.add(ref.getOrcid());
+                }
+                if (!isBlank(ref.getOpenAlexAuthorId())) {
+                    node.openAlexAuthorIds.add(ref.getOpenAlexAuthorId());
+                }
+                rememberName(node, ref.getDisplayName());
+            }
+        }
+
+        // Union-find over node ids.
+        Map<String, String> parent = new java.util.HashMap<>();
+        for (String id : nodes.keySet()) {
+            parent.put(id, id);
+        }
+
+        // Positional bridge: index source pubs by canonical pub id, then union Scopus[i]↔OpenAlex[i] on shared papers.
+        List<SourcePub> allSources = new ArrayList<>();
+        for (ScopusPublicationFact s : scopusPubs) {
+            allSources.add(fromScopus(s));
+        }
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            allSources.add(fromOpenAlex(o));
+        }
+        Set<String> doiBlocklist = computeDoiBlocklist(allSources);
+        Map<String, ScopusPublicationFact> scopusByCanon = new java.util.HashMap<>();
+        for (ScopusPublicationFact s : scopusPubs) {
+            scopusByCanon.putIfAbsent(buildPublicationId(fromScopus(s), doiBlocklist), s);
+        }
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            String canonId = buildPublicationId(fromOpenAlex(o), doiBlocklist);
+            ScopusPublicationFact sPub = scopusByCanon.get(canonId);
+            if (sPub == null || sPub.getAuthors() == null || o.getAuthorships() == null) {
+                continue;
+            }
+            List<String> auids = sPub.getAuthors();
+            List<OpenAlexPublicationFact.AuthorRef> refs = o.getAuthorships();
+            if (auids.isEmpty() || auids.size() != refs.size()) {
+                continue; // count guard
+            }
+            for (int i = 0; i < auids.size(); i++) {
+                String sNode = auidToNode.get(normalizeBlank(auids.get(i)));
+                String oNode = openAlexNodeId(refs.get(i).getOrcid(), refs.get(i).getOpenAlexAuthorId());
+                if (sNode == null || oNode == null || !parent.containsKey(oNode)) {
+                    continue;
+                }
+                if (ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver.surnameMatches(
+                        scopusNameByAuid.get(normalizeBlank(auids.get(i))), refs.get(i).getDisplayName())) {
+                    union(parent, sNode, oNode);
+                }
+            }
+        }
+
+        // Resolve components → canonical authors (OpenAlex-keyed id), + AUTHOR source-links + nodeId→canonicalId map.
+        Map<String, List<AuthorNode>> components = new LinkedHashMap<>();
+        for (AuthorNode node : nodes.values()) {
+            components.computeIfAbsent(find(parent, node.id), k -> new ArrayList<>()).add(node);
+        }
+        Map<String, String> nodeToCanonical = new java.util.HashMap<>();
+        List<ScholardexAuthorFact> authors = new ArrayList<>(components.size());
+        List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinks = new ArrayList<>();
+        for (List<AuthorNode> members : components.values()) {
+            AuthorNode canonical = members.stream()
+                    .min(Comparator.<AuthorNode>comparingInt(n -> n.tier.ordinal()).thenComparing(n -> n.id))
+                    .orElseThrow();
+            String canonicalId = canonical.id;
+            ScholardexAuthorFact author = new ScholardexAuthorFact();
+            Instant now = Instant.now();
+            author.setId(canonicalId);
+            author.setCreatedAt(now);
+            author.setUpdatedAt(now);
+            String displayName = canonical.displayName;
+            for (AuthorNode m : members) {
+                nodeToCanonical.put(m.id, canonicalId);
+                m.scopusAuthorIds.forEach(a -> CanonicalizationSupport.addUnique(author.getScopusAuthorIds(), a));
+                m.orcidIds.forEach(o -> CanonicalizationSupport.addUnique(author.getOrcidIds(), o));
+                m.openAlexAuthorIds.forEach(x -> CanonicalizationSupport.addUnique(author.getOpenAlexAuthorIds(), x));
+                if (displayName == null) {
+                    displayName = m.displayName;
+                }
+                for (String n : m.names) {
+                    CanonicalizationSupport.addUnique(author.getAlternativeNames(), n);
+                }
+            }
+            author.setDisplayName(displayName);
+            author.setNameNormalized(normalizeName(displayName));
+            authors.add(author);
+            for (String auid : author.getScopusAuthorIds()) {
+                sourceLinks.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                        ScholardexEntityType.AUTHOR, SOURCE_SCOPUS, auid, canonicalId,
+                        ScholardexSourceLinkService.STATE_LINKED, "scopus-author-bridge", null, null, null, false));
+            }
+        }
+
+        // Denormalize pub.authorIds: OpenAlex author order when an OpenAlex source is present, else Scopus order.
+        Map<String, List<String>> pubAuthorIds = new java.util.HashMap<>();
+        Map<String, OpenAlexPublicationFact> openAlexByCanon = new java.util.HashMap<>();
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            openAlexByCanon.putIfAbsent(buildPublicationId(fromOpenAlex(o), doiBlocklist), o);
+        }
+        Set<String> canonIds = new java.util.LinkedHashSet<>();
+        canonIds.addAll(scopusByCanon.keySet());
+        canonIds.addAll(openAlexByCanon.keySet());
+        for (String canonId : canonIds) {
+            OpenAlexPublicationFact o = openAlexByCanon.get(canonId);
+            ScopusPublicationFact s = scopusByCanon.get(canonId);
+            List<String> ids = new ArrayList<>();
+            if (o != null && o.getAuthorships() != null) {
+                for (OpenAlexPublicationFact.AuthorRef ref : o.getAuthorships()) {
+                    addCanonicalAuthor(ids, nodeToCanonical, openAlexNodeId(ref.getOrcid(), ref.getOpenAlexAuthorId()));
+                }
+            } else if (s != null && s.getAuthors() != null) {
+                for (String auid : s.getAuthors()) {
+                    addCanonicalAuthor(ids, nodeToCanonical, auidToNode.get(normalizeBlank(auid)));
+                }
+            }
+            if (!ids.isEmpty()) {
+                pubAuthorIds.put(canonId, ids);
+            }
+        }
+        return new AuthorBuildResult(authors, sourceLinks, pubAuthorIds);
+    }
+
+    private static void addCanonicalAuthor(List<String> ids, Map<String, String> nodeToCanonical, String nodeId) {
+        if (nodeId == null) {
+            return;
+        }
+        String canonical = nodeToCanonical.get(nodeId);
+        if (canonical != null && !ids.contains(canonical)) {
+            ids.add(canonical);
+        }
+    }
+
+    private static String openAlexNodeId(String orcid, String openAlexAuthorId) {
+        if (!isBlank(orcid)) {
+            return "sauth_" + shortHash("orcid|" + orcid.toLowerCase(java.util.Locale.ROOT));
+        }
+        if (!isBlank(openAlexAuthorId)) {
+            return "sauth_" + shortHash("openalex|" + openAlexAuthorId);
+        }
+        return null;
+    }
+
+    private static void rememberName(AuthorNode node, String name) {
+        if (name != null && !name.isBlank()) {
+            node.names.add(name.trim());
+            if (node.displayName == null) {
+                node.displayName = name.trim();
+            }
+        }
+    }
+
+    private static String find(Map<String, String> parent, String i) {
+        while (!parent.get(i).equals(i)) {
+            parent.put(i, parent.get(parent.get(i)));
+            i = parent.get(i);
+        }
+        return i;
+    }
+
+    private static void union(Map<String, String> parent, String a, String b) {
+        parent.put(find(parent, a), find(parent, b));
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     // ── Publications (S1.c / Stage 2): DOI-first identity, Decision-0 blocklist, OpenAlex field precedence ──────
