@@ -60,12 +60,14 @@ auto-merged — left for a future review queue.
 
 ## Slices
 
-- **S1 — candidate engine (pure, dry-run first).** Assemble per-node signals in-memory inside `buildAuthors` (pub→
-  nodes map for co-author + same-paper sets; node→affiliation from OpenAlex authorships). Implement surname/given
-  parsing, the adaptive rule, and the same-paper hard block as a pure method returning candidate `union` pairs.
-  Behind a flag it only **logs** the candidate count + samples (no unions applied) so the Java numbers can be checked
-  against the Python dry-run (~1,737). Unit tests: a Vizman-style merge fires; a same-paper pair is hard-blocked; a
-  common-surname co=1 pair is rejected, a rare-surname co=1 pair merges; determinism.
+- **S1 — candidate engine (pure, dry-run first). DONE (commit `cb01578`).** `CanonicalGraphBuilder.applyAuthorReconcile`
+  assembles per-root signals in-memory (pub→roots for co-author + same-paper; root→affiliation from OpenAlex RORs),
+  runs the adaptive rule + same-paper hard block, and (dry-run) logs candidates without applying. `AuthorReconcileSettings`
+  (off by default; the 3-arg `buildAuthors` overload stays pure for tests). 6 unit tests green. **Live dry-run
+  (2026-06-22):** `candidatePairs=2072 authorsAbsorbed=1919` with the adaptive default (commonThreshold=40, commonFloor=2)
+  — matches the offline ~1,737 (slightly higher: Java folds diacritics properly, grouping `Mureşan` variants the
+  ascii-only script split). Samples textbook-correct (initial↔full, middle-name, hyphen, diacritic, surname-only); no
+  visible false merges. 79 common-name blocks / 76,686 authors deferred.
 - **S2 — apply + invariants.** Apply the candidate unions in `buildAuthors` (after the positional bridge, before
   component resolution — the existing union-find folds members automatically). Add the same-paper + no-runaway
   invariant assertions. Dials (`block-cap`, `common-block-threshold`, `common-floor`) as constants/config.
