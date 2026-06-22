@@ -5,8 +5,11 @@ import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
@@ -149,7 +152,10 @@ public class CanonicalGraphBuilder {
 
     public record AuthorBuildResult(List<ScholardexAuthorFact> authors,
                                     List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinks,
-                                    Map<String, List<String>> pubAuthorIds) {
+                                    Map<String, List<String>> pubAuthorIds,
+                                    List<ScholardexAuthorshipFact> authorshipEdges,
+                                    List<ScholardexAuthorAffiliationFact> authorAffiliationEdges,
+                                    List<ScholardexPublicationAuthorAffiliationFact> pubAuthorAffiliationEdges) {
     }
 
     /**
@@ -293,12 +299,22 @@ public class CanonicalGraphBuilder {
         for (OpenAlexPublicationFact o : openAlexPubs) {
             openAlexByCanon.putIfAbsent(buildPublicationId(fromOpenAlex(o), doiBlocklist), o);
         }
+        // Edge accumulators, deduped by natural key (a recurring author↔affiliation across papers writes once).
+        Set<String> seenAuthorship = new java.util.HashSet<>();
+        Set<String> seenAuthorAff = new java.util.HashSet<>();
+        Set<String> seenPubAuthorAff = new java.util.HashSet<>();
+        List<ScholardexAuthorshipFact> authorshipEdges = new ArrayList<>();
+        List<ScholardexAuthorAffiliationFact> authorAffiliationEdges = new ArrayList<>();
+        List<ScholardexPublicationAuthorAffiliationFact> pubAuthorAffiliationEdges = new ArrayList<>();
+
         Set<String> canonIds = new java.util.LinkedHashSet<>();
         canonIds.addAll(scopusByCanon.keySet());
         canonIds.addAll(openAlexByCanon.keySet());
         for (String canonId : canonIds) {
             OpenAlexPublicationFact o = openAlexByCanon.get(canonId);
             ScopusPublicationFact s = scopusByCanon.get(canonId);
+
+            // pub.authorIds: OpenAlex author order when present, else Scopus order.
             List<String> ids = new ArrayList<>();
             if (o != null && o.getAuthorships() != null) {
                 for (OpenAlexPublicationFact.AuthorRef ref : o.getAuthorships()) {
@@ -312,8 +328,44 @@ public class CanonicalGraphBuilder {
             if (!ids.isEmpty()) {
                 pubAuthorIds.put(canonId, ids);
             }
+
+            // Edges from BOTH sources (they coexist by `source`). OpenAlex also contributes affiliation edges via RORs.
+            if (o != null && o.getAuthorships() != null) {
+                for (OpenAlexPublicationFact.AuthorRef ref : o.getAuthorships()) {
+                    String ca = nodeToCanonical.get(openAlexNodeId(ref.getOrcid(), ref.getOpenAlexAuthorId()));
+                    if (ca == null) {
+                        continue;
+                    }
+                    if (seenAuthorship.add(canonId + "|" + ca + "|" + SOURCE_OPENALEX)) {
+                        authorshipEdges.add(authorship(canonId, ca, SOURCE_OPENALEX, ref.isCorresponding()));
+                    }
+                    if (ref.getInstitutionRors() != null) {
+                        for (String ror : ref.getInstitutionRors()) {
+                            if (isBlank(ror)) {
+                                continue;
+                            }
+                            String aff = CanonicalizationSupport.buildRorBackboneAffiliationId(ror);
+                            if (seenAuthorAff.add(ca + "|" + aff + "|" + SOURCE_OPENALEX)) {
+                                authorAffiliationEdges.add(authorAffiliation(ca, aff, SOURCE_OPENALEX));
+                            }
+                            if (seenPubAuthorAff.add(canonId + "|" + ca + "|" + aff + "|" + SOURCE_OPENALEX)) {
+                                pubAuthorAffiliationEdges.add(pubAuthorAffiliation(canonId, ca, aff, SOURCE_OPENALEX));
+                            }
+                        }
+                    }
+                }
+            }
+            if (s != null && s.getAuthors() != null) {
+                for (String auid : s.getAuthors()) {
+                    String ca = nodeToCanonical.get(auidToNode.get(normalizeBlank(auid)));
+                    if (ca != null && seenAuthorship.add(canonId + "|" + ca + "|" + SOURCE_SCOPUS)) {
+                        authorshipEdges.add(authorship(canonId, ca, SOURCE_SCOPUS, false));
+                    }
+                }
+            }
         }
-        return new AuthorBuildResult(authors, sourceLinks, pubAuthorIds);
+        return new AuthorBuildResult(authors, sourceLinks, pubAuthorIds,
+                authorshipEdges, authorAffiliationEdges, pubAuthorAffiliationEdges);
     }
 
     private static void addCanonicalAuthor(List<String> ids, Map<String, String> nodeToCanonical, String nodeId) {
@@ -324,6 +376,47 @@ public class CanonicalGraphBuilder {
         if (canonical != null && !ids.contains(canonical)) {
             ids.add(canonical);
         }
+    }
+
+    private static final String LINK_STATE_LINKED = "LINKED";
+
+    private static ScholardexAuthorshipFact authorship(String pubId, String authorId, String source, boolean corresponding) {
+        ScholardexAuthorshipFact e = new ScholardexAuthorshipFact();
+        Instant now = Instant.now();
+        e.setPublicationId(pubId);
+        e.setAuthorId(authorId);
+        e.setSource(source);
+        e.setLinkState(LINK_STATE_LINKED);
+        e.setCorresponding(corresponding);
+        e.setCreatedAt(now);
+        e.setUpdatedAt(now);
+        return e;
+    }
+
+    private static ScholardexAuthorAffiliationFact authorAffiliation(String authorId, String affiliationId, String source) {
+        ScholardexAuthorAffiliationFact e = new ScholardexAuthorAffiliationFact();
+        Instant now = Instant.now();
+        e.setAuthorId(authorId);
+        e.setAffiliationId(affiliationId);
+        e.setSource(source);
+        e.setLinkState(LINK_STATE_LINKED);
+        e.setCreatedAt(now);
+        e.setUpdatedAt(now);
+        return e;
+    }
+
+    private static ScholardexPublicationAuthorAffiliationFact pubAuthorAffiliation(
+            String pubId, String authorId, String affiliationId, String source) {
+        ScholardexPublicationAuthorAffiliationFact e = new ScholardexPublicationAuthorAffiliationFact();
+        Instant now = Instant.now();
+        e.setPublicationId(pubId);
+        e.setAuthorId(authorId);
+        e.setAffiliationId(affiliationId);
+        e.setSource(source);
+        e.setLinkState(LINK_STATE_LINKED);
+        e.setCreatedAt(now);
+        e.setUpdatedAt(now);
+        return e;
     }
 
     private static String openAlexNodeId(String orcid, String openAlexAuthorId) {

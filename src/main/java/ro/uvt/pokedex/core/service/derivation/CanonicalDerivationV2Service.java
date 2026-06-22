@@ -11,8 +11,11 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
@@ -136,8 +139,25 @@ public class CanonicalDerivationV2Service {
             sourceLinkService.batchUpsertWithState(result.sourceLinks(), new HashMap<>(), false);
         }
         backfillPublicationAuthorIds(result.pubAuthorIds());
-        log.info("V2 author derivation: scopusAuthors={} -> authors={} sourceLinks={} pubsWithAuthors={}",
-                scopusAuthors.size(), result.authors().size(), result.sourceLinks().size(), result.pubAuthorIds().size());
+
+        // Edges (deduped in memory -> clean inserts). Wipe + bulk-insert each collection.
+        bulkReplace(result.authorshipEdges(), ScholardexAuthorshipFact.class);
+        bulkReplace(result.authorAffiliationEdges(), ScholardexAuthorAffiliationFact.class);
+        bulkReplace(result.pubAuthorAffiliationEdges(), ScholardexPublicationAuthorAffiliationFact.class);
+
+        log.info("V2 author derivation: scopusAuthors={} -> authors={} sourceLinks={} pubsWithAuthors={} "
+                        + "authorshipEdges={} authorAffEdges={} pubAuthorAffEdges={}",
+                scopusAuthors.size(), result.authors().size(), result.sourceLinks().size(), result.pubAuthorIds().size(),
+                result.authorshipEdges().size(), result.authorAffiliationEdges().size(),
+                result.pubAuthorAffiliationEdges().size());
+    }
+
+    /** Wipe a collection and bulk-insert the given facts in 5k batches (no upsert: wipe-first guarantees inserts). */
+    private <T> void bulkReplace(List<T> facts, Class<T> type) {
+        mongoTemplate.remove(new Query(), type);
+        for (int i = 0; i < facts.size(); i += 5000) {
+            mongoTemplate.insert(facts.subList(i, Math.min(i + 5000, facts.size())), type);
+        }
     }
 
     /** Bulk-set {@code authorIds[]} on the canonical pubs (one unordered bulk op, no per-pub round trip). */

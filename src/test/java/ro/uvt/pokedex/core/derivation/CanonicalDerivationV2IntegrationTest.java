@@ -74,6 +74,18 @@ class CanonicalDerivationV2IntegrationTest extends CanonicalDerivationIntegratio
                 .map(ScholardexAuthorFact::getId).collect(Collectors.toSet());
         assertThat(pub.getAuthorIds()).isNotEmpty().allMatch(authorIds::contains);
         assertThat(pub.getAuthorIds()).contains(author.getId());
+
+        // Edges: authorship (pub->author, both sources) + the ROR-backbone affiliation edges, endpoints resolve.
+        String affId = ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport
+                .buildRorBackboneAffiliationId("0583a0t97");
+        assertThat(mongoTemplate.findAll(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact.class))
+                .anyMatch(e -> e.getPublicationId().equals(pub.getId()) && e.getAuthorId().equals(author.getId()));
+        assertThat(mongoTemplate.findAll(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact.class))
+                .anyMatch(e -> e.getAuthorId().equals(author.getId()) && e.getAffiliationId().equals(affId));
+        assertThat(mongoTemplate.findAll(
+                ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact.class))
+                .anyMatch(e -> e.getPublicationId().equals(pub.getId()) && e.getAuthorId().equals(author.getId())
+                        && e.getAffiliationId().equals(affId));
     }
 
     private void seedSources() {
@@ -107,6 +119,7 @@ class CanonicalDerivationV2IntegrationTest extends CanonicalDerivationIntegratio
         ref.setDisplayName("Marc Frincu");
         ref.setOrcid("0000-0003-1034-8409");
         ref.setOpenAlexAuthorId("A5000000001");
+        ref.getInstitutionRors().add("0583a0t97"); // UVT — drives the affiliation edges
         openAlexPub.setAuthorships(List.of(ref));
         openAlexPublicationFactRepository.save(openAlexPub);
     }
