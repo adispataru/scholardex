@@ -68,9 +68,12 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
 
 ## Slices
 
-- **S1 — per-pub citation source-split (projection).** In the Scopus projection build (already loads the citation
-  graph + forum indexing), compute per canonical pub `scopusCitationCount` / `wosCitationCount` / `graphCitationCount`;
-  persist on the publication view (Flyway columns). Verify against the offline numbers + the Adrian spot-check.
+- **S1 — per-pub citation source-split (projection). DONE + verified (commit `7863b12`, Flyway V15).** The Scopus
+  projection build classifies each pub's incoming citations by the citing paper's forum indexing
+  (`applyCitationSourceSplit`) and persists `graph/scopus/wos_citation_count` on `scholardex_publication_view`.
+  **Live verify (2026-06-22):** corpus totals match the offline analysis exactly (418,462 Scopus-venue / 383,858
+  WoS-venue / 512,200 graph citations); Adrian's SQL-computed h = scopus 4 / wos 4 / graph 5 / scholardex 5 over
+  27 pubs (matches ground truth, off-by-one vs real 5/5 per the WoS-CPCI gap).
 - **S2 — source-attributed h + surface.** Compute Scholardex-h / graph-total-h / Scopus-venue-h / WoS-venue-h over a
   researcher's pubs (extend the existing `computeHIndex`); surface on the workspace/profile, labeled indicative.
 - **S3 — self-citation exclusion (geografie).** A variant excluding citations whose citing pub shares an author with
