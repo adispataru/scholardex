@@ -185,8 +185,35 @@ gaps. Then a **rebuild-from-scratch** validates the new order.
   **AND** positional attachment of each Scopus AU-ID to the existing scholardex author at position *i*
   (equal-count + surname guard). Scopus-only / OpenAlex-absent pubs mint as today. Pub-resolve, author-attach,
   and the reorder are inseparable — a partial state duplicates authors. (Absorbs the old S2.2 + S2.3 + reorder.)
-- **S2.3 — Rebuild-from-scratch + validate.** Run `rebuildAllDerived` end-to-end (~75+ min), validate counts +
-  spot-checks. The reorder's real proof.
+- **S2.2 — DONE (2026-06-22).** Shipped as three coupled changes, all unit/integration-tested:
+  - **S2.2a** forum build moved ahead of the affiliation/author/publication canon block in `runFull` (forums have
+    no dependency on canonical author/affiliation/pub facts — verified), so a single early OpenAlex-first canon pass
+    can stamp `forumId` against a complete forum registry.
+  - **S2.2b** the OpenAlex canon now runs **before** the Scopus canon block and, in one bulk pass, indexes the
+    Scopus pub source-facts by DOI (+ AU-ID→name) and positionally writes `(AUTHOR, SCOPUS, auid) → OpenAlex-author`
+    **LINKED source-links** (equal-count + surname guard; ambiguous AU-IDs dropped). The later Scopus author/pub
+    canon resolves each AU-ID into the OpenAlex author via those links with **no code change** (they already prefer
+    an existing source-link over minting). `OpenAlexAuthorResolver`/`OpenAlexCanonicalizationService`.
+  - **S2.2c** `ScholardexPublicationCanonicalizationService` defers to OpenAlex: when it resolves a Scopus pub into
+    an OpenAlex-owned DOI pub, it enriches-only (adds `eid` + Scopus-only fields, monotonic-max citation count) and
+    keeps OpenAlex's title/venue/owning source; the SCOPUS source-link is still recorded.
+- **S2.3 — Validation.** **DONE (integration test, 2026-06-22):** `OpenAlexFirstInversionIntegrationTest`
+  (Testcontainers `mongo:7.0` + `@SpringBootTest` with Postgres autoconfig excluded, mirroring `CoreApplicationTests`)
+  runs the real OpenAlex canon → Scopus author canon → Scopus pub canon on a shared-DOI fixture and asserts the
+  AU-ID folds into the OpenAlex-keyed author (no Scopus-keyed twin), the inversion source-link persists, and the pub
+  keeps OpenAlex title/source while gaining the Scopus `eid`. ~15s, deterministic, sleep-proof.
+  **DEFERRED:** one full caffeinated `rebuildAllDerived` (~90 min) for production data + count validation — see the
+  rebuild-fragility note below.
+
+**Rebuild-fragility note (2026-06-22):** a full from-scratch `rebuildAllDerived` is ~90 min, not resumable (the
+endpoint wipes first), and dominated by the **citer graph** (~105k of ~117k OpenAlex pubs are citers, irrelevant to
+the S2.2 inversion which is UVT-works ↔ Scopus only). Operationally it is fragile on a laptop: `bootRun` under the
+agent harness gets reaped when its launcher task ends/caps, and laptop **sleep** (lid close / low battery) aborts
+in-flight Mongo ops mid-rebuild. Run it: app daemonized via a Python `os.setsid` double-fork (escapes the harness
+process group); `POST /admin/initialization/rebuildAllDerived` needs `confirmation=RESET` and is **synchronous**, so
+fire a short-`--max-time` curl (the server completes regardless of client disconnect) and poll the log for
+`Pipeline rebuild complete.`; wrap in `caffeinate -dimsu` + keep on power. For a faster validation run, blank
+`core.openalex.bulk.citers-file` (works-only → canon ~12k pubs not ~117k).
 
 Implementation order: **S2.1 → S2.2 → S2.3 rebuild.** Start with the standalone affiliation pass, then the
 coupled inversion, then the rebuild.

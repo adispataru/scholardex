@@ -19,6 +19,8 @@ import ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -42,10 +44,14 @@ import java.util.Set;
 public class OpenAlexCanonicalizationService {
 
     public static final String SOURCE_OPENALEX = "OPENALEX";
+    private static final String SOURCE_SCOPUS = "SCOPUS";
     private static final String LINK_REASON_OPENALEX_PUBLICATION = "openalex-fact-bridge";
     private static final String LINK_REASON_OPENALEX_AUTHORSHIP = "openalex-authorship-self";
     // H73 slice 3: the "authored this paper while at this institution" edge from OpenAlex authorship institutions.
     private static final String LINK_REASON_OPENALEX_AFFILIATION = "openalex-authorship-affiliation";
+    // H73 S2.2 (author inversion): a positional AU-ID -> OpenAlex-author source-link so the later Scopus canon
+    // resolves the Scopus AU-ID into this OpenAlex author instead of minting a separate Scopus-keyed twin.
+    private static final String LINK_REASON_AUTHOR_INVERSION = "openalex-author-inversion";
     private static final String REASON_PUBLICATION_DOI_AMBIGUOUS = "OPENALEX_PUBLICATION_DOI_AMBIGUOUS";
 
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
@@ -57,6 +63,9 @@ public class OpenAlexCanonicalizationService {
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver authorResolver;
     private final ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService forumOnboardingService;
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
+    // H73 S2.2 (author inversion): Scopus publication + author source-facts feed the positional AU-ID bridge.
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository scopusPublicationFactRepository;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository scopusAuthorFactRepository;
 
     /**
      * Full-rebuild replay: canonicalize every OpenAlex source-fact. Runs in <b>bulk mode</b> (H73 slice 3):
@@ -81,6 +90,9 @@ public class OpenAlexCanonicalizationService {
         forumOnboardingService.onboard(sources);
         sources.sort(Comparator.comparing(OpenAlexPublicationFact::getSourceRecordId, Comparator.nullsLast(String::compareTo)));
         BulkCanonState state = bulk ? new BulkCanonState(authorResolver.primeBulkContext()) : null;
+        if (state != null) {
+            buildScopusInversionIndexes(state);
+        }
         for (OpenAlexPublicationFact source : sources) {
             canonicalizeOne(source, result, state);
         }
@@ -103,8 +115,42 @@ public class OpenAlexCanonicalizationService {
         private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> authorAffiliation = new LinkedHashMap<>();
         private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> publicationAuthorAffiliation = new LinkedHashMap<>();
 
+        // H73 S2.2 (author inversion): normalized DOI -> ordered Scopus AU-IDs (from Scopus pub source-facts;
+        // ambiguous shared/container DOIs excluded), AU-ID -> Scopus display name (surname guard), and the
+        // resulting AU-ID -> OpenAlex-author source-links (deduped by AU-ID; conflicting positions dropped).
+        private final Map<String, List<String>> scopusAuthorsByDoi = new HashMap<>();
+        private final Map<String, String> scopusNameByAuid = new HashMap<>();
+        private final Map<String, ScholardexSourceLinkService.SourceLinkUpsertCommand> authorInversionLinks = new LinkedHashMap<>();
+        private final Set<String> conflictedAuids = new HashSet<>();
+
         BulkCanonState(OpenAlexAuthorResolver.BulkContext authorCtx) {
             this.authorCtx = authorCtx;
+        }
+    }
+
+    /**
+     * H73 S2.2 (author inversion): index the Scopus publication source-facts by normalized DOI -> ordered Scopus
+     * AU-IDs, and the Scopus author source-facts by AU-ID -> display name (for the per-position surname guard).
+     * Shared/container DOIs (more than one Scopus pub) are ambiguous for positional bridging and excluded.
+     */
+    private void buildScopusInversionIndexes(BulkCanonState state) {
+        Set<String> ambiguousDoi = new HashSet<>();
+        for (ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact pub : scopusPublicationFactRepository.findAll()) {
+            String doi = ScholardexPublicationCanonicalizationService.normalizeDoi(pub.getDoi());
+            if (doi == null || pub.getAuthors() == null || pub.getAuthors().isEmpty() || ambiguousDoi.contains(doi)) {
+                continue;
+            }
+            if (state.scopusAuthorsByDoi.containsKey(doi)) {
+                state.scopusAuthorsByDoi.remove(doi); // second pub with this DOI -> ambiguous, blocklist it.
+                ambiguousDoi.add(doi);
+                continue;
+            }
+            state.scopusAuthorsByDoi.put(doi, new ArrayList<>(pub.getAuthors()));
+        }
+        for (ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact author : scopusAuthorFactRepository.findAll()) {
+            if (!isBlank(author.getAuthorId()) && !isBlank(author.getName())) {
+                state.scopusNameByAuid.putIfAbsent(author.getAuthorId(), author.getName());
+            }
         }
     }
 
@@ -118,6 +164,12 @@ public class OpenAlexCanonicalizationService {
                 chunk -> edgeWriterService.batchUpsertAuthorAffiliationEdges(chunk, null, false));
         flushEdgeChunks(new ArrayList<>(state.publicationAuthorAffiliation.values()),
                 chunk -> edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(chunk, null, false));
+        // H73 S2.2: flush the AU-ID -> OpenAlex-author inversion source-links. allowFallbackLookup=false with an
+        // empty preload assumes the source-link collection was wiped (full rebuild) so these are clean inserts.
+        if (!state.authorInversionLinks.isEmpty()) {
+            sourceLinkService.batchUpsertWithState(
+                    new ArrayList<>(state.authorInversionLinks.values()), new HashMap<>(), false);
+        }
     }
 
     private void flushEdgeChunks(List<ScholardexEdgeWriterService.EdgeWriteCommand> commands,
@@ -198,7 +250,7 @@ public class OpenAlexCanonicalizationService {
             result.markImported();
         }
 
-        writeAuthorshipEdges(source, canonicalPublicationId, state);
+        writeAuthorshipEdges(source, canonicalPublicationId, doiNormalized, state);
     }
 
     /**
@@ -270,7 +322,8 @@ public class OpenAlexCanonicalizationService {
      * </ol>
      * The {@code (pub, author, source)} key means OPENALEX edges coexist with Scopus ones.
      */
-    private void writeAuthorshipEdges(OpenAlexPublicationFact source, String canonicalPublicationId, BulkCanonState state) {
+    private void writeAuthorshipEdges(OpenAlexPublicationFact source, String canonicalPublicationId,
+                                      String doiNormalized, BulkCanonState state) {
         if (isBlank(canonicalPublicationId)) {
             return;
         }
@@ -304,14 +357,19 @@ public class OpenAlexCanonicalizationService {
         boolean openAlexOwned = pub != null && SOURCE_OPENALEX.equals(pub.getSource());
         LinkedHashSet<String> resolvedAuthorIds = new LinkedHashSet<>();   // OpenAlex author order
         Set<String> correspondingAuthorIds = new LinkedHashSet<>();
+        // H73 S2.2: the canonical OpenAlex author resolved at each authorship position (null where skipped or
+        // name-only), parallel to authorships, so the inversion bridge can pair position i with the Scopus AU-ID.
+        List<String> resolvedByPosition = new ArrayList<>(authorships.size());
         for (OpenAlexPublicationFact.AuthorRef ref : authorships) {
             boolean corresponding = ref.isCorresponding();
             if (!openAlexOwned && !corresponding) {
+                resolvedByPosition.add(null);
                 continue;
             }
             String authorId = authorResolver.resolveOrMint(
                     ref.getDisplayName(), ref.getOrcid(), ref.getOpenAlexAuthorId(),
                     ref.getInstitutionNames(), source.getSourceBatchId(), source.getSourceCorrelationId(), authorCtx);
+            resolvedByPosition.add(isBlank(authorId) ? null : authorId);
             if (!isBlank(authorId)) {
                 resolvedAuthorIds.add(authorId);
                 if (corresponding) {
@@ -322,6 +380,9 @@ public class OpenAlexCanonicalizationService {
                 upsertAffiliationEdges(canonicalPublicationId, authorId, ref.getInstitutionRors(), source, state);
             }
         }
+        // H73 S2.2: positionally bridge each Scopus AU-ID (from the same-DOI Scopus pub source-fact) onto the
+        // OpenAlex author resolved above, writing a LINKED source-link the later Scopus canon resolves against.
+        writeAuthorInversionLinks(source, doiNormalized, authorships, resolvedByPosition, state);
 
         // 4) One edge per author (syncing researchers ∪ resolved authors), corresponding flag where applicable.
         LinkedHashSet<String> edgeAuthorIds = new LinkedHashSet<>(syncingAuthorIds);
@@ -368,6 +429,56 @@ public class OpenAlexCanonicalizationService {
                 pub.setAuthorIds(new ArrayList<>(desired));
                 scholardexPublicationFactRepository.save(pub);
             }
+        }
+    }
+
+    /**
+     * H73 S2.2 (author inversion): for a publication whose normalized DOI matches exactly one Scopus pub
+     * source-fact, positionally bridge each Scopus AU-ID onto the OpenAlex author resolved at the same position,
+     * writing a LINKED {@code (AUTHOR, SCOPUS, auid) -> openAlexAuthorId} source-link. The later Scopus author /
+     * publication canon resolves the AU-ID against this link instead of minting a Scopus-keyed twin — making the
+     * OpenAlex author the canonical identity. Guards mirror the ORCID bridge: equal author count + per-position
+     * surname agreement; an AU-ID positionally bridged to two different OpenAlex authors across papers is dropped.
+     */
+    private void writeAuthorInversionLinks(OpenAlexPublicationFact source, String doiNormalized,
+                                           List<OpenAlexPublicationFact.AuthorRef> authorships,
+                                           List<String> resolvedByPosition, BulkCanonState state) {
+        if (state == null || doiNormalized == null) {
+            return;
+        }
+        List<String> scopusAuthors = state.scopusAuthorsByDoi.get(doiNormalized);
+        int n = authorships.size();
+        if (scopusAuthors == null || n == 0 || scopusAuthors.size() != n) {
+            return; // no unambiguous same-DOI Scopus pub, or counts disagree -> positions can't be trusted.
+        }
+        for (int i = 0; i < n; i++) {
+            String openAlexAuthorId = resolvedByPosition.get(i);
+            String auid = scopusAuthors.get(i);
+            if (isBlank(openAlexAuthorId) || isBlank(auid) || state.conflictedAuids.contains(auid)) {
+                continue;
+            }
+            if (!OpenAlexAuthorResolver.surnameMatches(state.scopusNameByAuid.get(auid), authorships.get(i).getDisplayName())) {
+                continue; // per-position verification failed — don't bridge a possibly-misaligned position.
+            }
+            ScholardexSourceLinkService.SourceLinkUpsertCommand existing = state.authorInversionLinks.get(auid);
+            if (existing != null) {
+                if (!openAlexAuthorId.equals(existing.canonicalEntityId())) {
+                    state.authorInversionLinks.remove(auid); // same AU-ID -> two OpenAlex authors: ambiguous, drop.
+                    state.conflictedAuids.add(auid);
+                }
+                continue;
+            }
+            state.authorInversionLinks.put(auid, new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                    ScholardexEntityType.AUTHOR,
+                    SOURCE_SCOPUS,
+                    auid,
+                    openAlexAuthorId,
+                    ScholardexSourceLinkService.STATE_LINKED,
+                    LINK_REASON_AUTHOR_INVERSION,
+                    source.getSourceEventId(),
+                    source.getSourceBatchId(),
+                    source.getSourceCorrelationId(),
+                    false));
         }
     }
 

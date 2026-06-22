@@ -37,6 +37,8 @@ class OpenAlexCanonicalizationServiceTest {
     @Mock private OpenAlexAuthorResolver authorResolver;
     @Mock private ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService forumOnboardingService;
     @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository scopusPublicationFactRepository;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository scopusAuthorFactRepository;
 
     @InjectMocks private OpenAlexCanonicalizationService service;
 
@@ -367,6 +369,87 @@ class OpenAlexCanonicalizationServiceTest {
                 cmds.stream().anyMatch(c -> "spub_aff".equals(c.publicationId())
                         && "sauth_self".equals(c.leftId()) && affId.equals(c.rightId()))),
                 any(), eq(false));
+    }
+
+    @Test
+    void sameDoiScopusPubWritesPositionalAuIdToOpenAlexAuthorInversionLinks() {
+        // H73 S2.2: an OpenAlex-owned pub whose DOI matches exactly one Scopus pub source-fact bridges each Scopus
+        // AU-ID onto the OpenAlex author at the same position (equal count + surname match) and writes LINKED
+        // (AUTHOR, SCOPUS, auid) -> openAlexAuthorId source-links so the later Scopus canon resolves into them.
+        OpenAlexPublicationFact source = source("W30", "10.1/shared", "Shared paper", "sauth_self");
+        source.setAuthorships(List.of(
+                authorship("Ionut Sandric", "0000-0002-9292-9479", "X1", false),
+                authorship("Marc Frincu", "0000-0003-1034-8409", "X2", false)));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_shared");
+        owned.setSource("OPENALEX");
+        owned.setAuthorIds(new java.util.ArrayList<>());
+
+        ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact scopusSource =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact();
+        scopusSource.setDoi("10.1/shared");
+        scopusSource.setAuthors(new java.util.ArrayList<>(List.of("AU1", "AU2")));
+        ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact a1 =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact();
+        a1.setAuthorId("AU1");
+        a1.setName("Sandric, Ionut");
+        ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact a2 =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact();
+        a2.setAuthorId("AU2");
+        a2.setName("Frincu, Marc");
+
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scopusPublicationFactRepository.findAll()).thenReturn(List.of(scopusSource));
+        when(scopusAuthorFactRepository.findAll()).thenReturn(List.of(a1, a2));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/shared")).thenReturn(List.of());
+        when(publicationCanonicalizationService.buildCanonicalPublicationId(
+                any(), any(), any(), any(), eq("10.1/shared"), any(), any(), any(), any())).thenReturn("spub_shared");
+        when(scholardexPublicationFactRepository.findById("spub_shared")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveOrMint(eq("Ionut Sandric"), any(), eq("X1"), any(), any(), any(), any())).thenReturn("sauth_oa1");
+        when(authorResolver.resolveOrMint(eq("Marc Frincu"), any(), eq("X2"), any(), any(), any(), any())).thenReturn("sauth_oa2");
+
+        service.rebuildCanonicalFacts();
+
+        verify(sourceLinkService).batchUpsertWithState(
+                argThat(cmds -> cmds.stream().anyMatch(c -> c.entityType() == ScholardexEntityType.AUTHOR
+                                && "SCOPUS".equals(c.source()) && "AU1".equals(c.sourceRecordId())
+                                && "sauth_oa1".equals(c.canonicalEntityId()) && "LINKED".equals(c.targetState()))
+                        && cmds.stream().anyMatch(c -> "AU2".equals(c.sourceRecordId())
+                                && "sauth_oa2".equals(c.canonicalEntityId()))),
+                any(), eq(false));
+    }
+
+    @Test
+    void surnameMismatchSkipsInversionLinkForThatPosition() {
+        // The per-position surname guard: a mismatched surname at a position is not bridged (no source-link).
+        OpenAlexPublicationFact source = source("W31", "10.1/guard", "Guarded paper", "sauth_self");
+        source.setAuthorships(List.of(authorship("Completely Different", "0000-0002-9292-9479", "X1", false)));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_guard");
+        owned.setSource("OPENALEX");
+        owned.setAuthorIds(new java.util.ArrayList<>());
+        ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact scopusSource =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact();
+        scopusSource.setDoi("10.1/guard");
+        scopusSource.setAuthors(new java.util.ArrayList<>(List.of("AU1")));
+        ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact a1 =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact();
+        a1.setAuthorId("AU1");
+        a1.setName("Sandric, Ionut");
+
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scopusPublicationFactRepository.findAll()).thenReturn(List.of(scopusSource));
+        when(scopusAuthorFactRepository.findAll()).thenReturn(List.of(a1));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/guard")).thenReturn(List.of());
+        when(publicationCanonicalizationService.buildCanonicalPublicationId(
+                any(), any(), any(), any(), eq("10.1/guard"), any(), any(), any(), any())).thenReturn("spub_guard");
+        when(scholardexPublicationFactRepository.findById("spub_guard")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveOrMint(eq("Completely Different"), any(), eq("X1"), any(), any(), any(), any())).thenReturn("sauth_oa1");
+
+        service.rebuildCanonicalFacts();
+
+        // No inversion source-links were accumulated, so the batch source-link write is never invoked.
+        verify(sourceLinkService, never()).batchUpsertWithState(any(), any(), eq(false));
     }
 
     private OpenAlexPublicationFact source(String workId, String doiNormalized, String title, String researcherAuthorId) {

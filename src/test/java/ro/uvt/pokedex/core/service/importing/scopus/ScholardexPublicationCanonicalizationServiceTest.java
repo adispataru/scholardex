@@ -312,6 +312,43 @@ class ScholardexPublicationCanonicalizationServiceTest {
     }
 
     @Test
+    void deferToOpenAlexEnrichesOwnedPubWithScopusEidWithoutClobberingOpenAlexFields() {
+        // H73 S2.2: when the existing DOI-keyed canonical pub was minted by the OpenAlex-first canon, Scopus
+        // enriches (adds eid + Scopus-only fields) but must NOT overwrite OpenAlex's title/citations/source.
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-xyz");
+        scopusFact.setDoi("10.1/shared");
+        scopusFact.setTitle("Scopus title");
+        scopusFact.setCitedByCount(5);
+        scopusFact.setVolume("12");
+        scopusFact.setSource("SCOPUS");
+        scopusFact.setSourceRecordId("2-s2.0-xyz");
+        scopusFact.setAuthors(List.of());
+
+        ScholardexPublicationFact openAlexPub = new ScholardexPublicationFact();
+        openAlexPub.setId("spub_shared");
+        openAlexPub.setDoiNormalized("10.1/shared");
+        openAlexPub.setSource("OPENALEX");
+        openAlexPub.setTitle("OpenAlex title");
+        openAlexPub.setCitedByCount(99);
+
+        when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(scopusFact)));
+        when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of());
+        when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of(openAlexPub));
+        when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+
+        service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
+
+        // The preloaded OpenAlex pub is mutated in place: OpenAlex content preserved, Scopus fields enriched.
+        assertEquals("OpenAlex title", openAlexPub.getTitle());
+        assertEquals(Integer.valueOf(99), openAlexPub.getCitedByCount()); // 5 < 99 -> monotonic max keeps OpenAlex
+        assertEquals("OPENALEX", openAlexPub.getSource());
+        assertEquals("2-s2.0-xyz", openAlexPub.getEid());
+        assertEquals("12", openAlexPub.getVolume());
+    }
+
+    @Test
     void normalizeDoi_nullReturnsNull() {
         assertNull(ScholardexPublicationCanonicalizationService.normalizeDoi(null));
     }

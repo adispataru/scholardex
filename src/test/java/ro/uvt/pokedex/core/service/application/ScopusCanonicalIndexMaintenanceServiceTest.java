@@ -133,7 +133,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(70, result.created().size());
+        assertEquals(72, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -182,7 +182,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_WOS, true, true, "wosId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_GS, true, true, "googleScholarId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_USER, true, true, "userSourceId"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_DOI_NORMALIZED, true, true, "doiNormalized"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_DOI_NORMALIZED, false, "doiNormalized"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_TITLE_NORMALIZED, false, "titleNormalized"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_FORUM, false, "forumId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_AUTHORS, false, "authorIds"),
@@ -193,7 +193,9 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AUTHOR_SCOPUS, true, true, "scopusAuthorIds"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AUTHOR_NAME_NORMALIZED, false, "nameNormalized"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AUTHOR_AFFILIATIONS, false, "affiliationIds"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AUTHOR_PENDING_AFF_SOURCE_IDS, false, "pendingAffiliationSourceIds")
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AUTHOR_PENDING_AFF_SOURCE_IDS, false, "pendingAffiliationSourceIds"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AUTHOR_ORCID_IDS, false, "orcidIds"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AUTHOR_OPENALEX_IDS, false, "openAlexAuthorIds")
         ));
         when(canonicalAffiliationFactOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_AFFILIATION_SCOPUS, true, true, "scopusAffiliationIds"),
@@ -255,7 +257,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(70, result.present().size());
+        assertEquals(72, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());

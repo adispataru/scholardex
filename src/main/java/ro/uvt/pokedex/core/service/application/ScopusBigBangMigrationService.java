@@ -380,22 +380,29 @@ public class ScopusBigBangMigrationService {
         ingestCuratedScopusFeedsIfConfigured();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
         CanonicalBuildOptions options = CanonicalBuildOptions.defaults();
-        ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
-        ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
         // H66B M8 — forums first, identity-first: the registry is built from curated sources then WoS
         // create-or-match LAST inside buildScopusForums, before publication/citation canonicalization resolves
         // venues against it. (WoS journal_identity comes from the WoS fact phase, which ran before this.)
+        // H73 S2.2: moved ahead of the affiliation/author/publication canon block so a single early
+        // OpenAlex-first canon pass can stamp forumId against a complete forum registry. buildScopusForums has
+        // no dependency on canonical author/affiliation/publication facts (verified) — only the forum registry,
+        // WoS journal identity, and the curated ERIH/DOAJ feeds — so the move is behavior-neutral for the
+        // existing steps (pubs still resolve venues against forums; they remain after the forum build).
         ScholardexForumBuilder.ScopusForumBuildResult forumBuild =
                 forumBuilder.buildScopusForums(SCOPUS_FORUM_CANON_BATCH, "run-full");
+        // H73 S2.2 (OpenAlex-first): the OpenAlex canon now runs BEFORE the Scopus affiliation/author/publication
+        // canon. It mints DOI-keyed canonical pubs + OpenAlex-keyed authors, stamps forumId against the just-built
+        // forum registry, emits ROR-backbone affiliation edges, and writes positional (AUTHOR, SCOPUS, auid) ->
+        // OpenAlex-author source-links from the same-DOI Scopus pub source-facts. The Scopus canon that follows
+        // then resolves each AU-ID into the OpenAlex author via those links (no Scopus-keyed twin) and resolves
+        // each shared DOI into the existing OpenAlex pub, enriching it without clobbering (defer-to-OpenAlex).
+        ImportProcessingResult canonicalOpenAlex = openAlexCanonicalizationService.rebuildCanonicalFacts();
+        ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
         ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
         ImportProcessingResult wosPublicationLinks =
                 wosScholardexOnboardingService.linkPublicationsToWos(SCOPUS_FORUM_CANON_BATCH, "run-full");
-        // H66B Phase 4a: replay the durable OpenAlex source-facts onto the freshly-built canonical layer so
-        // OpenAlex-origin pubs (and DOI-links onto Scopus pubs) survive a full rebuild. Runs after Scopus
-        // publication canonicalization (so DOI-collision links resolve) and before projections (so they include
-        // OpenAlex pubs). The on-demand Tier-2 path resolves its own deltas; this is the full-rebuild replay.
-        ImportProcessingResult canonicalOpenAlex = openAlexCanonicalizationService.rebuildCanonicalFacts();
-        // H66B Phase 4a Stage 2: replay DOI-keyed OpenAlex citation edges (after OpenAlex pubs exist so endpoints resolve).
+        // H66B Phase 4a Stage 2: replay DOI-keyed OpenAlex citation edges (after OpenAlex + Scopus pubs exist so endpoints resolve).
         ImportProcessingResult canonicalOpenAlexCitations = openAlexCitationCanonicalizationService.rebuildCitationFacts();
         // H66B Phase 4b: re-mint DBLP conference forums + re-link forumId from durable evidence (no API), since
         // forum_facts is wiped here. Runs after pubs + forums exist, before projections.

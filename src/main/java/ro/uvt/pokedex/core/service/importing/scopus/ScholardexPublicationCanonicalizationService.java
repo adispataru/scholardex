@@ -596,16 +596,18 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         AuthorBridgeResult authorBridgeResult = bridgeAuthorIdsInternal(scopusFact.getAuthors(), scopusFact.getSource(), context);
         applyCanonicalPublicationFields(fact, scopusFact, authorBridgeResult, now, context);
         queuePublicationFact(fact, created, context);
+        // H73 S2.2: record the SCOPUS source-link from the incoming Scopus fact (not fact.getSource()), so the link
+        // is correct even when this pub is OpenAlex-owned and we keep fact.source=OPENALEX (defer-to-OpenAlex).
         queueSourceLinkCommand(
                 ScholardexEntityType.PUBLICATION,
-                fact.getSource(),
-                fact.getSourceRecordId(),
+                scopusFact.getSource(),
+                scopusFact.getSourceRecordId(),
                 fact.getId(),
                 ScholardexSourceLinkService.STATE_LINKED,
                 LINK_REASON_SCOPUS_BRIDGE,
-                fact.getSourceEventId(),
-                fact.getSourceBatchId(),
-                fact.getSourceCorrelationId(),
+                scopusFact.getSourceEventId(),
+                scopusFact.getSourceBatchId(),
+                scopusFact.getSourceCorrelationId(),
                 context
         );
         upsertPublicationEdges(fact, scopusFact, authorBridgeResult, context);
@@ -678,50 +680,70 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                 scopusFact.getCreator(),
                 scopusFact.getForumId()
         );
+        // H73 S2.2 (defer-to-OpenAlex precedence): when the existing canonical pub was minted by the OpenAlex-first
+        // canon, OpenAlex is authoritative for the bibliographic content (title/venue/citations/author list/owning
+        // source). Scopus then ENRICHES — it adds its eid + Scopus-only fields and authorship/affiliation edges —
+        // without clobbering the OpenAlex fields. When NOT OpenAlex-owned (Scopus-only or user-defined pub), Scopus
+        // applies the full field set exactly as before.
+        boolean openAlexOwned = OpenAlexCanonicalizationService.SOURCE_OPENALEX.equals(fact.getSource());
         if (fact.getCreatedAt() == null) {
             fact.setCreatedAt(now);
         }
-        fact.setId(canonicalId);
-        fact.setDoi(scopusFact.getDoi());
-        fact.setDoiNormalized(doiNormalized);
-        fact.setTitle(scopusFact.getTitle());
-        fact.setTitleNormalized(titleNormalized);
+        fact.setId(canonicalId); // DOI-keyed, identical to the OpenAlex-minted id when owned.
+
+        // Scopus-only enrichment — always applied (OpenAlex does not carry these).
         fact.setEid(scopusFact.getEid());
         fact.setPii(scopusFact.getPii());
         fact.setPubmedId(scopusFact.getPubmedId());
-        fact.setSubtype(scopusFact.getSubtype());
-        fact.setSubtypeDescription(scopusFact.getSubtypeDescription());
         fact.setScopusSubtype(scopusFact.getScopusSubtype());
         fact.setScopusSubtypeDescription(scopusFact.getScopusSubtypeDescription());
-        fact.setCreator(scopusFact.getCreator());
-        fact.setAuthorCount(scopusFact.getAuthorCount());
-        fact.setAuthorIds(authorBridgeResult.canonicalAuthorIds());
-        fact.setPendingAuthorSourceIds(authorBridgeResult.pendingSourceIds());
-        fact.setCorrespondingAuthors(scopusFact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(scopusFact.getCorrespondingAuthors()));
         fact.setAffiliationIds(resolveCanonicalPublicationAffiliationIds(scopusFact, context));
-        fact.setForumId(resolveCanonicalForumId(scopusFact.getSource(), scopusFact.getForumId(), context));
         // H66B M7: bookId is the book's Scopus Source ID — resolves directly to scholardex.book_facts (books
         // aren't merged across sources), so carry it through without source-link canonicalization.
         fact.setBookId(scopusFact.getBookId());
         fact.setVolume(scopusFact.getVolume());
         fact.setIssueIdentifier(scopusFact.getIssueIdentifier());
-        fact.setCoverDate(scopusFact.getCoverDate());
-        fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
         fact.setDescription(scopusFact.getDescription());
         fact.setAuthKeywords(scopusFact.getAuthKeywords() == null ? List.of() : new ArrayList<>(scopusFact.getAuthKeywords()));
-        fact.setCitedByCount(scopusFact.getCitedByCount());
-        fact.setOpenAccess(scopusFact.getOpenAccess());
         fact.setFreetoread(scopusFact.getFreetoread());
         fact.setFreetoreadLabel(scopusFact.getFreetoreadLabel());
         fact.setFundingId(scopusFact.getFundingId());
         fact.setArticleNumber(scopusFact.getArticleNumber());
         fact.setPageRange(scopusFact.getPageRange());
         fact.setApproved(scopusFact.getApproved());
-        fact.setSourceEventId(scopusFact.getSourceEventId());
-        fact.setSource(scopusFact.getSource());
-        fact.setSourceRecordId(scopusFact.getSourceRecordId());
-        fact.setSourceBatchId(scopusFact.getSourceBatchId());
-        fact.setSourceCorrelationId(scopusFact.getSourceCorrelationId());
+
+        if (!openAlexOwned) {
+            // OpenAlex-authoritative fields — applied only when OpenAlex did NOT mint this pub.
+            fact.setDoi(scopusFact.getDoi());
+            fact.setDoiNormalized(doiNormalized);
+            fact.setTitle(scopusFact.getTitle());
+            fact.setTitleNormalized(titleNormalized);
+            fact.setSubtype(scopusFact.getSubtype());
+            fact.setSubtypeDescription(scopusFact.getSubtypeDescription());
+            fact.setCreator(scopusFact.getCreator());
+            fact.setAuthorCount(scopusFact.getAuthorCount());
+            fact.setAuthorIds(authorBridgeResult.canonicalAuthorIds());
+            fact.setPendingAuthorSourceIds(authorBridgeResult.pendingSourceIds());
+            fact.setCorrespondingAuthors(scopusFact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(scopusFact.getCorrespondingAuthors()));
+            fact.setForumId(resolveCanonicalForumId(scopusFact.getSource(), scopusFact.getForumId(), context));
+            fact.setCoverDate(scopusFact.getCoverDate());
+            fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
+            fact.setCitedByCount(scopusFact.getCitedByCount());
+            fact.setOpenAccess(scopusFact.getOpenAccess());
+            fact.setSourceEventId(scopusFact.getSourceEventId());
+            fact.setSource(scopusFact.getSource());
+            fact.setSourceRecordId(scopusFact.getSourceRecordId());
+            fact.setSourceBatchId(scopusFact.getSourceBatchId());
+            fact.setSourceCorrelationId(scopusFact.getSourceCorrelationId());
+        } else {
+            // Citation count stays OpenAlex-authoritative but never regresses: bump only if Scopus is strictly
+            // higher (monotonic max), mirroring the prior OpenAlex-last behavior.
+            Integer scopusCount = scopusFact.getCitedByCount();
+            int current = fact.getCitedByCount() == null ? 0 : fact.getCitedByCount();
+            if (scopusCount != null && scopusCount > current) {
+                fact.setCitedByCount(scopusCount);
+            }
+        }
         fact.setUpdatedAt(now);
     }
 
