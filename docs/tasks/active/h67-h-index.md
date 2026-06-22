@@ -101,8 +101,15 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
     persisted round-trip). 2/2 done for the **non-self-cit** path — `UserReportFacade.buildReportScopedIndicatorDetail`
     branches on `isHIndexOutput()` and returns `hIndex` over the S1 columns (all four sources) instead of the sum;
     `HIndexCalculator.hIndexForSource` + tests green. **2/2b remaining:** the `excludeSelf` self-cit-filtered path
-    (currently throws) — needs the citation-graph walk + a WoS-indexed flag in the forum read model (the forum view has
-    `scopusId` but no WoS flag). Also pending: the interactive `buildIndicatorApplyView` preview branch (UI nicety).
+    (currently throws) — needs the citation-graph walk + a forum→WoS-edition read over
+    `scholardex_forum_membership_view` (NO schema change: WoS membership is already in the read model — editions
+    `SCIE`/`ESCI`/`SSCI`/`AHCI`, plus JCR metrics on `scholardex_forum_metric_view`; an earlier note wrongly said the
+    read model had no WoS flag because the `forum_view` *table* lacks one). Also pending: the interactive
+    `buildIndicatorApplyView` preview branch (UI nicety).
+    **WoS edition policy (decide before S4b):** `HIndexSource.WOS_VENUE` (and the S1 `wos_citation_count`) currently
+    counts ANY `wosForumIds` venue, which **includes ESCI** (Emerging Sources). RO criteria usually mean the WoS
+    **Core Collection** (SCIE/SSCI/AHCI). So WOS_VENUE likely should be Core-only (or split Core vs ESCI) — a real
+    accuracy refinement, since today's WoS h is "WoS-incl-ESCI".
   - **S4b — per-domain activation (data, later).** Insert the HIndex indicator rows into chimie (≥13/9 WoS),
     geografie (WoS, self-cit-excluded), fizica criteria with per-position thresholds from the standards assessment;
     the istorie "h OR citations" gate needs **H68**.
