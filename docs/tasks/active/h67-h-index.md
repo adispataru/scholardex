@@ -36,7 +36,49 @@ Currently nothing computes it (confirmed: no indicator/data in the live DB).
 - Citation source per domain (WoS / Scopus / Google Scholar) and how to represent "which h".
 - Self-citation exclusion default; whether to also expose total-citation-count (for the istorie OR-gate).
 
+## Method — source-attributed h off the citation graph (validated 2026-06-22)
+
+The per-source h ("WoS h", "Scopus h") is computed by attributing each **incoming citation** to the indexing of the
+forum the **citing** paper sits in: `citation_facts.citingPublicationId → publication_facts.forumId →
+forum_facts.{scopusForumIds, wosForumIds}`. Per the candidate's pub:
+- `scopusCitationCount` = # incoming citations whose citing forum is Scopus-indexed.
+- `wosCitationCount` = # … WoS-indexed.
+- `graphCitationCount` = # incoming citations total (internal graph), for a comparable graph-based total-h.
+Then `h = max k such that k pubs each have ≥ k` over each count. The existing `citedByCount`-based h stays as the
+"Scholardex h" (source-reported totals). Relationship to surface: Scholardex/graph-total h ≥ Scopus h, ≥ WoS h.
+
+**Feasibility (current canonical data):** forums carry indexing (51,531 Scopus-indexed, 26,338 WoS-indexed); of
+512,200 citation edges, **81% are classifiable as Scopus-venue, 74% as WoS-venue** (~18% from un-indexed/unresolved
+venues). The citing pub is always in-corpus (internal-only graph).
+
+**Validation against ground truth (Adrian Spătaru, real Scopus-h 5 / WoS-h 5, 27 pubs held):** computed Scholardex-h
+**5** (exact), Scopus-venue h **4**, WoS-venue h **4** — off by one. A poorly-covered researcher (Florin Rosu, 5 pubs
+held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label the metric **"Scholardex-computed
+(indicative)"**, not the official index.
+
+**The off-by-one has two causes, one fixable:**
+1. *Inherent* — OpenAlex sees fewer citations than Scopus's own DB for some boundary papers.
+2. *Fixable — the WoS conference-index gap.* Our `wosForumIds` come only from the WoS **journal** list (all 26,338
+   WoS forums are journals; **0 conferences**). We never loaded the WoS **CPCI** (Conference Proceedings Citation
+   Index). So WoS-indexed conferences are misclassified: e.g. **all ~19 SYNASC proceedings forums are
+   `scopus=True, wos=False`**, so a SYNASC→paper citation is dropped from WoS-venue h (this is exactly Adrian's
+   missing WoS citation). **1,014 conference forums are Scopus-indexed but not WoS-indexed.** Onboarding a WoS CPCI
+   list (tag conference forums with `wosForumIds`, like the journal Master List) is the WoS accuracy lever — tracked
+   as a **separate follow-up (`H76`)**, not a blocker for building the computation.
+
+## Slices
+
+- **S1 — per-pub citation source-split (projection).** In the Scopus projection build (already loads the citation
+  graph + forum indexing), compute per canonical pub `scopusCitationCount` / `wosCitationCount` / `graphCitationCount`;
+  persist on the publication view (Flyway columns). Verify against the offline numbers + the Adrian spot-check.
+- **S2 — source-attributed h + surface.** Compute Scholardex-h / graph-total-h / Scopus-venue-h / WoS-venue-h over a
+  researcher's pubs (extend the existing `computeHIndex`); surface on the workspace/profile, labeled indicative.
+- **S3 — self-citation exclusion (geografie).** A variant excluding citations whose citing pub shares an author with
+  the cited pub (via authorship edges); expose total-citation-count for the istorie OR-gate.
+- **S4 — scoring/threshold wiring (ties to H68).** Per-position h thresholds + the "h OR citation-count" fallback.
+
 ## Relation
 
 Sibling to [H66](h66-curated-allowlists.md) (GS source) and [H68](h68-criteria-extensions.md) (OR-gate,
-thresholds). Unblocks the h requirement in chimie, geografie, fizica/H65, istorie.
+thresholds). Unblocks the h requirement in chimie, geografie, fizica/H65, istorie. **H76** (WoS CPCI onboarding) is the
+WoS-accuracy follow-up surfaced by the 2026-06-22 validation.

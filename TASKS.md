@@ -38,6 +38,21 @@ Done history moved to `TASKS-done.md`.
   column), istorie (GS h≥3 OR ≥70 citations). Aggregate metric over the corpus; citation source per domain
   (WoS/Scopus/GS); self-citation exclusion; per-position thresholds. Planning doc at
   `docs/tasks/active/h67-h-index.md`.
+  **Method validated (2026-06-22):** source-attributed h by attributing each incoming citation to the citing paper's
+  forum indexing (`citation_facts → citing pub forumId → forum scopus/wos ids`). 81%/74% of edges classifiable as
+  Scopus/WoS-venue. Spot-check vs ground truth (Adrian Spătaru, real 5/5): Scholardex-h 5 exact, Scopus-venue h 4,
+  WoS-venue h 4 (off-by-one; accuracy tracks corpus completeness → label "indicative"). Slices: S1 per-pub citation
+  source-split in the projection · S2 source-attributed h + surface · S3 self-citation exclusion · S4 threshold wiring.
+  WoS accuracy depends on `H76` (WoS conference index).
+
+- [ ] `H76` WoS Conference Proceedings Citation Index (CPCI) onboarding. Our `wosForumIds` come only from the WoS
+  **journal** Master List / JCR — all 26,338 WoS-indexed forums are journals, **0 are conferences**. So WoS-indexed
+  conferences are misclassified as non-WoS (e.g. all ~19 SYNASC proceedings forums are `scopus=True, wos=False`;
+  **1,014 conference forums are Scopus-indexed but not WoS-indexed**), which undercounts the **WoS h-index** (`H67`)
+  and any WoS-conference scoring — material for CS (conference-heavy). Fix: acquire a WoS CPCI conference/proceedings
+  list (a WoS export, like the journal Master List already onboarded) and onboard it into the forum registry, tagging
+  conference forums with `wosForumIds` (reuse the WoS journal onboarding path). Surfaced by the `H67` validation
+  (2026-06-22). Prereq: a CPCI export is obtainable from the institution's WoS access.
 
 - [ ] `H68` Advanced criteria / threshold extensions (foundational, from the standards assessment).
   Goal: extend the criteria engine for recurring patterns — **post-PhD temporal anchor**, per-indicator/
