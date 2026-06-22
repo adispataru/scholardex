@@ -158,3 +158,31 @@ harness end-to-end). Then forums, then pubs.
 - **S1.b** Forums: port `ForumMergeEngine` identity + create-or-match + dedup + primary-ISSN/cross-journal rules; differential-validate `forum_facts`.
 - **S1.c** Publications (minus `authorIds`): DOI-first id + Decision-0 blocklist + field precedence + forumId/affiliationIds resolution; differential-validate `publication_facts` (authorIds/pendingAuthorSourceIds excluded until Stage 2).
 Determinism: V2 processes source facts in V1's sort order (pub by `eid`+`sourceRecordId`, author by `authorId`).
+
+## Run results — V2 wired into the full pipeline (2026-06-22)
+
+V2 is wired into `runFull`/`rebuildAllDerived` (replaces the V1 canon block; reconcile skipped). Two real-data runs:
+
+**Full from-scratch `rebuildAllDerived` (re-ingest + derive), ~33 min:**
+- WoS ~10m, OpenAlex bulk ~5m, Scopus ingest+fact-build ~8m, forums ~2m, **V2 canon ~4m**, projections ~6m.
+- Projections rebuilt on V2 output with **no errors** — V2 canon is functionally complete inside the full DAG.
+- Counts: affiliations 32,070 / pubs 149,902 / authors 371,196 / authorships 1,284,984 / authorAff 386,415 /
+  pubAuthorAff 738,337 / citations 512,200 / source_links 517,126. Marc Frîncu = one OpenAlex-keyed author
+  (ORCID + Scopus AU-ID); UVT ROR-keyed with afid 60000434.
+- **Gap found + fixed:** removing the V1 OpenAlex canon also dropped its OpenAlex-venue→forum onboarding, so forums
+  carried 0 `openAlexId`s and OpenAlex-only pubs lost `forumId` (89,809 vs the expected 133k). Fix: `rebuildCanonicalV2`
+  now calls `OpenAlexForumOnboardingService.onboard(openAlexPubs)` before the pub build (commit `e40aa1b`).
+
+**Skip-smart derive-only `rebuildAllDerived` (no re-ingest), ~11.5 min (commit `9ccc1d6`):**
+- Presence gate passed (scopusPubs=92,600, openAlexPubs=113,499, wosIdentity=26,671) → DERIVE-ONLY path: wiped the
+  11 `scholardex.*` canonical collections (4.06M docs), spared all source/stage-2 facts, **skipped re-ingest**.
+- Breakdown: wipe 41s, forums 1.5m, **V2 canon ~4m (233s)**, **projection rebuild ~5.5m (Postgres write alone 177s)**.
+- Canonical counts **identical** to the full run (deterministic re-derive). No errors.
+- **Venue fix validated:** forums with `openAlexId` 0 → 17,471; forum_facts 70,786 → 74,690; pubs with `forumId`
+  89,809 → **133,129** (matches pre-regression); OpenAlex pubs with `forumId` 54,789 → 98,109 (87%; rest are ISSN-less venues).
+- **New dominant cost = the Postgres projection write (~177s / ~3 min).** Next optimization target if derive-only
+  needs to be faster.
+
+Net: the full rebuild is skip-smart (re-ingest only when source files change via `reingest=true`); the common
+canon-logic iteration loop is a ~11.5-min deterministic re-derive. Task #46 (full caffeinated from-scratch) is
+satisfied by these runs.
