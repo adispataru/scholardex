@@ -36,6 +36,7 @@ public class AdminCanonicalV2Controller {
         out.put("authorshipEdges", mongoTemplate.getCollection("scholardex.authorship_facts").countDocuments());
         out.put("authorAffiliationEdges", mongoTemplate.getCollection("scholardex.author_affiliation_facts").countDocuments());
         out.put("pubAuthorAffiliationEdges", mongoTemplate.getCollection("scholardex.publication_author_affiliation_facts").countDocuments());
+        out.put("citationEdges", mongoTemplate.getCollection("scholardex.citation_facts").countDocuments());
         out.put("sourceLinks", mongoTemplate.getCollection("scholardex.source_links").countDocuments());
         return out;
     }

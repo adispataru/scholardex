@@ -58,6 +58,26 @@ and supersedes the per-record "bulk mode" patches in H73 S3/S3.5.
    because wipe-first guarantees inserts. **Create indexes after load** (bulk-load-then-index beats index-then-load).
    Source-links written the same way.
 
+## First full V2 run — FUNCTIONALLY COMPLETE (2026-06-22)
+
+The V2 canon (affiliations + publications + authors + all structural edges + citations) runs on the real corpus in
+**~4.7 min vs ~90 min V1 (~19×)**, validated by spot-checks at every layer (no V1-parity gate):
+
+| collection | count | spot-check |
+|---|---|---|
+| affiliations | 32,070 | 8,367 afid→ROR merges; UVT correctly backboned |
+| publications | 149,902 | 55,793 shared-DOI inversions (≈ dry-run 55,855) |
+| authors | 371,196 | 105,307 Scopus↔OpenAlex merges; Marc Frîncu = one OpenAlex-keyed author |
+| authorship edges | 1,284,984 | 650k Scopus / 635k OpenAlex; 84,587 corresponding; endpoints resolve |
+| author→affiliation | 386,415 | 4,633 distinct authors at UVT |
+| pub→author→affiliation | 738,337 | 18,501 at UVT |
+| citation edges | 512,200 | 442k OpenAlex + 70k Scopus; internal-only; endpoints resolve |
+
+Trigger: `POST /admin/canonical-v2/rebuild` (`AdminCanonicalV2Controller`). Engine: `CanonicalDerivationV2Service`
++ `CanonicalGraphBuilder` (pure). **Remaining:** wire V2 into `rebuildAllDerived` (replace the V1 canon block);
+deferred by design — forums-in-V2 (the existing engine is already in-memory; its output is an input), Scopus-side
+affiliation edges, and the fuzzy/over-split author reconcile.
+
 ## Reframe (2026-06-22): V1's DB is not an oracle — move fast, validate by invariants
 
 We never had a "correct" canonical DB. V1 is slow, unvalidated code that ran on a maybe-dirty DB; **byte-parity with

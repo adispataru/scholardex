@@ -14,17 +14,20 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexInstitutionFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 
@@ -51,6 +54,7 @@ public class CanonicalDerivationV2Service {
     private final ScopusPublicationFactRepository scopusPublicationFactRepository;
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
     private final ScopusAuthorFactRepository scopusAuthorFactRepository;
+    private final ScopusCitationFactRepository scopusCitationFactRepository;
     private final CanonicalGraphBuilder graphBuilder;
     private final ScholardexSourceLinkService sourceLinkService;
     private final MongoTemplate mongoTemplate;
@@ -66,6 +70,7 @@ public class CanonicalDerivationV2Service {
         rebuildAffiliationsV2();
         rebuildPublicationsV2();
         rebuildAuthorsV2();
+        rebuildCitationsV2();
         log.info("V2 canonical derivation complete in {} ms", System.currentTimeMillis() - startedAt);
     }
 
@@ -150,6 +155,18 @@ public class CanonicalDerivationV2Service {
                 scopusAuthors.size(), result.authors().size(), result.sourceLinks().size(), result.pubAuthorIds().size(),
                 result.authorshipEdges().size(), result.authorAffiliationEdges().size(),
                 result.pubAuthorAffiliationEdges().size());
+    }
+
+    /** Derive {@code scholardex.citation_facts}: internal pub→pub edges from OpenAlex referencedWorks + Scopus citations. */
+    public void rebuildCitationsV2() {
+        List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
+        List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
+        List<ScopusCitationFact> scopusCitations = scopusCitationFactRepository.findAll();
+
+        List<ScholardexCitationFact> edges = graphBuilder.buildCitations(scopusPubs, openAlexPubs, scopusCitations);
+        bulkReplace(edges, ScholardexCitationFact.class);
+        log.info("V2 citation derivation: openAlexPubs={} scopusCitations={} -> citationEdges={}",
+                openAlexPubs.size(), scopusCitations.size(), edges.size());
     }
 
     /** Wipe a collection and bulk-insert the given facts in 5k batches (no upsert: wipe-first guarantees inserts). */

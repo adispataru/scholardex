@@ -8,11 +8,13 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport;
@@ -127,6 +129,73 @@ public class CanonicalGraphBuilder {
                     sa.getSourceEventId(), sa.getSourceBatchId(), sa.getSourceCorrelationId(), false));
         }
         return new AffiliationBuildResult(new ArrayList<>(byCanonicalId.values()), sourceLinks);
+    }
+
+    // ── Citations (pub→pub, internal-only): OpenAlex referencedWorks + Scopus eid-keyed citation facts ──────────
+
+    /**
+     * Build internal citation edges (both endpoints held): OpenAlex {@code referencedWorks} resolved via a
+     * workId→canonical-pub map, plus Scopus citation facts resolved via an eid→canonical-pub map. Deduped by the
+     * {cited, citing} natural key (OpenAlex-first). External references (works we don't hold) are skipped.
+     */
+    public List<ScholardexCitationFact> buildCitations(List<ScopusPublicationFact> scopusPubs,
+                                                       List<OpenAlexPublicationFact> openAlexPubs,
+                                                       List<ScopusCitationFact> scopusCitations) {
+        List<SourcePub> allSources = new ArrayList<>();
+        for (ScopusPublicationFact s : scopusPubs) {
+            allSources.add(fromScopus(s));
+        }
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            allSources.add(fromOpenAlex(o));
+        }
+        Set<String> doiBlocklist = computeDoiBlocklist(allSources);
+
+        Map<String, String> workToCanonical = new java.util.HashMap<>();
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            if (!isBlank(o.getSourceRecordId())) {
+                workToCanonical.put(o.getSourceRecordId(), buildPublicationId(fromOpenAlex(o), doiBlocklist));
+            }
+        }
+        Map<String, String> eidToCanonical = new java.util.HashMap<>();
+        for (ScopusPublicationFact s : scopusPubs) {
+            if (!isBlank(s.getEid())) {
+                eidToCanonical.put(s.getEid(), buildPublicationId(fromScopus(s), doiBlocklist));
+            }
+        }
+
+        Set<String> seen = new java.util.HashSet<>();
+        List<ScholardexCitationFact> edges = new ArrayList<>();
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            String citing = workToCanonical.get(o.getSourceRecordId());
+            if (citing == null || o.getReferencedWorks() == null) {
+                continue;
+            }
+            for (String ref : o.getReferencedWorks()) {
+                String cited = workToCanonical.get(ref);
+                if (cited != null && !cited.equals(citing) && seen.add(cited + "|" + citing)) {
+                    edges.add(citation(cited, citing, SOURCE_OPENALEX));
+                }
+            }
+        }
+        for (ScopusCitationFact sc : scopusCitations) {
+            String cited = eidToCanonical.get(sc.getCitedEid());
+            String citing = eidToCanonical.get(sc.getCitingEid());
+            if (cited != null && citing != null && !cited.equals(citing) && seen.add(cited + "|" + citing)) {
+                edges.add(citation(cited, citing, SOURCE_SCOPUS));
+            }
+        }
+        return edges;
+    }
+
+    private static ScholardexCitationFact citation(String citedPubId, String citingPubId, String source) {
+        ScholardexCitationFact e = new ScholardexCitationFact();
+        Instant now = Instant.now();
+        e.setCitedPublicationId(citedPubId);
+        e.setCitingPublicationId(citingPubId);
+        e.setSource(source);
+        e.setCreatedAt(now);
+        e.setUpdatedAt(now);
+        return e;
     }
 
     // ── Authors (Stage 2, core identity): seed nodes + positional bridge union-find, OpenAlex-keyed ─────────────
