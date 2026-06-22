@@ -26,7 +26,11 @@ Done history moved to `TASKS-done.md`.
   affiliation cleanup + over-split AU-ID merge shipped), and the H75 V2 engine produces core-deduped authors via
   ORCID + the positional bridge only — the *fuzzy/over-split + cross-source name dedup* pass was deferred out of V2.
   Remaining work = fold that reconcile into the V2 build (now on a clean ROR affiliation base), so author-level
-  aggregation is correct before scoring (H67/H69) leans on it.
+  aggregation is correct before scoring (H67/H69) leans on it. **Plan + dry-run (2026-06-22):**
+  `docs/tasks/active/h71-cross-source-author-reconcile.md`. STRONG-tier rule = same surname + name-compatible +
+  ≥1 shared affiliation + same-paper hard-block + adaptive co-author floor (≥1 rare surname, ≥2 common, split at block
+  size ~40). Dry-run: ~1,737 high-precision absorptions (cross-source + OpenAlex-internal splits; Scopus-only ≈0), no
+  runaway (max component 7). Slices: S1 candidate engine (dry-run first) · S2 apply + invariants · S3 live-validate + tune.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
