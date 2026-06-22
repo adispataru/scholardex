@@ -27,7 +27,7 @@ class PublicationBuilderV2Test {
         OpenAlexPublicationFact openAlex = openAlexPub("W1", "10.1/shared", "OpenAlex Title", 99);
 
         CanonicalGraphBuilder.PublicationBuildResult result =
-                builder.buildPublications(List.of(scopus), List.of(openAlex));
+                builder.buildPublications(List.of(scopus), List.of(openAlex), CanonicalGraphBuilder.PubResolvers.empty());
 
         // One canonical pub (DOI-keyed): OpenAlex title/source authoritative, Scopus eid enriched, citations max.
         assertThat(result.facts()).hasSize(1);
@@ -48,7 +48,7 @@ class PublicationBuilderV2Test {
         ScopusPublicationFact a = scopusPub("2-s2.0-B", "10.1/container", "Graph Algorithms for Sparse Networks", 1);
         ScopusPublicationFact b = scopusPub("2-s2.0-C", "10.1/container", "Medieval Poetry and Its Forms", 2);
 
-        CanonicalGraphBuilder.PublicationBuildResult result = builder.buildPublications(List.of(a, b), List.of());
+        CanonicalGraphBuilder.PublicationBuildResult result = builder.buildPublications(List.of(a, b), List.of(), CanonicalGraphBuilder.PubResolvers.empty());
 
         assertThat(result.facts()).hasSize(2);
         Map<String, ScholardexPublicationFact> byEid = result.facts().stream()
@@ -63,7 +63,7 @@ class PublicationBuilderV2Test {
         ScopusPublicationFact a = scopusPub("2-s2.0-D", "10.1/same", "Distributed Consensus Protocols", 5);
         ScopusPublicationFact b = scopusPub("2-s2.0-E", "10.1/same", "Distributed Consensus Protocols", 6);
 
-        CanonicalGraphBuilder.PublicationBuildResult result = builder.buildPublications(List.of(a, b), List.of());
+        CanonicalGraphBuilder.PublicationBuildResult result = builder.buildPublications(List.of(a, b), List.of(), CanonicalGraphBuilder.PubResolvers.empty());
 
         assertThat(result.facts()).hasSize(1);
         assertThat(result.facts().getFirst().getCitedByCount()).isEqualTo(6); // monotonic max

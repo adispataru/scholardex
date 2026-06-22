@@ -27,7 +27,7 @@ class CitationBuilderV2Test {
         OpenAlexPublicationFact cited = openAlexPub("W2", "10.1/cited");
 
         CanonicalGraphBuilder.PublicationBuildResult pubs =
-                builder.buildPublications(List.of(), List.of(citing, cited));
+                builder.buildPublications(List.of(), List.of(citing, cited), CanonicalGraphBuilder.PubResolvers.empty());
         String citingId = pubs.facts().stream().filter(p -> "10.1/citing".equals(p.getDoiNormalized()))
                 .findFirst().orElseThrow().getId();
         String citedId = pubs.facts().stream().filter(p -> "10.1/cited".equals(p.getDoiNormalized()))

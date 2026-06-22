@@ -59,6 +59,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     @Mock private ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
+    @Mock private ro.uvt.pokedex.core.service.derivation.CanonicalDerivationV2Service canonicalDerivationV2Service;
     @Mock private ScholardexForumBuilder forumBuilder;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private ScopusBuildSkipGateService scopusBuildSkipGateService;
@@ -93,6 +94,7 @@ class ScopusBigBangMigrationServiceTest {
                 openAlexCitationCanonicalizationService,
                 dblpConferenceResolveService,
                 citationCanonicalizationService,
+                canonicalDerivationV2Service,
                 forumBuilder,
                 wosScholardexOnboardingService,
                 scopusBuildSkipGateService,

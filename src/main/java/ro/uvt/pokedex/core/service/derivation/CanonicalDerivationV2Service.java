@@ -107,7 +107,8 @@ public class CanonicalDerivationV2Service {
         List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
         List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
 
-        CanonicalGraphBuilder.PublicationBuildResult result = graphBuilder.buildPublications(scopusPubs, openAlexPubs);
+        CanonicalGraphBuilder.PublicationBuildResult result =
+                graphBuilder.buildPublications(scopusPubs, openAlexPubs, loadPubResolvers());
 
         mongoTemplate.remove(new Query(), ScholardexPublicationFact.class);
         mongoTemplate.remove(
@@ -155,6 +156,33 @@ public class CanonicalDerivationV2Service {
                 scopusAuthors.size(), result.authors().size(), result.sourceLinks().size(), result.pubAuthorIds().size(),
                 result.authorshipEdges().size(), result.authorAffiliationEdges().size(),
                 result.pubAuthorAffiliationEdges().size());
+    }
+
+    /**
+     * Build the pub-resolution lookups from the already-built forum registry + V2 affiliations: Scopus forum id +
+     * OpenAlex venue id → {@code sforum_}, and afid → {@code saff_}. Forums are the existing engine's output (an
+     * input to V2); affiliations were built earlier in {@link #rebuildCanonicalV2()}.
+     */
+    private CanonicalGraphBuilder.PubResolvers loadPubResolvers() {
+        Map<String, String> scopusForumToCanonical = new HashMap<>();
+        Map<String, String> openAlexVenueToCanonical = new HashMap<>();
+        for (ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact f :
+                mongoTemplate.findAll(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact.class)) {
+            if (f.getScopusForumIds() != null) {
+                f.getScopusForumIds().forEach(id -> scopusForumToCanonical.putIfAbsent(id, f.getId()));
+            }
+            if (f.getOpenAlexIds() != null) {
+                f.getOpenAlexIds().forEach(id -> openAlexVenueToCanonical.putIfAbsent(id, f.getId()));
+            }
+        }
+        Map<String, String> afidToCanonicalAffiliation = new HashMap<>();
+        for (ScholardexAffiliationFact a : mongoTemplate.findAll(ScholardexAffiliationFact.class)) {
+            if (a.getScopusAffiliationIds() != null) {
+                a.getScopusAffiliationIds().forEach(afid -> afidToCanonicalAffiliation.putIfAbsent(afid, a.getId()));
+            }
+        }
+        return new CanonicalGraphBuilder.PubResolvers(
+                scopusForumToCanonical, openAlexVenueToCanonical, afidToCanonicalAffiliation);
     }
 
     /** Derive {@code scholardex.citation_facts}: internal pub→pub edges from OpenAlex referencedWorks + Scopus citations. */

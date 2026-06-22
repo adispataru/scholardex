@@ -537,7 +537,17 @@ public class CanonicalGraphBuilder {
                              Integer authorCount, Integer citedByCount, Boolean openAccess, String subtype,
                              String subtypeDescription, String scopusSubtype, String scopusSubtypeDescription,
                              String pii, String pubmedId, String volume, String issueIdentifier, String bookId,
+                             String scopusForumId, String openAlexHostVenueId, List<String> scopusAffiliations,
                              String sourceEventId, String sourceBatchId, String sourceCorrelationId) {
+    }
+
+    /** Forum + affiliation lookups so the V2 pub build can resolve {@code forumId} + {@code affiliationIds}. */
+    public record PubResolvers(Map<String, String> scopusForumToCanonical,
+                               Map<String, String> openAlexVenueToCanonical,
+                               Map<String, String> afidToCanonicalAffiliation) {
+        public static PubResolvers empty() {
+            return new PubResolvers(Map.of(), Map.of(), Map.of());
+        }
     }
 
     /**
@@ -546,7 +556,8 @@ public class CanonicalGraphBuilder {
      * citation count, plus the PUBLICATION source-links. forumId/affiliationIds/authorIds are filled by later steps.
      */
     public PublicationBuildResult buildPublications(List<ScopusPublicationFact> scopusPubs,
-                                                    List<OpenAlexPublicationFact> openAlexPubs) {
+                                                    List<OpenAlexPublicationFact> openAlexPubs,
+                                                    PubResolvers resolvers) {
         List<SourcePub> sources = new ArrayList<>(scopusPubs.size() + openAlexPubs.size());
         for (ScopusPublicationFact s : scopusPubs) {
             sources.add(fromScopus(s));
@@ -566,7 +577,7 @@ public class CanonicalGraphBuilder {
         List<ScholardexPublicationFact> facts = new ArrayList<>(byCanonicalId.size());
         List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinks = new ArrayList<>();
         for (var entry : byCanonicalId.entrySet()) {
-            facts.add(buildPublicationFact(entry.getKey(), entry.getValue()));
+            facts.add(buildPublicationFact(entry.getKey(), entry.getValue(), resolvers));
             for (SourcePub sp : entry.getValue()) {
                 sourceLinks.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
                         ScholardexEntityType.PUBLICATION, sp.source(), sp.sourceRecordId(), entry.getKey(),
@@ -578,7 +589,7 @@ public class CanonicalGraphBuilder {
     }
 
     /** Build one canonical pub from its source group: OpenAlex authoritative for content, Scopus enriches. */
-    private ScholardexPublicationFact buildPublicationFact(String canonicalId, List<SourcePub> group) {
+    private ScholardexPublicationFact buildPublicationFact(String canonicalId, List<SourcePub> group, PubResolvers resolvers) {
         SourcePub openAlex = group.stream().filter(SourcePub::openAlex).findFirst().orElse(null);
         SourcePub scopus = group.stream().filter(sp -> !sp.openAlex()).findFirst().orElse(null);
         SourcePub authoritative = openAlex != null ? openAlex : group.getFirst(); // OpenAlex precedence
@@ -618,6 +629,26 @@ public class CanonicalGraphBuilder {
             fact.setVolume(scopus.volume());
             fact.setIssueIdentifier(scopus.issueIdentifier());
             fact.setBookId(scopus.bookId());
+        }
+        // forumId: OpenAlex host venue first (by OpenAlex venue id), else the Scopus forum id — both → sforum_.
+        String forumId = null;
+        if (openAlex != null && openAlex.openAlexHostVenueId() != null) {
+            forumId = resolvers.openAlexVenueToCanonical().get(openAlex.openAlexHostVenueId());
+        }
+        if (forumId == null && scopus != null && scopus.scopusForumId() != null) {
+            forumId = resolvers.scopusForumToCanonical().get(scopus.scopusForumId());
+        }
+        fact.setForumId(forumId);
+        // affiliationIds: resolve the Scopus pub's afids to canonical (saff_) affiliations (deduped, order-preserving).
+        if (scopus != null && scopus.scopusAffiliations() != null) {
+            java.util.LinkedHashSet<String> affs = new java.util.LinkedHashSet<>();
+            for (String afid : scopus.scopusAffiliations()) {
+                String saff = resolvers.afidToCanonicalAffiliation().get(afid);
+                if (saff != null) {
+                    affs.add(saff);
+                }
+            }
+            fact.setAffiliationIds(new ArrayList<>(affs));
         }
         fact.setSource(openAlexOwned ? SOURCE_OPENALEX : authoritative.source());
         fact.setSourceRecordId(authoritative.sourceRecordId());
@@ -713,7 +744,8 @@ public class CanonicalGraphBuilder {
                 s.getTitle(), titleNorm, s.getCoverDate(), s.getCreator(), s.getAuthorCount(), s.getCitedByCount(),
                 s.getOpenAccess(), s.getSubtype(), s.getSubtypeDescription(), s.getScopusSubtype(),
                 s.getScopusSubtypeDescription(), s.getPii(), s.getPubmedId(), s.getVolume(), s.getIssueIdentifier(),
-                s.getBookId(), s.getSourceEventId(), s.getSourceBatchId(), s.getSourceCorrelationId());
+                s.getBookId(), s.getForumId(), null, s.getAffiliations(),
+                s.getSourceEventId(), s.getSourceBatchId(), s.getSourceCorrelationId());
     }
 
     private static SourcePub fromOpenAlex(OpenAlexPublicationFact o) {
@@ -722,6 +754,7 @@ public class CanonicalGraphBuilder {
         return new SourcePub(true, SOURCE_OPENALEX, o.getSourceRecordId(), null, o.getDoi(), doiNorm,
                 o.getTitle(), titleNorm, o.getCoverDate(), o.getCreator(), o.getAuthorCount(), o.getCitedByCount(),
                 o.getOpenAccess(), o.getType(), o.getType(), null, null, null, null, null, null, null,
+                null, o.getHostVenueOpenAlexId(), null,
                 o.getSourceEventId(), o.getSourceBatchId(), o.getSourceCorrelationId());
     }
 

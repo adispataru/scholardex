@@ -153,14 +153,9 @@ public class PipelineRebuildService {
         ingestOpenAlexBulkIfConfigured();
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runFull();
 
-        // H66B closeout: end the from-scratch build in a reconciled state instead of waiting for the nightly
-        // sweep. reconcile() re-runs the (idempotent) forum dedup, then the author ORCID + fuzzy passes, then
-        // rebuilds the projections so any author merges are reflected in reporting. With fuzzy-apply=true this is
-        // what actually deduplicates same-person author splits a fresh rebuild would otherwise leave behind.
-        ForumReconcileService.ForumReconcileResult reconcile = forumReconcileService.reconcile("full-rebuild");
-        LOG.info("Pipeline rebuild: post-rebuild reconcile complete (projectionProcessed={} errors={}).",
-                reconcile.projection().getProcessedCount(), reconcile.projection().getErrorCount());
-
+        // H75: the post-rebuild author reconcile (forum dedup + author ORCID/fuzzy/over-split) is skipped — the V2
+        // canon already produces core-deduped authors (ORCID + positional bridge), and the slow O(N^2) within-source
+        // fuzzy/over-split reconcile is deferred to a future V2 pass. Projections already ran inside runFull.
         LOG.info("Pipeline rebuild complete.");
         return new PipelineRebuildResult(wos, scopus);
     }

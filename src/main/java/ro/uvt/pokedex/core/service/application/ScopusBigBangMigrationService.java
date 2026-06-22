@@ -80,6 +80,8 @@ public class ScopusBigBangMigrationService {
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
+    // H75: the V2 batch derivation engine — replaces the V1 canon block in runFull (the full-rebuild path).
+    private final ro.uvt.pokedex.core.service.derivation.CanonicalDerivationV2Service canonicalDerivationV2Service;
     // H66B B66B.1 — forum building (dedup + Scopus canonicalization + ERIH onboard + erih-dedup) is now a
     // single forums-first step behind ScholardexForumBuilder, instead of inline across three orchestrator paths.
     private final ScholardexForumBuilder forumBuilder;
@@ -379,7 +381,6 @@ public class ScopusBigBangMigrationService {
         // phase so buildFactsFromImportEvents canonicalizes the full-feed forum registry, not Scopus JSON alone.
         ingestCuratedScopusFeedsIfConfigured();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
-        CanonicalBuildOptions options = CanonicalBuildOptions.defaults();
         // H66B M8 — forums first, identity-first: the registry is built from curated sources then WoS
         // create-or-match LAST inside buildScopusForums, before publication/citation canonicalization resolves
         // venues against it. (WoS journal_identity comes from the WoS fact phase, which ran before this.)
@@ -390,32 +391,25 @@ public class ScopusBigBangMigrationService {
         // existing steps (pubs still resolve venues against forums; they remain after the forum build).
         ScholardexForumBuilder.ScopusForumBuildResult forumBuild =
                 forumBuilder.buildScopusForums(SCOPUS_FORUM_CANON_BATCH, "run-full");
-        // H73 S2.2 (OpenAlex-first): the OpenAlex canon now runs BEFORE the Scopus affiliation/author/publication
-        // canon. It mints DOI-keyed canonical pubs + OpenAlex-keyed authors, stamps forumId against the just-built
-        // forum registry, emits ROR-backbone affiliation edges, and writes positional (AUTHOR, SCOPUS, auid) ->
-        // OpenAlex-author source-links from the same-DOI Scopus pub source-facts. The Scopus canon that follows
-        // then resolves each AU-ID into the OpenAlex author via those links (no Scopus-keyed twin) and resolves
-        // each shared DOI into the existing OpenAlex pub, enriching it without clobbering (defer-to-OpenAlex).
-        ImportProcessingResult canonicalOpenAlex = openAlexCanonicalizationService.rebuildCanonicalFacts();
-        ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
-        ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
-        ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
+        // H75: the V2 batch derivation engine REPLACES the V1 canon block (OpenAlex canon + Scopus
+        // affiliation/author/publication canon + OpenAlex/Scopus citations) — same canonical layer, ~20x faster
+        // (in-memory build + bulk writes). Runs after the forum registry exists (forumId resolution) and after the
+        // OpenAlex bulk import (ROR backbone + source facts). The V1 canon services remain for the Tier-2
+        // incremental path; only the full-rebuild calls are swapped. The author fuzzy/over-split reconcile is
+        // deferred (it was the slow O(N^2) pass; V2 authors are core-deduped via ORCID + positional bridge).
+        canonicalDerivationV2Service.rebuildCanonicalV2();
         ImportProcessingResult wosPublicationLinks =
                 wosScholardexOnboardingService.linkPublicationsToWos(SCOPUS_FORUM_CANON_BATCH, "run-full");
-        // H66B Phase 4a Stage 2: replay DOI-keyed OpenAlex citation edges (after OpenAlex + Scopus pubs exist so endpoints resolve).
-        ImportProcessingResult canonicalOpenAlexCitations = openAlexCitationCanonicalizationService.rebuildCitationFacts();
         // H66B Phase 4b: re-mint DBLP conference forums + re-link forumId from durable evidence (no API), since
         // forum_facts is wiped here. Runs after pubs + forums exist, before projections.
         ImportProcessingResult dblpConferences = dblpConferenceResolveService.rebuildFromEvidence();
-        ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
+        ImportProcessingResult buildFactsCombined = combine(facts,
                 forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
                 forumBuild.doajOnboarding(), forumBuild.wosOnboarding(), forumBuild.membershipDedup(),
-                wosPublicationLinks,
-                canonicalPublications, canonicalOpenAlex, canonicalOpenAlexCitations, dblpConferences, canonicalCitations));
+                wosPublicationLinks, dblpConferences);
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,

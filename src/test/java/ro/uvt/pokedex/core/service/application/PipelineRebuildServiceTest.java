@@ -52,7 +52,6 @@ class PipelineRebuildServiceTest {
     @Test
     void rebuildAssertsOwnershipThenResetsWipesAndRebuilds() {
         when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
-        when(forumReconcileService.reconcile(anyString())).thenReturn(noopReconcile());
         PipelineRebuildService service =
                 new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
 
@@ -71,7 +70,6 @@ class PipelineRebuildServiceTest {
     @Test
     void rebuildIngestsConfiguredReferenceFeedsBetweenWosAndScopusBuilds() throws Exception {
         when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
-        when(forumReconcileService.reconcile(anyString())).thenReturn(noopReconcile());
         java.nio.file.Path doaj = java.nio.file.Files.createTempFile("doaj", ".csv");
         java.nio.file.Path erih = java.nio.file.Files.createTempFile("erih", ".jsonl");
         try {
@@ -102,7 +100,6 @@ class PipelineRebuildServiceTest {
     @Test
     void rebuildSkipsReferenceFeedsWhenPathsUnset() {
         when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
-        when(forumReconcileService.reconcile(anyString())).thenReturn(noopReconcile());
         PipelineRebuildService service =
                 new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
 
