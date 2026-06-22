@@ -74,8 +74,14 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
   **Live verify (2026-06-22):** corpus totals match the offline analysis exactly (418,462 Scopus-venue / 383,858
   WoS-venue / 512,200 graph citations); Adrian's SQL-computed h = scopus 4 / wos 4 / graph 5 / scholardex 5 over
   27 pubs (matches ground truth, off-by-one vs real 5/5 per the WoS-CPCI gap).
-- **S2 — source-attributed h + surface.** Compute Scholardex-h / graph-total-h / Scopus-venue-h / WoS-venue-h over a
-  researcher's pubs (extend the existing `computeHIndex`); surface on the workspace/profile, labeled indicative.
+- **S2 — source-attributed h + surface. DONE (commit `34e86c2`).** Read the S1 columns back (added to both
+  publication-view read mappers — `PostgresScholardexProjectionReadPort` + `…AdminReadPort`); compute the four
+  h-indices via a new shared `HIndexCalculator` (generalized counting-sort; replaced the two duplicated `computeHIndex`
+  copies). `UserPublicationsViewModel` carries an `HIndexBreakdown`; the publications page shows **H-Index + Scopus h +
+  WoS h**, the source-attributed two labeled **indicative** (WoS notes the pending CPCI gap); graph-total kept in the
+  model, not surfaced. No rebuild needed (S1 columns already populated). `HIndexCalculatorTest` + contract-test fixes
+  green. (Live UI render not spot-checked — agent-dev principal has no linked researcher; logic + data path are proven
+  via the unit tests + the S1 SQL verification on the same columns.)
 - **S3 — self-citation exclusion (geografie).** A variant excluding citations whose citing pub shares an author with
   the cited pub (via authorship edges); expose total-citation-count for the istorie OR-gate.
 - **S4 — scoring/threshold wiring (ties to H68).** Per-position h thresholds + the "h OR citation-count" fallback.
