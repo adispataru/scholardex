@@ -9,92 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H73` OpenAlex-first ingestion (UVT 1-hop corpus + ROR affiliation backbone). Ingest the locally-held
-  OpenAlex UVT neighborhood + institution backbone into the canonical layer **from files already on disk**
-  (`data/openalex/`, ~2.7 GB, git-ignored, regenerable from `scopus-python/openalex_fetch_{uvt,citations}.py`) —
-  no further API fetching/spend. Have: `uvt_works.jsonl` (11,656 full pubs), `uvt_citing_works.jsonl` (105,766
-  unique incoming citers — 4,404 are UVT, 101,362 external), reference DNA edges (321,810 edges / 203,721 unique
-  targets, only 8,756 already held), institutions fixture (121,512; 121,511 ROR, 121,509 alias-bearing).
-  **Key finding: 0/121,512 OpenAlex institutions carry a Scopus id** → no afid→ROR id-join; matching is name/alias-based.
-  **Load-bearing decision (2026-06-21): OpenAlex-first affiliation backbone.** OpenAlex institutions are the **primary**
-  source for `ScholardexAffiliationFact` — they derive the backbone (ROR-keyed `@Id`) **first**; Scopus affiliation
-  facts then resolve **into** it (alias-match → add afid to `scopusAffiliationIds`) or mint their own if Scopus-only.
-  ROR is canonical, afid secondary — inverts the rejected "Scopus spine + ROR tag". The model already supports it
-  (`ScholardexAffiliationFact` has scopus/wos/googleScholar/user id slots + `rorIds` + `aliases`); direct precedent is
-  **authors** (Scopus + OpenAlex resolve-or-mint into one `ScholardexAuthorFact`). **Delivers the affiliation merges
-  afid-keying structurally blocked** (two afids → one ROR = original H72 goal), fixes the e-Austria/UVT cross-tag,
-  collapses cross-language names under one ROR. Other decisions: **absorb the H63 corresponding/last-author/ORCID
-  backfill** (bulk works carry `authorships[]`); **broad forums-first reorder stays H74** (H73 makes only the narrow
-  "OpenAlex-institution canon before Scopus-affiliation canon" ordering change); **retire
-  `ScholardexAffiliationRorBridgeService` + clear noisy positional `rorIds`**; **backbone scope = referenced-only**
-  (works-seeded: the corpus references 24,296 institutions, 24,233 = 99.7% in-snapshot → backbone, vs 121k full;
-  fixture stays on disk). Slices:
-  **(1)** one replayable OpenAlex bulk importer — pass 1 reads `uvt_works` + `uvt_citing_works` → `openalex.*`
-  source facts via `OpenAlexImportService` + H63 backfill + collects referenced institution ids; pass 2 reads
-  `institutions/*.gz`, keeps only referenced ids → backbone `ScholardexAffiliationFact`s (ROR-keyed, aliases from
-  `display_name_alternatives`); wired into `rebuildAllDerived`, backbone derived before Scopus affiliation canon;
-  **(2)** Scopus affiliations resolve INTO the backbone via the 3-tier alias matcher (exact-alias → simplification →
-  country-gated Jaccard≥0.8 + city) — plug afid into `scopusAffiliationIds` or mint Scopus-only; retire the positional
-  bridge + clear noisy `rorIds`;
-  **(3)** OpenAlex pub→author→affiliation edges (UVT works AND citers) — make bulk citers FULL (reverses slice-1 bare;
-  ~295k citer authors, ~708k edges, ~doubles the graph), extend `OpenAlexCanonicalizationService` to emit
-  author→affiliation + pub→author→affiliation edges resolving `institutionRors`→backbone; citer authors get FULL
-  reconcile participation (no external flag, ~510k authors through the passes);
-  **(4)** DNA edge layer — persist `referenced_works` IDs + materialize 17,130 internal UVT↔UVT edges (both ends
-  already canonical), zero foreign minting. Out of scope: external hydration (194,965 bare IDs). Upstream of
-  **H69**/**H67** (citation graph). Planning doc at `docs/tasks/active/h73-openalex-first-ingestion.md`.
-  **Status (2026-06-21): slices 1 + 3 DONE + live-validated.** S1 (114s): works=11,656 w/ H63 corresponding on
-  6,723, citers=105,766, backbone=24,232 ROR affiliations. S3 (citers full + pub→author→affiliation edges; bulk-mode
-  canon ~30.6 min, was ~10h): 166,224 OpenAlex authors, 337,397 pub→author→affiliation + 247,743 author→affiliation
-  edges → 21,032 ROR backbone institutions. Perf fixes: missing `orcidIds`/`openAlexAuthorIds` indexes +
-  `doiNormalized` made non-unique (book-chapter container DOIs are legit) + in-memory author preload + batched
-  affiliation inserts. **S3.5 DONE** (unit-tested): authorship edges batched (`batchUpsertAuthorshipEdges` +
-  optional `correspondingKeys` set) — last per-record hot path closed; live timing TBD next bulk run. Follow-up:
-  malformed-DOI normalize cleanup. **Next: slice 2** (Scopus afids resolve into the backbone).
-
-- [ ] `H75` Canonical derivation engine V2 (batch ETL). Rewrite the canonical-layer derivation as a **pure
-  in-memory batch transform with bulk loads** to fix a ~90-min full rebuild of only ~5M docs (~900 docs/sec,
-  50–200× under hardware). Root cause: the canon stages are **per-record OLTP** — N+1 reads + one-record-at-a-time
-  writes (e.g. OpenAlex canon does ~5–6 Mongo round trips per pub × 117k ≈ ~600k synchronous ops ≈ ~30 min for that
-  stage) + re-ingestion every run. New shape: **Load** (one scan per source collection into memory) → **Build**
-  (zero DB I/O: forums → affiliations → pubs → authors-via-union-find-with-the-reconcile-rules → edges) → **Write**
-  (wipe + bulk `insertMany`, index after load). Target **<10 min**, linear scaling. Decided (2026-06-22):
-  **clean-room rewrite, built alongside V1 behind a flag, every stage gated on a differential check vs V1** (never
-  rip out V1 until provably equal modulo the intended S2.2 inversion deltas). Scope IN: `scholardex.*` facts +
-  edges + source-links + the author reconcile folded into the build. Scope OUT (unchanged): source-fact ingestion,
-  Postgres projections, the Tier-2 incremental path. **Absorbs `H74`** (forums→affiliations→pubs→authors becomes the
-  in-memory build order) and supersedes the per-record "bulk mode" patches from `H73` S3/S3.5. Stages: 0 design +
-  differential harness + V1 baseline profile; 1 skeleton (loader+builder+bulk-writer, forums/affiliations/pubs);
-  2 authors+edges union-find (the hard gate); 3 citations + projections + real-corpus timing; 4 cutover + delete V1.
-  Planning doc at `docs/tasks/active/h75-canonical-derivation-engine-v2.md`.
-
-- [ ] `H74` Pipeline reorder (forums → institutions+affiliations → pubs+authors). **Likely absorbed by `H75`** (the
-  V2 engine establishes this as its in-memory build order). Structural change to the reconcile/rebuild chain
-  ordering so canonicalization runs forums first, then institutions+affiliations (on the H73 ROR backbone), then
-  publications+authors against the clean affiliation graph. Carved out of **H73** to isolate the chain-ordering
-  risk. Touches `ForumReconcileService` + the `rebuildAllDerived` step ordering. Planning doc TBD.
-
-- [ ] `H70` Researcher onboarding wizard (+ de-tangle the publication-claim tool). Replace the confusing
-  all-controls-at-once onboarding in the workspace **Profile & Sync** tab with a **resume-aware stepped modal**
-  (Scopus ids → ORCID → confirm/deny affiliations → match Scholardex author record(s) → recommended bulk publication
-  auto-claim), and **separate onboarding from ongoing claim management**. Root cause of today's confusion: a hidden
-  gate (`requiresAffiliationScopeConfirmation`) welds affiliation setup to the claim tool. Login is **Keycloak SSO**;
-  imports assume SSO. Decided: add `confirmedScholardexAuthorIds` (list) + keep `primaryScholardexAuthorId` as the
-  designated one (multiple author records, non-destructive — no canonical merge from a user action); auto-claim
-  confidence = **author-id + affiliation overlap only (ignore names — artefacts)**; **fix the claim-tool bugs**
-  (re-sync orphaned decisions, bulk-rejects-if-any-decision, gate-throws-instead-of-guiding) as part of this. The
-  staff import already resolves 51/55 by scopus id, so onboarding is mostly confirm + enrich + claim, not link.
-  Planning doc at `docs/tasks/active/h70-researcher-onboarding-wizard.md`. Relates to **H20** (Google Scholar
-  onboarding) and gates clean reporting before scoring (H69).
-  **Status (2026-06-20): all 5 slices shipped + live-validated.** S1 model/resolve/step-engine (`14c24e5`);
-  S2 wizard shell + steps 1–3 (`668c5c2`) + completeness-card/launcher fix (`e718df7`); S3 author-record matcher
-  with confidence preview (`12dfe2c`); S4 publication auto-claim engine, terminal step (`e6084b4`); S5 claim-tool
-  de-tangle — bulk idempotency + the gate now returns a 409 `requiresOnboarding` that routes to the wizard
-  (`884dd1d`). Validated end-to-end on a real researcher (florin): ORCID→OpenAlex enrich, author match (18 pubs),
-  auto-claim recommends all 18. **Deferred:** bug #1 (decision continuity across re-sync keyed on stable doi/eid,
-  not the transient publicationId) — spans the decision model + lookups + filter, and DOI-primary identity keeps
-  re-synced ids stable, largely mitigating it; pick up as a focused follow-up if it recurs.
-
 - [ ] `H71` Cross-source author dedup for OpenAlex co-authors (affiliation-driven). Problem: the OpenAlex author
   resolver matches on **exact id keys only** (ORCID → OpenAlex author-id → else mint), so the same person splits into
   duplicates across sources — e.g. "Bogdan Tudor Tulbure" (OpenAlex, ORCID, no Scopus id) vs "Tulbure, Bogdan T."
@@ -108,23 +22,11 @@ Done history moved to `TASKS-done.md`.
   (mint + enrich). **Steps 2–3 SUPERSEDED by `H72`.** Investigation (2026-06-20) showed cross-source author dedup is
   gated on a clean *affiliation* graph, and the right first move is Scopus-internal (verified-tier cleanup), not
   OpenAlex name matching — see H72. The OpenAlex ROR/ORCID enrichment becomes H72 slice 3, onto a clean base.
-
-- [ ] `H72` Scopus verified-tier entity resolution (drop ad-hoc affiliations, merge over-split authors). The canonical
-  author/affiliation layer relabels Scopus 1:1 instead of resolving (29,106 affiliations, **0** ever merged; afid-keyed
-  canonical ids structurally prevent merge; no affiliation dedup pass exists). Proven on live data that name/co-occurrence
-  merging is unsafe (both directions leak — collaborations, hospital↔university, shared city/topic tokens, cross-language).
-  The safe signal is Scopus's own **verified** tier (`afid ^60`, 57%, one record per real institution) vs the **ad-hoc**
-  tier (`1xxxxxxxx`, 43% raw-string noise). **Slice 1:** mint canonical affiliations + edges only for verified afids, drop
-  ad-hoc → 29,106 → 16,616 clean institutions, ~0 subject cost (1 UVT author of 2,559). **Slice 2:** merge same-person
-  over-split AU-IDs (no droppable tier — Scopus over-splits old+new ids; 52 same-name groups / 106 AU-IDs at UVT) using
-  *same name + shared verified affiliation* + same-pub hard-block; durable across rebuild; retire the scopus-id-on-profile
-  band-aid. **Slice 3 (later):** OpenAlex ROR/ORCID enrichment onto the clean base (folds in H71 steps 2–3). Scopus-indexed
-  signal routes via the forum (venue-in-Scopus-source), not per-pub. Plan + evidence:
-  `docs/tasks/active/h72-scopus-verified-entity-resolution.md`.
-  **Status (2026-06-21): slices 1–3 shipped + live-validated** (affiliations 29,106→16,427; 405 over-split authors
-  merged; UVT ROR-tagged). **Slice-3 mechanism superseded by `H73`:** the positional `ScholardexAffiliationRorBridgeService`
-  was noisy (cross-tagged e-Austria's ROR onto UVT) — H73 slice 2 replaces it with the OpenAlex-institution alias matcher
-  and retires the bridge + clears the noisy `rorIds`. Ready to close out to `TASKS-done.md` once H73 slice 2 lands.
+  **Status (2026-06-22): this is now the home of the deferred V2 author reconcile.** H72 closed (verified-tier
+  affiliation cleanup + over-split AU-ID merge shipped), and the H75 V2 engine produces core-deduped authors via
+  ORCID + the positional bridge only — the *fuzzy/over-split + cross-source name dedup* pass was deferred out of V2.
+  Remaining work = fold that reconcile into the V2 build (now on a clean ROR affiliation base), so author-level
+  aggregation is correct before scoring (H67/H69) leans on it.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input

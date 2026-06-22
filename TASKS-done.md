@@ -2,6 +2,56 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H72-H75 OpenAlex-first ingestion + canonical engine V2
+
+Archived from `TASKS.md` on 2026-06-22. The ingestion + canonical-derivation cluster converged: the V2 batch engine
+(H75) became the real pipeline and absorbed/superseded H74 and the per-record canon of H73/H72. Closed task docs:
+`docs/tasks/closed/h73-openalex-first-ingestion.md`, `h75-canonical-derivation-engine-v2.md`, `h75-rules-catalog.md`,
+`h72-scopus-verified-entity-resolution.md`.
+
+- [x] `H75` Canonical derivation engine V2 (batch ETL). *(completed 2026-06-22)*
+  Deliverable: pure in-memory Load→Build→Write canonical derivation (`CanonicalGraphBuilder` +
+  `CanonicalDerivationV2Service`) replacing the per-record V1 canon block in `runFull`/`rebuildAllDerived`. Builds
+  affiliations (ROR backbone + 3-tier afid resolve), DOI-keyed pubs (field precedence + Decision-0 container-DOI
+  blocklist), union-find authors (OpenAlex-keyed identity: ORCID > OpenAlex-id > Scopus, + positional bridge), and all
+  edges (authorship, author/pub→author→affiliation, internal citations) as bulk `insertMany`.
+  Evidence: full from-scratch `rebuildAllDerived` ~33 min (V2 canon ~4 min vs V1 ~90 min, ~19x) with projections clean
+  on V2 output; deterministic counts (149,902 pubs / 371,196 authors / 512,200 citations / 1,284,984 authorships).
+  Spot-checks: Marc Frîncu = one OpenAlex-keyed author (ORCID + Scopus AU-ID); UVT ROR-keyed with afid 60000434.
+  Follow-ups shipped this arc: (a) **skip-smart `rebuildAllDerived`** — derive-only when source facts present
+  (~11.5 min, no re-ingest), `reingest=true` forces full; (b) **OpenAlex venue→forum onboarding** restored in V2
+  (forumId coverage 89,809→133,129); (c) projection-write perf Tier 1+2 (reWriteBatchedInserts + index drop/recreate,
+  177→140s; the inserts are the wall, COPY/Tier-3 documented but not pursued).
+  Residual (NOT done): delete the V1 canon services — blocked, the Tier-2 incremental path still uses them; and the
+  fuzzy/over-split author reconcile is deferred to `H71`.
+
+- [x] `H73` OpenAlex-first ingestion (UVT 1-hop corpus + ROR affiliation backbone). *(completed 2026-06-22, absorbed by H75)*
+  Shipped: replayable OpenAlex bulk importer (works 11,656 + citers 105,766 → `openalex.*` source facts +
+  `openalex.institution_facts`), ROR affiliation backbone (~21–24k referenced institutions, ROR-keyed `@Id`), Scopus
+  afids resolving INTO the backbone via the 3-tier alias matcher (`ScopusAffiliationRorMatcher`), positional bridge
+  retired, pub→author→affiliation + author→affiliation edges, internal UVT↔UVT citation edges. The canonical
+  derivation of all of this is now owned by the V2 engine (H75). Residual note: malformed-DOI normalize cleanup.
+
+- [x] `H74` Pipeline reorder (forums → institutions+affiliations → pubs+authors). *(completed 2026-06-22, absorbed by H75)*
+  Fully realized as the V2 engine's in-memory build order; no separate work remained.
+
+- [x] `H72` Scopus verified-tier entity resolution. *(completed 2026-06-21; mechanism superseded by H73/H75)*
+  Slices 1–3 shipped + live-validated (affiliations 29,106→16,427; 405 over-split authors merged; UVT ROR-tagged).
+  The noisy positional ROR bridge was replaced by H73's alias matcher; verified-tier affiliation resolution now lives
+  in the V2 affiliation build.
+
+## H70 Researcher Onboarding Wizard
+
+Archived from `TASKS.md` on 2026-06-22 (shipped 2026-06-20, was left open). Closed task doc:
+`docs/tasks/closed/h70-researcher-onboarding-wizard.md`.
+
+- [x] `H70` Researcher onboarding wizard (+ de-tangle the publication-claim tool). *(completed 2026-06-20)*
+  All 5 slices shipped + live-validated on a real researcher (ORCID→OpenAlex enrich, author match 18 pubs, auto-claim
+  recommends all 18): S1 model/resolve/step-engine, S2 wizard shell + steps 1–3, S3 author-record matcher with
+  confidence preview, S4 publication auto-claim, S5 claim-tool de-tangle (bulk idempotency + 409 `requiresOnboarding`
+  routing to the wizard). Deferred: bug #1 (decision continuity across re-sync keyed on stable doi/eid) — largely
+  mitigated by DOI-primary identity; pick up as a focused follow-up if it recurs.
+
 ## H52 Indicator / Scoring / Formula Flow V1
 
 Archived from `TASKS.md` on 2026-06-04 after completing H52 v1. Closed task doc: `docs/tasks/closed/h52-indicator-scoring-v1.md`.
