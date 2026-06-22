@@ -57,6 +57,9 @@ public class CanonicalDerivationV2Service {
     private final ScopusCitationFactRepository scopusCitationFactRepository;
     private final CanonicalGraphBuilder graphBuilder;
     private final ScholardexSourceLinkService sourceLinkService;
+    // H75 fix: onboard OpenAlex host venues into the forum registry (the V1 OpenAlex canon used to do this) so the
+    // V2 pub forumId resolution covers OpenAlex-only pubs. Reuses the existing Stage-3 ISSN-gated onboarding.
+    private final ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService openAlexForumOnboardingService;
     private final MongoTemplate mongoTemplate;
 
     /**
@@ -70,6 +73,8 @@ public class CanonicalDerivationV2Service {
         // Load the big source-fact lists ONCE and reuse across pubs/authors/citations (avoids 3x findAll).
         List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
         List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
+        // Tag the forum registry with OpenAlex venue ids (idempotent) so pub forumId resolution covers OpenAlex pubs.
+        openAlexForumOnboardingService.onboard(openAlexPubs);
         writeAffiliations(institutionFactRepository.findAll(), scopusAffiliationFactRepository.findAll());
         writePublications(scopusPubs, openAlexPubs);
         writeAuthors(scopusAuthorFactRepository.findAll(), scopusPubs, openAlexPubs);
