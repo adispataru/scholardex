@@ -37,6 +37,23 @@ public final class HIndexCalculator {
         return 0;
     }
 
+    /** The per-publication citation-count extractor for a given source (the S1 projection columns). */
+    public static ToIntFunction<ScholardexPublicationView> extractorFor(
+            ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource source) {
+        return switch (source) {
+            case SCHOLARDEX -> ScholardexPublicationView::getCitedByCount;
+            case GRAPH -> ScholardexPublicationView::getGraphCitationCount;
+            case SCOPUS_VENUE -> ScholardexPublicationView::getScopusCitationCount;
+            case WOS_VENUE -> ScholardexPublicationView::getWosCitationCount;
+        };
+    }
+
+    /** h-index over a publication set for one source, from the precomputed S1 columns (no self-citation filter). */
+    public static int hIndexForSource(List<ScholardexPublicationView> publications,
+                                      ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource source) {
+        return hIndex(publications, extractorFor(source));
+    }
+
     /** All four h-indices over the same publication set. */
     public static HIndexBreakdown breakdown(List<ScholardexPublicationView> publications) {
         return new HIndexBreakdown(

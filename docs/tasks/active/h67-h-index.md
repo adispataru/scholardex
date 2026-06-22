@@ -97,6 +97,12 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
     filter) plus a venue-source predicate (Scopus/WoS via `scholardex_forum_membership_view`, or the S1 cited-pub
     columns when `!excludeSelf`). Branch only on the new kind (additive path untouched; mirrors the inline-handled
     `GENERIC_COUNT` precedent) + the H69 regression sweep. Tracked under **H69** (scoring-engine generalization).
+    **Progress:** 1/2 done (`9b1b3bb`) — the type foundation (`IndicatorKind.HIndex` + `ScoringStrategy.HIRSCH` +
+    persisted round-trip). 2/2 done for the **non-self-cit** path — `UserReportFacade.buildReportScopedIndicatorDetail`
+    branches on `isHIndexOutput()` and returns `hIndex` over the S1 columns (all four sources) instead of the sum;
+    `HIndexCalculator.hIndexForSource` + tests green. **2/2b remaining:** the `excludeSelf` self-cit-filtered path
+    (currently throws) — needs the citation-graph walk + a WoS-indexed flag in the forum read model (the forum view has
+    `scopusId` but no WoS flag). Also pending: the interactive `buildIndicatorApplyView` preview branch (UI nicety).
   - **S4b — per-domain activation (data, later).** Insert the HIndex indicator rows into chimie (≥13/9 WoS),
     geografie (WoS, self-cit-excluded), fizica criteria with per-position thresholds from the standards assessment;
     the istorie "h OR citations" gate needs **H68**.

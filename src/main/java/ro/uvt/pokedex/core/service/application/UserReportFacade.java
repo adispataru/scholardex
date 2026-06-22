@@ -529,6 +529,31 @@ public class UserReportFacade {
                     IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
         }
 
+        // H67 S4a: aggregate Hirsch (h-index) — the value is hIndex over the per-pub source citation counts, NOT a
+        // sum. !excludeSelf reads the S1 projection columns directly; excludeSelf (the self-cit-filtered graph walk)
+        // is S4a 2/2b and not wired yet.
+        if (indicator != null && indicator.isHIndexOutput()) {
+            ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind = indicator.hIndexKind();
+            if (kind.excludeSelf()) {
+                throw new UnsupportedOperationException(
+                        "H67 S4a 2/2b: self-citation-excluded h-index is not wired yet (needs the citation-graph walk "
+                                + "+ a WoS-indexed read-model flag). Source=" + kind.source());
+            }
+            int h = HIndexCalculator.hIndexForSource(publications, kind.source());
+            int totalCit = publications.stream()
+                    .mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
+            rawGraph.put("total", String.valueOf(h));
+            rawGraph.put("totalCit", totalCit);
+            rawGraph.put("outputMode", "hindex");
+            rawGraph.put("hIndexSource", kind.source().name());
+            return Optional.of(new IndicatorApplyResultDto(
+                    null, indicatorId,
+                    ReportScopedIndicatorScoringSupport.viewNameFor(indicator),
+                    rawGraph,
+                    new IndicatorApplyResultDto.Summary((double) h, totalCit, List.of(), List.of()),
+                    IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
+        }
+
         // Citations (CITATIONS or CITATIONS_EXCLUDE_SELF)
         Set<String> researcherAuthorIds = authors.stream()
                 .map(ScholardexAuthorView::getId)

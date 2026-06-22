@@ -164,6 +164,16 @@ public class Indicator {
         return k instanceof IndicatorKind.Citations c && c.excludeSelf();
     }
 
+    /** H67 S4a: true iff this is an aggregate Hirsch (h-index) indicator. */
+    public boolean isHIndexOutput() {
+        return getEffectiveKind() instanceof IndicatorKind.HIndex;
+    }
+
+    /** H67 S4a: the {@link IndicatorKind.HIndex} kind, or {@code null} if this isn't an h-index indicator. */
+    public IndicatorKind.HIndex hIndexKind() {
+        return getEffectiveKind() instanceof IndicatorKind.HIndex h ? h : null;
+    }
+
     /**
      * True iff the indicator is activity-shaped —
      * {@link IndicatorKind.Activity} (FORUM/UNIVERSITY/EVENT) or

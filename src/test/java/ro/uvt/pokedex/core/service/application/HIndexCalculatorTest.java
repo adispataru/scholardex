@@ -42,6 +42,21 @@ class HIndexCalculatorTest {
     }
 
     @Test
+    void hIndexForSourcePicksTheRightColumn() {
+        // Each pub has distinct counts per source so a wrong column would give a wrong h.
+        List<ScholardexPublicationView> pubs = List.of(
+                pub(10, 7, 5, 1), pub(10, 7, 5, 1), pub(10, 7, 5, 1), pub(10, 7, 5, 1), pub(10, 7, 5, 1));
+        assertThat(HIndexCalculator.hIndexForSource(pubs,
+                ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.SCHOLARDEX)).isEqualTo(5); // [10×5] -> 5
+        assertThat(HIndexCalculator.hIndexForSource(pubs,
+                ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.GRAPH)).isEqualTo(5);       // [7×5]  -> 5
+        assertThat(HIndexCalculator.hIndexForSource(pubs,
+                ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.SCOPUS_VENUE)).isEqualTo(5); // [5×5] -> 5
+        assertThat(HIndexCalculator.hIndexForSource(pubs,
+                ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE)).isEqualTo(1);    // [1×5] -> 1
+    }
+
+    @Test
     void emptyAndZeroAreZero() {
         assertThat(HIndexCalculator.breakdown(List.of()).scholardex()).isZero();
         assertThat(HIndexCalculator.breakdown(List.of(pub(0, 0, 0, 0))).scopusVenue()).isZero();
