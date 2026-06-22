@@ -7,12 +7,17 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexInstitutionFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 
 import java.util.HashMap;
@@ -34,6 +39,8 @@ public class CanonicalDerivationV2Service {
 
     private final OpenAlexInstitutionFactRepository institutionFactRepository;
     private final ScopusAffiliationFactRepository scopusAffiliationFactRepository;
+    private final ScopusPublicationFactRepository scopusPublicationFactRepository;
+    private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
     private final CanonicalGraphBuilder graphBuilder;
     private final ScholardexSourceLinkService sourceLinkService;
     private final MongoTemplate mongoTemplate;
@@ -61,5 +68,28 @@ public class CanonicalDerivationV2Service {
         }
         log.info("V2 affiliation derivation: institutions={} scopusAffiliations={} -> facts={} sourceLinks={}",
                 institutions.size(), scopusAffiliations.size(), result.facts().size(), result.sourceLinks().size());
+    }
+
+    /**
+     * Derive {@code scholardex.publication_facts} + PUBLICATION source-links from Scopus + OpenAlex pub source-facts.
+     * forumId/affiliationIds/authorIds are filled by later derivation steps (forums already built; authors next).
+     */
+    public void rebuildPublicationsV2() {
+        List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
+        List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
+
+        CanonicalGraphBuilder.PublicationBuildResult result = graphBuilder.buildPublications(scopusPubs, openAlexPubs);
+
+        mongoTemplate.remove(new Query(), ScholardexPublicationFact.class);
+        mongoTemplate.remove(
+                Query.query(Criteria.where("entityType").is(ScholardexEntityType.PUBLICATION)), ScholardexSourceLink.class);
+        for (int i = 0; i < result.facts().size(); i += 5000) {
+            mongoTemplate.insert(result.facts().subList(i, Math.min(i + 5000, result.facts().size())), ScholardexPublicationFact.class);
+        }
+        if (!result.sourceLinks().isEmpty()) {
+            sourceLinkService.batchUpsertWithState(result.sourceLinks(), new HashMap<>(), false);
+        }
+        log.info("V2 publication derivation: scopusPubs={} openAlexPubs={} -> facts={} sourceLinks={}",
+                scopusPubs.size(), openAlexPubs.size(), result.facts().size(), result.sourceLinks().size());
     }
 }

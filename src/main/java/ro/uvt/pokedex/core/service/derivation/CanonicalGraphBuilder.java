@@ -3,11 +3,15 @@ package ro.uvt.pokedex.core.service.derivation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusAffiliationRorMatcher;
 
 import java.time.Instant;
@@ -15,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.normalizeBlank;
 import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.normalizeName;
@@ -116,6 +121,208 @@ public class CanonicalGraphBuilder {
                     sa.getSourceEventId(), sa.getSourceBatchId(), sa.getSourceCorrelationId(), false));
         }
         return new AffiliationBuildResult(new ArrayList<>(byCanonicalId.values()), sourceLinks);
+    }
+
+    // ── Publications (S1.c / Stage 2): DOI-first identity, Decision-0 blocklist, OpenAlex field precedence ──────
+
+    private static final double SHARED_DOI_TITLE_SIMILARITY = 0.5;
+
+    public record PublicationBuildResult(List<ScholardexPublicationFact> facts,
+                                          List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinks) {
+    }
+
+    /** One source publication, source-agnostic, carrying just the fields the canonical pub + its id need. */
+    private record SourcePub(boolean openAlex, String source, String sourceRecordId, String eid, String doi,
+                             String doiNorm, String title, String titleNorm, String coverDate, String creator,
+                             Integer authorCount, Integer citedByCount, Boolean openAccess, String subtype,
+                             String subtypeDescription, String scopusSubtype, String scopusSubtypeDescription,
+                             String pii, String pubmedId, String volume, String issueIdentifier, String bookId,
+                             String sourceEventId, String sourceBatchId, String sourceCorrelationId) {
+    }
+
+    /**
+     * Derive canonical publications from Scopus + OpenAlex source pubs: DOI-keyed identity (Decision-0 container-DOI
+     * blocklist), OpenAlex field precedence on shared DOIs, Scopus enrich (eid + Scopus-only fields), monotonic-max
+     * citation count, plus the PUBLICATION source-links. forumId/affiliationIds/authorIds are filled by later steps.
+     */
+    public PublicationBuildResult buildPublications(List<ScopusPublicationFact> scopusPubs,
+                                                    List<OpenAlexPublicationFact> openAlexPubs) {
+        List<SourcePub> sources = new ArrayList<>(scopusPubs.size() + openAlexPubs.size());
+        for (ScopusPublicationFact s : scopusPubs) {
+            sources.add(fromScopus(s));
+        }
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            sources.add(fromOpenAlex(o));
+        }
+        Set<String> doiBlocklist = computeDoiBlocklist(sources);
+
+        // Group source pubs by their canonical id (DOI-first, blocklist-aware).
+        LinkedHashMap<String, List<SourcePub>> byCanonicalId = new LinkedHashMap<>();
+        for (SourcePub sp : sources) {
+            String id = buildPublicationId(sp, doiBlocklist);
+            byCanonicalId.computeIfAbsent(id, k -> new ArrayList<>()).add(sp);
+        }
+
+        List<ScholardexPublicationFact> facts = new ArrayList<>(byCanonicalId.size());
+        List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinks = new ArrayList<>();
+        for (var entry : byCanonicalId.entrySet()) {
+            facts.add(buildPublicationFact(entry.getKey(), entry.getValue()));
+            for (SourcePub sp : entry.getValue()) {
+                sourceLinks.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                        ScholardexEntityType.PUBLICATION, sp.source(), sp.sourceRecordId(), entry.getKey(),
+                        ScholardexSourceLinkService.STATE_LINKED, "scopus-publication-bridge",
+                        sp.sourceEventId(), sp.sourceBatchId(), sp.sourceCorrelationId(), false));
+            }
+        }
+        return new PublicationBuildResult(facts, sourceLinks);
+    }
+
+    /** Build one canonical pub from its source group: OpenAlex authoritative for content, Scopus enriches. */
+    private ScholardexPublicationFact buildPublicationFact(String canonicalId, List<SourcePub> group) {
+        SourcePub openAlex = group.stream().filter(SourcePub::openAlex).findFirst().orElse(null);
+        SourcePub scopus = group.stream().filter(sp -> !sp.openAlex()).findFirst().orElse(null);
+        SourcePub authoritative = openAlex != null ? openAlex : group.getFirst(); // OpenAlex precedence
+        boolean openAlexOwned = openAlex != null;
+
+        ScholardexPublicationFact fact = new ScholardexPublicationFact();
+        Instant now = Instant.now();
+        fact.setId(canonicalId);
+        fact.setCreatedAt(now);
+        fact.setUpdatedAt(now);
+        // Bibliographic content — OpenAlex-authoritative when present.
+        fact.setDoi(authoritative.doi());
+        fact.setDoiNormalized(authoritative.doiNorm());
+        fact.setTitle(authoritative.title());
+        fact.setTitleNormalized(authoritative.titleNorm());
+        fact.setCreator(authoritative.creator());
+        fact.setAuthorCount(authoritative.authorCount());
+        fact.setCoverDate(authoritative.coverDate());
+        fact.setOpenAccess(authoritative.openAccess());
+        fact.setSubtype(authoritative.subtype());
+        fact.setSubtypeDescription(authoritative.subtypeDescription());
+        // Citation count: monotonic max across sources (best-available index never regresses).
+        int cited = 0;
+        for (SourcePub sp : group) {
+            if (sp.citedByCount() != null) {
+                cited = Math.max(cited, sp.citedByCount());
+            }
+        }
+        fact.setCitedByCount(cited);
+        // Scopus-only enrichment.
+        if (scopus != null) {
+            fact.setEid(scopus.eid());
+            fact.setPii(scopus.pii());
+            fact.setPubmedId(scopus.pubmedId());
+            fact.setScopusSubtype(scopus.scopusSubtype());
+            fact.setScopusSubtypeDescription(scopus.scopusSubtypeDescription());
+            fact.setVolume(scopus.volume());
+            fact.setIssueIdentifier(scopus.issueIdentifier());
+            fact.setBookId(scopus.bookId());
+        }
+        fact.setSource(openAlexOwned ? SOURCE_OPENALEX : authoritative.source());
+        fact.setSourceRecordId(authoritative.sourceRecordId());
+        fact.setSourceEventId(authoritative.sourceEventId());
+        fact.setSourceBatchId(authoritative.sourceBatchId());
+        fact.setSourceCorrelationId(authoritative.sourceCorrelationId());
+        return fact;
+    }
+
+    /** Canonical pub id: DOI (unless blocklisted) → eid → title+date+creator. {@code spub_<hash>}. */
+    private static String buildPublicationId(SourcePub sp, Set<String> doiBlocklist) {
+        String material;
+        if (sp.doiNorm() != null && !sp.doiNorm().isBlank() && !doiBlocklist.contains(sp.doiNorm())) {
+            material = "doi|" + normalizeToken(sp.doiNorm());
+        } else if (sp.eid() != null && !sp.eid().isBlank()) {
+            material = "eid|" + normalizeToken(sp.eid());
+        } else {
+            material = "title|" + normalizeToken(sp.titleNorm())
+                    + "|date|" + normalizeToken(sp.coverDate())
+                    + "|creator|" + normalizeToken(sp.creator())
+                    + "|forum|" + normalizeToken(null);
+        }
+        return "spub_" + shortHash(material);
+    }
+
+    /**
+     * H66B Decision-0: a DOI carried by ≥2 records that form >1 title-cluster (token-Jaccard≥0.5) is a container DOI
+     * (e.g. book chapters sharing the book's DOI). Computed over <b>Scopus</b> source pubs only — like V1 — so that
+     * benign cross-source title variance (Scopus vs OpenAlex spelling of the same paper) never splits a real paper.
+     */
+    private static Set<String> computeDoiBlocklist(List<SourcePub> sources) {
+        LinkedHashMap<String, List<SourcePub>> byDoi = new LinkedHashMap<>();
+        for (SourcePub sp : sources) {
+            if (!sp.openAlex() && sp.doiNorm() != null && !sp.doiNorm().isBlank()) {
+                byDoi.computeIfAbsent(sp.doiNorm(), k -> new ArrayList<>()).add(sp);
+            }
+        }
+        Set<String> blocklist = new java.util.HashSet<>();
+        for (var e : byDoi.entrySet()) {
+            if (e.getValue().size() >= 2 && titleClusterCount(e.getValue()) > 1) {
+                blocklist.add(e.getKey());
+            }
+        }
+        return blocklist;
+    }
+
+    /** Single-link clustering of a DOI group's titles by token-Jaccard ≥ 0.5; returns the cluster count. */
+    private static int titleClusterCount(List<SourcePub> group) {
+        List<Set<String>> clusters = new ArrayList<>();
+        for (SourcePub sp : group) {
+            Set<String> tokens = titleTokens(sp.titleNorm());
+            boolean placed = false;
+            for (Set<String> rep : clusters) {
+                if (jaccard(rep, tokens) >= SHARED_DOI_TITLE_SIMILARITY) {
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                clusters.add(tokens);
+            }
+        }
+        return clusters.size();
+    }
+
+    private static Set<String> titleTokens(String titleNorm) {
+        Set<String> tokens = new java.util.HashSet<>();
+        if (titleNorm != null) {
+            for (String t : titleNorm.split("\\s+")) {
+                if (!t.isBlank()) {
+                    tokens.add(t);
+                }
+            }
+        }
+        return tokens;
+    }
+
+    private static double jaccard(Set<String> a, Set<String> b) {
+        if (a.isEmpty() && b.isEmpty()) {
+            return 1.0;
+        }
+        Set<String> inter = new java.util.HashSet<>(a);
+        inter.retainAll(b);
+        Set<String> union = new java.util.HashSet<>(a);
+        union.addAll(b);
+        return union.isEmpty() ? 0.0 : (double) inter.size() / union.size();
+    }
+
+    private static SourcePub fromScopus(ScopusPublicationFact s) {
+        String doiNorm = ScholardexPublicationCanonicalizationService.normalizeDoi(s.getDoi());
+        String titleNorm = ScholardexPublicationCanonicalizationService.normalizeTitle(s.getTitle());
+        return new SourcePub(false, s.getSource(), s.getSourceRecordId(), s.getEid(), s.getDoi(), doiNorm,
+                s.getTitle(), titleNorm, s.getCoverDate(), s.getCreator(), s.getAuthorCount(), s.getCitedByCount(),
+                s.getOpenAccess(), s.getSubtype(), s.getSubtypeDescription(), s.getScopusSubtype(),
+                s.getScopusSubtypeDescription(), s.getPii(), s.getPubmedId(), s.getVolume(), s.getIssueIdentifier(),
+                s.getBookId(), s.getSourceEventId(), s.getSourceBatchId(), s.getSourceCorrelationId());
+    }
+
+    private static SourcePub fromOpenAlex(OpenAlexPublicationFact o) {
+        String doiNorm = ScholardexPublicationCanonicalizationService.normalizeDoi(o.getDoi());
+        String titleNorm = ScholardexPublicationCanonicalizationService.normalizeTitle(o.getTitle());
+        return new SourcePub(true, SOURCE_OPENALEX, o.getSourceRecordId(), null, o.getDoi(), doiNorm,
+                o.getTitle(), titleNorm, o.getCoverDate(), o.getCreator(), o.getAuthorCount(), o.getCitedByCount(),
+                o.getOpenAccess(), o.getType(), o.getType(), null, null, null, null, null, null, null,
+                o.getSourceEventId(), o.getSourceBatchId(), o.getSourceCorrelationId());
     }
 
     /** Mirror of the importer's {@code toBackboneFact}: ROR-keyed backbone fact; null when the institution has no ROR. */

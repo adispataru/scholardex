@@ -58,7 +58,27 @@ and supersedes the per-record "bulk mode" patches in H73 S3/S3.5.
    because wipe-first guarantees inserts. **Create indexes after load** (bulk-load-then-index beats index-then-load).
    Source-links written the same way.
 
-## Identity-rules catalog (ported verbatim from V1 — the risk surface)
+## Reframe (2026-06-22): V1's DB is not an oracle — move fast, validate by invariants
+
+We never had a "correct" canonical DB. V1 is slow, unvalidated code that ran on a maybe-dirty DB; **byte-parity with
+V1 is the wrong gate**. What's trustworthy is the **rules** (the identity/dedup logic the user designed across
+H72/H73) — those are the spec, and we own them (free to fix/improve). What's NOT trustworthy is V1's **output**.
+
+So: **drop build-alongside + the feature flag + the V1-differential gate.** Build V2 as the real pipeline, wire each
+entity straight into the rebuild replacing V1's step, and validate by:
+1. **Unit tests on the rules** (the spec) — not V1 parity.
+2. **Output invariants** — referential integrity (no orphan edges), id schemes (`spub_`/`sauth_`/`saff_`/`sforum_`),
+   no duplicate natural keys, counts in sane ranges.
+3. **Determinism** — two V2 runs identical (`CanonicalSnapshot` still does this; repurposed from V1-diff to
+   self-consistency + before/after experiment comparison).
+4. **Spot-checks + "run it and look"** — the real unlock: once V2 runs in minutes (not 90), eyeballing UVT / a known
+   author / a shared-DOI pub becomes the validation loop we never had. Speed *is* the validation enabler.
+
+The DB is disposable — everything is an experiment; rebuild from source facts at will. The
+`AffiliationDerivationV2DifferentialTest` is kept but reinterpreted: it asserts V2 implements the *documented rules*
+consistently with V1's logic-as-reference, NOT that V1's data is correct. No more new V1-parity tests.
+
+## Identity-rules catalog (ported from V1's logic — the spec, owned and improvable)
 
 Every rule below gets a focused unit test **and** a differential check against V1. (Detailed enumeration filled in
 during Stage 0 by reading V1.)
@@ -79,19 +99,22 @@ The only safe way to rewrite battle-tested identity logic. Build it in Stage 0, 
 - Reuse the Testcontainers `@SpringBootTest` harness (`OpenAlexFirstInversionIntegrationTest` pattern); add
   golden-count assertions; that inversion test must keep passing.
 
-## Delivery stages (build-alongside, flag-gated — V1 stays until V2 is provably green)
+## Delivery stages (REVISED 2026-06-22 — build V2 as the real pipeline, no build-alongside)
 
-- **Stage 0 — design + harness + baseline.** This doc; the differential harness; a real **profile** of V1 (phase
-  timings + per-stage Mongo-op counts) as the baseline to beat. Read V1 to fill the rules catalog.
-- **Stage 1 — engine skeleton.** `CanonicalSourceLoader` (in-memory model) + `CanonicalGraphBuilder` (forums +
-  affiliations + pubs only) + `BulkCanonicalWriter` (wipe → insertMany → index) behind a `rebuildCanonicalV2` flag.
-  Differential-validate forums/affiliations/pubs against V1.
-- **Stage 2 — authors + edges.** The union-find author build (porting the reconcile rules) + all edges.
-  Differential-validate the author graph + edges against V1 — **the hard gate**.
-- **Stage 3 — citations + projections + real-corpus run.** Citation edges; run the Postgres projections on V2
-  output; full differential on the real corpus; record the timing (target < 10 min).
-- **Stage 4 — cutover.** Flip the flag default to V2; keep V1 one release; then delete V1 + the per-record
-  "bulk mode" scaffolding.
+Validate by rules-unit-tests + invariants + determinism + fast-run inspection (see the Reframe). No V1 flag, no
+byte-parity gate, no cutover ceremony — wire each V2 entity into the rebuild replacing V1's step, run fast, iterate.
+Prioritize by **cost** (attack the 60% before the 10%): the OpenAlex/Scopus **canon (pubs+authors+edges) ≈ 60%**
+of the 90 min; forums ≈ 10% and are already in-memory.
+
+- **Stage 0 — DONE.** Design + `CanonicalSnapshot` (now: determinism + invariants, not V1-diff) + rules catalog + baseline.
+- **Stage 1 — affiliations DONE (V2).** Forums: the engine is already in-memory; a quick write-batch optimization
+  (defer per-new-forum saves, share the registry across sources) makes it fast — behavior-preserving, low priority.
+- **Stage 2 (the prize) — pubs + authors + edges in V2.** The in-memory canon: DOI-keyed pubs (field precedence),
+  the union-find author build (ORCID + positional bridge + fuzzy/over-split reconcile folded in), and all edges.
+  Validate by invariants (no orphan edges; id schemes; sane counts) + spot-checks on UVT/known authors.
+- **Stage 3 — citations + wire the full V2 rebuild + run.** Citation edges; replace the V1 canon block in
+  `runFull`/`rebuildAllDerived` with the V2 engine; run end-to-end (target < 10 min) and inspect. Projections run on
+  top unchanged. Delete the superseded V1 canon + per-record "bulk mode" once V2's run looks right.
 
 ## Decisions settled
 - **Store stays Mongo** (single-node in-memory build is enough at this scale — no Spark/columnar).
