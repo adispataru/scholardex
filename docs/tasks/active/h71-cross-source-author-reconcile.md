@@ -68,7 +68,7 @@ auto-merged — left for a future review queue.
   — matches the offline ~1,737 (slightly higher: Java folds diacritics properly, grouping `Mureşan` variants the
   ascii-only script split). Samples textbook-correct (initial↔full, middle-name, hyphen, diacritic, surname-only); no
   visible false merges. 79 common-name blocks / 76,686 authors deferred.
-- **S2 — apply + invariants + cannot-link guard. DONE (commit `aac0e89`).** Applied the unions in `buildAuthors`; edges
+- **S2 — apply + invariants + cannot-link guard. DONE (commit `6d90223`).** Applied the unions in `buildAuthors`; edges
   re-point for free (V2 builds them post-merge). **Live with fail-fast first surfaced the transitivity trap**: 10
   same-paper violations — most were the *same person duplicated on one paper* (big-collaboration physics papers
   OpenAlex double-lists), but one was a genuine false-merge (`Carmen Tatu`/`Călin Tatu` chained by an ambiguous
