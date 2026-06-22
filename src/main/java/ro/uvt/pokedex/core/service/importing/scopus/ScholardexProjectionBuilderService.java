@@ -65,7 +65,27 @@ public class ScholardexProjectionBuilderService {
     private static final Logger log = LoggerFactory.getLogger(ScholardexProjectionBuilderService.class);
     private static final Pattern DOI_URL_PREFIX = Pattern.compile("^https?://(dx\\.)?doi\\.org/", Pattern.CASE_INSENSITIVE);
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
-    private static final int JDBC_BATCH_SIZE = 500;
+    // H75: larger chunks pair with reWriteBatchedInserts (multi-row INSERT) to cut per-statement overhead on the
+    // ~2.9M-row full projection write.
+    private static final int JDBC_BATCH_SIZE = 1500;
+
+    /**
+     * H75 Tier-2: the tables the full-replacement write TRUNCATEs + reloads. Their secondary {@code idx_*} indexes
+     * (incl. the GINs on the array columns) are dropped before the bulk insert and recreated after — building each
+     * index once over the full table is far cheaper than maintaining it per row across millions of inserts. The
+     * {@code _pkey} and {@code uq_*} unique indexes are KEPT (correctness + they guard dedup during the load).
+     */
+    private static final List<String> FULL_REPLACEMENT_TABLES = List.of(
+            "scholardex_author_affiliation_fact",
+            "scholardex_authorship_fact",
+            "scholardex_citation_fact",
+            "scholardex_publication_view",
+            "scholardex_affiliation_view",
+            "scholardex_author_view",
+            "scholardex_forum_view",
+            "scholardex_forum_metric_view",
+            "scholardex_forum_category_view",
+            "scholardex_forum_membership_view");
 
     private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorFactRepository authorFactRepository;
@@ -1308,6 +1328,18 @@ public class ScholardexProjectionBuilderService {
             Instant buildAt
     ) {
         transactionTemplate.executeWithoutResult(status -> {
+            // H75: this whole rebuild is re-runnable, so skip per-commit fsync waits for the bulk load.
+            jdbcTemplate.execute("SET LOCAL synchronous_commit = off");
+            // H75 Tier-2: drop the secondary idx_* indexes (incl. GINs) so the bulk insert doesn't maintain them
+            // per row; recreate them once over the full tables after the load. DDL is transactional in Postgres,
+            // so a rollback restores them. Captured from live catalog so it never drifts from the Flyway DDL.
+            List<Map<String, Object>> secondaryIndexes = captureSecondaryIndexes();
+            long dropStart = System.nanoTime();
+            for (Map<String, Object> ix : secondaryIndexes) {
+                jdbcTemplate.execute("DROP INDEX IF EXISTS reporting_read." + ix.get("indexname"));
+            }
+            long dropMs = nanosToMillis(System.nanoTime() - dropStart);
+            long insertStart = System.nanoTime();
             jdbcTemplate.execute("""
                     TRUNCATE TABLE
                         reporting_read.scholardex_author_affiliation_fact,
@@ -1331,6 +1363,15 @@ public class ScholardexProjectionBuilderService {
             insertForumMetricRows(forumMetricRows, buildVersion, buildAt);
             insertForumCategoryRows(forumCategoryRows, buildVersion, buildAt);
             insertForumMembershipRows(forumMembershipRows, buildVersion, buildAt);
+            long insertMs = nanosToMillis(System.nanoTime() - insertStart);
+            // Recreate the secondary indexes once over the now-full tables.
+            long recreateStart = System.nanoTime();
+            for (Map<String, Object> ix : secondaryIndexes) {
+                jdbcTemplate.execute((String) ix.get("indexdef"));
+            }
+            long recreateMs = nanosToMillis(System.nanoTime() - recreateStart);
+            log.info("Projection full-replacement write sub-timings: dropIndexes={}ms insertRows={}ms recreateIndexes={}ms ({} secondary indexes)",
+                    dropMs, insertMs, recreateMs, secondaryIndexes.size());
         });
     }
 
@@ -1416,6 +1457,19 @@ public class ScholardexProjectionBuilderService {
     // -------------------------------------------------------------------------
     // JDBC utility helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * H75 Tier-2: the secondary {@code idx_*} indexes (name + recreate DDL) on the full-replacement tables, read
+     * live from the catalog so the drop/recreate never drifts from the Flyway-managed definitions. Excludes
+     * {@code _pkey} and {@code uq_*} (those stay to guard correctness/dedup during the load).
+     */
+    private List<Map<String, Object>> captureSecondaryIndexes() {
+        String placeholders = String.join(",", java.util.Collections.nCopies(FULL_REPLACEMENT_TABLES.size(), "?"));
+        return jdbcTemplate.queryForList(
+                "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'reporting_read' "
+                        + "AND indexname LIKE 'idx_%' AND tablename IN (" + placeholders + ")",
+                FULL_REPLACEMENT_TABLES.toArray());
+    }
 
     private <T> void batchInChunks(List<T> rows, Consumer<List<T>> chunkWriter) {
         if (rows == null || rows.isEmpty()) {
