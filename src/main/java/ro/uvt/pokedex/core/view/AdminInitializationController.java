@@ -879,6 +879,7 @@ public class AdminInitializationController {
     @PostMapping("/rebuildAllDerived")
     public String rebuildAllDerived(
             @RequestParam(name = "confirmation", required = false) String confirmation,
+            @RequestParam(name = "reingest", required = false, defaultValue = "false") boolean reingest,
             RedirectAttributes redirectAttributes
     ) {
         if (!"RESET".equals(confirmation == null ? null : confirmation.trim())) {
@@ -891,7 +892,10 @@ public class AdminInitializationController {
         // Single guarded full-rebuild entry point (H58/#2): true full wipe (all owned managed collections,
         // regardless of source attribution) then re-derive WoS + Scopus from source files. Preferred over
         // the per-source reset chain, whose canonical wipes are source-scoped.
-        var result = pipelineRebuildService.rebuildAllDerivedFromSource();
+        // H75 skip-smart: when the source/stage-2 facts are already present, the rebuild re-derives the canonical
+        // layer only (~5 min) instead of re-ingesting (~33 min). Pass reingest=true to force a full re-ingest
+        // (use this whenever a source file has actually changed).
+        var result = pipelineRebuildService.rebuildAllDerivedFromSource(reingest);
         redirectAttributes.addFlashAttribute(
                 "successMessage",
                 "Full derived-data rebuild complete (WoS + Scopus re-derived from source after a full wipe). "

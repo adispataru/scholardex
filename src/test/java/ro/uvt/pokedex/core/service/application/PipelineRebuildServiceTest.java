@@ -68,6 +68,37 @@ class PipelineRebuildServiceTest {
     }
 
     @Test
+    void rebuildSkipsReingestAndDerivesOnlyWhenSourceFactsPresent() {
+        // Source/stage-2 facts present -> derive-only: wipe canonical only, runDeriveFromFacts, no re-ingest.
+        when(mongoTemplate.count(any(Query.class), anyString())).thenReturn(1L);
+        when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
+        PipelineRebuildService service =
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
+
+        service.rebuildAllDerivedFromSource();  // default forceReingest=false
+
+        org.mockito.Mockito.verify(scopusRebuild).runDeriveFromFacts();
+        org.mockito.Mockito.verify(scopusRebuild, org.mockito.Mockito.never()).runFull();
+        org.mockito.Mockito.verify(scopusRebuild, org.mockito.Mockito.never()).resetCanonicalState();
+        org.mockito.Mockito.verify(wosRebuild, org.mockito.Mockito.never()).run(false, null);
+        org.mockito.Mockito.verify(wosRebuild, org.mockito.Mockito.never()).resetCanonicalState();
+        verifyNoInteractions(doajDataService, erihDataService, openAlexBulkImportService);
+    }
+
+    @Test
+    void forceReingestRunsFullPathEvenWhenSourceFactsPresent() {
+        when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
+        PipelineRebuildService service =
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService, forumReconcileService, openAlexBulkImportService);
+
+        service.rebuildAllDerivedFromSource(true);
+
+        org.mockito.Mockito.verify(scopusRebuild).runFull();
+        org.mockito.Mockito.verify(scopusRebuild, org.mockito.Mockito.never()).runDeriveFromFacts();
+        org.mockito.Mockito.verify(wosRebuild).run(false, null);
+    }
+
+    @Test
     void rebuildIngestsConfiguredReferenceFeedsBetweenWosAndScopusBuilds() throws Exception {
         when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
         java.nio.file.Path doaj = java.nio.file.Files.createTempFile("doaj", ".csv");

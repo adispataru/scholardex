@@ -381,6 +381,27 @@ public class ScopusBigBangMigrationService {
         // phase so buildFactsFromImportEvents canonicalizes the full-feed forum registry, not Scopus JSON alone.
         ingestCuratedScopusFeedsIfConfigured();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
+        return deriveCanonicalAndProject(startedAt,
+                mergeImportResults("ingest", publicationImport, citationImport), facts);
+    }
+
+    /**
+     * H75 skip-smart: derive the canonical layer + projections from the already-ingested source/stage-2 facts,
+     * WITHOUT re-ingesting source files or re-running buildFactsFromImportEvents. This is {@link #runFull()}
+     * minus its ingest + fact-build prefix; the unified rebuild calls this when the source facts are already
+     * present and unchanged (the common "iterate on canon logic" case), turning a ~33 min from-scratch into a
+     * ~5 min re-derive. Every canonical write below is wipe-first (forum build, V2 bulkReplace, projection
+     * rebuildViews), so the only prerequisite is a canonical-only pre-wipe by the caller.
+     */
+    public ScopusBigBangMigrationResult runDeriveFromFacts() {
+        log.info("Scopus derive-only: skipping ingest + fact-build, re-deriving canonical from existing facts.");
+        ImportProcessingResult skipped = new ImportProcessingResult(0);
+        return deriveCanonicalAndProject(Instant.now(),
+                MigrationStepResult.executed("ingest-skipped", skipped), skipped);
+    }
+
+    private ScopusBigBangMigrationResult deriveCanonicalAndProject(
+            Instant startedAt, MigrationStepResult ingest, ImportProcessingResult facts) {
         // H66B M8 — forums first, identity-first: the registry is built from curated sources then WoS
         // create-or-match LAST inside buildScopusForums, before publication/citation canonicalization resolves
         // venues against it. (WoS journal_identity comes from the WoS fact phase, which ran before this.)
@@ -414,7 +435,7 @@ public class ScopusBigBangMigrationService {
                 scopusDataFile,
                 startedAt,
                 Instant.now(),
-                mergeImportResults("ingest", publicationImport, citationImport),
+                ingest,
                 MigrationStepResult.executed("build-facts", buildFactsCombined),
                 MigrationStepResult.executed("build-projections", projections),
                 new IndexStepResult(

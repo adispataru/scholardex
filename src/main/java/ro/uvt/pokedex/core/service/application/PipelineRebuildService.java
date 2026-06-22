@@ -58,6 +58,25 @@ public class PipelineRebuildService {
             "scholardex.identity_conflicts",
             "scholardex.publication_link_conflicts");
 
+    /**
+     * H75 skip-smart: the canonical (stage-3) collections only — the subset of {@link #MANAGED_DERIVED_COLLECTIONS}
+     * that a derive-only rebuild wipes. The source ledgers + stage-2 fact collections ({@code scopus.*}, {@code wos.*},
+     * {@code user_defined.*}) and the OpenAlex source facts are deliberately spared so the canonical layer can be
+     * re-derived from them without a re-ingest.
+     */
+    static final Set<String> CANONICAL_COLLECTIONS = Set.of(
+            "scholardex.publication_facts",
+            "scholardex.author_facts",
+            "scholardex.affiliation_facts",
+            "scholardex.citation_facts",
+            "scholardex.forum_facts",
+            "scholardex.authorship_facts",
+            "scholardex.author_affiliation_facts",
+            "scholardex.publication_author_affiliation_facts",
+            "scholardex.source_links",
+            "scholardex.identity_conflicts",
+            "scholardex.publication_link_conflicts");
+
     private final ScopusBigBangMigrationService scopusRebuild;
     private final WosBigBangMigrationService wosRebuild;
     private final OwnedCollectionRegistry ownedCollectionRegistry;
@@ -120,10 +139,25 @@ public class PipelineRebuildService {
      * (file → ledger → facts → canonical → projections). Gated on the owned-collection safety rule.
      */
     public PipelineRebuildResult rebuildAllDerivedFromSource() {
+        return rebuildAllDerivedFromSource(false);
+    }
+
+    /**
+     * Skip-smart full rebuild (H75). When {@code forceReingest} is false and the source/stage-2 facts are already
+     * present (the common "iterate on canon logic" case), this skips the expensive re-ingest (WoS run, OpenAlex
+     * bulk, Scopus ingest + fact-build) and re-derives the canonical layer + projections from the existing facts —
+     * a ~5 min re-derive instead of a ~33 min from-scratch. Pass {@code forceReingest=true} (or have no source
+     * facts) to run the full ingest + derive. Either way the rebuild is gated on the owned-collection safety rule.
+     */
+    public PipelineRebuildResult rebuildAllDerivedFromSource(boolean forceReingest) {
         ownedCollectionRegistry.assertAllWipeable(MANAGED_DERIVED_COLLECTIONS);
 
-        LOG.info("Pipeline rebuild starting: {} managed derived collections, all owned.",
-                MANAGED_DERIVED_COLLECTIONS.size());
+        if (!forceReingest && sourceFactsPresent()) {
+            return deriveOnlyRebuild();
+        }
+
+        LOG.info("Pipeline rebuild starting (FULL ingest): {} managed derived collections, all owned. forceReingest={}",
+                MANAGED_DERIVED_COLLECTIONS.size(), forceReingest);
 
         // Stage-4 (Postgres views) + fact-build checkpoints + the per-source Mongo wipes are handled by the
         // canonical-state resets. Order mirrors the proven admin chain (scopus reset then wos reset).
@@ -158,6 +192,43 @@ public class PipelineRebuildService {
         // fuzzy/over-split reconcile is deferred to a future V2 pass. Projections already ran inside runFull.
         LOG.info("Pipeline rebuild complete.");
         return new PipelineRebuildResult(wos, scopus);
+    }
+
+    /**
+     * Derive-only path: wipe ONLY the canonical (stage-3) collections and re-derive them + the projections from the
+     * surviving source/stage-2 facts. No source reset (that would wipe {@code scopus.import_events} + the stage-2
+     * facts — see {@code ScopusBigBangMigrationService.resetCanonicalState}), no WoS run, no OpenAlex bulk. The
+     * canonical writes downstream are all wipe-first, so this canonical-only pre-wipe is the only cleanup needed.
+     */
+    private PipelineRebuildResult deriveOnlyRebuild() {
+        LOG.info("Pipeline rebuild starting (DERIVE-ONLY): source facts present, skipping re-ingest. "
+                + "Wiping {} canonical collections, sparing source/stage-2 facts.", CANONICAL_COLLECTIONS.size());
+        long wiped = 0;
+        for (String collection : CANONICAL_COLLECTIONS) {
+            wiped += mongoTemplate.remove(new org.springframework.data.mongodb.core.query.Query(), collection)
+                    .getDeletedCount();
+        }
+        LOG.info("Pipeline rebuild (derive-only): canonical wipe removed {} docs across {} collections.",
+                wiped, CANONICAL_COLLECTIONS.size());
+        ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runDeriveFromFacts();
+        LOG.info("Pipeline rebuild complete (derive-only).");
+        return new PipelineRebuildResult(null, scopus);
+    }
+
+    /**
+     * True when the big source/stage-2 facts from a prior ingest are all present, so the canonical layer can be
+     * re-derived without re-parsing source files. Gates the derive-only fast path; a clean DB (or any missing
+     * source) forces the full ingest.
+     */
+    private boolean sourceFactsPresent() {
+        org.springframework.data.mongodb.core.query.Query all = new org.springframework.data.mongodb.core.query.Query();
+        long scopusPubs = mongoTemplate.count(all, "scopus.publication_facts");
+        long openAlexPubs = mongoTemplate.count(all, "openalex.publication_facts");
+        long wosIdentity = mongoTemplate.count(all, "wos.journal_identity");
+        boolean present = scopusPubs > 0 && openAlexPubs > 0 && wosIdentity > 0;
+        LOG.info("Source-facts presence gate: scopusPubs={} openAlexPubs={} wosJournalIdentity={} -> present={}",
+                scopusPubs, openAlexPubs, wosIdentity, present);
+        return present;
     }
 
     private void ingestReferenceFeedsIfConfigured() {
