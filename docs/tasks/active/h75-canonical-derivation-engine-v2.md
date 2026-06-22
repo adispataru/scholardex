@@ -93,8 +93,25 @@ The only safe way to rewrite battle-tested identity logic. Build it in Stage 0, 
 - **Stage 4 — cutover.** Flip the flag default to V2; keep V1 one release; then delete V1 + the per-record
   "bulk mode" scaffolding.
 
-## Decisions to confirm
+## Decisions settled
 - **Store stays Mongo** (single-node in-memory build is enough at this scale — no Spark/columnar).
 - **Build-alongside + differential validation** (not in-place replacement).
 - **Full-rebuild only** for V2 initially; incremental Tier-2 stays on V1 until later.
 - **Scope boundary excludes** WoS ingest + Postgres projections (V2 stops at the canonical Mongo layer).
+- **OpenAlex institutions become a source fact (2026-06-22).** Today the bulk importer derives the `saff_<ror>`
+  affiliation backbone *during ingest*, writing it straight into the wiped `scholardex.affiliation_facts`. V2 wipes
+  that collection and the `.gz` source isn't in Mongo. So: add `openalex.institution_facts` (importer writes raw
+  referenced institution records there — non-breaking, in *addition* to the current backbone during build-alongside),
+  and V2's affiliation build derives the backbone from it. The backbone becomes a real derivation; V2 stays
+  pure-from-Mongo. At cutover the importer's backbone-write is removed (V2 owns it).
+
+## Stage 1 breakdown (sub-sliced; start with the cleanest self-contained entity)
+
+Dependency order is forums → affiliations → pubs, but the skeleton is proven fastest on **affiliations** (no
+create-or-match graph, and it exercises the just-decided institution source fact + the bulk writer + the differential
+harness end-to-end). Then forums, then pubs.
+- **S1.0** `openalex.institution_facts` source fact (model + repo) + importer writes it (referenced-only, additive).
+- **S1.a** Affiliations: `CanonicalSourceLoader` (institution + Scopus-affiliation sources) → `CanonicalGraphBuilder.buildAffiliations` (ROR backbone + reuse `ScopusAffiliationRorMatcher` 3-tier + verified-only) → `BulkCanonicalWriter` (wipe → insertMany → ensureIndexes) behind `rebuildCanonicalV2`; differential-validate `affiliation_facts` + its source_links vs V1.
+- **S1.b** Forums: port `ForumMergeEngine` identity + create-or-match + dedup + primary-ISSN/cross-journal rules; differential-validate `forum_facts`.
+- **S1.c** Publications (minus `authorIds`): DOI-first id + Decision-0 blocklist + field precedence + forumId/affiliationIds resolution; differential-validate `publication_facts` (authorIds/pendingAuthorSourceIds excluded until Stage 2).
+Determinism: V2 processes source facts in V1's sort order (pub by `eid`+`sourceRecordId`, author by `authorId`).

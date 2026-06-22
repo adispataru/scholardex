@@ -55,6 +55,9 @@ public class OpenAlexBulkImportService {
 
     private final OpenAlexImportService openAlexImportService;
     private final ScholardexAffiliationFactRepository affiliationFactRepository;
+    // H75 S1.0: persist referenced institutions as a source fact so the V2 engine derives the ROR backbone from
+    // them (rather than the importer deriving it during ingest). Additive — V1's backbone write below is unchanged.
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexInstitutionFactRepository institutionFactRepository;
     private final ObjectMapper objectMapper;
 
     public record BulkImportResult(int worksImported, int citersImported,
@@ -167,6 +170,10 @@ public class OpenAlexBulkImportService {
         }
         int count = 0;
         List<ScholardexAffiliationFact> buffer = new ArrayList<>(BACKBONE_SAVE_BATCH);
+        // H75 S1.0: persist every referenced institution as a source fact (regardless of ROR — the V2 derivation
+        // decides, mirroring toBackboneFact's null-on-no-ROR), in addition to the backbone below.
+        List<ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact> instBuffer =
+                new ArrayList<>(BACKBONE_SAVE_BATCH);
         List<Path> gzFiles;
         try (Stream<Path> files = Files.list(institutionsDir)) {
             gzFiles = files.filter(p -> p.getFileName().toString().endsWith(".gz")).sorted().toList();
@@ -184,6 +191,11 @@ public class OpenAlexBulkImportService {
                     if (iid == null || !referenced.contains(iid)) {
                         continue;
                     }
+                    instBuffer.add(toInstitutionFact(rec, iid, batchId, correlationId));
+                    if (instBuffer.size() >= BACKBONE_SAVE_BATCH) {
+                        institutionFactRepository.saveAll(instBuffer);
+                        instBuffer.clear();
+                    }
                     ScholardexAffiliationFact fact = toBackboneFact(rec, iid, batchId, correlationId);
                     if (fact == null) {
                         continue;
@@ -197,6 +209,9 @@ public class OpenAlexBulkImportService {
                 }
             }
         }
+        if (!instBuffer.isEmpty()) {
+            institutionFactRepository.saveAll(instBuffer);
+        }
         if (!buffer.isEmpty()) {
             affiliationFactRepository.saveAll(buffer);
             count += buffer.size();
@@ -207,10 +222,43 @@ public class OpenAlexBulkImportService {
     }
 
     /**
+     * H75 S1.0 — map an OpenAlex institution snapshot record to the {@code openalex.institution_facts} source fact,
+     * storing the <b>raw</b> mapping inputs (stripped id/ROR, display name + aliases/acronyms, geo, country code) so
+     * the V2 affiliation builder re-derives the backbone with the same logic as {@link #toBackboneFact}.
+     */
+    public ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact toInstitutionFact(
+            OpenAlexInstitutionRecord rec, String strippedInstitutionId, String batchId, String correlationId) {
+        ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact fact =
+                new ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact();
+        fact.setId(strippedInstitutionId);
+        fact.setRor(strip(rec.getRor(), ROR_ID_PREFIX));
+        fact.setDisplayName(rec.getDisplay_name());
+        if (rec.getDisplay_name_alternatives() != null) {
+            fact.setDisplayNameAlternatives(new ArrayList<>(rec.getDisplay_name_alternatives()));
+        }
+        if (rec.getDisplay_name_acronyms() != null) {
+            fact.setDisplayNameAcronyms(new ArrayList<>(rec.getDisplay_name_acronyms()));
+        }
+        fact.setCountryCode(rec.getCountry_code());
+        OpenAlexInstitutionRecord.Geo geo = rec.getGeo();
+        fact.setGeoCity(geo == null ? null : geo.getCity());
+        fact.setGeoCountry(geo == null ? null : geo.getCountry());
+        Instant now = Instant.now();
+        fact.setCreatedAt(now);
+        fact.setUpdatedAt(now);
+        fact.setSource(SOURCE_OPENALEX);
+        fact.setSourceRecordId(strippedInstitutionId);
+        fact.setSourceBatchId(batchId);
+        fact.setSourceCorrelationId(correlationId);
+        fact.setBuilderVersion(BUILDER_VERSION);
+        return fact;
+    }
+
+    /**
      * Map an OpenAlex institution snapshot record to a backbone {@link ScholardexAffiliationFact}. ROR-keyed
      * canonical id ({@code saff_<hash(ror)>}); records without a ROR are skipped (ROR is the backbone key).
      */
-    ScholardexAffiliationFact toBackboneFact(OpenAlexInstitutionRecord rec, String strippedInstitutionId,
+    public ScholardexAffiliationFact toBackboneFact(OpenAlexInstitutionRecord rec, String strippedInstitutionId,
                                              String batchId, String correlationId) {
         String ror = strip(rec.getRor(), ROR_ID_PREFIX);
         if (ror == null || ror.isBlank()) {

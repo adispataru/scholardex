@@ -34,11 +34,14 @@ class OpenAlexBulkImportServiceTest {
     private OpenAlexImportService openAlexImportService;
     @Mock
     private ScholardexAffiliationFactRepository affiliationFactRepository;
+    @Mock
+    private ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexInstitutionFactRepository institutionFactRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private OpenAlexBulkImportService service() {
-        return new OpenAlexBulkImportService(openAlexImportService, affiliationFactRepository, objectMapper);
+        return new OpenAlexBulkImportService(openAlexImportService, affiliationFactRepository,
+                institutionFactRepository, objectMapper);
     }
 
     // ── backbone mapping ──────────────────────────────────────────────────────
@@ -82,6 +85,32 @@ class OpenAlexBulkImportServiceTest {
         assertThat(service().toBackboneFact(rec, "I999", "b", "c")).isNull();
     }
 
+    // ── H75 S1.0: institution source fact (raw inputs for the V2 backbone derivation) ─────────────────────────
+
+    @Test
+    void toInstitutionFactStoresRawMappingInputs() throws Exception {
+        var rec = objectMapper.readValue("""
+                {"id":"https://openalex.org/I123","ror":"https://ror.org/0583a0t97",
+                 "display_name":"West University of Timişoara",
+                 "display_name_alternatives":["Universitatea de Vest din Timișoara"],
+                 "display_name_acronyms":["UVT"],
+                 "country_code":"RO","geo":{"city":"Timișoara","country":"Romania","country_code":"RO"}}
+                """, ro.uvt.pokedex.core.service.openalex.dto.OpenAlexInstitutionRecord.class);
+
+        var fact = service().toInstitutionFact(rec, "I123", "batch", "corr");
+
+        assertThat(fact.getId()).isEqualTo("I123");
+        assertThat(fact.getRor()).isEqualTo("0583a0t97");
+        assertThat(fact.getDisplayName()).isEqualTo("West University of Timişoara");
+        assertThat(fact.getDisplayNameAlternatives()).containsExactly("Universitatea de Vest din Timișoara");
+        assertThat(fact.getDisplayNameAcronyms()).containsExactly("UVT");
+        assertThat(fact.getCountryCode()).isEqualTo("RO");
+        assertThat(fact.getGeoCity()).isEqualTo("Timișoara");
+        assertThat(fact.getGeoCountry()).isEqualTo("Romania");
+        assertThat(fact.getSource()).isEqualTo("OPENALEX");
+        assertThat(fact.getSourceRecordId()).isEqualTo("I123");
+    }
+
     // ── referenced-only filter over a gz snapshot ─────────────────────────────
 
     @Test
@@ -95,12 +124,20 @@ class OpenAlexBulkImportServiceTest {
 
         int count = service().importInstitutionBackbone(dir, Set.of("I1", "I3"), "batch", "corr");
 
-        // I1 kept; I2 filtered out (not referenced); I3 skipped (no ROR)
+        // Backbone: I1 kept; I2 filtered out (not referenced); I3 skipped (no ROR)
         assertThat(count).isEqualTo(1);
         ArgumentCaptor<List<ScholardexAffiliationFact>> cap = ArgumentCaptor.forClass(List.class);
         verify(affiliationFactRepository).saveAll(cap.capture());
         assertThat(cap.getValue()).hasSize(1);
         assertThat(cap.getValue().getFirst().getRorIds()).containsExactly("aaa");
+
+        // H75 S1.0: institution source facts written for ALL referenced ids (I1 + I3), incl. the no-ROR one; I2 filtered.
+        ArgumentCaptor<List<ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact>> instCap =
+                ArgumentCaptor.forClass(List.class);
+        verify(institutionFactRepository).saveAll(instCap.capture());
+        assertThat(instCap.getValue())
+                .extracting(ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexInstitutionFact::getId)
+                .containsExactlyInAnyOrder("I1", "I3");
     }
 
     @Test
