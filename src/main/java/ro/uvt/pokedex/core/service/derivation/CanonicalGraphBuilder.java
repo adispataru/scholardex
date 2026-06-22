@@ -227,6 +227,25 @@ public class CanonicalGraphBuilder {
                                     List<ScholardexPublicationAuthorAffiliationFact> pubAuthorAffiliationEdges) {
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CanonicalGraphBuilder.class);
+
+    /**
+     * H71 STRONG-tier author reconcile config (folds the deferred fuzzy/over-split dedup into the build). When
+     * {@code enabled}, candidate same-person merges (same surname + name-compatible + ≥1 shared affiliation +
+     * same-paper hard-block clear + adaptive co-author floor) are applied as extra union-find edges. {@code dryRun}
+     * computes + logs them WITHOUT applying (used to validate against the offline dry-run). Dials per the planning doc.
+     */
+    public record AuthorReconcileSettings(boolean enabled, boolean dryRun, int blockCap,
+                                          int commonBlockThreshold, int commonFloor, int megaAuthors) {
+        /** Off — preserves the pre-H71 build (the default for tests + the 3-arg overload). */
+        public static AuthorReconcileSettings disabled() {
+            return new AuthorReconcileSettings(false, false, 300, 40, 2, 20);
+        }
+        boolean active() {
+            return enabled || dryRun;
+        }
+    }
+
     /**
      * Build the canonical author graph (core cross-source identity; fuzzy/over-split reconcile deferred): seed a node
      * per Scopus AU-ID + per OpenAlex authorship (ORCID/OpenAlex-id keyed), union Scopus↔OpenAlex authors via the
@@ -237,6 +256,13 @@ public class CanonicalGraphBuilder {
     public AuthorBuildResult buildAuthors(List<ScopusAuthorFact> scopusAuthors,
                                           List<ScopusPublicationFact> scopusPubs,
                                           List<OpenAlexPublicationFact> openAlexPubs) {
+        return buildAuthors(scopusAuthors, scopusPubs, openAlexPubs, AuthorReconcileSettings.disabled());
+    }
+
+    public AuthorBuildResult buildAuthors(List<ScopusAuthorFact> scopusAuthors,
+                                          List<ScopusPublicationFact> scopusPubs,
+                                          List<OpenAlexPublicationFact> openAlexPubs,
+                                          AuthorReconcileSettings reconcile) {
         Map<String, AuthorNode> nodes = new LinkedHashMap<>();
         Map<String, String> auidToNode = new java.util.HashMap<>();
         Map<String, String> scopusNameByAuid = new java.util.HashMap<>();
@@ -319,6 +345,14 @@ public class CanonicalGraphBuilder {
                     union(parent, sNode, oNode);
                 }
             }
+        }
+
+        // H71 STRONG-tier reconcile: union same-person nodes the id keys + positional bridge missed (cross-source
+        // no-shared-DOI, OpenAlex-internal splits) via name + shared affiliation + co-author, with the same-paper
+        // hard block. Runs AFTER the positional bridge so it sees current components; BEFORE resolution so the
+        // union-find folds the merges. Dry-run logs candidates without applying.
+        if (reconcile.active()) {
+            applyAuthorReconcile(reconcile, nodes, parent, auidToNode, doiBlocklist, scopusPubs, openAlexPubs);
         }
 
         // Resolve components → canonical authors (OpenAlex-keyed id), + AUTHOR source-links + nodeId→canonicalId map.
@@ -505,6 +539,237 @@ public class CanonicalGraphBuilder {
                 node.displayName = name.trim();
             }
         }
+    }
+
+    /**
+     * H71: assemble per-(current-root) signals from the source pubs — affiliation (OpenAlex RORs), co-authors
+     * (from ≤mega-author pubs), and pub membership (same-paper hard block) — then union STRONG same-person candidates
+     * (same surname + name-compatible + ≥1 shared affiliation + hard-block clear + adaptive co-author floor). Operates
+     * on union-find ROOTS so it sees the merges the ORCID/OpenAlex keys + positional bridge already made.
+     */
+    private void applyAuthorReconcile(AuthorReconcileSettings cfg,
+                                      Map<String, AuthorNode> nodes,
+                                      Map<String, String> parent,
+                                      Map<String, String> auidToNode,
+                                      Set<String> doiBlocklist,
+                                      List<ScopusPublicationFact> scopusPubs,
+                                      List<OpenAlexPublicationFact> openAlexPubs) {
+        Map<String, Set<String>> pubRoots = new java.util.HashMap<>();
+        Map<String, Set<String>> rootAffs = new java.util.HashMap<>();
+        for (OpenAlexPublicationFact o : openAlexPubs) {
+            if (o.getAuthorships() == null) {
+                continue;
+            }
+            Set<String> roots = pubRoots.computeIfAbsent(
+                    buildPublicationId(fromOpenAlex(o), doiBlocklist), k -> new java.util.HashSet<>());
+            for (OpenAlexPublicationFact.AuthorRef ref : o.getAuthorships()) {
+                String nodeId = openAlexNodeId(ref.getOrcid(), ref.getOpenAlexAuthorId());
+                if (nodeId == null || !parent.containsKey(nodeId)) {
+                    continue;
+                }
+                String root = find(parent, nodeId);
+                roots.add(root);
+                if (ref.getInstitutionRors() != null) {
+                    for (String ror : ref.getInstitutionRors()) {
+                        if (!isBlank(ror)) {
+                            rootAffs.computeIfAbsent(root, k -> new java.util.HashSet<>())
+                                    .add(CanonicalizationSupport.buildRorBackboneAffiliationId(ror));
+                        }
+                    }
+                }
+            }
+        }
+        for (ScopusPublicationFact s : scopusPubs) {
+            if (s.getAuthors() == null) {
+                continue;
+            }
+            Set<String> roots = pubRoots.computeIfAbsent(
+                    buildPublicationId(fromScopus(s), doiBlocklist), k -> new java.util.HashSet<>());
+            for (String auid : s.getAuthors()) {
+                String nodeId = auidToNode.get(normalizeBlank(auid));
+                if (nodeId != null && parent.containsKey(nodeId)) {
+                    roots.add(find(parent, nodeId));
+                }
+            }
+        }
+        // Per-root pub set (hard block) + co-author set (positive signal, from ≤mega-author pubs only).
+        Map<String, Set<String>> rootPubs = new java.util.HashMap<>();
+        Map<String, Set<String>> rootCo = new java.util.HashMap<>();
+        for (Map.Entry<String, Set<String>> e : pubRoots.entrySet()) {
+            Set<String> roots = e.getValue();
+            for (String r : roots) {
+                rootPubs.computeIfAbsent(r, k -> new java.util.HashSet<>()).add(e.getKey());
+            }
+            if (roots.size() <= cfg.megaAuthors()) {
+                for (String r : roots) {
+                    Set<String> co = rootCo.computeIfAbsent(r, k -> new java.util.HashSet<>());
+                    for (String r2 : roots) {
+                        if (!r.equals(r2)) {
+                            co.add(r2);
+                        }
+                    }
+                }
+            }
+        }
+        // Block roots by surname (deterministic iteration), collect STRONG candidate pairs.
+        Map<String, List<String>> blocks = new java.util.TreeMap<>();
+        for (String root : new java.util.TreeSet<>(rootPubs.keySet())) {
+            AuthorNode n = nodes.get(root);
+            String sk = n == null ? null : surnameKey(n.displayName);
+            if (sk != null) {
+                blocks.computeIfAbsent(sk, k -> new ArrayList<>()).add(root);
+            }
+        }
+        Set<String> empty = java.util.Collections.emptySet();
+        List<String[]> pairs = new ArrayList<>();
+        int skippedBlocks = 0;
+        long skippedAuthors = 0;
+        List<String> samples = new ArrayList<>();
+        for (List<String> roots : blocks.values()) {
+            if (roots.size() > cfg.blockCap()) {
+                skippedBlocks++;
+                skippedAuthors += roots.size();
+                continue;
+            }
+            int floor = roots.size() > cfg.commonBlockThreshold() ? cfg.commonFloor() : 1;
+            for (int i = 0; i < roots.size(); i++) {
+                for (int j = i + 1; j < roots.size(); j++) {
+                    String ra = roots.get(i);
+                    String rb = roots.get(j);
+                    if (find(parent, ra).equals(find(parent, rb))) {
+                        continue; // already the same person (id keys / positional bridge)
+                    }
+                    if (!givenNameCompatible(nodes.get(ra).displayName, nodes.get(rb).displayName)) {
+                        continue;
+                    }
+                    if (intersects(rootPubs.getOrDefault(ra, empty), rootPubs.getOrDefault(rb, empty))) {
+                        continue; // same-paper hard block: distinct authors of one paper are different people
+                    }
+                    if (!intersects(rootAffs.getOrDefault(ra, empty), rootAffs.getOrDefault(rb, empty))) {
+                        continue; // require ≥1 shared affiliation
+                    }
+                    if (intersectionSize(rootCo.getOrDefault(ra, empty), rootCo.getOrDefault(rb, empty)) < floor) {
+                        continue; // adaptive co-author floor
+                    }
+                    pairs.add(new String[]{ra, rb});
+                    if (samples.size() < 20) {
+                        samples.add(nodes.get(ra).displayName + "  ==  " + nodes.get(rb).displayName);
+                    }
+                }
+            }
+        }
+        // Effective merges (authors absorbed) via a scratch union-find, so dry-run reports the same metric as live.
+        Map<String, String> scratch = new java.util.HashMap<>(parent);
+        int absorbed = 0;
+        for (String[] p : pairs) {
+            String r1 = find(scratch, p[0]);
+            String r2 = find(scratch, p[1]);
+            if (!r1.equals(r2)) {
+                scratch.put(r1, r2);
+                absorbed++;
+            }
+        }
+        if (cfg.enabled()) {
+            for (String[] p : pairs) {
+                union(parent, p[0], p[1]);
+            }
+        }
+        log.info("H71 author reconcile ({}): candidatePairs={} authorsAbsorbed={} skippedBlocks={} skippedAuthors={} "
+                        + "[blockCap={} commonThreshold={} commonFloor={} mega={}]",
+                cfg.enabled() ? "APPLIED" : "DRY-RUN", pairs.size(), absorbed, skippedBlocks, skippedAuthors,
+                cfg.blockCap(), cfg.commonBlockThreshold(), cfg.commonFloor(), cfg.megaAuthors());
+        for (String s : samples) {
+            log.info("  H71 candidate: {}", s);
+        }
+    }
+
+    /** Order/diacritic-insensitive surname key: text before a comma, else the last token; null if unparseable. */
+    public static String surnameKey(String displayName) {
+        String[] sg = surnameAndFirstGiven(displayName);
+        return sg == null ? null : sg[0];
+    }
+
+    /** True iff first given names are compatible (equal, or one is the leading initial of the other, or one absent). */
+    public static boolean givenNameCompatible(String a, String b) {
+        String[] sa = surnameAndFirstGiven(a);
+        String[] sb = surnameAndFirstGiven(b);
+        if (sa == null || sb == null) {
+            return false;
+        }
+        String fa = sa[1];
+        String fb = sb[1];
+        if (fa.isEmpty() || fb.isEmpty() || fa.equals(fb)) {
+            return true;
+        }
+        if (fa.length() == 1) {
+            return fb.startsWith(fa);
+        }
+        if (fb.length() == 1) {
+            return fa.startsWith(fb);
+        }
+        return false;
+    }
+
+    /** {surnameKey, firstGivenToken}; surname = pre-comma text else last token. Diacritics folded, lowercased. */
+    private static String[] surnameAndFirstGiven(String displayName) {
+        if (displayName == null) {
+            return null;
+        }
+        int comma = displayName.indexOf(',');
+        if (comma >= 0) {
+            List<String> sur = asciiTokens(displayName.substring(0, comma));
+            List<String> giv = asciiTokens(displayName.substring(comma + 1));
+            return sur.isEmpty() ? null : new String[]{String.join(" ", sur), giv.isEmpty() ? "" : giv.get(0)};
+        }
+        List<String> t = asciiTokens(displayName);
+        if (t.isEmpty()) {
+            return null;
+        }
+        return new String[]{t.get(t.size() - 1), t.size() > 1 ? t.get(0) : ""};
+    }
+
+    /** Lowercase, fold diacritics (Mureşan→muresan), keep a–z runs as tokens. */
+    private static List<String> asciiTokens(String s) {
+        String n = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z]+", " ");
+        List<String> out = new ArrayList<>();
+        for (String tok : n.split(" ")) {
+            if (!tok.isEmpty()) {
+                out.add(tok);
+            }
+        }
+        return out;
+    }
+
+    private static boolean intersects(Set<String> a, Set<String> b) {
+        if (a.isEmpty() || b.isEmpty()) {
+            return false;
+        }
+        Set<String> small = a.size() <= b.size() ? a : b;
+        Set<String> large = small == a ? b : a;
+        for (String x : small) {
+            if (large.contains(x)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int intersectionSize(Set<String> a, Set<String> b) {
+        if (a.isEmpty() || b.isEmpty()) {
+            return 0;
+        }
+        Set<String> small = a.size() <= b.size() ? a : b;
+        Set<String> large = small == a ? b : a;
+        int c = 0;
+        for (String x : small) {
+            if (large.contains(x)) {
+                c++;
+            }
+        }
+        return c;
     }
 
     private static String find(Map<String, String> parent, String i) {

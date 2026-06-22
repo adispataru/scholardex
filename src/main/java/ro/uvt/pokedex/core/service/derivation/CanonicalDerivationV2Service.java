@@ -62,6 +62,20 @@ public class CanonicalDerivationV2Service {
     private final ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService openAlexForumOnboardingService;
     private final MongoTemplate mongoTemplate;
 
+    // H71 cross-source author reconcile (STRONG tier). Default OFF; dry-run logs candidates without applying.
+    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.enabled:false}")
+    private boolean authorReconcileEnabled;
+    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.dry-run:false}")
+    private boolean authorReconcileDryRun;
+    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.block-cap:300}")
+    private int authorReconcileBlockCap;
+    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.common-block-threshold:40}")
+    private int authorReconcileCommonThreshold;
+    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.common-floor:2}")
+    private int authorReconcileCommonFloor;
+    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.mega-authors:20}")
+    private int authorReconcileMega;
+
     /**
      * The whole V2 canonical derivation (Stage 2 so far): affiliations → publications → authors, from source facts,
      * with bulk writes. Forums are assumed already built by the existing engine (an input); edges + citations follow.
@@ -143,8 +157,12 @@ public class CanonicalDerivationV2Service {
 
     private void writeAuthors(List<ScopusAuthorFact> scopusAuthors, List<ScopusPublicationFact> scopusPubs,
                               List<OpenAlexPublicationFact> openAlexPubs) {
+        CanonicalGraphBuilder.AuthorReconcileSettings reconcile =
+                new CanonicalGraphBuilder.AuthorReconcileSettings(authorReconcileEnabled, authorReconcileDryRun,
+                        authorReconcileBlockCap, authorReconcileCommonThreshold, authorReconcileCommonFloor,
+                        authorReconcileMega);
         CanonicalGraphBuilder.AuthorBuildResult result =
-                graphBuilder.buildAuthors(scopusAuthors, scopusPubs, openAlexPubs);
+                graphBuilder.buildAuthors(scopusAuthors, scopusPubs, openAlexPubs, reconcile);
 
         mongoTemplate.remove(new Query(), ScholardexAuthorFact.class);
         mongoTemplate.remove(
