@@ -66,20 +66,23 @@ public class CanonicalDerivationV2Service {
      */
     public void rebuildCanonicalV2() {
         long startedAt = System.currentTimeMillis();
-        log.info("V2 canonical derivation starting (affiliations -> publications -> authors)");
-        rebuildAffiliationsV2();
-        rebuildPublicationsV2();
-        rebuildAuthorsV2();
-        rebuildCitationsV2();
+        log.info("V2 canonical derivation starting (affiliations -> publications -> authors -> citations)");
+        // Load the big source-fact lists ONCE and reuse across pubs/authors/citations (avoids 3x findAll).
+        List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
+        List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
+        writeAffiliations(institutionFactRepository.findAll(), scopusAffiliationFactRepository.findAll());
+        writePublications(scopusPubs, openAlexPubs);
+        writeAuthors(scopusAuthorFactRepository.findAll(), scopusPubs, openAlexPubs);
+        writeCitations(scopusPubs, openAlexPubs, scopusCitationFactRepository.findAll());
         log.info("V2 canonical derivation complete in {} ms", System.currentTimeMillis() - startedAt);
     }
 
     /** Derive {@code scholardex.affiliation_facts} + their AFFILIATION source-links from source facts, V2-style. */
     public void rebuildAffiliationsV2() {
-        // Load
-        List<OpenAlexInstitutionFact> institutions = institutionFactRepository.findAll();
-        List<ScopusAffiliationFact> scopusAffiliations = scopusAffiliationFactRepository.findAll();
+        writeAffiliations(institutionFactRepository.findAll(), scopusAffiliationFactRepository.findAll());
+    }
 
+    private void writeAffiliations(List<OpenAlexInstitutionFact> institutions, List<ScopusAffiliationFact> scopusAffiliations) {
         // Build (pure, in-memory)
         CanonicalGraphBuilder.AffiliationBuildResult result =
                 graphBuilder.buildAffiliations(institutions, scopusAffiliations);
@@ -104,9 +107,10 @@ public class CanonicalDerivationV2Service {
      * forumId/affiliationIds/authorIds are filled by later derivation steps (forums already built; authors next).
      */
     public void rebuildPublicationsV2() {
-        List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
-        List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
+        writePublications(scopusPublicationFactRepository.findAll(), openAlexPublicationFactRepository.findAll());
+    }
 
+    private void writePublications(List<ScopusPublicationFact> scopusPubs, List<OpenAlexPublicationFact> openAlexPubs) {
         CanonicalGraphBuilder.PublicationBuildResult result =
                 graphBuilder.buildPublications(scopusPubs, openAlexPubs, loadPubResolvers());
 
@@ -128,10 +132,12 @@ public class CanonicalDerivationV2Service {
      * the AUTHOR source-links, and back-fill {@code pub.authorIds[]} onto the already-written publication facts.
      */
     public void rebuildAuthorsV2() {
-        List<ScopusAuthorFact> scopusAuthors = scopusAuthorFactRepository.findAll();
-        List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
-        List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
+        writeAuthors(scopusAuthorFactRepository.findAll(),
+                scopusPublicationFactRepository.findAll(), openAlexPublicationFactRepository.findAll());
+    }
 
+    private void writeAuthors(List<ScopusAuthorFact> scopusAuthors, List<ScopusPublicationFact> scopusPubs,
+                              List<OpenAlexPublicationFact> openAlexPubs) {
         CanonicalGraphBuilder.AuthorBuildResult result =
                 graphBuilder.buildAuthors(scopusAuthors, scopusPubs, openAlexPubs);
 
@@ -187,10 +193,12 @@ public class CanonicalDerivationV2Service {
 
     /** Derive {@code scholardex.citation_facts}: internal pub→pub edges from OpenAlex referencedWorks + Scopus citations. */
     public void rebuildCitationsV2() {
-        List<ScopusPublicationFact> scopusPubs = scopusPublicationFactRepository.findAll();
-        List<OpenAlexPublicationFact> openAlexPubs = openAlexPublicationFactRepository.findAll();
-        List<ScopusCitationFact> scopusCitations = scopusCitationFactRepository.findAll();
+        writeCitations(scopusPublicationFactRepository.findAll(), openAlexPublicationFactRepository.findAll(),
+                scopusCitationFactRepository.findAll());
+    }
 
+    private void writeCitations(List<ScopusPublicationFact> scopusPubs, List<OpenAlexPublicationFact> openAlexPubs,
+                                List<ScopusCitationFact> scopusCitations) {
         List<ScholardexCitationFact> edges = graphBuilder.buildCitations(scopusPubs, openAlexPubs, scopusCitations);
         bulkReplace(edges, ScholardexCitationFact.class);
         log.info("V2 citation derivation: openAlexPubs={} scopusCitations={} -> citationEdges={}",
