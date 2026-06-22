@@ -52,11 +52,27 @@ Done history moved to `TASKS-done.md`.
   optional `correspondingKeys` set) — last per-record hot path closed; live timing TBD next bulk run. Follow-up:
   malformed-DOI normalize cleanup. **Next: slice 2** (Scopus afids resolve into the backbone).
 
-- [ ] `H74` Pipeline reorder (forums → institutions+affiliations → pubs+authors). Structural change to the
-  reconcile/rebuild chain ordering so canonicalization runs forums first, then institutions+affiliations (on the
-  H73 ROR backbone), then publications+authors against the clean affiliation graph. Carved out of **H73** to isolate
-  the chain-ordering risk; do after H73's additive import/ROR/DNA slices land and validate. Touches
-  `ForumReconcileService` + the `rebuildAllDerived` step ordering. Planning doc TBD.
+- [ ] `H75` Canonical derivation engine V2 (batch ETL). Rewrite the canonical-layer derivation as a **pure
+  in-memory batch transform with bulk loads** to fix a ~90-min full rebuild of only ~5M docs (~900 docs/sec,
+  50–200× under hardware). Root cause: the canon stages are **per-record OLTP** — N+1 reads + one-record-at-a-time
+  writes (e.g. OpenAlex canon does ~5–6 Mongo round trips per pub × 117k ≈ ~600k synchronous ops ≈ ~30 min for that
+  stage) + re-ingestion every run. New shape: **Load** (one scan per source collection into memory) → **Build**
+  (zero DB I/O: forums → affiliations → pubs → authors-via-union-find-with-the-reconcile-rules → edges) → **Write**
+  (wipe + bulk `insertMany`, index after load). Target **<10 min**, linear scaling. Decided (2026-06-22):
+  **clean-room rewrite, built alongside V1 behind a flag, every stage gated on a differential check vs V1** (never
+  rip out V1 until provably equal modulo the intended S2.2 inversion deltas). Scope IN: `scholardex.*` facts +
+  edges + source-links + the author reconcile folded into the build. Scope OUT (unchanged): source-fact ingestion,
+  Postgres projections, the Tier-2 incremental path. **Absorbs `H74`** (forums→affiliations→pubs→authors becomes the
+  in-memory build order) and supersedes the per-record "bulk mode" patches from `H73` S3/S3.5. Stages: 0 design +
+  differential harness + V1 baseline profile; 1 skeleton (loader+builder+bulk-writer, forums/affiliations/pubs);
+  2 authors+edges union-find (the hard gate); 3 citations + projections + real-corpus timing; 4 cutover + delete V1.
+  Planning doc at `docs/tasks/active/h75-canonical-derivation-engine-v2.md`.
+
+- [ ] `H74` Pipeline reorder (forums → institutions+affiliations → pubs+authors). **Likely absorbed by `H75`** (the
+  V2 engine establishes this as its in-memory build order). Structural change to the reconcile/rebuild chain
+  ordering so canonicalization runs forums first, then institutions+affiliations (on the H73 ROR backbone), then
+  publications+authors against the clean affiliation graph. Carved out of **H73** to isolate the chain-ordering
+  risk. Touches `ForumReconcileService` + the `rebuildAllDerived` step ordering. Planning doc TBD.
 
 - [ ] `H70` Researcher onboarding wizard (+ de-tangle the publication-claim tool). Replace the confusing
   all-controls-at-once onboarding in the workspace **Profile & Sync** tab with a **resume-aware stepped modal**
