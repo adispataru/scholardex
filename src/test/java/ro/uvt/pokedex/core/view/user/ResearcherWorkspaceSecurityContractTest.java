@@ -96,7 +96,8 @@ class ResearcherWorkspaceSecurityContractTest {
         when(userPublicationFacade.buildUserPublicationsView("u@uvt.ro"))
                 .thenReturn(Optional.of(new UserPublicationsViewModel(
                         List.of(), 0, Map.of(), Map.of(), Map.of(), Map.of(),
-                        0, 0, 0, 0, null, List.of()
+                        0, 0, 0, 0, null, List.of(),
+                        new ro.uvt.pokedex.core.service.application.HIndexCalculator.HIndexBreakdown(0, 0, 0, 0)
                 )));
         when(userActivityInstanceFacade.buildActivityInstancesView("u@uvt.ro"))
                 .thenReturn(new UserActivityInstancesViewModel(

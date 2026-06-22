@@ -76,6 +76,7 @@ public class UserViewController {
 
         model.addAttribute("publications", viewModel.publications());
         model.addAttribute("hIndex", viewModel.hIndex());
+        model.addAttribute("hIndices", viewModel.hIndices()); // H67: source-attributed h breakdown
         model.addAttribute("authorMap", viewModel.authorMap());
         model.addAttribute("forumMap", viewModel.forumMap());
         model.addAttribute("numCitations", viewModel.numCitations());
@@ -181,31 +182,6 @@ public class UserViewController {
         return "redirect:/user/evaluation?report=" + id;
     }
 
-    private int computeHIndex(List<ScholardexPublicationView> publications) {
-        int n = publications.size();
-        int[] citationCounts = new int[n + 1];
-
-        // Count citations for each publication
-        for (ScholardexPublicationView pub : publications) {
-            int citedByCount = pub.getCitedbyCount();
-            if (citedByCount > n) {
-                citationCounts[n]++;
-            } else {
-                citationCounts[citedByCount]++;
-            }
-        }
-
-        // Compute the h-index
-        int totalPapers = 0;
-        for (int i = n; i >= 0; i--) {
-            totalPapers += citationCounts[i];
-            if (totalPapers >= i) {
-                return i;
-            }
-        }
-
-        return 0;
-    }
     // File: src/main/java/ro/uvt/pokedex/core/view/UserViewController.java
     @GetMapping("/exports/cnfis")
     @ResponseBody

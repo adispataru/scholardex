@@ -81,7 +81,17 @@
                         <div class="app-summary-card app-summary-card--warning">
                             <p class="app-summary-card__label">H-Index</p>
                             <p class="app-summary-card__value" th:text="${hIndex}">0</p>
-                            <p class="app-summary-card__meta">Current h-index summary for the active researcher context.</p>
+                            <p class="app-summary-card__meta">Scholardex h-index (all recorded citations) for the active researcher context.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">Scopus h</p>
+                            <p class="app-summary-card__value" th:text="${hIndices != null ? hIndices.scopusVenue() : 0}">0</p>
+                            <p class="app-summary-card__meta">Indicative — citations from Scopus-indexed venues only; may differ from the official Scopus h-index.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">WoS h</p>
+                            <p class="app-summary-card__value" th:text="${hIndices != null ? hIndices.wosVenue() : 0}">0</p>
+                            <p class="app-summary-card__meta">Indicative — citations from WoS-indexed venues only (conferences pending CPCI); may differ from the official WoS h-index.</p>
                         </div>
                     </div>
 

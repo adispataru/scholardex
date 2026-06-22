@@ -20,6 +20,9 @@ public record UserPublicationsViewModel(
         int recommendedPendingCount,
         int numCitations,
         ScholardexAuthorView profileAuthor,
-        List<ScholardexAffiliationView> affiliations
+        List<ScholardexAffiliationView> affiliations,
+        // H67: source-attributed h-index breakdown (scholardex/graphTotal/scopusVenue/wosVenue). hIndex above stays the
+        // Scholardex (citedByCount) value for back-compat; scopusVenue/wosVenue are the new indicative numbers.
+        ro.uvt.pokedex.core.service.application.HIndexCalculator.HIndexBreakdown hIndices
 ) {
 }

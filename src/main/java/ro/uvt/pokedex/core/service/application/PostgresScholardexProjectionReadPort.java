@@ -281,6 +281,10 @@ public class PostgresScholardexProjectionReadPort {
         publication.setBookId(rs.getString("book_id"));
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         publication.setCitedbyCount(readIntOrDefault(rs, "cited_by_count"));
+        // H67: source-attributed incoming-citation counts (Scopus-venue / WoS-venue / graph total).
+        publication.setGraphCitationCount(readIntOrDefault(rs, "graph_citation_count"));
+        publication.setScopusCitationCount(readIntOrDefault(rs, "scopus_citation_count"));
+        publication.setWosCitationCount(readIntOrDefault(rs, "wos_citation_count"));
         publication.setBuildVersion(rs.getString("build_version"));
         publication.setBuildAt(rs.getTimestamp("build_at") == null ? null : rs.getTimestamp("build_at").toInstant());
         publication.setUpdatedAt(rs.getTimestamp("updated_at") == null ? null : rs.getTimestamp("updated_at").toInstant());

@@ -112,7 +112,7 @@ public class UserPublicationFacade {
                 baseVm.publications(), baseVm.hIndex(), baseVm.authorMap(), baseVm.forumMap(), baseVm.authorshipReviewStateByPublicationId(),
                 baseVm.suspiciousAuthorshipByPublicationId(), baseVm.pendingReviewCount(), baseVm.suspiciousPendingCount(),
                 baseVm.recommendedPendingCount(),
-                baseVm.numCitations(), theAuthor, affiliations
+                baseVm.numCitations(), theAuthor, affiliations, baseVm.hIndices()
         ));
     }
 
@@ -196,30 +196,6 @@ public class UserPublicationFacade {
         }
     }
 
-    private int computeHIndex(List<ScholardexPublicationView> publications) {
-        int n = publications.size();
-        int[] citationCounts = new int[n + 1];
-
-        for (ScholardexPublicationView pub : publications) {
-            int citedByCount = pub.getCitedbyCount();
-            if (citedByCount > n) {
-                citationCounts[n]++;
-            } else {
-                citationCounts[citedByCount]++;
-            }
-        }
-
-        int totalPapers = 0;
-        for (int i = n; i >= 0; i--) {
-            totalPapers += citationCounts[i];
-            if (totalPapers >= i) {
-                return i;
-            }
-        }
-
-        return 0;
-    }
-
     private List<ScholardexPublicationView> dedupeAndSortPublications(List<ScholardexPublicationView> publications) {
         Map<String, ScholardexPublicationView> dedupedPublicationsById = new LinkedHashMap<>();
         for (ScholardexPublicationView publication : publications) {
@@ -234,7 +210,8 @@ public class UserPublicationFacade {
     }
 
     private UserPublicationsViewModel buildPublicationsViewModel(List<ScholardexPublicationView> publications) {
-        int hIndex = computeHIndex(publications);
+        HIndexCalculator.HIndexBreakdown hIndices = HIndexCalculator.breakdown(publications);
+        int hIndex = hIndices.scholardex();
 
         Set<String> authorKeys = new HashSet<>();
         Set<String> forumKeys = new HashSet<>();
@@ -266,7 +243,8 @@ public class UserPublicationFacade {
                 0,
                 numCitations.get(),
                 null,
-                List.of()
+                List.of(),
+                hIndices
         );
     }
 
@@ -309,7 +287,8 @@ public class UserPublicationFacade {
                 recommendedPendingCount,
                 base.numCitations(),
                 base.profileAuthor(),
-                base.affiliations()
+                base.affiliations(),
+                base.hIndices()
         );
     }
 

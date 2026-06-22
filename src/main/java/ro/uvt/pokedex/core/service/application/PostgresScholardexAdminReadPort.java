@@ -313,6 +313,13 @@ public class PostgresScholardexAdminReadPort {
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         Integer citedByCount = rs.getObject("cited_by_count", Integer.class);
         publication.setCitedbyCount(citedByCount == null ? 0 : citedByCount);
+        // H67: source-attributed incoming-citation counts.
+        Integer graphCit = rs.getObject("graph_citation_count", Integer.class);
+        Integer scopusCit = rs.getObject("scopus_citation_count", Integer.class);
+        Integer wosCit = rs.getObject("wos_citation_count", Integer.class);
+        publication.setGraphCitationCount(graphCit == null ? 0 : graphCit);
+        publication.setScopusCitationCount(scopusCit == null ? 0 : scopusCit);
+        publication.setWosCitationCount(wosCit == null ? 0 : wosCit);
         return publication;
     }
 

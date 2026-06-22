@@ -128,7 +128,8 @@ class ResearcherWorkspaceControllerContractTest {
                         0,
                         0,
                         null,
-                        List.of()
+                        List.of(),
+                        new ro.uvt.pokedex.core.service.application.HIndexCalculator.HIndexBreakdown(0, 0, 0, 0)
                 )));
 
         mockMvc.perform(get("/user/workspace/publications").with(authenticatedUser("u@uvt.ro")))

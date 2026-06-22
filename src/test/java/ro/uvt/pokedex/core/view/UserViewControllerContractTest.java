@@ -270,7 +270,8 @@ class UserViewControllerContractTest {
                         0,
                         8,
                         null,
-                        List.of()
+                        List.of(),
+                        new ro.uvt.pokedex.core.service.application.HIndexCalculator.HIndexBreakdown(0, 0, 0, 0)
                 )));
 
         mockMvc.perform(get("/user/authors/view/{id}", "a1").with(authenticatedUser("u@uvt.ro")))
@@ -319,7 +320,8 @@ class UserViewControllerContractTest {
                         0,
                         8,
                         author,
-                        List.of()
+                        List.of(),
+                        new ro.uvt.pokedex.core.service.application.HIndexCalculator.HIndexBreakdown(0, 0, 0, 0)
                 )));
 
         String html = mockMvc.perform(get("/user/authors/view/{id}", "sauth_1").with(authenticatedUser("u@uvt.ro")))

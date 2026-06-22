@@ -984,7 +984,8 @@ public class ResearcherWorkspaceController {
 
     private UserPublicationsViewModel emptyPublicationsViewModel() {
         return new UserPublicationsViewModel(
-                List.of(), 0, Map.of(), Map.of(), Map.of(), Map.of(), 0, 0, 0, 0, null, List.of());
+                List.of(), 0, Map.of(), Map.of(), Map.of(), Map.of(), 0, 0, 0, 0, null, List.of(),
+                new ro.uvt.pokedex.core.service.application.HIndexCalculator.HIndexBreakdown(0, 0, 0, 0));
     }
 
     record WorkspacePreferencesRequest(List<String> cardOrder) {}
