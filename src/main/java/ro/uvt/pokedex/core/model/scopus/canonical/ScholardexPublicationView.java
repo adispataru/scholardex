@@ -46,6 +46,10 @@ public class ScholardexPublicationView {
     private String bookId;
     private Set<String> citingPublicationIds = new LinkedHashSet<>();
     private int citedByCount;
+    // H67: incoming citations split by the indexing of the CITING paper's forum (for source-attributed h-index).
+    private int graphCitationCount;   // # incoming citations in our internal graph (= citingPublicationIds.size())
+    private int scopusCitationCount;  // … whose citing forum is Scopus-indexed
+    private int wosCitationCount;     // … whose citing forum is WoS-indexed
     private String wosId;
     private String googleScholarId;
 
@@ -100,6 +104,30 @@ public class ScholardexPublicationView {
 
     public void setCitedbyCount(int citedByCount) {
         this.citedByCount = citedByCount;
+    }
+
+    public int getGraphCitationCount() {
+        return graphCitationCount;
+    }
+
+    public void setGraphCitationCount(int graphCitationCount) {
+        this.graphCitationCount = graphCitationCount;
+    }
+
+    public int getScopusCitationCount() {
+        return scopusCitationCount;
+    }
+
+    public void setScopusCitationCount(int scopusCitationCount) {
+        this.scopusCitationCount = scopusCitationCount;
+    }
+
+    public int getWosCitationCount() {
+        return wosCitationCount;
+    }
+
+    public void setWosCitationCount(int wosCitationCount) {
+        this.wosCitationCount = wosCitationCount;
     }
 
     public Set<String> getCitedBy() {

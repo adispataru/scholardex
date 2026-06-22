@@ -175,6 +175,9 @@ public class ScholardexProjectionBuilderService {
             for (ScholardexPublicationFact fact : publicationFacts) {
                 publicationViews.add(toPublicationView(fact, citingByCited, buildVersion, buildAt));
             }
+            // H67: split each pub's incoming citations by the indexing of the CITING paper's forum (Scopus / WoS),
+            // for source-attributed h-index. Done as a post-pass so toPublicationView stays untouched.
+            applyCitationSourceSplit(publicationViews);
             markImported(result, publicationViews.size());
             long publicationMs = nanosToMillis(System.nanoTime() - publicationStartedAtNanos);
 
@@ -448,6 +451,41 @@ public class ScholardexProjectionBuilderService {
         view.setWosLineage(fact.getWosId() == null ? null : fact.getSource());
         view.setScholarLineage(fact.getGoogleScholarId() == null ? null : fact.getSource());
         return view;
+    }
+
+    /**
+     * H67: for each publication, classify its incoming citations by whether the CITING paper's forum is Scopus- /
+     * WoS-indexed, and store the per-source counts on the view. The full-build views carry every pub's forumId, so the
+     * pubId→forumId lookup is complete here. A citing paper in a non-indexed / unresolved venue contributes only to
+     * the graph total (this is the documented ~18% undercount + the WoS conference-index gap; see the H67 plan).
+     */
+    private void applyCitationSourceSplit(List<ScholardexPublicationView> views) {
+        Map<String, String> pubForumId = new java.util.HashMap<>(views.size());
+        for (ScholardexPublicationView v : views) {
+            pubForumId.put(v.getId(), v.getForum());
+        }
+        Map<String, int[]> forumIndexing = new java.util.HashMap<>();
+        for (ScholardexForumFact f : canonicalForumFactRepository.findAll()) {
+            int scopus = f.getScopusForumIds() != null && !f.getScopusForumIds().isEmpty() ? 1 : 0;
+            int wos = f.getWosForumIds() != null && !f.getWosForumIds().isEmpty() ? 1 : 0;
+            forumIndexing.put(f.getId(), new int[]{scopus, wos});
+        }
+        for (ScholardexPublicationView v : views) {
+            int graph = 0;
+            int scopus = 0;
+            int wos = 0;
+            for (String citingId : v.getCitedBy()) {
+                graph++;
+                int[] flags = forumIndexing.get(pubForumId.get(citingId));
+                if (flags != null) {
+                    scopus += flags[0];
+                    wos += flags[1];
+                }
+            }
+            v.setGraphCitationCount(graph);
+            v.setScopusCitationCount(scopus);
+            v.setWosCitationCount(wos);
+        }
     }
 
     private Map<String, List<String>> buildCitingMap() {
@@ -763,8 +801,9 @@ public class ScholardexProjectionBuilderService {
                     approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count,
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
                     scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
-                    pii, pubmed_id, auth_keywords, book_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    pii, pubmed_id, auth_keywords, book_id,
+                    graph_citation_count, scopus_citation_count, wos_citation_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writePublicationRows(rows, sql);
     }
@@ -779,8 +818,9 @@ public class ScholardexProjectionBuilderService {
                     approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count,
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
                     scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
-                    pii, pubmed_id, auth_keywords, book_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    pii, pubmed_id, auth_keywords, book_id,
+                    graph_citation_count, scopus_citation_count, wos_citation_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     doi = EXCLUDED.doi,
                     doi_normalized = EXCLUDED.doi_normalized,
@@ -824,7 +864,10 @@ public class ScholardexProjectionBuilderService {
                     pii = EXCLUDED.pii,
                     pubmed_id = EXCLUDED.pubmed_id,
                     auth_keywords = EXCLUDED.auth_keywords,
-                    book_id = EXCLUDED.book_id
+                    book_id = EXCLUDED.book_id,
+                    graph_citation_count = EXCLUDED.graph_citation_count,
+                    scopus_citation_count = EXCLUDED.scopus_citation_count,
+                    wos_citation_count = EXCLUDED.wos_citation_count
                 """;
         writePublicationRows(rows, sql);
     }
@@ -878,6 +921,9 @@ public class ScholardexProjectionBuilderService {
                 ps.setString(42, row.getPubmedId());
                 ps.setArray(43, textArray(ps.getConnection(), row.getAuthKeywords()));
                 ps.setString(44, row.getBookId());
+                ps.setInt(45, row.getGraphCitationCount());
+                ps.setInt(46, row.getScopusCitationCount());
+                ps.setInt(47, row.getWosCitationCount());
             }
 
             @Override
