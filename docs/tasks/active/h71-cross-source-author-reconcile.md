@@ -68,11 +68,21 @@ auto-merged — left for a future review queue.
   — matches the offline ~1,737 (slightly higher: Java folds diacritics properly, grouping `Mureşan` variants the
   ascii-only script split). Samples textbook-correct (initial↔full, middle-name, hyphen, diacritic, surname-only); no
   visible false merges. 79 common-name blocks / 76,686 authors deferred.
-- **S2 — apply + invariants.** Apply the candidate unions in `buildAuthors` (after the positional bridge, before
-  component resolution — the existing union-find folds members automatically). Add the same-paper + no-runaway
-  invariant assertions. Dials (`block-cap`, `common-block-threshold`, `common-floor`) as constants/config.
-- **S3 — live validation + tune.** Derive-only rebuild; confirm author count drops ≈1.7k, Vizman collapses, no
-  invariant violation, no runaway; tune the dials if a spot-check misfires; record results here.
+- **S2 — apply + invariants + cannot-link guard. DONE (commit `aac0e89`).** Applied the unions in `buildAuthors`; edges
+  re-point for free (V2 builds them post-merge). **Live with fail-fast first surfaced the transitivity trap**: 10
+  same-paper violations — most were the *same person duplicated on one paper* (big-collaboration physics papers
+  OpenAlex double-lists), but one was a genuine false-merge (`Carmen Tatu`/`Călin Tatu` chained by an ambiguous
+  `C. Tatu`). Per the chosen path, replaced fail-fast with a **cannot-link-aware union**: build the same-paper conflict
+  set among candidate roots and skip any union that would connect a conflicting pair (the post-merge invariant + a
+  runaway bound stay as safety nets). **Live (2026-06-22, applied):** `authorsAbsorbed=1909 conflictsAvoided=13
+  maxComponent=7 samePaperViolations=0`; author count 371,196 → 369,287. Spot-checks: `Daniel Vizman` collapsed
+  (6 OpenAlex ids folded) while `Cornelia Vizman` stayed separate; `Călin Tatu`/`C. Tatu` stayed separate; 0 orphan
+  authorship edges; Marc Frîncu intact. 8 unit tests incl. the transitive-chain-broken case + determinism. Default
+  flipped ON (`core.canon.author-reconcile.enabled:true`).
+- **S3 — tune / refine (optional, later).** Possible refinements: allow same-paper merge when names are *identical*
+  (recover the duplicated-authorship cases the guard conservatively splits); the ambiguous-initial guard (don't bridge
+  `C. Tatu` to a full given when >1 compatible full given exists in the block); evaluate the 79 skipped common-name
+  blocks with finer (surname+initial) blocking. Not needed for correctness — current behavior is precision-safe.
 
 ## Out of scope (v1)
 

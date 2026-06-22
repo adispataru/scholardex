@@ -64,6 +64,33 @@ class AuthorReconcileV2Test {
     }
 
     @Test
+    void transitiveSamePaperChainIsBrokenNotMerged() {
+        // P1 has TWO distinct "John Smith" (A1, A3) co-authoring with Zed (AZ) -> A1,A3 are different people (hard
+        // block). A2 ("John Smith") shares affiliation R1 + co-author AZ with both but co-appears with neither, so
+        // A1–A2 and A2–A3 are both candidates — naively chaining A1 and A3 (same paper) into one component. The
+        // cannot-link guard must apply ONE merge and skip the union that would connect A1 and A3.
+        OpenAlexPublicationFact p1 = oaPub("W1", "10.1/p1",
+                ref("John Smith", "A1", "R1"), ref("John Smith", "A3", "R1"), ref("Zed Ziegler", "AZ", "R1"));
+        OpenAlexPublicationFact p2 = oaPub("W2", "10.1/p2",
+                ref("John Smith", "A2", "R1"), ref("Zed Ziegler", "AZ", "R1"));
+
+        // No throw; one Smith pair merges, the conflicting third stays separate -> 4 nodes (A1,A2,A3,AZ) -> 3 authors.
+        List<?> authors = builder.buildAuthors(List.of(), List.of(), List.of(p1, p2), ON).authors();
+        assertThat(authors).hasSize(3);
+    }
+
+    @Test
+    void deterministicAcrossRuns() {
+        OpenAlexPublicationFact p1 = oaPub("W1", "10.1/p1", ref("Daniel Vizman", "A1", "R1"), ref("Alice Smith", "AX", "R1"));
+        OpenAlexPublicationFact p2 = oaPub("W2", "10.1/p2", ref("D. Vizman", "A2", "R1"), ref("Alice Smith", "AX", "R1"));
+        List<String> ids1 = builder.buildAuthors(List.of(), List.of(), List.of(p1, p2), ON).authors()
+                .stream().map(a -> a.getId()).sorted().toList();
+        List<String> ids2 = builder.buildAuthors(List.of(), List.of(), List.of(p1, p2), ON).authors()
+                .stream().map(a -> a.getId()).sorted().toList();
+        assertThat(ids1).isEqualTo(ids2);
+    }
+
+    @Test
     void surnameAndGivenHelpers() {
         assertThat(CanonicalGraphBuilder.surnameKey("Johnson, James E.")).isEqualTo("johnson");
         assertThat(CanonicalGraphBuilder.surnameKey("Daniel Vizman")).isEqualTo("vizman");

@@ -658,29 +658,130 @@ public class CanonicalGraphBuilder {
                 }
             }
         }
-        // Effective merges (authors absorbed) via a scratch union-find, so dry-run reports the same metric as live.
-        Map<String, String> scratch = new java.util.HashMap<>(parent);
-        int absorbed = 0;
+        // Cannot-link guard: the pairwise same-paper filter is NOT transitivity-safe (A–B and B–C can chain A and C,
+        // who may co-author — e.g. an ambiguous "C. Tatu" bridging Carmen and Călin). Build the cannot-link set
+        // (distinct candidate roots co-occurring on a pub) and skip any union that would put a cannot-linked pair in
+        // one component. Guarantees the same-paper invariant; conservatively leaves source-duplicated authorships split.
+        Set<String> involved = new java.util.HashSet<>();
         for (String[] p : pairs) {
-            String r1 = find(scratch, p[0]);
-            String r2 = find(scratch, p[1]);
-            if (!r1.equals(r2)) {
-                scratch.put(r1, r2);
-                absorbed++;
+            involved.add(p[0]);
+            involved.add(p[1]);
+        }
+        Map<String, Set<String>> cannotLink = new java.util.HashMap<>();
+        for (Set<String> roots : pubRoots.values()) {
+            List<String> inv = new ArrayList<>();
+            for (String r : roots) {
+                if (involved.contains(r)) {
+                    inv.add(r);
+                }
+            }
+            for (int i = 0; i < inv.size(); i++) {
+                for (int j = i + 1; j < inv.size(); j++) {
+                    cannotLink.computeIfAbsent(inv.get(i), k -> new java.util.HashSet<>()).add(inv.get(j));
+                    cannotLink.computeIfAbsent(inv.get(j), k -> new java.util.HashSet<>()).add(inv.get(i));
+                }
             }
         }
-        if (cfg.enabled()) {
-            for (String[] p : pairs) {
-                union(parent, p[0], p[1]);
+        // Apply (deterministic pair order) to the real graph when enabled, a scratch copy for dry-run preview.
+        Map<String, String> uf = cfg.enabled() ? parent : new java.util.HashMap<>(parent);
+        int absorbed = 0;
+        int conflictsAvoided = 0;
+        for (String[] p : pairs) {
+            String ra = find(uf, p[0]);
+            String rb = find(uf, p[1]);
+            if (ra.equals(rb)) {
+                continue;
             }
+            if (cannotLinkBlocks(uf, ra, rb, involved, cannotLink)) {
+                conflictsAvoided++;
+                continue;
+            }
+            uf.put(ra, rb);
+            absorbed++;
         }
-        log.info("H71 author reconcile ({}): candidatePairs={} authorsAbsorbed={} skippedBlocks={} skippedAuthors={} "
-                        + "[blockCap={} commonThreshold={} commonFloor={} mega={}]",
-                cfg.enabled() ? "APPLIED" : "DRY-RUN", pairs.size(), absorbed, skippedBlocks, skippedAuthors,
-                cfg.blockCap(), cfg.commonBlockThreshold(), cfg.commonFloor(), cfg.megaAuthors());
+        List<String> samePaper = samePaperViolations(uf, pubRoots, nodes);
+        int maxComponent = maxReconcileComponent(uf, pairs);
+        log.info("H71 author reconcile ({}): candidatePairs={} authorsAbsorbed={} conflictsAvoided={} maxComponent={} "
+                        + "samePaperViolations={} skippedBlocks={} skippedAuthors={} [blockCap={} commonThreshold={} "
+                        + "commonFloor={} mega={}]",
+                cfg.enabled() ? "APPLIED" : "DRY-RUN", pairs.size(), absorbed, conflictsAvoided, maxComponent,
+                samePaper.size(), skippedBlocks, skippedAuthors, cfg.blockCap(), cfg.commonBlockThreshold(),
+                cfg.commonFloor(), cfg.megaAuthors());
         for (String s : samples) {
             log.info("  H71 candidate: {}", s);
         }
+        // Safety net: the cannot-link guard makes these unreachable, but fail-fast if a bug ever lets one through.
+        if (cfg.enabled() && !samePaper.isEmpty()) {
+            throw new IllegalStateException("H71 same-paper invariant violated by " + samePaper.size()
+                    + " pub(s) despite the cannot-link guard; e.g. " + samePaper.get(0));
+        }
+        if (cfg.enabled() && maxComponent > MAX_RECONCILE_COMPONENT) {
+            throw new IllegalStateException("H71 runaway component: " + maxComponent + " roots merged (> "
+                    + MAX_RECONCILE_COMPONENT + "), likely an over-merge bug");
+        }
+    }
+
+    /** True iff merging components {@code ra} and {@code rb} would place a cannot-linked (same-paper) pair together. */
+    private static boolean cannotLinkBlocks(Map<String, String> uf, String ra, String rb,
+                                            Set<String> involved, Map<String, Set<String>> cannotLink) {
+        List<String> membersA = new ArrayList<>();
+        Set<String> membersB = new java.util.HashSet<>();
+        for (String x : involved) {
+            String f = find(uf, x);
+            if (f.equals(ra)) {
+                membersA.add(x);
+            } else if (f.equals(rb)) {
+                membersB.add(x);
+            }
+        }
+        for (String x : membersA) {
+            Set<String> cl = cannotLink.get(x);
+            if (cl != null) {
+                for (String y : cl) {
+                    if (membersB.contains(y)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Hard bound on a single reconcile-merged component (pre-reconcile roots collapsed into one). Dry-run max ≈ 7. */
+    private static final int MAX_RECONCILE_COMPONENT = 20;
+
+    /** Pubs where two distinct same-paper roots ended up in one merged component (transitive same-paper violation). */
+    private static List<String> samePaperViolations(Map<String, String> uf,
+                                                    Map<String, Set<String>> pubRoots,
+                                                    Map<String, AuthorNode> nodes) {
+        List<String> violations = new ArrayList<>();
+        for (Map.Entry<String, Set<String>> e : pubRoots.entrySet()) {
+            Map<String, String> byFinal = new java.util.HashMap<>();
+            for (String r : e.getValue()) {
+                String prev = byFinal.putIfAbsent(find(uf, r), r);
+                if (prev != null) {
+                    AuthorNode a = nodes.get(prev);
+                    AuthorNode b = nodes.get(r);
+                    violations.add(e.getKey() + " [" + (a == null ? prev : a.displayName)
+                            + " / " + (b == null ? r : b.displayName) + "]");
+                }
+            }
+        }
+        return violations;
+    }
+
+    /** Largest count of pre-reconcile roots merged into a single component (the no-runaway signal; matches the dry-run). */
+    private static int maxReconcileComponent(Map<String, String> uf, List<String[]> pairs) {
+        Set<String> involved = new java.util.HashSet<>();
+        for (String[] p : pairs) {
+            involved.add(p[0]);
+            involved.add(p[1]);
+        }
+        Map<String, Integer> groupSize = new java.util.HashMap<>();
+        for (String r : involved) {
+            groupSize.merge(find(uf, r), 1, Integer::sum);
+        }
+        return groupSize.values().stream().mapToInt(Integer::intValue).max().orElse(0);
     }
 
     /** Order/diacritic-insensitive surname key: text before a comma, else the last token; null if unparseable. */

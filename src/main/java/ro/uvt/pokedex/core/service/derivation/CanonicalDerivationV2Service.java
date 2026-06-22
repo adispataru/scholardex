@@ -62,8 +62,9 @@ public class CanonicalDerivationV2Service {
     private final ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService openAlexForumOnboardingService;
     private final MongoTemplate mongoTemplate;
 
-    // H71 cross-source author reconcile (STRONG tier). Default OFF; dry-run logs candidates without applying.
-    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.enabled:false}")
+    // H71 cross-source author reconcile (STRONG tier). Default ON (validated 2026-06-22: 1,909 absorbed, 0 invariant
+    // violations, cannot-link guard avoided 13 transitive conflicts). Set =false to disable; dry-run logs without applying.
+    @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.enabled:true}")
     private boolean authorReconcileEnabled;
     @org.springframework.beans.factory.annotation.Value("${core.canon.author-reconcile.dry-run:false}")
     private boolean authorReconcileDryRun;
