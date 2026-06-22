@@ -84,7 +84,22 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
   via the unit tests + the S1 SQL verification on the same columns.)
 - **S3 — self-citation exclusion (geografie).** A variant excluding citations whose citing pub shares an author with
   the cited pub (via authorship edges); expose total-citation-count for the istorie OR-gate.
-- **S4 — scoring/threshold wiring (ties to H68).** Per-position h thresholds + the "h OR citation-count" fallback.
+- **S4 — wire h into criteria as an AGGREGATE indicator (the model's first non-additive metric).** Verification
+  (2026-06-22) found the indicator engine is **map-then-sum**: per-item `ScoringService.getScore` → `Selector`
+  (All/TopN, a *filter*) → SUM. h-index is **not additive** (a function of the whole citation distribution), so it
+  fits neither a per-item scorer nor a Selector — it needs the *reduce* generalized from "sum" to a named aggregator.
+  This is the first real gap in the criterion→indicator→scoring model (shared scope with **H69** scoring rework +
+  **H68** gates/derived indicators). Split:
+  - **S4a — the mechanism (buildable now, contained).** Add `IndicatorKind.HIndex(source, excludeSelf)` +
+    `ScoringStrategy.HIRSCH` + the persisted round-trip (legacy strings `HINDEX_SCOPUS[_EXCLUDE_SELF]`, `HINDEX_WOS…`,
+    `HINDEX_SCHOLARDEX…`); generalize the citation-indicator combine step to branch to a HIRSCH reduce = `hIndex` over
+    the per-pub citation counts, reusing the existing `computeCitationView` (graph load + `excludeSelf` self-cit
+    filter) plus a venue-source predicate (Scopus/WoS via `scholardex_forum_membership_view`, or the S1 cited-pub
+    columns when `!excludeSelf`). Branch only on the new kind (additive path untouched; mirrors the inline-handled
+    `GENERIC_COUNT` precedent) + the H69 regression sweep. Tracked under **H69** (scoring-engine generalization).
+  - **S4b — per-domain activation (data, later).** Insert the HIndex indicator rows into chimie (≥13/9 WoS),
+    geografie (WoS, self-cit-excluded), fizica criteria with per-position thresholds from the standards assessment;
+    the istorie "h OR citations" gate needs **H68**.
 
 ## Relation
 

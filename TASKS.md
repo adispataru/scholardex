@@ -76,6 +76,13 @@ Done history moved to `TASKS-done.md`.
   Scopus forum score identically (Tier-1 reconcile merges them).
   **(4)** **regression sweep** — re-score across domains after the match-all + acronym changes and confirm no
   score regressions vs the pre-Phase-4 baseline. Depends on H66B Phase 4 (done) + interacts with H67.
+  **(5)** **aggregate (non-additive) indicators — `H67` S4a, the first real gap.** The indicator engine is
+  map-then-sum (per-item `getScore` → `Selector` filter → SUM); h-index is non-additive so it needs the *reduce*
+  generalized to a named aggregator. Add `IndicatorKind.HIndex(source, excludeSelf)` + `ScoringStrategy.HIRSCH` +
+  persisted round-trip; branch the citation-indicator combine to a HIRSCH reduce (`hIndex` over per-pub
+  source-filtered, self-cit-excluded citation counts) — reuses `computeCitationView` + `scholardex_forum_membership_view`.
+  Branch only on the new kind (additive path untouched; mirrors inline `GENERIC_COUNT`). Foundation for H68 gates/derived
+  indicators. Plan: `docs/tasks/active/h67-h-index.md` (S4a). Per-domain activation (thresholds) = H67 S4b.
 
 - [ ] `H65` Physics (Fizică/FF) report — DOCX export. **Postponed behind H63 + H64.**
   Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template). Scoped this session;

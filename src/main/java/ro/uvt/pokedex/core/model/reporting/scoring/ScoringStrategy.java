@@ -20,5 +20,11 @@ public enum ScoringStrategy {
     UNI_RANKING,
     CNCSIS,
     ART_EVENT,
-    FEAA_BOOK;
+    FEAA_BOOK,
+    /**
+     * H67 S4a: the Hirsch (h-index) aggregate. Unlike the others this is NOT a per-item {@code ScoringService} —
+     * h-index is non-additive, so it is handled inline at the combine step (like {@link #GENERIC_COUNT}); no
+     * {@code ScoringService} bean claims it. Carried as a strategy only so {@code IndicatorKind.HIndex} round-trips.
+     */
+    HIRSCH;
 }

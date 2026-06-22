@@ -40,7 +40,8 @@ public class ScoringFactoryService {
 
     /** Strategies handled inline at the call site; not registered as beans. */
     private static final java.util.Set<ScoringStrategy> INLINE_STRATEGIES =
-            java.util.EnumSet.of(ScoringStrategy.GENERIC_COUNT, ScoringStrategy.GENERIC_ACTIVITY);
+            // H67 S4a: HIRSCH is the aggregate (non-additive) h-index, computed inline at the combine step — no bean.
+            java.util.EnumSet.of(ScoringStrategy.GENERIC_COUNT, ScoringStrategy.GENERIC_ACTIVITY, ScoringStrategy.HIRSCH);
 
     private final Map<ScoringStrategy, ScoringService> registry;
 

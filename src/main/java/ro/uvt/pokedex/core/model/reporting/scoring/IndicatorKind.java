@@ -14,6 +14,7 @@ package ro.uvt.pokedex.core.model.reporting.scoring;
 public sealed interface IndicatorKind
         permits IndicatorKind.Publications,
                 IndicatorKind.Citations,
+                IndicatorKind.HIndex,
                 IndicatorKind.Activity,
                 IndicatorKind.GenericCount,
                 IndicatorKind.GenericActivity {
@@ -34,6 +35,20 @@ public sealed interface IndicatorKind
         public Citations {
             if (strategy == null) throw new IllegalArgumentException("strategy cannot be null");
         }
+    }
+
+    /**
+     * H67 S4a: aggregate Hirsch (h-index) indicator — the model's first NON-additive metric. Its value is
+     * {@code hIndex} over the per-publication citation counts (restricted to {@code source}, with self-citations
+     * dropped when {@code excludeSelf}), computed at the combine step rather than by a per-item scorer. Strategy is
+     * always {@link ScoringStrategy#HIRSCH}.
+     */
+    record HIndex(HIndexSource source, boolean excludeSelf) implements IndicatorKind {
+        public HIndex {
+            if (source == null) throw new IllegalArgumentException("source cannot be null");
+        }
+        @Override
+        public ScoringStrategy strategy() { return ScoringStrategy.HIRSCH; }
     }
 
     /** Activity-based indicator scored against a forum / university / event ranking. */
@@ -82,6 +97,20 @@ public sealed interface IndicatorKind
             case "CITATIONS"                 -> new Citations(false, s);
             case "CITATIONS_EXCLUDE_SELF"    -> new Citations(true,  s);
 
+            // H67 S4a: HINDEX_<source>[ _EXCLUDE_SELF ], always paired with the HIRSCH strategy.
+            case "HINDEX_SCHOLARDEX", "HINDEX_GRAPH", "HINDEX_SCOPUS", "HINDEX_WOS",
+                 "HINDEX_SCHOLARDEX_EXCLUDE_SELF", "HINDEX_GRAPH_EXCLUDE_SELF",
+                 "HINDEX_SCOPUS_EXCLUDE_SELF", "HINDEX_WOS_EXCLUDE_SELF" -> {
+                if (s != ScoringStrategy.HIRSCH) {
+                    throw new IllegalArgumentException(
+                            outputTypeName + " requires the HIRSCH strategy; got " + strategyName);
+                }
+                boolean excludeSelf = outputTypeName.endsWith("_EXCLUDE_SELF");
+                String token = outputTypeName.substring("HINDEX_".length(),
+                        outputTypeName.length() - (excludeSelf ? "_EXCLUDE_SELF".length() : 0));
+                yield new HIndex(HIndexSource.fromToken(token), excludeSelf);
+            }
+
             case "GENERIC_ACTIVITIES" -> {
                 if (s != ScoringStrategy.GENERIC_ACTIVITY) {
                     throw new IllegalArgumentException(
@@ -116,6 +145,9 @@ public sealed interface IndicatorKind
             case Citations c -> new LegacyShape(
                     c.excludeSelf() ? "CITATIONS_EXCLUDE_SELF" : "CITATIONS",
                     c.strategy().name());
+            case HIndex h -> new LegacyShape(
+                    "HINDEX_" + h.source().token() + (h.excludeSelf() ? "_EXCLUDE_SELF" : ""),
+                    ScoringStrategy.HIRSCH.name());
             case Activity a -> new LegacyShape(switch (a.type()) {
                 case FORUM      -> "ACTIVITY_FORUM";
                 case UNIVERSITY -> "ACTIVITY_UNIVERSITY";
