@@ -196,6 +196,21 @@ public class PostgresScholardexProjectionReadPort {
         return out;
     }
 
+    /**
+     * H67 (Hirsch "current year" option): forums **currently** in the WoS Core Collection — the snapshot
+     * {@code forum_membership_view} (database SCIE/SSCI/AHCI), as opposed to the year-true
+     * {@link #findForumCoreCollectionYears} ("item year"). Empty input short-circuits.
+     */
+    public Set<String> findForumsCurrentlyInCore(Collection<String> forumIds) {
+        if (isNullOrEmpty(forumIds)) {
+            return Set.of();
+        }
+        return new java.util.HashSet<>(namedParameterJdbcTemplate.queryForList(
+                "SELECT DISTINCT forum_id FROM reporting_read.scholardex_forum_membership_view "
+                        + "WHERE forum_id IN (:ids) AND database IN ('SCIE','SSCI','AHCI')",
+                new MapSqlParameterSource("ids", forumIds), String.class));
+    }
+
     public List<ScholardexForumView> findAllForums() {
         return namedParameterJdbcTemplate.query(
                 "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view",

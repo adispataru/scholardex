@@ -179,6 +179,11 @@ public class ScholardexProjectionReadService {
         return postgresProjectionReadPort.findForumCoreCollectionYears(forumIds, years);
     }
 
+    /** H67 Hirsch "current year" option: forums currently in WoS Core (snapshot membership_view), vs the year-true read. */
+    public java.util.Set<String> findForumsCurrentlyInCore(Collection<String> forumIds) {
+        return postgresProjectionReadPort.findForumsCurrentlyInCore(forumIds);
+    }
+
     public List<ScholardexAuthorView> findAuthorsByIdIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
         return postgresProjectionReadPort.findAuthorsByIdIn(resolvedAuthorIds);

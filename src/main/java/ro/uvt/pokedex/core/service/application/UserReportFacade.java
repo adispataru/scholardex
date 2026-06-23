@@ -535,16 +535,22 @@ public class UserReportFacade {
         // (SCIE/SSCI/AHCI in the citing paper's year, via the scoped category read); Scopus = current scopusId; else all.
         if (indicator != null && indicator.isHIndexOutput()) {
             ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind = indicator.hIndexKind();
+            // H67: WoS-Core membership basis — "IY" (ScoreYearRangeSpec.ItemYear) = year-true (citing paper's year);
+            // anything else = current snapshot membership.
+            boolean itemYear = "IY".equals(indicator.getScoreYearRange());
             int h;
             int totalCit;
-            if (!kind.excludeSelf()) {
-                h = HIndexCalculator.hIndexForSource(publications, kind.source());
-                totalCit = publications.stream().mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
-            } else {
-                int[] r = hIndexExcludingSelf(kind, authors, publications);
+            // WoS (its year-true/current classification) needs the graph walk, as does any excludeSelf; other sources
+            // without self-cit use the fast S1 columns.
+            if (kind.source() == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE || kind.excludeSelf()) {
+                int[] r = hIndexFromGraph(kind, itemYear, authors, publications);
                 h = r[0];
                 totalCit = r[1];
+            } else {
+                h = HIndexCalculator.hIndexForSource(publications, kind.source());
+                totalCit = publications.stream().mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
             }
+            rawGraph.put("hIndexYearBasis", itemYear ? "ITEM_YEAR" : "CURRENT");
             rawGraph.put("total", String.valueOf(h));
             rawGraph.put("totalCit", totalCit);
             rawGraph.put("outputMode", "hindex");
@@ -586,29 +592,38 @@ public class UserReportFacade {
     }
 
     /**
-     * H67 S4a 2/2b: self-citation-excluded h-index over the citation graph. Drops citations whose citing pub shares a
-     * researcher author, classifies the rest by venue source (WoS = year-true Core via the scoped category read;
-     * Scopus = current scopusId; GRAPH/SCHOLARDEX = all internal), and returns {@code [h, totalCitationsCounted]}.
+     * H67 S4a 2/2b: h-index over the citation graph. Drops self-citations when {@code kind.excludeSelf()} (citing pub
+     * shares a researcher author), and classifies citations by venue source — WoS = Core membership (year-true via the
+     * scoped category read when {@code itemYear}, else the current snapshot); Scopus = current scopusId; GRAPH/SCHOLARDEX
+     * = all internal. Returns {@code [h, totalCitationsCounted]}.
      */
-    private int[] hIndexExcludingSelf(ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind,
-                                      List<ScholardexAuthorView> authors,
-                                      List<ScholardexPublicationView> publications) {
-        Set<String> researcherAuthorIds = authors.stream()
-                .map(ScholardexAuthorView::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+    private int[] hIndexFromGraph(ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind,
+                                  boolean itemYear,
+                                  List<ScholardexAuthorView> authors,
+                                  List<ScholardexPublicationView> publications) {
+        boolean excludeSelf = kind.excludeSelf();
+        Set<String> researcherAuthorIds = excludeSelf
+                ? authors.stream().map(ScholardexAuthorView::getId).filter(Objects::nonNull).collect(Collectors.toSet())
+                : Set.of();
         ReportScopedIndicatorScoringSupport.CitationContext ctx =
                 ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
         Map<String, List<ScholardexPublicationView>> citingByCited = ctx.citingPublicationsByCitedPublicationId();
         ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource source = kind.source();
 
+        Set<String> citingForumIds = new HashSet<>();
+        for (ScholardexPublicationView pub : publications) {
+            for (ScholardexPublicationView c : citingByCited.getOrDefault(pub.getId(), List.of())) {
+                if (c.getForum() != null) {
+                    citingForumIds.add(c.getForum());
+                }
+            }
+        }
+
         java.util.function.Predicate<ScholardexPublicationView> venueOk;
-        if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE) {
-            Set<String> forumIds = new HashSet<>();
+        if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE && itemYear) {
             Set<Integer> years = new HashSet<>();
             for (ScholardexPublicationView pub : publications) {
                 for (ScholardexPublicationView c : citingByCited.getOrDefault(pub.getId(), List.of())) {
-                    if (c.getForum() != null) {
-                        forumIds.add(c.getForum());
-                    }
                     Integer y = parseYear(c.getCoverDate());
                     if (y != null) {
                         years.add(y);
@@ -616,29 +631,24 @@ public class UserReportFacade {
                 }
             }
             Map<String, Set<Integer>> coreYears =
-                    scholardexProjectionReadService.findForumCoreCollectionYears(forumIds, years);
+                    scholardexProjectionReadService.findForumCoreCollectionYears(citingForumIds, years);
             venueOk = c -> {
                 Integer y = parseYear(c.getCoverDate());
                 return y != null && c.getForum() != null
                         && coreYears.getOrDefault(c.getForum(), Set.of()).contains(y);
             };
+        } else if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE) {
+            Set<String> currentCore = scholardexProjectionReadService.findForumsCurrentlyInCore(citingForumIds);
+            venueOk = c -> c.getForum() != null && currentCore.contains(c.getForum());
         } else if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.SCOPUS_VENUE) {
-            Set<String> forumIds = new HashSet<>();
-            for (ScholardexPublicationView pub : publications) {
-                for (ScholardexPublicationView c : citingByCited.getOrDefault(pub.getId(), List.of())) {
-                    if (c.getForum() != null) {
-                        forumIds.add(c.getForum());
-                    }
-                }
-            }
             Map<String, ScholardexForumView> forums = new HashMap<>();
-            for (ScholardexForumView f : scholardexProjectionReadService.findForumsByIdIn(forumIds)) {
+            for (ScholardexForumView f : scholardexProjectionReadService.findForumsByIdIn(citingForumIds)) {
                 forums.put(f.getId(), f);
             }
             venueOk = c -> c.getForum() != null && forums.get(c.getForum()) != null
                     && forums.get(c.getForum()).getScopusId() != null;
         } else {
-            venueOk = c -> true; // GRAPH / SCHOLARDEX: all internal citations (self-cit already excluded below)
+            venueOk = c -> true; // GRAPH / SCHOLARDEX: all internal citations
         }
 
         int[] counts = new int[publications.size()];
@@ -647,7 +657,7 @@ public class UserReportFacade {
         for (ScholardexPublicationView pub : publications) {
             int cnt = 0;
             for (ScholardexPublicationView c : citingByCited.getOrDefault(pub.getId(), List.of())) {
-                if (sharesAnyAuthor(c, researcherAuthorIds)) {
+                if (excludeSelf && sharesAnyAuthor(c, researcherAuthorIds)) {
                     continue; // self-citation
                 }
                 if (venueOk.test(c)) {
