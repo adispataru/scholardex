@@ -19,4 +19,17 @@ public interface ScoringPublicationReadModel {
     String getTitle();
     int getCitedByCount();
     Set<String> getCitingPublicationIds();
+
+    /* H67 source-attributed citation splits + institution/OA signals — defaulted so non-projection
+     * constructors (tests, synthetic pubs) keep working; the read-model projection fills the real values. */
+    /** Incoming citations whose citing forum is Scopus-indexed (H67 source split). */
+    default int getScopusCitationCount() { return 0; }
+    /** Incoming citations whose citing forum is WoS-indexed (H67 source split). */
+    default int getWosCitationCount() { return 0; }
+    /** Incoming citations counted in our internal graph (= citingPublicationIds.size()). */
+    default int getGraphCitationCount() { return 0; }
+    /** Canonical affiliation ids (saff_) of the publication — institution-attributed scoring. */
+    default List<String> getAffiliationIds() { return List.of(); }
+    /** Open-access flag. */
+    default Boolean getOpenAccess() { return null; }
 }

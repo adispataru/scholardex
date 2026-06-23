@@ -182,7 +182,7 @@ public class PostgresScholardexProjectionReadPort {
     public List<ScholardexForumView> findForumsByIdIn(Collection<String> ids) {
         if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
                 this::mapForum
         );
@@ -226,7 +226,7 @@ public class PostgresScholardexProjectionReadPort {
 
     public List<ScholardexForumView> findAllForums() {
         return namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc FROM reporting_read.scholardex_forum_view",
                 this::mapForum
         );
     }
@@ -361,7 +361,12 @@ public class PostgresScholardexProjectionReadPort {
                 rs.getString("wos_id"),
                 rs.getString("title"),
                 readIntOrDefault(rs, "cited_by_count"),
-                new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids")))
+                new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))),
+                readIntOrDefault(rs, "scopus_citation_count"),
+                readIntOrDefault(rs, "wos_citation_count"),
+                readIntOrDefault(rs, "graph_citation_count"),
+                toStringList(rs.getArray("affiliation_ids")),
+                rs.getObject("open_access", Boolean.class)
         );
     }
 
@@ -374,6 +379,8 @@ public class PostgresScholardexProjectionReadPort {
         forum.setIsbn(rs.getString("isbn"));
         forum.setAggregationType(rs.getString("aggregation_type"));
         forum.setPublisher(rs.getString("publisher"));
+        forum.setForumType(rs.getString("forum_type"));
+        forum.setAsjc(toStringList(rs.getArray("asjc")));
         forum.setScopusId(rs.getString("id"));
         return forum;
     }

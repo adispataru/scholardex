@@ -155,7 +155,12 @@ public class ScholardexPublicationView {
                 wosId,
                 title,
                 citedByCount,
-                citingPublicationIds == null ? Set.of() : new LinkedHashSet<>(citingPublicationIds)
+                citingPublicationIds == null ? Set.of() : new LinkedHashSet<>(citingPublicationIds),
+                scopusCitationCount,
+                wosCitationCount,
+                graphCitationCount,
+                affiliationIds == null ? List.of() : List.copyOf(affiliationIds),
+                openAccess
         );
     }
 }
