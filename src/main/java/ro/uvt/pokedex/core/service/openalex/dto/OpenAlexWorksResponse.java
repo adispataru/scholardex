@@ -37,6 +37,37 @@ public class OpenAlexWorksResponse {
         private List<Authorship> authorships;
         private PrimaryLocation primary_location;
         private List<String> referenced_works;
+        // Research-ethics gate: retracted works must not score (standard's Perspectiva a).
+        private Boolean is_retracted;
+        // Bibliographic detail for complete citations in the verification-sheet export.
+        private Biblio biblio;
+        // Field-weighted citation impact + normalized percentile (impact, Perspectiva c).
+        private Double fwci;
+        private CitationNormalizedPercentile citation_normalized_percentile;
+        // Subject/domain signal (the "is it CS / which domain" routing).
+        private PrimaryTopic primary_topic;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Biblio {
+        private String volume;
+        private String issue;
+        private String first_page;
+        private String last_page;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class CitationNormalizedPercentile {
+        private Double value;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class PrimaryTopic {
+        private String id;
+        private String display_name;
     }
 
     @Data
@@ -85,6 +116,9 @@ public class OpenAlexWorksResponse {
         private String display_name;
         private List<String> issn;
         private String issn_l;
+        // Publisher of the venue — the SENSE book/chapter classification key (clas.c keys book scoring on it);
+        // OpenAlex book-series/ebook venues otherwise carry no publisher for the book scorer.
+        private String host_organization_name;
         // OpenAlex venue type: journal | conference | repository | ebook platform | book series | metadata | other.
         // The authoritative "is this a conference / book series" signal — the work-level `type` is uniformly
         // "article" for both journals and conferences, so this is the only OpenAlex venue discriminator.

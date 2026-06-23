@@ -41,6 +41,21 @@ public class OpenAlexPublicationFact {
     private Integer authorCount;
     private Integer citedByCount;
     private Boolean openAccess;
+    private Boolean retracted;       // OpenAlex is_retracted — research-ethics gate (retracted must not score)
+
+    // Bibliographic detail (export completeness) — OpenAlex biblio.{volume,issue,first_page,last_page}
+    private String volume;
+    private String issue;
+    private String firstPage;
+    private String lastPage;
+
+    // Impact metrics — OpenAlex fwci (field-weighted citation impact) + citation_normalized_percentile.value
+    private Double fwci;
+    private Double citationNormalizedPercentile;
+
+    // Subject/domain signal — OpenAlex primary_topic
+    private String primaryTopicId;
+    private String primaryTopicName;
 
     /**
      * The work's full author list in OpenAlex order, with the identity needed to (a) resolve corresponding authors
@@ -54,6 +69,7 @@ public class OpenAlexPublicationFact {
     private String hostVenueOpenAlexId; // bare OpenAlex source id (S…) of the host venue — Stage 3 forum resolve key
     private List<String> hostVenueIssns = new ArrayList<>();
     private String hostVenueSourceType; // OpenAlex source.type (journal|conference|book series|…) — venue-kind signal
+    private String hostVenuePublisher;  // OpenAlex source.host_organization_name — SENSE book-classification key
 
     // Citations (Stage 2 — DOI/OpenAlex-id edges)
     private List<String> referencedWorks = new ArrayList<>();

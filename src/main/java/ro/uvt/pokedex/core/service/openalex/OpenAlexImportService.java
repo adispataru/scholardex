@@ -84,6 +84,21 @@ public class OpenAlexImportService {
         fact.setType(work.getType());
         fact.setCitedByCount(work.getCited_by_count());
         fact.setOpenAccess(work.getOpen_access() == null ? null : work.getOpen_access().getIs_oa());
+        fact.setRetracted(work.getIs_retracted());
+        if (work.getBiblio() != null) {
+            fact.setVolume(work.getBiblio().getVolume());
+            fact.setIssue(work.getBiblio().getIssue());
+            fact.setFirstPage(work.getBiblio().getFirst_page());
+            fact.setLastPage(work.getBiblio().getLast_page());
+        }
+        fact.setFwci(work.getFwci());
+        if (work.getCitation_normalized_percentile() != null) {
+            fact.setCitationNormalizedPercentile(work.getCitation_normalized_percentile().getValue());
+        }
+        if (work.getPrimary_topic() != null) {
+            fact.setPrimaryTopicId(stripPrefix(work.getPrimary_topic().getId(), OPENALEX_ID_PREFIX));
+            fact.setPrimaryTopicName(work.getPrimary_topic().getDisplay_name());
+        }
 
         List<OpenAlexPublicationFact.AuthorRef> authorships = new ArrayList<>();
         if (work.getAuthorships() != null) {
@@ -128,6 +143,7 @@ public class OpenAlexImportService {
             fact.setHostVenueName(src.getDisplay_name());
             fact.setHostVenueOpenAlexId(stripPrefix(src.getId(), OPENALEX_ID_PREFIX));
             fact.setHostVenueSourceType(src.getType());
+            fact.setHostVenuePublisher(src.getHost_organization_name());
             Set<String> issns = new LinkedHashSet<>();
             if (src.getIssn() != null) {
                 issns.addAll(src.getIssn());
@@ -211,6 +227,7 @@ public class OpenAlexImportService {
             if (work.getPrimary_location() != null && work.getPrimary_location().getSource() != null) {
                 fact.setHostVenueName(work.getPrimary_location().getSource().getDisplay_name());
                 fact.setHostVenueSourceType(work.getPrimary_location().getSource().getType());
+                fact.setHostVenuePublisher(work.getPrimary_location().getSource().getHost_organization_name());
             }
             List<String> referenced = new ArrayList<>();
             if (work.getReferenced_works() != null) {

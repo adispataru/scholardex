@@ -26,7 +26,8 @@ public record ForumSourceRecord(
         List<String> aliasIssns,
         String aggregationType,
         String forumType,
-        List<String> asjc
+        List<String> asjc,
+        String publisher
 ) {
 
     /** Which forum source minted the record — selects the id-list, reason strings, and Scopus-only branches. */
@@ -81,7 +82,8 @@ public record ForumSourceRecord(
                 List.of(),
                 scopusForum.getAggregationType(),
                 scopusForum.getForumType(),
-                scopusForum.getAsjc()
+                scopusForum.getAsjc(),
+                scopusForum.getPublisher()
         );
     }
 
@@ -97,6 +99,7 @@ public record ForumSourceRecord(
                 rankingView.getIssn(),
                 rankingView.getEIssn(),
                 rankingView.getAlternativeIssns(),
+                null,
                 null,
                 null,
                 null
@@ -118,6 +121,7 @@ public record ForumSourceRecord(
                 List.of(),
                 null,
                 null,
+                null,
                 null
         );
     }
@@ -136,6 +140,7 @@ public record ForumSourceRecord(
                 List.of(),
                 null,
                 null,
+                null,
                 null
         );
     }
@@ -148,11 +153,11 @@ public record ForumSourceRecord(
      * ISSN-gates this (no-ISSN conference venues are skipped, not minted name-only — that is DBLP's job).
      */
     public static ForumSourceRecord ofOpenAlex(String venueOpenAlexId, String name, List<String> issns) {
-        return ofOpenAlex(venueOpenAlexId, name, issns, null);
+        return ofOpenAlex(venueOpenAlexId, name, issns, null, null);
     }
 
     public static ForumSourceRecord ofOpenAlex(String venueOpenAlexId, String name, List<String> issns,
-                                               String openAlexSourceType) {
+                                               String openAlexSourceType, String openAlexPublisher) {
         List<String> tokens = issns == null ? List.of() : issns;
         String primary = tokens.isEmpty() ? null : tokens.getFirst();
         List<String> aliases = tokens.size() <= 1 ? List.of() : tokens.subList(1, tokens.size());
@@ -165,7 +170,8 @@ public record ForumSourceRecord(
                 aliases,
                 aggregationTypeForOpenAlexSourceType(openAlexSourceType),
                 null,
-                null
+                null,
+                openAlexPublisher
         );
     }
 

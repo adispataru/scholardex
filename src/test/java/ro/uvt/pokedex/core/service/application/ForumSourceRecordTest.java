@@ -68,21 +68,28 @@ class ForumSourceRecordTest {
     @Test
     void ofOpenAlexMapsVenueSourceTypeToAggregationType() {
         assertEquals("Journal",
-                ForumSourceRecord.ofOpenAlex("S1", "Some Journal", List.of("1234-5678"), "journal").aggregationType());
+                ForumSourceRecord.ofOpenAlex("S1", "Some Journal", List.of("1234-5678"), "journal", null).aggregationType());
         assertEquals("Conference Proceeding",
-                ForumSourceRecord.ofOpenAlex("S2", "Some Proceedings", List.of(), "conference").aggregationType());
+                ForumSourceRecord.ofOpenAlex("S2", "Some Proceedings", List.of(), "conference", null).aggregationType());
         // Book series (LNCS, "Studies in Big Data", …) carry ISSNs and were previously defaulted to "Journal".
         assertEquals("Book Series",
-                ForumSourceRecord.ofOpenAlex("S3", "Studies in Big Data", List.of("2197-6503"), "Book Series").aggregationType());
+                ForumSourceRecord.ofOpenAlex("S3", "Studies in Big Data", List.of("2197-6503"), "Book Series", null).aggregationType());
         assertEquals("Book",
-                ForumSourceRecord.ofOpenAlex("S4", "Some Ebook Platform", List.of(), "ebook platform").aggregationType());
+                ForumSourceRecord.ofOpenAlex("S4", "Some Ebook Platform", List.of(), "ebook platform", null).aggregationType());
+    }
+
+    @Test
+    void ofOpenAlexCarriesPublisherForBookSenseClassification() {
+        ForumSourceRecord r = ForumSourceRecord.ofOpenAlex(
+                "S3", "Studies in Big Data", List.of("2197-6503"), "Book Series", "Springer Nature");
+        assertEquals("Springer Nature", r.publisher());
     }
 
     @Test
     void ofOpenAlexLeavesAggregationNullForUnknownOrMissingSourceType() {
         // null -> the merge engine keeps any existing value / falls back to its "Journal" default.
-        assertNull(ForumSourceRecord.ofOpenAlex("S5", "Preprint Repo", List.of(), "repository").aggregationType());
-        assertNull(ForumSourceRecord.ofOpenAlex("S6", "Unknown", List.of(), null).aggregationType());
+        assertNull(ForumSourceRecord.ofOpenAlex("S5", "Preprint Repo", List.of(), "repository", null).aggregationType());
+        assertNull(ForumSourceRecord.ofOpenAlex("S6", "Unknown", List.of(), null, null).aggregationType());
         assertNull(ForumSourceRecord.ofOpenAlex("S7", "Legacy 3-arg call", List.of("1111-2222")).aggregationType());
     }
 }

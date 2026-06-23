@@ -48,7 +48,8 @@ public class OpenAlexForumOnboardingService {
             }
             result.markProcessed();
             forumMergeEngine.ingestCreateOrTag(
-                    ForumSourceRecord.ofOpenAlex(venueId, pub.getHostVenueName(), issns, pub.getHostVenueSourceType()),
+                    ForumSourceRecord.ofOpenAlex(venueId, pub.getHostVenueName(), issns,
+                            pub.getHostVenueSourceType(), pub.getHostVenuePublisher()),
                     ctx, null, null, now, result);
         }
         forumMergeEngine.flush(ctx);

@@ -523,6 +523,7 @@ public class ForumMergeEngine {
 
         // H66 A2: C-scalars from the Scopus/CiteScore forum — additive, never clears a prior writer's value.
         target.setForumType(firstNonBlank(target.getForumType(), record.forumType()));
+        target.setPublisher(firstNonBlank(target.getPublisher(), record.publisher()));
         LinkedHashSet<String> asjc = new LinkedHashSet<>(safeList(target.getAsjc()));
         asjc.addAll(safeList(record.asjc()));
         target.setAsjc(new ArrayList<>(asjc));
@@ -585,6 +586,7 @@ public class ForumMergeEngine {
         String preferredAgg = firstNonBlank(target.getAggregationType(), aggregationType);
         target.setAggregationType(preferredAgg);
         target.setAggregationTypeNormalized(normalizeToken(preferredAgg));
+        target.setPublisher(firstNonBlank(target.getPublisher(), record.publisher()));
 
         if (target.getId() == null) {
             String forumId = buildCanonicalForumId(target.getIssn(), target.getEIssn(), target.getAliasIssns(), target.getNameNormalized(), target.getAggregationTypeNormalized());
