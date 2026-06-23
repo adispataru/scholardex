@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.reporting;
 
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 
+import java.util.Map;
 import java.util.Set;
 
 public final class PublicationSubtypeSupport {
@@ -14,6 +15,33 @@ public final class PublicationSubtypeSupport {
      * "rezultate originale" — so it must not carry forum points in any domain.
      */
     public static final Set<String> RESEARCH_SUBTYPES = Set.of("ar", "re", "cp", "ch", "bk", "sh", "dp");
+
+    /**
+     * OpenAlex/Crossref work-type vocabulary → Scopus document-subtype codes. Scopus-sourced
+     * publications carry the short codes ({@code ar}, {@code re}, …); OpenAlex-sourced ones carry
+     * Crossref-style words ({@code article}, {@code book-chapter}, …). Crosswalking here lets the
+     * subtype gate and {@link #isSubtype} treat both vocabularies identically — without it tens of
+     * thousands of OpenAlex "article" papers silently fail {@link #isResearchContribution} and score
+     * zero. Genuinely non-Scopus types (preprint, dissertation, peer-review, paratext, report, …) are
+     * intentionally left unmapped so they remain correctly excluded.
+     */
+    private static final Map<String, String> SUBTYPE_CROSSWALK = Map.ofEntries(
+            Map.entry("article", "ar"),
+            Map.entry("journal-article", "ar"),
+            Map.entry("review", "re"),
+            Map.entry("proceedings-article", "cp"),
+            Map.entry("conference-paper", "cp"),
+            Map.entry("book-chapter", "ch"),
+            Map.entry("book-section", "ch"),
+            Map.entry("book", "bk"),
+            Map.entry("monograph", "bk"),
+            Map.entry("reference-book", "bk"),
+            Map.entry("dataset", "dp"),
+            // Known non-research OpenAlex/Crossref types → Scopus non-research codes (stay gated out).
+            Map.entry("editorial", "ed"),
+            Map.entry("letter", "le"),
+            Map.entry("erratum", "er"),
+            Map.entry("correction", "er"));
 
     private PublicationSubtypeSupport() {
     }
@@ -35,10 +63,8 @@ public final class PublicationSubtypeSupport {
             return "";
         }
         String scopusSubtype = normalize(publication.getScopusSubtype());
-        if (!scopusSubtype.isEmpty()) {
-            return scopusSubtype;
-        }
-        return normalize(publication.getSubtype());
+        String resolved = !scopusSubtype.isEmpty() ? scopusSubtype : normalize(publication.getSubtype());
+        return SUBTYPE_CROSSWALK.getOrDefault(resolved, resolved);
     }
 
     public static boolean isSubtype(ScoringPublicationReadModel publication, String... expected) {

@@ -128,6 +128,9 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     @Override
     public ScholardexForumView getForum(String forumId) {
+        if (forumId == null || forumId.isBlank()) {
+            return null;
+        }
         return cacheService.getCachedForums(forumId);
     }
 
