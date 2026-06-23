@@ -99,12 +99,8 @@ public class UserPublicationFacade {
                 scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(theAuthor.getId())
         );
 
-        List<String> affiliationIds = theAuthor.getAffiliations() != null
-                ? theAuthor.getAffiliations().stream()
-                    .map(ScholardexAffiliationView::getAfid)
-                    .filter(Objects::nonNull)
-                    .toList()
-                : List.of();
+        // V2 does not denormalize affiliationIds onto the author view, so read them from the author→affiliation edges.
+        Set<String> affiliationIds = scholardexProjectionReadService.findAffiliationIdsByAuthorId(theAuthor.getId());
         List<ScholardexAffiliationView> affiliations = scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds);
 
         UserPublicationsViewModel baseVm = buildPublicationsViewModel(publications);

@@ -144,6 +144,19 @@ public class PostgresScholardexProjectionReadPort {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    /**
+     * An author's affiliation ids from the author→affiliation EDGE table (the authoritative source; V2 does not
+     * denormalize {@code affiliationIds} onto the author view, so consumers must read the edges).
+     */
+    public Set<String> findAffiliationIdsByAuthorId(String authorId) {
+        if (authorId == null || authorId.isBlank()) return Set.of();
+        return namedParameterJdbcTemplate.query(
+                "SELECT DISTINCT affiliation_id FROM reporting_read.scholardex_author_affiliation_fact WHERE author_id = :id",
+                new MapSqlParameterSource("id", authorId),
+                (rs, rowNum) -> rs.getString("affiliation_id")
+        ).stream().filter(id -> id != null && !id.isBlank()).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     // --- Citation reads ---
 
     public List<ScholardexCitationView> findCitationsByCitedPublicationIdIn(Collection<String> ids) {

@@ -184,6 +184,11 @@ public class ScholardexProjectionReadService {
         return postgresProjectionReadPort.findForumsCurrentlyInCore(forumIds);
     }
 
+    /** An author's affiliation ids from the author→affiliation edge table (V2 doesn't denormalize them onto the author). */
+    public java.util.Set<String> findAffiliationIdsByAuthorId(String authorId) {
+        return postgresProjectionReadPort.findAffiliationIdsByAuthorId(authorId);
+    }
+
     public List<ScholardexAuthorView> findAuthorsByIdIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
         return postgresProjectionReadPort.findAuthorsByIdIn(resolvedAuthorIds);
