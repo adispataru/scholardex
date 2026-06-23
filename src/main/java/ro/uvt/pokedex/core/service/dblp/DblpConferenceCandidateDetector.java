@@ -65,7 +65,10 @@ public class DblpConferenceCandidateDetector {
             return false;
         }
         String s = subtype.toLowerCase(Locale.ROOT);
-        return CONFERENCE_SUBTYPES.contains(s) || s.contains("proceedings") || s.contains("conference");
+        // OpenAlex-sourced LNCS proceedings carry the Crossref word "book-chapter" (not the Scopus "ch"); gated by
+        // the Lecture-Notes series-forum check below, so real book chapters are not swept in.
+        return CONFERENCE_SUBTYPES.contains(s) || s.contains("proceedings") || s.contains("conference")
+                || s.equals("book-chapter") || s.equals("book-section");
     }
 
     private boolean isSeriesForum(String forumName) {

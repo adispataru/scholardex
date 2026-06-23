@@ -49,6 +49,21 @@ class ComputerScienceBookServiceTest {
     }
 
     @Test
+    void lncsSeriesChapterIsNotScoredAsBook() {
+        // LNCS/LNAI proceedings (subtype "ch") are conference papers, not books — the book scorer must skip them
+        // (otherwise the same paper is counted as both a book chapter and a conference).
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        ScholardexForumView lncs = new ScholardexForumView();
+        lncs.setPublicationName("Lecture Notes in Computer Science");
+        lncs.setPublisher("Springer");
+        when(lookupPort.getForum("forum-1")).thenReturn(lncs);
+
+        Score score = service.getScore(publication("cp", "ch"), indicator());
+
+        assertEquals(0.0, score.getScore());
+    }
+
+    @Test
     void bookSubtypeUsesSenseScoreAndCacheAvoidsRepeatedRepoLookups() {
         ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
         when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Elsevier"));

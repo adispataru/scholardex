@@ -39,6 +39,12 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     /*  PUBLICATION-based scoring                                         */
     /* ------------------------------------------------------------------ */
 
+    /** LNCS-family series ("Lecture Notes in …": LNCS/LNAI/LNBIP) — conference proceedings, not a book venue. */
+    private static boolean isLectureNotesSeries(ScholardexForumView forum) {
+        String name = forum == null ? null : forum.getPublicationName();
+        return name != null && name.toLowerCase(java.util.Locale.ROOT).contains("lecture notes in ");
+    }
+
     @Override
     public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
@@ -48,7 +54,11 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);
 
         String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
-        if ("ch".equals(subtype) || "bk".equals(subtype)) {
+        // LNCS-family proceedings (LNCS/LNAI/LNBIP, often subtype "ch") are conference papers, not books — they
+        // are scored by the conference scorer. Excluding them here stops the same paper being counted as both a
+        // book chapter (perspective d) and a conference (perspective b). The forum-name signal is precise (a
+        // Springer ISBN DOI alone would also catch real Springer monographs, which ARE books).
+        if (("ch".equals(subtype) || "bk".equals(subtype)) && !isLectureNotesSeries(forum)) {
             computeScoresWithForum(
                     domain,
                     forum,
