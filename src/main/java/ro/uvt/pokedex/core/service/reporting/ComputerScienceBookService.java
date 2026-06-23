@@ -57,8 +57,10 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
         // LNCS-family proceedings (LNCS/LNAI/LNBIP, often subtype "ch") are conference papers, not books — they
         // are scored by the conference scorer. Excluding them here stops the same paper being counted as both a
         // book chapter (perspective d) and a conference (perspective b). The forum-name signal is precise (a
-        // Springer ISBN DOI alone would also catch real Springer monographs, which ARE books).
-        if (("ch".equals(subtype) || "bk".equals(subtype)) && !isLectureNotesSeries(forum)) {
+        // Springer ISBN DOI alone would also catch real Springer monographs, which ARE books). Once the DBLP
+        // sweep re-stamps such a paper onto its conf/X forum, the Conference-Proceeding guard keeps it out too.
+        boolean conferenceForum = forum != null && forum.hasAggregationType("Conference Proceeding");
+        if (("ch".equals(subtype) || "bk".equals(subtype)) && !isLectureNotesSeries(forum) && !conferenceForum) {
             computeScoresWithForum(
                     domain,
                     forum,
