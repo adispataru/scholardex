@@ -48,7 +48,8 @@ public class OpenAlexForumOnboardingService {
             }
             result.markProcessed();
             forumMergeEngine.ingestCreateOrTag(
-                    ForumSourceRecord.ofOpenAlex(venueId, pub.getHostVenueName(), issns), ctx, null, null, now, result);
+                    ForumSourceRecord.ofOpenAlex(venueId, pub.getHostVenueName(), issns, pub.getHostVenueSourceType()),
+                    ctx, null, null, now, result);
         }
         forumMergeEngine.flush(ctx);
         log.info("OpenAlex venue onboarding: venues={} forumsTagged={} forumsCreated={} skipped={}",

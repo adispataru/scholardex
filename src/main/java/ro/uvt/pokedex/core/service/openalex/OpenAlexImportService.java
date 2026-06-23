@@ -127,6 +127,7 @@ public class OpenAlexImportService {
             OpenAlexWorksResponse.OpenAlexSource src = work.getPrimary_location().getSource();
             fact.setHostVenueName(src.getDisplay_name());
             fact.setHostVenueOpenAlexId(stripPrefix(src.getId(), OPENALEX_ID_PREFIX));
+            fact.setHostVenueSourceType(src.getType());
             Set<String> issns = new LinkedHashSet<>();
             if (src.getIssn() != null) {
                 issns.addAll(src.getIssn());
@@ -209,6 +210,7 @@ public class OpenAlexImportService {
             }
             if (work.getPrimary_location() != null && work.getPrimary_location().getSource() != null) {
                 fact.setHostVenueName(work.getPrimary_location().getSource().getDisplay_name());
+                fact.setHostVenueSourceType(work.getPrimary_location().getSource().getType());
             }
             List<String> referenced = new ArrayList<>();
             if (work.getReferenced_works() != null) {

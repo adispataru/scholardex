@@ -148,6 +148,11 @@ public record ForumSourceRecord(
      * ISSN-gates this (no-ISSN conference venues are skipped, not minted name-only — that is DBLP's job).
      */
     public static ForumSourceRecord ofOpenAlex(String venueOpenAlexId, String name, List<String> issns) {
+        return ofOpenAlex(venueOpenAlexId, name, issns, null);
+    }
+
+    public static ForumSourceRecord ofOpenAlex(String venueOpenAlexId, String name, List<String> issns,
+                                               String openAlexSourceType) {
         List<String> tokens = issns == null ? List.of() : issns;
         String primary = tokens.isEmpty() ? null : tokens.getFirst();
         List<String> aliases = tokens.size() <= 1 ? List.of() : tokens.subList(1, tokens.size());
@@ -158,9 +163,28 @@ public record ForumSourceRecord(
                 primary,
                 null,
                 aliases,
-                null,
+                aggregationTypeForOpenAlexSourceType(openAlexSourceType),
                 null,
                 null
         );
+    }
+
+    /**
+     * Map an OpenAlex venue {@code source.type} to our forum {@code aggregationType} vocabulary. Returns null
+     * for unknown / non-discriminating types (repository, metadata, other) so the merge engine keeps any
+     * existing value or falls back to its default. This is the authoritative venue-kind signal: OpenAlex's
+     * work-level type is uniformly "article" for journals and conferences alike.
+     */
+    static String aggregationTypeForOpenAlexSourceType(String openAlexSourceType) {
+        if (openAlexSourceType == null) {
+            return null;
+        }
+        return switch (openAlexSourceType.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "journal" -> "Journal";
+            case "conference" -> "Conference Proceeding";
+            case "book series" -> "Book Series";
+            case "ebook platform" -> "Book";
+            default -> null;
+        };
     }
 }

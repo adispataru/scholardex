@@ -37,7 +37,28 @@ also have richer acronym extraction + workshop handling + confidence tiers, and 
    → make type the single authoritative discriminator; route `ch`/`bk` to the book scorer.
 2. **DOI-prefix signals unused** though we have the DOI: `10.1007/978…` ⇒ LNCS/LNAI
    proceedings (overrides bad `aggregationType="Journal"`); `10.1109` ⇒ IEEE proceedings.
-3. **`event` field not projected** — strongest "is a conference" signal; needs a read-model
-   column + reprojection (and a verified source — OpenAlex works lack a Crossref-style `event`).
+3. **Venue-type signal (the `event`-field equivalent).** OpenAlex has no Crossref `event`, and
+   the work-level `type` is uniformly `article` for journals *and* conferences — so the only
+   OpenAlex venue discriminator is `primary_location.source.type`
+   (journal | conference | book series | repository | …), which we did not capture. We now
+   capture it (`OpenAlexSource.type` → `OpenAlexPublicationFact.hostVenueSourceType`) and map it
+   to the forum `aggregationType` at venue onboarding
+   (`ForumSourceRecord.aggregationTypeForOpenAlexSourceType`): journal→Journal,
+   conference→Conference Proceeding, book series→Book Series, ebook platform→Book; unknown→null
+   (merge keeps any existing value / its "Journal" default). This replaces the blind "Journal"
+   default that mislabels LNCS/book-series venues. Confirmed against the live API: the LNAI venue
+   "Lecture notes in computer science" returns `source.type="book series"`.
+
+   **Backfill:** existing facts lack `hostVenueSourceType` (populates on the next OpenAlex
+   re-sync), and the merge engine keeps an existing forum `aggregationType` (to protect Scopus's
+   reliable types) — so mislabeled forums correct on the **next from-scratch rebuild**, not
+   incrementally. A lighter alternative is a venue-only `/sources` backfill keyed by
+   `hostVenueOpenAlexId` (not built).
+
+## Implemented (this session)
+
+- Type-first routing completed (`scoreBySubtype`: ch/bk→book, sh/dp→journal). [76940ac]
+- DOI-prefix signal `DoiVenueSupport` (10.1007/978 ⇒ not a journal; LNCS conference). [76940ac]
+- OpenAlex `source.type` → forum `aggregationType` capture + mapping.
 
 Policy to confirm with stakeholders: LNCS floor B vs our C; pre-2006 LNCS as journal.

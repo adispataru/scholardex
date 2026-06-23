@@ -46,6 +46,24 @@ class OpenAlexForumOnboardingServiceTest {
     }
 
     @Test
+    void carriesOpenAlexVenueSourceTypeAsAggregationType() {
+        ForumMergeEngine.Context ctx = mock(ForumMergeEngine.Context.class);
+        when(forumMergeEngine.startCreateOrTagRun()).thenReturn(ctx);
+
+        // A book series (LNCS / "Studies in Big Data") carries an ISSN and was previously defaulted to "Journal".
+        OpenAlexPublicationFact bookSeries = pub("S1", "Studies in Big Data", List.of("2197-6503"));
+        bookSeries.setHostVenueSourceType("book series");
+
+        service.onboard(List.of(bookSeries));
+
+        verify(forumMergeEngine, times(1)).ingestCreateOrTag(
+                argThat(r -> r.idType() == ForumSourceRecord.ForumIdType.OPENALEX
+                        && "Book Series".equals(r.aggregationType())),
+                eq(ctx), any(), any(), any(), any());
+        verify(forumMergeEngine).flush(ctx);
+    }
+
+    @Test
     void noVenuesIngestsNothingButStillFlushes() {
         ForumMergeEngine.Context ctx = mock(ForumMergeEngine.Context.class);
         when(forumMergeEngine.startCreateOrTagRun()).thenReturn(ctx);

@@ -64,4 +64,25 @@ class ForumSourceRecordTest {
         assertNull(record.forumType());
         assertNull(record.asjc());
     }
+
+    @Test
+    void ofOpenAlexMapsVenueSourceTypeToAggregationType() {
+        assertEquals("Journal",
+                ForumSourceRecord.ofOpenAlex("S1", "Some Journal", List.of("1234-5678"), "journal").aggregationType());
+        assertEquals("Conference Proceeding",
+                ForumSourceRecord.ofOpenAlex("S2", "Some Proceedings", List.of(), "conference").aggregationType());
+        // Book series (LNCS, "Studies in Big Data", …) carry ISSNs and were previously defaulted to "Journal".
+        assertEquals("Book Series",
+                ForumSourceRecord.ofOpenAlex("S3", "Studies in Big Data", List.of("2197-6503"), "Book Series").aggregationType());
+        assertEquals("Book",
+                ForumSourceRecord.ofOpenAlex("S4", "Some Ebook Platform", List.of(), "ebook platform").aggregationType());
+    }
+
+    @Test
+    void ofOpenAlexLeavesAggregationNullForUnknownOrMissingSourceType() {
+        // null -> the merge engine keeps any existing value / falls back to its "Journal" default.
+        assertNull(ForumSourceRecord.ofOpenAlex("S5", "Preprint Repo", List.of(), "repository").aggregationType());
+        assertNull(ForumSourceRecord.ofOpenAlex("S6", "Unknown", List.of(), null).aggregationType());
+        assertNull(ForumSourceRecord.ofOpenAlex("S7", "Legacy 3-arg call", List.of("1111-2222")).aggregationType());
+    }
 }

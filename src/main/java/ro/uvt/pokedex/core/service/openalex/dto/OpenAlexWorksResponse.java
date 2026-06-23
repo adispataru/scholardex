@@ -85,5 +85,9 @@ public class OpenAlexWorksResponse {
         private String display_name;
         private List<String> issn;
         private String issn_l;
+        // OpenAlex venue type: journal | conference | repository | ebook platform | book series | metadata | other.
+        // The authoritative "is this a conference / book series" signal — the work-level `type` is uniformly
+        // "article" for both journals and conferences, so this is the only OpenAlex venue discriminator.
+        private String type;
     }
 }
