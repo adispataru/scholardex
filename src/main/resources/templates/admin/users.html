@@ -77,7 +77,8 @@
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <tr th:each="user : ${users}">
+                                    <tr th:each="user : ${users}"
+                                        th:with="oaId=${openAlexAuthorIdByEmail != null ? openAlexAuthorIdByEmail.get(user.email) : null}">
                                         <td data-col="select">
                                             <input type="checkbox" class="js-user-bulk-cb"
                                                    th:value="${user.email}" aria-label="Select user">
@@ -103,10 +104,10 @@
 
                                         <!-- OpenAlex author id (derived from the linked canonical author) -->
                                         <td data-col="openalex">
-                                            <span th:if="${openAlexAuthorIdByEmail.get(user.email) != null}"
+                                            <span th:if="${oaId != null}"
                                                   class="app-admin-id-pill"
-                                                  th:text="${openAlexAuthorIdByEmail.get(user.email)}"></span>
-                                            <span th:if="${openAlexAuthorIdByEmail.get(user.email) == null}"
+                                                  th:text="${oaId}"></span>
+                                            <span th:if="${oaId == null}"
                                                   class="app-admin-no-profile">—</span>
                                         </td>
 
@@ -166,7 +167,7 @@
                                                                  data-first-name=${user.researcherProfile?.firstName ?: ''},
                                                                  data-last-name=${user.researcherProfile?.lastName ?: ''},
                                                                  data-orcid=${user.researcherProfile?.orcid ?: ''},
-                                                                 data-openalex=${openAlexAuthorIdByEmail.get(user.email) ?: ''},
+                                                                 data-openalex=${oaId ?: ''},
                                                                  data-scopus-ids=${user.researcherProfile != null ? #strings.listJoin(user.researcherProfile.scopusId, ',') : ''},
                                                                  data-wos-ids=${user.researcherProfile != null ? #strings.listJoin(user.researcherProfile.wosId, ',') : ''},
                                                                  data-position=${user.researcherProfile?.position ?: ''}">
