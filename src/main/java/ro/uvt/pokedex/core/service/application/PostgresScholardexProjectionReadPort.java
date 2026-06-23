@@ -175,6 +175,27 @@ public class PostgresScholardexProjectionReadPort {
         );
     }
 
+    /**
+     * H69 (scoped WoS reads) / H67 2/2b: year-true WoS Core Collection membership for the given forums, scoped to the
+     * given years — a targeted read over the {@code (forum_id, year, edition)}-keyed category view (vs loading a
+     * forum's whole multi-year ranking blob). Returns forumId → set of years it was in SCIE/SSCI/AHCI. Empty inputs
+     * short-circuit (avoids an empty {@code IN ()}). Core editions are SCIE/SSCI/AHCI; ESCI is excluded by policy.
+     */
+    public java.util.Map<String, Set<Integer>> findForumCoreCollectionYears(
+            Collection<String> forumIds, Collection<Integer> years) {
+        if (isNullOrEmpty(forumIds) || years == null || years.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, Set<Integer>> out = new java.util.HashMap<>();
+        namedParameterJdbcTemplate.query(
+                "SELECT DISTINCT forum_id, year FROM reporting_read.scholardex_forum_category_view "
+                        + "WHERE forum_id IN (:ids) AND year IN (:years) AND edition::text IN ('SCIE','SSCI','AHCI')",
+                new MapSqlParameterSource().addValue("ids", forumIds).addValue("years", years),
+                (org.springframework.jdbc.core.RowCallbackHandler) rs ->
+                        out.computeIfAbsent(rs.getString("forum_id"), k -> new java.util.HashSet<>()).add(rs.getInt("year")));
+        return out;
+    }
+
     public List<ScholardexForumView> findAllForums() {
         return namedParameterJdbcTemplate.query(
                 "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view",

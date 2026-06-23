@@ -83,6 +83,15 @@ Done history moved to `TASKS-done.md`.
   source-filtered, self-cit-excluded citation counts) — reuses `computeCitationView` + `scholardex_forum_membership_view`.
   Branch only on the new kind (additive path untouched; mirrors inline `GENERIC_COUNT`). Foundation for H68 gates/derived
   indicators. Plan: `docs/tasks/active/h67-h-index.md` (S4a). Per-domain activation (thresholds) = H67 S4b.
+  **(6)** **year/category-scoped WoS ranking reads (caveman-code fix).** `PostgresReportingLookupFacade.getRankingsByForum`
+  loads a forum's ENTIRE multi-year `List<WoSRanking>` (memoized) and `AbstractWoSForumScoringService` filters years/
+  categories in memory — but `forum_metric_view`/`forum_category_view` are already keyed by `(forum_id, year, category)`.
+  Add a targeted read `getForumRankings(forumIds, years[, categories])` (direct `WHERE forum_id IN … AND year IN …`,
+  ISSN/acronym resolution kept as fallback for unlinked forums). Memoized load-all is OK-ish for journal scoring (one
+  forum/pub) but doesn't scale to the **Hirsch year-true Core citation classification** (~500k citations × tens of
+  thousands of distinct citing forums). Sequencing: build the scoped read → wire **H67 2/2b** (year-true Core WoS h)
+  on it → migrate AIS/IF/RIS off `getRankingsForForum` behind the H69 regression sweep (identical scores). Edition
+  policy + "in Core when?" per H67 S4b.
 
 - [ ] `H65` Physics (Fizică/FF) report — DOCX export. **Postponed behind H63 + H64.**
   Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template). Scoped this session;

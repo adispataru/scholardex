@@ -170,6 +170,15 @@ public class ScholardexProjectionReadService {
         return postgresProjectionReadPort.findAllForums();
     }
 
+    /**
+     * H69 (scoped WoS reads) / H67 2/2b: per-forum year-true WoS Core Collection membership (SCIE/SSCI/AHCI), scoped to
+     * the given years — forumId → years it was in Core. A targeted read instead of loading a forum's whole ranking blob.
+     */
+    public java.util.Map<String, java.util.Set<Integer>> findForumCoreCollectionYears(
+            Collection<String> forumIds, Collection<Integer> years) {
+        return postgresProjectionReadPort.findForumCoreCollectionYears(forumIds, years);
+    }
+
     public List<ScholardexAuthorView> findAuthorsByIdIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
         return postgresProjectionReadPort.findAuthorsByIdIn(resolvedAuthorIds);
