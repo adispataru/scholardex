@@ -79,10 +79,13 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
-        // Delegate to specialized scoring services by publication subtype.
+        // Delegate to specialized scoring services by publication subtype — the type is the authoritative
+        // discriminator (mirrors the puncte/clas.c type switch). Book chapters/books go to the book scorer
+        // (previously they fell through to a zero score); short surveys and data papers are journal output.
         return switch (subtype) {
-            case "ar", "re" -> journalScoringService.getScore(publication, indicator);
+            case "ar", "re", "sh", "dp" -> journalScoringService.getScore(publication, indicator);
             case "cp" -> conferenceScoringService.getScore(publication, indicator);
+            case "ch", "bk" -> bookScoringService.getScore(publication, indicator);
             default -> {
                 yield createEmptyScore();
             }

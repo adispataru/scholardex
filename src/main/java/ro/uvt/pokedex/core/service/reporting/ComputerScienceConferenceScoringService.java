@@ -106,7 +106,8 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 scoreResult.bestYear.set(resolvedScore.getYear());
                 copyProvenance(resolvedScore, scoreResult);
             }
-            if(scoreResult.bestPoints.get() == 0 && isLncsProceedingsForum(forum)) {
+            if(scoreResult.bestPoints.get() == 0
+                    && (isLncsProceedingsForum(forum) || DoiVenueSupport.isSpringerBookSeriesProceedings(publication))) {
                 // Special case for LNCS chapters
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
@@ -421,7 +422,9 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private boolean isLncsBookSeriesCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {
-        if (!isLectureNotesSeries(forum)) {
+        // LNCS-family proceedings published as chapters: identified by the forum series name OR a Springer
+        // ISBN DOI (10.1007/978…), which survives even when the forum name/aggregationType is wrong.
+        if (!isLectureNotesSeries(forum) && !DoiVenueSupport.isSpringerBookSeriesProceedings(publication)) {
             return false;
         }
         return PublicationSubtypeSupport.isSubtype(publication, "ch")

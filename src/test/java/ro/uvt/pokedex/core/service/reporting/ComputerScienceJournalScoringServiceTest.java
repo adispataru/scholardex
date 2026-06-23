@@ -230,6 +230,33 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
+    void springerIsbnDoiLabeledAsArticleIsNotScoredAsJournal() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        // OpenAlex mislabels this LNCS proceedings paper as subtype "ar", and the forum as a Journal — but
+        // the Springer ISBN DOI (10.1007/978…) is authoritative: it is not a journal article.
+        ScoringPublication publication = new ScoringPublication(
+                "pub-1", null, "forum-1", "2018-01-01", "ar", "ar",
+                java.util.List.of("a1"), 1, "https://doi.org/10.1007/978-3-319-99999-1_7", null,
+                "Lecture Notes In Artificial Intelligence", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-1");
+        forum.setAggregationType("Journal");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(0.0, score.getScore());
+    }
+
+    @Test
     void activityJournalFallsBackToScopusWhenNoWosMatch() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort) {
             @Override

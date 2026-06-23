@@ -35,7 +35,9 @@ class ComputerScienceScoringServiceTest {
         org.mockito.Mockito.lenient().when(cacheService.maxAvailableYear()).thenReturn(2023);
     }
     @Test
-    void bkSubtypeFallsBackToEmptyScore() {
+    void bkSubtypeRoutesToBookScoringService() {
+        Score bookScore = score(4.0, 2023, "B", "NOT_FOUND");
+        when(bookScoringService.getScore(any(ScoringPublication.class), any(Indicator.class))).thenReturn(bookScore);
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
@@ -47,16 +49,15 @@ class ComputerScienceScoringServiceTest {
 
         Score score = service.getScore(publication, new Indicator());
 
-        assertEquals(0.0, score.getScore());
-        assertEquals(0, score.getYear());
-        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
-        assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
+        assertEquals(4.0, score.getScore());
+        verify(bookScoringService, times(1)).getScore(any(ScoringPublication.class), any(Indicator.class));
         verifyNoInteractions(journalScoringService, conferenceScoringService);
-        verifyNoInteractions(bookScoringService);
     }
 
     @Test
-    void chSubtypeFallsBackToEmptyScore() {
+    void chSubtypeRoutesToBookScoringService() {
+        Score bookScore = score(2.0, 2023, "C", "NOT_FOUND");
+        when(bookScoringService.getScore(any(ScoringPublication.class), any(Indicator.class))).thenReturn(bookScore);
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
@@ -68,12 +69,9 @@ class ComputerScienceScoringServiceTest {
 
         Score score = service.getScore(publication, new Indicator());
 
-        assertEquals(0.0, score.getScore());
-        assertEquals(0, score.getYear());
-        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
-        assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
+        assertEquals(2.0, score.getScore());
+        verify(bookScoringService, times(1)).getScore(any(ScoringPublication.class), any(Indicator.class));
         verifyNoInteractions(journalScoringService, conferenceScoringService);
-        verifyNoInteractions(bookScoringService);
     }
 
     @Test

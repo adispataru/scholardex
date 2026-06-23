@@ -92,6 +92,12 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         if (PublicationSubtypeSupport.isSubtype(publication, "ch", "bk")) {
             return false;
         }
+        // DOI-prefix backstop (clas.c springer_ch): a Springer ISBN DOI (10.1007/978…) is a book /
+        // chapter / LNCS proceedings volume even when OpenAlex mislabels the subtype as "article" — catches
+        // the cases the subtype check misses.
+        if (DoiVenueSupport.isSpringerBookSeriesProceedings(publication)) {
+            return false;
+        }
         if (isArticleOrReview(publication)) {
             return true;
         }
