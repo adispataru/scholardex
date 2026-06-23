@@ -28,7 +28,6 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
     private static final Logger logger = LoggerFactory.getLogger(ComputerScienceConferenceScoringService.class);
     private static final int LAST_CORE_YEAR = 2023;
-    private static final double MIN_CONFERENCE_SCORE = 1.0;
     private static final Pattern ORDINAL_PREFIX = Pattern.compile("^\\d+(st|nd|rd|th)\\s+", Pattern.CASE_INSENSITIVE);
     private static final Pattern YEAR_TOKEN = Pattern.compile("\\b(19|20)\\d{2}\\b");
     private static final Pattern ORDINAL_TOKEN = Pattern.compile("^\\d+(ST|ND|RD|TH)$", Pattern.CASE_INSENSITIVE);
@@ -281,25 +280,55 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             return new ConferenceScoreResolution(Optional.empty(), trace.withFallbackReason(FallbackReason.NO_CLOSEST_YEAR));
         }
         Score scoreResult = new Score();
-        double baseScore = switch (yearlyRank.getRank()) {
+        CoreConferenceRanking.Rank parentRank = yearlyRank.getRank();
+        boolean workshopAdjusted = isWorkshopVariant(match.sourceTitle(), match.ranking());
+        // Standard workshop rule (Informatica-2016): a workshop attached to a category-X conference is treated
+        // as one category lower (A*→A, A→B, B→C, C→D, D→D) and earns the explicit 6/4/2/1/1 ladder. Both the
+        // points AND the reported category follow the downgrade (previously the points halved but the reported
+        // rank stayed the parent's, so a workshop showed e.g. "A*" next to 6 points).
+        CoreConferenceRanking.Rank effectiveRank = workshopAdjusted ? workshopDowngradedRank(parentRank) : parentRank;
+        double score = workshopAdjusted ? workshopPoints(parentRank) : coreConferencePoints(parentRank);
+        scoreResult.setScore(score);
+        scoreResult.setCoreRankingEquivalent(effectiveRank.toString());
+        scoreResult.setYear(year);
+        setProvenance(scoreResult, scoringSourceLabel(resolutionSource, workshopAdjusted),
+                buildScoringInfo(trace, resolutionSource, year, effectiveRank, workshopAdjusted));
+        return new ConferenceScoreResolution(Optional.of(scoreResult),
+                trace.withResolvedYear(year, effectiveRank)
+                        .withWorkshopAdjusted(workshopAdjusted)
+                        .withResolvedSource(resolutionSource)
+                        .withFallbackReason(FallbackReason.NONE));
+    }
+
+    /** Base CORE conference points (CNATDCU/INFO): A*=12, A=8, B=4, C=2, D and anything else = 1. */
+    private static double coreConferencePoints(CoreConferenceRanking.Rank rank) {
+        return switch (rank) {
             case A_STAR -> 12.0;
             case A -> 8.0;
             case B -> 4.0;
             case C -> 2.0;
             default -> 1.0;
         };
-        boolean workshopAdjusted = isWorkshopVariant(match.sourceTitle(), match.ranking());
-        double score = workshopAdjusted ? Math.max(MIN_CONFERENCE_SCORE, baseScore / 2.0) : baseScore;
-        scoreResult.setScore(score);
-        scoreResult.setCoreRankingEquivalent(yearlyRank.getRank().toString());
-        scoreResult.setYear(year);
-        setProvenance(scoreResult, scoringSourceLabel(resolutionSource, workshopAdjusted),
-                buildScoringInfo(trace, resolutionSource, year, yearlyRank.getRank(), workshopAdjusted));
-        return new ConferenceScoreResolution(Optional.of(scoreResult),
-                trace.withResolvedYear(year, yearlyRank.getRank())
-                        .withWorkshopAdjusted(workshopAdjusted)
-                        .withResolvedSource(resolutionSource)
-                        .withFallbackReason(FallbackReason.NONE));
+    }
+
+    /** Workshop one-category downgrade: A*→A, A→B, B→C, C→D, D (and anything else) → D. */
+    private static CoreConferenceRanking.Rank workshopDowngradedRank(CoreConferenceRanking.Rank parent) {
+        return switch (parent) {
+            case A_STAR -> CoreConferenceRanking.Rank.A;
+            case A -> CoreConferenceRanking.Rank.B;
+            case B -> CoreConferenceRanking.Rank.C;
+            default -> CoreConferenceRanking.Rank.D; // C, D, … → D
+        };
+    }
+
+    /** Standard workshop point ladder keyed by the PARENT conference category: A*→6, A→4, B→2, C/D→1. */
+    private static double workshopPoints(CoreConferenceRanking.Rank parent) {
+        return switch (parent) {
+            case A_STAR -> 6.0;
+            case A -> 4.0;
+            case B -> 2.0;
+            default -> 1.0; // C, D, … → 1
+        };
     }
 
     private void applyTraceProvenance(ScoreResult scoreResult, ConferenceScoreTrace trace, String scoringSource) {

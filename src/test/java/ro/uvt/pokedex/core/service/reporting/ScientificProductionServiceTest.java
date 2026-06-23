@@ -389,7 +389,8 @@ class ScientificProductionServiceTest {
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
         assertEquals(4.0, result.get(publication.getTitle()).getScore(), 0.0001);
-        assertEquals("A", result.get(publication.getTitle()).getCoreRankingEquivalent());
+        // Workshop downgrade: parent A → reported category B (points stay 4).
+        assertEquals("B", result.get(publication.getTitle()).getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE(WS)", result.get(publication.getTitle()).getScoringSource());
         assertEquals(true, result.get(publication.getTitle()).getScoringInfo().get("workshopAdjusted"));
     }

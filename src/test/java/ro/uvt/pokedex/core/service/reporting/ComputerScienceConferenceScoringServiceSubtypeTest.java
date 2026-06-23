@@ -402,6 +402,26 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void workshopOfAStarConferenceScoresCategoryAWithSixPoints() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the 45th International Conference on Software Engineering Workshops, ICSE 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
+                ranking("ICSE", "International Conference on Software Engineering", CoreConferenceRanking.Rank.A_STAR)));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        // A* workshop → standard ladder: reported category A, 6 points (one rank down from A*).
+        assertEquals(6.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
+    }
+
+    @Test
     void workshopOfParentConferenceHalvesResolvedConferenceScore() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
@@ -417,7 +437,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        // Workshop downgrade: parent A → reported category B (points stay the standard's 4).
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE(WS)", score.getScoringSource());
         assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
@@ -747,7 +768,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        // Workshop downgrade: parent A → reported category B (points stay the standard's 4).
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
         assertEquals("DBLP+CORE(WS)", score.getScoringSource());
         assertEquals("DBLP", score.getScoringInfo().get("matchSource"));
         assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
@@ -1082,7 +1104,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(2.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
+        // Workshop downgrade: parent B → reported category C (points stay the standard's 2).
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE(WS)", score.getScoringSource());
         assertEquals("ICNP", score.getScoringInfo().get("matchedAcronym"));
     }
