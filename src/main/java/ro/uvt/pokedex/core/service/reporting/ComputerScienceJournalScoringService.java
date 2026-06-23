@@ -45,13 +45,17 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
 
         if (isJournalPublicationCandidate(publication, forum)) {
+            // ItemYear indicators score in the paper's own year, but JCR rankings lag — carry the journal's last
+            // known quartile forward so current-year papers still score.
+            boolean carryForward = indicator.getEffectiveScoreYearRange() instanceof ScoreYearRangeSpec.ItemYear;
             computeScores(
                     domain,
                     forum,
                     allowedYears,
                     scoreResult,
                     this::computeCSScore,
-                    this::compareScoresByPoints
+                    this::compareScoresByPoints,
+                    carryForward
             );
             // Special case for SCOPUS-only journals
             if (scoreResult.bestPoints.get() == 0 &&
@@ -98,18 +102,20 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         List<Integer> allowedYears = 
                 indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
+        boolean carryForward = indicator.getEffectiveScoreYearRange() instanceof ScoreYearRangeSpec.ItemYear;
         computeScores(
                 domain,
                 forum,
                 allowedYears,
                 scoreResult,
                 this::computeCSScore,
-                this::compareScoresByPoints
+                this::compareScoresByPoints,
+                carryForward
         );
 
         // Special case for SCOPUS-only journals
-        if (scoreResult.bestPoints.get() == 0 && 
-            forum != null && 
+        if (scoreResult.bestPoints.get() == 0 &&
+            forum != null &&
             "Journal".equals(forum.getAggregationType())) {
             scoreResult.bestPoints.set(2.0);
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);

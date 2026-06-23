@@ -20,6 +20,9 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
      * that tells how to pull the concrete score (AIS, RIS, IF, …)
      * from a ranking/year/category combination.
      */
+    /** How many years back the ItemYear carry-forward will look for the journal's last known ranking. */
+    private static final int YEAR_CARRY_FORWARD_LIMIT = 30;
+
     protected void computeScores(
             Domain domain,
             ScholardexForumView forum,
@@ -27,6 +30,24 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
             ScoreResult result,
             Func4Arity<WoSRanking, Integer, String, WoSRanking.Rank, Optional<Score>> scoreExtractor,
             BiFunction<Score, ScoreResult, Boolean> compareFunction) {
+        computeScores(domain, forum, allowedYears, result, scoreExtractor, compareFunction, false);
+    }
+
+    /**
+     * @param carryForwardToLatestAvailableYear when no ranking is found for the requested years, fall back to the most
+     *   recent ranked year at or before the latest requested year. JCR/WoS rankings lag ~1–2 years, so an ItemYear
+     *   indicator's single (recent) year often has no data yet; this carries the journal's last known quartile forward
+     *   so current-year papers still score. Not "best across all years" — the latest applicable ranking (a journal can
+     *   decline over time). No-op unless the primary pass found nothing.
+     */
+    protected void computeScores(
+            Domain domain,
+            ScholardexForumView forum,
+            List<Integer> allowedYears,
+            ScoreResult result,
+            Func4Arity<WoSRanking, Integer, String, WoSRanking.Rank, Optional<Score>> scoreExtractor,
+            BiFunction<Score, ScoreResult, Boolean> compareFunction,
+            boolean carryForwardToLatestAvailableYear) {
 
         if (forum == null) {
             return;
@@ -35,10 +56,29 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
             return;
         }
 
+        scoreOverYears(domain, forum, allowedYears, result, scoreExtractor, compareFunction);
+
+        if (carryForwardToLatestAvailableYear
+                && result.bestPoints.get() == 0
+                && allowedYears != null && !allowedYears.isEmpty()) {
+            int cap = java.util.Collections.max(allowedYears);
+            for (int year = cap - 1; year >= cap - YEAR_CARRY_FORWARD_LIMIT && result.bestPoints.get() == 0; year--) {
+                scoreOverYears(domain, forum, List.of(year), result, scoreExtractor, compareFunction);
+            }
+        }
+    }
+
+    private void scoreOverYears(
+            Domain domain,
+            ScholardexForumView forum,
+            List<Integer> years,
+            ScoreResult result,
+            Func4Arity<WoSRanking, Integer, String, WoSRanking.Rank, Optional<Score>> scoreExtractor,
+            BiFunction<Score, ScoreResult, Boolean> compareFunction) {
         for (WoSRanking ranking : getRankingsForForum(forum)) {
             ranking.getWebOfScienceCategoryIndex().forEach((category, rank) -> {
                 if (isCategoryInDomain(domain, category)) {
-                    for (int year : allowedYears) {
+                    for (int year : years) {
                         Optional<Score> points = scoreExtractor.apply(ranking, year, category, rank);
                         if (points.isPresent() && compareFunction.apply(points.get(), result)) {
                             result.bestPoints.set(points.get().getScore());

@@ -105,6 +105,47 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
+    void itemYearScoringCarriesForwardLatestQuartileWhenPaperYearHasNoRanking() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        // Global ranking data reaches 2025, but THIS journal's latest is 2024 — the per-forum carry-forward case.
+        when(lookupPort.maxAvailableYear()).thenReturn(2025);
+
+        // A 2025 article whose journal's JCR data only goes to 2024 (rankings lag ~1–2 years).
+        ScoringPublication publication = publication("forum-1", "2025-12-01", "ar", "ar");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Journal");
+        forum.setEIssn("2045-2322");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        rank.setQAis(Map.of(2024, WoSRanking.Quarter.Q2)); // quartile only for 2024, not the paper's 2025
+        rank.setRankAis(Map.of(2024, 50));
+
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("jid-sci-rep");
+        ranking.setWebOfScienceCategoryIndex(Map.of("MULTIDISCIPLINARY SCIENCES - SCIE", rank));
+
+        when(lookupPort.getRankingsByIssn("2045-2322")).thenReturn(List.of(ranking));
+        when(lookupPort.getTopRankings("MULTIDISCIPLINARY SCIENCES - SCIE", 2024)).thenReturn(100);
+
+        Score score = service.getScore(publication, indicator);
+
+        // Carries the 2024 Q2 forward to the 2025 paper instead of scoring 0.
+        assertEquals(4.0, score.getScore());
+        assertEquals("Q2", score.getQuarter());
+        assertEquals(2024, score.getYear());
+    }
+
+    @Test
     void activityJournalFallsBackToScopusWhenNoWosMatch() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort) {
             @Override
