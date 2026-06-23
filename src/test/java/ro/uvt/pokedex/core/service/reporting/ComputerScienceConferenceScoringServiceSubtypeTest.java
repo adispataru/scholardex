@@ -2101,6 +2101,63 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         return activity;
     }
 
+    @Test
+    void consultsDblpForNonLncsConferenceProceedingWhenForumNameMisses() {
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        // A migration-resolved conference-proceeding forum whose opaque name matches nothing in CORE.
+        // The authoritative conference identity lives only in the DBLP conf/igarss evidence — which must
+        // now be consulted even though this is NOT an LNCS book-series paper.
+        ScoringPublication publication = new ScoringPublication("pub-igarss", null, "forum-conf", "2016-06-01",
+                null, "cp", List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Unlisted Symposium Proceedings");
+        forum.setAggregationType("Conference Proceeding");
+        when(cacheService.getForum("forum-conf")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setAcronym("IGARSS");
+        ranking.setName("IEEE International Geoscience and Remote Sensing Symposium");
+        CoreConferenceRanking.YearlyRanking r2016 = new CoreConferenceRanking.YearlyRanking();
+        r2016.setRank(CoreConferenceRanking.Rank.C);
+        ranking.setYearlyRankings(Map.of(2016, r2016));
+        when(cacheService.getConferenceRankings("IGARSS")).thenReturn(List.of(ranking));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-igarss");
+        evidence.setSeries("conf/igarss");
+        when(dblpEvidenceRepository.findByPublicationId("pub-igarss")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(2.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE", score.getScoringSource());
+    }
+
+    @Test
+    void scoresArticleSubtypeInConferenceProceedingForumAsConference() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        // OpenAlex labels many proceedings papers as plain "ar"; the conference-proceeding forum still makes
+        // it a conference contribution, so it must resolve to CORE rather than be skipped entirely.
+        ScoringPublication publication = new ScoringPublication("pub-icse-ar", null, "forum-1", "2023-10-10",
+                "ar", "ar", List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the 46th International Conference on Software Engineering, ICSE 2023");
+        forum.setAggregationType("Conference Proceeding");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
+                ranking("ICSE", "International Conference on Software Engineering", CoreConferenceRanking.Rank.A_STAR)));
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(12.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
+    }
+
     private ScoringPublication conferencePublication(String forumId, String coverDate) {
         return new ScoringPublication(null, null, forumId, coverDate, null, "cp", List.of(), 0, null, null, null, 0, Set.of());
     }

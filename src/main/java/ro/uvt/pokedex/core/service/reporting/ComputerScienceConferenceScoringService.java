@@ -83,7 +83,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         );
 
         boolean lncsBookSeriesCandidate = isLncsBookSeriesCandidate(publication, forum);
-        boolean conferenceCandidate = PublicationSubtypeSupport.isSubtype(publication, "cp") || lncsBookSeriesCandidate;
+        // A paper published in a conference-proceeding forum is a conference contribution even when its
+        // subtype is the generic "ar" (OpenAlex labels many proceedings papers as plain articles).
+        boolean conferenceCandidate = PublicationSubtypeSupport.isSubtype(publication, "cp")
+                || isConferenceProceeding(forum)
+                || lncsBookSeriesCandidate;
         if (conferenceCandidate) {
             Score resolvedScore = null;
             for (int year : allowedYears) {
@@ -380,7 +384,16 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private boolean shouldConsultDblp(ScoringPublicationReadModel publication, ScholardexForumView forum) {
-        return isLncsBookSeriesCandidate(publication, forum);
+        // DBLP's conf/X series is authoritative for conference identity, so consult it for ANY conference
+        // proceedings paper whose forum-name resolution missed — not only LNCS book-series. The LNCS
+        // "Lecture Notes in …" handling is a separate book-chapter point fallback, not the DBLP gate.
+        return isConferenceProceeding(forum)
+                || PublicationSubtypeSupport.isSubtype(publication, "cp")
+                || isLncsBookSeriesCandidate(publication, forum);
+    }
+
+    private boolean isConferenceProceeding(ScholardexForumView forum) {
+        return forum != null && "Conference Proceeding".equals(forum.getAggregationType());
     }
 
     private boolean isLncsBookSeriesCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {
