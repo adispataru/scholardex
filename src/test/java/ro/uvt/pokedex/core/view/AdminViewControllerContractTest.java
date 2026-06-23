@@ -92,6 +92,8 @@ class AdminViewControllerContractTest {
     private GroupManagementFacade groupManagementFacade;
     @MockitoBean
     private ro.uvt.pokedex.core.service.importing.StaffImportService staffImportService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository authorFactRepository;
 
     @Test
     void sharedNavbarRendersPostLogoutControl() throws Exception {

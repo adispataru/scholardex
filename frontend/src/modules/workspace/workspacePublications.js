@@ -856,7 +856,6 @@ function _buildImportLineage(pub) {
     const sources = [];
     if (pub?.eid) sources.push('Scopus');
     if (pub?.wosId) sources.push('WoS');
-    if (pub?.googleScholarId) sources.push('Google Scholar');
     if (sources.length === 0) {
         return 'Imported linkage';
     }

@@ -37,7 +37,7 @@ export function initAdminUsers() {
         // Researcher profile fields
         _setField('edit-first-name', _triggerBtn.dataset.firstName || '');
         _setField('edit-last-name', _triggerBtn.dataset.lastName || '');
-        _setField('edit-scholar-id', _triggerBtn.dataset.scholarId || '');
+        _setField('edit-orcid', _triggerBtn.dataset.orcid || '');
         _setField('edit-scopus-ids', _triggerBtn.dataset.scopusIds || '');
         _setField('edit-wos-ids', _triggerBtn.dataset.wosIds || '');
         const posSelect = document.getElementById('edit-position');
@@ -97,7 +97,7 @@ export function initAdminUsers() {
             profile: {
                 firstName: _getField('edit-first-name'),
                 lastName: _getField('edit-last-name'),
-                scholarId: _getField('edit-scholar-id'),
+                orcid: _getField('edit-orcid'),
                 scopusIds: scopusRaw ? scopusRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
                 wosIds: wosRaw ? wosRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
                 position: _getField('edit-position') || null,
@@ -155,35 +155,41 @@ export function initAdminUsers() {
         }
         if (!targetRow) return;
 
-        const cells = targetRow.querySelectorAll('td');
-        // col 0: email (unchanged)
-        // col 1: name
-        cells[1].textContent = (data.hasProfile && data.name) ? data.name : '';
-        if (!data.hasProfile || !data.name) {
-            cells[1].innerHTML = '<span class="app-admin-no-profile">—</span>';
-        }
-        // col 2: scholarId
-        cells[2].innerHTML = (data.hasProfile && data.scholarId)
-            ? '<span class="app-admin-id-pill">' + _esc(data.scholarId) + '</span>'
-            : '<span class="app-admin-no-profile">—</span>';
-        // col 3: scopusIds
-        cells[3].innerHTML = (data.hasProfile && data.scopusIds && data.scopusIds.length)
-            ? data.scopusIds.map(id => '<span class="app-admin-id-pill">' + _esc(id) + '</span>').join('')
-            : '<span class="app-admin-no-profile">—</span>';
-        // col 4: wosIds
-        cells[4].innerHTML = (data.hasProfile && data.wosIds && data.wosIds.length)
-            ? data.wosIds.map(id => '<span class="app-admin-id-pill">' + _esc(id) + '</span>').join('')
-            : '<span class="app-admin-no-profile">—</span>';
-        // col 5: roles
-        cells[5].innerHTML = data.roles.length
-            ? data.roles.map(r => '<span class="app-admin-role-badge' + _roleMod(r) + '">' + _esc(r) + '</span>').join('')
-            : '<span class="app-admin-no-profile">—</span>';
-        if (cells[5].querySelector('.app-admin-role-badge')) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'app-admin-roles-cell';
-            wrapper.innerHTML = cells[5].innerHTML;
-            cells[5].innerHTML = '';
-            cells[5].appendChild(wrapper);
+        // Update cells by their data-col attribute (robust to column order — the leading select-checkbox column
+        // otherwise throws positional indexing off by one).
+        const _pill = (v) => '<span class="app-admin-id-pill">' + _esc(v) + '</span>';
+        const _none = '<span class="app-admin-no-profile">—</span>';
+        const _cell = (key) => targetRow.querySelector('[data-col="' + key + '"]');
+
+        const nameCell = _cell('name');
+        if (nameCell) nameCell.innerHTML = (data.hasProfile && data.name) ? _esc(data.name) : _none;
+
+        const orcidCell = _cell('orcid');
+        if (orcidCell) orcidCell.innerHTML = (data.hasProfile && data.orcid) ? _pill(data.orcid) : _none;
+
+        const openAlexCell = _cell('openalex');
+        if (openAlexCell) openAlexCell.innerHTML = (data.hasProfile && data.openAlexAuthorId) ? _pill(data.openAlexAuthorId) : _none;
+
+        const scopusCell = _cell('scopus-ids');
+        if (scopusCell) scopusCell.innerHTML = (data.hasProfile && data.scopusIds && data.scopusIds.length)
+            ? data.scopusIds.map(_pill).join('') : _none;
+
+        const wosCell = _cell('wos-ids');
+        if (wosCell) wosCell.innerHTML = (data.hasProfile && data.wosIds && data.wosIds.length)
+            ? data.wosIds.map(_pill).join('') : _none;
+
+        const rolesCell = _cell('roles');
+        if (rolesCell) {
+            rolesCell.innerHTML = data.roles.length
+                ? data.roles.map(r => '<span class="app-admin-role-badge' + _roleMod(r) + '">' + _esc(r) + '</span>').join('')
+                : _none;
+            if (rolesCell.querySelector('.app-admin-role-badge')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'app-admin-roles-cell';
+                wrapper.innerHTML = rolesCell.innerHTML;
+                rolesCell.innerHTML = '';
+                rolesCell.appendChild(wrapper);
+            }
         }
         // col 6: status (unchanged unless locked state changed — lock/unlock uses separate form POSTs)
         // col 7: actions — update data-* attributes so re-opening the modal is accurate
@@ -192,7 +198,8 @@ export function initAdminUsers() {
             editBtn.dataset.roles = data.roles.join(',');
             editBtn.dataset.firstName = (data.hasProfile && data.name) ? data.name.split(' ')[0] : '';
             editBtn.dataset.lastName = (data.hasProfile && data.name) ? data.name.split(' ').slice(1).join(' ') : '';
-            editBtn.dataset.scholarId = data.scholarId || '';
+            editBtn.dataset.orcid = data.orcid || '';
+            editBtn.dataset.openalex = data.openAlexAuthorId || '';
             editBtn.dataset.scopusIds = (data.scopusIds || []).join(',');
             editBtn.dataset.wosIds = (data.wosIds || []).join(',');
             editBtn.dataset.position = data.position || '';

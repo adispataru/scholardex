@@ -192,7 +192,10 @@ public class UserService {
         if (profile == null) profile = new User.ResearcherProfile();
         profile.setFirstName(incoming.getFirstName());
         profile.setLastName(incoming.getLastName());
-        profile.setScholarId(incoming.getScholarId());
+        // Google Scholar id is retired from the UI but still an author-resolution lookup key; preserve any existing
+        // value when a caller doesn't supply one rather than wiping it.
+        if (incoming.getScholarId() != null) profile.setScholarId(incoming.getScholarId());
+        profile.setOrcid(incoming.getOrcid());
         profile.setScopusId(incoming.getScopusId() != null ? incoming.getScopusId() : new ArrayList<>());
         profile.setWosId(incoming.getWosId() != null ? incoming.getWosId() : new ArrayList<>());
         profile.setPrimaryScholardexAuthorId(incoming.getPrimaryScholardexAuthorId());

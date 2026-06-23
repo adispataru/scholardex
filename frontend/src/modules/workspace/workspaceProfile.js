@@ -157,8 +157,8 @@ function _buildProfileSection(researcher) {
     const readonlyGrid = `<div id="ws-prof-readonly-grid" class="app-ws-prof__info-grid">
       <span class="app-ws-prof__info-label">Name</span>
       <span class="app-ws-prof__info-value">${_esc([researcher?.firstName, researcher?.lastName].filter(Boolean).join(' ') || '—')}</span>
-      <span class="app-ws-prof__info-label">Google Scholar ID</span>
-      <span class="app-ws-prof__info-value">${researcher?.scholarId ? _esc(researcher.scholarId) : '<em class="app-ws-prof__info-value--muted">Not set</em>'}</span>
+      <span class="app-ws-prof__info-label">ORCID</span>
+      <span class="app-ws-prof__info-value">${researcher?.orcid ? _esc(researcher.orcid) : '<em class="app-ws-prof__info-value--muted">Not set</em>'}</span>
       <span class="app-ws-prof__info-label">Scopus IDs</span>
       <span class="app-ws-prof__info-value">${scopusPills || '<em class="app-ws-prof__info-value--muted">None</em>'}</span>
       <span class="app-ws-prof__info-label">WoS IDs</span>
@@ -228,9 +228,10 @@ function _buildEditForm(researcher, observedAffiliations, affiliationConfirmatio
         </div>
       </div>
       <div class="app-ws-prof__field">
-        <label class="app-ws-prof__label" for="ws-prof-edit-scholarId">Google Scholar ID</label>
-        <input class="app-ws-prof__input" type="text" id="ws-prof-edit-scholarId" name="scholarId"
-               value="${_esc(researcher?.scholarId ?? '')}" placeholder="e.g. XXXXXXXXX" style="max-width:20rem">
+        <label class="app-ws-prof__label" for="ws-prof-edit-orcid">ORCID</label>
+        <input class="app-ws-prof__input" type="text" id="ws-prof-edit-orcid" name="orcid"
+               value="${_esc(researcher?.orcid ?? '')}" placeholder="0000-0002-1825-0097" style="max-width:20rem">
+        <small class="app-ws-prof__hint">Bare or full URL (https://orcid.org/…) — drives the OpenAlex sync below.</small>
       </div>
       <div class="app-ws-prof__field" id="ws-prof-edit-scopusId">
         <label class="app-ws-prof__label">Scopus IDs</label>
@@ -543,7 +544,7 @@ function _saveProfile() {
 
     const firstName = (_mount.querySelector('#ws-prof-edit-firstName')?.value ?? '').trim();
     const lastName = (_mount.querySelector('#ws-prof-edit-lastName')?.value ?? '').trim();
-    const scholarId = (_mount.querySelector('#ws-prof-edit-scholarId')?.value ?? '').trim() || null;
+    const orcid = (_mount.querySelector('#ws-prof-edit-orcid')?.value ?? '').trim() || null;
     const scopusEntries = _mount.querySelectorAll('#ws-prof-scopus-entries .app-ws-prof__id-entry-row input');
     const wosEntries = _mount.querySelectorAll('#ws-prof-wos-entries .app-ws-prof__id-entry-row input');
     const scopusId = Array.from(scopusEntries).map((input) => input.value.trim()).filter(Boolean);
@@ -577,7 +578,7 @@ function _saveProfile() {
         body: JSON.stringify({
             firstName,
             lastName,
-            scholarId,
+            orcid,
             scopusId,
             wosId,
             currentAffiliationIds,

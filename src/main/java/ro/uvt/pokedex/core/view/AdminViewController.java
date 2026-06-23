@@ -65,6 +65,7 @@ public class AdminViewController {
     private final AdminDashboardService adminDashboardService;
     private final GroupManagementFacade groupManagementFacade;
     private final StaffImportService staffImportService;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository authorFactRepository;
     private final String Country = "Romania";
 
     @Value("${h07.staff.import.max-bytes:2097152}")
@@ -83,6 +84,7 @@ public class AdminViewController {
     public String showUsersPage(Model model) {
         List<User> users = userService.getAllUsers();
         model.addAttribute("users", users);
+        model.addAttribute("openAlexAuthorIdByEmail", buildOpenAlexAuthorIdByEmail(users));
         model.addAttribute("allRoles", Arrays.asList(UserRole.values()));
         model.addAttribute("allGroups", groupManagementFacade.buildGroupListView().groups());
         model.addAttribute("totalUsers", (long) users.size());
@@ -90,6 +92,48 @@ public class AdminViewController {
         model.addAttribute("usersWithoutProfile", users.stream().filter(u -> u.getResearcherProfile() == null).count());
         model.addAttribute("statCards", buildUserStatCards(users));
         return "admin/users";
+    }
+
+    /**
+     * Map of user email → the researcher's OpenAlex author id, derived from their confirmed canonical author
+     * (primaryScholardexAuthorId → openAlexAuthorIds). The OpenAlex author id is not denormalized onto the read
+     * model / profile, so it is read from the canonical author fact (Mongo). "—" (absent) until the researcher has
+     * been resolved to an OpenAlex-bearing author. Batched to a single repository call.
+     */
+    private Map<String, String> buildOpenAlexAuthorIdByEmail(List<User> users) {
+        Map<String, String> primaryByEmail = new HashMap<>();
+        for (User u : users) {
+            User.ResearcherProfile p = u.getResearcherProfile();
+            if (p != null && p.getPrimaryScholardexAuthorId() != null && !p.getPrimaryScholardexAuthorId().isBlank()) {
+                primaryByEmail.put(u.getEmail(), p.getPrimaryScholardexAuthorId());
+            }
+        }
+        if (primaryByEmail.isEmpty()) return Map.of();
+        Map<String, String> openAlexByAuthorId = new HashMap<>();
+        for (var author : authorFactRepository.findByIdIn(new HashSet<>(primaryByEmail.values()))) {
+            if (author.getOpenAlexAuthorIds() != null && !author.getOpenAlexAuthorIds().isEmpty()) {
+                openAlexByAuthorId.put(author.getId(), author.getOpenAlexAuthorIds().get(0));
+            }
+        }
+        Map<String, String> result = new HashMap<>();
+        primaryByEmail.forEach((email, authorId) -> {
+            String openAlex = openAlexByAuthorId.get(authorId);
+            if (openAlex != null) result.put(email, openAlex);
+        });
+        return result;
+    }
+
+    /** The OpenAlex author id for a single profile (used in the edit-save response). */
+    private String deriveOpenAlexAuthorId(User.ResearcherProfile profile) {
+        if (profile == null || profile.getPrimaryScholardexAuthorId() == null
+                || profile.getPrimaryScholardexAuthorId().isBlank()) {
+            return null;
+        }
+        return authorFactRepository.findById(profile.getPrimaryScholardexAuthorId())
+                .map(a -> a.getOpenAlexAuthorIds())
+                .filter(ids -> ids != null && !ids.isEmpty())
+                .map(ids -> ids.get(0))
+                .orElse(null);
     }
 
     private List<StatCardDef> buildUserStatCards(List<User> users) {
@@ -858,7 +902,7 @@ public class AdminViewController {
             User.ResearcherProfile profile = new User.ResearcherProfile();
             profile.setFirstName(request.profile().firstName());
             profile.setLastName(request.profile().lastName());
-            profile.setScholarId(request.profile().scholarId());
+            profile.setOrcid(ro.uvt.pokedex.core.service.openalex.OrcidSupport.normalize(request.profile().orcid()));
             profile.setScopusId(request.profile().scopusIds() != null ? request.profile().scopusIds() : List.of());
             profile.setWosId(request.profile().wosIds() != null ? request.profile().wosIds() : List.of());
             if (request.profile().position() != null && !request.profile().position().isBlank()) {
@@ -871,13 +915,14 @@ public class AdminViewController {
 
         User updated = userService.getUserByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
-        return ResponseEntity.ok(AdminUserEditResponse.from(updated));
+        return ResponseEntity.ok(AdminUserEditResponse.from(
+                updated, deriveOpenAlexAuthorId(updated.getResearcherProfile())));
     }
 
     record AdminUserEditProfileRequest(
             String firstName,
             String lastName,
-            String scholarId,
+            String orcid,
             List<String> scopusIds,
             List<String> wosIds,
             String position
@@ -893,20 +938,22 @@ public class AdminViewController {
             List<String> roles,
             boolean locked,
             String name,
-            String scholarId,
+            String orcid,
+            String openAlexAuthorId,
             List<String> scopusIds,
             List<String> wosIds,
             String position,
             boolean hasProfile
     ) {
-        static AdminUserEditResponse from(User user) {
+        static AdminUserEditResponse from(User user, String openAlexAuthorId) {
             User.ResearcherProfile p = user.getResearcherProfile();
             return new AdminUserEditResponse(
                     user.getEmail(),
                     user.getRoles().stream().map(Enum::name).toList(),
                     user.isLocked(),
                     p != null ? p.getName() : null,
-                    p != null ? p.getScholarId() : null,
+                    p != null ? p.getOrcid() : null,
+                    openAlexAuthorId,
                     p != null ? p.getScopusId() : List.of(),
                     p != null ? p.getWosId() : List.of(),
                     p != null && p.getPosition() != null ? p.getPosition().name() : null,

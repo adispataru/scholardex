@@ -436,7 +436,11 @@ public class ResearcherWorkspaceController {
         User.ResearcherProfile profile = isNewProfile ? new User.ResearcherProfile() : user.getResearcherProfile();
         profile.setFirstName(request.firstName() != null ? request.firstName().trim() : "");
         profile.setLastName(request.lastName() != null ? request.lastName().trim() : "");
-        profile.setScholarId(request.scholarId() != null ? request.scholarId().trim() : null);
+        // Google Scholar id is retired from the UI; preserve any existing value (it is still an author-resolution
+        // lookup key in ResearcherAuthorLookupService) rather than wiping it when the form omits the field.
+        if (request.scholarId() != null) {
+            profile.setScholarId(request.scholarId().trim());
+        }
         profile.setScopusId(request.scopusId() != null
                 ? new ArrayList<>(request.scopusId()) : new ArrayList<>());
         profile.setWosId(request.wosId() != null
