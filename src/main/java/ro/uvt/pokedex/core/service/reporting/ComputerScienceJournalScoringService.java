@@ -84,6 +84,14 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     }
 
     private boolean isJournalPublicationCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {
+        // Book chapters (ch) and books (bk) are never journal articles, even when the forum's (often
+        // unreliable) aggregationType says "Journal" — OpenAlex routinely mislabels book series and
+        // LNCS/LNAI venues as "Journal". The subtype is authoritative; defer these to the book scorer.
+        // (Conference papers "cp" are intentionally NOT excluded: proceedings published in a WoS-indexed
+        // journal special issue legitimately score as journals.)
+        if (PublicationSubtypeSupport.isSubtype(publication, "ch", "bk")) {
+            return false;
+        }
         if (isArticleOrReview(publication)) {
             return true;
         }

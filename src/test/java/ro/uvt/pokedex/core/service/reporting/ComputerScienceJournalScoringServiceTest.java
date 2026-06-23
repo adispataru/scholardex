@@ -203,6 +203,33 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
+    void bookChapterInForumMislabeledAsJournalIsNotScoredAsJournal() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        // A book chapter (OpenAlex "book-chapter") sitting in a book-series forum that OpenAlex mislabels
+        // as a "Journal". Even with Scopus membership it must NOT be counted as a journal article.
+        ScoringPublication publication = new ScoringPublication(
+                "pub-1", null, "forum-1", "2022-01-01", "book-chapter", null,
+                java.util.List.of("a1"), 1, "10.0/ch", null, "Studies in Big Data", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-1");
+        forum.setAggregationType("Journal"); // unreliable: it is really a book series
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        // Rejected as a journal candidate before any ranking/Scopus lookup happens.
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(0.0, score.getScore());
+    }
+
+    @Test
     void activityJournalFallsBackToScopusWhenNoWosMatch() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort) {
             @Override
