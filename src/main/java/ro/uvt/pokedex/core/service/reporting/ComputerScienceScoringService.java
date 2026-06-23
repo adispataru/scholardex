@@ -58,9 +58,10 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return switch (forum.getAggregationType()) {
                 case "Journal" -> journalScoringService.getScore(publication, indicator);
                 case "Conference Proceeding" -> conferenceScoringService.getScore(publication, indicator);
-                case "Book", "Book Series" -> PublicationSubtypeSupport.isSubtype(publication, "cp")
-                        ? conferenceScoringService.getScore(publication, indicator)
-                        : bookScoringService.getScore(publication, indicator);
+                // Book/Book-Series forums: a "cp" paper is a conference proceeding (e.g. LNCS), otherwise fall to
+                // the subtype switch — which keeps journal output and DROPS books/chapters (they are not part of
+                // this A*/A/B journal+conference framework; they belong to the SENSE book indicator, CS_SENSE).
+                case "Book", "Book Series" -> scoreBySubtype(publication, indicator);
                 default -> scoreBySubtype(publication, indicator);
             };
         }
@@ -80,15 +81,14 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
         }
 
         // Delegate to specialized scoring services by publication subtype — the type is the authoritative
-        // discriminator (mirrors the puncte/clas.c type switch). Book chapters/books go to the book scorer
-        // (previously they fell through to a zero score); short surveys and data papers are journal output.
+        // discriminator (mirrors the puncte/clas.c type switch). Only journals and conferences are dispatched:
+        // this is the A*/A/B journal+conference framework (Info_B / Info_C). Books/chapters ("ch"/"bk") are NOT
+        // scored here — they belong to the SENSE book indicator (Info_D_i, strategy CS_SENSE); routing them
+        // through the book scorer here double-counted them into Info_B. Short surveys and data papers are journal output.
         return switch (subtype) {
             case "ar", "re", "sh", "dp" -> journalScoringService.getScore(publication, indicator);
             case "cp" -> conferenceScoringService.getScore(publication, indicator);
-            case "ch", "bk" -> bookScoringService.getScore(publication, indicator);
-            default -> {
-                yield createEmptyScore();
-            }
+            default -> createEmptyScore();
         };
     }
 

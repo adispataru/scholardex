@@ -35,9 +35,9 @@ class ComputerScienceScoringServiceTest {
         org.mockito.Mockito.lenient().when(cacheService.maxAvailableYear()).thenReturn(2023);
     }
     @Test
-    void bkSubtypeRoutesToBookScoringService() {
-        Score bookScore = score(4.0, 2023, "B", "NOT_FOUND");
-        when(bookScoringService.getScore(any(ScoringPublication.class), any(Indicator.class))).thenReturn(bookScore);
+    void bkSubtypeIsNotScoredByThisJournalConferenceFramework() {
+        // The CS router (Info_B / Info_C, A*/A/B) dispatches only journals + conferences. Books ("bk") belong to
+        // the SENSE book indicator (CS_SENSE), so here they yield an empty score — not a book-scorer delegation.
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
@@ -49,15 +49,13 @@ class ComputerScienceScoringServiceTest {
 
         Score score = service.getScore(publication, new Indicator());
 
-        assertEquals(4.0, score.getScore());
-        verify(bookScoringService, times(1)).getScore(any(ScoringPublication.class), any(Indicator.class));
-        verifyNoInteractions(journalScoringService, conferenceScoringService);
+        assertEquals(0.0, score.getScore());
+        verifyNoInteractions(bookScoringService, journalScoringService, conferenceScoringService);
     }
 
     @Test
-    void chSubtypeRoutesToBookScoringService() {
-        Score bookScore = score(2.0, 2023, "C", "NOT_FOUND");
-        when(bookScoringService.getScore(any(ScoringPublication.class), any(Indicator.class))).thenReturn(bookScore);
+    void chSubtypeIsNotScoredByThisJournalConferenceFramework() {
+        // Book chapters ("ch") must not double-count into the journal+conference indicator — empty score here.
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
@@ -69,9 +67,8 @@ class ComputerScienceScoringServiceTest {
 
         Score score = service.getScore(publication, new Indicator());
 
-        assertEquals(2.0, score.getScore());
-        verify(bookScoringService, times(1)).getScore(any(ScoringPublication.class), any(Indicator.class));
-        verifyNoInteractions(journalScoringService, conferenceScoringService);
+        assertEquals(0.0, score.getScore());
+        verifyNoInteractions(bookScoringService, journalScoringService, conferenceScoringService);
     }
 
     @Test
