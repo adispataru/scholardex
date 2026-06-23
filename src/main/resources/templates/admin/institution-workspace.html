@@ -122,17 +122,17 @@
                                                         <td th:text="${publication.coverDate}">Year</td>
                                                         <td>
                                                             <div th:each="author, iterStat : ${publication.authors}">
-                                                                <a th:if="${authorMap[publication.authors[iterStat.index]] != null}"
-                                                                   th:text="${authorMap[publication.authors[iterStat.index]].name}"
+                                                                <a th:if="${authorMap.get(publication.authors[iterStat.index]) != null}"
+                                                                   th:text="${authorMap.get(publication.authors[iterStat.index]).name}"
                                                                    th:href="@{/admin/scholardex/publications(authorId=${author})}"></a>
-                                                                <span th:if="${authorMap[publication.authors[iterStat.index]] == null}"
+                                                                <span th:if="${authorMap.get(publication.authors[iterStat.index]) == null}"
                                                                       th:text="${author}"></span>
                                                             </div>
                                                         </td>
                                                         <td th:text="${publication.subtypeDescription}">Type</td>
                                                         <td>
-                                                            <span th:if="${forumMap[publication.forum] != null}"
-                                                                  th:text="${forumMap[publication.forum].publicationName}"></span>
+                                                            <span th:if="${forumMap.get(publication.forum) != null}"
+                                                                  th:text="${forumMap.get(publication.forum).publicationName}"></span>
                                                         </td>
                                                         <td th:text="${publication.citedbyCount}">0</td>
                                                     </tr>

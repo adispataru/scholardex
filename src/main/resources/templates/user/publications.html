@@ -125,14 +125,14 @@
                                     <td>
                                         <div th:each="author, iterStat : ${publication.authors}">
 
-                                            <a th:if="${authorMap[publication.authors[iterStat.index]] != null}" th:text="${authorMap[publication.authors[iterStat.index]].name} + (iterStat.last ? '; ' : '')" th:href="@{/user/authors/view/{id}(id=${author})}">
+                                            <a th:if="${authorMap.get(publication.authors[iterStat.index]) != null}" th:text="${authorMap.get(publication.authors[iterStat.index]).name} + (iterStat.last ? '; ' : '')" th:href="@{/user/authors/view/{id}(id=${author})}">
                                                 <span>;</span>
                                             </a>
-                                            <span th:if="${authorMap[publication.authors[iterStat.index]] == null}" th:text="${author}"></span>
+                                            <span th:if="${authorMap.get(publication.authors[iterStat.index]) == null}" th:text="${author}"></span>
                                         </div>
                                     </td>
                                     <td th:text="${publication.subtypeDescription}">0</td>
-                                    <td th:text="${forumMap[publication.forum] != null ? forumMap[publication.forum].publicationName : publication.forum}">Venue</td>
+                                    <td th:text="${forumMap.get(publication.forum) != null ? forumMap.get(publication.forum).publicationName : publication.forum}">Venue</td>
                                     <td th:text="${publication.fundingId}"></td>
                                     <td th:text="${publication.citedbyCount}">0</td>
                                 </tr>

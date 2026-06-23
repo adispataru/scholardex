@@ -25,9 +25,9 @@
                         </div>
                         <div class="app-summary-panel__body">
                             <div th:each="authorId : ${publication.authors}">
-                                <a th:if="${authorMap[authorId] != null}"
+                                <a th:if="${authorMap.get(authorId) != null}"
                                    th:href="@{/user/authors/view/{id}(id=${authorId})}"
-                                   th:text="${authorMap[authorId].name}"></a>
+                                   th:text="${authorMap.get(authorId).name}"></a>
                             </div>
                             <p th:text="${publication.subtypeDescription}" class="text-muted small"></p>
                             <div th:if="${forum != null}">
@@ -74,7 +74,7 @@
                                             </td>
                                             <td data-col="year" th:text="${citation.coverDate}">—</td>
                                             <td data-col="venue">
-                                                <th:block th:with="venueForum=${forumMap[citation.forum]}">
+                                                <th:block th:with="venueForum=${forumMap.get(citation.forum)}">
                                                     <a th:if="${venueForum != null}"
                                                        th:href="@{/admin/scholardex/publications(forumId=${citation.forum})}"
                                                        th:text="${venueForum.publicationName}"></a>

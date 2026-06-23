@@ -118,10 +118,10 @@
                         </td>
                         <td th:text="${publication.subtypeDescription}">Type</td>
                         <td>
-                            <a th:if="${forumMap[publication.forum] != null}"
+                            <a th:if="${forumMap.get(publication.forum) != null}"
                                th:href="@{/forums/{id}(id=${publication.forum})}"
-                               th:text="${forumMap[publication.forum].publicationName}">Venue</a>
-                            <span th:if="${forumMap[publication.forum] == null}" th:text="${publication.forum}">Venue</span>
+                               th:text="${forumMap.get(publication.forum).publicationName}">Venue</a>
+                            <span th:if="${forumMap.get(publication.forum) == null}" th:text="${publication.forum}">Venue</span>
                         </td>
                         <td class="app-table__cell--numeric" th:text="${publication.citedbyCount}">0</td>
                     </tr>
