@@ -264,6 +264,10 @@ public class AdminViewController {
     private static final List<String> LEGACY_OUTPUT_TYPES = List.of(
             "PUBLICATIONS", "PUBLICATIONS_MAIN_AUTHOR", "PUBLICATIONS_COAUTHOR",
             "CITATIONS", "CITATIONS_EXCLUDE_SELF",
+            // H67 S4b: aggregate Hirsch indicators (pair with the HIRSCH strategy). Indicative — see the h-index plan.
+            "HINDEX_SCHOLARDEX", "HINDEX_GRAPH", "HINDEX_SCOPUS", "HINDEX_WOS",
+            "HINDEX_SCHOLARDEX_EXCLUDE_SELF", "HINDEX_GRAPH_EXCLUDE_SELF",
+            "HINDEX_SCOPUS_EXCLUDE_SELF", "HINDEX_WOS_EXCLUDE_SELF",
             "GENERIC_ACTIVITIES",
             "ACTIVITY_FORUM", "ACTIVITY_EVENT", "ACTIVITY_PROJECT", "ACTIVITY_UNIVERSITY"
     );

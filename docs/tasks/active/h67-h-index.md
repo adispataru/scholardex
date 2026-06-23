@@ -124,9 +124,16 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
     inherently the 2/2b graph walk (per-citation year×venue lookup), not a precomputed scalar (S1's `wos_citation_count`
     is the current-membership fast approx). Decide "in Core when?" (citation-time vs current) + a pre-coverage-year
     fallback before S4b.
-  - **S4b — per-domain activation (data, later).** Insert the HIndex indicator rows into chimie (≥13/9 WoS),
-    geografie (WoS, self-cit-excluded), fizica criteria with per-position thresholds from the standards assessment;
-    the istorie "h OR citations" gate needs **H68**.
+  - **S4b — per-domain activation. DISPLAY-ONLY chosen (2026-06-22); hard gate DEFERRED.** The computed year-true-Core
+    WoS h UNDERCOUNTS official (Adrian 2 vs 5: coverage = OpenAlex's view, no CPCI conferences/H76, ESCI excluded), so
+    a hard ≥13/9 pass/fail would false-fail real candidates. Decision: surface h as an **indicative** indicator, not a
+    gate. **Code enabler DONE:** admin form offers the `HINDEX_*` output types (`AdminViewController.LEGACY_OUTPUT_TYPES`)
+    + `HIRSCH` (already from the enum), so `IndicatorKind.of` builds the kind; the report's JSON detail
+    (`IndicatorDetailResponseAssembler.buildDetail`) surfaces `summary.totalScore` = h generically (number shows on
+    reports; per-item breakdown empty, interactive `buildIndicatorApplyView` preview falls through cleanly). **Activation
+    is now a data/admin action** (create HIndex indicators on chimie/geografie/fizica via the enabled form), labeled
+    indicative — no thresholds. **Hard gate (S4b-gate)** stays blocked on per-domain accuracy validation vs official WoS
+    + H76; the istorie "h OR citations" gate needs **H68**.
 
 ## Relation
 
