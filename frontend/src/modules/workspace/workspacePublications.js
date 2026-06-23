@@ -951,6 +951,7 @@ function _refreshReviewSummary() {
 }
 
 function _buildReviewSummary() {
+    const counts = _reviewCounts();
     const pendingCount = _pendingReviewCount();
     const suspiciousCount = _pendingSuspiciousCount();
     const recommendedCount = _recommendedPendingCount();
@@ -967,6 +968,12 @@ function _buildReviewSummary() {
         : '';
     return `
         <section class="app-ws-pubs__triage-bar" aria-label="Authorship review queue">
+          <div class="app-ws-pubs__review-breakdown" aria-label="Authorship review breakdown">
+            <span class="app-ws-pubs__review-stat"><strong>${counts.known}</strong> known</span>
+            <span class="app-ws-pubs__review-stat app-ws-pubs__review-stat--confirmed"><strong>${counts.confirmed}</strong> confirmed</span>
+            <span class="app-ws-pubs__review-stat app-ws-pubs__review-stat--rejected"><strong>${counts.rejected}</strong> rejected</span>
+            <span class="app-ws-pubs__review-stat app-ws-pubs__review-stat--pending"><strong>${counts.pending}</strong> pending</span>
+          </div>
           <div class="app-ws-pubs__triage-summary">
             <span class="app-ws-pubs__triage-label">Pending Review</span>
             <strong class="app-ws-pubs__triage-count">${pendingCount}</strong>
@@ -989,6 +996,18 @@ function _pendingReviewCount() {
     return typeof _data?.pendingReviewCount === 'number'
         ? _data.pendingReviewCount
         : _allPubs.filter(pub => _isPending(pub.id)).length;
+}
+
+// Explicit authorship-review breakdown over the known publication set.
+function _reviewCounts() {
+    let confirmed = 0, rejected = 0, pending = 0;
+    for (const pub of _allPubs) {
+        const status = _reviewState(pub.id)?.status;
+        if (status === 'CONFIRMED') confirmed++;
+        else if (status === 'REJECTED') rejected++;
+        else pending++;
+    }
+    return { known: _allPubs.length, confirmed, rejected, pending };
 }
 
 function _pendingSuspiciousCount() {

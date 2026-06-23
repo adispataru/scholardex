@@ -76,6 +76,34 @@
   box-shadow: var(--app-shadow-card);
 }
 
+.app-ws-pubs__review-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  width: 100%;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.1rem;
+  border-bottom: 1px solid var(--app-color-border);
+}
+
+.app-ws-pubs__review-stat {
+  font-size: 0.82rem;
+  color: var(--app-color-text-muted, #6b7280);
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--app-color-subtle-bg, rgba(0, 0, 0, 0.05));
+}
+
+.app-ws-pubs__review-stat strong {
+  font-weight: 600;
+  color: var(--app-color-text, inherit);
+}
+
+.app-ws-pubs__review-stat--confirmed strong { color: var(--app-color-success, #16a34a); }
+.app-ws-pubs__review-stat--rejected strong  { color: var(--app-color-danger, #dc2626); }
+.app-ws-pubs__review-stat--pending strong    { color: var(--app-color-warning, #d97706); }
+
 .app-ws-pubs__triage-summary {
   display: flex;
   align-items: baseline;
