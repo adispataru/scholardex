@@ -45,10 +45,11 @@ Status: ✅ done · ⏳ deferred · ❓ needs policy decision.
 These are correctness gaps where the data exists but the scorer ignores the standard's rule:
 - ❓ **Poster/demo + blank-subtype are scored** — standard excludes posters/demos; `isResearchContribution`
   gives blank subtypes "benefit of the doubt".
-- ❓ **Workshop adjustment halves points** instead of the standard's one-category downgrade; the
-  reported `resolvedRank` still shows the pre-downgrade rank.
-- ❓ **Perspective-c citations have no A\*/A/B forum-category gate** on the citing publication
-  (footnote 2 requires it for senior grades).
+- ✅ **Workshop adjustment** now an explicit one-category downgrade + 6/4/2/1/1 ladder; the
+  reported category follows the downgrade (A*→A, …). Points were already numerically correct;
+  this fixed the stale label + made it robust to ladder changes. (a856383)
+- ➖ **Perspective-c citations A\*/A/B forum-category gate** — handled at the indicator level
+  (formula/selector config), not the scorer. No scorer change needed (per owner).
 - ❓ **Conference D-tier isn't a real indexing test** (any proceedings → D); no Scopus/IEEE/ACM/DBLP
   union check, and **no WSEAS/IAENG/DAAAM / arXiv-CoRR-only / Beall's exclusion** (standard mandates these).
 
