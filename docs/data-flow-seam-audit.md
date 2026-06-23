@@ -15,16 +15,11 @@ Status: ✅ done · ⏳ deferred · ❓ needs policy decision.
 
 ## Deferred — read-side / cheap (no full rebuild; derive-only projection refresh)
 
-1. **Widen `ScoringPublicationReadModel`** (the chokepoint — single highest-leverage fix). The
-   PG view is rich but the scorer interface is a thin 14-field slice. Add getters + read them in
-   the two `ScoringPublication` constructors (`PostgresScholardexProjectionReadPort.mapScoringPublication`):
-   - `scopusCitationCount`/`wosCitationCount` — H67 source-attributed h-index is invisible to
-     scorers (they fall back to undifferentiated `citedByCount`). Already on the view.
-   - `affiliation_ids` — institution/university-rank scoring can't filter by author institution.
-   - `open_access` — OA signal unavailable to scorers.  Effort: S.
-2. **Read port omits projected forum columns** — `findForumsByIdIn`/`findAllForums` SELECT drops
-   `forum_type`/`asjc`, so `ScholardexForumView.forumType/asjc` are always null at read time
-   despite being populated in PG. Venue-kind gating silently dead. Effort: S.
+1. ✅ **Widen `ScoringPublicationReadModel`** (chokepoint) — added scopus/wos/graph citation
+   splits + affiliation_ids + open_access getters (defaulted on the interface); read port +
+   `toScoringPublication` fill them. (844255a) Consumers (h-index, university-rank) can now use
+   them — wiring those consumers is a further follow-up.
+2. ✅ **Read port forum SELECT** now includes `forum_type`/`asjc`. (844255a)
 3. **Project the new OpenAlex pub fields** to `scholardex_publication_view` + read model
    (`retracted`, `fwci`, `citationNormalizedPercentile`, `primaryTopic`, biblio) and wire the
    **retracted scoring gate** (currently only the Scopus `tb` subtype is gated; OpenAlex-only
