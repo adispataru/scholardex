@@ -100,8 +100,15 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
     **Progress:** 1/2 done (`9b1b3bb`) — the type foundation (`IndicatorKind.HIndex` + `ScoringStrategy.HIRSCH` +
     persisted round-trip). 2/2 done for the **non-self-cit** path — `UserReportFacade.buildReportScopedIndicatorDetail`
     branches on `isHIndexOutput()` and returns `hIndex` over the S1 columns (all four sources) instead of the sum;
-    `HIndexCalculator.hIndexForSource` + tests green. **2/2b remaining:** the `excludeSelf` self-cit-filtered path
-    (currently throws) — needs the citation-graph walk + a forum→WoS-edition read over
+    `HIndexCalculator.hIndexForSource` + tests green. **2/2b DONE** (`UserReportFacade.hIndexExcludingSelf`, on the H69
+    scoped read `findForumCoreCollectionYears`): the `excludeSelf` path walks the citation graph, drops self-citations
+    (citing pub shares a researcher author), and classifies by venue — **WoS = year-true Core** (SCIE/SSCI/AHCI in the
+    citing paper's year), Scopus = current `scopusId`, GRAPH/SCHOLARDEX = all internal. Validated end-to-end via a SQL
+    mirror: Adrian's year-true-Core self-cit-excluded WoS h = **2** (vs the S1-column 4 / real 5) — correctly lower
+    because it drops ESCI + self-cites + (the big one for CS) **conference citations that WoS indexes via CPCI but we
+    don't hold (H76)**; `hIndexOfCounts` test green. **Remaining:** the old "2/2b needs a WoS read flag" note below is
+    obsolete (the scoped read covers it) — what's left is the interactive `buildIndicatorApplyView` preview branch.
+    Historical note (superseded): the `excludeSelf` self-cit-filtered path needed the citation-graph walk + a forum→WoS-edition read over
     `scholardex_forum_membership_view` (NO schema change: WoS membership is already in the read model — editions
     `SCIE`/`ESCI`/`SSCI`/`AHCI`, plus JCR metrics on `scholardex_forum_metric_view`; an earlier note wrongly said the
     read model had no WoS flag because the `forum_view` *table* lacks one). Also pending: the interactive

@@ -529,19 +529,22 @@ public class UserReportFacade {
                     IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
         }
 
-        // H67 S4a: aggregate Hirsch (h-index) — the value is hIndex over the per-pub source citation counts, NOT a
-        // sum. !excludeSelf reads the S1 projection columns directly; excludeSelf (the self-cit-filtered graph walk)
-        // is S4a 2/2b and not wired yet.
+        // H67 S4a: aggregate Hirsch (h-index) — the value is hIndex over the per-pub source citation counts, NOT a sum.
+        // !excludeSelf reads the S1 projection columns directly (fast). excludeSelf (S4a 2/2b) walks the citation graph,
+        // drops self-citations (citing pub shares a researcher author), and classifies by venue: WoS = YEAR-TRUE Core
+        // (SCIE/SSCI/AHCI in the citing paper's year, via the scoped category read); Scopus = current scopusId; else all.
         if (indicator != null && indicator.isHIndexOutput()) {
             ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind = indicator.hIndexKind();
-            if (kind.excludeSelf()) {
-                throw new UnsupportedOperationException(
-                        "H67 S4a 2/2b: self-citation-excluded h-index is not wired yet (needs the citation-graph walk "
-                                + "+ a WoS-indexed read-model flag). Source=" + kind.source());
+            int h;
+            int totalCit;
+            if (!kind.excludeSelf()) {
+                h = HIndexCalculator.hIndexForSource(publications, kind.source());
+                totalCit = publications.stream().mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
+            } else {
+                int[] r = hIndexExcludingSelf(kind, authors, publications);
+                h = r[0];
+                totalCit = r[1];
             }
-            int h = HIndexCalculator.hIndexForSource(publications, kind.source());
-            int totalCit = publications.stream()
-                    .mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
             rawGraph.put("total", String.valueOf(h));
             rawGraph.put("totalCit", totalCit);
             rawGraph.put("outputMode", "hindex");
@@ -580,6 +583,101 @@ public class UserReportFacade {
                         citationView.totalCitationCount(),
                         citationView.quarterLabels(), citationView.quarterValues()),
                 IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
+    }
+
+    /**
+     * H67 S4a 2/2b: self-citation-excluded h-index over the citation graph. Drops citations whose citing pub shares a
+     * researcher author, classifies the rest by venue source (WoS = year-true Core via the scoped category read;
+     * Scopus = current scopusId; GRAPH/SCHOLARDEX = all internal), and returns {@code [h, totalCitationsCounted]}.
+     */
+    private int[] hIndexExcludingSelf(ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind,
+                                      List<ScholardexAuthorView> authors,
+                                      List<ScholardexPublicationView> publications) {
+        Set<String> researcherAuthorIds = authors.stream()
+                .map(ScholardexAuthorView::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+        ReportScopedIndicatorScoringSupport.CitationContext ctx =
+                ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
+        Map<String, List<ScholardexPublicationView>> citingByCited = ctx.citingPublicationsByCitedPublicationId();
+        ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource source = kind.source();
+
+        java.util.function.Predicate<ScholardexPublicationView> venueOk;
+        if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE) {
+            Set<String> forumIds = new HashSet<>();
+            Set<Integer> years = new HashSet<>();
+            for (ScholardexPublicationView pub : publications) {
+                for (ScholardexPublicationView c : citingByCited.getOrDefault(pub.getId(), List.of())) {
+                    if (c.getForum() != null) {
+                        forumIds.add(c.getForum());
+                    }
+                    Integer y = parseYear(c.getCoverDate());
+                    if (y != null) {
+                        years.add(y);
+                    }
+                }
+            }
+            Map<String, Set<Integer>> coreYears =
+                    scholardexProjectionReadService.findForumCoreCollectionYears(forumIds, years);
+            venueOk = c -> {
+                Integer y = parseYear(c.getCoverDate());
+                return y != null && c.getForum() != null
+                        && coreYears.getOrDefault(c.getForum(), Set.of()).contains(y);
+            };
+        } else if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.SCOPUS_VENUE) {
+            Set<String> forumIds = new HashSet<>();
+            for (ScholardexPublicationView pub : publications) {
+                for (ScholardexPublicationView c : citingByCited.getOrDefault(pub.getId(), List.of())) {
+                    if (c.getForum() != null) {
+                        forumIds.add(c.getForum());
+                    }
+                }
+            }
+            Map<String, ScholardexForumView> forums = new HashMap<>();
+            for (ScholardexForumView f : scholardexProjectionReadService.findForumsByIdIn(forumIds)) {
+                forums.put(f.getId(), f);
+            }
+            venueOk = c -> c.getForum() != null && forums.get(c.getForum()) != null
+                    && forums.get(c.getForum()).getScopusId() != null;
+        } else {
+            venueOk = c -> true; // GRAPH / SCHOLARDEX: all internal citations (self-cit already excluded below)
+        }
+
+        int[] counts = new int[publications.size()];
+        int total = 0;
+        int idx = 0;
+        for (ScholardexPublicationView pub : publications) {
+            int cnt = 0;
+            for (ScholardexPublicationView c : citingByCited.getOrDefault(pub.getId(), List.of())) {
+                if (sharesAnyAuthor(c, researcherAuthorIds)) {
+                    continue; // self-citation
+                }
+                if (venueOk.test(c)) {
+                    cnt++;
+                }
+            }
+            counts[idx++] = cnt;
+            total += cnt;
+        }
+        return new int[]{HIndexCalculator.hIndexOfCounts(counts), total};
+    }
+
+    private static boolean sharesAnyAuthor(ScholardexPublicationView pub, Set<String> authorIds) {
+        if (pub == null || pub.getAuthors() == null) {
+            return false;
+        }
+        for (String a : pub.getAuthors()) {
+            if (authorIds.contains(a)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Integer parseYear(String coverDate) {
+        if (coverDate == null) {
+            return null;
+        }
+        Matcher m = Pattern.compile("(\\d{4})").matcher(coverDate);
+        return m.find() ? Integer.parseInt(m.group(1)) : null;
     }
 
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {

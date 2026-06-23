@@ -37,6 +37,23 @@ public final class HIndexCalculator {
         return 0;
     }
 
+    /** h-index over already-computed per-publication citation counts (used by the self-cit-filtered graph walk). */
+    public static int hIndexOfCounts(int[] counts) {
+        int n = counts.length;
+        int[] buckets = new int[n + 1];
+        for (int c : counts) {
+            buckets[Math.min(Math.max(c, 0), n)]++;
+        }
+        int papersWithAtLeast = 0;
+        for (int k = n; k >= 0; k--) {
+            papersWithAtLeast += buckets[k];
+            if (papersWithAtLeast >= k) {
+                return k;
+            }
+        }
+        return 0;
+    }
+
     /** The per-publication citation-count extractor for a given source (the S1 projection columns). */
     public static ToIntFunction<ScholardexPublicationView> extractorFor(
             ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource source) {

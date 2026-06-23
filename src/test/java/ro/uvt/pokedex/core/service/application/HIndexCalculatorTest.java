@@ -57,6 +57,14 @@ class HIndexCalculatorTest {
     }
 
     @Test
+    void hIndexOfCountsMatchesTheViewBasedComputation() {
+        assertThat(HIndexCalculator.hIndexOfCounts(new int[]{13, 12, 5, 5, 3})).isEqualTo(4);
+        assertThat(HIndexCalculator.hIndexOfCounts(new int[]{0, 0, 0})).isZero();
+        assertThat(HIndexCalculator.hIndexOfCounts(new int[]{})).isZero();
+        assertThat(HIndexCalculator.hIndexOfCounts(new int[]{100})).isEqualTo(1);
+    }
+
+    @Test
     void emptyAndZeroAreZero() {
         assertThat(HIndexCalculator.breakdown(List.of()).scholardex()).isZero();
         assertThat(HIndexCalculator.breakdown(List.of(pub(0, 0, 0, 0))).scopusVenue()).isZero();
