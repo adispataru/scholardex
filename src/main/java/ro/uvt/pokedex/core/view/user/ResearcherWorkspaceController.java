@@ -814,12 +814,10 @@ public class ResearcherWorkspaceController {
             return List.of();
         }
         List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(authorLookupKeys);
-        // Author affiliations are not denormalized onto the author view (V2 keeps them in the author->affiliation
-        // edge table), so read them from the edges — same fix as the public author page.
         Set<String> affiliationIds = authors.stream()
-                .map(ScholardexAuthorView::getId)
-                .filter(id -> id != null && !id.isBlank())
-                .flatMap(authorId -> scholardexProjectionReadService.findAffiliationIdsByAuthorId(authorId).stream())
+                .map(ScholardexAuthorView::getAffiliationIds)
+                .filter(ids -> ids != null && !ids.isEmpty())
+                .flatMap(List::stream)
                 .filter(id -> id != null && !id.isBlank())
                 .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
         if (affiliationIds.isEmpty()) {

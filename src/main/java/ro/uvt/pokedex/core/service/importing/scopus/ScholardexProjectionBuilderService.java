@@ -246,6 +246,9 @@ public class ScholardexProjectionBuilderService {
                             && affiliationIds.contains(row.getAffiliationId()))
                     .toList();
 
+            // Denormalize author affiliations from the validated edges onto the author views before the write.
+            denormalizeAuthorAffiliations(authorViews, validAuthorAffiliationFacts);
+
             int droppedCitations = citationFacts.size() - validCitationFacts.size();
             int droppedAuthorship = authorshipFacts.size() - validAuthorshipFacts.size();
             int droppedAuthorAffiliation = authorAffiliationFacts.size() - validAuthorAffiliationFacts.size();
@@ -307,6 +310,8 @@ public class ScholardexProjectionBuilderService {
         long totalStartedAtNanos = System.nanoTime();
         try {
             BatchRefreshState batchRefreshState = loadBatchRefreshState(sourceBatchId, buildVersion, buildAt);
+            // Denormalize affiliations for the batch's authors (loaded with their full edge set) before the write.
+            denormalizeAuthorAffiliations(batchRefreshState.authorViews(), batchRefreshState.authorAffiliationFacts());
             executeBatchRefreshWrite(batchRefreshState);
 
             markImported(result, batchRefreshState.forumViews().size());
@@ -386,6 +391,31 @@ public class ScholardexProjectionBuilderService {
         view.setUpdatedAt(buildAt);
         view.setSourceEventId(fact.getSourceEventId());
         return view;
+    }
+
+    /**
+     * Denormalize each author's affiliations from the author&rarr;affiliation edge facts onto the author views.
+     * V2 keeps author affiliations only in the edge table (the author fact's {@code affiliationIds} is unused), so a
+     * consumer reading {@code author_view.affiliation_ids} would otherwise see nothing. Writes every currently-observed
+     * affiliation (no primary / current / past distinction — that is a profile-level concern). Overwrites the empty
+     * value {@link #toAuthorView} copies from the fact.
+     */
+    private void denormalizeAuthorAffiliations(
+            List<ScholardexAuthorView> authorViews,
+            List<ScholardexAuthorAffiliationFact> authorAffiliationFacts) {
+        Map<String, LinkedHashSet<String>> affiliationIdsByAuthor = new HashMap<>();
+        for (ScholardexAuthorAffiliationFact edge : authorAffiliationFacts) {
+            if (edge.getAuthorId() == null || edge.getAffiliationId() == null) {
+                continue;
+            }
+            affiliationIdsByAuthor
+                    .computeIfAbsent(edge.getAuthorId(), k -> new LinkedHashSet<>())
+                    .add(edge.getAffiliationId());
+        }
+        for (ScholardexAuthorView view : authorViews) {
+            LinkedHashSet<String> affiliations = affiliationIdsByAuthor.get(view.getId());
+            view.setAffiliationIds(affiliations == null ? List.of() : new ArrayList<>(affiliations));
+        }
     }
 
     private ScholardexAffiliationView toAffiliationView(ScholardexAffiliationFact fact, String buildVersion, Instant buildAt) {

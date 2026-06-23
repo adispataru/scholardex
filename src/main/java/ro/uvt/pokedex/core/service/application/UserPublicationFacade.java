@@ -99,8 +99,7 @@ public class UserPublicationFacade {
                 scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(theAuthor.getId())
         );
 
-        // V2 does not denormalize affiliationIds onto the author view, so read them from the author→affiliation edges.
-        Set<String> affiliationIds = scholardexProjectionReadService.findAffiliationIdsByAuthorId(theAuthor.getId());
+        List<String> affiliationIds = theAuthor.getAffiliationIds() != null ? theAuthor.getAffiliationIds() : List.of();
         List<ScholardexAffiliationView> affiliations = scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds);
 
         UserPublicationsViewModel baseVm = buildPublicationsViewModel(publications);

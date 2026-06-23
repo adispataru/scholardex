@@ -64,9 +64,8 @@ public class OnboardingAuthorCandidateService {
     }
 
     private List<String> affiliationLabels(ScholardexAuthorView author) {
-        // Author affiliations live in the author->affiliation edge table, not the denormalized author view.
-        Set<String> affiliationIds = scholardexProjectionReadService.findAffiliationIdsByAuthorId(author.getId());
-        if (affiliationIds.isEmpty()) {
+        List<String> affiliationIds = author.getAffiliationIds();
+        if (affiliationIds == null || affiliationIds.isEmpty()) {
             return List.of();
         }
         return scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds).stream()
