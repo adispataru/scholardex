@@ -106,7 +106,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 scoreResult.bestYear.set(resolvedScore.getYear());
                 copyProvenance(resolvedScore, scoreResult);
             }
-            if(scoreResult.bestPoints.get() == 0 && forum != null && forum.getPublicationName().contains("Lecture Notes in ")) {
+            if(scoreResult.bestPoints.get() == 0 && isLncsProceedingsForum(forum)) {
                 // Special case for LNCS chapters
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
@@ -174,7 +174,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
         // Handle LNCS and SCOPUS cases similar to publication scoring
         if (scoreResult.bestPoints.get() == 0 && forum != null) {
-            if (forum.getPublicationName().contains("Lecture Notes in ")) {
+            if (isLncsProceedingsForum(forum)) {
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.LNCS);
@@ -396,9 +396,32 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         return forum != null && "Conference Proceeding".equals(forum.getAggregationType());
     }
 
+    /**
+     * Broad "Lecture Notes …" gate ("Lecture Notes in …" or "Lecture Notes on …"), case-insensitive
+     * because the source data is inconsistent about capitalisation ("in" vs "In"). Used to admit these
+     * book-series papers as conference candidates; the LNCS C fallback is narrower ({@link #isLncsProceedingsForum}).
+     */
+    private boolean isLectureNotesSeries(ScholardexForumView forum) {
+        String name = forum == null ? null : forum.getPublicationName();
+        if (name == null) {
+            return false;
+        }
+        String normalized = name.toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("lecture notes in ") || normalized.contains("lecture notes on ");
+    }
+
+    /**
+     * LNCS-family Springer proceedings proper — "Lecture Notes in …" (LNCS, LNAI = "Lecture Notes in
+     * Artificial Intelligence", LNBIP), case-insensitive. Only these earn the LNCS C fallback; the rarer
+     * "Lecture Notes on …" stays a candidate but falls through to the SCOPUS D tier.
+     */
+    private boolean isLncsProceedingsForum(ScholardexForumView forum) {
+        String name = forum == null ? null : forum.getPublicationName();
+        return name != null && name.toLowerCase(java.util.Locale.ROOT).contains("lecture notes in ");
+    }
+
     private boolean isLncsBookSeriesCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {
-        String publicationName = forum == null ? null : forum.getPublicationName();
-        if (publicationName == null || !(publicationName.contains("Lecture Notes in ") || publicationName.contains("Lecture Notes on "))) {
+        if (!isLectureNotesSeries(forum)) {
             return false;
         }
         return PublicationSubtypeSupport.isSubtype(publication, "ch")

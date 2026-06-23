@@ -2158,6 +2158,26 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
     }
 
+    @Test
+    void lncsSeriesFallbackMatchesCaseInsensitivelyForLnai() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        // Real casing variant from the data: "Lecture Notes In Artificial Intelligence" (capital In), which
+        // OpenAlex even mislabels as a Journal. LNAI is Springer conference proceedings, so the chapter must
+        // still get the LNCS C fallback rather than going unscored.
+        ScoringPublication publication = lncsChapterPublication("forum-lnai", "2018-01-01", "pub-lnai");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Lecture Notes In Artificial Intelligence");
+        forum.setAggregationType("Journal");
+        when(cacheService.getForum("forum-lnai")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(2.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals(WoSRanking.Quarter.LNCS.toString(), score.getQuarter());
+    }
+
     private ScoringPublication conferencePublication(String forumId, String coverDate) {
         return new ScoringPublication(null, null, forumId, coverDate, null, "cp", List.of(), 0, null, null, null, 0, Set.of());
     }
