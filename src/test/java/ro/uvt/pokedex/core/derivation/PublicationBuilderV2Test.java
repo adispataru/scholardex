@@ -69,6 +69,34 @@ class PublicationBuilderV2Test {
         assertThat(result.facts().getFirst().getCitedByCount()).isEqualTo(6); // monotonic max
     }
 
+    @Test
+    void carriesOpenAlexEnrichmentOntoCanonicalFact() {
+        OpenAlexPublicationFact o = openAlexPub("W9", "10.1/enriched", "Enriched", 3);
+        o.setRetracted(true);
+        o.setFwci(2.5);
+        o.setCitationNormalizedPercentile(0.99);
+        o.setPrimaryTopicId("T123");
+        o.setPrimaryTopicName("Cloud Computing");
+        o.setVolume("12");
+        o.setIssue("4");
+        o.setFirstPage("100");
+        o.setLastPage("110");
+
+        CanonicalGraphBuilder.PublicationBuildResult result =
+                builder.buildPublications(List.of(), List.of(o), CanonicalGraphBuilder.PubResolvers.empty());
+
+        assertThat(result.facts()).hasSize(1);
+        ScholardexPublicationFact pub = result.facts().getFirst();
+        assertThat(pub.getRetracted()).isTrue();
+        assertThat(pub.getFwci()).isEqualTo(2.5);
+        assertThat(pub.getCitationNormalizedPercentile()).isEqualTo(0.99);
+        assertThat(pub.getPrimaryTopicId()).isEqualTo("T123");
+        assertThat(pub.getPrimaryTopicName()).isEqualTo("Cloud Computing");
+        assertThat(pub.getVolume()).isEqualTo("12");
+        assertThat(pub.getIssueIdentifier()).isEqualTo("4");
+        assertThat(pub.getPageRange()).isEqualTo("100-110");
+    }
+
     private ScopusPublicationFact scopusPub(String eid, String doi, String title, int cited) {
         ScopusPublicationFact f = new ScopusPublicationFact();
         f.setEid(eid);

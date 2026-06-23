@@ -295,6 +295,23 @@ public class OpenAlexCanonicalizationService {
         fact.setOpenAccess(source.getOpenAccess());
         fact.setSubtype(source.getType());
         fact.setSubtypeDescription(source.getType());
+        // OpenAlex enrichment — research-ethics gate + impact + subject (projection/scoring wiring follows).
+        fact.setRetracted(source.getRetracted());
+        fact.setFwci(source.getFwci());
+        fact.setCitationNormalizedPercentile(source.getCitationNormalizedPercentile());
+        fact.setPrimaryTopicId(source.getPrimaryTopicId());
+        fact.setPrimaryTopicName(source.getPrimaryTopicName());
+        // Bibliographic detail for OpenAlex-owned pubs (only fill when OpenAlex carries it — don't clobber Scopus).
+        if (source.getVolume() != null) {
+            fact.setVolume(source.getVolume());
+        }
+        if (source.getIssue() != null) {
+            fact.setIssueIdentifier(source.getIssue());
+        }
+        String openAlexPageRange = pageRange(source.getFirstPage(), source.getLastPage());
+        if (openAlexPageRange != null) {
+            fact.setPageRange(openAlexPageRange);
+        }
         fact.setSourceEventId(source.getSourceEventId());
         publicationWriter.upsertAndLinkSource(
                 fact,
@@ -305,6 +322,19 @@ public class OpenAlexCanonicalizationService {
                         source.getSourceCorrelationId(),
                         source.getSourceEventId()),
                 LINK_REASON_OPENALEX_PUBLICATION);
+    }
+
+    /** Compose the canonical {@code pageRange} ("first-last", or a single page) from OpenAlex biblio; null if absent. */
+    private static String pageRange(String firstPage, String lastPage) {
+        boolean hasFirst = firstPage != null && !firstPage.isBlank();
+        boolean hasLast = lastPage != null && !lastPage.isBlank();
+        if (hasFirst && hasLast) {
+            return firstPage.trim() + "-" + lastPage.trim();
+        }
+        if (hasFirst) {
+            return firstPage.trim();
+        }
+        return hasLast ? lastPage.trim() : null;
     }
 
     /**

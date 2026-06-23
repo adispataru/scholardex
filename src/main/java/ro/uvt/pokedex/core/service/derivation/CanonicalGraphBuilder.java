@@ -904,7 +904,9 @@ public class CanonicalGraphBuilder {
                              String subtypeDescription, String scopusSubtype, String scopusSubtypeDescription,
                              String pii, String pubmedId, String volume, String issueIdentifier, String bookId,
                              String scopusForumId, String openAlexHostVenueId, List<String> scopusAffiliations,
-                             String sourceEventId, String sourceBatchId, String sourceCorrelationId) {
+                             String sourceEventId, String sourceBatchId, String sourceCorrelationId,
+                             Boolean retracted, Double fwci, Double citationNormalizedPercentile,
+                             String primaryTopicId, String primaryTopicName, String firstPage, String lastPage) {
     }
 
     /** Forum + affiliation lookups so the V2 pub build can resolve {@code forumId} + {@code affiliationIds}. */
@@ -995,6 +997,24 @@ public class CanonicalGraphBuilder {
             fact.setVolume(scopus.volume());
             fact.setIssueIdentifier(scopus.issueIdentifier());
             fact.setBookId(scopus.bookId());
+        }
+        // OpenAlex enrichment — research-ethics gate + impact + subject; bibliographic detail only fills gaps
+        // Scopus left (Scopus is authoritative for biblio on a shared pub).
+        if (openAlex != null) {
+            fact.setRetracted(openAlex.retracted());
+            fact.setFwci(openAlex.fwci());
+            fact.setCitationNormalizedPercentile(openAlex.citationNormalizedPercentile());
+            fact.setPrimaryTopicId(openAlex.primaryTopicId());
+            fact.setPrimaryTopicName(openAlex.primaryTopicName());
+            if (fact.getVolume() == null) {
+                fact.setVolume(openAlex.volume());
+            }
+            if (fact.getIssueIdentifier() == null) {
+                fact.setIssueIdentifier(openAlex.issueIdentifier());
+            }
+            if (fact.getPageRange() == null) {
+                fact.setPageRange(pageRange(openAlex.firstPage(), openAlex.lastPage()));
+            }
         }
         // forumId: OpenAlex host venue first (by OpenAlex venue id), else the Scopus forum id — both → sforum_.
         String forumId = null;
@@ -1103,6 +1123,19 @@ public class CanonicalGraphBuilder {
         return union.isEmpty() ? 0.0 : (double) inter.size() / union.size();
     }
 
+    /** Compose canonical {@code pageRange} ("first-last", or a single page) from OpenAlex biblio; null if absent. */
+    private static String pageRange(String firstPage, String lastPage) {
+        boolean hasFirst = firstPage != null && !firstPage.isBlank();
+        boolean hasLast = lastPage != null && !lastPage.isBlank();
+        if (hasFirst && hasLast) {
+            return firstPage.trim() + "-" + lastPage.trim();
+        }
+        if (hasFirst) {
+            return firstPage.trim();
+        }
+        return hasLast ? lastPage.trim() : null;
+    }
+
     private static SourcePub fromScopus(ScopusPublicationFact s) {
         String doiNorm = ScholardexPublicationCanonicalizationService.normalizeDoi(s.getDoi());
         String titleNorm = ScholardexPublicationCanonicalizationService.normalizeTitle(s.getTitle());
@@ -1111,7 +1144,8 @@ public class CanonicalGraphBuilder {
                 s.getOpenAccess(), s.getSubtype(), s.getSubtypeDescription(), s.getScopusSubtype(),
                 s.getScopusSubtypeDescription(), s.getPii(), s.getPubmedId(), s.getVolume(), s.getIssueIdentifier(),
                 s.getBookId(), s.getForumId(), null, s.getAffiliations(),
-                s.getSourceEventId(), s.getSourceBatchId(), s.getSourceCorrelationId());
+                s.getSourceEventId(), s.getSourceBatchId(), s.getSourceCorrelationId(),
+                null, null, null, null, null, null, null);
     }
 
     private static SourcePub fromOpenAlex(OpenAlexPublicationFact o) {
@@ -1119,9 +1153,11 @@ public class CanonicalGraphBuilder {
         String titleNorm = ScholardexPublicationCanonicalizationService.normalizeTitle(o.getTitle());
         return new SourcePub(true, SOURCE_OPENALEX, o.getSourceRecordId(), null, o.getDoi(), doiNorm,
                 o.getTitle(), titleNorm, o.getCoverDate(), o.getCreator(), o.getAuthorCount(), o.getCitedByCount(),
-                o.getOpenAccess(), o.getType(), o.getType(), null, null, null, null, null, null, null,
+                o.getOpenAccess(), o.getType(), o.getType(), null, null, null, null, o.getVolume(), o.getIssue(), null,
                 null, o.getHostVenueOpenAlexId(), null,
-                o.getSourceEventId(), o.getSourceBatchId(), o.getSourceCorrelationId());
+                o.getSourceEventId(), o.getSourceBatchId(), o.getSourceCorrelationId(),
+                o.getRetracted(), o.getFwci(), o.getCitationNormalizedPercentile(),
+                o.getPrimaryTopicId(), o.getPrimaryTopicName(), o.getFirstPage(), o.getLastPage());
     }
 
     /** Mirror of the importer's {@code toBackboneFact}: ROR-keyed backbone fact; null when the institution has no ROR. */

@@ -27,6 +27,8 @@ class ForumSourceRecordTest {
         f.setAggregationType("Journal");
         f.setForumType("journal");
         f.setAsjc(List.of("2600"));
+        f.setPublisher("Some Publisher");
+        f.setIsbn("978-1-2345-6789-0");
 
         ForumSourceRecord record = ForumSourceRecord.ofScopus(f);
 
@@ -40,6 +42,9 @@ class ForumSourceRecordTest {
         assertEquals("Journal", record.aggregationType());
         assertEquals("journal", record.forumType());
         assertEquals(List.of("2600"), record.asjc());
+        // publisher + isbn now threaded (were silently dropped → 0% populated for Scopus/OpenAlex forums).
+        assertEquals("Some Publisher", record.publisher());
+        assertEquals("978-1-2345-6789-0", record.isbn());
     }
 
     @Test

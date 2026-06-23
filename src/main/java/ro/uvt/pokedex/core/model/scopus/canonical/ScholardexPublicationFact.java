@@ -57,6 +57,12 @@ public class ScholardexPublicationFact {
     private String articleNumber;
     private String pageRange;
     private Boolean approved;
+    // OpenAlex enrichment (H75+): research-ethics gate + field-normalized impact + subject/domain signal.
+    private Boolean retracted;
+    private Double fwci;
+    private Double citationNormalizedPercentile;
+    private String primaryTopicId;
+    private String primaryTopicName;
     private String reviewState;
     private String reviewReason;
     private Instant reviewStateUpdatedAt;

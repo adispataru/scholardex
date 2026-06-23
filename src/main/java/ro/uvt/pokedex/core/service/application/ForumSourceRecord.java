@@ -27,7 +27,8 @@ public record ForumSourceRecord(
         String aggregationType,
         String forumType,
         List<String> asjc,
-        String publisher
+        String publisher,
+        String isbn
 ) {
 
     /** Which forum source minted the record — selects the id-list, reason strings, and Scopus-only branches. */
@@ -83,7 +84,8 @@ public record ForumSourceRecord(
                 scopusForum.getAggregationType(),
                 scopusForum.getForumType(),
                 scopusForum.getAsjc(),
-                scopusForum.getPublisher()
+                scopusForum.getPublisher(),
+                scopusForum.getIsbn()
         );
     }
 
@@ -99,6 +101,7 @@ public record ForumSourceRecord(
                 rankingView.getIssn(),
                 rankingView.getEIssn(),
                 rankingView.getAlternativeIssns(),
+                null,
                 null,
                 null,
                 null,
@@ -122,6 +125,7 @@ public record ForumSourceRecord(
                 null,
                 null,
                 null,
+                null,
                 null
         );
     }
@@ -138,6 +142,7 @@ public record ForumSourceRecord(
                 doaj.getIssn(),
                 doaj.getEIssn(),
                 List.of(),
+                null,
                 null,
                 null,
                 null,
@@ -171,7 +176,8 @@ public record ForumSourceRecord(
                 aggregationTypeForOpenAlexSourceType(openAlexSourceType),
                 null,
                 null,
-                openAlexPublisher
+                openAlexPublisher,
+                null
         );
     }
 
