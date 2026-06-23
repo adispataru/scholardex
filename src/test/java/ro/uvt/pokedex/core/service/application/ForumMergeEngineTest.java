@@ -42,6 +42,31 @@ class ForumMergeEngineTest {
     }
 
     @Test
+    void taggingAddsTheSourcesVenueTypeAndPicksMostSpecificPrimary() {
+        ForumMergeEngine engine = engine();
+        ForumMergeEngine.Context ctx = engine.startCreateOrTagRun();
+
+        // Pre-existing forum WoS typed "Journal" (e.g. an ISSN'd book series WoS indexes as a serial).
+        ScholardexForumFact existing = new ScholardexForumFact();
+        existing.setId("sforum_x");
+        existing.setIssn("0302-9743");
+        existing.setAggregationType("Journal");
+        existing.getAggregationTypeBySource().put("WOS", "Journal");
+        ctx.forumIndex.put(existing);
+
+        var result = new ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult(10);
+        engine.ingestCreateOrTag(
+                ForumSourceRecord.ofOpenAlex("S1", "Book Series Venue", List.of("0302-9743"), "book series", null),
+                ctx, "batch", "corr", Instant.parse("2026-06-24T00:00:00Z"), result);
+
+        // The tag/fan-out path must also fold in the source's venue-type view (the create-only version dropped
+        // it): OpenAlex "Book Series" is kept alongside WoS "Journal", and the primary becomes most-specific.
+        assertEquals("Book Series", existing.getAggregationType());
+        assertEquals("Journal", existing.getAggregationTypeBySource().get("WOS"));
+        assertEquals("Book Series", existing.getAggregationTypeBySource().get("OPENALEX"));
+    }
+
+    @Test
     void singleTagTargetPicksOneForumWhenSeveralMatch_andIsIdempotent() {
         // H73 slice 3: OpenAlex openAlexIds is a UNIQUE index, so a venue matching a split journal's two forum
         // records must tag AT MOST ONE — fan-out would violate uniqueness (the live DuplicateKey crash).
@@ -97,7 +122,10 @@ class ForumMergeEngineTest {
         assertEquals("2222-3339", target.getIssn());
         assertEquals("4444-5555", target.getEIssn());
         assertEquals("Wos Name", target.getName()); // H66B M4: WoS title wins over the Scopus name
+        // Multi-type: both source views are kept; the primary is the most-specific (BOOK > Journal).
         assertEquals("BOOK", target.getAggregationType());
+        assertEquals("Journal", target.getAggregationTypeBySource().get("WOS"));
+        assertEquals("BOOK", target.getAggregationTypeBySource().get("SCOPUS"));
         assertTrue(target.getAliasIssns().contains("1111-1119"));
         assertTrue(target.getAliasIssns().contains("6666-7771"));
         assertEquals("WOS", target.getSource());

@@ -371,6 +371,15 @@ public class ScholardexProjectionBuilderService {
         view.setEIssn(fact.getEIssn());
         view.setIsbn(fact.getIsbn());
         view.setAggregationType(fact.getAggregationType());
+        // Multi-type: the distinct set of per-source venue kinds (Journal/Conference Proceeding/Book Series/…).
+        java.util.LinkedHashSet<String> aggTypes = new java.util.LinkedHashSet<>();
+        if (fact.getAggregationTypeBySource() != null) {
+            aggTypes.addAll(fact.getAggregationTypeBySource().values());
+        }
+        if (fact.getAggregationType() != null && !fact.getAggregationType().isBlank()) {
+            aggTypes.add(fact.getAggregationType());
+        }
+        view.setAggregationTypes(new ArrayList<>(aggTypes));
         view.setPublisher(fact.getPublisher());
         view.setForumType(fact.getForumType());
         view.setAsjc(fact.getAsjc() == null ? new ArrayList<>() : new ArrayList<>(fact.getAsjc()));
@@ -571,8 +580,8 @@ public class ScholardexProjectionBuilderService {
     private void insertForumRows(List<ScholardexForumView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_forum_view
-                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, build_version, build_at, updated_at, source_event_id, aggregation_types)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writeForumRows(rows, sql);
     }
@@ -580,8 +589,8 @@ public class ScholardexProjectionBuilderService {
     private void upsertForumRows(List<ScholardexForumView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_forum_view
-                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, build_version, build_at, updated_at, source_event_id, aggregation_types)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     publication_name = EXCLUDED.publication_name,
                     issn = EXCLUDED.issn,
@@ -594,7 +603,8 @@ public class ScholardexProjectionBuilderService {
                     build_version = EXCLUDED.build_version,
                     build_at = EXCLUDED.build_at,
                     updated_at = EXCLUDED.updated_at,
-                    source_event_id = EXCLUDED.source_event_id
+                    source_event_id = EXCLUDED.source_event_id,
+                    aggregation_types = EXCLUDED.aggregation_types
                 """;
         writeForumRows(rows, sql);
     }
@@ -617,6 +627,7 @@ public class ScholardexProjectionBuilderService {
                 setInstant(ps, 11, row.getBuildAt());
                 setInstant(ps, 12, row.getUpdatedAt());
                 ps.setString(13, row.getSourceEventId());
+                ps.setArray(14, textArray(ps.getConnection(), row.getAggregationTypes()));
             }
 
             @Override

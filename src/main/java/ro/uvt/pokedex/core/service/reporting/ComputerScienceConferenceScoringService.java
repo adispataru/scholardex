@@ -423,7 +423,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private boolean isConferenceProceeding(ScholardexForumView forum) {
-        return forum != null && "Conference Proceeding".equals(forum.getAggregationType());
+        return forum != null && forum.hasAggregationType("Conference Proceeding");
     }
 
     /**

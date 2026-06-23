@@ -21,8 +21,29 @@ public class ScholardexForumView {
     private String forumType;
     /** H66 A1: C-scalar — Scopus ASJC subject codes (snapshot). */
     private List<String> asjc = new ArrayList<>();
+    /** Multi-type: the distinct per-source venue kinds; {@link #aggregationType} is the most-specific primary. */
+    private List<String> aggregationTypes = new ArrayList<>();
     private String buildVersion;
     private Instant buildAt;
     private Instant updatedAt;
     private String sourceEventId;
+
+    /**
+     * Whether this venue is classified as {@code type} by ANY source (multi-type). Falls back to the primary
+     * {@link #aggregationType} when the multi-type set is empty (e.g. activity-built or pre-migration forums).
+     */
+    public boolean hasAggregationType(String type) {
+        if (type == null) {
+            return false;
+        }
+        if (aggregationTypes != null && !aggregationTypes.isEmpty()) {
+            for (String t : aggregationTypes) {
+                if (type.equalsIgnoreCase(t)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return type.equalsIgnoreCase(aggregationType);
+    }
 }

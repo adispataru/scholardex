@@ -182,7 +182,7 @@ public class PostgresScholardexProjectionReadPort {
     public List<ScholardexForumView> findForumsByIdIn(Collection<String> ids) {
         if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, aggregation_types FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
                 this::mapForum
         );
@@ -226,7 +226,7 @@ public class PostgresScholardexProjectionReadPort {
 
     public List<ScholardexForumView> findAllForums() {
         return namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc FROM reporting_read.scholardex_forum_view",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, aggregation_types FROM reporting_read.scholardex_forum_view",
                 this::mapForum
         );
     }
@@ -381,6 +381,7 @@ public class PostgresScholardexProjectionReadPort {
         forum.setPublisher(rs.getString("publisher"));
         forum.setForumType(rs.getString("forum_type"));
         forum.setAsjc(toStringList(rs.getArray("asjc")));
+        forum.setAggregationTypes(toStringList(rs.getArray("aggregation_types")));
         forum.setScopusId(rs.getString("id"));
         return forum;
     }

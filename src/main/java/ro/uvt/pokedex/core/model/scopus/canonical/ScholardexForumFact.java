@@ -48,8 +48,12 @@ public class ScholardexForumFact {
     private String eIssn;
     private String isbn;
     private List<String> aliasIssns = new ArrayList<>();
-    private String aggregationType;
+    private String aggregationType;            // primary (most-specific) type, for single-type consumers + display
     private String aggregationTypeNormalized;
+    // Multi-type: each merging source's view of the venue kind, keyed by source (SCOPUS/WOS/OPENALEX/…).
+    // LNCS/LNAI is "Journal" to WoS/Scopus (ISSN) but "Book Series" to OpenAlex — both are kept so a scorer
+    // can choose the appropriate type per context instead of losing the more-specific signal at merge time.
+    private java.util.Map<String, String> aggregationTypeBySource = new java.util.LinkedHashMap<>();
     private String publisher;
     private String reviewState;
     private String reviewReason;

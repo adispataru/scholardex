@@ -61,7 +61,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             // (forum membership) — the latter so OpenAlex-sourced papers (no eid) in Scopus journals still get C.
             if (scoreResult.bestPoints.get() == 0 &&
                     forum != null &&
-                    "Journal".equals(forum.getAggregationType()) &&
+                    forum.hasAggregationType("Journal") &&
                     (publication.getEid() != null || lookupPort.isForumInScopus(forum.getId()))) {
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
@@ -101,7 +101,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         if (isArticleOrReview(publication)) {
             return true;
         }
-        return forum != null && "Journal".equals(forum.getAggregationType());
+        return forum != null && forum.hasAggregationType("Journal");
     }
 
     /* ------------------------------------------------------------------ */
@@ -131,7 +131,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         // Special case for SCOPUS-only journals
         if (scoreResult.bestPoints.get() == 0 &&
             forum != null &&
-            "Journal".equals(forum.getAggregationType())) {
+            forum.hasAggregationType("Journal")) {
             scoreResult.bestPoints.set(2.0);
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
             scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);

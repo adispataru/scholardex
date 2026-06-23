@@ -101,7 +101,7 @@ public record ForumSourceRecord(
                 rankingView.getIssn(),
                 rankingView.getEIssn(),
                 rankingView.getAlternativeIssns(),
-                null,
+                "Journal", // WoS ranks journals — its view of the venue kind
                 null,
                 null,
                 null,
@@ -122,7 +122,7 @@ public record ForumSourceRecord(
                 erih.getIssn(),
                 erih.getEIssn(),
                 List.of(),
-                null,
+                "Journal", // ERIH+ lists journals
                 null,
                 null,
                 null,
@@ -142,7 +142,7 @@ public record ForumSourceRecord(
                 doaj.getIssn(),
                 doaj.getEIssn(),
                 List.of(),
-                null,
+                "Journal", // DOAJ lists open-access journals
                 null,
                 null,
                 null,

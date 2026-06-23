@@ -223,7 +223,11 @@ public class ForumMergeEngine {
                         : matches;
                 boolean changed = false;
                 for (ScholardexForumFact forum : targets) {
-                    if (addExternalId(forum, idType, sourceRecordId)) {
+                    boolean idAdded = addExternalId(forum, idType, sourceRecordId);
+                    // Multi-type: a tagging source also contributes its venue-kind view (e.g. OpenAlex "Book Series"
+                    // onto a forum WoS/Scopus already typed "Journal"), recomputing the most-specific primary.
+                    boolean typeAdded = applyAggregationTypeFromRecord(forum, record, forum.getAggregationType());
+                    if (idAdded || typeAdded) {
                         forum.setUpdatedAt(now);
                         ctx.dirtyForums.put(forum.getId(), forum);
                         changed = true;
@@ -517,9 +521,7 @@ public class ForumMergeEngine {
         target.setName(preferredName);
         target.setNameNormalized(normalizeName(preferredName));
 
-        String preferredAgg = firstNonBlank(target.getAggregationType(), aggregationType);
-        target.setAggregationType(preferredAgg);
-        target.setAggregationTypeNormalized(normalizeToken(preferredAgg));
+        applyAggregationTypeFromRecord(target, record, aggregationType);
 
         // H66 A2: C-scalars from the Scopus/CiteScore forum — additive, never clears a prior writer's value.
         target.setForumType(firstNonBlank(target.getForumType(), record.forumType()));
@@ -584,9 +586,7 @@ public class ForumMergeEngine {
         target.setName(preferredName);
         target.setNameNormalized(normalizeName(preferredName));
 
-        String preferredAgg = firstNonBlank(target.getAggregationType(), aggregationType);
-        target.setAggregationType(preferredAgg);
-        target.setAggregationTypeNormalized(normalizeToken(preferredAgg));
+        applyAggregationTypeFromRecord(target, record, aggregationType);
         target.setPublisher(firstNonBlank(target.getPublisher(), record.publisher()));
         target.setIsbn(firstNonBlank(target.getIsbn(), record.isbn()));
 
@@ -751,11 +751,13 @@ public class ForumMergeEngine {
         target.setName(preferredName);
         target.setNameNormalized(normalizeName(preferredName));
 
-        String preferredAgg = scopusPreferred != null && normalizeBlank(scopusPreferred.getAggregationType()) != null
-                ? scopusPreferred.getAggregationType()
-                : firstNonBlank(target.getAggregationType(), defaultAggregationType);
-        target.setAggregationType(preferredAgg);
-        target.setAggregationTypeNormalized(normalizeToken(preferredAgg));
+        // Multi-type: this WoS identity is a journal; fold in the matched Scopus forum's view, then recompute primary.
+        java.util.Map<String, String> bySource = aggregationTypeBySource(target);
+        bySource.putIfAbsent("WOS", "Journal");
+        if (scopusPreferred != null && normalizeBlank(scopusPreferred.getAggregationType()) != null) {
+            bySource.put("SCOPUS", scopusPreferred.getAggregationType().trim());
+        }
+        setPrimaryAggregationType(target, bySource, defaultAggregationType);
 
         String forumId = target.getId();
         if (forumId == null) {
@@ -948,6 +950,67 @@ public class ForumMergeEngine {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Record this source's explicit view of the venue kind (skip blank/defaulted) and recompute the primary.
+     * Returns whether the per-source map or the primary changed (so the caller can mark the forum dirty).
+     */
+    private static boolean applyAggregationTypeFromRecord(ScholardexForumFact target, ForumSourceRecord record,
+                                                          String aggregationTypeWithDefault) {
+        java.util.Map<String, String> bySource = aggregationTypeBySource(target);
+        String prevPrimary = target.getAggregationType();
+        boolean mapChanged = false;
+        if (record.aggregationType() != null && !record.aggregationType().isBlank()) {
+            String prev = bySource.put(record.idType().source(), record.aggregationType().trim());
+            mapChanged = !record.aggregationType().trim().equals(prev);
+        }
+        setPrimaryAggregationType(target, bySource, aggregationTypeWithDefault);
+        return mapChanged || !java.util.Objects.equals(prevPrimary, target.getAggregationType());
+    }
+
+    private static java.util.Map<String, String> aggregationTypeBySource(ScholardexForumFact target) {
+        if (target.getAggregationTypeBySource() == null) {
+            target.setAggregationTypeBySource(new java.util.LinkedHashMap<>());
+        }
+        return target.getAggregationTypeBySource();
+    }
+
+    /** Primary aggregationType = the most-specific across all source views; fall back to the engine default. */
+    private static void setPrimaryAggregationType(ScholardexForumFact target, java.util.Map<String, String> bySource,
+                                                  String fallbackWithDefault) {
+        String primary = mostSpecificAggregationType(bySource.values());
+        if (primary == null) {
+            primary = firstNonBlank(target.getAggregationType(), fallbackWithDefault);
+        }
+        target.setAggregationType(primary);
+        target.setAggregationTypeNormalized(normalizeToken(primary));
+    }
+
+    private static String mostSpecificAggregationType(java.util.Collection<String> types) {
+        String best = null;
+        int bestRank = Integer.MIN_VALUE;
+        for (String t : types) {
+            int rank = aggregationTypeSpecificity(t);
+            if (rank > bestRank) {
+                bestRank = rank;
+                best = t;
+            }
+        }
+        return best;
+    }
+
+    /** Conference Proceeding / Book Series are the most specific, then Book, then the generic Journal. */
+    private static int aggregationTypeSpecificity(String type) {
+        if (type == null) {
+            return Integer.MIN_VALUE;
+        }
+        return switch (normalizeToken(type)) {
+            case "conference proceeding", "book series" -> 3;
+            case "book" -> 2;
+            case "journal" -> 1;
+            default -> 0;
+        };
     }
 
     private static String normalizeToken(String rawValue) {

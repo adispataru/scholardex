@@ -64,8 +64,8 @@ class ForumSourceRecordTest {
         assertEquals("1234-5679", record.issn());
         assertEquals("8765-4326", record.eIssn());
         assertEquals(List.of("1111-2220"), record.aliasIssns());
-        // null aggregation -> the engine applies the "Journal" default; WoS carries no Scopus C-scalars.
-        assertNull(record.aggregationType());
+        // WoS ranks journals — it now contributes an explicit "Journal" view (for the multi-type forum map).
+        assertEquals("Journal", record.aggregationType());
         assertNull(record.forumType());
         assertNull(record.asjc());
     }
