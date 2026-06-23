@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.org.Department;
+import ro.uvt.pokedex.core.model.org.DepartmentAffiliation;
 import ro.uvt.pokedex.core.model.org.DepartmentReportHide;
 import ro.uvt.pokedex.core.model.org.DivisionReportSelection;
 import ro.uvt.pokedex.core.model.org.Membership;
@@ -11,6 +12,7 @@ import ro.uvt.pokedex.core.model.org.OrgDivision;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.user.UserRole;
+import ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentReportHideRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.repository.org.DivisionReportSelectionRepository;
@@ -22,6 +24,7 @@ import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -57,6 +60,7 @@ public class ReportVisibilityService {
     private final DepartmentRepository departmentRepository;
     private final GroupRepository groupRepository;
     private final MembershipRepository membershipRepository;
+    private final DepartmentAffiliationRepository departmentAffiliationRepository;
 
     // -------- Listings used by admin pages --------
 
@@ -110,47 +114,95 @@ public class ReportVisibilityService {
         return individualReportRepository.findAllById(ids);
     }
 
-    /** Union of reports visible to the user via any of their current groups. */
+    /**
+     * Union of reports visible to the user across the whole org hierarchy.
+     *
+     * <p>A report is SELECTED at a division and may be HIDDEN at a department; a user "sees" it when they belong to a
+     * department whose division selected it and whose department did not hide it. The user's footprint is resolved
+     * from every org signal — not just group membership — so staff imported into the faculty/department hierarchy
+     * (who have a {@link DepartmentAffiliation} but no group {@link Membership}) and unit heads see what's enabled for
+     * their unit:
+     * <ul>
+     *   <li>group memberships → the group's departments</li>
+     *   <li>department affiliations (the staff-import path) → that department</li>
+     *   <li>department headship → that department</li>
+     *   <li>division headship → every report selected at the headed division (oversight; department hides don't apply)</li>
+     * </ul>
+     */
     public List<IndividualReport> listVisibleReportsForUser(String userId) {
         if (userId == null || userId.isBlank()) return List.of();
 
-        List<Membership> memberships = membershipRepository.findByUserIdAndValidToIsNull(userId);
-        if (memberships.isEmpty()) return List.of();
+        Set<String> userDeptIds = resolveUserDepartmentIds(userId);
+        Set<String> headedDivisionIds = new LinkedHashSet<>();
+        for (OrgDivision div : orgDivisionRepository.findByHeadUserIdsContaining(userId)) headedDivisionIds.add(div.getId());
+        if (userDeptIds.isEmpty() && headedDivisionIds.isEmpty()) return List.of();
 
-        Set<String> groupIds = new LinkedHashSet<>();
-        for (Membership m : memberships) groupIds.add(m.getGroupId());
-        List<Group> groups = new ArrayList<>();
-        groupRepository.findAllById(groupIds).forEach(groups::add);
+        List<Department> depts = userDeptIds.isEmpty()
+                ? List.of() : departmentRepository.findByIdIn(new ArrayList<>(userDeptIds));
+
+        // Divisions whose selections matter: the user's departments' divisions + any division the user heads.
+        Set<String> divisionIds = new HashSet<>(headedDivisionIds);
+        for (Department d : depts) if (d.getDivisionId() != null) divisionIds.add(d.getDivisionId());
+        if (divisionIds.isEmpty()) return List.of();
+
+        Map<String, Set<String>> selectedByDivision = new HashMap<>();
+        for (DivisionReportSelection s : divisionReportSelectionRepository.findByDivisionIdIn(divisionIds)) {
+            selectedByDivision.computeIfAbsent(s.getDivisionId(), k -> new HashSet<>()).add(s.getReportId());
+        }
+        if (selectedByDivision.isEmpty()) return List.of();
+
+        Map<String, Set<String>> hiddenByDepartment = new HashMap<>();
+        if (!userDeptIds.isEmpty()) {
+            for (DepartmentReportHide h : departmentReportHideRepository.findByDepartmentIdIn(new ArrayList<>(userDeptIds))) {
+                hiddenByDepartment.computeIfAbsent(h.getDepartmentId(), k -> new HashSet<>()).add(h.getReportId());
+            }
+        }
 
         Set<String> visibleReportIds = new LinkedHashSet<>();
-        for (Group g : groups) {
-            List<String> deptIds = g.getDepartmentIds();
-            if (deptIds == null || deptIds.isEmpty()) continue;
-
-            // Resolve divisions for these departments.
-            List<Department> depts = departmentRepository.findByIdIn(deptIds);
-            Set<String> divisionIds = new HashSet<>();
-            for (Department d : depts) if (d.getDivisionId() != null) divisionIds.add(d.getDivisionId());
-            if (divisionIds.isEmpty()) continue;
-
-            // Selections at any of those divisions.
-            Set<String> selectedHere = new HashSet<>();
-            for (DivisionReportSelection s : divisionReportSelectionRepository.findByDivisionIdIn(divisionIds)) {
-                selectedHere.add(s.getReportId());
-            }
-            if (selectedHere.isEmpty()) continue;
-
-            // Hides at any of the group's departments.
-            Set<String> hiddenHere = new HashSet<>();
-            for (DepartmentReportHide h : departmentReportHideRepository.findByDepartmentIdIn(deptIds)) {
-                hiddenHere.add(h.getReportId());
-            }
-
-            for (String rid : selectedHere) if (!hiddenHere.contains(rid)) visibleReportIds.add(rid);
+        // Department members: selected at the department's division, minus what that department hid.
+        for (Department d : depts) {
+            Set<String> selected = selectedByDivision.get(d.getDivisionId());
+            if (selected == null) continue;
+            Set<String> hidden = hiddenByDepartment.getOrDefault(d.getId(), Set.of());
+            for (String rid : selected) if (!hidden.contains(rid)) visibleReportIds.add(rid);
+        }
+        // Division heads: everything selected at the divisions they head (oversight — hides are a per-department concern).
+        for (String divisionId : headedDivisionIds) {
+            Set<String> selected = selectedByDivision.get(divisionId);
+            if (selected != null) visibleReportIds.addAll(selected);
         }
 
         if (visibleReportIds.isEmpty()) return List.of();
         return individualReportRepository.findAllById(visibleReportIds);
+    }
+
+    /**
+     * The department ids the user belongs to, gathered from group memberships, department affiliations
+     * (the staff-import path), and department headship. (Division headship is handled separately in
+     * {@link #listVisibleReportsForUser} since it grants direct division-level visibility.)
+     */
+    private Set<String> resolveUserDepartmentIds(String userId) {
+        Set<String> deptIds = new LinkedHashSet<>();
+
+        // 1. Group memberships → the group's departments.
+        List<Membership> memberships = membershipRepository.findByUserIdAndValidToIsNull(userId);
+        if (!memberships.isEmpty()) {
+            Set<String> groupIds = new LinkedHashSet<>();
+            for (Membership m : memberships) groupIds.add(m.getGroupId());
+            groupRepository.findAllById(groupIds).forEach(g -> {
+                if (g.getDepartmentIds() != null) deptIds.addAll(g.getDepartmentIds());
+            });
+        }
+
+        // 2. Department affiliations (the staff-import path) → that department.
+        for (DepartmentAffiliation a : departmentAffiliationRepository.findByUserIdAndValidToIsNull(userId)) {
+            if (a.getDepartmentId() != null) deptIds.add(a.getDepartmentId());
+        }
+
+        // 3. Department headship → that department.
+        for (Department d : departmentRepository.findByHeadUserIdsContaining(userId)) deptIds.add(d.getId());
+
+        return deptIds;
     }
 
     // -------- Mutations (with access checks) --------

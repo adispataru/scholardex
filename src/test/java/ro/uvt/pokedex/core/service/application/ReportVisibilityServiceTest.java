@@ -49,6 +49,7 @@ class ReportVisibilityServiceTest {
     @Mock private DepartmentRepository departmentRepository;
     @Mock private GroupRepository groupRepository;
     @Mock private MembershipRepository membershipRepository;
+    @Mock private ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository departmentAffiliationRepository;
 
     @InjectMocks
     private ReportVisibilityService service;
@@ -119,18 +120,43 @@ class ReportVisibilityServiceTest {
         when(groupRepository.findAllById(any())).thenReturn(List.of(
                 group("g-cs", List.of("dept-cs")),
                 group("g-math", List.of("dept-math"))));
-        when(departmentRepository.findByIdIn(List.of("dept-cs")))
-                .thenReturn(List.of(department("dept-cs", "div-fmi")));
-        when(departmentRepository.findByIdIn(List.of("dept-math")))
-                .thenReturn(List.of(department("dept-math", "div-fmi")));
+        // The user's departments are now resolved into a single batched lookup.
+        when(departmentRepository.findByIdIn(any())).thenReturn(List.of(
+                department("dept-cs", "div-fmi"), department("dept-math", "div-fmi")));
         when(divisionReportSelectionRepository.findByDivisionIdIn(any()))
                 .thenReturn(List.of(selection("div-fmi", "rep-A")));
-        when(departmentReportHideRepository.findByDepartmentIdIn(List.of("dept-cs")))
+        when(departmentReportHideRepository.findByDepartmentIdIn(any()))
                 .thenReturn(List.of(hide("dept-cs", "rep-A")));
-        when(departmentReportHideRepository.findByDepartmentIdIn(List.of("dept-math")))
-                .thenReturn(List.of());
 
         List<IndividualReport> visible = service.listVisibleReportsForUser("u@uvt.ro");
+        assertEquals(List.of("rep-A"), visible.stream().map(IndividualReport::getId).toList());
+    }
+
+    @Test
+    void reportVisibleViaDepartmentAffiliationWithoutAnyGroupMembership() {
+        // Staff imported via /admin/divisions get a DepartmentAffiliation but no group Membership.
+        when(membershipRepository.findByUserIdAndValidToIsNull("staff@uvt.ro")).thenReturn(List.of());
+        when(departmentAffiliationRepository.findByUserIdAndValidToIsNull("staff@uvt.ro"))
+                .thenReturn(List.of(departmentAffiliation("staff@uvt.ro", "dept-cs")));
+        when(departmentRepository.findByIdIn(List.of("dept-cs")))
+                .thenReturn(List.of(department("dept-cs", "div-fmi")));
+        when(divisionReportSelectionRepository.findByDivisionIdIn(any()))
+                .thenReturn(List.of(selection("div-fmi", "rep-A")));
+
+        List<IndividualReport> visible = service.listVisibleReportsForUser("staff@uvt.ro");
+        assertEquals(List.of("rep-A"), visible.stream().map(IndividualReport::getId).toList());
+    }
+
+    @Test
+    void divisionHeadSeesEveryReportSelectedForTheirDivision() {
+        // A faculty/division head with no group membership and no department affiliation still oversees the division.
+        when(membershipRepository.findByUserIdAndValidToIsNull("dean@uvt.ro")).thenReturn(List.of());
+        when(orgDivisionRepository.findByHeadUserIdsContaining("dean@uvt.ro"))
+                .thenReturn(List.of(orgDivision("div-fmi", List.of("dean@uvt.ro"))));
+        when(divisionReportSelectionRepository.findByDivisionIdIn(any()))
+                .thenReturn(List.of(selection("div-fmi", "rep-A")));
+
+        List<IndividualReport> visible = service.listVisibleReportsForUser("dean@uvt.ro");
         assertEquals(List.of("rep-A"), visible.stream().map(IndividualReport::getId).toList());
     }
 
@@ -269,6 +295,13 @@ class ReportVisibilityServiceTest {
         m.setUserId(userId);
         m.setGroupId(groupId);
         return m;
+    }
+
+    private static ro.uvt.pokedex.core.model.org.DepartmentAffiliation departmentAffiliation(String userId, String departmentId) {
+        ro.uvt.pokedex.core.model.org.DepartmentAffiliation a = new ro.uvt.pokedex.core.model.org.DepartmentAffiliation();
+        a.setUserId(userId);
+        a.setDepartmentId(departmentId);
+        return a;
     }
 
     private static Group group(String id, List<String> deptIds) {
