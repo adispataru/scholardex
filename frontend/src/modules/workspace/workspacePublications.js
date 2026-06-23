@@ -807,6 +807,10 @@ function _setReviewState(pubId, state) {
     _data.pendingReviewCount = _allPubs.filter(pub => _isPending(pub.id)).length;
     _data.suspiciousPendingCount = _allPubs.filter(pub => _isPendingSuspicious(pub.id)).length;
     _data.recommendedPendingCount = Math.max(0, _data.pendingReviewCount - _data.suspiciousPendingCount);
+
+    // Keep the overview's "Publications" stat (effective = known minus rejected) in sync without a reload.
+    const effectiveCount = _allPubs.filter(pub => _reviewState(pub.id)?.status !== 'REJECTED').length;
+    document.dispatchEvent(new CustomEvent('ws-publications-reviewed', { detail: { effectiveCount } }));
 }
 
 function _buildReviewBadge(state) {

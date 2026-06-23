@@ -12,6 +12,16 @@ import { postJsonHeaders } from '../shared/fetchUtils';
 import { getChartTheme } from '../shared/chartTheme';
 
 export function initWorkspaceOverview() {
+    // Keep the overview "Publications" stat (effective = known minus rejected) live when the user confirms/rejects
+    // in the Publications tab, instead of only on reload. Attached unconditionally so it fires from any active tab.
+    document.addEventListener('ws-publications-reviewed', (event) => {
+        const count = event.detail?.effectiveCount;
+        if (typeof count !== 'number') return;
+        document.querySelectorAll('[data-ws-publication-count]').forEach((el) => {
+            el.textContent = String(count);
+        });
+    });
+
     const container = document.getElementById('ws-overview-cards');
     if (!container) return; // Not on workspace page, or NEW_USER state (no panels)
 

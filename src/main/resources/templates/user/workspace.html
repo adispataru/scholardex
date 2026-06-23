@@ -174,9 +174,9 @@
                                                 <div class="app-summary-panel__body">
                                                     <div class="app-summary-grid">
                                                         <div class="app-summary-card">
-                                                            <p class="app-summary-card__label">Publications</p>
-                                                            <p class="app-summary-card__value" th:text="${workspace.publicationCount}">0</p>
-                                                            <p class="app-summary-card__meta">Total publications in your record.</p>
+                                                            <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review.">Publications</p>
+                                                            <p class="app-summary-card__value" data-ws-publication-count th:text="${workspace.publicationCount}">0</p>
+                                                            <p class="app-summary-card__meta">Excludes rejected. See the Publications tab for the full breakdown.</p>
                                                         </div>
                                                         <div class="app-summary-card app-summary-card--success">
                                                             <p class="app-summary-card__label">Citations</p>
@@ -220,7 +220,7 @@
                                                                 <p class="app-summary-identity__title" th:text="${workspace.researcherName}">Researcher</p>
                                                                 <p class="app-summary-identity__meta">
                                                                     H-index: <strong th:text="${workspace.hIndex}">0</strong>
-                                                                    &middot; <span th:text="${workspace.publicationCount}">0</span> publications
+                                                                    &middot; <span data-ws-publication-count th:text="${workspace.publicationCount}">0</span> publications
                                                                     &middot; <span th:text="${workspace.totalCitations}">0</span> citations
                                                                 </p>
                                                             </div>
@@ -232,9 +232,9 @@
                                                     <p class="app-summary-panel__section-title">Key Metrics</p>
                                                     <div class="app-summary-grid">
                                                         <div class="app-summary-card">
-                                                            <p class="app-summary-card__label">Publications</p>
-                                                            <p class="app-summary-card__value" th:text="${workspace.publicationCount}">0</p>
-                                                            <p class="app-summary-card__meta">Total publications in your record.</p>
+                                                            <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review.">Publications</p>
+                                                            <p class="app-summary-card__value" data-ws-publication-count th:text="${workspace.publicationCount}">0</p>
+                                                            <p class="app-summary-card__meta">Excludes rejected. See the Publications tab for the full breakdown.</p>
                                                         </div>
                                                         <div class="app-summary-card app-summary-card--success">
                                                             <p class="app-summary-card__label">Citations</p>
