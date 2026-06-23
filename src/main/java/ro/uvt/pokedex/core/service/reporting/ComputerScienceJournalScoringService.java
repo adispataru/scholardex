@@ -57,11 +57,12 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
                     this::compareScoresByPoints,
                     carryForward
             );
-            // Special case for SCOPUS-only journals
+            // Special case for SCOPUS-only journals: the paper's own Scopus eid, OR the journal being Scopus-indexed
+            // (forum membership) — the latter so OpenAlex-sourced papers (no eid) in Scopus journals still get C.
             if (scoreResult.bestPoints.get() == 0 &&
                     forum != null &&
                     "Journal".equals(forum.getAggregationType()) &&
-                    publication.getEid() != null) {
+                    (publication.getEid() != null || lookupPort.isForumInScopus(forum.getId()))) {
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);

@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -143,6 +144,62 @@ class ComputerScienceJournalScoringServiceTest {
         assertEquals(4.0, score.getScore());
         assertEquals("Q2", score.getQuarter());
         assertEquals(2024, score.getYear());
+    }
+
+    @Test
+    void openAlexJournalPaperWithoutEidScoresCViaForumScopusMembership() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        // OpenAlex-sourced article: no Scopus eid, no WoS quartile — but the journal is in Scopus.
+        ScoringPublication publication = new ScoringPublication(
+                "pub-1", null, "forum-1", "2026-01-01", "ar", "ar",
+                java.util.List.of("a1"), 1, "10.2196/84296", null, "JMIR Formative Research", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-1");
+        forum.setAggregationType("Journal");
+        forum.setEIssn("2561-326X");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        when(lookupPort.getRankingsByIssn(any())).thenReturn(List.of()); // no WoS ranking
+        when(lookupPort.isForumInScopus("forum-1")).thenReturn(true);    // journal indexed in Scopus
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(2.0, score.getScore()); // C-tier
+        assertEquals("C", score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void journalNotInScopusAndWithoutEidScoresZero() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        ScoringPublication publication = new ScoringPublication(
+                "pub-1", null, "forum-1", "2026-01-01", "ar", "ar",
+                java.util.List.of("a1"), 1, "10.0/x", null, "Some Journal", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-1");
+        forum.setAggregationType("Journal");
+        forum.setEIssn("9999-9999");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        when(lookupPort.getRankingsByIssn(any())).thenReturn(List.of());
+        when(lookupPort.isForumInScopus("forum-1")).thenReturn(false);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(0.0, score.getScore());
     }
 
     @Test

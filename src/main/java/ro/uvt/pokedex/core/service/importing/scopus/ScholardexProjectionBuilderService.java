@@ -267,6 +267,7 @@ public class ScholardexProjectionBuilderService {
                     buildForumMembershipRows(journalIdToForumId, buildVersion, buildAt));
             forumMembershipRows.addAll(buildDoajMembershipRows(canonicalForumsForProjection));
             forumMembershipRows.addAll(buildErihMembershipRows(canonicalForumsForProjection));
+            forumMembershipRows.addAll(buildScopusMembershipRows(canonicalForumsForProjection));
 
             // --- write all tables to PostgreSQL atomically ---
             long writePgNs = System.nanoTime();
@@ -1313,6 +1314,27 @@ public class ScholardexProjectionBuilderService {
             }
             String key = forumId + "|DOAJ|DOAJ";
             rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, "DOAJ", doaj.getAsOf(), "DOAJ"));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
+    /**
+     * SCOPUS membership (database='SCOPUS') from each forum's stored {@code scopusForumIds} FK. The Scopus source
+     * list is matched onto forums during canonicalization, so — unlike DOAJ/ERIH — there is no ISSN re-join here: a
+     * non-empty {@code scopusForumIds} means the journal is in Scopus.
+     */
+    List<ForumMembershipRow> buildScopusMembershipRows(List<ScholardexForumFact> forums) {
+        Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        for (ScholardexForumFact forum : forums) {
+            if (forum.getId() == null) {
+                continue;
+            }
+            List<String> scopusForumIds = forum.getScopusForumIds();
+            if (scopusForumIds == null || scopusForumIds.isEmpty()) {
+                continue;
+            }
+            String key = forum.getId() + "|SCOPUS|SCOPUS";
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forum.getId(), "SCOPUS", null, "SCOPUS"));
         }
         return new ArrayList<>(rows.values());
     }

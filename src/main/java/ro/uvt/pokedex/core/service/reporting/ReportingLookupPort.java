@@ -61,4 +61,13 @@ public interface ReportingLookupPort {
     default int maxAvailableYear() {
         return 2023;
     }
+
+    /**
+     * Whether the forum is indexed in Scopus (a {@code database='SCOPUS'} row in the forum membership view). Used by
+     * the CS-journal C-tier fallback so an OpenAlex-sourced paper (which has no Scopus {@code eid}) in a Scopus
+     * journal still scores. Default false; the Postgres facade overrides with the real membership query.
+     */
+    default boolean isForumInScopus(String forumId) {
+        return false;
+    }
 }

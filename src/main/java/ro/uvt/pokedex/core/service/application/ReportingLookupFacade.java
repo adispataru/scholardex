@@ -27,6 +27,11 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public boolean isForumInScopus(String forumId) {
+        return postgresFacade.isForumInScopus(forumId);
+    }
+
+    @Override
     public ScholardexBookFact getBook(String bookId) {
         if (bookId == null || bookId.isBlank()) {
             return null;
