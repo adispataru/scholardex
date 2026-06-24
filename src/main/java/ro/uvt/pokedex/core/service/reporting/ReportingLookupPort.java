@@ -72,18 +72,19 @@ public interface ReportingLookupPort {
     }
 
     /**
-     * Whether the forum is indexed in WoS ESCI (Emerging Sources Citation Index) — a WoS edition that carries no
-     * JIF quartile. Default false; the Postgres facade overrides with the real membership query.
+     * Whether the forum was indexed in WoS ESCI (Emerging Sources Citation Index, no JIF quartile) as of the given
+     * publication year. Year-true with carry-forward: the latest recorded year is used when {@code year} is more
+     * recent than the data. Default false; the Postgres facade overrides with the real membership query.
      */
-    default boolean isForumInEsci(String forumId) {
+    default boolean isForumInEsci(String forumId, int year) {
         return false;
     }
 
     /**
-     * Whether the forum is indexed in WoS AHCI (Arts &amp; Humanities Citation Index) — a WoS core edition that
-     * also carries no JIF quartile. Default false; the Postgres facade overrides with the real membership query.
+     * Whether the forum was indexed in WoS AHCI (Arts &amp; Humanities Citation Index, no JIF quartile) as of the
+     * given publication year — year-true with carry-forward, as {@link #isForumInEsci}. Default false.
      */
-    default boolean isForumInAhci(String forumId) {
+    default boolean isForumInAhci(String forumId, int year) {
         return false;
     }
 }

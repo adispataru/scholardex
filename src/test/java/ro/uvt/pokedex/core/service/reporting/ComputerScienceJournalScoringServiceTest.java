@@ -196,7 +196,7 @@ class ComputerScienceJournalScoringServiceTest {
         forum.setAggregationType("Journal");
         when(lookupPort.getForum("forum-esci")).thenReturn(forum);
         when(lookupPort.isForumInScopus("forum-esci")).thenReturn(false);
-        when(lookupPort.isForumInEsci("forum-esci")).thenReturn(true);
+        when(lookupPort.isForumInEsci("forum-esci", 2024)).thenReturn(true);
 
         Score score = service.getScore(publication, indicator);
 
@@ -226,7 +226,7 @@ class ComputerScienceJournalScoringServiceTest {
         forum.setAggregationType("Journal");
         when(lookupPort.getForum("forum-both")).thenReturn(forum);
         when(lookupPort.isForumInScopus("forum-both")).thenReturn(true);
-        when(lookupPort.isForumInEsci("forum-both")).thenReturn(true);
+        when(lookupPort.isForumInEsci("forum-both", 2024)).thenReturn(true);
 
         Score score = service.getScore(publication, indicator);
 
@@ -255,7 +255,7 @@ class ComputerScienceJournalScoringServiceTest {
         forum.setAggregationType("Journal");
         when(lookupPort.getForum("forum-ahci")).thenReturn(forum);
         when(lookupPort.isForumInScopus("forum-ahci")).thenReturn(false);
-        when(lookupPort.isForumInAhci("forum-ahci")).thenReturn(true);
+        when(lookupPort.isForumInAhci("forum-ahci", 2024)).thenReturn(true);
 
         Score score = service.getScore(publication, indicator);
 

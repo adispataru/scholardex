@@ -455,4 +455,33 @@ class PostgresReportingLookupFacadeTest {
         assertEquals(List.of("issn-a"), mapped.getAlternativeIssns());
         assertEquals(List.of("name-a"), mapped.getAlternativeNames());
     }
+
+    @Test
+    void isForumInEsciIsYearTrueWithCarryForward() {
+        // Year-keyed category data only has 2023.
+        when(namedParameterJdbcTemplate.queryForList(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))
+                .thenReturn(List.of(2023));
+
+        assertTrue(facade.isForumInEsci("forum-1", 2023), "exact recorded year");
+        assertTrue(facade.isForumInEsci("forum-1", 2026), "newer than data -> carry forward the last known year");
+        assertFalse(facade.isForumInEsci("forum-1", 2010), "older than data -> journal was not indexed yet");
+    }
+
+    @Test
+    void isForumInEsciFallsBackToMembershipSnapshotWhenNoYearKeyedData() {
+        // No year-keyed rows for this forum...
+        when(namedParameterJdbcTemplate.queryForList(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))
+                .thenReturn(List.of());
+        // ...but it is present in the year-agnostic membership snapshot.
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Boolean.class)))
+                .thenReturn(true);
+
+        assertTrue(facade.isForumInEsci("forum-1", 2026));
+    }
+
+    @Test
+    void isForumInEsciReturnsFalseForBlankForum() {
+        assertFalse(facade.isForumInEsci("", 2024));
+        assertFalse(facade.isForumInEsci(null, 2024));
+    }
 }

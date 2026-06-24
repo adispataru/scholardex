@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,14 +63,19 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             // WoS AHCI and ESCI editions carry no JIF quartile either, but are recognized WoS indexes, so a journal
             // in any of them also floors at C and is reported by index (a journal in several shows e.g. SCOPUS+AHCI).
             if (scoreResult.bestPoints.get() == 0 && forum != null && forum.hasAggregationType("Journal")) {
+                // WoS-edition membership is year-true (carry-forward): use the paper's own year, falling back to the
+                // latest data year for the never-dated case so a current paper isn't dropped.
+                int pubYear = PersistenceYearSupport
+                        .extractYear(publication.getCoverDate(), publication.getId(), logger)
+                        .orElseGet(lookupPort::maxAvailableYear);
                 List<String> indexes = new java.util.ArrayList<>();
                 if (publication.getEid() != null || lookupPort.isForumInScopus(forum.getId())) {
                     indexes.add("SCOPUS");
                 }
-                if (lookupPort.isForumInAhci(forum.getId())) {
+                if (lookupPort.isForumInAhci(forum.getId(), pubYear)) {
                     indexes.add("AHCI");
                 }
-                if (lookupPort.isForumInEsci(forum.getId())) {
+                if (lookupPort.isForumInEsci(forum.getId(), pubYear)) {
                     indexes.add("ESCI");
                 }
                 if (!indexes.isEmpty()) {

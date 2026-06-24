@@ -61,13 +61,35 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
-    public boolean isForumInEsci(String forumId) {
-        return isForumInDatabase(forumId, "ESCI");
+    public boolean isForumInEsci(String forumId, int year) {
+        return isForumInWosEditionAsOfYear(forumId, "ESCI", year);
     }
 
     @Override
-    public boolean isForumInAhci(String forumId) {
-        return isForumInDatabase(forumId, "AHCI");
+    public boolean isForumInAhci(String forumId, int year) {
+        return isForumInWosEditionAsOfYear(forumId, "AHCI", year);
+    }
+
+    /**
+     * Year-true WoS-edition membership with carry-forward. The journal counts as in {@code edition} for the paper's
+     * {@code year} if the year-keyed category view records it that year, OR — when {@code year} is more recent than
+     * the latest recorded year — the last known year is carried forward (membership data lags publications, so a
+     * 2026 paper in a journal last recorded as ESCI in 2023 is still ESCI). Forums with no year-keyed edition rows
+     * fall back to the year-agnostic membership snapshot.
+     */
+    private boolean isForumInWosEditionAsOfYear(String forumId, String edition, int year) {
+        if (forumId == null || forumId.isBlank()) {
+            return false;
+        }
+        List<Integer> years = namedParameterJdbcTemplate.queryForList(
+                "SELECT year FROM reporting_read.scholardex_forum_category_view "
+                        + "WHERE forum_id = :forumId AND edition::text = :edition",
+                new MapSqlParameterSource("forumId", forumId).addValue("edition", edition),
+                Integer.class);
+        if (years.isEmpty()) {
+            return isForumInDatabase(forumId, edition);
+        }
+        return years.contains(year) || year > java.util.Collections.max(years);
     }
 
     private boolean isForumInDatabase(String forumId, String database) {
