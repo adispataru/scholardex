@@ -174,7 +174,14 @@ public class ScientificProductionService {
     }
 
     private Score calculatePublicationScore(ScoringPublicationReadModel publication, Indicator indicator, ScoringService scoringService) {
-        return getScore(publication, publication, indicator, scoringService, null, null);
+        Score score = getScore(publication, publication, indicator, scoringService, null, null);
+        // Display the publication's OWN year, not the scoring/ranking year. Fallback scorers (SCOPUS C/D, LNCS,
+        // SENSE) set the score year to a constant (maxAvailableYear / LAST_CORE_YEAR / LAST_SENSE_YEAR), which
+        // showed e.g. 2023 for a 2020 paper. The resolved ranking year stays in scoringInfo.resolvedYear.
+        ro.uvt.pokedex.core.service.application.PersistenceYearSupport
+                .extractYear(publication.getCoverDate(), publication.getId(), log)
+                .ifPresent(score::setYear);
+        return score;
     }
 
     private Score calculateCitationScore(ScoringPublicationReadModel cited, ScoringPublicationReadModel citing, Indicator indicator, ScoringService scoringService) {

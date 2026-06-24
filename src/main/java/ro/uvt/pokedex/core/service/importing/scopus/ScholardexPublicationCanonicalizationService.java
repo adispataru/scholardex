@@ -60,6 +60,10 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     private static final String REASON_PAPER_AFFILIATION_UNRESOLVED = "PUBLICATION_AUTHOR_AFFILIATION_UNRESOLVED";
     private static final Pattern DOI_URL_PREFIX = Pattern.compile("^https?://(dx\\.)?doi\\.org/", Pattern.CASE_INSENSITIVE);
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
+    // Scopus exports some DOIs with a stray colon after the registrant: "10.12694:/scpe..." instead of
+    // "10.12694/scpe...". Without normalising it, the same paper from Scopus vs OpenAlex (URL form) gets two
+    // distinct doiNormalized values and fails to dedup into one canonical publication.
+    private static final Pattern DOI_SCOPUS_COLON = Pattern.compile("^(10\\.\\d+):/");
     private static final String NULL_CACHE_KEY = "\u0000";
 
     // H66B Decision 0: DOIs shared across dissimilar-title publications (book/proceedings container
@@ -199,6 +203,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         }
         normalized = DOI_URL_PREFIX.matcher(normalized).replaceFirst("");
         normalized = DOI_PREFIX.matcher(normalized).replaceFirst("");
+        normalized = DOI_SCOPUS_COLON.matcher(normalized).replaceFirst("$1/");
         normalized = normalized.trim().toLowerCase(Locale.ROOT);
         return normalized.isEmpty() ? null : normalized;
     }

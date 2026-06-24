@@ -268,6 +268,17 @@ class ScholardexPublicationCanonicalizationServiceTest {
     }
 
     @Test
+    void normalizeDoiStripsScopusStrayColonSoUrlAndScopusFormsDedup() {
+        // Same paper, two source formats: OpenAlex URL form vs Scopus stray-colon form ("10.12694:/…") must
+        // normalise to the SAME value, otherwise they get distinct doiNormalized and fail to dedup.
+        String openAlexForm = ScholardexPublicationCanonicalizationService.normalizeDoi("https://doi.org/10.12694/scpe.v21i4.1838");
+        String scopusForm = ScholardexPublicationCanonicalizationService.normalizeDoi("10.12694:/scpe.v21i4.1838");
+        assertEquals("10.12694/scpe.v21i4.1838", openAlexForm);
+        assertEquals("10.12694/scpe.v21i4.1838", scopusForm);
+        assertEquals(openAlexForm, scopusForm);
+    }
+
+    @Test
     void rebuildCanonicalPublicationFactsFromScopusFactsUpsertsDeterministically() {
         ScopusPublicationFact scopusFact = new ScopusPublicationFact();
         scopusFact.setEid("2-s2.0-abc");

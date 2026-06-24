@@ -77,6 +77,24 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void publicationScoreDisplaysPublicationYearNotTheRankingYear() {
+        // A fallback scorer (SCOPUS C/D, LNCS, SENSE) sets the score year to a constant ranking year (e.g. 2023).
+        // The displayed item year must be the publication's OWN cover-date year (2020), not the ranking year.
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication pub = publication("p-2020", "forum-1", "2020-01-01", "ar", "ar",
+                "Decentralized Cloud Orchestration", List.of("a1"));
+        Score rankingScore = score(2.0);
+        rankingScore.setYear(2023); // the constant ranking/fallback year a scorer would set
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(pub, indicator)).thenReturn(rankingScore);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(pub), indicator);
+
+        assertEquals(2020, result.get("Decentralized Cloud Orchestration").getYear());
+    }
+
+    @Test
     void impactScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
         Indicator indicator = indicator("CITATIONS", "S");
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
@@ -436,7 +454,10 @@ class ScientificProductionServiceTest {
         assertEquals(12.0, result.get(publication.getTitle()).getScore(), 0.0001);
         assertEquals(12.0, result.get(publication.getTitle()).getAuthorScore(), 0.0001);
         assertEquals("A_STAR", result.get(publication.getTitle()).getCoreRankingEquivalent());
-        assertEquals(2023, result.get(publication.getTitle()).getYear());
+        // Displayed year is the publication's own cover year (2024), not the resolved CORE ranking year — the
+        // latter stays in scoringInfo.resolvedYear.
+        assertEquals(2024, result.get(publication.getTitle()).getYear());
+        assertEquals(2023, result.get(publication.getTitle()).getScoringInfo().get("resolvedYear"));
         assertEquals("DBLP+CORE", result.get(publication.getTitle()).getScoringSource());
         assertEquals("DBLP", result.get(publication.getTitle()).getScoringInfo().get("matchSource"));
         assertEquals(12.0, result.get("total").getAuthorScore(), 0.0001);
