@@ -117,8 +117,14 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             }
         }
 
-        // Default scoring for SCOPUS-indexed conferences
-        if (scoreResult.bestPoints.get() == 0 && forum != null && conferenceCandidate) {
+        // Default scoring for SCOPUS-indexed conferences.
+        // A "cp" paper whose forum is a Journal (and NOT a conference proceeding) is a proceedings article
+        // published in a journal special issue — it is scored by CS_JOURNAL and must NOT also pick up a spurious
+        // conference D here (that double-counts it into both Info_B_Jurnale and Info_B_Conferințe). DBLP-known
+        // conferences have already been re-stamped onto conf/X forums by the dump sweep, so they are not Journal.
+        // A real Conference-Proceeding forum, or an untyped/unknown forum, still floors at D.
+        boolean journalOnlyForum = forum != null && forum.hasAggregationType("Journal") && !isConferenceProceeding(forum);
+        if (scoreResult.bestPoints.get() == 0 && forum != null && conferenceCandidate && !journalOnlyForum) {
             scoreResult.bestPoints.set(1.0);
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.D);
             scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);

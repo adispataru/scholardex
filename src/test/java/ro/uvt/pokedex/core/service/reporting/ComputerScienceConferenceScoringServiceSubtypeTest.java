@@ -96,6 +96,27 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void doesNotApplyConferenceDFloorToCpPaperInJournalForum() {
+        // A "cp" paper whose forum is a Journal (proceedings published as a journal special issue) is scored by
+        // CS_JOURNAL; the conference scorer must NOT also add a spurious D, or the paper double-counts into both
+        // the journal and conference breakdowns. DBLP-known conferences are already re-stamped onto conf/X forums,
+        // so a paper still resident in a Journal forum is journal output here.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = conferencePublication("forum-jrnl", "2023-10-10");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Procedia Computer Science");
+        forum.setAggregationType("Journal");
+        when(cacheService.getForum("forum-jrnl")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertNull(score.getScoringSource());
+    }
+
+    @Test
     void directConferenceStrategyDoesNotApplyScopusFallbackToArticleSubtype() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
