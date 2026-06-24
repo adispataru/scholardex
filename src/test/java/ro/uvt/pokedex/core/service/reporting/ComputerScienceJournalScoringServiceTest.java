@@ -236,6 +236,36 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
+    void ahciOnlyJournalNotInScopusScoresCAndIsReportedAsAhci() {
+        // WoS AHCI (Arts & Humanities) also carries no JIF quartile; an AHCI journal not in Scopus now floors at C.
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        ScoringPublication publication = new ScoringPublication(
+                "pub-ahci", null, "forum-ahci", "2024-01-01", "ar", "ar",
+                java.util.List.of("a1"), 1, null, null, "An AHCI Journal", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-ahci");
+        forum.setAggregationType("Journal");
+        when(lookupPort.getForum("forum-ahci")).thenReturn(forum);
+        when(lookupPort.isForumInScopus("forum-ahci")).thenReturn(false);
+        when(lookupPort.isForumInAhci("forum-ahci")).thenReturn(true);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(2.0, score.getScore());
+        assertEquals("C", score.getCoreRankingEquivalent());
+        assertEquals("AHCI", score.getScoringSource());
+        assertEquals(WoSRanking.Quarter.AHCI.toString(), score.getQuarter());
+    }
+
+    @Test
     void journalNotInScopusAndWithoutEidScoresZero() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
 

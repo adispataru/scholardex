@@ -78,4 +78,12 @@ public interface ReportingLookupPort {
     default boolean isForumInEsci(String forumId) {
         return false;
     }
+
+    /**
+     * Whether the forum is indexed in WoS AHCI (Arts &amp; Humanities Citation Index) — a WoS core edition that
+     * also carries no JIF quartile. Default false; the Postgres facade overrides with the real membership query.
+     */
+    default boolean isForumInAhci(String forumId) {
+        return false;
+    }
 }

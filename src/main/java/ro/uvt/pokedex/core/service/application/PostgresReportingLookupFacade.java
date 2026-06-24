@@ -65,6 +65,11 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         return isForumInDatabase(forumId, "ESCI");
     }
 
+    @Override
+    public boolean isForumInAhci(String forumId) {
+        return isForumInDatabase(forumId, "AHCI");
+    }
+
     private boolean isForumInDatabase(String forumId, String database) {
         if (forumId == null || forumId.isBlank()) {
             return false;

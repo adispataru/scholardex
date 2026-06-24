@@ -59,29 +59,34 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             );
             // No JIF quartile: a journal still earns C if it is in a recognized index. SCOPUS — the paper's own
             // Scopus eid OR the journal being Scopus-indexed (so OpenAlex-sourced papers with no eid still get C).
-            // ESCI — WoS Emerging Sources has no JIF quartile, but it is a recognized WoS index, so an ESCI journal
-            // also floors at C (and is reported as ESCI even when it is additionally in Scopus).
+            // WoS AHCI and ESCI editions carry no JIF quartile either, but are recognized WoS indexes, so a journal
+            // in any of them also floors at C and is reported by index (a journal in several shows e.g. SCOPUS+AHCI).
             if (scoreResult.bestPoints.get() == 0 && forum != null && forum.hasAggregationType("Journal")) {
-                boolean scopus = publication.getEid() != null || lookupPort.isForumInScopus(forum.getId());
-                boolean esci = lookupPort.isForumInEsci(forum.getId());
-                if (scopus || esci) {
+                List<String> indexes = new java.util.ArrayList<>();
+                if (publication.getEid() != null || lookupPort.isForumInScopus(forum.getId())) {
+                    indexes.add("SCOPUS");
+                }
+                if (lookupPort.isForumInAhci(forum.getId())) {
+                    indexes.add("AHCI");
+                }
+                if (lookupPort.isForumInEsci(forum.getId())) {
+                    indexes.add("ESCI");
+                }
+                if (!indexes.isEmpty()) {
+                    String primary = indexes.getFirst();
                     scoreResult.bestPoints.set(2.0);
                     scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                     scoreResult.bestYear.set(lookupPort.maxAvailableYear());
-                    if (scopus) {
-                        scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
-                        scoreResult.scoringSource.set(esci ? "SCOPUS+ESCI" : "SCOPUS");
-                        scoreResult.scoringInfo.put("matchSource", "SCOPUS");
-                        scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
-                        scoreResult.scoringInfo.put("sourcesConsulted", esci ? List.of("SCOPUS", "ESCI") : List.of("SCOPUS"));
-                    } else {
-                        scoreResult.bestQuarter.set(WoSRanking.Quarter.ESCI);
-                        scoreResult.scoringSource.set("ESCI");
-                        scoreResult.scoringInfo.put("matchSource", "ESCI");
-                        scoreResult.scoringInfo.put("fallbackReason", "ESCI_FALLBACK");
-                        scoreResult.scoringInfo.put("sourcesConsulted", List.of("ESCI"));
+                    // Sentinel quarter matches the primary index name (SCOPUS/AHCI/ESCI all exist as Quarter values).
+                    scoreResult.bestQuarter.set(WoSRanking.Quarter.valueOf(primary));
+                    scoreResult.scoringSource.set(String.join("+", indexes));
+                    scoreResult.scoringInfo.put("matchSource", primary);
+                    scoreResult.scoringInfo.put("fallbackReason", primary + "_FALLBACK");
+                    scoreResult.scoringInfo.put("sourcesConsulted", List.copyOf(indexes));
+                    if (indexes.contains("AHCI")) {
+                        scoreResult.scoringInfo.put("ahci", true);
                     }
-                    if (esci) {
+                    if (indexes.contains("ESCI")) {
                         scoreResult.scoringInfo.put("esci", true);
                     }
                 }
