@@ -176,6 +176,66 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
+    void esciOnlyJournalNotInScopusScoresCAndIsReportedAsEsci() {
+        // WoS ESCI has no JIF quartile but is a recognized WoS index — an ESCI journal not in Scopus now floors at
+        // C (was 0) and the provenance tells it apart from a plain Scopus journal.
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        ScoringPublication publication = new ScoringPublication(
+                "pub-esci", null, "forum-esci", "2024-01-01", "ar", "ar",
+                java.util.List.of("a1"), 1, null, null, "An ESCI Journal", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-esci");
+        forum.setAggregationType("Journal");
+        when(lookupPort.getForum("forum-esci")).thenReturn(forum);
+        when(lookupPort.isForumInScopus("forum-esci")).thenReturn(false);
+        when(lookupPort.isForumInEsci("forum-esci")).thenReturn(true);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(2.0, score.getScore());
+        assertEquals("C", score.getCoreRankingEquivalent());
+        assertEquals("ESCI", score.getScoringSource());
+        assertEquals(WoSRanking.Quarter.ESCI.toString(), score.getQuarter());
+    }
+
+    @Test
+    void scopusJournalAlsoInEsciIsReportedAsScopusPlusEsci() {
+        // A journal in both Scopus and ESCI still scores C, but the source flags the ESCI membership too.
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        ScoringPublication publication = new ScoringPublication(
+                "pub-both", null, "forum-both", "2024-01-01", "ar", "ar",
+                java.util.List.of("a1"), 1, null, null, "A Scopus And ESCI Journal", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-both");
+        forum.setAggregationType("Journal");
+        when(lookupPort.getForum("forum-both")).thenReturn(forum);
+        when(lookupPort.isForumInScopus("forum-both")).thenReturn(true);
+        when(lookupPort.isForumInEsci("forum-both")).thenReturn(true);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(2.0, score.getScore());
+        assertEquals("C", score.getCoreRankingEquivalent());
+        assertEquals("SCOPUS+ESCI", score.getScoringSource());
+    }
+
+    @Test
     void journalNotInScopusAndWithoutEidScoresZero() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
 

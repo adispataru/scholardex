@@ -57,13 +57,22 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     @Override
     public boolean isForumInScopus(String forumId) {
+        return isForumInDatabase(forumId, "SCOPUS");
+    }
+
+    @Override
+    public boolean isForumInEsci(String forumId) {
+        return isForumInDatabase(forumId, "ESCI");
+    }
+
+    private boolean isForumInDatabase(String forumId, String database) {
         if (forumId == null || forumId.isBlank()) {
             return false;
         }
         Boolean exists = namedParameterJdbcTemplate.queryForObject(
                 "SELECT EXISTS(SELECT 1 FROM reporting_read.scholardex_forum_membership_view "
-                        + "WHERE forum_id = :forumId AND database = 'SCOPUS')",
-                new MapSqlParameterSource("forumId", forumId),
+                        + "WHERE forum_id = :forumId AND database = :database)",
+                new MapSqlParameterSource("forumId", forumId).addValue("database", database),
                 Boolean.class);
         return Boolean.TRUE.equals(exists);
     }

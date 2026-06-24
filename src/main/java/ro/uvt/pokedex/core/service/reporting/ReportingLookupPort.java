@@ -70,4 +70,12 @@ public interface ReportingLookupPort {
     default boolean isForumInScopus(String forumId) {
         return false;
     }
+
+    /**
+     * Whether the forum is indexed in WoS ESCI (Emerging Sources Citation Index) — a WoS edition that carries no
+     * JIF quartile. Default false; the Postgres facade overrides with the real membership query.
+     */
+    default boolean isForumInEsci(String forumId) {
+        return false;
+    }
 }

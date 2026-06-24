@@ -57,20 +57,34 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
                     this::compareScoresByPoints,
                     carryForward
             );
-            // Special case for SCOPUS-only journals: the paper's own Scopus eid, OR the journal being Scopus-indexed
-            // (forum membership) — the latter so OpenAlex-sourced papers (no eid) in Scopus journals still get C.
-            if (scoreResult.bestPoints.get() == 0 &&
-                    forum != null &&
-                    forum.hasAggregationType("Journal") &&
-                    (publication.getEid() != null || lookupPort.isForumInScopus(forum.getId()))) {
-                scoreResult.bestPoints.set(2.0);
-                scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
-                scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
-                scoreResult.bestYear.set(lookupPort.maxAvailableYear());
-                scoreResult.scoringSource.set("SCOPUS");
-                scoreResult.scoringInfo.put("matchSource", "SCOPUS");
-                scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
-                scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS"));
+            // No JIF quartile: a journal still earns C if it is in a recognized index. SCOPUS — the paper's own
+            // Scopus eid OR the journal being Scopus-indexed (so OpenAlex-sourced papers with no eid still get C).
+            // ESCI — WoS Emerging Sources has no JIF quartile, but it is a recognized WoS index, so an ESCI journal
+            // also floors at C (and is reported as ESCI even when it is additionally in Scopus).
+            if (scoreResult.bestPoints.get() == 0 && forum != null && forum.hasAggregationType("Journal")) {
+                boolean scopus = publication.getEid() != null || lookupPort.isForumInScopus(forum.getId());
+                boolean esci = lookupPort.isForumInEsci(forum.getId());
+                if (scopus || esci) {
+                    scoreResult.bestPoints.set(2.0);
+                    scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
+                    scoreResult.bestYear.set(lookupPort.maxAvailableYear());
+                    if (scopus) {
+                        scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
+                        scoreResult.scoringSource.set(esci ? "SCOPUS+ESCI" : "SCOPUS");
+                        scoreResult.scoringInfo.put("matchSource", "SCOPUS");
+                        scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
+                        scoreResult.scoringInfo.put("sourcesConsulted", esci ? List.of("SCOPUS", "ESCI") : List.of("SCOPUS"));
+                    } else {
+                        scoreResult.bestQuarter.set(WoSRanking.Quarter.ESCI);
+                        scoreResult.scoringSource.set("ESCI");
+                        scoreResult.scoringInfo.put("matchSource", "ESCI");
+                        scoreResult.scoringInfo.put("fallbackReason", "ESCI_FALLBACK");
+                        scoreResult.scoringInfo.put("sourcesConsulted", List.of("ESCI"));
+                    }
+                    if (esci) {
+                        scoreResult.scoringInfo.put("esci", true);
+                    }
+                }
             }
         }
 
