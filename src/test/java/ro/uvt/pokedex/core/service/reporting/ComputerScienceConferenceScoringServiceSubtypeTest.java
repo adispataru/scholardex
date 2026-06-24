@@ -117,6 +117,28 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void bookChapterWithSpringerDoiInRealBookSeriesIsNotScoredAsConference() {
+        // A book chapter ("ch") with a Springer ISBN DOI (10.1007/978…) in a REAL book series ("Studies in Big
+        // Data" — a Book-Series forum, NOT "Lecture Notes in…") is genuine book output, scored by CS_SENSE. The
+        // 978 DOI alone (also carried by every Springer book chapter) must not pull it into the conference
+        // indicator; only the LNCS-series forum name (or a Conference-Proceeding forum) makes a chapter a conference.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = new ScoringPublication(
+                "pub-book-ch", null, "forum-book", "2023-01-01", "ch", "ch", List.of(), 0,
+                "https://doi.org/10.1007/978-3-031-12345-6_7", null, "Evaluating Distributed Systems", 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Studies in Big Data");
+        forum.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-book")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertNull(score.getScoringSource());
+    }
+
+    @Test
     void directConferenceStrategyDoesNotApplyScopusFallbackToArticleSubtype() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 

@@ -457,13 +457,20 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private boolean isLncsBookSeriesCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {
-        // LNCS-family proceedings published as chapters: identified by the forum series name OR a Springer
-        // ISBN DOI (10.1007/978…), which survives even when the forum name/aggregationType is wrong.
-        if (!isLectureNotesSeries(forum) && !DoiVenueSupport.isSpringerBookSeriesProceedings(publication)) {
-            return false;
+        boolean lncsForum = isLectureNotesSeries(forum);
+        // A "cp" paper with a Springer ISBN DOI (10.1007/978…) is a conference proceeding even when the forum
+        // name/aggregationType is wrong — the DOI survives. A "ch" paper, however, needs the LNCS-series forum
+        // NAME: a Springer-978 DOI alone is ALSO a real Springer/Palgrave BOOK chapter (e.g. "Studies in Big
+        // Data", "Palgrave Studies in Digital Business"), which is scored by CS_SENSE as a book and must not leak
+        // into the conference indicator. DBLP-resolved LNCS conferences already carry a Conference-Proceeding
+        // forum (handled by isConferenceProceeding), so the residual ch path only needs the LNCS forum name.
+        if (PublicationSubtypeSupport.isSubtype(publication, "cp")) {
+            return lncsForum || DoiVenueSupport.isSpringerBookSeriesProceedings(publication);
         }
-        return PublicationSubtypeSupport.isSubtype(publication, "ch")
-                || PublicationSubtypeSupport.isSubtype(publication, "cp");
+        if (PublicationSubtypeSupport.isSubtype(publication, "ch")) {
+            return lncsForum;
+        }
+        return false;
     }
 
     private Optional<ScholardexPublicationDblpEvidence> findDblpEvidence(ScoringPublicationReadModel publication) {
