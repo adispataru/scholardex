@@ -116,7 +116,11 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             return Optional.empty();
         }
         Score score = new Score();
-        // Find best ranking for the given year
+        // Book points by SENSE publisher rank, per Standarde-minimale-Info.pdf perspective d) item i) ("Cărți de
+        // autor/editate și capitole publicate în edituri de categoria SENSE"): an authored/edited BOOK scores
+        // A=16, B=8, C=4, D/E/unlisted=2 per volume. A CHAPTER is one rank lower — A=8, B=4, C=2, D/E=1 — which
+        // the caller produces by halving these book points for subtype "ch". These are SENSE publisher categories,
+        // NOT the CORE conference scale (a SENSE-A book = 16p, above CORE A* = 12p) — do not conflate the labels.
         SenseBookRanking conf  =  bookRankings.getFirst();
         switch (conf.getRanking()) {
             case A -> {

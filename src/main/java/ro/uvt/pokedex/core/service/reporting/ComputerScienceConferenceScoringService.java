@@ -120,14 +120,12 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             }
         }
 
-        // Default scoring for SCOPUS-indexed conferences.
-        // A "cp" paper whose forum is a Journal (and NOT a conference proceeding) is a proceedings article
-        // published in a journal special issue — it is scored by CS_JOURNAL and must NOT also pick up a spurious
-        // conference D here (that double-counts it into both Info_B_Jurnale and Info_B_Conferințe). DBLP-known
-        // conferences have already been re-stamped onto conf/X forums by the dump sweep, so they are not Journal.
-        // A real Conference-Proceeding forum, or an untyped/unknown forum, still floors at D.
-        boolean journalOnlyForum = forum != null && forum.hasAggregationType("Journal") && !isConferenceProceeding(forum);
-        if (scoreResult.bestPoints.get() == 0 && forum != null && conferenceCandidate && !journalOnlyForum) {
+        // Default D-tier ONLY for a positively-typed Conference-Proceeding forum. A "cp" paper in a Journal forum
+        // is a journal special issue (scored by CS_JOURNAL — must not double-count here), and a "cp" in an
+        // untyped/unknown forum is an unidentifiable venue that earns nothing (a D would be unverifiable points).
+        // DBLP-known conferences are already re-stamped onto conf/X (Conference-Proceeding) forums by the dump
+        // sweep; LNCS book-series candidates take the LNCS C fallback above, not this D.
+        if (scoreResult.bestPoints.get() == 0 && isConferenceProceeding(forum)) {
             scoreResult.bestPoints.set(1.0);
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.D);
             scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
