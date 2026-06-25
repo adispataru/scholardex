@@ -65,17 +65,39 @@ Done history moved to `TASKS-done.md`.
   Goal: rework the scoring services to fully consume the new multi-source signals now in the canonical layer —
   **OpenAlex** (citation graph, incoming `cited_by`, ISSN venue identity) and **DBLP** (CS conference identity +
   authoritative `conf/X` acronym, ~2,351 conferences resolved). The acronym already leads CORE matching
-  (`ComputerScienceConferenceScoringService`, commit `64eed06`); the rest is unbuilt. Threads:
+  (`ComputerScienceConferenceScoringService`, commit `64eed06`); the rest is unbuilt.
+  **Also shipped 2026-06-25 (CS scoring hardening, read-side, beyond the threads):** ESCI/AHCI journals recognized
+  (no-JIF-quartile WoS editions floor at C, reported as `SCOPUS+ESCI`/`AHCI`; year-true with carry-forward —
+  fixed the `ReportingLookupFacade` delegation gap that hid it); SENSE book scale pinned to the standard
+  (perspective d.i: A=16…) + publisher matching tightened to anchored whole-word; publication-year shown instead
+  of the ranking/fallback year; Scopus stray-colon DOI dedup (merged the SCPE duplicates); predatory-venue gate
+  (Phase 1 WSEAS/IAENG/DAAAM + Phase 2 Beall's exact-match + allowlist, `data/predatory/`); CORE/SENSE quartile
+  sentinels (no more "NOT FOUND" chips on conferences/books). SENSE source validated as trustworthy (matches the
+  authoritative SENSE PDF; puncte's CSV is the divergent one). See memories: predatory-venue-gate,
+  reporting-lookup-primary-delegator, conference-dblp-core-resolution, openalex-venue-source-type.
+  Threads:
   **(1)** scorer **dispatch/routing review** — a DBLP-confirmed conference miscoded as a non-conference subtype
   (`ar`, or sitting on a proceedings-series forum) is routed to the wrong scorer; trust the `conf/X` forum / DBLP
   evidence to score it as a conference regardless of subtype, **without double-counting** (confirm how a pub is
   assigned to exactly one scorer first — the deferred half of "DBLP acronym wins").
+  **DONE (2026-06-25):** single-scorer dispatch confirmed + double-counts closed. The CS router (`CS` strategy,
+  Info_B/Info_C) dispatches by primary forum type — journals + conferences only, books → CS_SENSE; a `cp` in a
+  Journal forum no longer also floors at conference D; LNCS/Springer-978 chapters are excluded from the book
+  scorer and only LNCS-*named* `ch` are conference candidates (real Springer/Palgrave book chapters stay books);
+  Euro-Par et al. resolve via the local DBLP dump sweep; a `cp` in an untyped/unknown forum now scores 0.
+  Commits `d580144`…`2e6fede`.
   **(2)** citation-driven criteria — feed OpenAlex `cited_by` / the in-corpus citation graph into citation-count
   indicators and into **H67** (h-index); pick the citation source per domain.
   **(3)** forum **dedup** impact — ensure a conference resolved via DBLP `conf/X` and the same conference via a
   Scopus forum score identically (Tier-1 reconcile merges them).
   **(4)** **regression sweep** — re-score across domains after the match-all + acronym changes and confirm no
   score regressions vs the pre-Phase-4 baseline. Depends on H66B Phase 4 (done) + interacts with H67.
+  **SWEPT CLEAN (2026-06-25):** full suite 2426/2426 green — every domain scorer (AIS/ArtEvent/CNFIS/Economics/
+  FeaaBook/ImpactFactor/RIS/UniversityRank/CS×3) + the CS frozen-baseline parity test pass; florin (CS live)
+  intact. The session's shared-infra changes are score-neutral cross-domain (the `ScientificProductionService`
+  pub-year override is display-only; the Scopus stray-colon DOI normalization is a narrow dedup). The sweep also
+  surfaced + fixed one PRE-EXISTING `@WebMvcTest` mock gap (`AdminViewController`→`ScholardexAuthorFactRepository`
+  in `RankingViewSecurityContractTest`, commit `6159896`) — unrelated to scoring.
   **(5)** **aggregate (non-additive) indicators — `H67` S4a, the first real gap.** The indicator engine is
   map-then-sum (per-item `getScore` → `Selector` filter → SUM); h-index is non-additive so it needs the *reduce*
   generalized to a named aggregator. Add `IndicatorKind.HIndex(source, excludeSelf)` + `ScoringStrategy.HIRSCH` +
