@@ -219,6 +219,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         assertEquals("ICSE", score.getScoringInfo().get("matchedAcronym"));
+        // CORE-resolved conferences carry the CORE quartile sentinel (not the NOT_FOUND default).
+        assertEquals(WoSRanking.Quarter.CORE.toString(), score.getQuarter());
     }
 
     @Test
@@ -1010,6 +1012,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         assertEquals("ICSE", score.getScoringInfo().get("matchedAcronym"));
+        // CORE-resolved conferences carry the CORE quartile sentinel (not the NOT_FOUND default).
+        assertEquals(WoSRanking.Quarter.CORE.toString(), score.getQuarter());
     }
 
     @Test

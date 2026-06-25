@@ -90,7 +90,8 @@ class ComputerScienceScoringPipelineParityTest {
 
         assertEquals(12.0, result.get("A* Conference").getScore(), 0.0001);
         assertEquals("A_STAR", result.get("A* Conference").getCoreRankingEquivalent());
-        assertEquals("NOT_FOUND", result.get("A* Conference").getQuarter());
+        // CORE-resolved conferences now carry the CORE quartile sentinel instead of the NOT_FOUND default.
+        assertEquals("CORE", result.get("A* Conference").getQuarter());
 
         assertEquals(2.0, result.get("Scopus Journal").getScore(), 0.0001);
         assertEquals("C", result.get("Scopus Journal").getCoreRankingEquivalent());

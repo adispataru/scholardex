@@ -103,6 +103,9 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 scoreResult.bestPoints.set(resolvedScore.getScore());
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.valueOf(resolvedScore.getCoreRankingEquivalent()));
                 scoreResult.bestYear.set(resolvedScore.getYear());
+                // Conferences have no JCR quartile; the rank is the CORE class (shown separately). Mark the quartile
+                // slot as CORE rather than leaving the NOT_FOUND default, which reads like missing data in the UI.
+                scoreResult.bestQuarter.set(WoSRanking.Quarter.CORE);
                 copyProvenance(resolvedScore, scoreResult);
             }
             if(scoreResult.bestPoints.get() == 0
@@ -175,6 +178,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             scoreResult.bestPoints.set(resolvedScore.getScore());
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.valueOf(resolvedScore.getCoreRankingEquivalent()));
             scoreResult.bestYear.set(resolvedScore.getYear());
+            scoreResult.bestQuarter.set(WoSRanking.Quarter.CORE);
             copyProvenance(resolvedScore, scoreResult);
         }
 
