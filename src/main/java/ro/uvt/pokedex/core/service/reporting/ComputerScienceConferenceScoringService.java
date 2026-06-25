@@ -70,6 +70,9 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
         ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
+        if (PredatoryVenueSupport.isExcludedVenue(forum)) {
+            return createScore(initializeScoreResult()); // standard-excluded venue (WSEAS/IAENG/DAAAM): no points
+        }
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);

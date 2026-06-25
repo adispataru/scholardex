@@ -34,6 +34,28 @@ class ComputerScienceJournalScoringServiceTest {
         ro.uvt.pokedex.core.testsupport.ReportingLookupTestSupport.delegateForumLookupToIssn(lookupPort);
     }
     @Test
+    void standardExcludedWseasVenueScoresZero() {
+        // The Informatica standard excludes WSEAS/IAENG/DAAAM venues from consideration -> no points, even though
+        // the journal is Scopus-indexed (which would otherwise floor it at C).
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+
+        ScoringPublication publication = publication("forum-wseas", null, "ar", "ar");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-wseas");
+        forum.setPublicationName("WSEAS Transactions on Signal Processing");
+        forum.setAggregationType("Journal");
+        when(lookupPort.getForum("forum-wseas")).thenReturn(forum);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(0.0, score.getScore());
+    }
+
+    @Test
     void missingAisRankForYearDoesNotThrowAndFallsBackToLowerTier() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
 
