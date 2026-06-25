@@ -43,6 +43,18 @@ Done history moved to `TASKS-done.md`.
   publishes in), validate the pipeline, then a broad CPCI roster for wider citing-venue coverage. Implementation
   waits on the first CSV (build the matcher against the real export shape, not assumptions). Plan:
   `docs/tasks/active/h76-wos-cpci-onboarding.md`.
+  **S1+S2 DONE (2026-06-25) — MVP applied live.** The user exported WoS **Records** (richer than Analyze: carries
+  DOI/ISSN/ISBN), so the matcher became **DOI→our publication→forum** (exact) then ISSN/ISBN then conference-title
+  containment — far higher precision than venue-name matching, because these are UVT's own corpus papers.
+  `WosCpciOnboardingService` + `POST /admin/initialization/wos/cpci/{dryRun,apply}`. From 1,984 UVT proceedings
+  records: 1,302 matched → **211 net-new conference forums tagged `wosCpciIndexed=true`** (a NEW boolean kept
+  separate from `wosForumIds`, which is unique-indexed + joined as WoS journal ids; only `applyCitationSourceSplit`
+  reads the flag → a CPCI-conference citation counts WoS-venue). Applied via a throwaway agent-dev `:8181` (schedulers
+  off), idempotent, verified in Mongo. **Value: physics (FF) counts CPCI papers**, so this directly feeds that report.
+  **Remaining: a projection refresh** to recompute `wosCitationCount` (then the WoS-h spot-check, Adrian 4→5).
+  **S3 (broad citing coverage) DEFERRED until a WoS API key** — the UVT-scoped roster covers venues UVT publishes in;
+  the *true* WoS citation graph (all citing venues) needs a programmatic Core-Collection pull, a hassle without an
+  Expanded/Starter API key (UI Records export caps ~1,000/file). Revisit when an API key is available.
 
 - [ ] `H68` Advanced criteria / threshold extensions (foundational, from the standards assessment).
   Goal: extend the criteria engine for recurring patterns — **post-PhD temporal anchor**, per-indicator/
