@@ -45,6 +45,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
+    private final ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
 
     @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.works-file:}")
     private String openAlexWorksFile;
@@ -56,6 +57,16 @@ public class AdminInitializationController {
     @GetMapping
     public String showInitializationPage(Model model) {
         return "admin/initialization";
+    }
+
+    /**
+     * H76 S1: dry-run the WoS CPCI onboarding match (no writes) — reports per-key match rate + the distinct forums
+     * that would be tagged WoS-indexed. Reads the configured {@code wos.cpci.file}.
+     */
+    @PostMapping("/wos/cpci/dryRun")
+    @ResponseBody
+    public ro.uvt.pokedex.core.service.importing.wos.WosCpciMatchReport wosCpciDryRun() {
+        return wosCpciOnboardingService.dryRun();
     }
 
     @PostMapping("/general/runAll")
