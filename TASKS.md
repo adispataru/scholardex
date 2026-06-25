@@ -139,6 +139,15 @@ Done history moved to `TASKS-done.md`.
   Exit criteria: round-trips through `of()`/`toLegacy()`; existing Citations indicators unaffected; both paths
   agree on the per-cited-paper overlap; unlinked-author identity-matching caveat covered. Planning doc at
   `docs/tasks/active/h61-citation-coauthor-exclusion.md`.
+  **MECHANISM DONE (2026-06-25):** `SelfCitationPolicy {NONE, CANDIDATE_ONLY, ANY_COAUTHOR}` replaces the boolean in
+  `IndicatorKind.Citations`; legacy codec maps `CITATIONS`/`CITATIONS_EXCLUDE_SELF`→`NONE`/`CANDIDATE_ONLY` (no
+  migration) + new `CITATIONS_EXCLUDE_COAUTHORS`→`ANY_COAUTHOR`; round-trips `of()`/`toLegacy()`. Both filter sites
+  (`computeCitationView` score + `CitationRowProjector` display) call ONE shared public helper
+  `ReportScopedIndicatorScoringSupport.citationExclusionAuthorIds(policy, cited, candidateIds)` → identical exclusion
+  set by construction. `Indicator.getCitationExclusionPolicy()`; admin dropdown option added. Full suite 2437/2437.
+  **DEFERRED: re-point Informatică** citation indicator(s) to `CITATIONS_EXCLUDE_COAUTHORS` — gated on the published
+  standard text (per-cited-paper vs global co-author network; open question in the plan doc). **Caveat shipped:**
+  `ANY_COAUTHOR` under-excludes when co-authors aren't canonicalized to the same ids (documented in the enum).
 
 - [ ] `H60` Relative year specs (recent-window + latest-rankings) for indicator scoring.
   Goal: replace fixed absolute year ranges (which go stale yearly) with self-rolling relative windows — `YearRangeSpec.PreviousNYears(n)` (article inclusion, t‑n…t‑1) and `ScoreYearRangeSpec.LatestNRankings(n)` (the n most recent ranking list-years present in the DB, ≤ the run's referenceYear). Anchored on a `referenceYear` stored on `UserIndividualReportRun` for deterministic replay.
