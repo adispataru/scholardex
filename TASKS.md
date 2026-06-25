@@ -21,8 +21,14 @@ Done history moved to `TASKS-done.md`.
   admin-gated run with an `authorshipSource{CONFIRMED,DECLARED}` flag threaded so pubs AND researcherAuthorIds
   (self-cit/division) use the resolved authors + a `Source.ADMIN_PROVISIONAL` label · (4) "provisional/unvalidated"
   label in view/export. Caveat: over-includes false-positive attributions (inherent to bypassing validation; the
-  label communicates it). Live end-to-end check needs real user data (dev Mongo has no users). Plan:
-  `docs/tasks/active/h77-admin-provisional-scoring-declared-ids.md`.
+  label communicates it). Plan: `docs/tasks/active/h77-admin-provisional-scoring-declared-ids.md`.
+  **Grounded in real data (2026-06-25):** no `users` collection, but the org/staff import populated
+  `department_affiliations` (Matematică = 15 people by UVT email). They have no profile/scopusId of their own but
+  resolve to canonical authors **by name** (`alternativeNames`; the authors already carry `scopusAuthorIds` + pubs).
+  Coverage: **9/15 unique matches (all with scopus)**, 3 homonyms, 3 diacritic mismatches. So the people source = the
+  org roster and the bridge = name (diacritic-normalized + homonym disambiguation by UVT-affiliation/scopus); the
+  scopusId-on-profile path still applies where the import populates profiles. This makes an **admin department
+  report** (score everyone in a department, provisionally) the concrete target.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input

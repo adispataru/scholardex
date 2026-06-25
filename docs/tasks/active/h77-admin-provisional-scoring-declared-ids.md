@@ -22,6 +22,26 @@ Let an **admin** run a report that scores a researcher from their **declared Sco
 "unvalidated authorship" so it is never mistaken for a validated run. (Decision locked 2026-06-25: read-only
 provisional, not admin-auto-validate — the latter would pre-fill and mask the researcher's curation.)
 
+## The real data (2026-06-25) — people come from the org roster, the bridge is name
+
+The dev Mongo has **no `users` collection**, but the **staff/org import populated `department_affiliations`** (e.g.
+Departamentul de Matematică `6a35b09…` has 15 people, keyed by UVT email `first.last@e-uvt.ro`). These people have
+**no `User`/`researcherProfile`/`scopusId`** of their own — but they resolve to canonical authors by **name**
+(author `name` is null; names live in `alternativeNames`, e.g. `"Barbu, Dorel"`), and **those canonical authors
+already carry `scopusAuthorIds` + publications** (from the publication import). So "Scopus ids from the import" is
+true at the *author* level; the org roster is the bridge, by name.
+
+Coverage over the 15 Matematică affiliations (email→"First Last"→author `alternativeNames`, full-name match):
+**9 unique matches, all 9 with `scopusAuthorIds`**; 3 homonyms (Blaga/Popovici/Sasu match 2–3 authors); 3 no-match
+almost certainly **diacritics** (Casu→Caşu, Comanescu→Comănescu). So most of a department is scorable now.
+
+**Reframed resolution** (the people source + bridge): iterate `department_affiliations` (the roster) → derive the
+person name from the email local-part → match the canonical author by `alternativeNames` with **diacritic-insensitive**
+normalization → **disambiguate homonyms** (prefer the author with a UVT affiliation / `scopusAuthorIds` / most
+publications) → that author's `scopusAuthorIds` are the "declared Scopus ids", and its publications are the scored
+set. The original `scopusId`-on-profile path still applies in environments where the import populates profiles; here
+the name bridge is what's available.
+
 ## Building blocks (all present)
 
 - `ScholardexAuthorFactRepository.findByScopusAuthorIdsIn(Collection)`, `findByOrcidIdsContains(String)` →
