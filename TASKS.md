@@ -173,8 +173,13 @@ Done history moved to `TASKS-done.md`.
   `CitationPolicyMigrationRunner` (raw-Mongo startup migration, self-healing). See memory
   record-component-change-breaks-mongo-deser. **Caveat:** the live `:8080` (pre-H61 code) mis-reads the migrated
   Citations shape until restarted on the new build.
-  Minor remaining: the per-indicator xlsx export (`buildIndicatorWorkbookExport`) re-scores on a separate
-  now-anchored path — wrap if a relative-spec indicator ever needs xlsx export.
+  **Re-score paths covered (2026-06-25):** since Matematică now uses relative specs, every re-score path must
+  resolve them — fixed centrally via `ScoringReferenceYearContext.currentOrCurrentYear()` (defaults to the current
+  year when no run context is set), used by `getAllowedYearsForPublication` + the inclusion filter. Covers the
+  per-indicator xlsx export, the H50 `ReportInstanceSnapshot` projectors (incl. `ROLE_JOURNAL_RECENT`), the apply
+  view, and group reports without per-path wrapping; the run-build path still overrides with the stored year for
+  replay. **H60 is now functionally complete** (only the out-of-scope `Mate_C` formula fix + the `:8080` restart
+  caveat remain).
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   Goal: enable users to export a `UserIndividualReportRun` to a per-report-type template and to upload a corrected file for a transient, read-only score verification (file scores vs the persisted run; never writes, never auto-creates a run). The original 4-bucket reconcile/commit design was superseded (2026-05-19) and its dead code removed (2026-06-14).
