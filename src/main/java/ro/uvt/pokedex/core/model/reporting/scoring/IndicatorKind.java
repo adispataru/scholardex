@@ -30,9 +30,10 @@ public sealed interface IndicatorKind
         }
     }
 
-    /** Citation-based indicator. {@code excludeSelf=true} filters out self-citations. */
-    record Citations(boolean excludeSelf, ScoringStrategy strategy) implements IndicatorKind {
+    /** Citation-based indicator. {@code policy} selects the self-citation exclusion mode (H61). */
+    record Citations(SelfCitationPolicy policy, ScoringStrategy strategy) implements IndicatorKind {
         public Citations {
+            if (policy == null) throw new IllegalArgumentException("policy cannot be null");
             if (strategy == null) throw new IllegalArgumentException("strategy cannot be null");
         }
     }
@@ -94,8 +95,9 @@ public sealed interface IndicatorKind
             case "PUBLICATIONS_MAIN_AUTHOR"  -> new Publications(AuthorRole.MAIN, s);
             case "PUBLICATIONS_COAUTHOR"     -> new Publications(AuthorRole.CO,   s);
 
-            case "CITATIONS"                 -> new Citations(false, s);
-            case "CITATIONS_EXCLUDE_SELF"    -> new Citations(true,  s);
+            case "CITATIONS"                 -> new Citations(SelfCitationPolicy.NONE, s);
+            case "CITATIONS_EXCLUDE_SELF"    -> new Citations(SelfCitationPolicy.CANDIDATE_ONLY, s);
+            case "CITATIONS_EXCLUDE_COAUTHORS" -> new Citations(SelfCitationPolicy.ANY_COAUTHOR, s);
 
             // H67 S4a: HINDEX_<source>[ _EXCLUDE_SELF ], always paired with the HIRSCH strategy.
             case "HINDEX_SCHOLARDEX", "HINDEX_GRAPH", "HINDEX_SCOPUS", "HINDEX_WOS",
@@ -143,7 +145,11 @@ public sealed interface IndicatorKind
                 case CO   -> "PUBLICATIONS_COAUTHOR";
             }, p.strategy().name());
             case Citations c -> new LegacyShape(
-                    c.excludeSelf() ? "CITATIONS_EXCLUDE_SELF" : "CITATIONS",
+                    switch (c.policy()) {
+                        case NONE -> "CITATIONS";
+                        case CANDIDATE_ONLY -> "CITATIONS_EXCLUDE_SELF";
+                        case ANY_COAUTHOR -> "CITATIONS_EXCLUDE_COAUTHORS";
+                    },
                     c.strategy().name());
             case HIndex h -> new LegacyShape(
                     "HINDEX_" + h.source().token() + (h.excludeSelf() ? "_EXCLUDE_SELF" : ""),

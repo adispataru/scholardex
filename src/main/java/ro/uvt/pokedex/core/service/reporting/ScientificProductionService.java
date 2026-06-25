@@ -107,7 +107,7 @@ public class ScientificProductionService {
         long totalStartedAtNanos = System.nanoTime();
         Map<String, Score> result = new HashMap<>();
         // H52 slice 11d.1: same GenericCount short-circuit as the production
-        // path; CITATIONS shows up as {@code IndicatorKind.Citations(excludeSelf, …)}.
+        // path; CITATIONS shows up as {@code IndicatorKind.Citations(policy, …)} (H61 self-citation policy).
         if(indicator.isGenericCount()) {
             publications.forEach(pub -> {
                 Score score = new Score();

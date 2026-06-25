@@ -119,7 +119,8 @@ class IndicatorEffectiveAccessorsReplaySmokeTest {
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(ind, "IY");
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(ind, "ALL");
 
-        ind.setKind(new IndicatorKind.Citations(true,
+        ind.setKind(new IndicatorKind.Citations(
+                ro.uvt.pokedex.core.model.reporting.scoring.SelfCitationPolicy.CANDIDATE_ONLY,
                 ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.RIS));
         ind.setYearRangeSpec(new YearRangeSpec.Absolute(2020, 2025));
         ind.setScoreYearRangeSpec(new ScoreYearRangeSpec.Absolute(2022, 2024));

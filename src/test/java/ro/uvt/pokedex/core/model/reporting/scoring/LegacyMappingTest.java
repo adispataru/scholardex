@@ -75,11 +75,17 @@ class LegacyMappingTest {
     }
 
     @Test
-    void citationsCarryExcludeSelfFlag() {
-        assertEquals(false,
-                ((IndicatorKind.Citations) IndicatorKind.of("CITATIONS", "AIS")).excludeSelf());
-        assertEquals(true,
-                ((IndicatorKind.Citations) IndicatorKind.of("CITATIONS_EXCLUDE_SELF", "AIS")).excludeSelf());
+    void citationsCarrySelfCitationPolicy() {
+        assertEquals(SelfCitationPolicy.NONE,
+                ((IndicatorKind.Citations) IndicatorKind.of("CITATIONS", "AIS")).policy());
+        assertEquals(SelfCitationPolicy.CANDIDATE_ONLY,
+                ((IndicatorKind.Citations) IndicatorKind.of("CITATIONS_EXCLUDE_SELF", "AIS")).policy());
+        assertEquals(SelfCitationPolicy.ANY_COAUTHOR,
+                ((IndicatorKind.Citations) IndicatorKind.of("CITATIONS_EXCLUDE_COAUTHORS", "AIS")).policy());
+        // round-trip through toLegacy()
+        assertEquals("CITATIONS_EXCLUDE_COAUTHORS",
+                new IndicatorKind.Citations(SelfCitationPolicy.ANY_COAUTHOR,
+                        ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.AIS).toLegacy().outputTypeName());
     }
 
     @Test

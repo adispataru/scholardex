@@ -65,8 +65,9 @@ public class CitationRowProjector {
             return List.of();
         }
 
-        // H52 slice 11d.2: typed-kind check via the Indicator helper.
-        boolean excludeSelf = indicator.isCitationsExcludeSelf();
+        // H61: self-citation exclusion mode — NONE / candidate-only / any-coauthor of the cited publication.
+        ro.uvt.pokedex.core.model.reporting.scoring.SelfCitationPolicy citationPolicy =
+                indicator.getCitationExclusionPolicy();
         Set<String> selfAuthorIds = resolveSelfAuthorIds(userEmail);
 
         List<ScholardexPublicationView> citedPubs = authorshipRead.findConfirmedPublicationsForScoring(userEmail);
@@ -117,6 +118,10 @@ public class CitationRowProjector {
             }
             if (citingForThisPub.isEmpty()) continue;
 
+            // H61: shared helper with the score path so both sites exclude the identical citation set.
+            Set<String> exclusionAuthorIds = ro.uvt.pokedex.core.service.application
+                    .ReportScopedIndicatorScoringSupport.citationExclusionAuthorIds(citationPolicy, cited, selfAuthorIds);
+
             Map<String, Score> citScores = scoring.calculateScientificImpactScore(
                     cited.toScoringPublication(),
                     citingForThisPub.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
@@ -125,7 +130,7 @@ public class CitationRowProjector {
             List<CitationSnapshotItem.CitingPublication> innerRows = new ArrayList<>();
             double tileScore = 0.0;
             for (ScholardexPublicationView citing : citingForThisPub) {
-                if (excludeSelf && hasOverlap(citing.getAuthors(), selfAuthorIds)) continue;
+                if (!exclusionAuthorIds.isEmpty() && hasOverlap(citing.getAuthors(), exclusionAuthorIds)) continue;
                 Score score = citScores.get(citing.getTitle());
                 if (score == null) continue;
 

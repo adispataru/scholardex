@@ -158,10 +158,20 @@ public class Indicator {
         return k instanceof IndicatorKind.Citations;
     }
 
-    /** True for {@link IndicatorKind.Citations} with {@code excludeSelf == true}. */
+    /** True for any {@link IndicatorKind.Citations} that excludes self-citations (candidate-only or any-coauthor). */
     public boolean isCitationsExcludeSelf() {
+        return getCitationExclusionPolicy() != ro.uvt.pokedex.core.model.reporting.scoring.SelfCitationPolicy.NONE;
+    }
+
+    /**
+     * H61: the self-citation exclusion policy for a citation indicator — {@code NONE} for non-citation indicators or
+     * {@code CITATIONS}. The two citation filter sites (score + display) branch on this.
+     */
+    public ro.uvt.pokedex.core.model.reporting.scoring.SelfCitationPolicy getCitationExclusionPolicy() {
         IndicatorKind k = getEffectiveKind();
-        return k instanceof IndicatorKind.Citations c && c.excludeSelf();
+        return k instanceof IndicatorKind.Citations c
+                ? c.policy()
+                : ro.uvt.pokedex.core.model.reporting.scoring.SelfCitationPolicy.NONE;
     }
 
     /** H67 S4a: true iff this is an aggregate Hirsch (h-index) indicator. */

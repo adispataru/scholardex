@@ -307,7 +307,8 @@ public class AdminViewController {
     // that the {@code Indicator} setters route into the typed kind/specs.
     private static final List<String> LEGACY_OUTPUT_TYPES = List.of(
             "PUBLICATIONS", "PUBLICATIONS_MAIN_AUTHOR", "PUBLICATIONS_COAUTHOR",
-            "CITATIONS", "CITATIONS_EXCLUDE_SELF",
+            // H61: EXCLUDE_SELF = candidate-only self-citations; EXCLUDE_COAUTHORS = any author of the cited paper.
+            "CITATIONS", "CITATIONS_EXCLUDE_SELF", "CITATIONS_EXCLUDE_COAUTHORS",
             // H67 S4b: aggregate Hirsch indicators (pair with the HIRSCH strategy). Indicative — see the h-index plan.
             "HINDEX_SCHOLARDEX", "HINDEX_GRAPH", "HINDEX_SCOPUS", "HINDEX_WOS",
             "HINDEX_SCHOLARDEX_EXCLUDE_SELF", "HINDEX_GRAPH_EXCLUDE_SELF",

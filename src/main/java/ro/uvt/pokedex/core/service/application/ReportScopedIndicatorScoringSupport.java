@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.application;
 
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.reporting.scoring.SelfCitationPolicy;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.reporting.Score;
@@ -10,6 +11,7 @@ import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,8 +100,8 @@ public final class ReportScopedIndicatorScoringSupport {
                                                        CitationContext citationContext,
                                                        Map<String, Score> cachedCitationBaseScoresByCitingPublicationId,
                                                        ScientificProductionService scientificProductionService) {
-        // H52 slice 11d.2: typed-kind check.
-        boolean excludeSelf = indicator.isCitationsExcludeSelf();
+        // H61: self-citation exclusion mode — NONE / candidate-only / any-coauthor of the cited publication.
+        SelfCitationPolicy citationPolicy = indicator.getCitationExclusionPolicy();
         Map<String, Map<String, Score>> rawScores = new LinkedHashMap<>();
         Map<String, ScholardexPublicationView> citationMap = new LinkedHashMap<>();
         Set<String> forumIds = new java.util.LinkedHashSet<>();
@@ -111,9 +113,10 @@ public final class ReportScopedIndicatorScoringSupport {
             }
             List<ScholardexPublicationView> citations = citationContext.citingPublicationsByCitedPublicationId()
                     .getOrDefault(pub.getId(), List.of());
-            if (excludeSelf) {
+            Set<String> exclusionAuthorIds = citationExclusionAuthorIds(citationPolicy, pub, researcherAuthorIds);
+            if (!exclusionAuthorIds.isEmpty()) {
                 citations = citations.stream()
-                        .filter(citing -> !sharesAnyAuthor(citing, researcherAuthorIds))
+                        .filter(citing -> !sharesAnyAuthor(citing, exclusionAuthorIds))
                         .toList();
             }
             totalCitationCount += citations.size();
@@ -161,6 +164,24 @@ public final class ReportScopedIndicatorScoringSupport {
 
     static String viewNameFor(Indicator indicator) {
         return "user/indicators-apply";
+    }
+
+    /**
+     * H61: the author-id set a citation must avoid to be counted, by policy. {@code CANDIDATE_ONLY} uses the
+     * candidate's resolved ids (today's behaviour); {@code ANY_COAUTHOR} uses the cited publication's full author set
+     * (a strict superset — the candidate is among them); {@code NONE} → empty (no exclusion). Empty author lists yield
+     * an empty set, so the filter is a safe no-op.
+     */
+    public static Set<String> citationExclusionAuthorIds(SelfCitationPolicy policy,
+                                                  ScholardexPublicationView citedPublication,
+                                                  Set<String> researcherAuthorIds) {
+        return switch (policy) {
+            case NONE -> Set.of();
+            case CANDIDATE_ONLY -> researcherAuthorIds == null ? Set.of() : researcherAuthorIds;
+            case ANY_COAUTHOR -> citedPublication == null || citedPublication.getAuthors() == null
+                    ? Set.of()
+                    : new HashSet<>(citedPublication.getAuthors());
+        };
     }
 
     private static boolean sharesAnyAuthor(ScholardexPublicationView publication, Set<String> authorIds) {

@@ -25,7 +25,8 @@ class FormulaVariableContractTest {
 
     private static Indicator citations(ScoringStrategy strategy, String formula) {
         Indicator ind = new Indicator();
-        ind.setKind(new IndicatorKind.Citations(false, strategy));
+        ind.setKind(new IndicatorKind.Citations(
+                ro.uvt.pokedex.core.model.reporting.scoring.SelfCitationPolicy.NONE, strategy));
         ind.setFormula(formula);
         return ind;
     }
