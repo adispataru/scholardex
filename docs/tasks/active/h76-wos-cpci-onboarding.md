@@ -85,9 +85,20 @@ projection refresh + re-validate the WoS-h spot-check (Adrian 4→5 if his CPCI 
   Semiconductor Conf/CAS, Ultrasonics Symposium, INDIN, Neural Networks proceedings — the Scopus-but-not-WoS CS/eng
   venues we targeted). Idempotent (re-apply tagged 0). Instance stopped.
 
-**NOT yet visible:** `wosCitationCount` / the WOS-venue h-index only recompute on a **projection refresh**
-(`applyCitationSourceSplit` runs during projection build). Deferred so as not to rebuild on the shared Postgres while
-`:8080` is serving — run the reporting projection refresh when convenient, then the WoS-h spot-check (Adrian 4→5).
+**Projection refresh DONE (2026-06-25).** Ran `POST /admin/initialization/postgres/projection/runFull` via a
+controlled `:8181` (profiles `agent-dev,postgres`, `core.h22.projection.enabled=true`, schedulers off; projection is
+manual-only so no concurrent-writer race with `:8080`). ~6.8 min. Measured lift on
+`reporting_read.scholardex_publication_view`:
+- total `wos_citation_count` **383,580 → 393,489 (+9,909)**; pubs with WoS-venue citations **43,820 → 44,323 (+503)**.
+- The 211 CPCI conference forums now contribute their citations to the WoS-venue h-index. `:8080` shares this Postgres,
+  so it picks up the change too; `:8080` was left running and untouched.
+
+**Scope nuance — what `wosCpciIndexed` feeds today.** It is read ONLY by `applyCitationSourceSplit` → the per-pub
+**WoS-venue citation count** (the H67 WoS h-index). It does NOT flow into the forum *membership* view / the
+`ReportingLookupPort` WoS-forum reads that a **paper-count** scorer would use. So **physics (FF) counting CPCI papers
+as WoS is NOT yet wired** — that's future `H65` work (have the forum-WoS scoring read honor `wosCpciIndexed`, or
+project a CPCI membership row). S2 correctly serves the current consumer (citation h); the physics paper-count path is
+H65's job.
 
 ## S1 result (2026-06-25) — dry-run against live `scholardex` (74,908 forums / 149,899 pubs)
 

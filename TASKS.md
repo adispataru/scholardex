@@ -50,8 +50,12 @@ Done history moved to `TASKS-done.md`.
   records: 1,302 matched → **211 net-new conference forums tagged `wosCpciIndexed=true`** (a NEW boolean kept
   separate from `wosForumIds`, which is unique-indexed + joined as WoS journal ids; only `applyCitationSourceSplit`
   reads the flag → a CPCI-conference citation counts WoS-venue). Applied via a throwaway agent-dev `:8181` (schedulers
-  off), idempotent, verified in Mongo. **Value: physics (FF) counts CPCI papers**, so this directly feeds that report.
-  **Remaining: a projection refresh** to recompute `wosCitationCount` (then the WoS-h spot-check, Adrian 4→5).
+  off), idempotent, verified in Mongo. **Projection refresh DONE (2026-06-25):** full reporting rebuild (~6.8 min, via
+  a controlled `:8181`, projection is manual-only so no `:8080` race) lifted `wos_citation_count` **383,580→393,489
+  (+9,909)** across **+503 pubs** — the WoS-venue h-index now reflects CPCI.
+  **Physics caveat:** `wosCpciIndexed` currently feeds ONLY the citation source-split (WoS h-index), NOT the forum
+  membership / WoS-forum scoring reads. So **physics (FF) counting CPCI *papers* as WoS is not yet wired — that is
+  `H65` work** (have the paper-count WoS-forum read honor the flag, or project a CPCI membership row).
   **S3 (broad citing coverage) DEFERRED until a WoS API key** — the UVT-scoped roster covers venues UVT publishes in;
   the *true* WoS citation graph (all citing venues) needs a programmatic Core-Collection pull, a hassle without an
   Expanded/Starter API key (UI Records export caps ~1,000/file). Revisit when an API key is available.
