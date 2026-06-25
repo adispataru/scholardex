@@ -130,10 +130,18 @@ public class UserReportFacade {
                 .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            // H60: score the export inside the referenceYear context so relative specs (e.g. Mate_S's LatestNRankings)
+            // resolve here too — otherwise this live per-indicator export would score them against an empty window.
             if (indicator != null && indicator.isPublicationOutput()) {
-                handlePublicationsWorkbook(workbook, indicator, publications, forumMap);
+                ScoringReferenceYearContext.with(effectiveReferenceYear(), () -> {
+                    handlePublicationsWorkbook(workbook, indicator, publications, forumMap);
+                    return null;
+                });
             } else if (indicator != null && indicator.isCitationsOutput()) {
-                handleCitationsWorkbook(workbook, indicator, authors, publications, forumMap);
+                ScoringReferenceYearContext.with(effectiveReferenceYear(), () -> {
+                    handleCitationsWorkbook(workbook, indicator, authors, publications, forumMap);
+                    return null;
+                });
             }
 
             workbook.write(outputStream);

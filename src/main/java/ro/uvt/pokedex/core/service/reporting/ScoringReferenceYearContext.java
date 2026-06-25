@@ -42,4 +42,15 @@ public final class ScoringReferenceYearContext {
     public static Integer current() {
         return REFERENCE_YEAR.get();
     }
+
+    /**
+     * H60: the reference year for resolving relative specs — the run's year when a computation set it, else the
+     * current year. This is the single default that makes relative specs resolve correctly on EVERY re-score path
+     * (report view, indicator detail, xlsx/docx export, H50 snapshot, …) without each having to wrap explicitly; the
+     * run-build path still overrides with the stored {@code referenceYear} so replay stays deterministic.
+     */
+    public static int currentOrCurrentYear() {
+        Integer current = REFERENCE_YEAR.get();
+        return current != null ? current : java.time.LocalDate.now().getYear();
+    }
 }

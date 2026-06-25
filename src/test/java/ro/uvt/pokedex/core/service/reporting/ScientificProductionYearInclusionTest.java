@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * H60: the article-inclusion filter (yearRangeSpec) exercised through the GenericCount count path — the "total"
@@ -50,9 +51,11 @@ class ScientificProductionYearInclusionTest {
     }
 
     @Test
-    void previousNYearsIsNoOpWithoutAReferenceYearInScope() {
-        // Legacy unenforced behaviour: a PreviousNYears window can't resolve without referenceYear → keep all.
-        assertEquals(3.0, count(genericCount(new YearRangeSpec.PreviousNYears(7)), pubs, null));
+    void previousNYearsDefaultsToCurrentYearWithoutAnExplicitReferenceYear() {
+        // H60 central default: with no run referenceYear in scope, relative windows resolve against the current year
+        // (live re-score paths), so the filter still fires. A pub from 2015 is outside [now-7 .. now-1] for any
+        // plausible "now", so at least one of the three pubs is dropped.
+        assertTrue(count(genericCount(new YearRangeSpec.PreviousNYears(7)), pubs, null) < 3.0);
     }
 
     @Test

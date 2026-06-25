@@ -37,11 +37,10 @@ public class ScientificProductionService {
         if (spec instanceof YearRangeSpec.AllYears) {
             return publications;
         }
-        Integer referenceYear = ScoringReferenceYearContext.current();
-        if (spec instanceof YearRangeSpec.PreviousNYears && referenceYear == null) {
-            return publications;
-        }
-        int ref = referenceYear != null ? referenceYear : 0; // Absolute ignores the reference year
+        // H60: relative windows resolve against the run's referenceYear, defaulting to the current year on live
+        // re-score paths (Absolute ignores it). The central default means every re-score path filters correctly
+        // without each having to set the context; the build path overrides with the stored year for replay.
+        int ref = ScoringReferenceYearContext.currentOrCurrentYear();
         return publications.stream()
                 .filter(pub -> {
                     Optional<Integer> year = PersistenceYearSupport.extractYear(pub.getCoverDate(), pub.getId(), log);
