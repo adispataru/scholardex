@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
+import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaContext;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator;
 
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +26,36 @@ public class ScientificProductionService {
     private final FormulaEvaluator formulaEvaluator;
 
 
+    /**
+     * H60: the publication-year inclusion filter for an indicator's {@code yearRangeSpec}. Fast no-op for
+     * {@link YearRangeSpec.AllYears} (every current indicator) and when a {@code PreviousNYears} window can't resolve
+     * (no referenceYear in scope — the legacy unenforced behaviour). Publications with no resolvable year are kept.
+     */
+    private List<? extends ScoringPublicationReadModel> filterByYearRange(
+            List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
+        YearRangeSpec spec = indicator.getEffectiveYearRange();
+        if (spec instanceof YearRangeSpec.AllYears) {
+            return publications;
+        }
+        Integer referenceYear = ScoringReferenceYearContext.current();
+        if (spec instanceof YearRangeSpec.PreviousNYears && referenceYear == null) {
+            return publications;
+        }
+        int ref = referenceYear != null ? referenceYear : 0; // Absolute ignores the reference year
+        return publications.stream()
+                .filter(pub -> {
+                    Optional<Integer> year = PersistenceYearSupport.extractYear(pub.getCoverDate(), pub.getId(), log);
+                    return year.isEmpty() || spec.includes(year.get(), ref);
+                })
+                .toList();
+    }
+
     public Map<String, Score> calculateScientificProductionScore(List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
+
+        // H60: article-inclusion — drop publications outside the indicator's yearRangeSpec window before scoring/
+        // counting. No-op for AllYears (the current default for every indicator), so this is score-neutral until an
+        // indicator is configured with PreviousNYears/Absolute. Resolved against the run's thread-scoped referenceYear.
+        publications = filterByYearRange(publications, indicator);
 
         // H52 slice 11d.1: typed-strategy dispatch. The legacy GENERIC_COUNT
         // short-circuit reads the strategy off the {@link IndicatorKind} now;
