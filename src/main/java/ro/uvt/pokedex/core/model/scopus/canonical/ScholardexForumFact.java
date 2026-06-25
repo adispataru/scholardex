@@ -37,6 +37,16 @@ public class ScholardexForumFact {
     /** H66B Phase 4b: DBLP conference-series stream keys (conf/X) — the CS conference identity source (no ISSN). */
     private List<String> dblpIds = new ArrayList<>();
 
+    /**
+     * H76: this forum is WoS-indexed via the Conference Proceedings Citation Index (CPCI-S/CPCI-SSH), established from
+     * a WoS Records export (there is no downloadable CPCI master list — see WosCpciOnboardingService). Kept SEPARATE
+     * from {@link #wosForumIds} on purpose: those are unique-indexed WoS *journal* ids that the B2 projection joins to
+     * the WoS metric/category views; a conference carries no JCR quartile, so it must not pollute that join. This flag
+     * only feeds the citation-source split ({@code applyCitationSourceSplit}) so a citation from a CPCI conference
+     * counts toward the WoS-venue h-index.
+     */
+    private boolean wosCpciIndexed;
+
     /** H66 A1: C-scalar — normalized venue kind (journal/book-series/conference/trade), from CiteScore (A2). */
     private String forumType;
     /** H66 A1: C-scalar — Scopus ASJC subject codes (snapshot, from CiteScore A2). */

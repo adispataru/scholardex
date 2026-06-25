@@ -507,7 +507,9 @@ public class ScholardexProjectionBuilderService {
         Map<String, int[]> forumIndexing = new java.util.HashMap<>();
         for (ScholardexForumFact f : canonicalForumFactRepository.findAll()) {
             int scopus = f.getScopusForumIds() != null && !f.getScopusForumIds().isEmpty() ? 1 : 0;
-            int wos = f.getWosForumIds() != null && !f.getWosForumIds().isEmpty() ? 1 : 0;
+            // H76: a forum is WoS-indexed if it carries WoS journal ids OR is flagged CPCI-indexed (conference
+            // proceedings — no JCR journal id, established from the WoS CPCI Records export).
+            int wos = (f.getWosForumIds() != null && !f.getWosForumIds().isEmpty()) || f.isWosCpciIndexed() ? 1 : 0;
             forumIndexing.put(f.getId(), new int[]{scopus, wos});
         }
         for (ScholardexPublicationView v : views) {

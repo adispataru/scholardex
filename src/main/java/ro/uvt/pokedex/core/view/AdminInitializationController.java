@@ -69,6 +69,16 @@ public class AdminInitializationController {
         return wosCpciOnboardingService.dryRun();
     }
 
+    /**
+     * H76 S2: apply the WoS CPCI onboarding — tag the net-new conference forums {@code wosCpciIndexed=true}. Idempotent.
+     * A projection refresh is required afterwards for the per-publication WoS citation counts to reflect the new tags.
+     */
+    @PostMapping("/wos/cpci/apply")
+    @ResponseBody
+    public ro.uvt.pokedex.core.service.importing.wos.WosCpciMatchReport wosCpciApply() {
+        return wosCpciOnboardingService.apply(true);
+    }
+
     @PostMapping("/general/runAll")
     public String runGeneralInitializationAll(RedirectAttributes redirectAttributes) {
         var summary = generalInitializationService.runAll();

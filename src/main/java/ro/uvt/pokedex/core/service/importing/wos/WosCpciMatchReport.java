@@ -12,10 +12,13 @@ public record WosCpciMatchReport(
         int matchedByDoi,
         int matchedByIssnIsbn,
         int matchedByTitle,
+        int matchedByTitleContains,
         int unmatched,
         int distinctForumsMatched,
         int forumsAlreadyWos,
         int forumsNetNew,
+        int forumsTagged,
+        boolean committed,
         List<String> netNewForumIdsSample,
         List<UnmatchedVenue> topUnmatchedVenues
 ) {

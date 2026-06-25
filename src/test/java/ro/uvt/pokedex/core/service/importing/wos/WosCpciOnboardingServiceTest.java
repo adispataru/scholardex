@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,57 +31,73 @@ class WosCpciOnboardingServiceTest {
 
     @Test
     void doiMatchWinsAndIsCountedFirst() {
-        // Record carries a DOI that resolves (via the publication) to forum f-doi, AND an ISSN that would match a
-        // different forum — DOI must win.
         ScholardexForumFact byDoi = forum("f-doi", null, null, "Some Conf", false);
         ScholardexForumFact byIssn = forum("f-issn", "1111-2222", null, "Other Conf", false);
         WosCpciRecord r = rec("10.1/abc", "1111-2222", null, null, null);
 
-        WosCpciMatchReport report = WosCpciOnboardingService.match(
+        WosCpciOnboardingService.MatchResult res = WosCpciOnboardingService.matchAll(
                 List.of(r), List.of(byDoi, byIssn), Map.of("10.1/abc", "f-doi"));
 
-        assertEquals(1, report.totalRecords());
-        assertEquals(1, report.matchedByDoi());
-        assertEquals(0, report.matchedByIssnIsbn());
-        assertEquals(1, report.distinctForumsMatched());
-        assertEquals(1, report.forumsNetNew());
-        assertTrue(report.netNewForumIdsSample().contains("f-doi"));
+        assertEquals(1, res.matchedByDoi());
+        assertEquals(0, res.matchedByIssnIsbn());
+        assertEquals(1, res.matchedForumIds().size());
+        assertTrue(res.netNewForumIds().contains("f-doi"));
     }
 
     @Test
-    void issnThenIsbnThenTitleFallThrough() {
+    void issnThenIsbnThenExactTitleFallThrough() {
         ScholardexForumFact byIssn = forum("f-issn", "2194-5357", null, null, false);
         ScholardexForumFact byIsbn = forum("f-isbn", null, "978-3-642-33017-9", null, false);
         ScholardexForumFact byName = forum("f-name", null, null, "Physics Conference", false);
 
-        // ISSN hit (hyphen-insensitive); ISBN hit; title hit via normalizeVenueName (drops the ordinal + year + parens).
         WosCpciRecord issnRec = rec(null, "21945357", null, null, null);
         WosCpciRecord isbnRec = rec(null, null, "9783642330179", null, null);
         WosCpciRecord titleRec = rec(null, null, null, "1st Physics Conference (2009)", null);
         WosCpciRecord miss = rec(null, "0000-0000", null, "Totally Unknown Symposium", null);
 
-        WosCpciMatchReport report = WosCpciOnboardingService.match(
+        WosCpciOnboardingService.MatchResult res = WosCpciOnboardingService.matchAll(
                 List.of(issnRec, isbnRec, titleRec, miss), List.of(byIssn, byIsbn, byName), Map.of());
 
-        assertEquals(4, report.totalRecords());
-        assertEquals(0, report.matchedByDoi());
-        assertEquals(2, report.matchedByIssnIsbn());
-        assertEquals(1, report.matchedByTitle());
-        assertEquals(1, report.unmatched());
-        assertEquals(3, report.distinctForumsMatched());
-        assertEquals("Totally Unknown Symposium", report.topUnmatchedVenues().getFirst().title());
+        assertEquals(2, res.matchedByIssnIsbn());
+        assertEquals(1, res.matchedByTitle());
+        assertEquals(0, res.matchedByTitleContains());
+        assertEquals(3, res.matchedForumIds().size());
+        assertEquals(1, res.unmatchedVenues().get("Totally Unknown Symposium"));
     }
 
     @Test
-    void alreadyWosForumsAreNotCountedAsNetNew() {
+    void titleContainmentRecoversPerEditionProceedingsForum() {
+        // The SYNASC case: forum carries "Proceedings - 9th ... SYNASC 2007"; the WoS title core appears verbatim
+        // inside it (after ordinal/year normalization) but is not an exact match. A short generic title must NOT match.
+        ScholardexForumFact synasc = forum("f-synasc", null, null,
+                "Proceedings - 9th International Symposium on Symbolic and Numeric Algorithms for Scientific Computing, SYNASC 2007",
+                false);
+
+        WosCpciRecord hit = rec(null, null, null,
+                "18th International Symposium on Symbolic and Numeric Algorithms for Scientific Computing", null);
+        // Short title (< MIN_CONTAINMENT_LEN) that matches no forum exactly → must stay unmatched (no loose containment).
+        WosCpciRecord shortMiss = rec(null, null, null, "Tiny Symposium", null);
+
+        WosCpciOnboardingService.MatchResult res = WosCpciOnboardingService.matchAll(
+                List.of(hit, shortMiss), List.of(synasc), Map.of());
+
+        assertEquals(1, res.matchedByTitleContains());
+        assertTrue(res.netNewForumIds().contains("f-synasc"));
+        assertEquals(1, res.matchedForumIds().size(), "the short title must not match anything");
+    }
+
+    @Test
+    void alreadyWosOrAlreadyCpciAreNotNetNew() {
         ScholardexForumFact already = forum("f-old", "1111-2222", null, null, true);
-        WosCpciRecord r = rec(null, "1111-2222", null, null, null);
+        ScholardexForumFact cpciTagged = forum("f-cpci", "3333-4444", null, null, false);
+        cpciTagged.setWosCpciIndexed(true); // a prior CPCI apply — idempotent, not net-new again
 
-        WosCpciMatchReport report = WosCpciOnboardingService.match(List.of(r), List.of(already), Map.of());
+        WosCpciOnboardingService.MatchResult res = WosCpciOnboardingService.matchAll(
+                List.of(rec(null, "1111-2222", null, null, null), rec(null, "3333-4444", null, null, null)),
+                List.of(already, cpciTagged), Map.of());
 
-        assertEquals(1, report.distinctForumsMatched());
-        assertEquals(1, report.forumsAlreadyWos());
-        assertEquals(0, report.forumsNetNew());
+        assertEquals(2, res.matchedForumIds().size());
+        assertTrue(res.netNewForumIds().isEmpty(), "both forums are already WoS/CPCI → no net-new");
     }
 
     @Test

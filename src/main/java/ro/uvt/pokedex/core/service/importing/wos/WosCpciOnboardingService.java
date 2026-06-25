@@ -42,6 +42,8 @@ public class WosCpciOnboardingService {
     private static final Logger logger = LoggerFactory.getLogger(WosCpciOnboardingService.class);
     private static final int DOI_BATCH = 1000;
     private static final int SAMPLE_CAP = 50;
+    /** Containment matching only fires for titles this long, so a generic phrase can't coincidentally match. */
+    private static final int MIN_CONTAINMENT_LEN = 30;
 
     private final ScholardexForumFactRepository forumFactRepository;
     private final ScholardexPublicationFactRepository publicationFactRepository;
@@ -57,19 +59,53 @@ public class WosCpciOnboardingService {
 
     /** S1: load the configured CPCI export and report the dry-run match against the live forum/publication registry. */
     public WosCpciMatchReport dryRun() {
-        return dryRun(cpciFile);
+        return run(cpciFile, false);
     }
 
     public WosCpciMatchReport dryRun(String path) {
+        return run(path, false);
+    }
+
+    /** S2: like {@link #dryRun()} but, when {@code commit} is true, tags the net-new conference forums WoS-indexed. */
+    public WosCpciMatchReport apply(boolean commit) {
+        return run(cpciFile, commit);
+    }
+
+    private WosCpciMatchReport run(String path, boolean commit) {
         List<WosCpciRecord> records = loadRecords(path);
         List<ScholardexForumFact> forums = forumFactRepository.findAll();
         Map<String, String> doiToForumId = resolveDoiForumIds(records);
-        WosCpciMatchReport report = match(records, forums, doiToForumId);
-        logger.info("H76 CPCI dry-run [{}]: {} records → matched DOI={} ISSN/ISBN={} title={} (unmatched {}); "
-                        + "{} distinct forums ({} net-new WoS, {} already WoS)",
-                path, report.totalRecords(), report.matchedByDoi(), report.matchedByIssnIsbn(),
-                report.matchedByTitle(), report.unmatched(), report.distinctForumsMatched(),
-                report.forumsNetNew(), report.forumsAlreadyWos());
+        MatchResult result = matchAll(records, forums, doiToForumId);
+
+        int tagged = 0;
+        if (commit && !result.netNewForumIds().isEmpty()) {
+            Map<String, ScholardexForumFact> byId = new HashMap<>();
+            for (ScholardexForumFact f : forums) {
+                if (f.getId() != null) {
+                    byId.put(f.getId(), f);
+                }
+            }
+            List<ScholardexForumFact> toTag = new ArrayList<>();
+            for (String forumId : result.netNewForumIds()) {
+                ScholardexForumFact f = byId.get(forumId);
+                if (f != null && !f.isWosCpciIndexed()) {
+                    f.setWosCpciIndexed(true);
+                    toTag.add(f);
+                }
+            }
+            if (!toTag.isEmpty()) {
+                forumFactRepository.saveAll(toTag);
+            }
+            tagged = toTag.size();
+        }
+
+        WosCpciMatchReport report = toReport(result, commit, tagged);
+        logger.info("H76 CPCI {} [{}]: {} records → DOI={} ISSN/ISBN={} title={} contains={} (unmatched {}); "
+                        + "{} distinct forums, {} net-new WoS, {} already WoS{}",
+                commit ? "APPLY" : "dry-run", path, report.totalRecords(), report.matchedByDoi(),
+                report.matchedByIssnIsbn(), report.matchedByTitle(), report.matchedByTitleContains(),
+                report.unmatched(), report.distinctForumsMatched(), report.forumsNetNew(), report.forumsAlreadyWos(),
+                commit ? " → TAGGED " + tagged : "");
         return report;
     }
 
@@ -94,16 +130,31 @@ public class WosCpciOnboardingService {
         return doiToForumId;
     }
 
+    /** Full match outcome (no I/O) used by both the dry-run report and the apply step. */
+    record MatchResult(
+            int totalRecords,
+            int matchedByDoi,
+            int matchedByIssnIsbn,
+            int matchedByTitle,
+            int matchedByTitleContains,
+            Set<String> matchedForumIds,
+            Set<String> netNewForumIds,
+            Map<String, Integer> unmatchedVenues
+    ) {
+    }
+
     /**
      * Pure matcher (no I/O) — testable. For each record, resolve a forum by precedence DOI &gt; ISSN/eISSN/ISBN &gt;
-     * conference/source title, and aggregate the distinct forums that would be tagged WoS-indexed.
+     * exact conference/source title &gt; title containment, and split the distinct matched forums into already-WoS
+     * (journal Master List or a prior CPCI tag) vs net-new conference forums to tag.
      */
-    static WosCpciMatchReport match(List<WosCpciRecord> records,
-                                    List<ScholardexForumFact> forums,
-                                    Map<String, String> doiNormToForumId) {
+    static MatchResult matchAll(List<WosCpciRecord> records,
+                                List<ScholardexForumFact> forums,
+                                Map<String, String> doiNormToForumId) {
         Map<String, String> issnIndex = new HashMap<>();
         Map<String, String> isbnIndex = new HashMap<>();
         Map<String, String> nameIndex = new HashMap<>();
+        List<Map.Entry<String, String>> containmentNames = new ArrayList<>();
         Set<String> alreadyWosForumIds = new HashSet<>();
         for (ScholardexForumFact f : forums) {
             if (f.getId() == null) {
@@ -118,9 +169,14 @@ public class WosCpciOnboardingService {
             if (isbnKey != null) {
                 isbnIndex.putIfAbsent(isbnKey, f.getId());
             }
+            String normName = ConferenceTitleNormalizationSupport.normalizeVenueName(f.getName());
             indexName(nameIndex, f.getNameNormalized(), f.getId());
-            indexName(nameIndex, ConferenceTitleNormalizationSupport.normalizeVenueName(f.getName()), f.getId());
-            if (f.getWosForumIds() != null && !f.getWosForumIds().isEmpty()) {
+            indexName(nameIndex, normName, f.getId());
+            if (normName.length() >= MIN_CONTAINMENT_LEN) {
+                containmentNames.add(Map.entry(normName, f.getId()));
+            }
+            // Idempotent: a forum already WoS via journal ids OR a prior CPCI tag is not "net-new".
+            if ((f.getWosForumIds() != null && !f.getWosForumIds().isEmpty()) || f.isWosCpciIndexed()) {
                 alreadyWosForumIds.add(f.getId());
             }
         }
@@ -128,6 +184,7 @@ public class WosCpciOnboardingService {
         int matchedByDoi = 0;
         int matchedByIssnIsbn = 0;
         int matchedByTitle = 0;
+        int matchedByTitleContains = 0;
         Set<String> matchedForumIds = new HashSet<>();
         Map<String, Integer> unmatchedVenues = new LinkedHashMap<>();
 
@@ -139,16 +196,12 @@ public class WosCpciOnboardingService {
             }
             if (forumId != null) {
                 matchedByDoi++;
-            } else {
-                forumId = byIssnOrIsbn(issnIndex, isbnIndex, r);
-                if (forumId != null) {
-                    matchedByIssnIsbn++;
-                } else {
-                    forumId = byTitle(nameIndex, r);
-                    if (forumId != null) {
-                        matchedByTitle++;
-                    }
-                }
+            } else if ((forumId = byIssnOrIsbn(issnIndex, isbnIndex, r)) != null) {
+                matchedByIssnIsbn++;
+            } else if ((forumId = byTitle(nameIndex, r)) != null) {
+                matchedByTitle++;
+            } else if ((forumId = byTitleContains(containmentNames, r)) != null) {
+                matchedByTitleContains++;
             }
             if (forumId != null) {
                 matchedForumIds.add(forumId);
@@ -160,32 +213,58 @@ public class WosCpciOnboardingService {
             }
         }
 
-        int alreadyWos = (int) matchedForumIds.stream().filter(alreadyWosForumIds::contains).count();
-        List<String> netNew = matchedForumIds.stream()
-                .filter(id -> !alreadyWosForumIds.contains(id))
-                .sorted()
-                .limit(SAMPLE_CAP)
-                .toList();
-        List<WosCpciMatchReport.UnmatchedVenue> topUnmatched = unmatchedVenues.entrySet().stream()
+        Set<String> netNew = new HashSet<>();
+        for (String id : matchedForumIds) {
+            if (!alreadyWosForumIds.contains(id)) {
+                netNew.add(id);
+            }
+        }
+        return new MatchResult(records.size(), matchedByDoi, matchedByIssnIsbn, matchedByTitle, matchedByTitleContains,
+                matchedForumIds, netNew, unmatchedVenues);
+    }
+
+    private static WosCpciMatchReport toReport(MatchResult r, boolean committed, int tagged) {
+        int alreadyWos = r.matchedForumIds().size() - r.netNewForumIds().size();
+        int unmatched = r.totalRecords()
+                - r.matchedByDoi() - r.matchedByIssnIsbn() - r.matchedByTitle() - r.matchedByTitleContains();
+        List<String> netNewSample = r.netNewForumIds().stream().sorted().limit(SAMPLE_CAP).toList();
+        List<WosCpciMatchReport.UnmatchedVenue> topUnmatched = r.unmatchedVenues().entrySet().stream()
                 .sorted(Comparator.<Map.Entry<String, Integer>>comparingInt(Map.Entry::getValue).reversed())
                 .limit(SAMPLE_CAP)
                 .map(e -> new WosCpciMatchReport.UnmatchedVenue(e.getKey(), e.getValue()))
                 .toList();
-
-        int unmatched = matchedByDoi + matchedByIssnIsbn + matchedByTitle;
-        unmatched = records.size() - unmatched;
         return new WosCpciMatchReport(
-                records.size(),
-                matchedByDoi,
-                matchedByIssnIsbn,
-                matchedByTitle,
-                unmatched,
-                matchedForumIds.size(),
-                alreadyWos,
-                matchedForumIds.size() - alreadyWos,
-                netNew,
-                topUnmatched
-        );
+                r.totalRecords(), r.matchedByDoi(), r.matchedByIssnIsbn(), r.matchedByTitle(),
+                r.matchedByTitleContains(), unmatched, r.matchedForumIds().size(), alreadyWos,
+                r.netNewForumIds().size(), tagged, committed, netNewSample, topUnmatched);
+    }
+
+    /**
+     * Title-containment fallback: a record matches a forum when the record's normalized conference/source title is a
+     * (≥{@value #MIN_CONTAINMENT_LEN}-char) substring of the forum's normalized name. Recovers per-edition Scopus
+     * proceedings forums (e.g. {@code "Proceedings - 9th … SYNASC 2007"}) whose embedded edition number + acronym +
+     * year defeat exact equality. Ties → the shortest forum name (most specific).
+     */
+    private static String byTitleContains(List<Map.Entry<String, String>> containmentNames, WosCpciRecord r) {
+        for (String t : List.of(
+                ConferenceTitleNormalizationSupport.normalizeVenueName(r.conferenceTitle()),
+                ConferenceTitleNormalizationSupport.normalizeVenueName(r.sourceTitle()))) {
+            if (t.length() < MIN_CONTAINMENT_LEN) {
+                continue;
+            }
+            String best = null;
+            int bestLen = Integer.MAX_VALUE;
+            for (Map.Entry<String, String> e : containmentNames) {
+                if (e.getKey().contains(t) && e.getKey().length() < bestLen) {
+                    best = e.getValue();
+                    bestLen = e.getKey().length();
+                }
+            }
+            if (best != null) {
+                return best;
+            }
+        }
+        return null;
     }
 
     private static String byIssnOrIsbn(Map<String, String> issnIndex, Map<String, String> isbnIndex, WosCpciRecord r) {
