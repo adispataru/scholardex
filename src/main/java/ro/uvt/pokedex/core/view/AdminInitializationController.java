@@ -46,6 +46,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
+    private final ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
 
     @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.works-file:}")
     private String openAlexWorksFile;
@@ -77,6 +78,17 @@ public class AdminInitializationController {
     @ResponseBody
     public ro.uvt.pokedex.core.service.importing.wos.WosCpciMatchReport wosCpciApply() {
         return wosCpciOnboardingService.apply(true);
+    }
+
+    /**
+     * H77 slice 1: dry-run the department-roster → canonical-author resolution (no scoring, no writes). Reports which
+     * roster people resolve to a canonical author by name, which are ambiguous (homonyms), and which are unresolved.
+     */
+    @PostMapping("/provisional/resolveDepartment")
+    @ResponseBody
+    public java.util.List<ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService.ProvisionalAuthorMatch>
+            resolveDepartmentRoster(@RequestParam String departmentId) {
+        return provisionalAuthorResolutionService.resolveDepartment(departmentId);
     }
 
     @PostMapping("/general/runAll")

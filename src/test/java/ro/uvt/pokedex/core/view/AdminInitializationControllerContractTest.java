@@ -88,6 +88,8 @@ class AdminInitializationControllerContractTest {
     private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
 
     @Test
     void initializationPageRendersTemplate() throws Exception {
