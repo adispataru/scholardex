@@ -9,29 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H71` Cross-source author dedup for OpenAlex co-authors (affiliation-driven). Problem: the OpenAlex author
-  resolver matches on **exact id keys only** (ORCID → OpenAlex author-id → else mint), so the same person splits into
-  duplicates across sources — e.g. "Bogdan Tudor Tulbure" (OpenAlex, ORCID, no Scopus id) vs "Tulbure, Bogdan T."
-  (Scopus, no ORCID), and OpenAlex itself splits a person across author-ids on preprint vs published versions. One
-  researcher's by-ORCID sync brings co-author ORCIDs onto the **OpenAlex** records only, never onto the ORCID-less
-  Scopus records, and the positional ORCID bridge only fires on DOI-**linked** pubs — so ORCID alone can't bridge.
-  **Affiliation is the load-bearing signal.** Surfaced/amplified by the full-author fix (`2e4f0bf`), which mints all
-  co-authors of OpenAlex-owned pubs.
-  Plan: **(1) capture affiliation — DONE (`7261e08`)**: OpenAlex authorship institutions/raw-affiliation/country now
-  persisted on `OpenAlexPublicationFact.AuthorRef` + accumulated onto `ScholardexAuthorFact.openAlexAffiliationNames`
-  (mint + enrich). **Steps 2–3 SUPERSEDED by `H72`.** Investigation (2026-06-20) showed cross-source author dedup is
-  gated on a clean *affiliation* graph, and the right first move is Scopus-internal (verified-tier cleanup), not
-  OpenAlex name matching — see H72. The OpenAlex ROR/ORCID enrichment becomes H72 slice 3, onto a clean base.
-  **Status (2026-06-22): this is now the home of the deferred V2 author reconcile.** H72 closed (verified-tier
-  affiliation cleanup + over-split AU-ID merge shipped), and the H75 V2 engine produces core-deduped authors via
-  ORCID + the positional bridge only — the *fuzzy/over-split + cross-source name dedup* pass was deferred out of V2.
-  Remaining work = fold that reconcile into the V2 build (now on a clean ROR affiliation base), so author-level
-  aggregation is correct before scoring (H67/H69) leans on it. **Plan + dry-run (2026-06-22):**
-  `docs/tasks/active/h71-cross-source-author-reconcile.md`. STRONG-tier rule = same surname + name-compatible +
-  ≥1 shared affiliation + same-paper hard-block + adaptive co-author floor (≥1 rare surname, ≥2 common, split at block
-  size ~40). Dry-run: ~1,737 high-precision absorptions (cross-source + OpenAlex-internal splits; Scopus-only ≈0), no
-  runaway (max component 7). Slices: S1 candidate engine (dry-run first) · S2 apply + invariants · S3 live-validate + tune.
-
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
   (nothing computes it today). Needed by chimie (≥13/9 WoS), geografie (Hirsch excl. self-cit), fizica (h
@@ -88,8 +65,15 @@ Done history moved to `TASKS-done.md`.
   Commits `d580144`…`2e6fede`.
   **(2)** citation-driven criteria — feed OpenAlex `cited_by` / the in-corpus citation graph into citation-count
   indicators and into **H67** (h-index); pick the citation source per domain.
+  **PARTIAL (2026-06-25):** the per-source citation counts (`graph/scopus/wos_citation_count`) are projected onto
+  `scholardex_publication_view` and consumed by the **H67 h-index** path, but the citation-count *indicators*
+  (`ReportScopedIndicatorScoringSupport`/`CitationRowProjector`) still score off the legacy count — multi-source
+  per-domain citation selection for indicators is the remaining half.
   **(3)** forum **dedup** impact — ensure a conference resolved via DBLP `conf/X` and the same conference via a
   Scopus forum score identically (Tier-1 reconcile merges them).
+  **DONE (2026-06-25):** verified — `ForumReconcileService`→`ScholardexForumBuilder.buildScopusForums`→
+  `ScholardexForumDeduplicationService` merges ISSN/erihId clusters (safe-merge: single primary ISSN or matching
+  names, H55), folding DBLP-minted and Scopus forums for the same conference.
   **(4)** **regression sweep** — re-score across domains after the match-all + acronym changes and confirm no
   score regressions vs the pre-Phase-4 baseline. Depends on H66B Phase 4 (done) + interacts with H67.
   **SWEPT CLEAN (2026-06-25):** full suite 2426/2426 green — every domain scorer (AIS/ArtEvent/CNFIS/Economics/
@@ -105,6 +89,9 @@ Done history moved to `TASKS-done.md`.
   source-filtered, self-cit-excluded citation counts) — reuses `computeCitationView` + `scholardex_forum_membership_view`.
   Branch only on the new kind (additive path untouched; mirrors inline `GENERIC_COUNT`). Foundation for H68 gates/derived
   indicators. Plan: `docs/tasks/active/h67-h-index.md` (S4a). Per-domain activation (thresholds) = H67 S4b.
+  **DONE (2026-06-25):** the HIndex aggregator (`IndicatorKind.HIndex`, `ScoringStrategy.HIRSCH`, persisted
+  round-trip, HIRSCH reduce branched in `buildReportScopedIndicatorDetail`/`hIndexExcludingSelf`, admin form
+  enabled) is built. Per-domain threshold activation is **H67 S4b**, not this thread.
   **(6)** **year/category-scoped WoS ranking reads (caveman-code fix).** `PostgresReportingLookupFacade.getRankingsByForum`
   loads a forum's ENTIRE multi-year `List<WoSRanking>` (memoized) and `AbstractWoSForumScoringService` filters years/
   categories in memory — but `forum_metric_view`/`forum_category_view` are already keyed by `(forum_id, year, category)`.
@@ -169,19 +156,6 @@ Done history moved to `TASKS-done.md`.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.
   Exit criteria: Scholar imported records from user operations link deterministically and preserve source lineage without mutating non-owned fields; no separate non-user onboarding path is required in this slice.
   Dependency: execute after `H19.9` citation canonicalization so imported Scholar citation edges are canonical-ID compatible at ingest time.
-
-- [ ] `H62` FEAA Economics report — full-fišă DOCX export (bound to `6849fb3d97a94f22948f9430`).
-  Goal: no-formula DOCX export for the FEAA verification fišă — articles (M/N/AIS/Pi), books/chapters
-  slots 7–10 (Pi=coeff/N by publisher tier), citations (AIS/quartile/Cj), and a P/C/S=P+C summary with
-  all-position thresholds. Same pattern as `matematica-2016`.
-  Notable: scoring already exists — FEEA_P (`ECONOMICS_JOURNAL_AIS`, `M*(1-(N-1)*0.1)*S`) and FEEA_C
-  (`AIS`, quartile points); `report.criteria` hold per-position thresholds; S=P+C (sum, no separate
-  indicator). New work: surface M on publications + AIS/quartile on citations; book tier-scoring + Anexa 1
-  publisher-list seed; Core/Infoeconomics article count. `Fisa-verificare_prof_conf` is the methodology
-  annex (M table + publisher list), NOT a candidate fišă; the `Standarde-minimale-*` files are the fišă
-  (identical structure, differ only by position thresholds).
-  Slices: (1) articles+citations+summary using existing indicators [unblocked]; (2) books/chapters
-  scoring; (3) Core-Econ count. Planning doc at `docs/tasks/active/h62-feaa-economics-report-export.md`.
 
 - [ ] `H61` Citation exclusion "any co-author" mode (Scopus all-authors self-citation) for Informatică.
   Goal: add a third citation-exclusion mode — exclude a citation when the citing work shares **any** author

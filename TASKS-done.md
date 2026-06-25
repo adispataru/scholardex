@@ -2,6 +2,29 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H71 + H62 (archived 2026-06-25)
+
+Archived from `TASKS.md` on 2026-06-25 after a backlog-vs-implementation audit. Closed task docs:
+`docs/tasks/closed/h71-cross-source-author-reconcile.md`, `h62-feaa-economics-report-export.md`.
+
+- [x] `H71` Cross-source author dedup (fuzzy/over-split + cross-source name reconcile folded into V2). *(completed 2026-06-22, archived 2026-06-25)*
+  Deliverable: the deferred V2 author reconcile is now built and wired. STRONG-tier rule (same surname +
+  name-compatible given names + ≥1 shared affiliation + same-paper hard-block + adaptive co-author floor, split at
+  block size ~40) lives in `CanonicalGraphBuilder.applyAuthorReconcile`, invoked from
+  `CanonicalDerivationV2Service.writeAuthors` (enabled by default `core.canon.author-reconcile.enabled=true`,
+  `dry-run=false`) inside `runFull`/`rebuildCanonicalV2`. Cannot-link guard prevents transitive chain merges.
+  Tests: `AuthorReconcileV2Test` (merge, hard-block, chain-breaking, diacritics/initials, determinism). Live
+  (2026-06-22): ~1,909 authors absorbed, 0 post-merge invariant violations, 13 cannot-link conflicts avoided, max
+  component 7 (no runaway). Spot-checks: Daniel Vizman (6 OpenAlex ids folded), Călin Tatu correctly split.
+  Residual (deferred, not blocking): S3 optional precision refinements per the plan doc.
+
+- [x] `H62` FEAA Economics report — full-fišă DOCX export (bound to `6849fb3d97a94f22948f9430`, `feaa-2024`). *(archived 2026-06-25)*
+  All three slices shipped: (1) articles (M/N/AIS/Pi) + citations + P/C/S=P+C summary with all-position thresholds
+  (`Feaa2024ReportTypeImportSupport`, `feaa-2024/template.docx` + `binding.json`); (2) books/chapters tier scoring
+  (`FeaaBookScoringService` coefficients 0.5/0.25/0.2/0.1 × `FeaaAnexa1PublisherService` allowlist from
+  `report-data/feaa-anexa1-publishers.csv`, slots 7–10); (3) Core/Infoeconomics article count (M≥8, AIS>0 →
+  `feaa-core-count`).
+
 ## H72-H75 OpenAlex-first ingestion + canonical engine V2
 
 Archived from `TASKS.md` on 2026-06-22. The ingestion + canonical-derivation cluster converged: the V2 batch engine
