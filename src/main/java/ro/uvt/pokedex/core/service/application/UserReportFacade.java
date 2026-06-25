@@ -39,6 +39,7 @@ import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
+import ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
@@ -322,6 +323,19 @@ public class UserReportFacade {
     }
 
     public Optional<ReportScopedIndividualReportComputation> computeReportScopedIndividualReport(String userEmail, String reportId) {
+        // H60: ensure a referenceYear is in scope for relative year specs. The run-build path already set the run's
+        // year (nested → preserved); the live apply path defaults to the current year.
+        return ScoringReferenceYearContext.with(effectiveReferenceYear(),
+                () -> computeReportScopedIndividualReportInternal(userEmail, reportId));
+    }
+
+    /** H60: the current referenceYear in scope, or the current year when none is set (live apply/detail path). */
+    private int effectiveReferenceYear() {
+        Integer current = ScoringReferenceYearContext.current();
+        return current != null ? current : java.time.LocalDate.now().getYear();
+    }
+
+    private Optional<ReportScopedIndividualReportComputation> computeReportScopedIndividualReportInternal(String userEmail, String reportId) {
         Optional<User> userOpt = findUserWithProfile(userEmail);
         if (userOpt.isEmpty()) {
             return Optional.empty();
@@ -429,6 +443,13 @@ public class UserReportFacade {
      * exactly the same publications/citations that contributed to the report-level score.
      */
     public Optional<IndicatorApplyResultDto> buildReportScopedIndicatorDetail(
+            String userEmail, String reportId, String indicatorId) {
+        // H60: resolve relative year specs against a referenceYear (current year on this live-detail path).
+        return ScoringReferenceYearContext.with(effectiveReferenceYear(),
+                () -> buildReportScopedIndicatorDetailInternal(userEmail, reportId, indicatorId));
+    }
+
+    private Optional<IndicatorApplyResultDto> buildReportScopedIndicatorDetailInternal(
             String userEmail, String reportId, String indicatorId) {
         if (indicatorId == null) {
             return Optional.empty();
