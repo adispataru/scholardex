@@ -114,7 +114,11 @@ public class UserIndividualReportRunService {
         run.setResearcherId(userEmail);
         run.setReportDefinitionId(reportDefinitionId);
         run.setTriggeredByEmail(actorEmail != null ? actorEmail : userEmail);
-        run.setCreatedAt(Instant.now());
+        Instant createdAt = Instant.now();
+        run.setCreatedAt(createdAt);
+        // H60: capture the evaluation anchor that relative year specs resolve against (default = creation year), so
+        // replay/export of this run is stable across later ranking imports.
+        run.setReferenceYear(createdAt.atZone(java.time.ZoneId.systemDefault()).getYear());
 
         List<String> indicatorResultIds = new ArrayList<>();
         List<String> errors = new ArrayList<>();
