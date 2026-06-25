@@ -29,6 +29,13 @@ Done history moved to `TASKS-done.md`.
   org roster and the bridge = name (diacritic-normalized + homonym disambiguation by UVT-affiliation/scopus); the
   scopusId-on-profile path still applies where the import populates profiles. This makes an **admin department
   report** (score everyone in a department, provisionally) the concrete target.
+  **SLICE 1 DONE (2026-06-25):** `ProvisionalAuthorResolutionService` (roster→canonical-author by name:
+  diacritic-insensitive full-name match on `alternativeNames` + scopus-presence homonym disambiguation) + dry-run
+  endpoint `POST /admin/initialization/provisional/resolveDepartment`. Live on Matematică: **13/15 RESOLVED** (all
+  with scopus), 2 UNRESOLVED (surname-diacritic Casu/Comănescu — needs an unaccented name index). Surfaced an H71
+  author over-merge (Adina+Bogdan Sasu → one canonical author; spawned a follow-up task). Remaining: S2
+  `findProvisionalPublicationsForScoring(resolvedAuthors)` · S3 admin-gated provisional run (authorshipSource flag +
+  `Source.ADMIN_PROVISIONAL`) · S4 "unvalidated" label.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
