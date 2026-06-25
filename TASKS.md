@@ -9,6 +9,21 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H77` Admin provisional scoring from declared source ids (unvalidated authorship). Scoring uses
+  `findConfirmedPublicationsForScoring` (only researcher-**confirmed** `PublicationAuthorshipDecision` pubs), so a
+  researcher with a declared `scopusId` (from the import) but no validated canonical author scores **0** — the
+  `scopusId→canonical author` mapping only materializes at validation (`resolveAuthorLookupKeys` returns the raw
+  scopusId but `findAuthorsByIdIn` matches canonical `_id` only). Goal: let an **admin** run a **read-only
+  provisional** report that scores from declared Scopus ids (decision 2026-06-25: read-only, NOT auto-validate —
+  that would mask the researcher's curation). Building blocks exist: `ScholardexAuthorFactRepository.
+  findByScopusAuthorIdsIn`/`findByOrcidIdsContains` → canonical authors → `findAllPublicationsByAuthorsIn`. Slices:
+  (1) declared-id→canonical-author resolution (unit-testable) · (2) `findProvisionalPublicationsForScoring` · (3)
+  admin-gated run with an `authorshipSource{CONFIRMED,DECLARED}` flag threaded so pubs AND researcherAuthorIds
+  (self-cit/division) use the resolved authors + a `Source.ADMIN_PROVISIONAL` label · (4) "provisional/unvalidated"
+  label in view/export. Caveat: over-includes false-positive attributions (inherent to bypassing validation; the
+  label communicates it). Live end-to-end check needs real user data (dev Mongo has no users). Plan:
+  `docs/tasks/active/h77-admin-provisional-scoring-declared-ids.md`.
+
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
   (nothing computes it today). Needed by chimie (≥13/9 WoS), geografie (Hirsch excl. self-cit), fizica (h
