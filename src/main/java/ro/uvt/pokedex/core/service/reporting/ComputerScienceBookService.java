@@ -77,6 +77,9 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             scoreResult.scoringSource.set("SCOPUS+SENSE");
             scoreResult.scoringInfo.put("matchSource", "SENSE");
             scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS", "SENSE"));
+            // The A/B/C/D rank is a SENSE publisher category (own point scale), not a CORE class — mark the
+            // quartile slot SENSE so the UI shows "SENSE · A" and doesn't read it as CORE A or a NOT_FOUND default.
+            scoreResult.bestQuarter.set(ro.uvt.pokedex.core.model.WoSRanking.Quarter.SENSE);
         }
 
         return createScore(scoreResult);

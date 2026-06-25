@@ -46,6 +46,8 @@ class ComputerScienceBookServiceTest {
         assertEquals(8.0, score.getScore());
         assertEquals("SCOPUS+SENSE", score.getScoringSource());
         assertEquals("A", score.getCoreRankingEquivalent());
+        // The rank is a SENSE publisher category, flagged via the SENSE quartile sentinel (not CORE / NOT_FOUND).
+        assertEquals("SENSE", score.getQuarter());
     }
 
     @Test
