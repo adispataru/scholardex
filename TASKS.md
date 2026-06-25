@@ -29,7 +29,20 @@ Done history moved to `TASKS-done.md`.
   and any WoS-conference scoring — material for CS (conference-heavy). Fix: acquire a WoS CPCI conference/proceedings
   list (a WoS export, like the journal Master List already onboarded) and onboard it into the forum registry, tagging
   conference forums with `wosForumIds` (reuse the WoS journal onboarding path). Surfaced by the `H67` validation
-  (2026-06-22). Prereq: a CPCI export is obtainable from the institution's WoS access.
+  (2026-06-22).
+  **Sourcing reframed (2026-06-25): there is NO downloadable CPCI master list.** Clarivate curates *journals* as a
+  list (MJL → our `data/wos/mjl/`); conferences are indexed per-*event* and only exist inside Core Collection
+  **records** — which is why MJL/doc pages redirect. The list must be *derived* from records. UI-only route (the
+  access we have): Core Collection search → Refine → *Web of Science Index* = CPCI-S + CPCI-SSH → **Analyze Results**
+  by **Conference Title** (and **Source Title**) → Download the data table (field value + record count; no ISSN —
+  Analyze omits it, and Records export is capped ~1,000/export). So the matcher is **title/acronym-based**, not ISSN:
+  match the CPCI conference/source titles against our conference forums via the existing CORE normalized-title +
+  DBLP `conf/X` acronym keys, tag matches `wos=true` (synthetic `wosForumIds`). Coverage is partial by construction
+  (title matching + the export's scope) — acceptable, the consumer (WoS h/citation) is already labelled
+  *indicative*. **MVP: UVT-affiliation-scoped CPCI roster first** (small, directly relevant: the conferences UVT
+  publishes in), validate the pipeline, then a broad CPCI roster for wider citing-venue coverage. Implementation
+  waits on the first CSV (build the matcher against the real export shape, not assumptions). Plan:
+  `docs/tasks/active/h76-wos-cpci-onboarding.md`.
 
 - [ ] `H68` Advanced criteria / threshold extensions (foundational, from the standards assessment).
   Goal: extend the criteria engine for recurring patterns — **post-PhD temporal anchor**, per-indicator/
