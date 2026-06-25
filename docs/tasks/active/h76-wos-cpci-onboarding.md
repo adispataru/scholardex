@@ -43,26 +43,35 @@ affiliation filter (broad CPCI roster) for wider citing-venue coverage once the 
 Deliver the downloaded `.txt`/`.tsv` files (drop under `data/wos/cpci/`). Implementation is built against the **real
 export shape**, not assumptions.
 
-## Onboarding design (built after the first CSV)
+## Data obtained (2026-06-25) — Records export, not Analyze
 
-Mirror the journal Master-List onboarding, but write `wosForumIds` onto **conference** forums.
+The user exported **Records** (not Analyze), which is richer: `data/wos/cpci/uvt-proceedings.csv`, **1,984 unique UVT
+proceedings papers** (`DT=Proceedings Paper AND OG=West University of Timisoara`, two ≤1,000-row files merged +
+de-duped on `UT`). Columns kept: `ut, doi, sourceTitle, conferenceTitle, bookSeriesTitle, issn, eIssn, isbn, year`.
+Coverage: Source/Conference Title 100%, **DOI 982 (49%)**, **ISSN 1,277**, **ISBN 1,348**; 813 distinct source
+titles, 821 distinct conferences. (`Web of Science Index` came through blank — irrelevant: the whole set is WoS-Core
+proceedings by construction.)
 
-- **Parse** the Analyze export(s) → distinct CPCI venue names (conference titles + source/series titles) + counts.
-- **Match** each to our forum registry, in precedence:
-  1. **Acronym** — DBLP `conf/X` acronym extracted from the WoS conference title (WoS titles often embed it, e.g.
-     "… International Conference on Software Engineering (ICSE)"); reuse the conference acronym/normalization already
-     feeding `ComputerScienceConferenceScoringService` / `getConferenceRankings`.
-  2. **Normalized title** — reuse `getConferenceRankingsByNormalizedTitle`'s normalization to match the conference
-     title to our conference forum names.
-  3. **Series source title** — map book-series proceedings (LNCS et al.) to the series forum where we hold one.
-- **Tag** matched forums: set a `wosForumIds` sentinel (or a dedicated CPCI marker) so `applyCitationSourceSplit` and
-  the forum membership reads count them as WoS-indexed. Read-side only — a derive/projection refresh, no full rebuild.
-- **Report** match rate + the unmatched top-count venues (so the next export pass / manual mapping can target them);
-  log dropped coverage explicitly (no silent truncation).
+## Onboarding design — DOI-first record matching (stronger than venue-name matching)
 
-Slices: **S1** parse + dry-run match report (no writes) against the MVP CSV — surfaces real match rate + format ·
-**S2** apply: tag `wosForumIds` on matched conference forums + projection refresh + tests · **S3** broad roster +
-re-validate the WoS h spot-check (Adrian 4→5 expected if his CPCI citing venues now resolve).
+These are **UVT papers = the same corpus we hold**, so match WoS *records* to our *publications/forums* (exact keys),
+not WoS venue *names* to our forum names (fuzzy). Tag the matched forum WoS-indexed. Precedence:
+
+1. **DOI** (exact, ~982) — normalize (`ScholardexPublicationCanonicalizationService.normalizeDoi`) → our publication →
+   its forum is WoS-CPCI-indexed. Zero fuzziness.
+2. **ISSN / eISSN / ISBN** (~467 distinct) → our forum directly (series like AIP `0094-243X`, AISC `2194-5357`).
+3. **Conference title / acronym** (43% carry a trailing parenthetical acronym) → CORE normalized-title / DBLP
+   `conf/X` fallback for records with neither DOI nor a matching ISSN/ISBN.
+
+- **Tag** matched forums: set a `wosForumIds` sentinel so `applyCitationSourceSplit` + the forum membership reads
+  count them WoS-indexed. Read-side only — derive/projection refresh, no full rebuild.
+- **Report** match counts per key + distinct forums tagged + distinct already-WoS (journals mixed into the source
+  titles are harmless no-ops) + top unmatched venues. No silent truncation.
+
+Slices: **S1** parse + **dry-run match report** (no writes) against the MVP CSV via a maintenance endpoint —
+surfaces the real per-key match rate + forum yield · **S2** apply: tag `wosForumIds` on matched forums + projection
+refresh + tests · **S3** broad roster (same recipe minus `OG=`) + re-validate the WoS-h spot-check (Adrian 4→5 if his
+CPCI citing venues now resolve).
 
 ## Caveats
 
