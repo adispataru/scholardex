@@ -14,7 +14,8 @@ package ro.uvt.pokedex.core.model.reporting.scoring;
  * {@code scoreYearRange}). v1 drops them at this level; see {@link ScoreYearRangeSpec}
  * for the relative-window semantics.
  */
-public sealed interface YearRangeSpec permits YearRangeSpec.AllYears, YearRangeSpec.Absolute {
+public sealed interface YearRangeSpec
+        permits YearRangeSpec.AllYears, YearRangeSpec.Absolute, YearRangeSpec.PreviousNYears {
 
     /** All available years. The literal {@code "*"} in the legacy DSL. */
     record AllYears() implements YearRangeSpec {}
@@ -24,6 +25,29 @@ public sealed interface YearRangeSpec permits YearRangeSpec.AllYears, YearRangeS
         public Absolute {
             if (to < from) throw new IllegalArgumentException("to (" + to + ") < from (" + from + ")");
         }
+    }
+
+    /**
+     * H60: a self-rolling recent window — the {@code n} years immediately before the run's referenceYear {@code t},
+     * i.e. {@code [t-n .. t-1]} (the reference year itself is excluded). Matches the math standard's {@code A_recent}
+     * (t-1…t-7). Resolves against the referenceYear, so it never goes stale.
+     */
+    record PreviousNYears(int n) implements YearRangeSpec {
+        public PreviousNYears {
+            if (n < 1) throw new IllegalArgumentException("n must be ≥ 1, got " + n);
+        }
+    }
+
+    /**
+     * H60: whether a publication of {@code pubYear} is included by this spec, given the run's {@code referenceYear}.
+     * {@link AllYears} includes everything; {@link Absolute} is the fixed inclusive range; {@link PreviousNYears}
+     * resolves to {@code [referenceYear-n .. referenceYear-1]}.
+     */
+    default boolean includes(int pubYear, int referenceYear) {
+        if (this instanceof AllYears) return true;
+        if (this instanceof Absolute a) return pubYear >= a.from() && pubYear <= a.to();
+        if (this instanceof PreviousNYears p) return pubYear >= referenceYear - p.n() && pubYear <= referenceYear - 1;
+        throw new IllegalStateException("Unhandled YearRangeSpec: " + this);
     }
 
     /**
@@ -39,6 +63,13 @@ public sealed interface YearRangeSpec permits YearRangeSpec.AllYears, YearRangeS
         if (raw == null || raw.isBlank()) return new AllYears();
         String trimmed = raw.trim();
         if ("*".equals(trimmed)) return new AllYears();
+        if (trimmed.toUpperCase(java.util.Locale.ROOT).startsWith("PREV:")) {
+            try {
+                return new PreviousNYears(Integer.parseInt(trimmed.substring("PREV:".length()).trim()));
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("PREV:n requires an integer n: " + raw, ex);
+            }
+        }
         String[] parts;
         if (trimmed.contains("->")) {
             parts = trimmed.split("->");

@@ -105,6 +105,7 @@ public class Indicator {
     private static String legacyYearRangeString(YearRangeSpec spec) {
         if (spec instanceof YearRangeSpec.AllYears) return "*";
         if (spec instanceof YearRangeSpec.Absolute a) return a.from() + "->" + a.to();
+        if (spec instanceof YearRangeSpec.PreviousNYears p) return "PREV:" + p.n();  // H60
         return null;
     }
 
@@ -112,6 +113,7 @@ public class Indicator {
         if (spec instanceof ScoreYearRangeSpec.AllYears) return "*";
         if (spec instanceof ScoreYearRangeSpec.ItemYear) return "IY";
         if (spec instanceof ScoreYearRangeSpec.Absolute a) return a.from() + "->" + a.to();
+        if (spec instanceof ScoreYearRangeSpec.LatestNRankings l) return "LATEST:" + l.n();  // H60
         return null;
     }
 

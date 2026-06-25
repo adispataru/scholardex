@@ -17,7 +17,8 @@ import java.util.List;
  * carried into v1.
  */
 public sealed interface ScoreYearRangeSpec
-        permits ScoreYearRangeSpec.AllYears, ScoreYearRangeSpec.ItemYear, ScoreYearRangeSpec.Absolute {
+        permits ScoreYearRangeSpec.AllYears, ScoreYearRangeSpec.ItemYear, ScoreYearRangeSpec.Absolute,
+                ScoreYearRangeSpec.LatestNRankings {
 
     record AllYears() implements ScoreYearRangeSpec {}
 
@@ -28,6 +29,30 @@ public sealed interface ScoreYearRangeSpec
     record Absolute(int from, int to) implements ScoreYearRangeSpec {
         public Absolute {
             if (to < from) throw new IllegalArgumentException("to (" + to + ") < from (" + from + ")");
+        }
+    }
+
+    /**
+     * H60: score against the {@code n} most recent ranking list-years <b>present in our DB and ≤ the run's
+     * referenceYear</b> (not the journal's own available years). A journal dropped from the latest list is therefore
+     * <i>not found → excluded</i> instead of silently scored against an older year where it was still ranked.
+     * Requires a {@link ResolutionContext} carrying {@code referenceYear + availableRankingYears}; the legacy
+     * no-context {@link #allowedYears(int)} cannot resolve it and returns empty.
+     */
+    record LatestNRankings(int n) implements ScoreYearRangeSpec {
+        public LatestNRankings {
+            if (n < 1) throw new IllegalArgumentException("n must be ≥ 1, got " + n);
+        }
+    }
+
+    /**
+     * H60: the context a relative {@link ScoreYearRangeSpec} resolves against. {@code referenceYear} (the run's
+     * evaluation anchor) and {@code availableRankingYears} (distinct ranking list-years in the DB) are null/empty on
+     * the legacy path; {@link LatestNRankings} only resolves when both are supplied.
+     */
+    record ResolutionContext(int itemYear, Integer referenceYear, List<Integer> availableRankingYears) {
+        public static ResolutionContext ofItemYear(int itemYear) {
+            return new ResolutionContext(itemYear, null, List.of());
         }
     }
 
@@ -53,21 +78,44 @@ public sealed interface ScoreYearRangeSpec
      * </ul>
      */
     default List<Integer> allowedYears(int itemYear) {
+        return allowedYears(ResolutionContext.ofItemYear(itemYear));
+    }
+
+    /**
+     * H60: context-aware resolution. Identical to {@link #allowedYears(int)} for the absolute shapes; {@link AllYears}
+     * caps at {@code referenceYear} when supplied (else {@code now()}, preserving the legacy path); {@link
+     * LatestNRankings} returns the {@code n} most recent {@code availableRankingYears} that are ≤ {@code referenceYear}
+     * (empty when the context lacks either input — the legacy no-context path).
+     */
+    default List<Integer> allowedYears(ResolutionContext ctx) {
         if (this instanceof ItemYear) {
             List<Integer> single = new ArrayList<>(1);
-            single.add(itemYear);
+            single.add(ctx.itemYear());
             return single;
         }
         if (this instanceof AllYears) {
-            int currentYear = java.time.LocalDate.now().getYear();
-            List<Integer> years = new ArrayList<>(currentYear - 1990 + 1);
-            for (int y = 1990; y <= currentYear; y++) years.add(y);
+            int cap = ctx.referenceYear() != null ? ctx.referenceYear() : java.time.LocalDate.now().getYear();
+            List<Integer> years = new ArrayList<>(Math.max(0, cap - 1990 + 1));
+            for (int y = 1990; y <= cap; y++) years.add(y);
             return years;
         }
         if (this instanceof Absolute a) {
             List<Integer> years = new ArrayList<>(a.to() - a.from() + 1);
             for (int y = a.from(); y <= a.to(); y++) years.add(y);
             return years;
+        }
+        if (this instanceof LatestNRankings latest) {
+            if (ctx.referenceYear() == null || ctx.availableRankingYears() == null
+                    || ctx.availableRankingYears().isEmpty()) {
+                return List.of();
+            }
+            return ctx.availableRankingYears().stream()
+                    .filter(java.util.Objects::nonNull)
+                    .filter(y -> y <= ctx.referenceYear())
+                    .distinct()
+                    .sorted(java.util.Comparator.reverseOrder())
+                    .limit(latest.n())
+                    .toList();
         }
         throw new IllegalStateException("Unhandled ScoreYearRangeSpec: " + this);
     }
@@ -77,6 +125,13 @@ public sealed interface ScoreYearRangeSpec
         String trimmed = raw.trim();
         if ("IY".equals(trimmed)) return new ItemYear();
         if ("*".equals(trimmed)) return new AllYears();
+        if (trimmed.toUpperCase(java.util.Locale.ROOT).startsWith("LATEST:")) {
+            try {
+                return new LatestNRankings(Integer.parseInt(trimmed.substring("LATEST:".length()).trim()));
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("LATEST:n requires an integer n: " + raw, ex);
+            }
+        }
         String[] parts;
         if (trimmed.contains("->")) {
             parts = trimmed.split("->");

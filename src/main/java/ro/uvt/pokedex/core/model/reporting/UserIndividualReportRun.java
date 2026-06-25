@@ -28,6 +28,12 @@ public class UserIndividualReportRun {
     private Map<Integer, Double> criteriaScores = new HashMap<>();
 
     private Instant createdAt;
+    /**
+     * H60: the evaluation anchor that relative year specs ({@code PreviousNYears}, {@code LatestNRankings}) resolve
+     * against — captured when the run is generated so replay/export is deterministic across later ranking imports.
+     * Defaults to the run's creation year; may later be a configurable evaluation year. Null on pre-H60 runs.
+     */
+    private Integer referenceYear;
     private Status status;
     private List<String> buildErrors = new ArrayList<>();
 
