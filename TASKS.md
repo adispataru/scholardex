@@ -101,6 +101,17 @@ Done history moved to `TASKS-done.md`.
   thousands of distinct citing forums). Sequencing: build the scoped read → wire **H67 2/2b** (year-true Core WoS h)
   on it → migrate AIS/IF/RIS off `getRankingsForForum` behind the H69 regression sweep (identical scores). Edition
   policy + "in Core when?" per H67 S4b.
+  **DONE (2026-06-25):** the scaling-critical scoped read + H67 2/2b wiring shipped earlier under H67 —
+  `PostgresScholardexProjectionReadPort.findForumCoreCollectionYears(forumIds, years)` (targeted
+  `forum_id IN … AND year IN …` over the `(forum_id, year, edition)` category view) drives the Hirsch year-true Core
+  classification in `UserReportFacade.hIndexExcludingSelf`. This session migrated the journal scorers off load-all:
+  new `ReportingLookupPort.getForumRankings(forum, years, categories)` (Postgres facade pushes `year IN`/`category IN`
+  into SQL, memoized by the scoped key, ISSN/name fallback retained; delegated through the `@Primary`
+  `ReportingLookupFacade`); `AbstractWoSForumScoringService` (AIS/IF/RIS/Economics/CS-journal) reads through it,
+  keeping its in-memory year/category guards so the result is provably a subset and scores are identical. CNFIS left
+  on the full read (its `min(year, maxAvailableYear)` probe makes SQL year-scoping unsafe; out of the AIS/IF/RIS
+  scope). Regression sweep: full suite **2428/2428** green (+2 scoped-read facade tests). Edition policy + "in Core
+  when?" remain **H67 S4b**.
 
 - [ ] `H65` Physics (Fizică/FF) report — DOCX export. **Postponed behind H63 + H64.**
   Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template). Scoped this session;

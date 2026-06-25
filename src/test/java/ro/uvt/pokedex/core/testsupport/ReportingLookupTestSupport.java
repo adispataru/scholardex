@@ -25,20 +25,28 @@ public final class ReportingLookupTestSupport {
     }
 
     public static void delegateForumLookupToIssn(ReportingLookupPort lookupPort) {
-        Mockito.lenient().when(lookupPort.getRankingsByForum(any())).thenAnswer(invocation -> {
-            ScholardexForumView forum = invocation.getArgument(0);
-            if (forum == null) {
-                return List.of();
-            }
-            // Mirror the interface default but skip blank ISSNs so we don't invoke the stubbed
-            // getRankingsByIssn with a null/blank arg (which a strict mock flags as a stubbing problem);
-            // production getRankingsByIssn returns empty for blank input anyway.
-            List<WoSRanking> rankings = lookupByIssn(lookupPort, forum.getIssn());
-            if (rankings.isEmpty()) {
-                rankings = lookupByIssn(lookupPort, forum.getEIssn());
-            }
-            return rankings;
-        });
+        Mockito.lenient().when(lookupPort.getRankingsByForum(any()))
+                .thenAnswer(invocation -> resolveByIssn(lookupPort, invocation.getArgument(0)));
+        // H69 thread (6): WoS forum scoring now reads through the scoped getForumRankings(forum, years, categories)
+        // entry point. Mockito doesn't run the interface default (which would delegate to getRankingsByForum), so
+        // stub it to the same ISSN delegation. The scoped years/categories are irrelevant to these unit tests'
+        // ISSN-keyed stubs, so we match any() and return the full ISSN-resolved rankings.
+        Mockito.lenient().when(lookupPort.getForumRankings(any(), any(), any()))
+                .thenAnswer(invocation -> resolveByIssn(lookupPort, invocation.getArgument(0)));
+    }
+
+    private static List<WoSRanking> resolveByIssn(ReportingLookupPort lookupPort, ScholardexForumView forum) {
+        if (forum == null) {
+            return List.of();
+        }
+        // Mirror the interface default but skip blank ISSNs so we don't invoke the stubbed
+        // getRankingsByIssn with a null/blank arg (which a strict mock flags as a stubbing problem);
+        // production getRankingsByIssn returns empty for blank input anyway.
+        List<WoSRanking> rankings = lookupByIssn(lookupPort, forum.getIssn());
+        if (rankings.isEmpty()) {
+            rankings = lookupByIssn(lookupPort, forum.getEIssn());
+        }
+        return rankings;
     }
 
     private static List<WoSRanking> lookupByIssn(ReportingLookupPort lookupPort, String issn) {

@@ -10,6 +10,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -57,6 +58,12 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     @Override
     public List<WoSRanking> getRankingsByForum(ScholardexForumView forum) {
         return postgresFacade.getRankingsByForum(forum);
+    }
+
+    @Override
+    public List<WoSRanking> getForumRankings(
+            ScholardexForumView forum, Collection<Integer> years, Collection<String> categories) {
+        return postgresFacade.getForumRankings(forum, years, categories);
     }
 
     @Override

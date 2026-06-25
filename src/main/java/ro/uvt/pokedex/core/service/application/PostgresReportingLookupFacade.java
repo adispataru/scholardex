@@ -19,12 +19,14 @@ import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -148,6 +150,53 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         );
     }
 
+    @Override
+    public List<WoSRanking> getForumRankings(
+            ScholardexForumView forum, Collection<Integer> years, Collection<String> categories) {
+        if (forum == null) {
+            return List.of();
+        }
+        // H69 thread (6): scoped forum-keyed read — push the publication years (and any WoS categories) into SQL
+        // instead of loading the forum's whole multi-year blob and filtering in the scorer. Memoized by the
+        // (forumId, years, categories) tuple. When the forum-keyed views have nothing for those years we fall back
+        // to the load-all resolution (getRankingsByForum): its result is a superset, so a scorer that keeps its
+        // in-memory year/category guards scores identically regardless of which path serves it.
+        String forumId = forum.getId();
+        if (forumId != null && !forumId.isBlank()) {
+            List<Integer> yearList = normalizeYears(years);
+            List<String> categoryList = normalizeCategories(categories);
+            String memoKey = forumId + "|y=" + yearList + "|c=" + categoryList;
+            List<WoSRanking> byForum = reportingLookupMemoization.getOrCompute(
+                    "postgres",
+                    "rankingsByForumIdScoped",
+                    memoKey,
+                    () -> loadRankingsByForumId(forum, yearList, categoryList)
+            );
+            if (!byForum.isEmpty()) {
+                return byForum;
+            }
+        }
+        return getRankingsByForum(forum);
+    }
+
+    private List<Integer> normalizeYears(Collection<Integer> years) {
+        if (years == null) {
+            return List.of();
+        }
+        return years.stream().filter(Objects::nonNull).distinct().sorted().toList();
+    }
+
+    private List<String> normalizeCategories(Collection<String> categories) {
+        if (categories == null) {
+            return List.of();
+        }
+        return categories.stream()
+                .filter(c -> c != null && !c.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
     private WosForumResolutionService.ResolutionIndex resolutionIndex() {
         WosForumResolutionService.ResolutionIndex cached = resolutionIndex;
         if (cached == null) {
@@ -267,54 +316,44 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
      * has no projected rankings (caller then falls back to the legacy resolution).
      */
     private List<WoSRanking> loadRankingsByForumId(ScholardexForumView forum) {
-        String forumId = forum.getId();
-        List<WosMetricFact> metricFacts = namedParameterJdbcTemplate.query(
-                """
-                        SELECT year, metric_type, value
-                        FROM reporting_read.scholardex_forum_metric_view
-                        WHERE forum_id = :forumId
-                        """,
-                new MapSqlParameterSource("forumId", forumId),
-                (rs, rowNum) -> {
-                    WosMetricFact fact = new WosMetricFact();
-                    fact.setJournalId(forumId);
-                    fact.setYear(rs.getObject("year", Integer.class));
-                    String metricType = rs.getString("metric_type");
-                    if (metricType != null) {
-                        fact.setMetricType(MetricType.valueOf(metricType));
-                    }
-                    fact.setValue(rs.getObject("value", Double.class));
-                    return fact;
-                }
-        );
+        return loadRankingsByForumId(forum, List.of(), List.of());
+    }
 
+    /**
+     * H69 thread (6): the forum-keyed ranking read, optionally scoped to a set of years and/or WoS categories pushed
+     * into SQL. Empty {@code years}/{@code categories} leaves that dimension unscoped (the original load-all behaviour);
+     * the no-arg overload above calls through with both empty.
+     */
+    private List<WoSRanking> loadRankingsByForumId(
+            ScholardexForumView forum, List<Integer> years, List<String> categories) {
+        String forumId = forum.getId();
+
+        StringBuilder metricSql = new StringBuilder(
+                "SELECT year, metric_type, value FROM reporting_read.scholardex_forum_metric_view "
+                        + "WHERE forum_id = :forumId");
+        MapSqlParameterSource metricParams = new MapSqlParameterSource("forumId", forumId);
+        if (!years.isEmpty()) {
+            metricSql.append(" AND year IN (:years)");
+            metricParams.addValue("years", years);
+        }
+        List<WosMetricFact> metricFacts = namedParameterJdbcTemplate.query(
+                metricSql.toString(), metricParams, (rs, rowNum) -> mapForumMetricFact(rs, forumId));
+
+        StringBuilder categorySql = new StringBuilder(
+                "SELECT year, category, edition, metric_type, quarter, quartile_rank, \"rank\" AS rank_value "
+                        + "FROM reporting_read.scholardex_forum_category_view "
+                        + "WHERE forum_id = :forumId AND edition IN ('SCIE', 'SSCI')");
+        MapSqlParameterSource categoryParams = new MapSqlParameterSource("forumId", forumId);
+        if (!years.isEmpty()) {
+            categorySql.append(" AND year IN (:years)");
+            categoryParams.addValue("years", years);
+        }
+        if (!categories.isEmpty()) {
+            categorySql.append(" AND category IN (:categories)");
+            categoryParams.addValue("categories", categories);
+        }
         List<WosCategoryFact> categoryFacts = namedParameterJdbcTemplate.query(
-                """
-                        SELECT year, category, edition, metric_type, quarter, quartile_rank, "rank" AS rank_value
-                        FROM reporting_read.scholardex_forum_category_view
-                        WHERE forum_id = :forumId
-                          AND edition IN ('SCIE', 'SSCI')
-                        """,
-                new MapSqlParameterSource("forumId", forumId),
-                (rs, rowNum) -> {
-                    WosCategoryFact fact = new WosCategoryFact();
-                    fact.setJournalId(forumId);
-                    fact.setYear(rs.getObject("year", Integer.class));
-                    fact.setCategoryNameCanonical(rs.getString("category"));
-                    String edition = rs.getString("edition");
-                    if (edition != null) {
-                        fact.setEditionNormalized(EditionNormalized.valueOf(edition));
-                    }
-                    String metricType = rs.getString("metric_type");
-                    if (metricType != null) {
-                        fact.setMetricType(MetricType.valueOf(metricType));
-                    }
-                    fact.setQuarter(rs.getString("quarter"));
-                    fact.setQuartileRank(rs.getObject("quartile_rank", Integer.class));
-                    fact.setRank(rs.getObject("rank_value", Integer.class));
-                    return fact;
-                }
-        );
+                categorySql.toString(), categoryParams, (rs, rowNum) -> mapForumCategoryFact(rs, forumId));
 
         if (metricFacts.isEmpty() && categoryFacts.isEmpty()) {
             return List.of();
@@ -329,6 +368,37 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         view.setAlternativeIssns(List.of());
         view.setAlternativeNames(List.of());
         return List.of(toLegacyRanking(view, metricFacts, categoryFacts));
+    }
+
+    private WosMetricFact mapForumMetricFact(ResultSet rs, String forumId) throws SQLException {
+        WosMetricFact fact = new WosMetricFact();
+        fact.setJournalId(forumId);
+        fact.setYear(rs.getObject("year", Integer.class));
+        String metricType = rs.getString("metric_type");
+        if (metricType != null) {
+            fact.setMetricType(MetricType.valueOf(metricType));
+        }
+        fact.setValue(rs.getObject("value", Double.class));
+        return fact;
+    }
+
+    private WosCategoryFact mapForumCategoryFact(ResultSet rs, String forumId) throws SQLException {
+        WosCategoryFact fact = new WosCategoryFact();
+        fact.setJournalId(forumId);
+        fact.setYear(rs.getObject("year", Integer.class));
+        fact.setCategoryNameCanonical(rs.getString("category"));
+        String edition = rs.getString("edition");
+        if (edition != null) {
+            fact.setEditionNormalized(EditionNormalized.valueOf(edition));
+        }
+        String metricType = rs.getString("metric_type");
+        if (metricType != null) {
+            fact.setMetricType(MetricType.valueOf(metricType));
+        }
+        fact.setQuarter(rs.getString("quarter"));
+        fact.setQuartileRank(rs.getObject("quartile_rank", Integer.class));
+        fact.setRank(rs.getObject("rank_value", Integer.class));
+        return fact;
     }
 
     private List<WoSRanking> assembleRankings(List<WosRankingView> views) {

@@ -75,7 +75,10 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
             ScoreResult result,
             Func4Arity<WoSRanking, Integer, String, WoSRanking.Rank, Optional<Score>> scoreExtractor,
             BiFunction<Score, ScoreResult, Boolean> compareFunction) {
-        for (WoSRanking ranking : getRankingsForForum(forum)) {
+        // H69 thread (6): scoped read — let SQL restrict to the requested years instead of loading the forum's whole
+        // multi-year blob and filtering here. The in-memory year/category guards below stay as-is, so the result is
+        // identical whether the scoped forum-keyed path or the load-all fallback serves the rankings.
+        for (WoSRanking ranking : lookupPort.getForumRankings(forum, years, null)) {
             ranking.getWebOfScienceCategoryIndex().forEach((category, rank) -> {
                 if (isCategoryInDomain(domain, category)) {
                     for (int year : years) {

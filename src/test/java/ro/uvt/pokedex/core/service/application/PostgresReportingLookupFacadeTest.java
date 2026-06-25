@@ -457,6 +457,79 @@ class PostgresReportingLookupFacadeTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void getForumRankingsScopesYearsAndCategoriesIntoSql() {
+        // H69 thread (6): the scoped read must push the requested years (metric + category queries) and the requested
+        // WoS categories (category query) into SQL, and must NOT consult the fuzzy resolver when the forum-keyed
+        // views resolve.
+        ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact metric =
+                new ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact();
+        metric.setJournalId("forum-1");
+        metric.setYear(2024);
+        metric.setMetricType(ro.uvt.pokedex.core.model.reporting.wos.MetricType.AIS);
+        metric.setValue(1.2);
+        when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0, String.class).contains("scholardex_forum_metric_view")
+                        ? List.of(metric) : List.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-1");
+        forum.setPublicationName("Energy");
+
+        List<WoSRanking> rankings = facade.getForumRankings(forum, List.of(2024), List.of("ENERGY & FUELS"));
+
+        assertFalse(rankings.isEmpty(), "scoped forum-keyed read must produce a ranking");
+        verify(wosForumResolutionService, times(0)).resolveJournalId(any(ScholardexForumView.class), any());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<MapSqlParameterSource> paramCaptor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        verify(namedParameterJdbcTemplate, atLeast(1))
+                .query(sqlCaptor.capture(), paramCaptor.capture(), any(org.springframework.jdbc.core.RowMapper.class));
+
+        String metricSql = sqlCaptor.getAllValues().stream()
+                .filter(s -> s.contains("scholardex_forum_metric_view")).findFirst().orElseThrow();
+        String categorySql = sqlCaptor.getAllValues().stream()
+                .filter(s -> s.contains("scholardex_forum_category_view")).findFirst().orElseThrow();
+        assertTrue(metricSql.contains("AND year IN (:years)"), "metric query must scope years");
+        assertTrue(categorySql.contains("AND year IN (:years)"), "category query must scope years");
+        assertTrue(categorySql.contains("AND category IN (:categories)"), "category query must scope categories");
+
+        MapSqlParameterSource categoryParams = paramCaptor.getAllValues().stream()
+                .filter(p -> p.hasValue("categories")).findFirst().orElseThrow();
+        assertEquals(List.of(2024), categoryParams.getValue("years"));
+        assertEquals(List.of("ENERGY & FUELS"), categoryParams.getValue("categories"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getForumRankingsWithoutScopeOmitsYearAndCategoryPredicates() {
+        // Empty years/categories => the original load-all behaviour: no year/category predicate added.
+        ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact metric =
+                new ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact();
+        metric.setJournalId("forum-1");
+        metric.setYear(2024);
+        metric.setMetricType(ro.uvt.pokedex.core.model.reporting.wos.MetricType.AIS);
+        metric.setValue(1.2);
+        when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0, String.class).contains("scholardex_forum_metric_view")
+                        ? List.of(metric) : List.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-1");
+        forum.setPublicationName("Energy");
+
+        assertFalse(facade.getForumRankings(forum, null, null).isEmpty());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(namedParameterJdbcTemplate, atLeast(1))
+                .query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
+        assertTrue(sqlCaptor.getAllValues().stream().noneMatch(s -> s.contains("year IN (:years)")),
+                "unscoped read must not add a year predicate");
+        assertTrue(sqlCaptor.getAllValues().stream().noneMatch(s -> s.contains("category IN (:categories)")),
+                "unscoped read must not add a category predicate");
+    }
+
+    @Test
     void isForumInEsciIsYearTrueWithCarryForward() {
         // Year-keyed category data only has 2023.
         when(namedParameterJdbcTemplate.queryForList(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))

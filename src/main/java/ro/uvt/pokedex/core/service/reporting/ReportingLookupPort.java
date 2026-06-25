@@ -5,6 +5,7 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -29,6 +30,23 @@ public interface ReportingLookupPort {
             rankings = getRankingsByIssn(forum.getEIssn());
         }
         return rankings;
+    }
+
+    /**
+     * H69 thread (6): WoS rankings for a forum scoped to the given publication {@code years} (and, optionally, WoS
+     * category names) — the targeted {@code (forum_id, year[, category])} read that replaces loading a forum's entire
+     * multi-year ranking blob and filtering year-by-year in the scorer. Null/empty {@code years} or {@code categories}
+     * leaves that dimension unscoped.
+     *
+     * <p>The default delegates to {@link #getRankingsByForum} (load-all) so non-Postgres impls keep working unchanged;
+     * the Postgres facade overrides it with the scoped SQL read, falling back to the same forum/ISSN/name resolution
+     * when the forum-keyed views have nothing for those years. Because the scoped result is always a subset of what
+     * {@link #getRankingsByForum} returns, callers that keep their in-memory year/category guards are score-identical
+     * regardless of which path serves them.</p>
+     */
+    default List<WoSRanking> getForumRankings(
+            ScholardexForumView forum, Collection<Integer> years, Collection<String> categories) {
+        return getRankingsByForum(forum);
     }
 
     /**
