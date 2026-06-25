@@ -81,6 +81,27 @@ strict widening of the existing filter. Both filter sites already have the cited
   (miss co-author self-citations whose authors aren't linked). May need a name-normalized fallback match —
   net-new, and the main accuracy caveat for this mode. Flag in tests + docs.
 
+## Identity-matching investigation — id-expansion RULED OUT (2026-06-25)
+
+Asked whether the undercount could be reduced by expanding the overlap test from canonical-id equality to a
+cross-source-id (ORCID/Scopus/OpenAlex) intersection — "match if the cited co-author and the citing author share
+any source id." **Verified against live `scholardex` and rejected:**
+
+- **Pub author lists are 100% canonical `sauth_` ids** — `0 / 149,899` pubs carry any non-canonical author ref. So
+  there are no other-kind ids sitting in the author lists to leverage.
+- **The canonical author id is already built by merging on those exact source ids** (V2 identity ORCID > OpenAlex-id
+  > Scopus, + positional bridge + H71 name/affiliation reconcile). Two *distinct* canonical ids therefore share
+  **none** of ORCID/Scopus/OpenAlex by construction — expanding to source ids and intersecting is provably empty.
+  (Author-fact source-id coverage is 100% "any", but that's the input that already produced the canonical id.)
+
+So canonical-id overlap is already as precise as every identifier we hold. The residual under-exclusion is purely
+**author-canonicalization completeness** (a person canon *split* into two ids) → an `H71` reconcile concern, already
+the shipped lever; not a scoring-time fix. The only scoring-time alternative — a **name-normalized fallback** — is
+*counterproductive for an exclusion indicator*: it would drop citations from a different same-name person
+(**over-exclude** → undercount the candidate's real citations, unfairly penalizing a promotion gate). Conservative
+under-exclusion is the safe failure mode here. **Conclusion: leave the caveat as-is; do not add id-expansion or a
+name fallback.**
+
 ## Exit criteria
 
 - `SelfCitationPolicy` with three values; `CITATIONS_EXCLUDE_COAUTHORS` round-trips through
