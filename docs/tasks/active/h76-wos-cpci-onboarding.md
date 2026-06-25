@@ -68,10 +68,28 @@ not WoS venue *names* to our forum names (fuzzy). Tag the matched forum WoS-inde
 - **Report** match counts per key + distinct forums tagged + distinct already-WoS (journals mixed into the source
   titles are harmless no-ops) + top unmatched venues. No silent truncation.
 
-Slices: **S1** parse + **dry-run match report** (no writes) against the MVP CSV via a maintenance endpoint —
-surfaces the real per-key match rate + forum yield · **S2** apply: tag `wosForumIds` on matched forums + projection
-refresh + tests · **S3** broad roster (same recipe minus `OG=`) + re-validate the WoS-h spot-check (Adrian 4→5 if his
-CPCI citing venues now resolve).
+Slices: **S1** parse + **dry-run match report** (no writes) via a maintenance endpoint — DONE · **S2** add acronym
+matching + apply: tag `wosForumIds` on matched forums + projection refresh + tests · **S3** broad roster (same recipe
+minus `OG=`) + re-validate the WoS-h spot-check (Adrian 4→5 if his CPCI citing venues now resolve).
+
+## S1 result (2026-06-25) — dry-run against live `scholardex` (74,908 forums / 149,899 pubs)
+
+`WosCpciOnboardingService` built + tested + exposed at `POST /admin/initialization/wos/cpci/dryRun`. The headline
+numbers below were produced by a **faithful Python replica of `match()`** against the live DB (the running `:8080`
+app predates the endpoint; the Java service is equivalent by construction — same normalizers):
+
+- 1,984 records → **1,204 matched (61%)**: DOI 917, ISSN/ISBN 273, title 14; **780 unmatched (39%)**.
+- **263 distinct forums** hit; 81 already WoS (journals/series via the Master List — no-op, confirms no double-tag);
+  **182 NET-NEW WoS conference forums** would be tagged.
+- DOI carried 76% of matches — the DOI-first design was the right call.
+
+**Unmatched splits two ways:** (a) venues we hold **no forum** for (niche SSH proceedings — un-taggable, fine);
+(b) **recoverable misses** where the forum exists but the title matcher missed it — e.g. **SYNASC** (20 per-edition
+forums, `scopus=True, wos=False`, the exact H76 target): our forum is `"Proceedings - 9th International Symposium …
+SYNASC 2007"`, the WoS title is `"18th International Symposium …"` — the `Proceedings -` prefix + embedded edition
+number + trailing acronym/year defeat exact normalized-title equality, and SYNASC has no DOI/series-ISSN. **S2 fix:
+add acronym extraction/matching** (both sides carry "SYNASC") + strip `Proceedings`/embedded ordinals so per-edition
+Scopus forum names match. Expect 182 net-new to rise once acronym matching lands.
 
 ## Caveats
 
