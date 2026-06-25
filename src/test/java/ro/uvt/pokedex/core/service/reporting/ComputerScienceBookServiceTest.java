@@ -100,6 +100,40 @@ class ComputerScienceBookServiceTest {
     }
 
     @Test
+    void chapterFuzzyMatchRejectsShortNameCharSubstringOverMatch() {
+        // The old bidirectional char-substring matched SENSE "IOS" inside "Bios Scientific" — a false positive.
+        // Whole-word matching rejects it, so an unrelated publisher gets no SENSE score.
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Bios Scientific Publishers"));
+        when(senseRankingRepository.findAllByNameIgnoreCase("Bios Scientific Publishers")).thenReturn(List.of());
+        SenseBookRanking ios = new SenseBookRanking();
+        ios.setName("IOS");
+        ios.setRanking(SenseBookRanking.Rank.A);
+        when(senseRankingRepository.findAll()).thenReturn(List.of(ios));
+
+        Score score = service.getScore(publication("ch", "ch"), indicator());
+
+        assertEquals(0.0, score.getScore());
+    }
+
+    @Test
+    void chapterFuzzyMatchKeepsWholeWordNameInsideLongerPublisher() {
+        // "wiley" is a whole word inside "John Wiley and Sons" -> still matches SENSE "Wiley".
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("John Wiley and Sons"));
+        when(senseRankingRepository.findAllByNameIgnoreCase("John Wiley and Sons")).thenReturn(List.of());
+        SenseBookRanking wiley = new SenseBookRanking();
+        wiley.setName("Wiley");
+        wiley.setRanking(SenseBookRanking.Rank.B);
+        when(senseRankingRepository.findAll()).thenReturn(List.of(wiley));
+
+        Score score = service.getScore(publication("ch", "ch"), indicator());
+
+        assertEquals(4.0, score.getScore()); // SENSE B chapter (8/2)
+        assertEquals("B", score.getCoreRankingEquivalent());
+    }
+
+    @Test
     void dRankSenseBookScoresTwoPointsAsCategoryD() {
         // CNATDCU perspective d.i: authored/edited book of SENSE category D/E/unlisted = 2p
         // (a chapter of the same category becomes 1p via the "ch" halving).

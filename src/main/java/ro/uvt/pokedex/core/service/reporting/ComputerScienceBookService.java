@@ -184,9 +184,7 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             if (senseNorm.isBlank()) {
                 continue;
             }
-            if (senseNorm.equals(normalizedPublisher)
-                    || normalizedPublisher.contains(senseNorm)
-                    || senseNorm.contains(normalizedPublisher)) {
+            if (publisherMatchesSenseName(normalizedPublisher, senseNorm)) {
                 hits.add(ranking);
             }
         }
@@ -194,6 +192,23 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             return Optional.empty();
         }
         return Optional.of(pickBestRank(hits));
+    }
+
+    /**
+     * Whether the SENSE publisher name appears in the forum publisher as a WHOLE-WORD phrase (mirrors the puncte
+     * classifier's anchored name match). This replaces the former bidirectional character-substring test, which
+     * over-matched short names — e.g. SENSE "ios" was found inside "bios scientific" — while still catching real
+     * matches like "wiley" inside "john wiley sons" or "springer" inside "springer science business media". Names
+     * shorter than 3 chars only match on full equality, to avoid spurious 1–2 letter hits.
+     */
+    private static boolean publisherMatchesSenseName(String normalizedPublisher, String senseName) {
+        if (senseName.equals(normalizedPublisher)) {
+            return true;
+        }
+        if (senseName.length() < 3) {
+            return false;
+        }
+        return (" " + normalizedPublisher + " ").contains(" " + senseName + " ");
     }
 
     private List<SenseBookRanking> allRankings() {
