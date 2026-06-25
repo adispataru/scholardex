@@ -88,6 +88,7 @@ class LegacyMappingTest {
                         ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.AIS).toLegacy().outputTypeName());
     }
 
+
     @Test
     void activitiesCarryActivityType() {
         assertEquals(ActivityType.FORUM,

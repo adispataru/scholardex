@@ -30,7 +30,13 @@ public sealed interface IndicatorKind
         }
     }
 
-    /** Citation-based indicator. {@code policy} selects the self-citation exclusion mode (H61). */
+    /**
+     * Citation-based indicator. {@code policy} selects the self-citation exclusion mode (H61).
+     *
+     * <p>Indicators persisted before H61 stored the boolean {@code excludeSelf} instead of {@code policy}; those
+     * documents are migrated to {@code policy} on startup by {@code CitationPolicyMigrationRunner} so the record's
+     * canonical constructor can deserialize them.</p>
+     */
     record Citations(SelfCitationPolicy policy, ScoringStrategy strategy) implements IndicatorKind {
         public Citations {
             if (policy == null) throw new IllegalArgumentException("policy cannot be null");
