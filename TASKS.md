@@ -160,7 +160,21 @@ Done history moved to `TASKS-done.md`.
   - **Inclusion enforced:** `ScientificProductionService.calculateScientificProductionScore` drops pubs outside `yearRangeSpec` (AllYears fast no-op). **Live sweep: all 43 indicators are AllYears → score-neutral** (Matematică's Mate_S/Mate_C carry `scoreYearRangeSpec Absolute(2019,2023)`, the already-enforced score path, NOT a yearRangeSpec).
   - **Admin:** free-text year fields already round-trip via `parse()`; added `PREV:n`/`LATEST:n` help hints.
   - Tests: spec resolution/boundaries/codec, holder set/restore/nesting, inclusion via the GenericCount path.
-  **REMAINING: re-point FV Matematică** (`Mate_S_recent`→`PreviousNYears(7)`; Mate_S/Mate_S_recent/Mate_C `scoreYearRange`→`LatestNRankings(1)`) — deferred per plan; needs a `Mate_S_recent` indicator to exist + live validation (florin can't distinguish the recent-window filter — use synthetic boundary pubs). The `Mate_C` SRI-count formula fix is **separate/config-only, out of H60**. Minor: the per-indicator xlsx export (`buildIndicatorWorkbookExport`) re-scores on a separate now-anchored path — wrap if a relative-spec indicator ever needs xlsx export.
+  **MATEMATICĂ RE-POINTED (2026-06-25) — applied to live Mongo config:** `Mate_S_recent.yearRangeSpec`
+  Absolute(2018,2025)→`PreviousNYears(7)`; `Mate_S`/`Mate_S_recent`/`Mate_C.scoreYearRangeSpec`
+  Absolute(2019,2023)→`LatestNRankings(1)`. Verified live: `/admin/indicators` 200, the three render `PREV:7`/
+  `LATEST:1`, deserialize cleanly. Impact: `LatestNRankings(1)` resolves to **[2024]** (latest `wos_metric_fact`
+  year; coverage 22,245 journals ≥ 2023's 21,844 → complete list), so Mate_S/Mate_C now score against the 2024 JCR
+  list instead of best-of-2019–2023 (the standard's "latest list at submission"). Stored runs keep cached scores
+  (fingerprint changes via the new legacy string → future runs + live views re-score). **The `Mate_C` SRI-count
+  formula fix is separate/config-only, out of H60.**
+  **CRITICAL FIX shipped alongside (`033e684`):** the H61 boolean→enum change broke deserialization of all
+  pre-H61 Citations indicators (Info_C/Mate_C/…) — green tests missed it; only booting surfaced it. Fixed by
+  `CitationPolicyMigrationRunner` (raw-Mongo startup migration, self-healing). See memory
+  record-component-change-breaks-mongo-deser. **Caveat:** the live `:8080` (pre-H61 code) mis-reads the migrated
+  Citations shape until restarted on the new build.
+  Minor remaining: the per-indicator xlsx export (`buildIndicatorWorkbookExport`) re-scores on a separate
+  now-anchored path — wrap if a relative-spec indicator ever needs xlsx export.
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   Goal: enable users to export a `UserIndividualReportRun` to a per-report-type template and to upload a corrected file for a transient, read-only score verification (file scores vs the persisted run; never writes, never auto-creates a run). The original 4-bucket reconcile/commit design was superseded (2026-05-19) and its dead code removed (2026-06-14).
