@@ -234,7 +234,17 @@ public abstract class AbstractForumScoringService implements ScoringService {
                 publication.getId(),
                 logger
         );
-        publicationYear.ifPresent(pubYear -> allowedYears.addAll(indicator.getEffectiveScoreYearRange().allowedYears(pubYear)));
+        // H60: resolve the score-year window against the run's referenceYear (from the thread-scoped context) so
+        // relative specs (LatestNRankings) roll; availableRankingYears is fetched only when a relative spec needs it.
+        publicationYear.ifPresent(pubYear -> {
+            ScoreYearRangeSpec spec = indicator.getEffectiveScoreYearRange();
+            Integer referenceYear = ScoringReferenceYearContext.current();
+            List<Integer> rankingYears = (spec instanceof ScoreYearRangeSpec.LatestNRankings && referenceYear != null)
+                    ? lookupPort.getDistinctRankingYears()
+                    : List.of();
+            allowedYears.addAll(spec.allowedYears(
+                    new ScoreYearRangeSpec.ResolutionContext(pubYear, referenceYear, rankingYears)));
+        });
         int maxYear = lookupPort.maxAvailableYear();
         if (allowedYears.isEmpty()) {
             publicationYear.ifPresentOrElse(

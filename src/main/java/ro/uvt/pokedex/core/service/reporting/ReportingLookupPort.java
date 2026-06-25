@@ -63,6 +63,15 @@ public interface ReportingLookupPort {
 
     int getTopRankings(String categoryIndex, Integer year);
 
+    /**
+     * H60: the distinct ranking list-years present in the DB (the JCR/WoS metric years), ascending. The
+     * journal-independent universe that {@code ScoreYearRangeSpec.LatestNRankings} selects its latest-n from (capped
+     * at the run's referenceYear by the caller). Default empty; the Postgres facade overrides with the real query.
+     */
+    default java.util.List<Integer> getDistinctRankingYears() {
+        return java.util.List.of();
+    }
+
     Set<String> getUniversityAuthorIds();
 
     /**

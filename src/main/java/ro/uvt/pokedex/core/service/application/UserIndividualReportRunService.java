@@ -122,8 +122,11 @@ public class UserIndividualReportRunService {
 
         List<String> indicatorResultIds = new ArrayList<>();
         List<String> errors = new ArrayList<>();
+        // H60: score with the run's referenceYear in scope so relative year specs resolve against it.
         Optional<ReportScopedIndividualReportComputation> computationOpt =
-                userReportFacade.computeReportScopedIndividualReport(userEmail, reportDefinitionId);
+                ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext.with(
+                        run.getReferenceYear(),
+                        () -> userReportFacade.computeReportScopedIndividualReport(userEmail, reportDefinitionId));
         if (computationOpt.isEmpty()) {
             return Optional.empty();
         }

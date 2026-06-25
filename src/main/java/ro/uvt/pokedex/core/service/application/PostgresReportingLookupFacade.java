@@ -269,6 +269,16 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         return cacheService.getUniversityAuthorIds();
     }
 
+    @Override
+    public List<Integer> getDistinctRankingYears() {
+        // H60: the universe of ranking list-years (JCR/WoS metric years) for LatestNRankings. Memoized in the same
+        // refresh scope as the other ranking reads.
+        return reportingLookupMemoization.getOrCompute("postgres", "distinctRankingYears", "all",
+                () -> namedParameterJdbcTemplate.queryForList(
+                        "SELECT DISTINCT year FROM reporting_read.wos_metric_fact WHERE year IS NOT NULL ORDER BY year",
+                        new MapSqlParameterSource(), Integer.class));
+    }
+
     private List<WoSRanking> loadRankingsByIssn(String normalizedIssn) {
         List<WosRankingView> views = namedParameterJdbcTemplate.query(
                 """

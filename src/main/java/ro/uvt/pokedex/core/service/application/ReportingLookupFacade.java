@@ -85,4 +85,9 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     public Set<String> getUniversityAuthorIds() {
         return postgresFacade.getUniversityAuthorIds();
     }
+
+    @Override
+    public List<Integer> getDistinctRankingYears() {
+        return postgresFacade.getDistinctRankingYears();
+    }
 }
