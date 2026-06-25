@@ -2,6 +2,54 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H69 Scoring rework for the multi-source canonical layer (archived 2026-06-25)
+
+Archived from `TASKS.md` on 2026-06-25 — all six threads resolved. Closed task doc:
+`docs/tasks/closed/h69-thread2-citation-source-selector.md`. Memories: predatory-venue-gate,
+reporting-lookup-primary-delegator, conference-dblp-core-resolution, openalex-venue-source-type.
+
+- [x] `H69` Scoring rework for the multi-source canonical layer (after H66B Phase 4). *(completed 2026-06-25)*
+  Goal was to rework scoring to fully consume the multi-source canonical signals (OpenAlex citation graph + ISSN
+  venue identity; DBLP `conf/X` conference identity). Outcome by thread:
+  - **(1) dispatch/routing — DONE.** Single-scorer dispatch confirmed + double-counts closed: the CS router
+    dispatches by primary forum type (journals + conferences only, books → CS_SENSE); a `cp` in a Journal forum no
+    longer also floors at conference D; LNCS/Springer-978 chapters excluded from the book scorer (only LNCS-*named*
+    `ch` are conference candidates); Euro-Par et al. resolve via the local DBLP dump sweep; `cp` in an
+    untyped/unknown forum scores 0. Commits `d580144`…`2e6fede`.
+  - **(2) citation-driven criteria — SATISFIED (graph) + selector DEFERRED.** Both citation sites
+    (`ReportScopedIndicatorScoringSupport.computeCitationView` score path + `CitationRowProjector` display path)
+    already walk the in-corpus citation graph (`citation_facts` = OpenAlex `cited_by` ∪ Scopus) and score each
+    citing pub — they never used `citedByCount`. The h-index consumes the per-source counts
+    (`graph/scopus/wos_citation_count`). The only unbuilt clause, **"pick the citation source per domain"** (a
+    `CitationSource` selector mirroring `HIndexSource` on the `Citations` kind), was deferred: no domain standard
+    needs source-specific citation **counts** today, and source-attributed counts carry the same indicative
+    undercount as the source h (gated on `H76` + corpus completeness, bundle with H67 S4b). Scope + design:
+    `docs/tasks/closed/h69-thread2-citation-source-selector.md`.
+  - **(3) forum dedup impact — DONE.** `ForumReconcileService` → `ScholardexForumBuilder.buildScopusForums` →
+    `ScholardexForumDeduplicationService` merges ISSN/erihId clusters (safe-merge per H55), folding DBLP-minted and
+    Scopus forums for the same conference so both score identically.
+  - **(4) regression sweep — SWEPT CLEAN.** Full suite green across every domain scorer + the CS frozen-baseline
+    parity test; shared-infra changes verified score-neutral. Also fixed one pre-existing `@WebMvcTest` mock gap
+    (`RankingViewSecurityContractTest`, commit `6159896`).
+  - **(5) aggregate (non-additive) HIndex indicator — DONE (= H67 S4a).** `IndicatorKind.HIndex` +
+    `ScoringStrategy.HIRSCH` + persisted round-trip + HIRSCH reduce branched in
+    `buildReportScopedIndicatorDetail`/`hIndexExcludingSelf` + admin form. Per-domain threshold activation = H67 S4b
+    (still open under H67).
+  - **(6) year/category-scoped WoS ranking reads — DONE.** Scaling-critical scoped read shipped under H67
+    (`findForumCoreCollectionYears` driving the Hirsch year-true Core classification); this arc added
+    `ReportingLookupPort.getForumRankings(forum, years, categories)` (Postgres pushes `year IN`/`category IN` into
+    SQL, memoized, ISSN/name fallback, delegated through the `@Primary` facade) and migrated AIS/IF/RIS/Economics/
+    CS-journal scoring onto it, keeping in-memory guards so scores are identical (full suite 2428/2428). CNFIS left
+    on the full read (its `min(year, maxAvailableYear)` probe makes SQL year-scoping unsafe). Edition policy +
+    "in Core when?" remain H67 S4b.
+  - **Also shipped (CS scoring hardening, read-side, beyond the threads):** ESCI/AHCI journals recognized
+    (no-JIF-quartile WoS editions floor at C as `SCOPUS+ESCI`/`AHCI`, year-true + carry-forward — fixed the
+    `ReportingLookupFacade` delegation gap); SENSE book scale pinned to the standard (perspective d.i: A=16…) +
+    anchored whole-word publisher matching; publication-year display; Scopus stray-colon DOI dedup; predatory-venue
+    gate (WSEAS/IAENG/DAAAM + Beall's exact-match + allowlist, `data/predatory/`); CORE/SENSE quartile sentinels.
+  - **Residual (NOT in H69, tracked elsewhere):** the citation-source selector (deferred, above); H67 S4b per-domain
+    h/threshold activation; `H76` WoS CPCI onboarding (h/citation WoS accuracy depends on it).
+
 ## H71 + H62 (archived 2026-06-25)
 
 Archived from `TASKS.md` on 2026-06-25 after a backlog-vs-implementation audit. Closed task docs:
