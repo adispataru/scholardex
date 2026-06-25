@@ -38,6 +38,23 @@ class ReportingLookupFacadeTest {
     }
 
     @Test
+    void forumIndexMembershipChecksDelegateToPostgresFacade() {
+        // Regression: the @Primary facade must delegate EVERY membership check, not just isForumInScopus —
+        // a missing delegation silently falls through to the interface default (false), so ESCI/AHCI never showed.
+        when(postgresReportingLookupFacade.isForumInScopus("f1")).thenReturn(true);
+        when(postgresReportingLookupFacade.isForumInEsci("f1", 2026)).thenReturn(true);
+        when(postgresReportingLookupFacade.isForumInAhci("f1", 2026)).thenReturn(true);
+
+        org.junit.jupiter.api.Assertions.assertTrue(reportingLookupFacade.isForumInScopus("f1"));
+        org.junit.jupiter.api.Assertions.assertTrue(reportingLookupFacade.isForumInEsci("f1", 2026));
+        org.junit.jupiter.api.Assertions.assertTrue(reportingLookupFacade.isForumInAhci("f1", 2026));
+
+        verify(postgresReportingLookupFacade).isForumInScopus("f1");
+        verify(postgresReportingLookupFacade).isForumInEsci("f1", 2026);
+        verify(postgresReportingLookupFacade).isForumInAhci("f1", 2026);
+    }
+
+    @Test
     void rankingLookupsDelegateToPostgresFacade() {
         WoSRanking ranking = new WoSRanking();
         CoreConferenceRanking conferenceRanking = new CoreConferenceRanking();

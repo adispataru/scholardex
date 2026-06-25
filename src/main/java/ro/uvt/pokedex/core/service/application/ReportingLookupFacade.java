@@ -32,6 +32,16 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public boolean isForumInEsci(String forumId, int year) {
+        return postgresFacade.isForumInEsci(forumId, year);
+    }
+
+    @Override
+    public boolean isForumInAhci(String forumId, int year) {
+        return postgresFacade.isForumInAhci(forumId, year);
+    }
+
+    @Override
     public ScholardexBookFact getBook(String bookId) {
         if (bookId == null || bookId.isBlank()) {
             return null;
