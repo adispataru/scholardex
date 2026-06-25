@@ -68,9 +68,26 @@ not WoS venue *names* to our forum names (fuzzy). Tag the matched forum WoS-inde
 - **Report** match counts per key + distinct forums tagged + distinct already-WoS (journals mixed into the source
   titles are harmless no-ops) + top unmatched venues. No silent truncation.
 
-Slices: **S1** parse + **dry-run match report** (no writes) via a maintenance endpoint — DONE · **S2** add acronym
-matching + apply: tag `wosForumIds` on matched forums + projection refresh + tests · **S3** broad roster (same recipe
-minus `OG=`) + re-validate the WoS-h spot-check (Adrian 4→5 if his CPCI citing venues now resolve).
+Slices: **S1** parse + **dry-run match report** (no writes) via a maintenance endpoint — DONE · **S2** title-containment
+matching + apply (tag `wosCpciIndexed`) — DONE (applied live) · **S3** broad roster (same recipe minus `OG=`) +
+projection refresh + re-validate the WoS-h spot-check (Adrian 4→5 if his CPCI citing venues now resolve).
+
+## S2 result (2026-06-25) — applied live to `scholardex`
+
+- **Title-containment matching** added (WoS conf/source title ⊆ forum name, ≥30 chars, shortest forum on ties): lifts
+  net-new **182 → 211** by recovering per-edition Scopus proceedings forums (SYNASC etc.) that exact-title equality
+  missed. Live dry-run == the Python estimate exactly (DOI 917, ISSN/ISBN 273, exact-title 14, containment 98).
+- **Marker = a new `ScholardexForumFact.wosCpciIndexed` boolean**, NOT `wosForumIds` (which is unique-indexed +
+  joined as WoS journal ids by the B2 projection). Only `applyCitationSourceSplit` reads it → a citation from a CPCI
+  conference counts as WoS-venue.
+- **Applied via a throwaway agent-dev instance** (`:8181`, all three schedulers disabled so it couldn't double-poll
+  the live `:8080`): `POST /admin/initialization/wos/cpci/apply` → **211 forums tagged** (verified in Mongo: IEEE
+  Semiconductor Conf/CAS, Ultrasonics Symposium, INDIN, Neural Networks proceedings — the Scopus-but-not-WoS CS/eng
+  venues we targeted). Idempotent (re-apply tagged 0). Instance stopped.
+
+**NOT yet visible:** `wosCitationCount` / the WOS-venue h-index only recompute on a **projection refresh**
+(`applyCitationSourceSplit` runs during projection build). Deferred so as not to rebuild on the shared Postgres while
+`:8080` is serving — run the reporting projection refresh when convenient, then the WoS-h spot-check (Adrian 4→5).
 
 ## S1 result (2026-06-25) — dry-run against live `scholardex` (74,908 forums / 149,899 pubs)
 
