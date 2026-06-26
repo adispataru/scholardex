@@ -326,6 +326,7 @@ public class PostgresScholardexProjectionReadPort {
         publication.setApproved(Boolean.TRUE.equals(rs.getObject("approved", Boolean.class)));
         publication.setAuthors(toStringList(rs.getArray("author_ids")));
         publication.setAffiliations(toStringList(rs.getArray("affiliation_ids")));
+        publication.setCorrespondingAuthorIds(toStringList(rs.getArray("corresponding_author_ids")));
         publication.setForum(rs.getString("forum_id"));
         publication.setBookId(rs.getString("book_id"));
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));

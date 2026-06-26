@@ -211,6 +211,42 @@ class ReportingComputationSupportTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void calculatePublicationScoreFirstOrCorrespondingIncludesCorrespondingNonFirst() {
+        // H63: FIRST_OR_CORRESPONDING keeps a pub if the candidate is the first author OR a corresponding author.
+        ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
+        ScholardexAuthorView a1 = new ScholardexAuthorView();
+        a1.setId("a1");
+
+        ScholardexPublicationView firstAuthor = publication("p-first", List.of("a1", "x"));        // first → in
+        ScholardexPublicationView correspondingNotFirst = publication("p-corr", List.of("x", "a1"));
+        correspondingNotFirst.setCorrespondingAuthorIds(List.of("a1"));                            // corresponding → in
+        ScholardexPublicationView coauthorNoCorresponding = publication("p-co", List.of("x", "a1")); // neither → out (fallback)
+        ScholardexPublicationView foreign = publication("p-foreign", List.of("z", "y"));
+        foreign.setCorrespondingAuthorIds(List.of("w"));                                           // neither → out
+
+        Indicator firstOrCorr = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(firstOrCorr, "PUBLICATIONS_FIRST_OR_CORRESPONDING");
+        Indicator main = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(main, "PUBLICATIONS_MAIN_AUTHOR");
+
+        doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
+                .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(firstOrCorr));
+        doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
+                .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(main));
+
+        List<ScholardexPublicationView> pubs = List.of(firstAuthor, correspondingNotFirst, coauthorNoCorresponding, foreign);
+
+        double firstOrCorrScore = ReportingComputationSupport.calculatePublicationScore(
+                firstOrCorr, List.of(a1), pubs, scientificProductionService);
+        double mainScore = ReportingComputationSupport.calculatePublicationScore(
+                main, List.of(a1), pubs, scientificProductionService);
+
+        assertEquals(2.0, firstOrCorrScore); // first-author + corresponding-non-first
+        assertEquals(1.0, mainScore);        // first-author only — the corresponding pub is NOT counted by MAIN
+    }
+
+    @Test
     void calculatePublicationScoreDoesNotTreatMissingFirstAuthorAsEmptyStringMatch() {
         ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
         ScholardexAuthorView blankAuthor = new ScholardexAuthorView();

@@ -40,6 +40,12 @@ public class ScholardexPublicationView {
     private String pageRange;
     private boolean approved;
     private List<String> authorIds = new ArrayList<>();
+    /**
+     * H63: canonical corresponding-author ids (from {@code scholardex.authorship_facts} edges where
+     * {@code corresponding=true}), parallel to {@code authorIds}. Distinct from {@code correspondingAuthors}, which is
+     * Scopus-sourced name strings. Empty when no corresponding author is known for the publication.
+     */
+    private List<String> correspondingAuthorIds = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private String forumId;
     /** H66B M7: book venue Scopus Source ID (set instead of forumId for book-typed publications). */

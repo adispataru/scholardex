@@ -309,6 +309,7 @@ public class PostgresScholardexAdminReadPort {
         publication.setApproved(Boolean.TRUE.equals(rs.getObject("approved", Boolean.class)));
         publication.setAuthors(toStringList(rs.getArray("author_ids")));
         publication.setAffiliations(toStringList(rs.getArray("affiliation_ids")));
+        publication.setCorrespondingAuthorIds(toStringList(rs.getArray("corresponding_author_ids")));
         publication.setForum(rs.getString("forum_id"));
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         Integer citedByCount = rs.getObject("cited_by_count", Integer.class);

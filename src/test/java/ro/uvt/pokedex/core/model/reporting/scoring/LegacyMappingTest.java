@@ -72,6 +72,12 @@ class LegacyMappingTest {
                 ((IndicatorKind.Publications) IndicatorKind.of("PUBLICATIONS_MAIN_AUTHOR", "IMPACT_FACTOR")).role());
         assertEquals(AuthorRole.CO,
                 ((IndicatorKind.Publications) IndicatorKind.of("PUBLICATIONS_COAUTHOR", "IMPACT_FACTOR")).role());
+        // H63: first-or-corresponding role round-trips both ways.
+        assertEquals(AuthorRole.FIRST_OR_CORRESPONDING,
+                ((IndicatorKind.Publications) IndicatorKind.of("PUBLICATIONS_FIRST_OR_CORRESPONDING", "GENERIC_COUNT")).role());
+        assertEquals("PUBLICATIONS_FIRST_OR_CORRESPONDING",
+                new IndicatorKind.Publications(AuthorRole.FIRST_OR_CORRESPONDING, ScoringStrategy.GENERIC_COUNT)
+                        .toLegacy().outputTypeName());
     }
 
     @Test

@@ -42,6 +42,22 @@ public final class ReportingComputationSupport {
                         return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
                     })
                     .collect(Collectors.toList());
+        } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_OR_CORRESPONDING) {
+            // H63: keep a publication if the researcher is its first author OR one of its corresponding authors.
+            // Publications with no known corresponding author (correspondingAuthorIds empty) fall back to first-author.
+            Set<String> candidateIds = authors.stream()
+                    .map(ScholardexAuthorView::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            filtered = publications.stream()
+                    .filter(p -> {
+                        String firstAuthorId = firstAuthorId(p);
+                        boolean isFirst = firstAuthorId != null && candidateIds.contains(firstAuthorId);
+                        boolean isCorresponding = p.getCorrespondingAuthorIds() != null
+                                && p.getCorrespondingAuthorIds().stream().anyMatch(candidateIds::contains);
+                        return isFirst || isCorresponding;
+                    })
+                    .collect(Collectors.toList());
         } else {
             filtered = publications;
         }

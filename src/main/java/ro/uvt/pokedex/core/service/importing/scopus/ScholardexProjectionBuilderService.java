@@ -248,6 +248,8 @@ public class ScholardexProjectionBuilderService {
 
             // Denormalize author affiliations from the validated edges onto the author views before the write.
             denormalizeAuthorAffiliations(authorViews, validAuthorAffiliationFacts);
+            // H63: denormalize corresponding-author ids (authorship edges where corresponding=true) onto the pub views.
+            applyCorrespondingAuthors(publicationViews, validAuthorshipFacts);
 
             int droppedCitations = citationFacts.size() - validCitationFacts.size();
             int droppedAuthorship = authorshipFacts.size() - validAuthorshipFacts.size();
@@ -425,6 +427,30 @@ public class ScholardexProjectionBuilderService {
         for (ScholardexAuthorView view : authorViews) {
             LinkedHashSet<String> affiliations = affiliationIdsByAuthor.get(view.getId());
             view.setAffiliationIds(affiliations == null ? List.of() : new ArrayList<>(affiliations));
+        }
+    }
+
+    /**
+     * H63: denormalize each publication's corresponding-author ids from the authorship edges (where
+     * {@code corresponding=true}) onto the publication view, parallel to {@code authorIds}, so the scoring engine can
+     * select first-OR-corresponding authorship without an edge join. Overwrites the empty default.
+     */
+    private void applyCorrespondingAuthors(
+            List<ScholardexPublicationView> publicationViews,
+            List<ScholardexAuthorshipFact> authorshipFacts) {
+        Map<String, LinkedHashSet<String>> correspondingIdsByPublication = new HashMap<>();
+        for (ScholardexAuthorshipFact edge : authorshipFacts) {
+            if (edge.getPublicationId() == null || edge.getAuthorId() == null
+                    || !Boolean.TRUE.equals(edge.getCorresponding())) {
+                continue;
+            }
+            correspondingIdsByPublication
+                    .computeIfAbsent(edge.getPublicationId(), k -> new LinkedHashSet<>())
+                    .add(edge.getAuthorId());
+        }
+        for (ScholardexPublicationView view : publicationViews) {
+            LinkedHashSet<String> ids = correspondingIdsByPublication.get(view.getId());
+            view.setCorrespondingAuthorIds(ids == null ? List.of() : new ArrayList<>(ids));
         }
     }
 
@@ -846,8 +872,9 @@ public class ScholardexProjectionBuilderService {
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
                     scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
                     pii, pubmed_id, auth_keywords, book_id,
-                    graph_citation_count, scopus_citation_count, wos_citation_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    graph_citation_count, scopus_citation_count, wos_citation_count,
+                    corresponding_author_ids
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writePublicationRows(rows, sql);
     }
@@ -863,8 +890,9 @@ public class ScholardexProjectionBuilderService {
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
                     scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
                     pii, pubmed_id, auth_keywords, book_id,
-                    graph_citation_count, scopus_citation_count, wos_citation_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    graph_citation_count, scopus_citation_count, wos_citation_count,
+                    corresponding_author_ids
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     doi = EXCLUDED.doi,
                     doi_normalized = EXCLUDED.doi_normalized,
@@ -911,7 +939,8 @@ public class ScholardexProjectionBuilderService {
                     book_id = EXCLUDED.book_id,
                     graph_citation_count = EXCLUDED.graph_citation_count,
                     scopus_citation_count = EXCLUDED.scopus_citation_count,
-                    wos_citation_count = EXCLUDED.wos_citation_count
+                    wos_citation_count = EXCLUDED.wos_citation_count,
+                    corresponding_author_ids = EXCLUDED.corresponding_author_ids
                 """;
         writePublicationRows(rows, sql);
     }
@@ -968,6 +997,7 @@ public class ScholardexProjectionBuilderService {
                 ps.setInt(45, row.getGraphCitationCount());
                 ps.setInt(46, row.getScopusCitationCount());
                 ps.setInt(47, row.getWosCitationCount());
+                ps.setArray(48, textArray(ps.getConnection(), row.getCorrespondingAuthorIds()));
             }
 
             @Override
@@ -1158,6 +1188,9 @@ public class ScholardexProjectionBuilderService {
                         && affectedAuthorIds.contains(row.getAuthorId())
                         && affectedAffiliationIds.contains(row.getAffiliationId()))
                 .toList();
+        // H63: denormalize corresponding-author ids onto the batch's pub views (mirror of the full-build pass), so a
+        // batch refresh upsert carries them instead of wiping them to the empty default.
+        applyCorrespondingAuthors(publicationViews, authorshipFacts);
         return new BatchRefreshState(
                 affectedPublicationIds,
                 affectedAuthorIds,
