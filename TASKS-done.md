@@ -2,6 +2,37 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H77 Admin provisional scoring from declared source ids (archived 2026-06-26)
+
+Archived from `TASKS.md` on 2026-06-26 — all four slices done, tested (suite 2464/2464), and live-verified.
+Closed task doc: `docs/tasks/closed/h77-admin-provisional-scoring-declared-ids.md`. Memory:
+non-finite-score-ris-projection.
+
+- [x] `H77` Admin provisional scoring from declared source ids (unvalidated authorship). *(completed 2026-06-26)*
+  Goal: let an **admin** run a **read-only** report that scores a researcher / a whole department from their
+  **declared identity** (canonical authors resolved from the org roster by name + declared Scopus ids) even before
+  the researcher validates their canonical author — clearly labelled provisional, never writing confirm/reject
+  decisions. Outcome by slice:
+  - **S1 — DONE.** `ProvisionalAuthorResolutionService`: roster (`department_affiliations`) → canonical author by
+    diacritic-insensitive full-name match on `alternativeNames` + scopus-presence homonym disambiguation; dry-run
+    endpoint `POST /admin/initialization/provisional/resolveDepartment`. Live: Matematică 13/15 RESOLVED.
+  - **S2 — DONE.** `UserReportFacade.computeProvisionalReport(authorIds, reportId, refYear)` via an extracted
+    `AuthorshipContext` + shared `scoreReport` loop; CONFIRMED (self) and DECLARED (provisional) converge — the
+    resolved author ids drive both the publication set (`findAllPublicationsByAuthorsIn`, no
+    `PublicationAuthorshipDecision`) AND self-citation/author-share. Score-neutral for the CONFIRMED path.
+  - **S3 — DONE.** `Source.ADMIN_PROVISIONAL` + persisted `provisional` flag on `UserIndividualReportRun`;
+    `buildAndSaveProvisionalRun`; `ProvisionalDepartmentReportService.run` (batch; AMBIGUOUS/UNRESOLVED flagged, not
+    dropped).
+  - **S4 — DONE.** `AdminProvisionalReportController` + `admin/provisional-report.html` (`/admin/provisional-report`,
+    gated by `/admin/**` → `PLATFORM_ADMIN`): form → results table, provisional banner + per-person status.
+  - **Live (Departamentul de Matematică × FV Matematică):** 13/15 scored; the H71 de-merge flowed through (Adina
+    Sasu 568.89 / Bogdan Sasu 516.70, distinct); Casu/Comănescu flagged UNRESOLVED. Also exercised the H60 relative
+    year specs end-to-end (`PreviousNYears(7)` window correctly dropped Birtea's 33 pre-2020 pubs of 42).
+  - **Surfaced (spawned separately):** a RIS forum metric projected as `Infinity` poisoned indicator totals (∞);
+    guarded at `ScientificProductionService.getScore` (non-finite per-pub score → 0); RIS-projection root cause is a
+    separate task. **Deferred:** diacritic-surname resolution (unaccented name index), researcher-view provisional
+    badge (admin-only surface), WoS/Google-Scholar declared-id resolution.
+
 ## H69 Scoring rework for the multi-source canonical layer (archived 2026-06-25)
 
 Archived from `TASKS.md` on 2026-06-25 — all six threads resolved. Closed task doc:

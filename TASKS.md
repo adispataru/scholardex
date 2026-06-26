@@ -9,34 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H77` Admin provisional scoring from declared source ids (unvalidated authorship). Scoring uses
-  `findConfirmedPublicationsForScoring` (only researcher-**confirmed** `PublicationAuthorshipDecision` pubs), so a
-  researcher with a declared `scopusId` (from the import) but no validated canonical author scores **0** — the
-  `scopusId→canonical author` mapping only materializes at validation (`resolveAuthorLookupKeys` returns the raw
-  scopusId but `findAuthorsByIdIn` matches canonical `_id` only). Goal: let an **admin** run a **read-only
-  provisional** report that scores from declared Scopus ids (decision 2026-06-25: read-only, NOT auto-validate —
-  that would mask the researcher's curation). Building blocks exist: `ScholardexAuthorFactRepository.
-  findByScopusAuthorIdsIn`/`findByOrcidIdsContains` → canonical authors → `findAllPublicationsByAuthorsIn`. Slices:
-  (1) declared-id→canonical-author resolution (unit-testable) · (2) `findProvisionalPublicationsForScoring` · (3)
-  admin-gated run with an `authorshipSource{CONFIRMED,DECLARED}` flag threaded so pubs AND researcherAuthorIds
-  (self-cit/division) use the resolved authors + a `Source.ADMIN_PROVISIONAL` label · (4) "provisional/unvalidated"
-  label in view/export. Caveat: over-includes false-positive attributions (inherent to bypassing validation; the
-  label communicates it). Plan: `docs/tasks/active/h77-admin-provisional-scoring-declared-ids.md`.
-  **Grounded in real data (2026-06-25):** no `users` collection, but the org/staff import populated
-  `department_affiliations` (Matematică = 15 people by UVT email). They have no profile/scopusId of their own but
-  resolve to canonical authors **by name** (`alternativeNames`; the authors already carry `scopusAuthorIds` + pubs).
-  Coverage: **9/15 unique matches (all with scopus)**, 3 homonyms, 3 diacritic mismatches. So the people source = the
-  org roster and the bridge = name (diacritic-normalized + homonym disambiguation by UVT-affiliation/scopus); the
-  scopusId-on-profile path still applies where the import populates profiles. This makes an **admin department
-  report** (score everyone in a department, provisionally) the concrete target.
-  **SLICE 1 DONE (2026-06-25):** `ProvisionalAuthorResolutionService` (roster→canonical-author by name:
-  diacritic-insensitive full-name match on `alternativeNames` + scopus-presence homonym disambiguation) + dry-run
-  endpoint `POST /admin/initialization/provisional/resolveDepartment`. Live on Matematică: **13/15 RESOLVED** (all
-  with scopus), 2 UNRESOLVED (surname-diacritic Casu/Comănescu — needs an unaccented name index). Surfaced an H71
-  author over-merge (Adina+Bogdan Sasu → one canonical author; spawned a follow-up task). Remaining: S2
-  `findProvisionalPublicationsForScoring(resolvedAuthors)` · S3 admin-gated provisional run (authorshipSource flag +
-  `Source.ADMIN_PROVISIONAL`) · S4 "unvalidated" label.
-
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
   (nothing computes it today). Needed by chimie (≥13/9 WoS), geografie (Hirsch excl. self-cit), fizica (h
