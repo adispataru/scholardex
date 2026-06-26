@@ -77,7 +77,31 @@ the name bridge is what's available.
   dev Mongo has no `users` collection, so the live check (e.g. a maths-department candidate) must run on the instance
   that holds the accounts.
 
-## Open decisions
+## Decisions locked (2026-06-25)
 
-- Trigger surface: a new admin endpoint / a flag on the existing build-run admin action.
-- Whether to also resolve WoS/Google-Scholar declared ids in v1 (Scopus is the stated driver).
+- **Scope = per-department batch** (built on a per-person primitive): admin picks department + report definition →
+  resolve the roster → score each RESOLVED person → one results table, with AMBIGUOUS/UNRESOLVED flagged (score 0).
+- **Persistence = reuse `UserIndividualReportRun`**: subject = affiliation email, `Source.ADMIN_PROVISIONAL` + a
+  provisional flag, `triggeredByEmail` = admin. The email is just an identifier (no `User`/profile needed). Reuses the
+  run history + export plumbing.
+- **Surface = a Thymeleaf admin page** (pick department + report, run, scored table with provisional labels + the
+  unresolved/ambiguous flags).
+
+## Refined slices (post-decisions)
+
+- **S2 — per-person provisional scoring primitive.** Extract an authorship-resolution seam from
+  `computeReportScopedIndividualReport`: an `AuthorshipContext = (publications, researcherAuthorIds)` with two
+  producers — `CONFIRMED` (today: userEmail → confirmed pubs + profile ids) and `DECLARED`
+  (`ProvisionalAuthorResolutionService.resolvePerson(email)` → canonical author-ids →
+  `findAllPublicationsByAuthorsIn`; the same author-ids are the `researcherAuthorIds` for self-cit + author-division).
+  Score with the existing indicator loop. Unit-test the DECLARED context build.
+- **S3 — department batch + persistence.** `runProvisionalDepartmentReport(departmentId, reportDefinitionId, admin)`:
+  loop the roster, run the per-person primitive for each RESOLVED person, persist each as a `UserIndividualReportRun`
+  (`Source.ADMIN_PROVISIONAL`), collect a results table incl. the AMBIGUOUS/UNRESOLVED flags. Admin-gated.
+- **S4 — admin Thymeleaf page + label.** Pick department + report → run → scored table with the "provisional —
+  unvalidated authorship" label and per-person resolution status; same label on the run view/export.
+
+## Deferred / notes
+
+- WoS/Google-Scholar declared-id resolution: Scopus + name is the v1 driver; add later if needed.
+- Diacritic-surname resolution (Casu/Comănescu) still UNRESOLVED — needs an unaccented author-name index (separate).
