@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Provisional Department Report</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('individualReports')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('Provisional Department Report')}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-dashboard">
+                    <p class="app-dashboard__intro">
+                        Score a whole department from <strong>declared identity</strong> — each roster person is
+                        resolved to a canonical author by name / declared Scopus ids and scored even if they have
+                        <em>not</em> validated their authorship. Read-only: this never changes a researcher's own
+                        confirm/reject decisions.
+                    </p>
+
+                    <div class="app-feedback app-feedback--warning" role="note">
+                        <strong>Provisional — unvalidated authorship.</strong>
+                        Scores are computed from every publication attributed to the resolved canonical author and may
+                        include papers the researcher would reject at validation. Treat as an estimate, not an official result.
+                    </div>
+
+                    <!-- ── Run form ── -->
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">Run a provisional report</h6>
+                            </div>
+                            <div style="padding: 1rem 1.25rem;">
+                                <form method="post" th:action="@{/admin/provisional-report/run}" class="app-form-grid">
+                                    <div class="form-group">
+                                        <label for="departmentId">Department</label>
+                                        <select id="departmentId" name="departmentId" class="form-control" required>
+                                            <option value="" disabled th:selected="${selectedDepartmentId == null}">— select a department —</option>
+                                            <option th:each="d : ${departments}"
+                                                    th:value="${d.id}"
+                                                    th:text="${d.name}"
+                                                    th:selected="${d.id == selectedDepartmentId}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="reportDefinitionId">Report definition</label>
+                                        <select id="reportDefinitionId" name="reportDefinitionId" class="form-control" required>
+                                            <option value="" disabled th:selected="${selectedReportId == null}">— select a report —</option>
+                                            <option th:each="r : ${reports}"
+                                                    th:value="${r.id}"
+                                                    th:text="${r.title}"
+                                                    th:selected="${r.id == selectedReportId}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="align-self: end;">
+                                        <button type="submit" class="btn btn-primary">Run provisional report</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Results table ── -->
+                    <div class="app-table-section" th:if="${result != null}">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header app-table-toolbar">
+                                <h6 class="app-table-section__title">
+                                    Results
+                                    <span class="text-muted" style="font-weight:400; font-size:0.82rem;"
+                                          th:text="(${selectedDepartmentName} ?: '') + ' · ' + (${selectedReportTitle} ?: '') + ' — ' + ${result.scoredCount()} + ' of ' + ${result.results().size()} + ' scored'"></span>
+                                </h6>
+                            </div>
+                            <div class="app-table-section__body">
+                                <table class="app-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Person</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Resolved author</th>
+                                        <th>Scopus ids</th>
+                                        <th class="text-right">Total score</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="p : ${result.results()}">
+                                        <td th:text="${(p.firstName() ?: '') + ' ' + (p.lastName() ?: '')}"></td>
+                                        <td class="text-truncate" style="max-width:14rem" th:text="${p.email()}" th:title="${p.email()}"></td>
+                                        <td>
+                                            <span th:class="'app-queue-badge app-queue-badge--' + ${p.status().name().toLowerCase()}"
+                                                  th:text="${p.status()}"></span>
+                                        </td>
+                                        <td class="text-truncate" style="max-width:12rem"
+                                            th:text="${p.canonicalAuthorId() != null} ? ${p.canonicalAuthorId()} : '—'"
+                                            th:title="${p.canonicalAuthorId()}"></td>
+                                        <td th:text="${p.scopusAuthorIds() != null and !p.scopusAuthorIds().isEmpty()} ? ${#strings.listJoin(p.scopusAuthorIds(), ', ')} : '—'"></td>
+                                        <td class="text-right">
+                                            <span th:if="${p.runId() != null}" th:text="${#numbers.formatDecimal(p.totalScore(), 1, 2)}"></span>
+                                            <span th:unless="${p.runId() != null}" class="text-muted" title="Not scored — could not resolve a unique canonical author">—</span>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>
