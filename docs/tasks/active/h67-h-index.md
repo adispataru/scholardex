@@ -135,6 +135,23 @@ held) computed 3/2 vs real 5/5. So accuracy tracks corpus completeness; label th
     indicative — no thresholds. **Hard gate (S4b-gate)** stays blocked on per-domain accuracy validation vs official WoS
     + H76; the istorie "h OR citations" gate needs **H68**.
 
+## Status (2026-06-26) — roll-up + preview gaps CLOSED
+
+The last code gaps are done: `UserReportFacade.scoreReport` (the report roll-up, shared by normal runs **and**
+the H77 provisional path) and `buildIndicatorApplyView` (interactive preview) now branch on `isHIndexOutput()`, so an
+h-index indicator scores its **h** everywhere instead of 0. A shared `computeHIndex(indicator, authors, publications)
+→ [h, totalCit]` was extracted from the detail branch and reused by all three sites (detail / roll-up / preview), so
+they agree by construction. No template change (the JS dashboard renders h from the detail JSON's `summary.totalScore`).
+Tests: `hIndexIndicatorScoresItsHInTheReportRollUpNotZero`, `buildIndicatorApplyViewForHIndexReturnsTheComputedH`
+(suite 2466/2466). **Live-verified** via a throwaway provisional run on the maths department: the `HIndex`
+`IndicatorKind` (a record, persisted polymorphically) deserialized from Mongo cleanly and produced real per-person h
+(Bogdan Sasu 21 / Adina 20 / Blaga 18 / Birtea & Tudoran 11 / …) — the `scoreReport` path proven end-to-end.
+
+**H67 is functionally complete and indicative-display ready.** Remaining is non-code/deferred: **activation** (create
+`HINDEX_*` indicators on chimie/geografie/fizica reports via the admin form, labeled indicative — a data/admin action)
+and the **S4b hard pass/fail gate** (still deferred: computed WoS-Core h undercounts official per the H76/coverage gap;
+the istorie "h OR citations" gate needs H68).
+
 ## Relation
 
 Sibling to [H66](h66-curated-allowlists.md) (GS source) and [H68](h68-criteria-extensions.md) (OR-gate,
