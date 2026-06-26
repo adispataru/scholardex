@@ -93,7 +93,7 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
 
 ## Proposed slices
 1. **Nef core + research half** — `Nef` primitive (helper + bind + contract), I, P (first-author), T17/T18 + I/P in summary. **[DONE 2026-06-26]**
-2. **A1–A6** — books/chapters/reviews/proceedings (WoS Master Book List allowlist + editor role), A1–A6 tables + A subtotal.
+2. **A1–A6** — books/chapters/reviews/proceedings (WoS Master Book List allowlist + editor role), A1–A6 tables + A subtotal. **[DONE 2026-06-26]** — modeled as **manual-entry activities** (the WoS Master Book List is confirmed unavailable, H66; the fišă is manual-evidence by design, so the candidate self-declares publisher + link, scored `k/Nef`). Nef bound in the activity path from `N_autori` (`ActivityReportingService`); 6 `STACKED_BLOCKS` A-table bindings (tables 7–12) + reusable renderer enhancements (`BindingBlock.totalMarker`, `firstDataRow`-aware block walk); A = ΣA₁..A₆ → summary A + `T = A + I/2 + P/2`. The 6 `Fizica_A*` activity/indicator defs are per-deployment config. Suite 2475/2475.
 3. **A7–A10** — patents + projects (reused activities; `Nef` in activity context; A10 budget via H64), A complete.
 4. **C + h + T + summary** — citation count, Hirsch computation, composite T, T20 obtained row. (Da/Nu manual.)
 
