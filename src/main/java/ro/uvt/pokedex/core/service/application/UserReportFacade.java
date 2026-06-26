@@ -306,8 +306,30 @@ public class UserReportFacade {
         if (indicator != null && indicator.isCitationsOutput()) {
             return handleCitations(indicator, authors, publications, attrs);
         }
+        if (indicator != null && indicator.isHIndexOutput()) {
+            return handleHIndex(indicator, authors, publications, attrs);
+        }
 
         return new UserIndicatorApplyViewModel("user/indicators", attrs);
+    }
+
+    /**
+     * H67: interactive preview for an aggregate Hirsch (h-index) indicator — a single number (the indicative h) over
+     * the candidate's publications, reusing {@link #computeHIndex} so the preview agrees with the report roll-up + detail.
+     */
+    private UserIndicatorApplyViewModel handleHIndex(Indicator indicator,
+                                                     List<ScholardexAuthorView> authors,
+                                                     List<ScholardexPublicationView> publications,
+                                                     Map<String, Object> attrs) {
+        ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind = indicator.hIndexKind();
+        boolean itemYear = "IY".equals(indicator.getScoreYearRange());
+        int[] r = computeHIndex(indicator, authors, publications);
+        attrs.put("outputMode", "hindex");
+        attrs.put("total", String.valueOf(r[0]));
+        attrs.put("totalCit", r[1]);
+        attrs.put("hIndexSource", kind.source().name());
+        attrs.put("hIndexYearBasis", itemYear ? "ITEM_YEAR" : "CURRENT");
+        return new UserIndicatorApplyViewModel("user/indicators-apply", attrs);
     }
 
     public UserIndividualReportViewModel buildIndividualReportView(String userEmail, String reportId) {
@@ -442,6 +464,10 @@ public class UserReportFacade {
                                 citationBaseScoresByIndicator.getOrDefault(indicator, Map.of()),
                                 scientificProductionService)
                         .score();
+            } else if (indicator != null && indicator.isHIndexOutput()) {
+                // H67: the aggregate Hirsch reduce — h over the per-pub source citation counts, NOT a sum. Same
+                // computation the indicator detail uses, so the roll-up score (and the H77 provisional table) agree.
+                indicatorScore = computeHIndex(indicator, authors, publications)[0];
             }
 
             // Per-indicator absolute cap (e.g. Info_D_ix visiting-professor "maximum 24 puncte").
@@ -605,18 +631,9 @@ public class UserReportFacade {
             // H67: WoS-Core membership basis — "IY" (ScoreYearRangeSpec.ItemYear) = year-true (citing paper's year);
             // anything else = current snapshot membership.
             boolean itemYear = "IY".equals(indicator.getScoreYearRange());
-            int h;
-            int totalCit;
-            // WoS (its year-true/current classification) needs the graph walk, as does any excludeSelf; other sources
-            // without self-cit use the fast S1 columns.
-            if (kind.source() == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE || kind.excludeSelf()) {
-                int[] r = hIndexFromGraph(kind, itemYear, authors, publications);
-                h = r[0];
-                totalCit = r[1];
-            } else {
-                h = HIndexCalculator.hIndexForSource(publications, kind.source());
-                totalCit = publications.stream().mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
-            }
+            int[] r = computeHIndex(indicator, authors, publications);
+            int h = r[0];
+            int totalCit = r[1];
             rawGraph.put("hIndexYearBasis", itemYear ? "ITEM_YEAR" : "CURRENT");
             rawGraph.put("total", String.valueOf(h));
             rawGraph.put("totalCit", totalCit);
@@ -664,6 +681,25 @@ public class UserReportFacade {
      * scoped category read when {@code itemYear}, else the current snapshot); Scopus = current scopusId; GRAPH/SCHOLARDEX
      * = all internal. Returns {@code [h, totalCitationsCounted]}.
      */
+    /**
+     * H67: compute {@code [h, totalCitationsCounted]} for an HIndex indicator over the candidate's publications.
+     * Non-WoS without self-citation exclusion reads the fast S1 projection columns; WoS (year-true / current Core) and
+     * any {@code excludeSelf} walk the citation graph ({@link #hIndexFromGraph}). Shared by the report roll-up
+     * ({@link #scoreReport}), the indicator detail, and the interactive preview so all three agree on the same h.
+     */
+    private int[] computeHIndex(Indicator indicator,
+                                List<ScholardexAuthorView> authors,
+                                List<ScholardexPublicationView> publications) {
+        ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind = indicator.hIndexKind();
+        boolean itemYear = "IY".equals(indicator.getScoreYearRange());
+        if (kind.source() == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE || kind.excludeSelf()) {
+            return hIndexFromGraph(kind, itemYear, authors, publications);
+        }
+        int h = HIndexCalculator.hIndexForSource(publications, kind.source());
+        int totalCit = publications.stream().mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
+        return new int[]{h, totalCit};
+    }
+
     private int[] hIndexFromGraph(ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind,
                                   boolean itemYear,
                                   List<ScholardexAuthorView> authors,

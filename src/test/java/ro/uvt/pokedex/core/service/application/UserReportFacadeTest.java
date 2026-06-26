@@ -950,6 +950,64 @@ class UserReportFacadeTest {
     }
 
     @Test
+    void hIndexIndicatorScoresItsHInTheReportRollUpNotZero() {
+        // H67: an aggregate Hirsch indicator must contribute its h to the report roll-up (indicatorScoresByIndicatorId),
+        // not 0. Before this, scoreReport ignored isHIndexOutput() so the headline score was 0 while the drill-down
+        // detail showed the real h.
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-h");
+        indicator.setKind(new ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex(
+                ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.SCHOLARDEX, false));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-h");
+        report.setIndicators(List.of(indicator));
+        report.setCriteria(List.of());
+        var anyInstitution = new ro.uvt.pokedex.core.model.Institution();
+        anyInstitution.setName("ANY");
+        report.setIndividualAffiliation(anyInstitution);
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(individualReportRepository.findById("rep-h")).thenReturn(Optional.of(report));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro"))
+                .thenReturn(List.of(pubWithCites("p1", 5), pubWithCites("p2", 3), pubWithCites("p3", 1)));
+
+        var computation = facade.computeReportScopedIndividualReport("user@uvt.ro", "rep-h");
+
+        assertTrue(computation.isPresent());
+        // citedByCount [5,3,1] → Scholardex h = 2 (two pubs with ≥2 citations).
+        assertEquals(2.0, computation.orElseThrow().indicatorScoresByIndicatorId().get("ind-h"));
+    }
+
+    @Test
+    void buildIndicatorApplyViewForHIndexReturnsTheComputedH() {
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-h");
+        indicator.setKind(new ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex(
+                ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.SCHOLARDEX, false));
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(indicatorRepository.findById("ind-h")).thenReturn(Optional.of(indicator));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro"))
+                .thenReturn(List.of(pubWithCites("p1", 5), pubWithCites("p2", 3), pubWithCites("p3", 1)));
+
+        UserIndicatorApplyViewModel view = facade.buildIndicatorApplyView("user@uvt.ro", "ind-h");
+
+        assertEquals("user/indicators-apply", view.viewName());
+        assertEquals("hindex", view.attributes().get("outputMode"));
+        assertEquals("2", view.attributes().get("total"));
+    }
+
+    private static ScholardexPublicationView pubWithCites(String id, int citedByCount) {
+        ScholardexPublicationView p = new ScholardexPublicationView();
+        p.setId(id);
+        p.setCitedByCount(citedByCount);
+        return p;
+    }
+
+    @Test
     void buildReportScopedIndicatorDetailReturnsActivityModeWithFilteredActivities() {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator indicator = new Indicator();
