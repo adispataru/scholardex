@@ -107,46 +107,68 @@ def login(page, user, pwd):
     return ok
 
 
+SEARCH_MODULE = "module.org.bm2.management.searchAdvanced"
+RESULTS_MODULE = "module.org.bm2.management.resultsregistry"
+
+
+def follow_module_link(page, module_substr, label):
+    """
+    Navigate to an in-app module by following the page's own token-bearing link (?we=<module>&wtkps=…&wchk=…).
+    A bare ?we= GET hits module.org.bm2.error — the jas framework requires the per-link state token/checksum.
+    """
+    link = page.locator(f"a[href*='{module_substr}']").first
+    if link.count() == 0:
+        print(f"{label}: WARNING no token link for {module_substr} on this page (url={page.url[:80]})")
+        return False
+    href = link.get_attribute("href")
+    page.goto(absolute(href), wait_until="networkidle", timeout=30000)
+    page.wait_for_timeout(2800)
+    err = "module.org.bm2.error" in page.content()
+    print(f"{label}: followed link -> url={page.url[:90]} (error_page={err})")
+    return not err
+
+
 def open_advanced_search(page):
-    page.locator("text=/advanced projects search/i").first.click(timeout=10000)
-    page.wait_for_load_state("networkidle", timeout=30000)
-    page.wait_for_timeout(2000)
-    print(f"search: reached module (url has searchAdvanced={'searchAdvanced' in page.url})")
+    return follow_module_link(page, "searchAdvanced", "search")
 
 
-def set_org_filter_and_submit(page, org_id):
+ORG_NAME = "Universitatea de Vest din Timişoara"
+
+
+def dump(page, tag):
+    DISCOVER_DIR.mkdir(exist_ok=True)
+    page.screenshot(path=str(DISCOVER_DIR / f"{tag}.png"), full_page=True)
+    (DISCOVER_DIR / f"{tag}.html").write_text(page.content(), encoding="utf-8")
+    print(f"  [dump] {tag}")
+
+
+def set_org_filter_and_submit(page, org_name=ORG_NAME):
     """
-    Set the organization filter to org_id and run the search. brainmap's filter control is JS-rendered; we try a few
-    strategies and fall back to typing the org id into the first org-like input. Refined after Pass A.
+    Advanced projects search: type the institution name into the autocomplete (search.instNumeA), pick the suggestion,
+    then click 'Caută' (btnOpen). The org filter is institution-name-based (not the O-… id).
     """
-    # Strategy 1: a labelled organization input/autocomplete.
-    candidates = [
-        "input[placeholder*='rganiz']", "input[aria-label*='rganiz']",
-        "input[name*='org']", "input[id*='org']",
-    ]
-    filled = False
-    for sel in candidates:
-        loc = page.locator(sel)
-        if loc.count() > 0:
-            loc.first.fill(org_id)
-            page.wait_for_timeout(1500)
-            # an autocomplete suggestion may need a click/Enter
+    inst = page.locator("input[id$='instNumeA']").first
+    if inst.count() == 0:
+        print("search: WARNING institution autocomplete (instNumeA) not found")
+    else:
+        inst.click()
+        inst.fill(org_name)
+        page.wait_for_timeout(3000)  # ajax autocomplete
+        sugg = page.locator("ul.ui-autocomplete li, .ui-menu-item").filter(has_text="Universitatea de Vest")
+        print(f"search: autocomplete suggestions matching UVT = {sugg.count()}")
+        if sugg.count() > 0:
             try:
-                page.locator(f"text={org_id}").first.click(timeout=2500)
+                sugg.first.click(timeout=4000)
             except PWTimeout:
-                loc.first.press("Enter")
-            filled = True
-            print(f"search: org filter set via {sel!r}")
-            break
-    if not filled:
-        print("search: WARNING could not locate an org filter input (refine after --discover)")
-    # Submit.
-    for sel in ["button:has-text('Search')", "button:has-text('Caut')", "button[type=submit]"]:
-        if page.locator(sel).count() > 0:
-            page.locator(sel).first.click()
-            break
+                inst.press("Enter")
+        page.wait_for_timeout(1200)
+    btn = page.locator("input[id$='btnOpen']").first
+    if btn.count() > 0:
+        btn.click()
+    else:
+        print("search: WARNING Caută (btnOpen) not found")
     page.wait_for_load_state("networkidle", timeout=30000)
-    page.wait_for_timeout(2500)
+    page.wait_for_timeout(3000)
 
 
 # ----------------------------------------------------------------------------- result list + pagination
@@ -280,10 +302,30 @@ def append_record(rec):
 # ----------------------------------------------------------------------------- modes
 def run_discover(page):
     DISCOVER_DIR.mkdir(exist_ok=True)
-    open_advanced_search(page)
-    set_org_filter_and_submit(page, ORG_ID)
-    page.screenshot(path=str(DISCOVER_DIR / "result_page.png"), full_page=True)
-    (DISCOVER_DIR / "result_page.html").write_text(page.content(), encoding="utf-8")
+    if not open_advanced_search(page):
+        return
+    dump(page, "search_form")
+    # Fill the institution autocomplete + dump the suggestion dropdown (to derive the suggestion selector).
+    inst = page.locator("input[id$='instNumeA']").first
+    if inst.count() > 0:
+        inst.click()
+        inst.fill(ORG_NAME)
+        page.wait_for_timeout(3000)
+        dump(page, "autocomplete")
+        sugg = page.locator("ul.ui-autocomplete li, .ui-menu-item").filter(has_text="Universitatea de Vest")
+        print(f"discover: UVT autocomplete matches = {sugg.count()}")
+        if sugg.count() > 0:
+            try:
+                sugg.first.click(timeout=4000)
+            except PWTimeout:
+                inst.press("Enter")
+        page.wait_for_timeout(1200)
+    btn = page.locator("input[id$='btnOpen']").first
+    if btn.count() > 0:
+        btn.click()
+        page.wait_for_load_state("networkidle", timeout=30000)
+        page.wait_for_timeout(3000)
+    dump(page, "results")
     links = collect_project_links(page)
     print(f"discover: collected {len(links)} project links (expected ~341)")
     if links:
