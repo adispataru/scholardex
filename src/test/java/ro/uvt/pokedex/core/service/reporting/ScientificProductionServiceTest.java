@@ -95,6 +95,21 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void physicsIndicatorDividesAisByNef() {
+        // H65: I = ΣAISᵢ/Nefᵢ. 6 authors → Nef = (6+5)/2 = 5.5; AIS (=S) = 4.0 → 4/5.5.
+        Indicator indicator = indicator("PUBLICATIONS", "S/Nef");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "AIS");
+        ScoringPublication pub = publication("p1", "f1", "2022-01-01", "ar", "ar", "Six Authors",
+                List.of("a1", "a2", "a3", "a4", "a5", "a6"));
+        when(scoringFactoryService.getScoringService("AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(pub, indicator)).thenReturn(score(4.0));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(pub), indicator);
+
+        assertEquals(4.0 / 5.5, result.get("total").getAuthorScore(), 1e-9);
+    }
+
+    @Test
     void nonFinitePerPublicationScoreIsGuardedToZeroNotInfinity() {
         // A 0-author publication under an "S/N" formula divides by zero -> Infinity, which would poison the whole
         // indicator total. The guard makes that publication contribute 0 so the remaining valid publications still sum.

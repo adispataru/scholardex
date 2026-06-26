@@ -120,6 +120,9 @@ public final class FormulaVariableContract {
         allowed.add("S");
         allowed.add("N");
         allowed.add("Q");
+        // H65: Nef (effective author count) is bound on every publication/citation score, so physics indicators can use
+        // S/Nef. Always allowed — it's a no-op divisor for indicators that don't reference it.
+        allowed.add("Nef");
         if (kind.strategy() == ScoringStrategy.ECONOMICS_JOURNAL_AIS) {
             allowed.add("M");
         }

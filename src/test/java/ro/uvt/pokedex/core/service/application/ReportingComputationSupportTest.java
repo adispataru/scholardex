@@ -288,6 +288,28 @@ class ReportingComputationSupportTest {
         assertEquals(0.0, out.get(1), 0.0001);
     }
 
+    @Test
+    void computeCriterionScoresAppliesPerIndicatorWeightsForComposites() {
+        // H65: physics T = ... + I/2 + P/2 ... — a weighted-sum criterion. Indicator 0 (I)=4.0, indicator 1 (P)=6.0.
+        Indicator i = new Indicator();
+        i.setId("I");
+        Indicator p = new Indicator();
+        p.setId("P");
+        List<Indicator> indicators = List.of(i, p);
+
+        AbstractReport.Criterion weighted = new AbstractReport.Criterion();
+        weighted.setIndicatorIndices(new ArrayList<>(java.util.List.of(0, 1)));
+        weighted.setWeights(java.util.Map.of(0, 0.5, 1, 0.5));
+        AbstractReport.Criterion plain = new AbstractReport.Criterion();
+        plain.setIndicatorIndices(new ArrayList<>(java.util.List.of(0, 1))); // no weights → plain sum (unchanged behavior)
+
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(weighted, plain), indicators, Map.of("I", 4.0, "P", 6.0));
+
+        assertEquals(5.0, out.get(0), 0.0001);  // 0.5*4 + 0.5*6
+        assertEquals(10.0, out.get(1), 0.0001); // plain 4 + 6 (weights null → 1.0)
+    }
+
     private static Score totalScore(double value) {
         Score score = new Score();
         score.setAuthorScore(value);

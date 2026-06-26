@@ -49,6 +49,7 @@ class FormulaVariableContractTest {
                 {"CS_CONFERENCE", "S > 1 ? S/max(N-2, 1) : 0"},
                 {"GENERIC_COUNT", "S"},
                 {"CNCSIS", "S"},
+                {"AIS", "S/Nef"},  // H65: physics I = ΣAIS/Nef — Nef is bound on every publication/citation score.
         };
         for (String[] row : ok) {
             Indicator ind = pub(ScoringStrategy.valueOf(row[0]), row[1]);

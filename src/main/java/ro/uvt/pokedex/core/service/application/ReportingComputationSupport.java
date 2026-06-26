@@ -152,7 +152,12 @@ public final class ReportingComputationSupport {
                 }
                 Indicator indicator = indicators.get(indicatorIndex);
                 if (indicator != null && indicator.getId() != null) {
-                    criterionScore += indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0);
+                    // H65: weighted-sum criteria (e.g. physics T = A + P/2 + I/2 + C/20 + h/5) carry a per-indicator
+                    // coefficient; absent weights default to 1.0 so plain sum criteria are unchanged.
+                    double weight = criterion.getWeights() == null
+                            ? 1.0
+                            : criterion.getWeights().getOrDefault(indicatorIndex, 1.0);
+                    criterionScore += weight * indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0);
                 }
             }
             criterionScores.put(i, criterionScore);

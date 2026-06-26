@@ -269,6 +269,9 @@ public class ScientificProductionService {
             FormulaContext.Builder builder = FormulaContext.builder()
                     .put("S", result.getScore())
                     .put("N", numberOfAuthors)
+                    // H65: effective author count (physics Nef) — the divisor for AIS/Nef-style indicators. A 0-author
+                    // pub yields Nef=0 → S/Nef is non-finite, caught by the guard below (contributes 0).
+                    .put("Nef", EffectiveAuthorCountSupport.computeNef(numberOfAuthors))
                     .put("Q", result.getQuarter());
             if (result.getMultiplier() != null) {
                 builder.put("M", result.getMultiplier());

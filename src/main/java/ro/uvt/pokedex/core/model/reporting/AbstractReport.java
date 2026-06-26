@@ -23,6 +23,12 @@ public abstract class AbstractReport {
         private List<Threshold> thresholds = new ArrayList<>();
         /** When true this criterion's score is included in the report-level total. */
         private boolean contributesToTotal = false;
+        /**
+         * H65: optional per-indicator coefficients (indicatorIndex → weight) for weighted-sum criteria such as the
+         * physics composite {@code T = A + P/2 + I/2 + C/20 + h/5}. Null or a missing entry means weight 1.0, so plain
+         * sum-of-indicators criteria (every existing report) are unaffected.
+         */
+        private java.util.Map<Integer, Double> weights;
     }
 
     @Data
