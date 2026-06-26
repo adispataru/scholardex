@@ -2,6 +2,33 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H67 h-index (Hirsch) computation (archived 2026-06-26)
+
+Archived from `TASKS.md` on 2026-06-26 — functionally complete + indicative-display ready, tested (suite
+2466/2466), live-verified. Closed task doc: `docs/tasks/closed/h67-h-index.md`. Will be consumed by **H65**
+(physics report `h` column).
+
+- [x] `H67` h-index (Hirsch) computation. *(completed 2026-06-26)*
+  Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring input (nothing computed
+  it before). Method (validated 2026-06-22): source-attributed h by attributing each incoming citation to the citing
+  paper's forum indexing (Scopus/WoS venue) — labeled **indicative** (accuracy tracks corpus completeness). Outcome
+  by slice:
+  - **S1 — DONE** (`7863b12`, Flyway `V15`): per-pub citation source-split (`graph/scopus/wos_citation_count` on
+    `scholardex_publication_view`, `applyCitationSourceSplit`); live-verified totals.
+  - **S2 — DONE** (`34e86c2`): shared `HIndexCalculator` (4 sources) + `HIndexBreakdown`; publications page shows
+    H-Index / Scopus h / WoS h (indicative).
+  - **S3 — DONE**: self-citation exclusion + total-citation-count via the graph-walk path.
+  - **S4a/S4b mechanism — DONE** (`9b1b3bb` + the 2026-06-26 completion): `IndicatorKind.HIndex(source, excludeSelf)`
+    + `ScoringStrategy.HIRSCH` + legacy `HINDEX_*` round-trip; `Indicator.isHIndexOutput()`; the detail branch
+    computes h (fast S1 columns; `hIndexFromGraph` for WoS year-true-Core + excludeSelf). **Final gap closed
+    2026-06-26:** `scoreReport` (report roll-up, shared with the H77 provisional path) + `buildIndicatorApplyView`
+    (preview) now branch on `isHIndexOutput()` via a shared `computeHIndex` — h scores everywhere instead of 0.
+    Live-verified on the maths department (HIndex `IndicatorKind` deserializes from Mongo cleanly; per-person h —
+    Bogdan Sasu 21 / Adina 20 / Blaga 18 / …).
+  - **Deferred (intentional):** activation (create `HINDEX_*` indicators on chimie/geografie/fizica reports via the
+    admin form — a data action) and the **S4b hard ≥13/9 pass/fail gate** (computed WoS-Core h undercounts official
+    per the H76/coverage gap; the istorie "h OR citations" gate needs H68). H65 (physics) will consume the `h` column.
+
 ## H77 Admin provisional scoring from declared source ids (archived 2026-06-26)
 
 Archived from `TASKS.md` on 2026-06-26 — all four slices done, tested (suite 2464/2464), and live-verified.

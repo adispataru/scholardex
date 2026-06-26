@@ -9,19 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
-  Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
-  (nothing computes it today). Needed by chimie (≥13/9 WoS), geografie (Hirsch excl. self-cit), fizica (h
-  column), istorie (GS h≥3 OR ≥70 citations). Aggregate metric over the corpus; citation source per domain
-  (WoS/Scopus/GS); self-citation exclusion; per-position thresholds. Planning doc at
-  `docs/tasks/active/h67-h-index.md`.
-  **Method validated (2026-06-22):** source-attributed h by attributing each incoming citation to the citing paper's
-  forum indexing (`citation_facts → citing pub forumId → forum scopus/wos ids`). 81%/74% of edges classifiable as
-  Scopus/WoS-venue. Spot-check vs ground truth (Adrian Spătaru, real 5/5): Scholardex-h 5 exact, Scopus-venue h 4,
-  WoS-venue h 4 (off-by-one; accuracy tracks corpus completeness → label "indicative"). Slices: S1 per-pub citation
-  source-split in the projection · S2 source-attributed h + surface · S3 self-citation exclusion · S4 threshold wiring.
-  WoS accuracy depends on `H76` (WoS conference index).
-
 - [ ] `H76` WoS Conference Proceedings Citation Index (CPCI) onboarding. Our `wosForumIds` come only from the WoS
   **journal** Master List / JCR — all 26,338 WoS-indexed forums are journals, **0 are conferences**. So WoS-indexed
   conferences are misclassified as non-WoS (e.g. all ~19 SYNASC proceedings forums are `scopus=True, wos=False`;
