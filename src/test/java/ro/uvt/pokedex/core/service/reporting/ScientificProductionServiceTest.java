@@ -95,6 +95,26 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void nonFinitePerPublicationScoreIsGuardedToZeroNotInfinity() {
+        // A 0-author publication under an "S/N" formula divides by zero -> Infinity, which would poison the whole
+        // indicator total. The guard makes that publication contribute 0 so the remaining valid publications still sum.
+        // (Surfaced by H77 provisional scoring, where a corrupt Infinity journal metric showed ∞ for a department.)
+        Indicator indicator = indicator("PUBLICATIONS", "S/N");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "AIS");
+        ScoringPublication zeroAuthors = publication("p-0a", "f1", "2022-01-01", "ar", "ar", "Zero Authors", List.of());
+        ScoringPublication normal = publication("p-ok", "f1", "2022-01-01", "ar", "ar", "Normal", List.of("a1"));
+        when(scoringFactoryService.getScoringService("AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(zeroAuthors, indicator)).thenReturn(score(4.0));
+        when(scoringService.getScore(normal, indicator)).thenReturn(score(4.0));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
+                List.of(zeroAuthors, normal), indicator);
+
+        assertTrue(Double.isFinite(result.get("total").getAuthorScore()));
+        assertEquals(4.0, result.get("total").getAuthorScore(), 0.0001); // 0 (guarded S/0) + 4/1
+    }
+
+    @Test
     void impactScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
         Indicator indicator = indicator("CITATIONS", "S");
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");

@@ -281,7 +281,11 @@ public class ScientificProductionService {
             if (timing != null) {
                 timing.addFormulaEvalNanos(formulaEvalNanos);
             }
-            result.setAuthorScore(finalScore);
+            // Robustness guard: a non-finite per-publication score (e.g. a corrupt Infinity/NaN journal metric S, or
+            // a 0-author divisor N in a formula like "S/N") must never poison the indicator total — it contributes 0
+            // so the remaining valid publications still sum correctly. Surfaced by H77 provisional scoring (a RIS
+            // forum metric projected as Infinity made whole-department reports show ∞).
+            result.setAuthorScore(Double.isFinite(finalScore) ? finalScore : 0.0);
         }
         return result;
     }
