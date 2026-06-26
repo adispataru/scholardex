@@ -353,14 +353,53 @@ public class UserReportFacade {
             return Optional.empty();
         }
 
-        IndividualReport report = reportOpt.get();
         User user = userOpt.get();
+        AuthorshipContext context = new AuthorshipContext(
+                findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile())),
+                findConfirmedPublicationsForScoring(userEmail),
+                activityInstanceRepository.findAllByResearcherId(user.getEmail()));
+        return Optional.of(scoreReport(reportOpt.get(), context));
+    }
 
-        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
-        List<ScholardexPublicationView> publications = applyAffiliationFilter(
-                report,
-                findConfirmedPublicationsForScoring(userEmail)
-        );
+    /**
+     * H77: score a report from a DECLARED authorship context — a set of canonical author ids resolved from an org
+     * roster / declared source ids, NOT from a researcher's confirmed decisions. Read-only and admin-only: the
+     * candidate publication set is every publication attributed to those authors (no {@code PublicationAuthorshipDecision}
+     * involved), and those same author ids drive self-citation exclusion + author-share division. There is no
+     * {@code User}/profile and no activity instances for a provisional subject, so activities are empty.
+     */
+    public Optional<ReportScopedIndividualReportComputation> computeProvisionalReport(
+            Collection<String> resolvedAuthorIds, String reportId, Integer referenceYear) {
+        int year = referenceYear != null ? referenceYear : effectiveReferenceYear();
+        return ScoringReferenceYearContext.with(year, () -> {
+            Optional<IndividualReport> reportOpt = findReport(reportId);
+            if (reportOpt.isEmpty() || resolvedAuthorIds == null || resolvedAuthorIds.isEmpty()) {
+                return Optional.empty();
+            }
+            AuthorshipContext context = new AuthorshipContext(
+                    findAuthorsByIds(resolvedAuthorIds),
+                    findPublicationsByAuthorIds(resolvedAuthorIds),
+                    List.of());
+            return Optional.of(scoreReport(reportOpt.get(), context));
+        });
+    }
+
+    /** H77: the authorship inputs that differ between a CONFIRMED (self) and DECLARED (provisional) scoring run. */
+    private record AuthorshipContext(List<ScholardexAuthorView> authors,
+                                     List<ScholardexPublicationView> publications,
+                                     List<ActivityInstance> activities) {
+    }
+
+    /**
+     * Shared report-scoring loop. Both the CONFIRMED (researcher self-scoring) and DECLARED (H77 admin provisional)
+     * paths converge here once they have produced the authorship context. Applies the report's affiliation filter to
+     * the candidate publications, then scores every indicator; relative year specs resolve against the referenceYear
+     * already in scope (callers wrap in {@link ScoringReferenceYearContext}).
+     */
+    private ReportScopedIndividualReportComputation scoreReport(IndividualReport report, AuthorshipContext context) {
+        List<ScholardexAuthorView> authors = context.authors();
+        List<ScholardexPublicationView> publications = applyAffiliationFilter(report, context.publications());
+        List<ActivityInstance> activities = context.activities();
 
         List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
         Map<Indicator, Double> indicatorScores = new HashMap<>();
@@ -370,7 +409,6 @@ public class UserReportFacade {
         boolean hasCitationIndicators = indicators.stream()
                 .filter(Objects::nonNull)
                 .anyMatch(Indicator::isCitationsOutput);
-        List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
         Set<String> researcherAuthorIds = authors.stream()
                 .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
@@ -436,12 +474,12 @@ public class UserReportFacade {
                 indicatorScoresByIndicatorId
         );
 
-        return Optional.of(new ReportScopedIndividualReportComputation(
+        return new ReportScopedIndividualReportComputation(
                 indicatorScores,
                 indicatorScoresByIndicatorId,
                 criterionScores,
                 reportScopedIndicatorResultsByIndicatorId
-        ));
+        );
     }
 
     /**

@@ -908,6 +908,48 @@ class UserReportFacadeTest {
     }
 
     @Test
+    void computeProvisionalReportScoresFromDeclaredAuthorsWithoutAUserOrConfirmedDecisions() {
+        // H77: the DECLARED path scores a report from resolved canonical author ids — every publication attributed to
+        // those authors — with NO User, NO confirmed PublicationAuthorshipDecision, and NO activity instances.
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-pub");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-prov");
+        report.setIndicators(List.of(indicator));
+        report.setCriteria(List.of());
+        var anyInstitution = new ro.uvt.pokedex.core.model.Institution();
+        anyInstitution.setName("ANY");
+        report.setIndividualAffiliation(anyInstitution);
+
+        ScholardexPublicationView declared = new ScholardexPublicationView();
+        declared.setId("p1");
+        declared.setTitle("Declared Paper");
+        declared.setAuthors(List.of("a1"));
+        declared.setForum("f1");
+
+        when(individualReportRepository.findById("rep-prov")).thenReturn(Optional.of(report));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(declared));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
+                .thenReturn(new LinkedHashMap<>(Map.of("Declared Paper", totalScore(3.0), "total", totalScore(3.0))));
+
+        var computationOpt = facade.computeProvisionalReport(List.of("a1"), "rep-prov", 2024);
+
+        assertTrue(computationOpt.isPresent());
+        assertEquals(3.0, computationOpt.orElseThrow().indicatorScoresByIndicatorId().get("ind-pub"));
+        verify(userService, never()).getUserByEmail(any());
+        verify(effectiveAuthorshipReadService, never()).findConfirmedPublicationsForScoring(any());
+    }
+
+    @Test
+    void computeProvisionalReportReturnsEmptyWhenNoResolvedAuthors() {
+        // No resolved authors → nothing to score; the provisional path short-circuits to empty.
+        assertTrue(facade.computeProvisionalReport(List.of(), "rep-prov", 2024).isEmpty());
+    }
+
+    @Test
     void buildReportScopedIndicatorDetailReturnsActivityModeWithFilteredActivities() {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator indicator = new Indicator();
