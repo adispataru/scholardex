@@ -63,6 +63,32 @@ wrapper/dumper. Verified live: OpenAlex authorships expose `is_corresponding`, `
 - **Identity reconciliation**: map OpenAlex author/ORCID to our canonical author ids.
 - Polite-pool etiquette (`mailto`), caching, refresh cadence.
 
+## Status (2026-06-26) — scoring-surface enabler DONE
+
+The data layer was delivered by **H73** (bulk OpenAlex import captured `is_corresponding`; the canonical derivation
+writes `corresponding=true` authorship edges, `scholardex.authorship_facts.corresponding`, id-based to canonical
+authors). Coverage (2026-06-26): **84,679 corresponding edges across 73,141 pubs**; 66.2% of all OpenAlex-authored
+pubs carry a corresponding author. The remaining "last mile" — expose it to scoring + a role — is now done **for all
+papers**:
+
+- **Expose on the read model:** new `ScholardexPublicationView.correspondingAuthorIds` (canonical ids, parallel to
+  `authorIds`), denormalized from the `corresponding=true` edges by `ScholardexProjectionBuilderService.
+  applyCorrespondingAuthors` (full build + batch refresh), persisted as `corresponding_author_ids TEXT[]` (Flyway
+  `V18`) + read back in both Postgres read ports. Mirrors the H67 citation-split precedent.
+- **`FIRST_OR_CORRESPONDING` author role:** `AuthorRole.FIRST_OR_CORRESPONDING` + a branch in
+  `ReportingComputationSupport.calculatePublicationScore` (keep a pub if the candidate is first author OR a
+  corresponding author; empty corresponding → first-author fallback); codec `PUBLICATIONS_FIRST_OR_CORRESPONDING`;
+  admin output type.
+
+**Live-verified** (projection rebuild repopulated 73,141 pubs; maths department provisional report): every person's
+`FIRST_OR_CORRESPONDING` count ≥ their `MAIN` count, and 7/13 gained corresponding-but-not-first pubs (Bogdan Sasu
+19→32, Vizman 18→26, Blaga 109→118). Suite 2467/2467.
+
+**Not in this pass (deferred):** the physics **P** consumer (wire P to `FIRST_OR_CORRESPONDING`) → **H65**; the
+**last-author** role (biologie/FSP/sport) → separate sub-thread (`author_position` is captured in the source fact but
+not carried to canonical); the **incremental DOI-keyed enrichment fetcher** for newly-added pubs (the bulk corpus is
+already enriched). `ScoringPublication` intentionally untouched (the role filter runs on the view).
+
 ## Dependencies / relation
 
 Independent of the Scopus dumper/wrapper (additive source). Directly enables the physics-domain P
