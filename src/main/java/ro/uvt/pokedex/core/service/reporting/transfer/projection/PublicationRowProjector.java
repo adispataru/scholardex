@@ -44,6 +44,9 @@ public class PublicationRowProjector {
     /** Book/chapter publications role (e.g. FEAA slots 7–10). Publication-typed, but scored by a book
      *  strategy; the renderer groups the items into per-tier tables. */
     public static final String ROLE_BOOKS = "book-publications";
+    /** H65 physics: article tables — I (2.1, all authors, AIS/Nef) and P (2.2, first-or-corresponding, AIS). */
+    public static final String ROLE_FIZICA_ARTICLES = "fizica-articles-author";
+    public static final String ROLE_FIZICA_PRINCIPAL = "fizica-articles-principal";
 
     private final EffectiveAuthorshipReadService authorshipRead;
     private final ScholardexProjectionReadService projectionRead;
@@ -58,7 +61,8 @@ public class PublicationRowProjector {
     }
 
     public List<PublicationSnapshotItem> project(String userEmail, Indicator indicator, String roleKey) {
-        if (!ROLE_JOURNAL.equals(roleKey) && !ROLE_CONFERENCE.equals(roleKey) && !ROLE_BOOKS.equals(roleKey)) {
+        if (!ROLE_JOURNAL.equals(roleKey) && !ROLE_CONFERENCE.equals(roleKey) && !ROLE_BOOKS.equals(roleKey)
+                && !ROLE_FIZICA_ARTICLES.equals(roleKey) && !ROLE_FIZICA_PRINCIPAL.equals(roleKey)) {
             return List.of();
         }
         return projectInternal(userEmail, indicator, roleKey);

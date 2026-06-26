@@ -76,7 +76,9 @@ public class ReportInstanceSnapshotBuilder {
                 case PublicationRowProjector.ROLE_JOURNAL,
                      PublicationRowProjector.ROLE_CONFERENCE,
                      PublicationRowProjector.ROLE_JOURNAL_RECENT,
-                     PublicationRowProjector.ROLE_BOOKS -> {
+                     PublicationRowProjector.ROLE_BOOKS,
+                     PublicationRowProjector.ROLE_FIZICA_ARTICLES,
+                     PublicationRowProjector.ROLE_FIZICA_PRINCIPAL -> {
                     // ROLE_JOURNAL_RECENT carries its items (tagged with the role) so a no-formula
                     // template can mark which publications are "recent" and total them separately;
                     // the renderer is responsible for not listing them as duplicate rows.

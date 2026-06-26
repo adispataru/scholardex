@@ -1,0 +1,49 @@
+{
+  "reportTypeKey": "fizica-ff",
+  "templateResource": "classpath:report-templates/fizica-ff/template.docx",
+  "templateFormat": "DOCX",
+  "schemaVersion": 1,
+  "roles": [
+    {
+      "roleKey": "fizica-articles-author",
+      "kind": "FIXED_TABLE",
+      "tableIndex": 17,
+      "firstDataRow": 1,
+      "maxRows": 2,
+      "columns": {
+        "1": { "policy": "WRITE", "source": "publication.reference" },
+        "2": { "policy": "WRITE_SCORE", "source": "publication.forumScore" },
+        "3": { "policy": "WRITE", "source": "publication.authorCount" },
+        "4": { "policy": "WRITE_SCORE", "source": "publication.nef" },
+        "5": { "policy": "WRITE_SCORE", "source": "publication.authorScore" }
+      },
+      "docxTotals": [
+        { "marker": "I =", "totalKey": "fizica-articles-author", "equalsIndex": 0 }
+      ]
+    },
+    {
+      "roleKey": "fizica-articles-principal",
+      "kind": "FIXED_TABLE",
+      "tableIndex": 18,
+      "firstDataRow": 1,
+      "maxRows": 2,
+      "columns": {
+        "1": { "policy": "WRITE", "source": "publication.reference" },
+        "2": { "policy": "WRITE_SCORE", "source": "publication.authorScore" }
+      },
+      "docxTotals": [
+        { "marker": "P =", "totalKey": "fizica-articles-principal", "equalsIndex": 0 }
+      ]
+    },
+    {
+      "roleKey": "fizica-summary",
+      "kind": "FIXED_TABLE",
+      "tableIndex": 20,
+      "docxTotals": [
+        { "marker": "Valoare realizata", "cellIndex": 2, "totalKey": "fizica-articles-author" },
+        { "marker": "Valoare realizata", "cellIndex": 3, "totalKey": "fizica-articles-principal" },
+        { "marker": "Valoare realizata", "cellIndex": 6, "totalKey": "fizica-T" }
+      ]
+    }
+  ]
+}
