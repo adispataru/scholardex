@@ -101,7 +101,26 @@ the name bridge is what's available.
 - **S4 — admin Thymeleaf page + label.** Pick department + report → run → scored table with the "provisional —
   unvalidated authorship" label and per-person resolution status; same label on the run view/export.
 
+## Status — S1–S4 DONE (2026-06-26), live-verified
+
+- **S1** — `ProvisionalAuthorResolutionService` (roster → canonical author by name + declared ids). Live: 13/15 maths.
+- **S2** — `UserReportFacade.computeProvisionalReport(authorIds, reportId, refYear)` via an extracted `AuthorshipContext`
+  + shared `scoreReport` loop (CONFIRMED + DECLARED converge). Score-neutral for the CONFIRMED path.
+- **S3** — `Source.ADMIN_PROVISIONAL` + persisted `provisional` flag on `UserIndividualReportRun`;
+  `UserIndividualReportRunService.buildAndSaveProvisionalRun`; `ProvisionalDepartmentReportService.run` (batch).
+- **S4** — `AdminProvisionalReportController` + `admin/provisional-report.html` (form → results table, provisional
+  banner + per-person status; unresolved flagged, never dropped). Gated by `/admin/**` → `PLATFORM_ADMIN`.
+
+**Live run (Departamentul de Matematică × FV Matematică):** 13/15 scored; Sasu split correctly scored (Adina 568.89 /
+Bogdan 516.70 — the H71 de-merge flowing through); Casu/Comănescu flagged UNRESOLVED.
+
 ## Deferred / notes
 
 - WoS/Google-Scholar declared-id resolution: Scopus + name is the v1 driver; add later if needed.
 - Diacritic-surname resolution (Casu/Comănescu) still UNRESOLVED — needs an unaccented author-name index (separate).
+- Researcher-facing run-view "provisional" badge NOT added (provisional runs are admin-only; the admin page banner +
+  per-row status is the label). Add to `user/individual-report-view.html` only if provisional runs ever surface there.
+- **RIS-projection Infinity (root cause, separate task):** the provisional full-attribution run surfaced a corrupt RIS
+  forum metric projected as `Infinity` for some forum/year (raw `wos.metric_facts` are clean), which the `S/N` formula
+  turned into ∞. A scoring-engine robustness guard (non-finite per-publication score → 0) now prevents the poisoning
+  (`ScientificProductionService.getScore`), but the underlying RIS projection emitting Infinity should be fixed at source.
