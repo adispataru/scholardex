@@ -38,6 +38,19 @@ class AuthorReconcileV2Test {
     }
 
     @Test
+    void conflictingOrcidBlocksReconcileMerge() {
+        // Same as the split-merge case (given-name compatible, shared affiliation + co-author) EXCEPT the two Vizman
+        // records carry DISTINCT ORCIDs — a hard different-person signal. The reconcile must not merge them.
+        OpenAlexPublicationFact p1 = oaPub("W1", "10.1/p1",
+                refOrcid("Daniel Vizman", "A1", "R1", "0000-0001-0000-0001"), ref("Alice Smith", "AX", "R1"));
+        OpenAlexPublicationFact p2 = oaPub("W2", "10.1/p2",
+                refOrcid("D. Vizman", "A2", "R1", "0000-0002-0000-0002"), ref("Alice Smith", "AX", "R1"));
+
+        // The two distinct-ORCID Vizman stay split → 3 authors even with reconcile ON.
+        assertThat(builder.buildAuthors(List.of(), List.of(), List.of(p1, p2), ON).authors()).hasSize(3);
+    }
+
+    @Test
     void samePaperHardBlockPreventsMerge() {
         // Both "Vizman" records co-appear on ONE paper -> they are different people -> never merge, even though they
         // share an affiliation and a co-author.
@@ -105,6 +118,12 @@ class AuthorReconcileV2Test {
         r.setDisplayName(name);
         r.setOpenAlexAuthorId(openAlexId);
         r.setInstitutionRors(new java.util.ArrayList<>(List.of(ror)));
+        return r;
+    }
+
+    private static OpenAlexPublicationFact.AuthorRef refOrcid(String name, String openAlexId, String ror, String orcid) {
+        OpenAlexPublicationFact.AuthorRef r = ref(name, openAlexId, ror);
+        r.setOrcid(orcid);
         return r;
     }
 

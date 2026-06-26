@@ -310,6 +310,13 @@ public class CanonicalGraphBuilder {
             parent.put(id, id);
         }
 
+        // H71 fix: per-root ORCID set, maintained across unions, so a merge can be refused when two roots carry
+        // conflicting (non-empty, disjoint) ORCIDs — a hard different-person signal (e.g. Adina vs Bogdan Sasu).
+        Map<String, java.util.Set<String>> rootOrcids = new java.util.HashMap<>();
+        for (Map.Entry<String, AuthorNode> e : nodes.entrySet()) {
+            rootOrcids.put(e.getKey(), new java.util.HashSet<>(e.getValue().orcidIds));
+        }
+
         // Positional bridge: index source pubs by canonical pub id, then union Scopus[i]↔OpenAlex[i] on shared papers.
         List<SourcePub> allSources = new ArrayList<>();
         for (ScopusPublicationFact s : scopusPubs) {
@@ -340,9 +347,15 @@ public class CanonicalGraphBuilder {
                 if (sNode == null || oNode == null || !parent.containsKey(oNode)) {
                     continue;
                 }
-                if (ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver.surnameMatches(
-                        scopusNameByAuid.get(normalizeBlank(auids.get(i))), refs.get(i).getDisplayName())) {
-                    union(parent, sNode, oNode);
+                String scopusName = scopusNameByAuid.get(normalizeBlank(auids.get(i)));
+                String openAlexName = refs.get(i).getDisplayName();
+                // H71 fix: same position + same surname is NOT enough when two same-surname co-authors are reordered
+                // across sources (e.g. "Sasu, Adina" vs "Sasu, Bogdan"). Require given-name compatibility, and never
+                // bridge across conflicting ORCIDs.
+                if (ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver.surnameMatches(scopusName, openAlexName)
+                        && givenNameCompatible(scopusName, openAlexName)
+                        && !orcidConflict(rootOrcids, find(parent, sNode), find(parent, oNode))) {
+                    guardedUnion(parent, rootOrcids, sNode, oNode);
                 }
             }
         }
@@ -620,6 +633,13 @@ public class CanonicalGraphBuilder {
                 blocks.computeIfAbsent(sk, k -> new ArrayList<>()).add(root);
             }
         }
+        // H71: per-root ORCID set (from the component's nodes) so candidate pairs with conflicting ORCIDs are blocked.
+        Map<String, Set<String>> rootOrcids = new java.util.HashMap<>();
+        for (AuthorNode n : nodes.values()) {
+            if (n != null && !n.orcidIds.isEmpty() && parent.containsKey(n.id)) {
+                rootOrcids.computeIfAbsent(find(parent, n.id), k -> new java.util.HashSet<>()).addAll(n.orcidIds);
+            }
+        }
         Set<String> empty = java.util.Collections.emptySet();
         List<String[]> pairs = new ArrayList<>();
         int skippedBlocks = 0;
@@ -641,6 +661,9 @@ public class CanonicalGraphBuilder {
                     }
                     if (!givenNameCompatible(nodes.get(ra).displayName, nodes.get(rb).displayName)) {
                         continue;
+                    }
+                    if (orcidConflict(rootOrcids, ra, rb)) {
+                        continue; // distinct ORCIDs on the two roots → different people, never merge
                     }
                     if (intersects(rootPubs.getOrDefault(ra, empty), rootPubs.getOrDefault(rb, empty))) {
                         continue; // same-paper hard block: distinct authors of one paper are different people
@@ -883,6 +906,32 @@ public class CanonicalGraphBuilder {
 
     private static void union(Map<String, String> parent, String a, String b) {
         parent.put(find(parent, a), find(parent, b));
+    }
+
+    /**
+     * H71: union {@code a} into {@code b}, carrying {@code a}'s ORCID set onto the surviving root so later
+     * conflict checks see the full component. Callers must check {@link #orcidConflict} first.
+     */
+    private static void guardedUnion(Map<String, String> parent, Map<String, java.util.Set<String>> rootOrcids,
+                                     String a, String b) {
+        String ra = find(parent, a);
+        String rb = find(parent, b);
+        if (ra.equals(rb)) {
+            return;
+        }
+        parent.put(ra, rb);
+        rootOrcids.computeIfAbsent(rb, k -> new java.util.HashSet<>())
+                .addAll(rootOrcids.getOrDefault(ra, java.util.Set.of()));
+    }
+
+    /**
+     * H71 cannot-link: two roots carry conflicting identities when both have ≥1 ORCID and the sets are disjoint —
+     * a hard different-person signal that must never be merged (e.g. Adina vs Bogdan Sasu, each ORCID-distinct).
+     */
+    private static boolean orcidConflict(Map<String, java.util.Set<String>> rootOrcids, String rootA, String rootB) {
+        java.util.Set<String> a = rootOrcids.getOrDefault(rootA, java.util.Set.of());
+        java.util.Set<String> b = rootOrcids.getOrDefault(rootB, java.util.Set.of());
+        return !a.isEmpty() && !b.isEmpty() && java.util.Collections.disjoint(a, b);
     }
 
     private static boolean isBlank(String s) {
