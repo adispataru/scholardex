@@ -17,6 +17,8 @@ public record IndividualReportRunDto(
 
     public enum Source {
         PERSISTED,
-        BUILT
+        BUILT,
+        /** H77: a run produced by the admin provisional scoring pass (DECLARED authorship, read-only). */
+        ADMIN_PROVISIONAL
     }
 }

@@ -178,7 +178,80 @@ public class UserIndividualReportRunService {
         return Optional.of(toDto(saved, source));
     }
 
+    /**
+     * H77: persist an admin provisional run for one subject scored from a DECLARED authorship identity — the resolved
+     * canonical author ids (from the org roster / declared source ids), NOT the subject's confirmed decisions. Read-only:
+     * the subject email is just an identifier (no {@code User} needed); the run is flagged {@code provisional}. Indicator
+     * snapshots use the thin computed graph (correct totals; per-item detail is not materialized on this path).
+     */
+    public Optional<IndividualReportRunDto> buildAndSaveProvisionalRun(String subjectEmail,
+                                                                       String reportDefinitionId,
+                                                                       java.util.Collection<String> resolvedAuthorIds,
+                                                                       String adminEmail) {
+        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportDefinitionId);
+        if (reportOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        IndividualReport report = reportOpt.get();
+
+        UserIndividualReportRun run = new UserIndividualReportRun();
+        run.setUserEmail(subjectEmail);
+        run.setResearcherId(subjectEmail);
+        run.setReportDefinitionId(reportDefinitionId);
+        run.setTriggeredByEmail(adminEmail != null ? adminEmail : subjectEmail);
+        run.setProvisional(true);
+        Instant createdAt = Instant.now();
+        run.setCreatedAt(createdAt);
+        int referenceYear = createdAt.atZone(java.time.ZoneId.systemDefault()).getYear();
+        run.setReferenceYear(referenceYear);
+
+        Optional<ReportScopedIndividualReportComputation> computationOpt =
+                userReportFacade.computeProvisionalReport(resolvedAuthorIds, reportDefinitionId, referenceYear);
+        if (computationOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        ReportScopedIndividualReportComputation computation = computationOpt.get();
+
+        List<String> indicatorResultIds = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        for (Indicator indicator : report.getIndicators()) {
+            if (indicator == null || indicator.getId() == null) {
+                errors.add("Missing indicator id in report definition.");
+                continue;
+            }
+            IndicatorApplyResultDto computedIndicatorResult =
+                    computation.reportScopedIndicatorResultsByIndicatorId().get(indicator.getId());
+            if (computedIndicatorResult == null) {
+                errors.add("Missing computed indicator result for indicator " + indicator.getId());
+                continue;
+            }
+            UserIndicatorResult snapshot = userIndicatorResultService.createSnapshotFromComputed(
+                    subjectEmail,
+                    indicator.getId(),
+                    reportDefinitionId,
+                    computedIndicatorResult,
+                    userIndicatorResultService.getLatestRefreshVersion(subjectEmail, indicator.getId())
+            );
+            indicatorResultIds.add(snapshot.getId());
+        }
+
+        run.setIndicatorResultIds(indicatorResultIds);
+        run.setIndicatorScoresByIndicatorId(new HashMap<>(computation.indicatorScoresByIndicatorId()));
+        run.setCriteriaScores(new HashMap<>(computation.criterionScores()));
+        run.setBuildErrors(errors);
+        if (!errors.isEmpty()) {
+            run.setStatus(indicatorResultIds.isEmpty() ? UserIndividualReportRun.Status.FAILED : UserIndividualReportRun.Status.PARTIAL);
+        } else {
+            run.setStatus(UserIndividualReportRun.Status.READY);
+        }
+
+        UserIndividualReportRun saved = userIndividualReportRunRepository.save(run);
+        return Optional.of(toDto(saved, IndividualReportRunDto.Source.ADMIN_PROVISIONAL));
+    }
+
     private IndividualReportRunDto toDto(UserIndividualReportRun run, IndividualReportRunDto.Source source) {
+        // H77: a persisted provisional run always reports as ADMIN_PROVISIONAL so the marker survives reload.
+        IndividualReportRunDto.Source effectiveSource = run.isProvisional() ? IndividualReportRunDto.Source.ADMIN_PROVISIONAL : source;
         List<IndicatorApplyResultDto> indicatorResults = run.getIndicatorResultIds() == null ? List.of() :
                 run.getIndicatorResultIds().stream()
                         .map(userIndicatorResultService::getById)
@@ -192,7 +265,7 @@ public class UserIndividualReportRunService {
                 run.getIndicatorScoresByIndicatorId() == null ? Map.of() : run.getIndicatorScoresByIndicatorId(),
                 run.getCriteriaScores() == null ? Map.of() : run.getCriteriaScores(),
                 run.getCreatedAt(),
-                source,
+                effectiveSource,
                 run.getTriggeredByEmail()
         );
     }

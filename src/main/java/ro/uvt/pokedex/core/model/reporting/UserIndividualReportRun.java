@@ -44,6 +44,14 @@ public class UserIndividualReportRun {
      */
     private String triggeredByEmail;
 
+    /**
+     * H77: true when this run was produced by an admin provisional scoring pass — scored from a DECLARED authorship
+     * identity (canonical authors resolved from the org roster / declared source ids) rather than the researcher's
+     * own confirmed publication decisions. Read-only; never mistaken for a validated run. Defaults to false on the
+     * normal (CONFIRMED) self-scoring path and on all pre-H77 runs.
+     */
+    private boolean provisional;
+
     public enum Status {
         READY,
         PARTIAL,
