@@ -2,6 +2,32 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H63 OpenAlex enrichment — corresponding-author scoring surface (archived 2026-06-26)
+
+Archived from `TASKS.md` on 2026-06-26 — the cross-cutting scoring-surface enabler is done + live-verified
+(suite 2467/2467). Closed task doc: `docs/tasks/closed/h63-openalex-enrichment.md`. Deferred items tracked
+separately (see below).
+
+- [x] `H63` OpenAlex enrichment (corresponding author + ORCID). *(core completed 2026-06-26)*
+  Goal: obtain corresponding-author identity (and ORCID / last-author) from OpenAlex and expose it to scoring —
+  driver: physics `P = prim autor sau autor corespondent`; cross-cutting (chimie/biologie/geografie/fizica/FSP/sport).
+  Outcome:
+  - **Data layer — DONE via H73:** the bulk OpenAlex import captured `is_corresponding`; the canonical derivation
+    writes `corresponding=true` authorship edges (`scholardex.authorship_facts.corresponding`, id-based to canonical
+    authors). Coverage: 84,679 edges across 73,141 pubs (66.2% of OpenAlex-authored pubs).
+  - **Scoring-surface enabler — DONE 2026-06-26 (for all papers):**
+    - Expose: `ScholardexPublicationView.correspondingAuthorIds` denormalized from the edges by
+      `ScholardexProjectionBuilderService.applyCorrespondingAuthors` (full build + batch refresh); persisted as
+      `corresponding_author_ids TEXT[]` (Flyway `V18`) + read in both Postgres read ports (mirrors H67 citation split).
+    - Role: `AuthorRole.FIRST_OR_CORRESPONDING` + `ReportingComputationSupport.calculatePublicationScore` branch
+      (first author OR corresponding; empty corresponding → first-author fallback); codec
+      `PUBLICATIONS_FIRST_OR_CORRESPONDING`; admin output type.
+    - Live-verified: projection rebuild repopulated 73,141 pubs; maths provisional report — every person's
+      `FIRST_OR_CORRESPONDING` ≥ `MAIN`, 7/13 gained corresponding-non-first pubs (Bogdan Sasu 19→32, Vizman 18→26).
+  - **Deferred / separate:** physics **P** consumer (wire P to `FIRST_OR_CORRESPONDING`) → **H65**; the **last-author**
+    role (biologie/FSP/sport; `author_position` captured in the source fact, not yet in canonical) → separate
+    sub-thread; the **incremental DOI-keyed enrichment fetcher** for newly-added pubs (bulk corpus already enriched).
+
 ## H67 h-index (Hirsch) computation (archived 2026-06-26)
 
 Archived from `TASKS.md` on 2026-06-26 — functionally complete + indicative-display ready, tested (suite

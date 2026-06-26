@@ -84,25 +84,6 @@ Done history moved to `TASKS-done.md`.
   the existing `Grant Cercetare`/`Buget` activity — this is independent. Planning doc at
   `docs/tasks/active/h64-canonical-projects.md`.
 
-- [ ] `H63` OpenAlex enrichment (corresponding + last author + ORCID).
-  Goal: add OpenAlex as an enrichment source (keyed by DOI) to obtain corresponding-author info we lack
-  today (`authorships[].is_corresponding` + ORCID + `author_position` for **last-author**), plus author
-  disambiguation. Driver: physics `P = prim autor sau autor corespondent`. **Cross-cutting** (standards
-  assessment): corresponding-author needed by chimie/biologie/geografie/fizica/FSP/sport; **last-author as
-  principal** needed by biologie + FSP + sport — fold last-author into this task.
-  Notable: `correspondingAuthors` is empty for all ~92.6k facts (our Scopus export lacks it). Crossref
-  has no corresponding author; Scopus Abstract Retrieval has it but name-based + 5k/week; OpenAlex has it
-  ID-precise (ORCID), free, ~100k/day → ~7k UVT-paper backfill in minutes. Additive source — does NOT
-  touch the Scopus dumper/wrapper.
-  Deliverable: enrichment fetcher (backfill + DOI-keyed incremental) → populate `correspondingAuthors` →
-  expose on `ScoringPublicationReadModel` → upgrade physics P from first-author-only to first-or-corresponding.
-  Exit criteria: UVT pubs carry corresponding author where OpenAlex declares it (ORCID-matched), partial
-  coverage handled with first-author fallback. Planning doc at `docs/tasks/active/h63-openalex-enrichment.md`.
-  **Scope update (2026-06-21):** the **bulk backfill is absorbed into `H73` slice 3** (the bulk OpenAlex importer) — the local
-  `data/openalex/uvt_works.jsonl` already carries `authorships[].is_corresponding` + ORCID + `author_position`,
-  so H73's bulk import populates corresponding/last-author at ingest. H63 shrinks to the **incremental DOI-keyed
-  path for newly-added pubs** + the scoring-surface wiring (read model + physics P upgrade).
-
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.
