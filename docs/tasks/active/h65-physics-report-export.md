@@ -67,8 +67,32 @@ indicators are config (`S/Nef`, `4/Nef`, …).
   threshold? count vs weighted), **h** threshold, the **T composite** formula, Da/Nu specifics, HEPP `n_ef`
   exception. (These gate the summary + slice 4.)
 
+## Status (2026-06-26) — SLICE 1 DONE; methodology fully resolved from the PDF
+
+All earlier "still to do / read PDF pages 6–14" gaps are closed (the FF PDF is in-repo, fully read). Resolved
+formulas/thresholds: **I=ΣAIS/Nef · P=ΣAIS (first-or-corresponding) · A1..A8=k/Nef · A9=Σ0.5 (count) · A10=ΣV/100000 ·
+C=Σcᵢ/Nefᵢ (ISI-IF cites, self-excluded) · h=WoS Hirsch · T=A+P/2+I/2+C/20+h/5**. Thresholds — Lector I≥1,P≥1,T≥1.5 ·
+Conf A≥1,I≥2,P≥2,C≥20,h≥5,T≥5 · Prof A≥2,I≥4,P≥4,C≥40,h≥10,T≥12.
+
+**Key reuse confirmed:** the DOCX binding/export framework is already working (`feaa-2024`/`matematica-2016` —
+`TemplateDocxRenderer` + `binding.json` + a `@Component` support class; the old "H50.4 docx remaining" note was stale).
+P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-cit uses H61 `CANDIDATE_ONLY`.
+
+**Slice 1 DONE (2026-06-26):**
+- **1a (scoring foundation):** `EffectiveAuthorCountSupport.computeNef` (the Nef brackets); `Nef` bound on every
+  publication/citation score (`ScientificProductionService`) + allowed in `FormulaVariableContract` → I=`S/Nef`,
+  A1=`4/Nef`… are config formulas. `AbstractReport.Criterion` gained per-indicator `weights` (default 1.0) →
+  the composite T = weighted criterion (`ReportingComputationSupport`). 0-author → Nef 0 → the non-finite guard zeroes it.
+- **1b (fizica-ff DOCX):** `report-templates/fizica-ff/{template.docx (the real 21-table fišă), binding.json}` (I/P
+  article tables 17/18 + T20 summary) + `Fizica2024ReportTypeImportSupport`; physics article roles wired into the
+  snapshot dispatch. **Live-verified** on the maths department (provisional run): finite I=ΣAIS/Nef, P=ΣAIS, T for all
+  13 people; render unit-tested vs the real template. Suite 2472/2472.
+- **Note:** the `fizica-ff` report *definition* (which indicators/thresholds per position) is per-deployment config
+  (admin-created/seeded), built up across slices — the code registers the report *type*. A1–A10/C/h indicators + the
+  full threshold rows land in slices 2–4.
+
 ## Proposed slices
-1. **Nef core + research half** — `Nef` primitive (helper + bind + contract), I, P (first-author), T17/T18 + I/P in summary.
+1. **Nef core + research half** — `Nef` primitive (helper + bind + contract), I, P (first-author), T17/T18 + I/P in summary. **[DONE 2026-06-26]**
 2. **A1–A6** — books/chapters/reviews/proceedings (WoS Master Book List allowlist + editor role), A1–A6 tables + A subtotal.
 3. **A7–A10** — patents + projects (reused activities; `Nef` in activity context; A10 budget via H64), A complete.
 4. **C + h + T + summary** — citation count, Hirsch computation, composite T, T20 obtained row. (Da/Nu manual.)
