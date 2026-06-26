@@ -64,6 +64,14 @@ public class ActivityReportingService {
                 }
             }
         }
+        // H65: physics didactic activities (A1–A8) score k/Nef, where Nef = the effective author count bracket of the
+        // entered N_autori. Bind it when the activity carries that field so the formula (e.g. "4/Nef") can divide.
+        // A blank/0 author count falls back to Nef=1 (no divide-by-zero), since a manual item has at least one author.
+        Object nAutori = variables.get("N_autori");
+        if (nAutori instanceof Number n) {
+            int rawAuthors = n.intValue();
+            variables.put("Nef", rawAuthors >= 1 ? EffectiveAuthorCountSupport.computeNef(rawAuthors) : 1.0);
+        }
         final String rawformula = indicator.getFormula();
         // H52 slice 11d.1: typed-strategy dispatch. GENERIC_ACTIVITY and
         // GENERIC_COUNT both short-circuit to a unit base score (1.0); only

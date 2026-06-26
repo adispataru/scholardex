@@ -141,6 +141,43 @@ class ActivityReportingServiceTest {
         assertEquals(0.0, zeroScores.get("total").getAuthorScore());
     }
 
+    @Test
+    void physicsDidacticActivityScoresKOverNefFromNAutori() {
+        // H65: A1 = 4/Nef. A manual book with 6 authors → Nef = (6+5)/2 = 5.5 → 4/5.5.
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        Indicator a1 = indicator("GENERIC_ACTIVITY", "4/Nef");
+
+        Score score = service.calculateActivityScores(List.of(physicsActivity("b1", "6")), a1).get("b1");
+
+        assertEquals(4.0 / 5.5, score.getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void physicsActivityWithBlankOrZeroAuthorsFallsBackToNefOne() {
+        // No divide-by-zero: a manual item has at least one author, so N_autori 0 → Nef 1 → 4/1.
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        Indicator a1 = indicator("GENERIC_ACTIVITY", "4/Nef");
+
+        assertEquals(4.0, service.calculateActivityScores(List.of(physicsActivity("b1", "0")), a1).get("b1").getAuthorScore(), 1e-9);
+    }
+
+    private ActivityInstance physicsActivity(String id, String nAutori) {
+        Activity.Field n = new Activity.Field();
+        n.setName("N_autori");
+        n.setNumber(true);
+        Activity activity = new Activity();
+        activity.setFields(List.of(n));
+        ActivityInstance instance = new ActivityInstance();
+        instance.setId(id);
+        instance.setDate("2024-01-01");
+        instance.setActivity(activity);
+        instance.setFields(Map.of("N_autori", nAutori));
+        instance.setReferenceFields(Map.of());
+        return instance;
+    }
+
     private Indicator indicator(String strategyName, String formula) {
         Indicator indicator = new Indicator();
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, strategyName);

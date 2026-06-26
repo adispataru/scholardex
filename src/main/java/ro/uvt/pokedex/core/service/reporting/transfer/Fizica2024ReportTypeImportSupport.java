@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.reporting.transfer;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
+import ro.uvt.pokedex.core.model.reporting.transfer.ActivitySnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportInstanceSnapshot;
@@ -34,7 +35,11 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
     private static final String BINDING_RESOURCE = "report-templates/fizica-ff/binding.json";
     private static final String ROLE_ARTICLES = "fizica-articles-author";       // I = ΣAIS/Nef
     private static final String ROLE_PRINCIPAL = "fizica-articles-principal";    // P = ΣAIS (first-or-corresponding)
-    /** Synthetic total key for the composite T = A + P/2 + I/2 + C/20 + h/5 (slice 1: A=C=h=0). */
+    /** A1–A6 didactic activity blocks (totals keyed by block id in the snapshot). A₇–A₁₀ join in slice 3. */
+    private static final List<String> A_BLOCKS = List.of("A1", "A2", "A3", "A4", "A5", "A6");
+    /** Synthetic total key for the didactic subtotal A = ΣAᵢ. */
+    private static final String TOTAL_A = "fizica-A";
+    /** Synthetic total key for the composite T = A + P/2 + I/2 + C/20 + h/5 (this slice: C=h=0). */
     private static final String TOTAL_T = "fizica-T";
 
     private final TemplateBindingLoader bindingLoader;
@@ -98,14 +103,21 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
                 rowsByRole.computeIfAbsent(ROLE_ARTICLES, k -> new ArrayList<>()).add(articleRow(pub));
             } else if (item instanceof PublicationSnapshotItem pub && ROLE_PRINCIPAL.equals(pub.getRoleKey())) {
                 rowsByRole.computeIfAbsent(ROLE_PRINCIPAL, k -> new ArrayList<>()).add(principalRow(pub));
+            } else if (item instanceof ActivitySnapshotItem act && act.getRoleKey() != null
+                    && act.getRoleKey().startsWith("fizica-a")) {
+                // A1–A6 didactic activities: one row per scored entry, grouped to its A-block by activityName.
+                rowsByRole.computeIfAbsent(act.getRoleKey(), k -> new ArrayList<>()).add(act.toRowMap());
             }
         }
 
         Map<String, Double> totals = new LinkedHashMap<>(snapshot.getTotals());
         double i = totals.getOrDefault(ROLE_ARTICLES, 0.0);
         double p = totals.getOrDefault(ROLE_PRINCIPAL, 0.0);
-        // Composite T = A + P/2 + I/2 + C/20 + h/5; A=C=h=0 in slice 1.
-        totals.put(TOTAL_T, p / 2.0 + i / 2.0);
+        // A = ΣA₁..A₆ (block totals keyed A1..A6; A₇..₁₀ join later).
+        double a = A_BLOCKS.stream().mapToDouble(b -> totals.getOrDefault(b, 0.0)).sum();
+        totals.put(TOTAL_A, a);
+        // Composite T = A + P/2 + I/2 + C/20 + h/5; C=h=0 in this slice.
+        totals.put(TOTAL_T, a + p / 2.0 + i / 2.0);
 
         return renderer.render(binding, rowsByRole, totals);
     }

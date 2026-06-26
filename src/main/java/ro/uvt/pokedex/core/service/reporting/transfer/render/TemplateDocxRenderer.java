@@ -129,11 +129,21 @@ public class TemplateDocxRenderer {
                     .filter(r -> blockName != null && blockName.equals(String.valueOf(r.get(groupingKey))))
                     .toList();
 
-            // Locate the block's total row by its marker, then the data rows directly above it.
-            int totalIdx = findRowIndexContaining(table, "Total punctaj " + blockName);
+            // Locate the block's total row by its marker, then the data rows directly above it. The marker defaults to
+            // the "Total punctaj <block>" convention but may be overridden per block (H65: the physics fišă uses
+            // "Punctaj total indicator A1" etc.).
+            String totalMarker = block.getTotalMarker() != null && !block.getTotalMarker().isBlank()
+                    ? block.getTotalMarker()
+                    : "Total punctaj " + blockName;
+            int totalIdx = findRowIndexContaining(table, totalMarker);
             if (totalIdx < 0) continue;
+            // Data rows are directly above the total row. Stop at an explicit firstDataRow when the block sets one
+            // (H65: separate single-block tables with a normal header row that the content heuristics can't tell apart),
+            // else walk up until the merged block header or a previous block's total.
+            Integer firstData = block.getFirstDataRow();
             List<Integer> dataIdxs = new java.util.ArrayList<>();
             for (int r = totalIdx - 1; r >= 0; r--) {
+                if (firstData != null && r < firstData) break;
                 XWPFTableRow row = table.getRow(r);
                 if (row == null || row.getTableCells().size() < 2) break; // hit the merged block header
                 if (normalize(rowText(row)).contains("Total punctaj")) break; // a previous block's total

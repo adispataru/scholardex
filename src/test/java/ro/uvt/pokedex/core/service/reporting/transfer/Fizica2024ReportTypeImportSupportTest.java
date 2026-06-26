@@ -7,6 +7,7 @@ import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ro.uvt.pokedex.core.model.reporting.transfer.ActivitySnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportInstanceSnapshot;
@@ -75,6 +76,47 @@ class Fizica2024ReportTypeImportSupportTest {
             assertEquals("0.73", markerRowCell(summary, "Valoare realizata", 2), "summary I");
             assertEquals("4", markerRowCell(summary, "Valoare realizata", 3), "summary P");
             assertEquals("2.36", markerRowCell(summary, "Valoare realizata", 6), "summary T = I/2 + P/2");
+        }
+    }
+
+    @Test
+    void rendersA1AndA4DidacticActivityBlocksAndASubtotal() throws Exception {
+        ReportInstanceSnapshot snap = new ReportInstanceSnapshot();
+        snap.setReportTypeKey("fizica-ff");
+
+        // A1 book, 6 authors → 4/Nef = 4/5.5 = 0.727…
+        ActivitySnapshotItem a1 = new ActivitySnapshotItem();
+        a1.setRoleKey("fizica-a1"); a1.setActivityName("A1");
+        a1.setDescription("Cartea mea, Springer (2022)"); a1.setScore(4.0 / 5.5);
+        snap.getItems().add(a1);
+        // A4 national manual, 1 author → 0.5/Nef = 0.5.
+        ActivitySnapshotItem a4 = new ActivitySnapshotItem();
+        a4.setRoleKey("fizica-a4"); a4.setActivityName("A4");
+        a4.setDescription("Manual de laborator, Editura UVT (2021)"); a4.setScore(0.5);
+        snap.getItems().add(a4);
+
+        snap.getTotals().put("A1", 4.0 / 5.5);
+        snap.getTotals().put("A4", 0.5);
+
+        byte[] bytes = support.render(snap, ReportFormat.DOCX);
+
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(bytes))) {
+            // A1 = table 7: book row (col1=desc, col4=score) + total in the "Punctaj total indicator A1" row.
+            XWPFTable a1Table = doc.getTables().get(7);
+            assertTrue(cell(a1Table, 1, 1).contains("Cartea mea"), "A1 desc: " + cell(a1Table, 1, 1));
+            assertEquals("0.73", cell(a1Table, 1, 4), "A1 item score");
+            assertEquals("0.73", markerRowCell(a1Table, "Punctaj total indicator A1", 1), "A1 total");
+
+            // A4 = table 10.
+            XWPFTable a4Table = doc.getTables().get(10);
+            assertTrue(cell(a4Table, 1, 1).contains("Manual de laborator"), "A4 desc");
+            assertEquals("0.50", cell(a4Table, 1, 4), "A4 item score");
+            assertEquals("0.50", markerRowCell(a4Table, "Punctaj total indicator A4", 1), "A4 total");
+
+            // Summary: A = A1 + A4 = 1.227 → "1.23"; T = A + I/2 + P/2 (I=P=0 here) = "1.23".
+            XWPFTable summary = doc.getTables().get(20);
+            assertEquals("1.23", markerRowCell(summary, "Valoare realizata", 1), "summary A");
+            assertEquals("1.23", markerRowCell(summary, "Valoare realizata", 6), "summary T");
         }
     }
 
