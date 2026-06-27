@@ -56,7 +56,8 @@ public class PipelineRebuildService {
             "scholardex.publication_author_affiliation_facts",
             "scholardex.source_links",
             "scholardex.identity_conflicts",
-            "scholardex.publication_link_conflicts");
+            "scholardex.publication_link_conflicts",
+            "scholardex.project_facts");
 
     /**
      * H75 skip-smart: the canonical (stage-3) collections only — the subset of {@link #MANAGED_DERIVED_COLLECTIONS}
@@ -75,7 +76,8 @@ public class PipelineRebuildService {
             "scholardex.publication_author_affiliation_facts",
             "scholardex.source_links",
             "scholardex.identity_conflicts",
-            "scholardex.publication_link_conflicts");
+            "scholardex.publication_link_conflicts",
+            "scholardex.project_facts");
 
     private final ScopusBigBangMigrationService scopusRebuild;
     private final WosBigBangMigrationService wosRebuild;
@@ -86,6 +88,7 @@ public class PipelineRebuildService {
     private final ForumReconcileService forumReconcileService;
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
     private final ro.uvt.pokedex.core.service.brainmap.BrainmapProjectImportService brainmapProjectImportService;
+    private final ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService projectCanonicalizationService;
 
     // H66B M8-B: the DOAJ/ERIH reference snapshots are match-only inputs to the forum build (read by the
     // ERIH/DOAJ onboarding inside the Scopus forum build). Folding their import into the unified DAG means one
@@ -122,7 +125,8 @@ public class PipelineRebuildService {
             ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService,
             ForumReconcileService forumReconcileService,
             ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService,
-            ro.uvt.pokedex.core.service.brainmap.BrainmapProjectImportService brainmapProjectImportService) {
+            ro.uvt.pokedex.core.service.brainmap.BrainmapProjectImportService brainmapProjectImportService,
+            ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService projectCanonicalizationService) {
         this.scopusRebuild = scopusRebuild;
         this.wosRebuild = wosRebuild;
         this.ownedCollectionRegistry = ownedCollectionRegistry;
@@ -132,6 +136,7 @@ public class PipelineRebuildService {
         this.forumReconcileService = forumReconcileService;
         this.openAlexBulkImportService = openAlexBulkImportService;
         this.brainmapProjectImportService = brainmapProjectImportService;
+        this.projectCanonicalizationService = projectCanonicalizationService;
     }
 
     /**
@@ -197,6 +202,8 @@ public class PipelineRebuildService {
         // H64 slice 1: import brainmap project source facts (idempotent upsert; canonical derivation runs later).
         ingestBrainmapProjectsIfConfigured();
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runFull();
+        // H64 slice 1: derive the canonical project layer after the affiliation backbone exists (coordinator resolve).
+        rebuildCanonicalProjects();
 
         // H75: the post-rebuild author reconcile (forum dedup + author ORCID/fuzzy/over-split) is skipped — the V2
         // canon already produces core-deduped authors (ORCID + positional bridge), and the slow O(N^2) within-source
@@ -222,6 +229,8 @@ public class PipelineRebuildService {
         LOG.info("Pipeline rebuild (derive-only): canonical wipe removed {} docs across {} collections.",
                 wiped, CANONICAL_COLLECTIONS.size());
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runDeriveFromFacts();
+        // H64 slice 1: re-derive canonical projects from the surviving brainmap source facts + affiliation backbone.
+        rebuildCanonicalProjects();
         LOG.info("Pipeline rebuild complete (derive-only).");
         return new PipelineRebuildResult(null, scopus);
     }
@@ -280,6 +289,13 @@ public class PipelineRebuildService {
             LOG.error("Unified rebuild OpenAlex bulk ingest failed", e);
             throw new IllegalStateException("OpenAlex bulk ingest failed", e);
         }
+    }
+
+    private void rebuildCanonicalProjects() {
+        var r = projectCanonicalizationService.rebuild(
+                "project-canon-" + System.currentTimeMillis(), "full-rebuild");
+        LOG.info("Pipeline rebuild canonical projects: sourceFacts={} canonical={} coordinatorsResolved={}",
+                r.sourceFacts(), r.canonicalProjects(), r.coordinatorsResolved());
     }
 
     private void ingestBrainmapProjectsIfConfigured() {
