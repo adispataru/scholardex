@@ -303,13 +303,23 @@ def append_record(rec):
 
 
 # ----------------------------------------------------------------------------- results-list parse (H64 core fields)
+def page_content(page, tries=6):
+    """page.content() retried — the jas pager swaps the list via AJAX, so content() can race a navigation."""
+    for _ in range(tries):
+        try:
+            return page.content()
+        except Exception:
+            page.wait_for_timeout(1500)
+    return page.content()
+
+
 def parse_result_rows(page):
     """
     Parse the current results page. Each project is a row whose fields are id'd <prefix>_list.<field>@<row>:
     pkXProiectId (hidden input), pTitluOficial (<a> title + goToProiect detail href), codDepunere, plan, competitieD,
     dpPrenume/dpNume/dpRol (director person+role), coordonator, numeInstFin (funder), anulInceperii/Incheierii.
     """
-    html = page.content()
+    html = page_content(page)
     # Anchor on a real data-row field, not the first '_list.' (the page has other list components, e.g.
     # '..._list.items.updateSummary', with different prefixes that carry no project rows).
     m = re.search(r"(\d+)_list\.(?:codDepunere|pkXProiectId)@\d+", html)
@@ -382,30 +392,53 @@ def goto_next_page(page):
             if links.nth(i).inner_text().strip() == str(cur + 1):
                 links.nth(i).click()
                 page.wait_for_load_state("networkidle", timeout=25000)
-                page.wait_for_timeout(random.uniform(1.5, 2.8))
+                # Wait for the swapped-in list to render + the selected page to advance, so the next
+                # content() doesn't race the AJAX reload (the page-8→9 crash).
+                try:
+                    page.wait_for_function(
+                        "n => { var e=document.querySelector('.tablePageNumberSelected');"
+                        "return e && e.textContent.trim()==String(n); }",
+                        arg=cur + 1, timeout=15000)
+                except Exception:
+                    page.wait_for_timeout(2500)
+                page.wait_for_timeout(random.uniform(1.2, 2.2))
                 return True
         except Exception:
             continue
     return False
 
 
-def harvest_results(page, limit=0):
-    """Walk every results page, parsing the list rows. Dedups by pkXProiectId. Returns the project records."""
-    seen, records = set(), []
+def harvest_results(page, limit=0, write=False):
+    """
+    Walk every results page, parsing the list rows. Dedups by pkXProiectId/code. When write=True, appends each NEW
+    record to the JSONL + checkpoint immediately (crash-safe + resumable). Returns the NEW records harvested this run.
+    """
+    done = load_done() if write else set()
+    seen = set(done)
+    records = []
     pageno = 1
     while True:
         rows = parse_result_rows(page)
+        if not rows:
+            print(f"harvest: page {pageno}: no rows — stopping")
+            break
         added = 0
         for rec in rows:
             key = rec.get("pkXProiectId") or rec.get("code")
-            if key and key not in seen:
-                seen.add(key)
-                records.append(rec)
-                added += 1
-        print(f"harvest: page {pageno}: +{added} (total {len(records)})")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            records.append(rec)
+            added += 1
+            if write:
+                append_record(rec)
+                done.add(key)
+        if write:
+            save_done(done)
+        print(f"harvest: page {pageno}: +{added} new (this run: {len(records)})")
         if limit and len(records) >= limit:
             return records[:limit]
-        if added == 0 or not goto_next_page(page):
+        if not goto_next_page(page):  # stop on the last page, NOT on an all-already-done page (resume safety)
             break
         pageno += 1
     return records
@@ -504,9 +537,10 @@ def run_manual(page, wait_s, extract, limit):
 
     dump(page, "results")  # snapshot for reference
     # Harvest the project fields straight off the results list (no per-detail navigation). Without --extract, only
-    # the first ~2 pages are parsed as a quick validation; --extract walks all ~35 pages and writes the JSONL.
-    records = harvest_results(page, limit if limit else (0 if extract else 20))
-    print(f"manual: harvested {len(records)} projects (expected ~341 for the full run)")
+    # the first ~2 pages are parsed as a quick validation; --extract walks all ~35 pages and writes the JSONL
+    # incrementally (crash-safe; a re-run resumes by skipping checkpointed ids).
+    records = harvest_results(page, limit if limit else (0 if extract else 20), write=extract)
+    print(f"manual: harvested {len(records)} new projects this run")
     if records:
         s = records[0]
         print(f"  sample[0]: code={s.get('code')} | title={(s.get('title') or '')[:50]!r}")
@@ -517,17 +551,10 @@ def run_manual(page, wait_s, extract, limit):
         print("\nmanual: validation only (no write). If the sample looks right, re-run with --extract to write all ~341.")
         return
 
-    done = load_done()
-    written = 0
-    for rec in records:
-        key = rec.get("pkXProiectId") or rec.get("code")
-        if not key or key in done:
-            continue
-        append_record(rec)
-        done.add(key)
-        written += 1
-    save_done(done)
-    print(f"\nmanual: wrote {written} new records ({len(done)} total) -> {OUT_JSONL}")
+    total = len(load_done())
+    print(f"\nmanual: wrote this run={len(records)} | total in {OUT_JSONL.name}={total}")
+    if total < 300:
+        print("  (if total < ~341, re-run --manual --extract to resume the remaining pages)")
 
 
 def main():
