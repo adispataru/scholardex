@@ -168,6 +168,18 @@ numeric segment) for `funder=EC`, else the **brainmap code** (`PN-III-…`) for 
    activity via `PROJECT_GRANT_ID` + declare role (director/member) + optional budget; researcher↔project = the
    activity reference (reuse `ActivityInstance.referenceFields`, no new join model). **Test:** search + reference round-trip.
 
+> **Slice 2 — DONE (2026-06-27).** 2 commits: **2a** `ScholardexProject{ListItem,Page}Response` DTOs +
+> `ScholardexProjectReadPort`/`PostgresScholardexProjectReadPort` (search ILIKE title/code/funder/eu_grant_id/
+> coordinator_name; `findById`; director = `CONCAT_WS`) + `EntityProjectApiController` `GET /api/entities/projects`
+> (+`/{id}`); tested via @WebMvcTest contract + Postgres Testcontainers read-port. **2b** workspace
+> `workspaceActivities.js` renders a `PROJECT_GRANT_ID` reference as a debounced `/api/entities/projects` autocomplete
+> (stores `sproj_` id in a hidden input keeping the `data-(create-)ref-field` attr → unchanged save handlers persist
+> it; edit form resolves id→label via `/{id}`); dropdown CSS; bundle rebuilt; assets/UI/route guardrails pass.
+> **Verified:** backend integration + contract tests green, bundle guardrails green. **Live browser happy-path not yet
+> run** — needs (a) a pipeline rebuild to populate `scholardex_project_view` and (b) an Activity defining
+> `PROJECT_GRANT_ID` (config). (Pre-existing unrelated `verify-duplication-guardrails` failure in
+> `ComputerScienceScoringService` — fails on the base commit too, not from this work.)
+
 ### Slice 2 — scope (2026-06-27) + CS/Informatică alignment
 
 **The reference slot is already universal.** Every project indicator across reports uses the **same**
