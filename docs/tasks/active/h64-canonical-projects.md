@@ -80,6 +80,27 @@ this task is independent and must not block the reports.
   (CORDIS → admin → user) with provenance shown; admin can edit/add budget + create manual projects.
 - brainmap dump generation is offline, rate-limited, credential-safe; no live dependency.
 
+## Status (2026-06-27) — brainmap source dump DONE; CORDIS hand-entry; importer next
+
+- **brainmap (RO national) — DONE.** `scopus-python/brainmap_dump.py --manual --extract` produced
+  `data/brainmap/uvt_projects.jsonl` = **341 UVT projects** (gitignored; PII = director names). Coverage:
+  code/pkXProiectId/funder/competition/plan/detailHref 100%, title/coordinator 95%, **director 89%** (305/341 — the
+  rest are institutional programs with no personal director, legitimate), start/end year ~45% (sparse on the list;
+  recover from the code call-year or a phase-2 detail pass). Funders: UEFISCDI 241, MEd 64, **EC 22**, IFA 8, ROSA 2.
+  Per-record fields: `pkXProiectId, code, title, detailHref, plan, competition, directorFirst/Last/Role, coordinator,
+  funder, startYear, endYear`.
+  - **How it works (hard-won — see memory):** brainmap is a stateful "jas" JS app. Bare `?we=<module>` errors; navigate
+    by following the page's own token-bearing link. The institution filter is a jQuery-UI autocomplete fragile to
+    script → `--manual` headful: a human picks UVT + Caută, then the script harvests the **searchAdvanced results
+    LIST** (fields are `<prefix>_list.<field>@<row>`, 10/page, ~35 pages) — NOT 341 detail pages. Resume-safe.
+- **CORDIS (EU) — hand-entry.** Only **19** UVT projects + the per-project detail download is manual, so they go in
+  via the app's admin/user entry rather than a bulk importer (the user supplies + a CORDIS update comes from the user).
+  (brainmap also lists 22 EC projects, so there's overlap to dedupe by grant code at canonicalization.)
+- **NEXT — the importer:** ingest `uvt_projects.jsonl` → `brainmap.project_facts` → canonical `ScholardexProject`
+  (+ `project_partner_facts`), researcher↔project join (director from brainmap), partners→canonical affiliation.
+  **Settle open decision #1 (budget semantics) first** — brainmap has no budget, so A10 budget stays
+  CORDIS/admin/user-declared regardless; that argues for the lighter reference-import + picker over a full pipeline.
+
 ## Dependencies / relation
 
 Builds on the existing ingestion pipeline + canonical affiliation identity. Sibling to [H63](h63-openalex-enrichment.md)
