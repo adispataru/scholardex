@@ -310,41 +310,55 @@ def parse_result_rows(page):
     dpPrenume/dpNume/dpRol (director person+role), coordonator, numeInstFin (funder), anulInceperii/Incheierii.
     """
     html = page.content()
-    m = re.search(r"(\d+)_list\.", html)
+    # Anchor on a real data-row field, not the first '_list.' (the page has other list components, e.g.
+    # '..._list.items.updateSummary', with different prefixes that carry no project rows).
+    m = re.search(r"(\d+)_list\.(?:codDepunere|pkXProiectId)@\d+", html)
     if not m:
         return []
     prefix = m.group(1)
     rows = sorted({int(r) for r in re.findall(rf"{prefix}_list\.[A-Za-z0-9]+@(\d+)", html) if int(r) >= 0})
 
-    def el(field, row):
-        loc = page.locator(f"[id='{prefix}_list.{field}@{row}']")
-        return loc.first if loc.count() > 0 else None
+    def field(f, row):
+        # Element with a closing tag (label/anchor/span/div): inner text, else its value= attr.
+        mm = re.search(rf'id="{prefix}_list\.{re.escape(f)}@{row}"([^>]*)>(.*?)</', html, re.DOTALL)
+        if mm:
+            inner = re.sub(r"<[^>]+>", "", mm.group(2)).strip()
+            if inner:
+                return inner
+            v = re.search(r'value="([^"]*)"', mm.group(1))
+            if v:
+                return v.group(1)
+        # Void element (hidden input): value= on the tag itself.
+        mm2 = re.search(rf'<input[^>]*id="{prefix}_list\.{re.escape(f)}@{row}"[^>]*>', html)
+        if mm2:
+            v = re.search(r'value="([^"]*)"', mm2.group(0))
+            return v.group(1) if v else None
+        return None
 
-    def txt(field, row):
-        e = el(field, row)
-        try:
-            return e.inner_text().strip() if e else None
-        except Exception:
-            return None
+    def href(f, row):
+        mm = re.search(rf'id="{prefix}_list\.{re.escape(f)}@{row}"([^>]*)>', html)
+        if mm:
+            h = re.search(r'href="([^"]*)"', mm.group(1))
+            if h:
+                return absolute(h.group(1).replace("&amp;", "&"))
+        return None
 
     out = []
     for r in rows:
-        pk = el("pkXProiectId", r)
-        title = el("pTitluOficial", r)
         rec = {
-            "pkXProiectId": pk.get_attribute("value") if pk else None,
-            "title": txt("pTitluOficial", r),
-            "detailHref": (title.get_attribute("href") if title else None),
-            "code": txt("codDepunere", r),
-            "plan": txt("plan", r),
-            "competition": txt("competitieD", r),
-            "directorFirst": txt("dpPrenume", r),
-            "directorLast": txt("dpNume", r),
-            "directorRole": txt("dpRol", r),
-            "coordinator": txt("coordonator", r),
-            "funder": txt("numeInstFin", r),
-            "startYear": txt("anulInceperii", r),
-            "endYear": txt("anulIncheierii", r),
+            "pkXProiectId": field("pkXProiectId", r),
+            "title": field("pTitluOficial", r),
+            "detailHref": href("pTitluOficial", r),
+            "code": field("codDepunere", r),
+            "plan": field("plan", r),
+            "competition": field("competitieD", r),
+            "directorFirst": field("dpPrenume", r),
+            "directorLast": field("dpNume", r),
+            "directorRole": field("dpRol", r) or "Director",
+            "coordinator": field("coordonator", r),
+            "funder": field("numeInstFin", r),
+            "startYear": field("anulInceperii", r),
+            "endYear": field("anulIncheierii", r),
             "orgId": ORG_ID,
             "scrapedAt": datetime.now(timezone.utc).isoformat(),
         }
