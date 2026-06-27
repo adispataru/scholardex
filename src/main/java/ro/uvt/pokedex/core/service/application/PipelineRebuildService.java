@@ -85,6 +85,7 @@ public class PipelineRebuildService {
     private final ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
     private final ForumReconcileService forumReconcileService;
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
+    private final ro.uvt.pokedex.core.service.brainmap.BrainmapProjectImportService brainmapProjectImportService;
 
     // H66B M8-B: the DOAJ/ERIH reference snapshots are match-only inputs to the forum build (read by the
     // ERIH/DOAJ onboarding inside the Scopus forum build). Folding their import into the unified DAG means one
@@ -106,6 +107,12 @@ public class PipelineRebuildService {
     @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.institutions-dir:}")
     private String openAlexInstitutionsDir;
 
+    // H64 slice 1: file-driven brainmap projects import (data/brainmap/uvt_projects.jsonl → brainmap.project_facts,
+    // a source collection re-imported from file like the OpenAlex facts). Blank path skips. The canonical project
+    // derivation runs after the Scopus build (it resolves coordinators into the affiliation backbone).
+    @org.springframework.beans.factory.annotation.Value("${core.brainmap.bulk.projects-file:}")
+    private String brainmapProjectsFile;
+
     public PipelineRebuildService(
             ScopusBigBangMigrationService scopusRebuild,
             WosBigBangMigrationService wosRebuild,
@@ -114,7 +121,8 @@ public class PipelineRebuildService {
             ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService,
             ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService,
             ForumReconcileService forumReconcileService,
-            ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService) {
+            ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService,
+            ro.uvt.pokedex.core.service.brainmap.BrainmapProjectImportService brainmapProjectImportService) {
         this.scopusRebuild = scopusRebuild;
         this.wosRebuild = wosRebuild;
         this.ownedCollectionRegistry = ownedCollectionRegistry;
@@ -123,6 +131,7 @@ public class PipelineRebuildService {
         this.erihDataService = erihDataService;
         this.forumReconcileService = forumReconcileService;
         this.openAlexBulkImportService = openAlexBulkImportService;
+        this.brainmapProjectImportService = brainmapProjectImportService;
     }
 
     /**
@@ -185,6 +194,8 @@ public class PipelineRebuildService {
         // H73 slice 1: import the OpenAlex works/citers source facts + derive the ROR affiliation backbone
         // BEFORE the Scopus build, so Scopus affiliations can resolve into the backbone (slice 2).
         ingestOpenAlexBulkIfConfigured();
+        // H64 slice 1: import brainmap project source facts (idempotent upsert; canonical derivation runs later).
+        ingestBrainmapProjectsIfConfigured();
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runFull();
 
         // H75: the post-rebuild author reconcile (forum dedup + author ORCID/fuzzy/over-split) is skipped — the V2
@@ -268,6 +279,22 @@ public class PipelineRebuildService {
         } catch (java.io.IOException e) {
             LOG.error("Unified rebuild OpenAlex bulk ingest failed", e);
             throw new IllegalStateException("OpenAlex bulk ingest failed", e);
+        }
+    }
+
+    private void ingestBrainmapProjectsIfConfigured() {
+        if (brainmapProjectsFile == null || brainmapProjectsFile.isBlank()) {
+            return;
+        }
+        java.nio.file.Path projects = pathOrNull(brainmapProjectsFile);
+        try {
+            var r = brainmapProjectImportService.importAll(projects,
+                    "brainmap-projects-" + System.currentTimeMillis(), "full-rebuild");
+            LOG.info("Unified rebuild brainmap projects ingest: imported={} skipped={}",
+                    r.projectsImported(), r.skipped());
+        } catch (java.io.IOException e) {
+            LOG.error("Unified rebuild brainmap projects ingest failed", e);
+            throw new IllegalStateException("Brainmap projects ingest failed", e);
         }
     }
 
