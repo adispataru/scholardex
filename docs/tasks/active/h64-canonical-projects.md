@@ -167,6 +167,42 @@ numeric segment) for `funder=EC`, else the **brainmap code** (`PN-III-…`) for 
    `EntityProjectApiController` `/api/entities/projects?q=`; workspace UI to attach a canonical project to a project
    activity via `PROJECT_GRANT_ID` + declare role (director/member) + optional budget; researcher↔project = the
    activity reference (reuse `ActivityInstance.referenceFields`, no new join model). **Test:** search + reference round-trip.
+
+### Slice 2 — scope (2026-06-27) + CS/Informatică alignment
+
+**The reference slot is already universal.** Every project indicator across reports uses the **same**
+`Activity.ReferenceField.PROJECT_GRANT_ID` slot on its project activity, stored on
+`ActivityInstance.referenceFields[PROJECT_GRANT_ID]`:
+- **CS / `informatica-2016`** → activity **"Granturi"** (binding role `activities-perspectiva-d`, STACKED_BLOCKS;
+  cols C=description, H=category, K=score). Scored by the generic activity formula on declared fields; **CS does NOT
+  gate on role or funder** today, so the canonical reference is purely an **identity/verification upgrade** (link the
+  free-text grant to a trusted `sproj_` record + show code/title/funder) — the score still comes from the declared
+  fields. No CS-specific code.
+- **Physics** → `Grant Cercetare` (A9 director count via `Rol`, A10 € via `Buget`).
+- **FEAA** → its project/budget activity.
+
+⇒ **Slice 2 is report-agnostic**: one picker bound to the `PROJECT_GRANT_ID` field type serves CS + physics + FEAA at
+once. **Config prerequisite (not code):** each report's project Activity *definition* must declare `PROJECT_GRANT_ID`
+in its `referenceFields` for the picker to render (admin/seed config; verify per deployment).
+
+**Build (mirror the affiliation picker `EntityAffiliationApiController` + `PostgresScholardexAffiliationReadPort`):**
+- **Backend** — `ScholardexProjectListItemResponse`/`PageResponse` DTOs (id, code, title, funder, director,
+  startYear/endYear, coordinatorName); `PostgresScholardexProjectReadPort.search(q,page,size,sort,direction)` (ILIKE
+  over title/code/funder/eu_grant_id/coordinator_name on `scholardex_project_view`) + `findById`; `EntityProjectApi
+  Controller` `GET /api/entities/projects` (+ `/{id}` for label resolution).
+- **Frontend** (`frontend/src/modules/workspace/workspaceActivities.js`; `app.js` is the generated bundle → edit
+  source then `npm run build` + the `verify-assets`/guardrail scripts) — render a `PROJECT_GRANT_ID` reference field as
+  a **debounced autocomplete** against `/api/entities/projects` (dropdown "code — title (funder, years)"; select →
+  store `sproj_` id) instead of the current plain `<input data-(create-)ref-field>`; resolve a stored id → label via
+  `/{id}` on render. Other reference types stay text inputs for now. (No existing client autocomplete to copy — small
+  debounce+dropdown helper.)
+- **Tests** — read-port (Postgres Testcontainers: search by code/title/funder, findById, paging); controller slice
+  (mind the `@WebMvcTest` `@MockitoBean` completeness gotcha); reuse the asset-verify guardrails for the bundle.
+- **Out of scope → slice 3:** resolving the reference to canonical metadata *at scoring* (A9 director cross-check,
+  funder gating) and report-export showing "code — title" instead of the raw id (cheap; can ride along if time).
+
+Researcher↔project stays the activity reference; role/budget stay declared on the activity fields (matches the
+self-link decision).
 3. **Consume in reports (decouple-safe).** Physics A9 (director count) + A10 (declared budget) read the referenced
    canonical project where present (title/code/funder/director display from canonical), free-text fallback otherwise.
 4. **(Later) CORDIS + user-defined + auto-attribution.** CORDIS hand-entry model + user-created projects → merge into
