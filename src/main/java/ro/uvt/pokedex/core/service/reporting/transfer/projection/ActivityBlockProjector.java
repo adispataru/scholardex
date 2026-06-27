@@ -12,6 +12,8 @@ import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingBlock;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingKind;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
+import ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectReadPort;
 import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportReadinessValidator;
@@ -31,13 +33,21 @@ public class ActivityBlockProjector {
 
     private static final Logger LOG = LoggerFactory.getLogger(ActivityBlockProjector.class);
 
+    /** H64 slice 3: the reference key whose value (sproj_… id) is resolved to a canonical project label. */
+    private static final String PROJECT_GRANT_REF = Activity.ReferenceField.PROJECT_GRANT_ID.name();
+
     private final UserIndicatorResultService userIndicatorResultService;
     private final PublicationRowProjector publicationRowProjector;
+    // H64 slice 3: resolve a PROJECT_GRANT_ID reference (sproj_ id) to a human label in report output. Injected
+    // directly (not via ReportingLookupPort) to avoid the dual-facade @Primary delegator churn.
+    private final ScholardexProjectReadPort scholardexProjectReadPort;
 
     public ActivityBlockProjector(UserIndicatorResultService userIndicatorResultService,
-                                  PublicationRowProjector publicationRowProjector) {
+                                  PublicationRowProjector publicationRowProjector,
+                                  ScholardexProjectReadPort scholardexProjectReadPort) {
         this.userIndicatorResultService = userIndicatorResultService;
         this.publicationRowProjector = publicationRowProjector;
+        this.scholardexProjectReadPort = scholardexProjectReadPort;
     }
 
     public List<ActivitySnapshotItem> projectAllBlocks(String userEmail,
@@ -198,7 +208,13 @@ public class ActivityBlockProjector {
         if (refFields instanceof Map<?, ?> rm) {
             for (Map.Entry<?, ?> e : rm.entrySet()) {
                 Object v = e.getValue();
-                if (v != null && !v.toString().isBlank()) {
+                if (v == null || v.toString().isBlank()) {
+                    continue;
+                }
+                // H64 slice 3: render a canonical project reference as a trusted label instead of the raw sproj_ id.
+                if (PROJECT_GRANT_REF.equals(String.valueOf(e.getKey()))) {
+                    parts.add(resolveProjectLabel(v.toString()));
+                } else {
                     parts.add(v.toString());
                 }
             }
@@ -208,6 +224,35 @@ public class ActivityBlockProjector {
         if (date != null && !date.toString().isBlank()) parts.add("(" + date + ")");
 
         return parts.isEmpty() ? null : String.join(" — ", parts);
+    }
+
+    /**
+     * H64 slice 3 — resolve a {@code PROJECT_GRANT_ID} reference (a {@code sproj_…} canonical id) to a trusted label
+     * {@code code — title (funder) — Director: First Last}. Falls back to the raw value when unresolved (the project
+     * view not yet populated, or the reference is free text predating the picker) so report export never breaks.
+     */
+    private String resolveProjectLabel(String reference) {
+        ScholardexProjectListItemResponse project;
+        try {
+            project = scholardexProjectReadPort.findById(reference);
+        } catch (RuntimeException ex) {
+            LOG.warn("Project reference resolution failed for {} — using raw value", reference, ex);
+            return reference;
+        }
+        if (project == null) {
+            return reference;
+        }
+        List<String> head = new ArrayList<>();
+        if (project.code() != null && !project.code().isBlank()) head.add(project.code());
+        if (project.title() != null && !project.title().isBlank()) head.add(project.title());
+        String label = head.isEmpty() ? reference : String.join(" — ", head);
+        if (project.funder() != null && !project.funder().isBlank()) {
+            label = label + " (" + project.funder() + ")";
+        }
+        if (project.director() != null && !project.director().isBlank()) {
+            label = label + " — Director: " + project.director();
+        }
+        return label;
     }
 
     @SuppressWarnings("unchecked")
