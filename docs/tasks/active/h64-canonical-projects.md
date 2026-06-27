@@ -115,6 +115,48 @@ this task is independent and must not block the reports.
   **Settle open decision #1 (budget semantics) first** — brainmap has no budget, so A10 budget stays
   CORDIS/admin/user-declared regardless; that argues for the lighter reference-import + picker over a full pipeline.
 
+## Importer scope (2026-06-27) — decisions locked + slices
+
+**Decisions (this settles open-decisions #1 + #2):**
+- **Budget = declared-only.** brainmap has NO budget (verified: not in the 341 list records nor the detail page).
+  CORDIS budget is org-level, not a person's led-team share → the canonical project carries `budget = null`; A10 €
+  stays **user/admin/CORDIS-declared on the activity**. The canonical project supplies identity + director, not budget.
+- **Architecture = canonical + projection** (mirror the OpenAlex *bulk* path — no separate event stage):
+  `data/brainmap/uvt_projects.jsonl` → `brainmap.project_facts` (Mongo source) → canonical `ScholardexProjectFact`
+  (merge-ready by EU grant id) → `reporting_read.scholardex_project_view` (Postgres) → read-port → entity-picker.
+- **Attribution = researcher self-links** via the picker (declare role director/member on a project activity); auto
+  director→researcher name-matching deferred to a later enrichment slice.
+- **Sources = brainmap-only first** (341); CORDIS (19 hand-entry) + user-defined projects are a follow-up slice.
+
+**Reference templates (from the code map):** `OpenAlexBulkImportService` (JSONL stream → source facts, config-keyed
+file) · `CanonicalGraphBuilder.buildAffiliations` (source→canonical + `ScopusAffiliationRorMatcher.match(name,city,
+country)` for partner/coordinator resolution) · `ScholardexProjectionBuilderService.rebuildViews` (Mongo→Postgres JDBC
+batch, FULL_REPLACEMENT tables) · `PostgresScholardexProjectionReadPort` + `EntityAffiliationApiController`
+(`/api/entities/affiliations`) for the read-port + picker · `ActivityInstance.referenceFields[PROJECT_GRANT_ID]` (the
+project-reference slot already exists) · Flyway `db/migration/` for the view table.
+
+**Identity / merge key:** canonical id `sproj_<hash(key)>` where key = **EU grant id** (the brainmap code's trailing
+numeric segment) for `funder=EC`, else the **brainmap code** (`PN-III-…`) for RO national. Store both `euGrantId`
+(nullable) + `code` so CORDIS/user later merge by `euGrantId`. (See the EU cross-check above for the join key.)
+
+### Slices
+1. **Data layer (brainmap → canonical → projection).** `BrainmapProjectRecord` DTO; `BrainmapProjectFact`
+   (`brainmap.project_facts`) + repo; `BrainmapBulkImportService.importAll(projectsFile, batchId, correlationId)`
+   (config `core.brainmap.bulk.projects-file=data/brainmap/uvt_projects.jsonl`); canonical `ScholardexProjectFact`
+   (`scholardex.project_facts`) + repo; `CanonicalGraphBuilder.buildProjects(...)` (1:1 brainmap→canonical, merge by
+   `euGrantId`, coordinator name → canonical affiliation via the ROR matcher; `budget=null`); Flyway
+   `scholardex_project_view` + `ScholardexProjectionBuilderService.buildProjectViews()` (add to FULL_REPLACEMENT);
+   wire into `PipelineRebuildService.rebuildAllDerivedFromSource()` after OpenAlex. **Test:** Testcontainers
+   end-to-end JSONL → facts → canonical → view; coordinator resolves to the UVT canonical affiliation; 341 land.
+2. **Picker + reference (self-link).** `PostgresScholardexProjectReadPort.search(q,page,size)` + `findProjectById`;
+   `EntityProjectApiController` `/api/entities/projects?q=`; workspace UI to attach a canonical project to a project
+   activity via `PROJECT_GRANT_ID` + declare role (director/member) + optional budget; researcher↔project = the
+   activity reference (reuse `ActivityInstance.referenceFields`, no new join model). **Test:** search + reference round-trip.
+3. **Consume in reports (decouple-safe).** Physics A9 (director count) + A10 (declared budget) read the referenced
+   canonical project where present (title/code/funder/director display from canonical), free-text fallback otherwise.
+4. **(Later) CORDIS + user-defined + auto-attribution.** CORDIS hand-entry model + user-created projects → merge into
+   canonical by `euGrantId` (budget from CORDIS/user → A10 trusted budget); auto director→researcher name-match + confirm UI.
+
 ## Dependencies / relation
 
 Builds on the existing ingestion pipeline + canonical affiliation identity. Sibling to [H63](h63-openalex-enrichment.md)
