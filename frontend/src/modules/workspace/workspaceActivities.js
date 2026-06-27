@@ -301,6 +301,7 @@ function _insertDetailRow(inst, tr) {
     tr.insertAdjacentElement('afterend', detailTr);
 
     detailTr.querySelector('.app-ws-acts__detail-close')?.addEventListener('click', () => _closeDetail());
+    _wireProjectPickers(detailTr);
 
     detailTr.querySelector('[data-save-inst]')?.addEventListener('click', () => _saveInst(inst.id, detailTr));
 
@@ -321,6 +322,85 @@ function _insertDetailRow(inst, tr) {
             _deleteInst(inst.id, detailTr);
         }
     });
+}
+
+// ── Canonical project picker (H64 slice 2) ────────────────────────────────────
+// Renders a PROJECT_GRANT_ID reference as an autocomplete against /api/entities/projects. The visible input is a
+// search box; a hidden input carries the chosen canonical id (sproj_…) and keeps the existing data-(create-)ref-field
+// attribute so the unchanged save handlers persist it.
+
+function _projectLabel(p) {
+    const head = [p.code, p.title].filter(Boolean).join(' — ') || p.id;
+    const meta = [];
+    if (p.funder) meta.push(p.funder);
+    if (p.startYear) meta.push(p.endYear ? `${p.startYear}–${p.endYear}` : `${p.startYear}`);
+    return meta.length ? `${head} (${meta.join(', ')})` : head;
+}
+
+function _projectPickerFieldHtml(label, dataAttr, currentId) {
+    return `<div class="app-ws-acts__field js-project-picker">
+        <label class="app-ws-acts__label">${_esc(label)}</label>
+        <div class="app-ws-acts__picker">
+          <input class="app-ws-acts__input js-project-picker-search" type="text" autocomplete="off"
+                 placeholder="Search project by title, code, funder…"/>
+          <input type="hidden" ${dataAttr}="PROJECT_GRANT_ID" class="js-project-picker-value" value="${_esc(currentId)}"/>
+          <ul class="app-ws-acts__picker-results js-project-picker-results" hidden></ul>
+        </div>
+    </div>`;
+}
+
+function _wireProjectPickers(root) {
+    root.querySelectorAll('.js-project-picker').forEach(wrap => {
+        const search  = wrap.querySelector('.js-project-picker-search');
+        const hidden  = wrap.querySelector('.js-project-picker-value');
+        const results = wrap.querySelector('.js-project-picker-results');
+        if (!search || !hidden || !results) return;
+
+        // Resolve a pre-existing reference (edit form) to a human label; the hidden id is preserved on save even if
+        // resolution fails (e.g. before the first projection rebuild).
+        if (hidden.value) {
+            fetch(`/api/entities/projects/${encodeURIComponent(hidden.value)}`, { credentials: 'same-origin' })
+                .then(r => (r.ok ? r.json() : null))
+                .then(p => { if (p) search.value = _projectLabel(p); })
+                .catch(() => {});
+        }
+
+        let timer = null;
+        search.addEventListener('input', () => {
+            // Typing invalidates a prior pick until a new selection is made.
+            hidden.value = '';
+            const q = search.value.trim();
+            clearTimeout(timer);
+            if (q.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
+            timer = setTimeout(() => _searchProjects(q, results, search, hidden), 250);
+        });
+        document.addEventListener('click', e => { if (!wrap.contains(e.target)) results.hidden = true; });
+    });
+}
+
+function _searchProjects(q, results, search, hidden) {
+    fetch(`/api/entities/projects?size=8&q=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(page => {
+            const items = page?.items ?? [];
+            if (items.length === 0) {
+                results.innerHTML = `<li class="app-ws-acts__picker-empty">No projects found</li>`;
+                results.hidden = false;
+                return;
+            }
+            results.innerHTML = items.map(p =>
+                `<li class="app-ws-acts__picker-item" data-id="${_esc(p.id)}" data-label="${_esc(_projectLabel(p))}">${_esc(_projectLabel(p))}</li>`
+            ).join('');
+            results.hidden = false;
+            results.querySelectorAll('.app-ws-acts__picker-item').forEach(li => {
+                li.addEventListener('click', () => {
+                    hidden.value  = li.dataset.id;
+                    search.value  = li.dataset.label;
+                    results.hidden = true;
+                });
+            });
+        })
+        .catch(() => { results.hidden = true; });
 }
 
 function _buildDetailPanel(inst) {
@@ -355,6 +435,9 @@ function _buildDetailPanel(inst) {
         const refInputs = actRefFields.map(rf => {
             const label = REF_LABELS[rf] ?? rf;
             const val   = refValues[rf] ?? '';
+            if (rf === 'PROJECT_GRANT_ID') {
+                return _projectPickerFieldHtml(label, 'data-ref-field', val);
+            }
             return `<div class="app-ws-acts__field">
                 <label class="app-ws-acts__label">${_esc(label)}</label>
                 <input class="app-ws-acts__input" type="text"
@@ -593,6 +676,9 @@ function _renderCreateFields(container, activity) {
 
     const refHtml = refFields.map(rf => {
         const label = REF_LABELS[rf] ?? rf;
+        if (rf === 'PROJECT_GRANT_ID') {
+            return _projectPickerFieldHtml(label, 'data-create-ref-field', '');
+        }
         return `<div class="app-ws-acts__field">
             <label class="app-ws-acts__label">${_esc(label)}</label>
             <input class="app-ws-acts__input" type="text"
@@ -605,6 +691,7 @@ function _renderCreateFields(container, activity) {
           <p class="app-ws-acts__create-fields-title">Fields</p>
           <div class="app-ws-acts__create-row">${customHtml}${refHtml}</div>
         </div>`;
+    _wireProjectPickers(container);
 }
 
 function _submitCreate(placeholder) {
