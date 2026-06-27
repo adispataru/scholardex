@@ -140,6 +140,21 @@ numeric segment) for `funder=EC`, else the **brainmap code** (`PN-III-…`) for 
 (nullable) + `code` so CORDIS/user later merge by `euGrantId`. (See the EU cross-check above for the join key.)
 
 ### Slices
+> **Slice 1 — DONE (2026-06-27).** Full chain shipped + tested (3 commits on `codex/h66b-builders`):
+> - **1a** `BrainmapProjectRecord` DTO + `BrainmapProjectFact` (`brainmap.project_facts`) + repo +
+>   `BrainmapProjectImportService.importAll` (streamed, idempotent by `pkXProiectId`, no-budget) + config
+>   `core.brainmap.bulk.projects-file` + `PipelineRebuildService.ingestBrainmapProjectsIfConfigured()`.
+> - **1b** `ScholardexProjectFact` (`scholardex.project_facts`) + repo + `ProjectCanonicalizationService.rebuild()`
+>   (wipe-first; id `sproj_<hash(euGrantId|code)>`; `euGrantId` = code trailing segment for `funder=EC` only;
+>   coordinator→affiliation via a **token-signature index** over name+aliases — robust to the brainmap "Universitatea
+>   de Vest Timisoara" vs OpenAlex "…de Vest **din** Timișoara" gap the ROR matcher's name-only fuzzy tier misses;
+>   `budget=null`). Wired into both rebuild paths after the affiliation backbone; added to the managed + canonical wipe sets.
+> - **1c** Flyway **V19** `reporting_read.scholardex_project_view` + `ProjectProjectionService.rebuildView()`
+>   (Mongo→Postgres JDBC batch, full-replacement) wired after canonicalization. **End-to-end Testcontainers test**
+>   (Mongo+Postgres) green: JSONL→source→canonical→view, coordinator resolves to UVT, euGrantId for EC, budget null,
+>   arrays land, idempotent. (Note: the live ~341 land on the next full/derive rebuild — the import is config-on.)
+>
+> Original slice-1 plan (for reference):
 1. **Data layer (brainmap → canonical → projection).** `BrainmapProjectRecord` DTO; `BrainmapProjectFact`
    (`brainmap.project_facts`) + repo; `BrainmapBulkImportService.importAll(projectsFile, batchId, correlationId)`
    (config `core.brainmap.bulk.projects-file=data/brainmap/uvt_projects.jsonl`); canonical `ScholardexProjectFact`
