@@ -95,7 +95,21 @@ this task is independent and must not block the reports.
     LIST** (fields are `<prefix>_list.<field>@<row>`, 10/page, ~35 pages) — NOT 341 detail pages. Resume-safe.
 - **CORDIS (EU) — hand-entry.** Only **19** UVT projects + the per-project detail download is manual, so they go in
   via the app's admin/user entry rather than a bulk importer (the user supplies + a CORDIS update comes from the user).
-  (brainmap also lists 22 EC projects, so there's overlap to dedupe by grant code at canonicalization.)
+- **EU cross-check (2026-06-27, brainmap 22 EC funder=`EC` vs the 19-row CORDIS export):**
+  - **Join key (confirmed clean):** the brainmap code's trailing numeric segment IS the EU grant id =
+    CORDIS `ID` (e.g. `Horizon-239038-101061610` → `101061610`; `FP7-86416-211338` → `211338`). Dedup/merge by
+    that grant id — no fuzzy matching needed.
+  - **Overlap = 9** (all H2020/Horizon): 101003517, 101035810, 101036006, 101061610, 101094529, 101126643,
+    101131420, 101177908, 101236475.
+  - **CORDIS-only = 10** — modern EU projects brainmap doesn't list at all (incl. **SERRANO 101017168**, the €270k
+    benchmark; LEARNVUL, SMARTEES, Dynamics 777911, SESAME NET, VI-SEEM, CONNECTING Nature, …).
+  - **brainmap-only = 13** — all **FP7** (pre-H2020; the CORDIS export was scoped to H2020/Horizon).
+  - **Implications:** neither source is complete for EU (union = **32** distinct: 9+10+13). **CORDIS is authoritative**
+    for modern EU + is the *only* source of per-partner € budget. brainmap adds the FP7 historical tail (no budget).
+    **EU projects carry NO director in brainmap** (`dir=None` for all 22 — the 89% director coverage is the RO
+    national UEFISCDI/MEd projects), so **EU attribution stays user-declared** regardless of source — as planned.
+  - **Importer rule:** ingest both; dedupe by grant id; for the 9 overlap **prefer CORDIS** (it carries budget +
+    metadata; brainmap adds neither director nor budget for EU rows).
 - **NEXT — the importer:** ingest `uvt_projects.jsonl` → `brainmap.project_facts` → canonical `ScholardexProject`
   (+ `project_partner_facts`), researcher↔project join (director from brainmap), partners→canonical affiliation.
   **Settle open decision #1 (budget semantics) first** — brainmap has no budget, so A10 budget stays
