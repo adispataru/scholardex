@@ -89,6 +89,7 @@ public class PipelineRebuildService {
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
     private final ro.uvt.pokedex.core.service.brainmap.BrainmapProjectImportService brainmapProjectImportService;
     private final ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService projectCanonicalizationService;
+    private final ro.uvt.pokedex.core.service.brainmap.ProjectProjectionService projectProjectionService;
 
     // H66B M8-B: the DOAJ/ERIH reference snapshots are match-only inputs to the forum build (read by the
     // ERIH/DOAJ onboarding inside the Scopus forum build). Folding their import into the unified DAG means one
@@ -126,7 +127,8 @@ public class PipelineRebuildService {
             ForumReconcileService forumReconcileService,
             ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService,
             ro.uvt.pokedex.core.service.brainmap.BrainmapProjectImportService brainmapProjectImportService,
-            ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService projectCanonicalizationService) {
+            ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService projectCanonicalizationService,
+            ro.uvt.pokedex.core.service.brainmap.ProjectProjectionService projectProjectionService) {
         this.scopusRebuild = scopusRebuild;
         this.wosRebuild = wosRebuild;
         this.ownedCollectionRegistry = ownedCollectionRegistry;
@@ -137,6 +139,7 @@ public class PipelineRebuildService {
         this.openAlexBulkImportService = openAlexBulkImportService;
         this.brainmapProjectImportService = brainmapProjectImportService;
         this.projectCanonicalizationService = projectCanonicalizationService;
+        this.projectProjectionService = projectProjectionService;
     }
 
     /**
@@ -294,8 +297,9 @@ public class PipelineRebuildService {
     private void rebuildCanonicalProjects() {
         var r = projectCanonicalizationService.rebuild(
                 "project-canon-" + System.currentTimeMillis(), "full-rebuild");
-        LOG.info("Pipeline rebuild canonical projects: sourceFacts={} canonical={} coordinatorsResolved={}",
-                r.sourceFacts(), r.canonicalProjects(), r.coordinatorsResolved());
+        int projected = projectProjectionService.rebuildView();
+        LOG.info("Pipeline rebuild canonical projects: sourceFacts={} canonical={} coordinatorsResolved={} projected={}",
+                r.sourceFacts(), r.canonicalProjects(), r.coordinatorsResolved(), projected);
     }
 
     private void ingestBrainmapProjectsIfConfigured() {
