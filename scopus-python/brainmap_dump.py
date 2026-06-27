@@ -152,15 +152,18 @@ def set_org_filter_and_submit(page, org_name=ORG_NAME):
         print("search: WARNING institution autocomplete (instNumeA) not found")
     else:
         inst.click()
-        inst.fill(org_name)
-        page.wait_for_timeout(3000)  # ajax autocomplete
-        sugg = page.locator("ul.ui-autocomplete li, .ui-menu-item").filter(has_text="Universitatea de Vest")
+        inst.press_sequentially(org_name, delay=90)  # jQuery UI autocomplete needs real keystrokes, not fill()
+        try:
+            page.wait_for_selector("ul.ui-autocomplete li", state="visible", timeout=10000)
+        except PWTimeout:
+            pass
+        sugg = page.locator("ul.ui-autocomplete li:visible").filter(has_text="Universitatea de Vest")
         print(f"search: autocomplete suggestions matching UVT = {sugg.count()}")
         if sugg.count() > 0:
-            try:
-                sugg.first.click(timeout=4000)
-            except PWTimeout:
-                inst.press("Enter")
+            sugg.first.click()
+        else:
+            inst.press("ArrowDown")
+            inst.press("Enter")
         page.wait_for_timeout(1200)
     btn = page.locator("input[id$='btnOpen']").first
     if btn.count() > 0:
@@ -299,6 +302,101 @@ def append_record(rec):
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
+# ----------------------------------------------------------------------------- results-list parse (H64 core fields)
+def parse_result_rows(page):
+    """
+    Parse the current results page. Each project is a row whose fields are id'd <prefix>_list.<field>@<row>:
+    pkXProiectId (hidden input), pTitluOficial (<a> title + goToProiect detail href), codDepunere, plan, competitieD,
+    dpPrenume/dpNume/dpRol (director person+role), coordonator, numeInstFin (funder), anulInceperii/Incheierii.
+    """
+    html = page.content()
+    m = re.search(r"(\d+)_list\.", html)
+    if not m:
+        return []
+    prefix = m.group(1)
+    rows = sorted({int(r) for r in re.findall(rf"{prefix}_list\.[A-Za-z0-9]+@(\d+)", html) if int(r) >= 0})
+
+    def el(field, row):
+        loc = page.locator(f"[id='{prefix}_list.{field}@{row}']")
+        return loc.first if loc.count() > 0 else None
+
+    def txt(field, row):
+        e = el(field, row)
+        try:
+            return e.inner_text().strip() if e else None
+        except Exception:
+            return None
+
+    out = []
+    for r in rows:
+        pk = el("pkXProiectId", r)
+        title = el("pTitluOficial", r)
+        rec = {
+            "pkXProiectId": pk.get_attribute("value") if pk else None,
+            "title": txt("pTitluOficial", r),
+            "detailHref": (title.get_attribute("href") if title else None),
+            "code": txt("codDepunere", r),
+            "plan": txt("plan", r),
+            "competition": txt("competitieD", r),
+            "directorFirst": txt("dpPrenume", r),
+            "directorLast": txt("dpNume", r),
+            "directorRole": txt("dpRol", r),
+            "coordinator": txt("coordonator", r),
+            "funder": txt("numeInstFin", r),
+            "startYear": txt("anulInceperii", r),
+            "endYear": txt("anulIncheierii", r),
+            "orgId": ORG_ID,
+            "scrapedAt": datetime.now(timezone.utc).isoformat(),
+        }
+        if rec["pkXProiectId"] or rec["code"]:
+            out.append(rec)
+    return out
+
+
+def goto_next_page(page):
+    """Advance the results pager (jas Table pageSelector links). Returns True if it moved to the next page."""
+    sel = page.locator(".tablePageNumberSelected").first
+    if sel.count() == 0:
+        return False
+    try:
+        cur = int(sel.inner_text().strip())
+    except (ValueError, Exception):
+        return False
+    links = page.locator("a[id$='pageSelector']")
+    for i in range(links.count()):
+        try:
+            if links.nth(i).inner_text().strip() == str(cur + 1):
+                links.nth(i).click()
+                page.wait_for_load_state("networkidle", timeout=25000)
+                page.wait_for_timeout(random.uniform(1.5, 2.8))
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def harvest_results(page, limit=0):
+    """Walk every results page, parsing the list rows. Dedups by pkXProiectId. Returns the project records."""
+    seen, records = set(), []
+    pageno = 1
+    while True:
+        rows = parse_result_rows(page)
+        added = 0
+        for rec in rows:
+            key = rec.get("pkXProiectId") or rec.get("code")
+            if key and key not in seen:
+                seen.add(key)
+                records.append(rec)
+                added += 1
+        print(f"harvest: page {pageno}: +{added} (total {len(records)})")
+        if limit and len(records) >= limit:
+            return records[:limit]
+        if added == 0 or not goto_next_page(page):
+            break
+        pageno += 1
+    return records
+
+
 # ----------------------------------------------------------------------------- modes
 def run_discover(page):
     DISCOVER_DIR.mkdir(exist_ok=True)
@@ -309,16 +407,19 @@ def run_discover(page):
     inst = page.locator("input[id$='instNumeA']").first
     if inst.count() > 0:
         inst.click()
-        inst.fill(ORG_NAME)
-        page.wait_for_timeout(3000)
+        inst.press_sequentially(ORG_NAME, delay=90)  # jQuery UI autocomplete needs real keystrokes, not fill()
+        try:
+            page.wait_for_selector("ul.ui-autocomplete li", state="visible", timeout=10000)
+        except PWTimeout:
+            print("discover: autocomplete dropdown did not appear")
         dump(page, "autocomplete")
-        sugg = page.locator("ul.ui-autocomplete li, .ui-menu-item").filter(has_text="Universitatea de Vest")
+        sugg = page.locator("ul.ui-autocomplete li:visible").filter(has_text="Universitatea de Vest")
         print(f"discover: UVT autocomplete matches = {sugg.count()}")
         if sugg.count() > 0:
-            try:
-                sugg.first.click(timeout=4000)
-            except PWTimeout:
-                inst.press("Enter")
+            sugg.first.click()
+        else:
+            inst.press("ArrowDown")
+            inst.press("Enter")
         page.wait_for_timeout(1200)
     btn = page.locator("input[id$='btnOpen']").first
     if btn.count() > 0:
@@ -367,10 +468,61 @@ def run_dump(page, limit):
     print(f"\ndump: done={len(done)} failed={len(failures)} -> {OUT_JSONL}")
 
 
+def run_manual(page, wait_s, extract, limit):
+    """
+    Human-in-the-loop: log in + open the advanced search, then WAIT while the user picks UVT and clicks 'Caută' in the
+    visible browser (the jQuery-UI institution autocomplete is fragile to script, trivial for a human). After the wait
+    the script takes over: dumps the real results + first detail page (for selector work) and, with --extract, runs the
+    full paginated extraction.
+    """
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    if not open_advanced_search(page):
+        sys.exit("manual: could not open the advanced search.")
+    print("\n" + "=" * 72)
+    print("MANUAL STEP — in the opened browser window:")
+    print("  1) type the institution name and pick  UNIVERSITATEA DE VEST DIN TIMIŞOARA")
+    print("  2) click 'Caută' and wait until the project results are shown")
+    print(f"  The script continues automatically in {wait_s}s (use --wait to change).")
+    print("=" * 72 + "\n")
+    for left in range(wait_s, 0, -5):
+        print(f"  ...{left}s")
+        page.wait_for_timeout(5000)
+
+    dump(page, "results")  # snapshot for reference
+    # Harvest the project fields straight off the results list (no per-detail navigation). Without --extract, only
+    # the first ~2 pages are parsed as a quick validation; --extract walks all ~35 pages and writes the JSONL.
+    records = harvest_results(page, limit if limit else (0 if extract else 20))
+    print(f"manual: harvested {len(records)} projects (expected ~341 for the full run)")
+    if records:
+        s = records[0]
+        print(f"  sample[0]: code={s.get('code')} | title={(s.get('title') or '')[:50]!r}")
+        print(f"             director={s.get('directorFirst')} {s.get('directorLast')} ({s.get('directorRole')}) "
+              f"| coord={(s.get('coordinator') or '')[:34]!r} | funder={(s.get('funder') or '')[:30]!r}")
+
+    if not extract:
+        print("\nmanual: validation only (no write). If the sample looks right, re-run with --extract to write all ~341.")
+        return
+
+    done = load_done()
+    written = 0
+    for rec in records:
+        key = rec.get("pkXProiectId") or rec.get("code")
+        if not key or key in done:
+            continue
+        append_record(rec)
+        done.add(key)
+        written += 1
+    save_done(done)
+    print(f"\nmanual: wrote {written} new records ({len(done)} total) -> {OUT_JSONL}")
+
+
 def main():
     global ORG_ID
     ap = argparse.ArgumentParser(description="brainmap UVT projects dump generator")
     ap.add_argument("--discover", action="store_true", help="Pass A: dump a result page + one detail page to /tmp/brainmap")
+    ap.add_argument("--manual", action="store_true", help="headful; pause for the user to pick UVT + Caută, then take over")
+    ap.add_argument("--extract", action="store_true", help="(with --manual) run the full extraction after the manual search")
+    ap.add_argument("--wait", type=int, default=30, help="(with --manual) seconds to wait for the manual selection")
     ap.add_argument("--limit", type=int, default=0, help="fetch at most N new projects (small validation run)")
     ap.add_argument("--headful", action="store_true", help="show the browser (debug)")
     ap.add_argument("--org", default=ORG_ID, help="brainmap organization id (default = UVT)")
@@ -379,13 +531,15 @@ def main():
 
     user, pwd = load_creds()
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=not args.headful)
+        browser = p.chromium.launch(headless=not (args.headful or args.manual))  # --manual implies headful
         ctx = browser.new_context(locale="ro-RO", viewport={"width": 1400, "height": 1000})
         page = ctx.new_page()
         try:
             if not login(page, user, pwd):
                 sys.exit("Aborting: login failed/blocked. Inspect the flow with --headful.")
-            if args.discover:
+            if args.manual:
+                run_manual(page, args.wait, args.extract, args.limit)
+            elif args.discover:
                 run_discover(page)
             else:
                 run_dump(page, args.limit)
