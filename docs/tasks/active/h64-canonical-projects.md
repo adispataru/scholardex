@@ -218,6 +218,14 @@ self-link decision).
 3. **Consume in reports (decouple-safe).** Physics A9 (director count) + A10 (declared budget) read the referenced
    canonical project where present (title/code/funder/director display from canonical), free-text fallback otherwise.
 
+> **Slice 3 — DONE (2026-06-27).** 1 commit. **3a** `ActivityBlockProjector` injects `ScholardexProjectReadPort` and
+> resolves a `PROJECT_GRANT_ID` reference in report output to `code — title (funder) — Director: First Last` (raw-id
+> fallback when unresolved → export never breaks); scores untouched. **3b** `ProjectReferenceFieldSeedRunner`
+> (CommandLineRunner, additive+idempotent, `core.projects.reference-activity-names`, blank=inert) + `ActivityRepository.
+> findByName` enables `PROJECT_GRANT_ID` on the named project activities. Tested: projector (label/fallback/passthrough)
+> + seed runner (add/idempotent/preserve/blank/missing); context loads; reporting-transfer suite green. **To turn on
+> per deployment:** set `core.projects.reference-activity-names=Grant Cercetare,…` (was inert/empty by default).
+
 ### Slice 3 — scope (2026-06-27)
 
 **Principle: scores do NOT change.** Role (A9) and budget (A10/CS) stay declared on the activity fields (`Rol`,
