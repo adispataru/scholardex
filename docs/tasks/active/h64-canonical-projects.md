@@ -217,6 +217,37 @@ Researcher↔project stays the activity reference; role/budget stay declared on 
 self-link decision).
 3. **Consume in reports (decouple-safe).** Physics A9 (director count) + A10 (declared budget) read the referenced
    canonical project where present (title/code/funder/director display from canonical), free-text fallback otherwise.
+
+### Slice 3 — scope (2026-06-27)
+
+**Principle: scores do NOT change.** Role (A9) and budget (A10/CS) stay declared on the activity fields (`Rol`,
+`Buget`); brainmap has no budget and CORDIS/auto-attribution are slice 4. So Slice 3 surfaces the **verified project
+identity/provenance** in report output + enables the config — it must not alter any indicator total (the doc's
+decouple invariant). Confirmed against the consumption path:
+- `ActivityReportingService.calculateActivityScore` scores from declared fields only — untouched.
+- `ActivityBlockProjector.buildActivityInstanceDescription` currently appends the **raw `sproj_` id** verbatim to the
+  activity description (the only place a `PROJECT_GRANT_ID` reference reaches output today).
+
+**Build:**
+- **3a — display resolution.** Inject `PostgresScholardexProjectReadPort` into `ActivityBlockProjector` (a `@Component`;
+  inject directly — do NOT route through `ReportingLookupPort`, to avoid the dual-facade `@Primary` delegator churn).
+  In `buildActivityInstanceDescription`, when a reference key is `PROJECT_GRANT_ID`, resolve the `sproj_` id via
+  `findById` → render `code — title (funder)` (and optionally the canonical director) instead of the raw hash; fall
+  back to the raw value when unresolved (pre-rebuild / deleted). Batch or memoize if a report has many project rows
+  (low volume — likely unnecessary). **Test:** projector unit test (resolved label vs raw-id fallback) + a small
+  integration check that a linked activity renders the canonical label.
+- **3b — config enablement.** Add `PROJECT_GRANT_ID` to the project Activity definitions so the picker (slice 2) and
+  this resolution actually engage: physics `Grant Cercetare` (A9/A10), CS `Granturi`, FEAA's project activity. These
+  are Mongo activity *definitions* (per-deployment data) — **decision:** an idempotent, additive startup seed runner
+  driven by a config list (`core.projects.reference-activity-names=…`, mirroring `OrgSeedRunner`/`AdminUserBootstrap
+  Runner`) that ensures the ref field on the named activities if absent (logged, skip-if-present), **vs** a one-shot
+  admin action. Recommend the seed runner (version-controlled, deterministic, additive-only — never removes fields).
+  The exact activity-name set is the deployment's call (the live run showed prod has `Grant Cercetare` but not a
+  `Granturi` activity yet).
+
+**Out of scope → slice 4:** auto director→researcher matching (A9 auto-attribution), CORDIS + user-defined budget
+merge (A10 trusted budget), EU-vs-national funder gating. Slice 3 leaves every score identical; only the report's
+project *labels* become trusted identities.
 4. **(Later) CORDIS + user-defined + auto-attribution.** CORDIS hand-entry model + user-created projects → merge into
    canonical by `euGrantId` (budget from CORDIS/user → A10 trusted budget); auto director→researcher name-match + confirm UI.
 
