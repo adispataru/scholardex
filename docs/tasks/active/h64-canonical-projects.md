@@ -71,6 +71,51 @@ strings) — no shared identity, no trust, re-typed per report. Source landscape
 Physics A9/A10 + FEAA project indicators **ship now on the existing `Grant Cercetare`/`Buget` activity** —
 this task is independent and must not block the reports.
 
+## Slice 4 — scope (2026-06-27): trusted budget, director attribution, funder gating
+
+Slice 4 turns the canonical link from *display* (slice 3) into a *scoring input*. **The linchpin (4a)** is one seam: today
+`ActivityReportingService.calculateActivityScore` builds formula variables only from the activity's declared `fields`
+(`Rol`, `Buget`, …); `referenceFields` are captured but never resolved. Resolving `PROJECT_GRANT_ID` → canonical
+project and injecting its fields (`proj_budget`, `proj_funder`, `proj_director`, …) unlocks budget-prefer, funder
+gating, AND director cross-check at once. Decouple-safe: existing formulas don't reference the injected vars, so totals
+are unchanged until an indicator opts in.
+
+### Sub-slices (independent; pick per appetite)
+
+- **4a — scoring-time reference injection (enabler).** In `ActivityReportingService`, when an activity carries a
+  `PROJECT_GRANT_ID` ref, resolve it (via `ScholardexProjectReadPort`, mirroring slice 3a) and inject canonical fields
+  into the `FormulaContext` under a stable prefix (`proj_*`). Add an optional **budget-prefer** rule: when the linked
+  project has a non-null canonical budget, expose it as `proj_budget` so an indicator can prefer it over declared
+  `Buget`. Ship with zero formula changes (pure capability); tests assert injection + that un-opted formulas are
+  unaffected.
+- **4b — manual/admin projects + budget (A10 trusted budget).** `UserDefinedProjectFact` (`user_defined.project_facts`,
+  mirrors `UserDefinedPublicationFact`: `approved`/`reviewState`/submitter) + repo + admin create/edit controller
+  (mirror `AdminResearcherProfileController`) + DTO; merge into `ProjectCanonicalizationService.rebuild()` alongside
+  brainmap **by `euGrantId` (else code)**, with user-defined **winning for budget** (brainmap has none). This is where
+  the **19 CORDIS** EU projects are hand-entered with their per-partner € (`ecContribution`). Then A10 uses
+  `proj_budget` (via 4a) when the activity references a project, else declared `Buget`.
+  **⚠ Decision — precious vs wiped:** `user_defined.publication_facts` is currently in `MANAGED_DERIVED_COLLECTIONS`
+  (wiped on full rebuild). User-entered project budgets must SURVIVE rebuilds → `user_defined.project_facts` must be a
+  *source/precious* collection (not in the managed wipe set; re-read each rebuild). Confirm how user-defined pubs avoid
+  data loss today and follow the safe path.
+- **4c — director → researcher attribution (A9).** Add `directorResearcherId` to `ScholardexProjectFact`; a matching
+  pass (brainmap `directorFirst/Last` → `ResearcherProfile` via `UserRepository.findByResearcherProfileNameContaining
+  IgnoreCase`, with a confidence gate) sets it; **homonym risk → a confirm/review step** (admin or the researcher's own
+  workspace "is this your project?"). Keep A9 **activity-declared** (researcher self-declares `Rol=Director` on a Grant
+  Cercetare referencing the project) and use the canonical director as **verification + auto-suggest** (e.g. pre-offer
+  the activity), NOT a silent score change. A pure-canonical A9 (derive directorships solely from
+  `directorResearcherId`) is a larger scoring-path redesign — out of scope unless explicitly chosen.
+
+### Recommended order & forks
+- **Value pairing:** 4a + 4b together deliver A10 trusted budget (the concrete need behind the CORDIS effort). Funder
+  gating is a small add on 4a (one indicator opts into `proj_funder`). 4c is independent and the riskiest (matching).
+- **CORDIS entry mechanism (fork):** the 19 are hand-entry, but `cordis-search-results.csv` already has their identity
+  (ID/acronym/title/dates) — a thin CSV importer could mint the 19 `user_defined.project_facts` (identity only) so admin
+  only adds the € per project, vs. fully manual creation of each. (Per-partner budget isn't in that CSV.)
+- **Read source for injection (fork):** scoring-time resolution via the Postgres `scholardex_project_view` read port
+  (consistent with slice 3, but couples scoring to the projection being fresh) vs. the Mongo canonical repo (always
+  current). Recommend the read port for consistency.
+
 ## Exit criteria
 
 - Canonical `ScholardexProject` exists with partners tied to canonical affiliations; CORDIS (EU) +
