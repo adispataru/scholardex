@@ -71,6 +71,20 @@ strings) — no shared identity, no trust, re-typed per report. Source landscape
 Physics A9/A10 + FEAA project indicators **ship now on the existing `Grant Cercetare`/`Buget` activity** —
 this task is independent and must not block the reports.
 
+> **Slice 4 (4a + 4b) — DONE (2026-06-28).** A10/CS trusted budget shipped end-to-end:
+> - **4a** `ActivityReportingService` injects `proj_*` (budget/funder/director/…) from the linked canonical project;
+>   opt-in formulas prefer `proj_budget` over declared `Buget`; decouple-safe.
+> - **4b.1** `UserDefinedProjectFact` (precious `user_defined.project_facts`, in NEITHER wipe set) + merge into
+>   `ProjectCanonicalizationService` by euGrantId/code (user-defined wins budget; adds CORDIS-only projects).
+> - **4b.2** `UserDefinedProjectService` + `AdminScholardexProjectController` (`/api/admin/projects` CRUD) — manual entry.
+> - **4b.3** `CordisProjectClient` + `CordisXmlParser` (public no-auth XML) + admin `GET /api/admin/projects/cordis/{id}`
+>   → auto-suggests UVT's `ecContribution`. Parser validated vs the real SERRANO (101017168).
+>
+> **Deferred (not built):** 4c director→researcher attribution; funder gating is *available* via `proj_funder` (4a) but
+> no indicator opts in yet. **Ops to realize value:** (1) run a project-canon rebuild so the brainmap 341 + any
+> user-defined land in `scholardex_project_view`; (2) admin enters the 19 CORDIS budgets via the fetch endpoint;
+> (3) opt A10/Info_D_v formulas into `proj_budget`.
+
 ## Slice 4 — scope (2026-06-27): trusted budget, director attribution, funder gating
 
 Slice 4 turns the canonical link from *display* (slice 3) into a *scoring input*. **The linchpin (4a)** is one seam: today
