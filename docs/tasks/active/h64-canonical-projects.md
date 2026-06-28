@@ -80,6 +80,12 @@ project and injecting its fields (`proj_budget`, `proj_funder`, `proj_director`,
 gating, AND director cross-check at once. Decouple-safe: existing formulas don't reference the injected vars, so totals
 are unchanged until an indicator opts in.
 
+> **4a — DONE (2026-06-27).** `ActivityReportingService` injects `proj_*` (budget/funder/code/title/director/years)
+> from the `PROJECT_GRANT_ID`-linked canonical project (via `ScholardexProjectReadPort`); keys always bound (null when
+> absent/unresolved) so opt-in formulas null-check; resolution failure → null (never breaks scoring); decouple-safe.
+> Added `budget` to the read-port DTO+SELECT. Tested: A10 prefers canonical budget (2.7) over declared (0.5), fallback
+> when unlinked, funder gating via `proj_funder`; existing cases unaffected; context loads. **Next: 4b.**
+
 ### Sub-slices (independent; pick per appetite)
 
 - **4a — scoring-time reference injection (enabler).** In `ActivityReportingService`, when an activity carries a
