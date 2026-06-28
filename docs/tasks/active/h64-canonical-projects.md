@@ -254,11 +254,12 @@ numeric segment) for `funder=EC`, else the **brainmap code** (`PN-III-…`) for 
   changes the CS score (like physics A10), and `Rol` doubles it for non-members — NOT identity-only as previously
   written. ⇒ CS benefits from 4a's `proj_budget` injection; opt in by changing its formula to
   `B = proj_budget != null ? proj_budget : Buget; …`.
-  **⚠ Seed gap:** the CS report references an activity named **"Granturi"** but `seed/precious-config/activities.json`
-  only defines **"Grant Cercetare"** (≠ name). For CS project rows to populate at all, a `Granturi` activity (fields
-  `Rol`/`Buget` + `PROJECT_GRANT_ID`) must be defined — config, independent of H64. All H64 plumbing is
-  activity-name-agnostic (keys off `PROJECT_GRANT_ID`), so CS inherits picker + display + `proj_*` for free once
-  `Granturi` exists and lists `PROJECT_GRANT_ID`.
+  **Granturi name gap — RESOLVED (2026-06-27, Option A).** Info_D_v's `activity` is a DBRef to `Grant Cercetare`
+  (`66d09cd3c325b4405b312d23`), so CS already *scored* it; only the DOCX rendering layer said "Granturi" (binding block
+  `activityName` + report `blockByIndicatorId`) — a name matching no activity. Both renamed → "Grant Cercetare" so
+  rendering matches the scored instances. Now CS shares the single `Grant Cercetare` activity (with `PROJECT_GRANT_ID` +
+  `proj_*` injection) across picker + scoring + DOCX export. (Grant Cercetare got `PROJECT_GRANT_ID` in the seed +
+  `core.projects.reference-activity-names=Grant Cercetare`.)
 - **Physics** → `Grant Cercetare` (A9 director count via `Rol`, A10 € via `Buget`).
 - **FEAA** → its project/budget activity.
 
