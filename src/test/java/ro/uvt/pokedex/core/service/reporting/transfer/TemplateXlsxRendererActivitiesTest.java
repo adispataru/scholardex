@@ -31,7 +31,7 @@ class TemplateXlsxRendererActivitiesTest {
         TemplateBinding binding = loader.load(BINDING_RESOURCE);
 
         ActivitySnapshotItem book = activity("Carti/Capitole", "Co-authored research monograph",  "AA", 12.0);
-        ActivitySnapshotItem grant = activity("Granturi",       "PI on Horizon Europe project",   "A",   8.0);
+        ActivitySnapshotItem grant = activity("Grant Cercetare", "PI on Horizon Europe project",  "A",   8.0);
         ActivitySnapshotItem prizeLow  = activity("Premii",     "Faculty teaching award",         "C",   2.0);
         ActivitySnapshotItem prizeHigh = activity("Premii",     "Best paper award (top conf)",    "A",   8.0);
 
@@ -50,7 +50,7 @@ class TemplateXlsxRendererActivitiesTest {
             assertThat(carti.getCell(7).getStringCellValue()).isEqualTo("AA");
             assertThat(carti.getCell(10).getNumericCellValue()).isEqualTo(12.0);
 
-            // Granturi — firstDataRow=34 (index 33).
+            // Grant Cercetare (CS "Granturi" block) — firstDataRow=34 (index 33).
             Row granturi = sheet.getRow(33);
             assertThat(granturi.getCell(2).getStringCellValue()).isEqualTo("PI on Horizon Europe project");
             assertThat(granturi.getCell(7).getStringCellValue()).isEqualTo("A");
