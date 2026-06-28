@@ -248,11 +248,17 @@ numeric segment) for `funder=EC`, else the **brainmap code** (`PN-III-…`) for 
 **The reference slot is already universal.** Every project indicator across reports uses the **same**
 `Activity.ReferenceField.PROJECT_GRANT_ID` slot on its project activity, stored on
 `ActivityInstance.referenceFields[PROJECT_GRANT_ID]`:
-- **CS / `informatica-2016`** → activity **"Granturi"** (binding role `activities-perspectiva-d`, STACKED_BLOCKS;
-  cols C=description, H=category, K=score). Scored by the generic activity formula on declared fields; **CS does NOT
-  gate on role or funder** today, so the canonical reference is purely an **identity/verification upgrade** (link the
-  free-text grant to a trusted `sproj_` record + show code/title/funder) — the score still comes from the declared
-  fields. No CS-specific code.
+- **CS / `informatica-2016`** → activity **"Granturi"** (indicator **Info_D_v**, binding role
+  `activities-perspectiva-d`, BY_ACTIVITY_NAME). **Correction (2026-06-27):** CS DOES score on budget + role —
+  `Info_D_v` formula = `B = Buget; X = B<50k?1:…:5; Rol == 'Membru' ? X : X*2`. So a *trusted budget* materially
+  changes the CS score (like physics A10), and `Rol` doubles it for non-members — NOT identity-only as previously
+  written. ⇒ CS benefits from 4a's `proj_budget` injection; opt in by changing its formula to
+  `B = proj_budget != null ? proj_budget : Buget; …`.
+  **⚠ Seed gap:** the CS report references an activity named **"Granturi"** but `seed/precious-config/activities.json`
+  only defines **"Grant Cercetare"** (≠ name). For CS project rows to populate at all, a `Granturi` activity (fields
+  `Rol`/`Buget` + `PROJECT_GRANT_ID`) must be defined — config, independent of H64. All H64 plumbing is
+  activity-name-agnostic (keys off `PROJECT_GRANT_ID`), so CS inherits picker + display + `proj_*` for free once
+  `Granturi` exists and lists `PROJECT_GRANT_ID`.
 - **Physics** → `Grant Cercetare` (A9 director count via `Rol`, A10 € via `Buget`).
 - **FEAA** → its project/budget activity.
 
