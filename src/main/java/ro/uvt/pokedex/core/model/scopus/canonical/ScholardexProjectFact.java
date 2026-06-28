@@ -31,6 +31,10 @@ public class ScholardexProjectFact {
 
     /** brainmap source project ids ({@code pkXProiectId}) that contributed to this canonical record. */
     private List<String> brainmapProjectIds = new ArrayList<>();
+    /** user-defined source project ids (admin/CORDIS) that contributed (H64 slice 4b). */
+    private List<String> userDefinedProjectIds = new ArrayList<>();
+    /** Where {@link #budget} came from: {@code CORDIS} / {@code MANUAL} (null when no budget). H64 slice 4b. */
+    private String budgetSource;
 
     /** EU grant id (CORDIS {@code ID}); the cross-source merge key for EC-funded projects. Null for RO national. */
     private String euGrantId;

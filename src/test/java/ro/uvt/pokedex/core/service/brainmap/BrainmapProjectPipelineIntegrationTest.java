@@ -50,6 +50,7 @@ class BrainmapProjectPipelineIntegrationTest {
     private ProjectCanonicalizationService canonService;
     private ProjectProjectionService projectionService;
     private ScholardexAffiliationFactRepository affiliationRepo;
+    private ro.uvt.pokedex.core.repository.scopus.canonical.UserDefinedProjectFactRepository userDefinedRepo;
 
     @BeforeEach
     void setup() {
@@ -74,9 +75,11 @@ class BrainmapProjectPipelineIntegrationTest {
         BrainmapProjectFactRepository brainmapRepo = f.getRepository(BrainmapProjectFactRepository.class);
         affiliationRepo = f.getRepository(ScholardexAffiliationFactRepository.class);
         ScholardexProjectFactRepository projectRepo = f.getRepository(ScholardexProjectFactRepository.class);
+        userDefinedRepo = f.getRepository(
+                ro.uvt.pokedex.core.repository.scopus.canonical.UserDefinedProjectFactRepository.class);
 
         importService = new BrainmapProjectImportService(brainmapRepo, new ObjectMapper());
-        canonService = new ProjectCanonicalizationService(brainmapRepo, affiliationRepo, projectRepo);
+        canonService = new ProjectCanonicalizationService(brainmapRepo, affiliationRepo, projectRepo, userDefinedRepo);
         projectionService = new ProjectProjectionService(projectRepo, jdbcTemplate);
     }
 

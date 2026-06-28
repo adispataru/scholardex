@@ -27,10 +27,18 @@ class ProjectCanonicalizationServiceTest {
     private ScholardexAffiliationFactRepository affiliationFactRepository;
     @Mock
     private ScholardexProjectFactRepository projectFactRepository;
+    @Mock
+    private ro.uvt.pokedex.core.repository.scopus.canonical.UserDefinedProjectFactRepository userDefinedProjectFactRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void noUserDefinedByDefault() {
+        org.mockito.Mockito.lenient().when(userDefinedProjectFactRepository.findAll()).thenReturn(java.util.List.of());
+    }
 
     private ProjectCanonicalizationService service() {
         return new ProjectCanonicalizationService(
-                brainmapProjectFactRepository, affiliationFactRepository, projectFactRepository);
+                brainmapProjectFactRepository, affiliationFactRepository, projectFactRepository,
+                userDefinedProjectFactRepository);
     }
 
     private static BrainmapProjectFact source(String id, String code, String funder, String coordinator) {
@@ -136,5 +144,62 @@ class ProjectCanonicalizationServiceTest {
         ProjectCanonicalizationService.ProjectCanonResult result = service().rebuild("b", "c");
         verify(projectFactRepository).deleteAll();
         assertThat(result.canonicalProjects()).isZero();
+    }
+
+    // ── H64 slice 4b: user-defined (admin/CORDIS) merge ──────────────────────────
+
+    private static ro.uvt.pokedex.core.model.scopus.canonical.UserDefinedProjectFact userDefined(
+            String id, String euGrantId, String code, Long budget, String origin) {
+        var u = new ro.uvt.pokedex.core.model.scopus.canonical.UserDefinedProjectFact();
+        u.setId(id);
+        u.setEuGrantId(euGrantId);
+        u.setCode(code);
+        u.setBudget(budget);
+        u.setOrigin(origin);
+        return u;
+    }
+
+    @Test
+    void userDefinedBudgetOverlaysMatchingBrainmapProjectByEuGrantId() {
+        // brainmap EC project (euGrantId derived from code) + a CORDIS user-defined fact with the same grant id
+        when(brainmapProjectFactRepository.findAll()).thenReturn(List.of(
+                source("8", "Horizon-239038-101061610", "EC",
+                        "UNIVERSITATEA DE VEST TIMISOARA (JUDEŢUL TIMIŞ  - TIMISOARA)")));
+        when(affiliationFactRepository.findAll()).thenReturn(List.of(uvt()));
+        when(userDefinedProjectFactRepository.findAll()).thenReturn(List.of(
+                userDefined("ud1", "101061610", null, 270000L, "CORDIS")));
+
+        ProjectCanonicalizationService.ProjectCanonResult result = service().rebuild("b", "c");
+
+        ArgumentCaptor<List<ScholardexProjectFact>> captor = ArgumentCaptor.captor();
+        verify(projectFactRepository).saveAll(captor.capture());
+        // one canonical project — the user-defined budget overlays the brainmap record (same euGrantId)
+        assertThat(captor.getValue()).hasSize(1);
+        ScholardexProjectFact p = captor.getValue().get(0);
+        assertThat(p.getBudget()).isEqualTo(270000L);
+        assertThat(p.getBudgetSource()).isEqualTo("CORDIS");
+        assertThat(p.getCoordinatorAffiliationId()).isEqualTo("saff_uvt"); // brainmap identity preserved
+        assertThat(p.getBrainmapProjectIds()).containsExactly("8");
+        assertThat(p.getUserDefinedProjectIds()).containsExactly("ud1");
+        assertThat(result.canonicalProjects()).isEqualTo(1);
+    }
+
+    @Test
+    void userDefinedOnlyProjectIsAddedWhenNoBrainmapMatch() {
+        when(brainmapProjectFactRepository.findAll()).thenReturn(List.of());
+        when(affiliationFactRepository.findAll()).thenReturn(List.of());
+        when(userDefinedProjectFactRepository.findAll()).thenReturn(List.of(
+                userDefined("ud2", "101017168", null, 4343180L, "CORDIS")));
+
+        service().rebuild("b", "c");
+
+        ArgumentCaptor<List<ScholardexProjectFact>> captor = ArgumentCaptor.captor();
+        verify(projectFactRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).hasSize(1);
+        ScholardexProjectFact p = captor.getValue().get(0);
+        assertThat(p.getEuGrantId()).isEqualTo("101017168");
+        assertThat(p.getBudget()).isEqualTo(4343180L);
+        assertThat(p.getBrainmapProjectIds()).isEmpty();
+        assertThat(p.getUserDefinedProjectIds()).containsExactly("ud2");
     }
 }
