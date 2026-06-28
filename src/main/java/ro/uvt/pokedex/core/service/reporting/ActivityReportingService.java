@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectReadPort;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaContext;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator;
 
@@ -21,6 +23,8 @@ public class ActivityReportingService {
     private static final Logger log = LoggerFactory.getLogger(ActivityReportingService.class);
     private final ScoringFactoryService scoringFactoryService;
     private final FormulaEvaluator formulaEvaluator;
+    // H64 slice 4a: resolve a linked canonical project so indicators can prefer trusted values (A10 budget) / gate on funder.
+    private final ScholardexProjectReadPort scholardexProjectReadPort;
 
     public Map<String, Score> calculateActivityScores(List<ActivityInstance> activities, Indicator indicator) {
 
@@ -72,6 +76,11 @@ public class ActivityReportingService {
             int rawAuthors = n.intValue();
             variables.put("Nef", rawAuthors >= 1 ? EffectiveAuthorCountSupport.computeNef(rawAuthors) : 1.0);
         }
+        // H64 slice 4a: expose a linked canonical project's fields as proj_* so an opt-in indicator can prefer trusted
+        // values (e.g. A10 budget: "proj_budget != null ? proj_budget/100000 : Buget/100000") or gate on funder. The
+        // keys are ALWAYS bound (null when there is no/unresolved PROJECT_GRANT_ID reference) so a formula can null-check
+        // them; formulas that don't reference proj_* are unaffected, so existing indicator totals do not change.
+        injectLinkedProjectVariables(activity, variables);
         final String rawformula = indicator.getFormula();
         // H52 slice 11d.1: typed-strategy dispatch. GENERIC_ACTIVITY and
         // GENERIC_COUNT both short-circuit to a unit base score (1.0); only
@@ -122,6 +131,50 @@ public class ActivityReportingService {
             }
         }
         return result;
+    }
+
+    /**
+     * H64 slice 4a — bind {@code proj_*} formula variables from the canonical project linked via the activity's
+     * {@code PROJECT_GRANT_ID} reference. Always binds the keys (null when no/unresolved reference) so opt-in formulas
+     * can null-check; resolution failures degrade to null (never break scoring).
+     */
+    private void injectLinkedProjectVariables(ActivityInstance activity, Map<String, Object> variables) {
+        variables.put("proj_budget", null);
+        variables.put("proj_funder", null);
+        variables.put("proj_code", null);
+        variables.put("proj_title", null);
+        variables.put("proj_director", null);
+        variables.put("proj_startYear", null);
+        variables.put("proj_endYear", null);
+
+        Map<Activity.ReferenceField, String> refs = activity.getReferenceFields();
+        String ref = refs == null ? null : refs.get(Activity.ReferenceField.PROJECT_GRANT_ID);
+        if (ref == null || ref.isBlank()) {
+            return;
+        }
+        ScholardexProjectListItemResponse project;
+        try {
+            project = scholardexProjectReadPort.findById(ref);
+        } catch (RuntimeException ex) {
+            log.warn("Linked project resolution failed for reference {} — proj_* left null", ref, ex);
+            return;
+        }
+        if (project == null) {
+            return;
+        }
+        if (project.budget() != null) {
+            variables.put("proj_budget", project.budget().doubleValue());
+        }
+        variables.put("proj_funder", project.funder());
+        variables.put("proj_code", project.code());
+        variables.put("proj_title", project.title());
+        variables.put("proj_director", project.director());
+        if (project.startYear() != null) {
+            variables.put("proj_startYear", project.startYear().doubleValue());
+        }
+        if (project.endYear() != null) {
+            variables.put("proj_endYear", project.endYear().doubleValue());
+        }
     }
 
 }

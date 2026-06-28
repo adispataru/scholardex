@@ -33,7 +33,7 @@ class EntityProjectApiControllerContractTest {
     private PostgresScholardexProjectReadPort postgresScholardexProjectReadPort;
 
     private ScholardexProjectListItemResponse item(String id, String code, String funder, String title) {
-        return new ScholardexProjectListItemResponse(id, code, null, title, funder, "Marius Paulescu", 2017, 2018, "UVT");
+        return new ScholardexProjectListItemResponse(id, code, null, title, funder, "Marius Paulescu", 2017, 2018, "UVT", null);
     }
 
     @Test

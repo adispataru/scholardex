@@ -23,7 +23,7 @@ public class PostgresScholardexProjectReadPort implements ScholardexProjectReadP
     private static final String SELECT_COLS = """
             SELECT id, code, eu_grant_id, title, funder,
                    NULLIF(TRIM(CONCAT_WS(' ', director_first, director_last)), '') AS director,
-                   start_year, end_year, coordinator_name
+                   start_year, end_year, coordinator_name, budget
             FROM reporting_read.scholardex_project_view
             """;
 
@@ -81,11 +81,17 @@ public class PostgresScholardexProjectReadPort implements ScholardexProjectReadP
                 rs.getString("director"),
                 getNullableInt(rs, "start_year"),
                 getNullableInt(rs, "end_year"),
-                rs.getString("coordinator_name"));
+                rs.getString("coordinator_name"),
+                getNullableLong(rs, "budget"));
     }
 
     private static Integer getNullableInt(ResultSet rs, String column) throws SQLException {
         int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    private static Long getNullableLong(ResultSet rs, String column) throws SQLException {
+        long value = rs.getLong(column);
         return rs.wasNull() ? null : value;
     }
 

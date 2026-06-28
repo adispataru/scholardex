@@ -23,10 +23,13 @@ class ActivityReportingServiceTest {
     private ScoringFactoryService scoringFactoryService;
     @Mock
     private ScoringService scoringService;
+    // H64 slice 4a: default mock returns null from findById → proj_* all null → no effect on these existing cases.
+    @Mock
+    private ro.uvt.pokedex.core.service.application.ScholardexProjectReadPort scholardexProjectReadPort;
 
     @Test
     void genericCountFormulaUsesFieldsAndMathFunctions() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator indicator = indicator("GENERIC_COUNT", "max(hours, bonus) + min(bonus, 2)");
         ActivityInstance activity = activity("a1", Map.of("hours", "3", "bonus", "5"), true);
 
@@ -40,7 +43,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void genericCountSetsScoreAndAuthorScoreFromFormula() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator indicator = indicator("GENERIC_COUNT", "S * 2");
         ActivityInstance activity = activity("a1", Map.of(), false);
 
@@ -53,7 +56,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void genericActivityEvaluatesFormulaWithActivityFields() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator indicator = indicator(
                 "GENERIC_ACTIVITY",
                 "B = Buget; X = B < 50000 ? 1 : B < 100000 ? 2 : B < 200000 ? 3 : B < 500000 ? 4 : 5; Rol == 'Membru' ? X : X * 2"
@@ -87,7 +90,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void delegatedScoringUsesScoringServiceMetadataAndExtrasInFormula() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator indicator = indicator("CS_JOURNAL", "S * M");
         ActivityInstance activity = activity("a1", Map.of(), false);
         Score delegated = new Score();
@@ -114,7 +117,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void invalidFormulaVariableYieldsZeroAuthorScore() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator indicator = indicator("GENERIC_COUNT", "S + missingVar");
         ActivityInstance activity = activity("a1", Map.of(), false);
 
@@ -126,7 +129,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void calculateActivityScoresFiltersZeroScoresAndComputesTotal() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator indicator = indicator("GENERIC_COUNT", "S");
         ActivityInstance included = activity("a1", Map.of(), false);
         ActivityInstance excluded = activity("a2", Map.of(), false);
@@ -145,7 +148,7 @@ class ActivityReportingServiceTest {
     void physicsDidacticActivityScoresKOverNefFromNAutori() {
         // H65: A1 = 4/Nef. A manual book with 6 authors → Nef = (6+5)/2 = 5.5 → 4/5.5.
         ActivityReportingService service = new ActivityReportingService(
-                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator a1 = indicator("GENERIC_ACTIVITY", "4/Nef");
 
         Score score = service.calculateActivityScores(List.of(physicsActivity("b1", "6")), a1).get("b1");
@@ -157,10 +160,59 @@ class ActivityReportingServiceTest {
     void physicsActivityWithBlankOrZeroAuthorsFallsBackToNefOne() {
         // No divide-by-zero: a manual item has at least one author, so N_autori 0 → Nef 1 → 4/1.
         ActivityReportingService service = new ActivityReportingService(
-                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator a1 = indicator("GENERIC_ACTIVITY", "4/Nef");
 
         assertEquals(4.0, service.calculateActivityScores(List.of(physicsActivity("b1", "0")), a1).get("b1").getAuthorScore(), 1e-9);
+    }
+
+    // ── H64 slice 4a: linked canonical-project injection (proj_* variables) ──────────────
+
+    @Test
+    void a10PrefersCanonicalBudgetOverDeclaredWhenProjectLinked() {
+        when(scholardexProjectReadPort.findById("sproj_1")).thenReturn(project(270000L, "EC"));
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator a10 = indicator("GENERIC_ACTIVITY", "proj_budget != null ? proj_budget/100000 : Buget/100000");
+        ActivityInstance act = grantActivityWithProject("g1",
+                Map.of("Buget", "50000", "Rol", "Director", "Nume Proiect", "X"), "sproj_1");
+
+        // canonical 270000/100000 = 2.7 — NOT the declared 50000 (0.5)
+        assertEquals(2.7, service.calculateActivityScores(List.of(act), a10).get("g1").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void fallsBackToDeclaredBudgetWhenNoProjectLinked() {
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator a10 = indicator("GENERIC_ACTIVITY", "proj_budget != null ? proj_budget/100000 : Buget/100000");
+        ActivityInstance act = grantActivity("g2", Map.of("Buget", "50000", "Rol", "Director", "Nume Proiect", "X"));
+
+        // no PROJECT_GRANT_ID reference → proj_budget null → declared 50000/100000 = 0.5
+        assertEquals(0.5, service.calculateActivityScores(List.of(act), a10).get("g2").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void funderGatingReadsCanonicalFunder() {
+        when(scholardexProjectReadPort.findById("sproj_eu")).thenReturn(project(null, "EC"));
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator gate = indicator("GENERIC_ACTIVITY", "proj_funder == 'EC' ? 10 : 1");
+        ActivityInstance act = grantActivityWithProject("g3",
+                Map.of("Buget", "0", "Rol", "Membru", "Nume Proiect", "X"), "sproj_eu");
+
+        assertEquals(10.0, service.calculateActivityScores(List.of(act), gate).get("g3").getAuthorScore(), 1e-9);
+    }
+
+    private static ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse project(Long budget, String funder) {
+        return new ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse(
+                "sproj_1", "PN-CODE", null, "Title", funder, "Dir", 2017, 2018, "UVT", budget);
+    }
+
+    private ActivityInstance grantActivityWithProject(String id, Map<String, String> fields, String projectRef) {
+        ActivityInstance instance = grantActivity(id, fields);
+        instance.setReferenceFields(Map.of(Activity.ReferenceField.PROJECT_GRANT_ID, projectRef));
+        return instance;
     }
 
     private ActivityInstance physicsActivity(String id, String nAutori) {

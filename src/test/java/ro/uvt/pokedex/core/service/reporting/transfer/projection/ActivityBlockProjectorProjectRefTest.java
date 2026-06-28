@@ -52,7 +52,7 @@ class ActivityBlockProjectorProjectRefTest {
         when(scholardexProjectReadPort.findById("sproj_x")).thenReturn(new ScholardexProjectListItemResponse(
                 "sproj_x", "PN-III-P2-2.1-PED-2016-0592", null,
                 "PV power forecasting toolkit", "UEFISCDI", "Marius Paulescu", 2017, 2018,
-                "Universitatea de Vest din Timișoara"));
+                "Universitatea de Vest din Timișoara", null));
 
         String desc = describe(oneActivity(Map.of("PROJECT_GRANT_ID", "sproj_x")), "ai1");
 

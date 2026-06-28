@@ -13,6 +13,7 @@ public record ScholardexProjectListItemResponse(
         String director,
         Integer startYear,
         Integer endYear,
-        String coordinatorName
+        String coordinatorName,
+        Long budget
 ) {
 }
