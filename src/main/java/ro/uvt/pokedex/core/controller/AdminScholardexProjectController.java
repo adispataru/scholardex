@@ -1,6 +1,8 @@
 package ro.uvt.pokedex.core.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.UserDefinedProjectRequest;
 import ro.uvt.pokedex.core.model.scopus.canonical.UserDefinedProjectFact;
 import ro.uvt.pokedex.core.service.brainmap.UserDefinedProjectService;
+import ro.uvt.pokedex.core.service.cordis.CordisProject;
+import ro.uvt.pokedex.core.service.cordis.CordisProjectClient;
 
 import java.util.List;
 
@@ -27,10 +31,38 @@ import java.util.List;
 public class AdminScholardexProjectController {
 
     private final UserDefinedProjectService userDefinedProjectService;
+    private final CordisProjectClient cordisProjectClient;
+
+    /** Legal-name fragment used to auto-suggest UVT's per-partner contribution from a CORDIS project. */
+    @Value("${core.projects.cordis.org-name-match:Universitatea de Vest}")
+    private String cordisOrgNameMatch;
 
     @GetMapping
     public ResponseEntity<List<UserDefinedProjectFact>> list() {
         return ResponseEntity.ok(userDefinedProjectService.findAll());
+    }
+
+    /**
+     * Live CORDIS lookup by EU grant id → a preview with the full partner list and UVT's suggested € (its
+     * {@code ecContribution}). The admin confirms and POSTs a create with the chosen budget.
+     */
+    @GetMapping("/cordis/{grantId}")
+    public ResponseEntity<CordisPreviewResponse> cordisPreview(@PathVariable String grantId) {
+        CordisProject project;
+        try {
+            project = cordisProjectClient.fetch(grantId);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+        }
+        CordisProject.CordisOrg uvt = project.organizationFor(cordisOrgNameMatch);
+        return ResponseEntity.ok(new CordisPreviewResponse(
+                project,
+                uvt == null ? null : uvt.legalName(),
+                uvt == null ? null : uvt.ecContribution()));
+    }
+
+    /** CORDIS preview: the parsed project + the auto-matched UVT org name + its suggested budget. */
+    public record CordisPreviewResponse(CordisProject project, String suggestedOrgName, Long suggestedBudget) {
     }
 
     @GetMapping("/{id}")
