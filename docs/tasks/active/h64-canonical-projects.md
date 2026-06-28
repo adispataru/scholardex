@@ -106,6 +106,18 @@ are unchanged until an indicator opts in.
   the activity), NOT a silent score change. A pure-canonical A9 (derive directorships solely from
   `directorResearcherId`) is a larger scoring-path redesign — out of scope unless explicitly chosen.
 
+### Decision (2026-06-27): build **4a + 4b** (A10 trusted budget). 4c (director attribution) + funder gating deferred.
+**CORDIS entry mechanism chosen: a live admin "search CORDIS online" endpoint.** ✅ **Feasibility CONFIRMED (no auth):**
+the per-project XML export `https://cordis.europa.eu/project/id/{ID}?format=xml` is public and carries everything —
+per-organization `<organization type="coordinator|participant" ecContribution="…"><legalName/><shortName/>
+<address><country/>>` plus project `<acronym>/<title>/<startDate>/<endDate>/<totalCost>/<ecMaxContribution>/
+<frameworkProgramme>`. So the admin endpoint: given a CORDIS grant ID → `WebClient` GET the XML → parse → match the UVT
+org (legalName → our affiliation, mirroring slice-1b's coordinator resolution) → take its `ecContribution` as the
+budget → preview → admin confirms → write a `user_defined.project_fact` (euGrantId = the ID). (The registered CORDIS
+JSON API + SPARQL also exist but need a key; the open XML export avoids that.) Free-text/acronym search → ID is a later
+enhancement; **ID-based lookup is primary** (we already have all 19 IDs from the EU cross-check / cordis CSV).
+Build order: **4a (enabler, no external deps) → 4b model + admin manual create/edit → 4b CORDIS-XML fetch endpoint.**
+
 ### Recommended order & forks
 - **Value pairing:** 4a + 4b together deliver A10 trusted budget (the concrete need behind the CORDIS effort). Funder
   gating is a small add on 4a (one indicator opts into `proj_funder`). 4c is independent and the riskiest (matching).
