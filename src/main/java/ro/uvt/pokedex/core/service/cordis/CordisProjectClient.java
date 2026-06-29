@@ -22,10 +22,15 @@ public class CordisProjectClient {
 
     public CordisProjectClient(
             @Value("${core.projects.cordis.base-url:https://cordis.europa.eu}") String baseUrl,
-            @Value("${core.projects.cordis.timeout-ms:20000}") long timeoutMs) {
-        // WebClient.create (not an injected Builder bean): this is not a reactive web app, so no WebClient.Builder
-        // bean is auto-configured (cf. the qualified dblpWebClient bean used elsewhere).
-        this.webClient = WebClient.create(baseUrl);
+            @Value("${core.projects.cordis.timeout-ms:20000}") long timeoutMs,
+            @Value("${core.projects.cordis.max-bytes:16777216}") int maxBytes) {
+        // WebClient.builder() (static factory, not an injected Builder bean — this is not a reactive web app).
+        // Raise the in-memory codec limit well above WebClient's 256KB default: large CORDIS projects (many
+        // partners + long objectives) export 300-400KB+ of XML, which otherwise trips DataBufferLimitException.
+        this.webClient = WebClient.builder()
+                .baseUrl(baseUrl)
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(maxBytes))
+                .build();
         this.timeoutMs = timeoutMs;
     }
 
