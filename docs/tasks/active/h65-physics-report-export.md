@@ -95,6 +95,35 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
 1. **Nef core + research half** — `Nef` primitive (helper + bind + contract), I, P (first-author), T17/T18 + I/P in summary. **[DONE 2026-06-26]**
 2. **A1–A6** — books/chapters/reviews/proceedings (WoS Master Book List allowlist + editor role), A1–A6 tables + A subtotal. **[DONE 2026-06-26]** — modeled as **manual-entry activities** (the WoS Master Book List is confirmed unavailable, H66; the fišă is manual-evidence by design, so the candidate self-declares publisher + link, scored `k/Nef`). Nef bound in the activity path from `N_autori` (`ActivityReportingService`); 6 `STACKED_BLOCKS` A-table bindings (tables 7–12) + reusable renderer enhancements (`BindingBlock.totalMarker`, `firstDataRow`-aware block walk); A = ΣA₁..A₆ → summary A + `T = A + I/2 + P/2`. The 6 `Fizica_A*` activity/indicator defs are per-deployment config. Suite 2475/2475.
 3. **A7–A10** — patents + projects (reused activities; `Nef` in activity context; A10 budget via H64), A complete.
+
+   ### Slice 3 — scope (2026-06-29)
+   Mirrors slice 2 (per-table STACKED_BLOCKS + per-deployment indicator config). **No activity/seed gaps** — all three
+   underlying activities already exist with the needed fields:
+   - **Brevet** — `N_autori`, `Tip` ∈ {Triadic, European, International, National}, `Dovezi` → A7 (intl) + A8 (national)
+   - **Proiect educational** — `Rol` ∈ {Director, Membru}, `Nume` → A9 (director count; *educational/program*, not research)
+   - **Grant Cercetare** — `Rol`, `Buget`, `Nume Proiect`, `refs=[PROJECT_GRANT_ID]` → A10 (budget, **via H64 `proj_budget`**)
+
+   **Code (this slice):**
+   - `fizica-ff/binding.json`: add roles `fizica-a7`..`fizica-a10` at `tableIndex` 13–16, blocks
+     `{activityName:"A7".."A10", firstDataRow:1, totalMarker:"Punctaj total indicator A7".."A10"}` (copy A1–A6).
+   - `Fizica2024ReportTypeImportSupport`: extend `A_BLOCKS` from `A1..A6` → `A1..A10` (the dispatch is already generic —
+     `roleKey startsWith "fizica-a"`; this makes the **A subtotal = ΣA₁..A₁₀** and iterates the new blocks).
+   - Renderer: no change expected (slice 2 added `totalMarker` + firstDataRow block walk).
+   - Tests: binding render of tables 13–16 + scoring per indicator (below).
+
+   **Config (per-deployment `fizica-ff` report def — like the slice-2 `Fizica_A*` defs):** indicators + formulas, each
+   tagged to its role + `blockByIndicatorId → "A7".."A10"`, and the A-criterion `indicatorIndices` extended to A7–A10:
+   - **A7** (Brevet, intl): `Tip == 'National' ? 0 : 3/Nef`  (Triadic/European/International all = 3/Nef)
+   - **A8** (Brevet, national): `Tip == 'National' ? 0.5/Nef : 0`
+   - **A9** (Proiect educational): `Rol == 'Director' ? 0.5 : 0`  (count; research excluded by activity choice)
+   - **A10** (Grant Cercetare): `(proj_budget != null ? proj_budget : Buget) / 100000`  ← **first physics consumer of
+     the H64 trusted budget**, same fallback form as CS `Info_D_v`
+   - `Nef` for A7/A8 is bound from `Brevet.N_autori` (slice-2 activity-path Nef); A9/A10 don't use Nef.
+
+   **Decisions/risks:** confirm the patent weighting against the PDF (assumed all non-national patents = 3/Nef; if
+   European/International carry sub-weights, A7 becomes a bracketed formula). A9 director-attribution stays declared
+   (`Rol`); canonical director via H78. A10's `proj_budget` only engages once a researcher links a project (H78) — until
+   then it falls back to declared `Buget`, so no score moves on existing data.
 4. **C + h + T + summary** — citation count, Hirsch computation, composite T, T20 obtained row. (Da/Nu manual.)
 
 ## Exit criteria
