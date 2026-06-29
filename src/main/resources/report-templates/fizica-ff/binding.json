@@ -108,6 +108,54 @@
       "docxTotals": [ { "marker": "Punctaj total indicator A6", "cellIndex": 1, "totalKey": "A6" } ]
     },
     {
+      "roleKey": "fizica-a7",
+      "kind": "STACKED_BLOCKS",
+      "tableIndex": 13,
+      "groupingKey": "activity.activityName",
+      "blockColumns": {
+        "1": { "policy": "WRITE", "source": "activity.description" },
+        "4": { "policy": "WRITE_SCORE", "source": "activity.score" }
+      },
+      "blocks": [ { "activityName": "A7", "firstDataRow": 1, "totalMarker": "Punctaj total indicator A7" } ],
+      "docxTotals": [ { "marker": "Punctaj total indicator A7", "cellIndex": 1, "totalKey": "A7" } ]
+    },
+    {
+      "roleKey": "fizica-a8",
+      "kind": "STACKED_BLOCKS",
+      "tableIndex": 14,
+      "groupingKey": "activity.activityName",
+      "blockColumns": {
+        "1": { "policy": "WRITE", "source": "activity.description" },
+        "4": { "policy": "WRITE_SCORE", "source": "activity.score" }
+      },
+      "blocks": [ { "activityName": "A8", "firstDataRow": 1, "totalMarker": "Punctaj total indicator A8" } ],
+      "docxTotals": [ { "marker": "Punctaj total indicator A8", "cellIndex": 1, "totalKey": "A8" } ]
+    },
+    {
+      "roleKey": "fizica-a9",
+      "kind": "STACKED_BLOCKS",
+      "tableIndex": 15,
+      "groupingKey": "activity.activityName",
+      "blockColumns": {
+        "1": { "policy": "WRITE", "source": "activity.description" },
+        "4": { "policy": "WRITE_SCORE", "source": "activity.score" }
+      },
+      "blocks": [ { "activityName": "A9", "firstDataRow": 1, "totalMarker": "Punctaj total indicator A9" } ],
+      "docxTotals": [ { "marker": "Punctaj total indicator A9", "cellIndex": 1, "totalKey": "A9" } ]
+    },
+    {
+      "roleKey": "fizica-a10",
+      "kind": "STACKED_BLOCKS",
+      "tableIndex": 16,
+      "groupingKey": "activity.activityName",
+      "blockColumns": {
+        "1": { "policy": "WRITE", "source": "activity.description" },
+        "4": { "policy": "WRITE_SCORE", "source": "activity.score" }
+      },
+      "blocks": [ { "activityName": "A10", "firstDataRow": 1, "totalMarker": "Punctaj total indicator A10" } ],
+      "docxTotals": [ { "marker": "Punctaj total indicator A10", "cellIndex": 1, "totalKey": "A10" } ]
+    },
+    {
       "roleKey": "fizica-summary",
       "kind": "FIXED_TABLE",
       "tableIndex": 20,

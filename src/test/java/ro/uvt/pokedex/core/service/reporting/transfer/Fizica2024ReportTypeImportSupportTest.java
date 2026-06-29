@@ -120,6 +120,63 @@ class Fizica2024ReportTypeImportSupportTest {
         }
     }
 
+    @Test
+    void rendersA7ToA10PatentAndProjectBlocksAndASubtotal() throws Exception {
+        ReportInstanceSnapshot snap = new ReportInstanceSnapshot();
+        snap.setReportTypeKey("fizica-ff");
+
+        // A7 intl patent, 2 inventors → 3/Nef = 3/2 = 1.5
+        ActivitySnapshotItem a7 = new ActivitySnapshotItem();
+        a7.setRoleKey("fizica-a7"); a7.setActivityName("A7");
+        a7.setDescription("Brevet triadic, EPO (2021)"); a7.setScore(1.5);
+        snap.getItems().add(a7);
+        // A8 national patent, 1 inventor → 0.5/Nef = 0.5
+        ActivitySnapshotItem a8 = new ActivitySnapshotItem();
+        a8.setRoleKey("fizica-a8"); a8.setActivityName("A8");
+        a8.setDescription("Brevet OSIM (2020)"); a8.setScore(0.5);
+        snap.getItems().add(a8);
+        // A9 program/study director → 0.5 (count)
+        ActivitySnapshotItem a9 = new ActivitySnapshotItem();
+        a9.setRoleKey("fizica-a9"); a9.setActivityName("A9");
+        a9.setDescription("Director program de studii (2022)"); a9.setScore(0.5);
+        snap.getItems().add(a9);
+        // A10 research project, trusted budget 270000 → 270000/100000 = 2.7
+        ActivitySnapshotItem a10 = new ActivitySnapshotItem();
+        a10.setRoleKey("fizica-a10"); a10.setActivityName("A10");
+        a10.setDescription("PN-III grant, 270.000 EUR"); a10.setScore(2.7);
+        snap.getItems().add(a10);
+
+        snap.getTotals().put("A7", 1.5);
+        snap.getTotals().put("A8", 0.5);
+        snap.getTotals().put("A9", 0.5);
+        snap.getTotals().put("A10", 2.7);
+
+        byte[] bytes = support.render(snap, ReportFormat.DOCX);
+
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(bytes))) {
+            XWPFTable a7Table = doc.getTables().get(13);
+            assertTrue(cell(a7Table, 1, 1).contains("triadic"), "A7 desc: " + cell(a7Table, 1, 1));
+            assertEquals("1.50", cell(a7Table, 1, 4), "A7 item score");
+            assertEquals("1.50", markerRowCell(a7Table, "Punctaj total indicator A7", 1), "A7 total");
+
+            XWPFTable a8Table = doc.getTables().get(14);
+            assertEquals("0.50", markerRowCell(a8Table, "Punctaj total indicator A8", 1), "A8 total");
+
+            XWPFTable a9Table = doc.getTables().get(15);
+            assertEquals("0.50", markerRowCell(a9Table, "Punctaj total indicator A9", 1), "A9 total");
+
+            XWPFTable a10Table = doc.getTables().get(16);
+            assertTrue(cell(a10Table, 1, 1).contains("270.000"), "A10 desc");
+            assertEquals("2.70", cell(a10Table, 1, 4), "A10 item score");
+            assertEquals("2.70", markerRowCell(a10Table, "Punctaj total indicator A10", 1), "A10 total");
+
+            // Summary: A = A7+A8+A9+A10 = 5.2 → "5.20"; T = A + I/2 + P/2 (I=P=0) = "5.20".
+            XWPFTable summary = doc.getTables().get(20);
+            assertEquals("5.20", markerRowCell(summary, "Valoare realizata", 1), "summary A");
+            assertEquals("5.20", markerRowCell(summary, "Valoare realizata", 6), "summary T");
+        }
+    }
+
     private static String cell(XWPFTable t, int row, int col) {
         XWPFTableRow r = t.getRow(row);
         XWPFTableCell c = r == null ? null : r.getCell(col);

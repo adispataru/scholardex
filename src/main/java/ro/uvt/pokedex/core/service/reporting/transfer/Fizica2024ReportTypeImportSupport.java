@@ -35,8 +35,9 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
     private static final String BINDING_RESOURCE = "report-templates/fizica-ff/binding.json";
     private static final String ROLE_ARTICLES = "fizica-articles-author";       // I = ΣAIS/Nef
     private static final String ROLE_PRINCIPAL = "fizica-articles-principal";    // P = ΣAIS (first-or-corresponding)
-    /** A1–A6 didactic activity blocks (totals keyed by block id in the snapshot). A₇–A₁₀ join in slice 3. */
-    private static final List<String> A_BLOCKS = List.of("A1", "A2", "A3", "A4", "A5", "A6");
+    /** A1–A10 didactic + patents/projects activity blocks (totals keyed by block id in the snapshot). */
+    private static final List<String> A_BLOCKS =
+            List.of("A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10");
     /** Synthetic total key for the didactic subtotal A = ΣAᵢ. */
     private static final String TOTAL_A = "fizica-A";
     /** Synthetic total key for the composite T = A + P/2 + I/2 + C/20 + h/5 (this slice: C=h=0). */
@@ -105,7 +106,8 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
                 rowsByRole.computeIfAbsent(ROLE_PRINCIPAL, k -> new ArrayList<>()).add(principalRow(pub));
             } else if (item instanceof ActivitySnapshotItem act && act.getRoleKey() != null
                     && act.getRoleKey().startsWith("fizica-a")) {
-                // A1–A6 didactic activities: one row per scored entry, grouped to its A-block by activityName.
+                // A1–A10 activities (didactic A1–A6, patents A7/A8, projects A9/A10): one row per scored entry,
+                // grouped to its A-block by activityName.
                 rowsByRole.computeIfAbsent(act.getRoleKey(), k -> new ArrayList<>()).add(act.toRowMap());
             }
         }
@@ -113,7 +115,7 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
         Map<String, Double> totals = new LinkedHashMap<>(snapshot.getTotals());
         double i = totals.getOrDefault(ROLE_ARTICLES, 0.0);
         double p = totals.getOrDefault(ROLE_PRINCIPAL, 0.0);
-        // A = ΣA₁..A₆ (block totals keyed A1..A6; A₇..₁₀ join later).
+        // A = ΣA₁..A₁₀ (block totals keyed A1..A10).
         double a = A_BLOCKS.stream().mapToDouble(b -> totals.getOrDefault(b, 0.0)).sum();
         totals.put(TOTAL_A, a);
         // Composite T = A + P/2 + I/2 + C/20 + h/5; C=h=0 in this slice.
