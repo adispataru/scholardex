@@ -134,6 +134,38 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
    then it falls back to declared `Buget`, so no score moves on existing data.
 4. **C + h + T + summary** — citation count, Hirsch computation, composite T, T20 obtained row. (Da/Nu manual.)
 
+   ### Slice 4 — scope (2026-06-29) — final slice
+   Verified template layout: summary **table 20** columns `Indicator | A | I | P | C | h | T` (cells 1–6 → C=cell 4,
+   h=cell 5, T=cell 6; rows: Lector has `-` for C/h, Conf C≥20/h≥5, Prof C≥40/h≥10); **table 19** = citations detail
+   (`Nr.publ.citată | Nr.publ.care citează | Referinţa | … | Punctaj`). h has **no** detail table — it's a summary scalar.
+   - **C** = `Σ cᵢ/Nefᵢ` (the post-PDF resolved form, doc line ~73 — Nef-weighted, NOT a raw count; the early "count"
+     note is superseded): per candidate pub, its citations **from IF (non-null JCR) journals, self-excluded**, ÷ Nef,
+     summed. Reuse: the **Mate_C** citation path + the publication **Nef** (slice 1) + **H61 `SelfCitationPolicy=
+     CANDIDATE_ONLY`** + an **IF-journal gate** on the citing venue.
+   - **h** = WoS Hirsch: a **`HIRSCH`** strategy indicator, **`HIndexSource.WOS_VENUE`** (H67; *indicative* — computed
+     from our citation graph, not the official WoS index — carry the H67 caveat).
+   - **T** = `A + P/2 + I/2 + C/20 + h/5` (extend the support's current `A + P/2 + I/2`).
+
+   **Code:**
+   - `binding.json`: add `fizica-c` STACKED/citation role → table 19 (citation rows + total → `C`); add summary
+     `docxTotals` cells **4 = C** (`totalKey "fizica-C"`) and **5 = h** (`totalKey "fizica-h"`). (h needs no table.)
+   - `Fizica2024ReportTypeImportSupport`: dispatch C citation snapshot items → table 19; read `C` + `h` totals;
+     **T = A + P/2 + I/2 + C/20 + h/5**; put C/h into the summary totals.
+   - Tests: render table 19 (C rows + total) + summary C/h/T against the real template.
+
+   **Config (per-deployment):** the `Fizica_C` indicator (Mate_C-style citation count, IF-journal gate, `CANDIDATE_ONLY`
+   self-exclusion, Nef-weighted) + `Fizica_h` (`HIRSCH`/`WOS_VENUE`), wired to roles `fizica-c`/`fizica-h`; the full
+   per-position threshold rows (Lector/Conf/Prof incl. C/h) in the `fizica-ff` report def.
+
+   **Open questions / risks:**
+   - **C's IF-journal-citation gate**: confirm the mechanism — is "citing venue has a non-null JCR IF" already a
+     filter on the citation path (like a HIndexSource venue restriction), or does it need a new gate? Check how Mate_C
+     scopes its citation universe before building.
+   - **C Nef-weighting wiring**: I/P apply Nef per publication; C must apply Nef per *cited* pub to its qualifying
+     citation count — confirm the citation-count strategy can divide by the cited pub's Nef (vs a flat count).
+   - **Da/Nu (T5 prerequisites)** stay manual (doctorate, ≥2 recommendation letters) — out of scope.
+   - This **completes H65** (full 21-table fišă: I/P/A1–A10/C/h/T + summary vs thresholds).
+
 ## Exit criteria
 Physics fišă exports per a real run: I/P (Nef), A1–A10 + A, C, h, T, summary vs thresholds; corresponding-author
 P once H63 lands; trusted project figures once H64 lands; replay-shape guard green; no regression to other report types.
