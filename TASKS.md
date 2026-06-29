@@ -54,10 +54,12 @@ Done history moved to `TASKS-done.md`.
   per-position threshold model. Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica. Planning doc at
   `docs/tasks/active/h68-criteria-extensions.md`.
 
-- [ ] `H65` Physics (Fizică/FF) report — DOCX export. **Postponed behind H63 + H64.**
-  Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template). Scoped this session;
-  implementation deferred until the data tasks land (P needs corresponding author from H63; A9/A10 need
-  canonical project budget/attribution from H64).
+- [ ] `H65` Physics (Fizică/FF) report — DOCX export. **UNBLOCKED (2026-06-29): both data deps done — H63 ✅, H64 ✅.**
+  Slices 1–2 already shipped (Nef + I/P; A1–A6 manual-entry activities). Remaining: slice 3 (A7–A10) + slice 4
+  (C/h/T/summary). Data ready: P → use H63 `FIRST_OR_CORRESPONDING`; **A10 → reuse the H64 `proj_budget` injection**
+  (write the A10 indicator in the `proj_budget != null ? proj_budget : Buget` form, like CS Info_D_v); A9 director
+  count = declared `Rol` now, canonical director-attribution via H78 later.
+  Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template).
   Notable: core new primitive `Nef` (effective author-count bracket, divisor for I/P/A1–A8); indicators
   I=ΣAIS/Nef, P=ΣAIS (first-author now → first-or-corresponding via H63), A1–A10 didactic (reuse `Grant
   Cercetare`/`Brevet`/`Proiect educational` activities + WoS Master Book List allowlist + editor role),
@@ -65,30 +67,6 @@ Done history moved to `TASKS-done.md`.
   Mate_C count, docx infra. Still to read: PDF p6–14 (Prof thresholds, C/h/T definitions, HEPP exception).
   Slices: (1) Nef core + I/P; (2) A1–A6; (3) A7–A10; (4) C+h+T+summary. Planning doc at
   `docs/tasks/active/h65-physics-report-export.md`.
-
-- [ ] `H64` Canonical projects (unification across sources). **Slices 1–4b DONE (2026-06-29); 4c spun off to `H78`.**
-  Shipped: brainmap dump (341 UVT) → source/canonical facts → Postgres `scholardex_project_view` → workspace
-  picker (`PROJECT_GRANT_ID`) → report-display resolution → scoring-time `proj_*` injection (A10/CS trusted budget) →
-  `UserDefinedProjectFact` (precious) + admin CRUD + **live CORDIS XML fetch** (`/api/admin/projects/cordis/{id}`,
-  auto-suggests UVT `ecContribution`; live-verified vs SERRANO €270k). Remaining = ops (project-canon rebuild to
-  populate the 341; enter the 19 CORDIS budgets; opt A10/Info_D_v formulas into `proj_budget`) + the `Granturi`/`Grant
-  Cercetare` config already reconciled. Researcher-facing import/search/link → `H78`.
-  Goal: a canonical `ScholardexProject` entity researchers reference across all project-scoring reports
-  (physics A9/A10, FEAA, CS), unifying project identity + attribution. Primary value is unification (one
-  trusted project + who led it), not budget.
-  Notable: OpenAIRE has **no** RO national (UEFISCDI/PN-III) projects (verified); CORDIS has EU projects
-  with per-partner budget (free bulk); **brainmap is the only RO-national source** (rich: code, programme,
-  partners, **director person+role** — no budget). Sources: CORDIS bulk import + brainmap **offline dump
-  generator** (NOT a live dependency; gentle pacing to avoid account lock; creds gitignored) + OpenAIRE
-  (deferred, EU links). Threads a new Project entity through the existing pipeline (events → source facts →
-  canonical facts → projections); partners tie to canonical `ScholardexAffiliationFact` (PIC / name+country);
-  researcher↔project + project↔partner join facts.
-  Open decisions first: budget semantics (org contribution vs led-team share — decides if budget ingest is
-  worth it), full-pipeline vs lighter reference-import, brainmap mechanism (admin tool vs UEFISCDI export),
-  **currency normalization + monetary eligibility thresholds** (RON↔EUR bnr.ro; grant ≥X thresholds recur
-  across chimie/geografie/FSGC/drept/FSP/sport/FEAA per the standards assessment). Physics/FEAA ship NOW on
-  the existing `Grant Cercetare`/`Buget` activity — this is independent. Planning doc at
-  `docs/tasks/active/h64-canonical-projects.md`.
 
 - [ ] `H78` Researcher project workspace — import / search / link (spun off from `H64` slice 4c).
   Goal: give a researcher, in the workspace, a project-centric flow on top of the `H64` canonical project layer:

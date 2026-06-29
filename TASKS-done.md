@@ -2,6 +2,37 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H64 Canonical projects (unification across sources) (archived 2026-06-29)
+
+Archived from `TASKS.md` — engineering complete + live-verified end-to-end with real data. Researcher-facing
+import/search/link spun off to `H78`. Closed task doc: `docs/tasks/closed/h64-canonical-projects.md`.
+
+- [x] `H64` Canonical projects. *(completed 2026-06-29)*
+  Goal: a canonical `ScholardexProject` researchers reference across project-scoring reports (physics A9/A10, FEAA, CS),
+  unifying project identity + attribution; budget opportunistic.
+  Outcome (4 slices):
+  - **Source → canonical → projection:** brainmap is the only RO-national source (no budget); `scopus-python/
+    brainmap_dump.py` (manual-search headful, harvest the results LIST) → `data/brainmap/uvt_projects.jsonl` (341 UVT) →
+    `BrainmapProjectImportService` → `ProjectCanonicalizationService` (`ScholardexProjectFact`, merge by EU grant id
+    else code; coordinator → canonical affiliation via a token-signature index) → `ProjectProjectionService` →
+    Postgres `reporting_read.scholardex_project_view`. **Live: 341 projects, 315 coordinators resolved.**
+  - **Reference + consume:** workspace picker on the shared `PROJECT_GRANT_ID` slot (`/api/entities/projects`);
+    `ActivityBlockProjector` renders the canonical label in reports; `ActivityReportingService` injects `proj_*`
+    (budget/funder/director) at scoring time (decouple-safe). CS `Granturi` reconciled to the shared `Grant Cercetare`
+    activity (Option A); `Grant Cercetare` declares `PROJECT_GRANT_ID` (seed + runtime runner).
+  - **Trusted budget (CORDIS/admin):** `UserDefinedProjectFact` (precious — never wiped) + admin CRUD + **live CORDIS
+    XML fetch** (`/api/admin/projects/cordis/{id}`, public no-auth, auto-suggests UVT `ecContribution`; WebClient buffer
+    raised to 16MB for large projects). **Live: 17/19 UVT CORDIS budgets entered (€2.3M); merged → 350 canonical.**
+    CS `Info_D_v` opted into `proj_budget` with declared fallback (the only `Buget` consumer; A10/FEAA inherit the form
+    when authored).
+  - **Decisions settled:** budget = declared-only from brainmap (CORDIS/admin is the trusted source); lighter
+    canonical+projection (no event stage); brainmap = offline credential-safe dump (no live dep).
+  - **Spun off → `H78`:** researcher-facing import / search / link + director→researcher attribution.
+  - **Carry-forward (config/ops, not code):** enter the remaining EU budgets as CORDIS data updates; physics A10 +
+    FEAA budget indicators authored in the `proj_budget` form when H65 ships; `currency normalization + monetary
+    eligibility thresholds` (RON↔EUR, grant ≥X) still recur across chimie/geografie/FSGC/drept/FSP/sport/FEAA →
+    tracked in `H68`/per-report tasks.
+
 ## H63 OpenAlex enrichment — corresponding-author scoring surface (archived 2026-06-26)
 
 Archived from `TASKS.md` on 2026-06-26 — the cross-cutting scoring-surface enabler is done + live-verified
