@@ -118,7 +118,12 @@ are unchanged until an indicator opts in.
   (wiped on full rebuild). User-entered project budgets must SURVIVE rebuilds → `user_defined.project_facts` must be a
   *source/precious* collection (not in the managed wipe set; re-read each rebuild). Confirm how user-defined pubs avoid
   data loss today and follow the safe path.
-- **4c — director → researcher attribution (A9).** Add `directorResearcherId` to `ScholardexProjectFact`; a matching
+- **4c — SPUN OFF to `H78` (2026-06-29), with expanded scope.** Per the user, 4c is its own task: a researcher-facing
+  project workspace — surface "my projects" (director→researcher match), one-click **import** a canonical project as a
+  `Grant Cercetare` activity (pre-filled), **search** the picker (+ CORDIS escalation) when auto-match misses, and
+  **link** existing free-text activities to canonical projects. The director→researcher matching below becomes the
+  enabler for "my projects" there. See `docs/tasks/active/h78-researcher-project-workspace.md` (to be created).
+  _Original 4c note (for reference):_ Add `directorResearcherId` to `ScholardexProjectFact`; a matching
   pass (brainmap `directorFirst/Last` → `ResearcherProfile` via `UserRepository.findByResearcherProfileNameContaining
   IgnoreCase`, with a confidence gate) sets it; **homonym risk → a confirm/review step** (admin or the researcher's own
   workspace "is this your project?"). Keep A9 **activity-declared** (researcher self-declares `Rol=Director` on a Grant

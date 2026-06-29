@@ -66,7 +66,13 @@ Done history moved to `TASKS-done.md`.
   Slices: (1) Nef core + I/P; (2) A1–A6; (3) A7–A10; (4) C+h+T+summary. Planning doc at
   `docs/tasks/active/h65-physics-report-export.md`.
 
-- [ ] `H64` Canonical projects (unification across sources).
+- [ ] `H64` Canonical projects (unification across sources). **Slices 1–4b DONE (2026-06-29); 4c spun off to `H78`.**
+  Shipped: brainmap dump (341 UVT) → source/canonical facts → Postgres `scholardex_project_view` → workspace
+  picker (`PROJECT_GRANT_ID`) → report-display resolution → scoring-time `proj_*` injection (A10/CS trusted budget) →
+  `UserDefinedProjectFact` (precious) + admin CRUD + **live CORDIS XML fetch** (`/api/admin/projects/cordis/{id}`,
+  auto-suggests UVT `ecContribution`; live-verified vs SERRANO €270k). Remaining = ops (project-canon rebuild to
+  populate the 341; enter the 19 CORDIS budgets; opt A10/Info_D_v formulas into `proj_budget`) + the `Granturi`/`Grant
+  Cercetare` config already reconciled. Researcher-facing import/search/link → `H78`.
   Goal: a canonical `ScholardexProject` entity researchers reference across all project-scoring reports
   (physics A9/A10, FEAA, CS), unifying project identity + attribution. Primary value is unification (one
   trusted project + who led it), not budget.
@@ -83,6 +89,20 @@ Done history moved to `TASKS-done.md`.
   across chimie/geografie/FSGC/drept/FSP/sport/FEAA per the standards assessment). Physics/FEAA ship NOW on
   the existing `Grant Cercetare`/`Buget` activity — this is independent. Planning doc at
   `docs/tasks/active/h64-canonical-projects.md`.
+
+- [ ] `H78` Researcher project workspace — import / search / link (spun off from `H64` slice 4c).
+  Goal: give a researcher, in the workspace, a project-centric flow on top of the `H64` canonical project layer:
+  (1) **surface "my projects"** — projects where they are the director (brainmap `director*` → `ResearcherProfile`
+  name match, the deferred 4c attribution) or a participant; (2) **one-click import as activities** — turn a linked
+  canonical project into a `Grant Cercetare` activity instance (pre-filling `Nume Proiect`/`Rol`/`Buget` from the
+  canonical record + the `PROJECT_GRANT_ID` reference), so they don't re-type; (3) **search** the canonical projects
+  (reuse the `H64` `/api/entities/projects` picker) when auto-match misses, with an optional escalation to live CORDIS
+  search/fetch for an EU project not yet in the canonical layer; (4) **link** an existing free-text activity to a
+  canonical project (back-fill `PROJECT_GRANT_ID` on activities entered before the picker existed).
+  Builds entirely on `H64` (canonical facts, picker, `proj_*` injection, CORDIS client). Key risks: homonym
+  mis-attribution on the director→researcher match (needs a confirm/"is this yours?" step, not silent linking);
+  avoiding duplicate activity instances on re-import (idempotency by `PROJECT_GRANT_ID`). Planning doc to be created at
+  `docs/tasks/active/h78-researcher-project-workspace.md` when work starts.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
