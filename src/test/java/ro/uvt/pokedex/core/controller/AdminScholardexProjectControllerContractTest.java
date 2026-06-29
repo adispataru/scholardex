@@ -36,6 +36,8 @@ class AdminScholardexProjectControllerContractTest {
     private UserDefinedProjectService userDefinedProjectService;
     @MockitoBean
     private CordisProjectClient cordisProjectClient;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.brainmap.ProjectRebuildService projectRebuildService;
 
     @Test
     void createReturnsSavedProject() throws Exception {

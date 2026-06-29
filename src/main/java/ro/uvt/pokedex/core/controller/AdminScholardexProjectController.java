@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.UserDefinedProjectRequest;
 import ro.uvt.pokedex.core.model.scopus.canonical.UserDefinedProjectFact;
+import ro.uvt.pokedex.core.service.brainmap.ProjectRebuildService;
 import ro.uvt.pokedex.core.service.brainmap.UserDefinedProjectService;
 import ro.uvt.pokedex.core.service.cordis.CordisProject;
 import ro.uvt.pokedex.core.service.cordis.CordisProjectClient;
@@ -32,6 +33,7 @@ public class AdminScholardexProjectController {
 
     private final UserDefinedProjectService userDefinedProjectService;
     private final CordisProjectClient cordisProjectClient;
+    private final ProjectRebuildService projectRebuildService;
 
     /** Legal-name fragment used to auto-suggest UVT's per-partner contribution from a CORDIS project. */
     @Value("${core.projects.cordis.org-name-match:Universitatea de Vest}")
@@ -40,6 +42,12 @@ public class AdminScholardexProjectController {
     @GetMapping
     public ResponseEntity<List<UserDefinedProjectFact>> list() {
         return ResponseEntity.ok(userDefinedProjectService.findAll());
+    }
+
+    /** Scoped ops trigger: re-import the brainmap dump + re-derive the canonical project layer + projection. */
+    @PostMapping("/rebuild")
+    public ResponseEntity<ProjectRebuildService.ProjectRebuildResult> rebuild() {
+        return ResponseEntity.ok(projectRebuildService.rebuild());
     }
 
     /**
