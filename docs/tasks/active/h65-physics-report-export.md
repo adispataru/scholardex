@@ -95,6 +95,14 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
 1. **Nef core + research half** — `Nef` primitive (helper + bind + contract), I, P (first-author), T17/T18 + I/P in summary. **[DONE 2026-06-26]**
 2. **A1–A6** — books/chapters/reviews/proceedings (WoS Master Book List allowlist + editor role), A1–A6 tables + A subtotal. **[DONE 2026-06-26]** — modeled as **manual-entry activities** (the WoS Master Book List is confirmed unavailable, H66; the fišă is manual-evidence by design, so the candidate self-declares publisher + link, scored `k/Nef`). Nef bound in the activity path from `N_autori` (`ActivityReportingService`); 6 `STACKED_BLOCKS` A-table bindings (tables 7–12) + reusable renderer enhancements (`BindingBlock.totalMarker`, `firstDataRow`-aware block walk); A = ΣA₁..A₆ → summary A + `T = A + I/2 + P/2`. The 6 `Fizica_A*` activity/indicator defs are per-deployment config. Suite 2475/2475.
 3. **A7–A10** — patents + projects (reused activities; `Nef` in activity context; A10 budget via H64), A complete.
+   **[DONE 2026-06-29]** — code: `binding.json` 4 STACKED_BLOCKS roles `fizica-a7..a10` → real-template tables 13–16
+   (verified: Brevet intl/national, program director, research-project director; same 5-col layout as A1–A6);
+   `Fizica2024ReportTypeImportSupport.A_BLOCKS` → A1..A10 (generic `fizica-a*` dispatch already handled it) so
+   **A = ΣA₁..A₁₀**. Render test vs the real 21-table fišă green (A7–A10 totals + A subtotal 5.20); transfer suite green.
+   **Config (per-deployment, not code):** `Fizica_A7..A10` indicator defs + formulas (A7 `Tip=='National'?0:3/Nef`,
+   A8 `Tip=='National'?0.5/Nef:0`, A9 `Rol=='Director'?0.5:0`, A10 `(proj_budget!=null?proj_budget:Buget)/100000`)
+   each tagged `blockByIndicatorId→"A7".."A10"` + role `fizica-a7..a10`, and the A-criterion `indicatorIndices`
+   extended to A7–A10 — mirroring the slice-2 `Fizica_A1..A6` defs. A10 = first physics consumer of the H64 trusted budget.
 
    ### Slice 3 — scope (2026-06-29)
    Mirrors slice 2 (per-table STACKED_BLOCKS + per-deployment indicator config). **No activity/seed gaps** — all three
