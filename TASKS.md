@@ -54,20 +54,6 @@ Done history moved to `TASKS-done.md`.
   per-position threshold model. Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica. Planning doc at
   `docs/tasks/active/h68-criteria-extensions.md`.
 
-- [ ] `H65` Physics (Fizică/FF) report — DOCX export. **UNBLOCKED (2026-06-29): both data deps done — H63 ✅, H64 ✅.**
-  Slices 1–2 already shipped (Nef + I/P; A1–A6 manual-entry activities). Remaining: slice 3 (A7–A10) + slice 4
-  (C/h/T/summary). Data ready: P → use H63 `FIRST_OR_CORRESPONDING`; **A10 → reuse the H64 `proj_budget` injection**
-  (write the A10 indicator in the `proj_budget != null ? proj_budget : Buget` form, like CS Info_D_v); A9 director
-  count = declared `Rol` now, canonical director-attribution via H78 later.
-  Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template).
-  Notable: core new primitive `Nef` (effective author-count bracket, divisor for I/P/A1–A8); indicators
-  I=ΣAIS/Nef, P=ΣAIS (first-author now → first-or-corresponding via H63), A1–A10 didactic (reuse `Grant
-  Cercetare`/`Brevet`/`Proiect educational` activities + WoS Master Book List allowlist + editor role),
-  A=ΣA_i, C=citation count, h=Hirsch (new), T=composite. Reuse AIS strategy, FEAA/CNCSIS allowlist pattern,
-  Mate_C count, docx infra. Still to read: PDF p6–14 (Prof thresholds, C/h/T definitions, HEPP exception).
-  Slices: (1) Nef core + I/P; (2) A1–A6; (3) A7–A10; (4) C+h+T+summary. Planning doc at
-  `docs/tasks/active/h65-physics-report-export.md`.
-
 - [ ] `H78` Researcher project workspace — import / search / link (spun off from `H64` slice 4c).
   Goal: give a researcher, in the workspace, a project-centric flow on top of the `H64` canonical project layer:
   (1) **surface "my projects"** — projects where they are the director (brainmap `director*` → `ResearcherProfile`

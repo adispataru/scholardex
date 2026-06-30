@@ -2,6 +2,34 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H65 Physics (Fizică / FF) report — DOCX export (archived 2026-06-30)
+
+Archived from `TASKS.md` — engineering complete, all 4 slices shipped + tested against the real 21-table template.
+Remaining work is per-deployment indicator *config* (data, not code). Closed task doc:
+`docs/tasks/closed/h65-physics-report-export.md`.
+
+- [x] `H65` Physics (Fizică/FF) report — DOCX export. *(completed 2026-06-30)*
+  Goal: export the FV Fizică fišă (Ordin 6129/2016, Anexa 1; 21-table template).
+  Outcome (4 slices):
+  - **Slice 1 — Nef core + I/P:** new primitive `Nef` (effective author-count bracket: `n≤5→n; 5<n≤15→(n+5)/2;
+    15<n≤75→(n+15)/3; n>75→(n+45)/4`), bound in `FormulaContext` (pub + activity paths) + declared in the variable
+    contract → most indicators become config. I=ΣAISᵢ/Nefᵢ (table 17), P=ΣAISᵢ first-or-corresponding via H63
+    `FIRST_OR_CORRESPONDING` (table 18).
+  - **Slice 2 — A1–A6:** didactic blocks rendered as `STACKED_BLOCKS` (tables 7–12), grouped by activity name.
+  - **Slice 3 — A7–A10:** patents (A7/A8, reuse `Brevet`), projects (A9 director count, A10 research-project € via the
+    H64 `proj_budget` injection — `proj_budget != null ? proj_budget : Buget`, like CS Info_D_v) as `STACKED_BLOCKS`
+    (tables 13–16); A subtotal = ΣA₁..A₁₀.
+  - **Slice 4 — C + h + T + summary:** composite **T = A + P/2 + I/2 + C/20 + h/5**; T20 summary (table 20:
+    Indicator|A|I|P|C|h|T) reads the `fizica-c` (C=Σcᵢ/Nefᵢ) + `fizica-h` (WoS Hirsch) indicator totals. The nested
+    **C citation detail table (table 19)** — cited-pub slots `I./II./III.` each with citing sub-rows `1./2.` + merged
+    cells — filled via a physics-specific POI post-pass (`Fizica2024ReportTypeImportSupport#fillCitationTable`), cell
+    indices verified empirically against the rendered template; footer `C =` total. Limitation: 3 built-in cited × 2
+    citing slots (representative sample, no row-group expansion yet).
+  - **Reuse:** AIS strategy, FEAA/CNCSIS allowlist + editor-role patterns, Mate_C `{RIS, excludeSelf}` citation kind,
+    the `TemplateBinding`/`TemplateDocxRenderer` DOCX infra. Render tests cover all detail tables + the summary.
+  - **Per-deployment config remainder (data, not code):** the `Fizica_C` (citation/RIS kind + role `fizica-c`),
+    `Fizica_h` (HIRSCH/WOS_VENUE), and A7–A10 indicators + Lector/Conf/Prof threshold rows are seeded per deployment.
+
 ## H64 Canonical projects (unification across sources) (archived 2026-06-29)
 
 Archived from `TASKS.md` — engineering complete + live-verified end-to-end with real data. Researcher-facing
