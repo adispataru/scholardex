@@ -359,6 +359,8 @@ function _loadMyProjects() {
             if (!Array.isArray(projects) || projects.length === 0) { host.hidden = true; return; }
             host.hidden = false;
             host.innerHTML = _buildMyProjects(projects);
+            host.querySelectorAll('[data-import-project]').forEach(btn =>
+                btn.addEventListener('click', () => _importProject(btn.dataset.importProject, btn)));
         })
         .catch(() => { host.hidden = true; });
 }
@@ -367,8 +369,14 @@ function _buildMyProjects(projects) {
     const items = projects.map(p => {
         const meta = [p.code, p.funder, _projYears(p)].filter(Boolean).join(' · ');
         return `<li class="app-ws-acts__myproj-item">
-            <span class="app-ws-acts__myproj-title">${_esc(p.title || p.code || p.id)}</span>
-            ${meta ? `<span class="app-ws-acts__myproj-meta">${_esc(meta)}</span>` : ''}
+            <div class="app-ws-acts__myproj-text">
+                <span class="app-ws-acts__myproj-title">${_esc(p.title || p.code || p.id)}</span>
+                ${meta ? `<span class="app-ws-acts__myproj-meta">${_esc(meta)}</span>` : ''}
+            </div>
+            <button type="button" class="app-btn app-btn--sm app-ws-acts__myproj-import"
+                    data-import-project="${_esc(p.id)}">
+                <i class="fa-solid fa-file-import" aria-hidden="true"></i> Import
+            </button>
         </li>`;
     }).join('');
     return `<div class="app-card app-ws-acts__myproj">
@@ -377,9 +385,42 @@ function _buildMyProjects(projects) {
             <span class="app-ws-acts__myproj-heading">Projects that may be yours</span>
             <span class="app-ws-acts__myproj-count">${projects.length}</span>
         </div>
-        <p class="app-ws-acts__myproj-hint">Matched to you as project director.</p>
+        <p class="app-ws-acts__myproj-hint">Matched to you as project director. Import adds it as a Grant Cercetare activity.</p>
+        <p class="app-ws-acts__myproj-feedback" id="ws-acts-myproj-feedback" hidden></p>
         <ul class="app-ws-acts__myproj-list">${items}</ul>
     </div>`;
+}
+
+function _importProject(projectId, btn) {
+    const feedback = document.getElementById('ws-acts-myproj-feedback');
+    if (btn) btn.disabled = true;
+    fetch(`/user/workspace/activities/import-project/${encodeURIComponent(projectId)}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postJsonHeaders(),
+    })
+        .then(r => r.json().then(body => ({ ok: r.ok, body })))
+        .then(({ ok, body }) => {
+            if (!ok) throw new Error(body && body.status);
+            const title = (body && body.projectTitle) || 'project';
+            const msg = body.status === 'EXISTS'
+                ? `“${title}” is already in your activities.`
+                : `Imported “${title}” as a Grant Cercetare activity.`;
+            _showMyProjFeedback(feedback, msg, false);
+            // Reload so the new instance appears in the table (and the card re-renders).
+            _init(_panel);
+        })
+        .catch(() => {
+            _showMyProjFeedback(feedback, 'Could not import — please try again.', true);
+            if (btn) btn.disabled = false;
+        });
+}
+
+function _showMyProjFeedback(el, msg, isError) {
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = msg;
+    el.classList.toggle('app-ws-acts__myproj-feedback--error', !!isError);
 }
 
 function _projYears(p) {

@@ -593,3 +593,33 @@
   font-size: 0.78rem;
   color: var(--app-color-text-muted, #667085);
 }
+
+/* H78 slice 2 — My-projects import row layout + feedback */
+.app-ws-acts__myproj-item {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.app-ws-acts__myproj-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.app-ws-acts__myproj-import {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.app-ws-acts__myproj-feedback {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--app-color-success-text, #027a48);
+}
+
+.app-ws-acts__myproj-feedback--error {
+  color: var(--app-color-danger-text, #b42318);
+}

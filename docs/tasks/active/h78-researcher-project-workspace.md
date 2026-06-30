@@ -63,7 +63,20 @@ Live: endpoint 200 `[]` end-to-end. **Deploy step:** re-run the project projecti
 - **Tests:** signature match (diacritics + name-order: "Ștefan Popescu" ↔ "Popescu Stefan"); read-port query; endpoint
   returns only the researcher's director projects; no-name researcher → empty.
 
-### Slice 2 — Import a project as a `Grant Cercetare` activity (pre-fill + idempotency)
+### Slice 2 — Import a project as a `Grant Cercetare` activity (pre-fill + idempotency) — **DONE 2026-06-30**
+Shipped: `ResearcherProjectService.importProject(email, projectId)` (config-aware pre-fill — only writes fields the
+activity declares: `Nume Proiect`←title, `Buget`←budget when present, `Rol`←inferred director role intl/national by
+funder; sets `PROJECT_GRANT_ID`) with idempotency on the reference (`EXISTS` returns the existing instance, no
+duplicate); `POST /user/workspace/activities/import-project/{projectId}` (200 CREATED/EXISTS, 404 PROJECT_NOT_FOUND,
+409 ACTIVITY_NOT_CONFIGURED); an "Import" button per "My projects" row → posts → reloads. Target activity is
+`core.projects.import-activity-name` (default `Grant Cercetare`). Tests: service unit (pre-fill, intl-vs-national role,
+idempotency, missing-project, unconfigured-activity) + both `@WebMvcTest` slices. **Live (agent-dev, real project
+`sproj_783b…`):** CREATED → EXISTS (same id) → 404; persisted instance verified — `Rol`=Director (proiect național)
+(UEFISCDI), no `Buget` (null budget), `PROJECT_GRANT_ID` set; test instance cleaned up. The Import *button* visual
+isn't browser-verified (agent-dev principal has no profile → the My-projects card never renders there), but the
+endpoint+service path is fully exercised.
+
+
 - **Endpoint** `POST /user/workspace/activities/import-project/{projectId}`: resolve the project (read port), build a
   `Grant Cercetare` `ActivityInstance` pre-filled — `Nume Proiect`←title, `Buget`←budget (if present), `Rol`←
   directorRole (default if absent), `referenceFields[PROJECT_GRANT_ID]`←projectId — and persist via the existing
