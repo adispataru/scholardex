@@ -202,6 +202,65 @@ class Fizica2024ReportTypeImportSupportTest {
         }
     }
 
+    @Test
+    void rendersCCitationDetailTable() throws Exception {
+        ReportInstanceSnapshot snap = new ReportInstanceSnapshot();
+        snap.setReportTypeKey("fizica-ff");
+        snap.getItems().add(citation("My cited paper", "Phys. Rev. B", 2019, 1.5,
+                citing("Citing one", "Nature", 2021), citing("Citing two", "Science", 2022)));
+        // a second cited pub → fills slot II. (rows 4–6)
+        snap.getItems().add(citation("Second paper", "J. Phys.", 2018, 0.5,
+                citing("Another citing", "PRL", 2023)));
+        snap.getTotals().put("fizica-c", 2.0);
+
+        byte[] bytes = support.render(snap, ReportFormat.DOCX);
+
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(bytes))) {
+            XWPFTable t = doc.getTables().get(19);
+            // Cited slot I. (row 1): reference in cell 1, score in the last cell (4); citing rows 2/3 cell 2.
+            assertTrue(cell(t, 1, 1).contains("My cited paper"), "cited I ref: " + cell(t, 1, 1));
+            assertEquals("1.50", cell(t, 1, 4), "cited I score");
+            assertTrue(cell(t, 2, 2).contains("Citing one"), "citing I.1");
+            assertTrue(cell(t, 3, 2).contains("Citing two"), "citing I.2");
+            // Cited slot II. (row 4): second cited pub + its one citing row (5); row 6 stays empty.
+            assertTrue(cell(t, 4, 1).contains("Second paper"), "cited II ref");
+            assertEquals("0.50", cell(t, 4, 4), "cited II score");
+            assertTrue(cell(t, 5, 2).contains("Another citing"), "citing II.1");
+            assertEquals("", cell(t, 6, 2), "citing II.2 empty");
+            // Footer C total = Σ cited scores = 1.5 + 0.5 = 2.00
+            assertTrue(markerRowText(t, "C =").contains("C = 2.00"), "footer C total: " + markerRowText(t, "C ="));
+        }
+    }
+
+    private static String markerRowText(XWPFTable t, String marker) {
+        for (int r = 0; r < t.getNumberOfRows(); r++) {
+            for (int c = 0; c < t.getRow(r).getTableCells().size(); c++) {
+                if (cell(t, r, c).contains(marker)) return cell(t, r, c);
+            }
+        }
+        return "";
+    }
+
+    private static ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem citation(
+            String title, String forum, int year, double score,
+            ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem.CitingPublication... citing) {
+        var cit = new ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem();
+        cit.setRoleKey("fizica-c");
+        cit.setPublicationTitle(title);
+        cit.setPublicationForumName(forum);
+        cit.setPublicationYear(year);
+        cit.setScore(score);
+        for (var c : citing) cit.getCitingPublications().add(c);
+        return cit;
+    }
+
+    private static ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem.CitingPublication citing(
+            String title, String forum, int year) {
+        var c = new ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem.CitingPublication();
+        c.setTitle(title); c.setForumName(forum); c.setYear(year);
+        return c;
+    }
+
     private static String cell(XWPFTable t, int row, int col) {
         XWPFTableRow r = t.getRow(row);
         XWPFTableCell c = r == null ? null : r.getCell(col);

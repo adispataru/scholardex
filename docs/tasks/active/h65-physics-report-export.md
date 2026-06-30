@@ -138,10 +138,17 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
    `docxTotals` add cells 4=C, 5=h. Render test vs the real template green. C/h are per-deployment config indicators
    (C = Mate_C `{RIS, excludeSelf}` kind + formula `S/Nef`; h = `HIRSCH`/`WOS_VENUE`). **This completes the report's
    SCORING** (I/P/A1–A10/C/h/T + summary vs Lector/Conf/Prof thresholds).
-   **Follow-on (4-citations, deferred):** the **C citation DETAIL table (table 19)** is *nested* — cited-pub rows
-   (`I., II.`) each with citing sub-rows (`1., 2.`) and merged cells — unlike the maths flat `FIXED_TABLE` citation
-   table. Filling it needs renderer work (a nested cited→citing expansion) verified against the rendered output; it is
-   evidence, not score, so it's split out. The other detail tables (I=17, P=18, A1–A10=7–16) already render.
+   **[CITATION DETAIL DONE 2026-06-30]** — the **C citation DETAIL table (table 19)** is *nested* (cited-pub rows
+   `I., II., III.` each with citing sub-rows `1., 2.` + merged cells), so a generic flat `FIXED_TABLE` reuse won't fit.
+   Filled via a **physics-specific POI post-pass** in `Fizica2024ReportTypeImportSupport#fillCitationTable`: collects
+   the `fizica-c` `CitationSnapshotItem`s, writes each cited reference (cell 1) + cᵢ/Nefᵢ score (last cell) to a cited
+   slot and each citing reference (cell 2) to a `1./2.` sub-row, then the footer `C =` total. Cell indices verified
+   empirically against the rendered template (merged cells). Render test (2 cited pubs across both slots + footer)
+   green. **Limitation:** uses the template's 3 built-in cited × 2 citing slots (no row-group expansion yet) — the
+   fišă citation table is a representative sample; >3 cited pubs (or >2 citing each) are truncated. Row-group cloning
+   for deeper expansion is a possible later refinement. The other detail tables (I=17, P=18, A1–A10=7–16) render too.
+   **Config note:** the projector emits `fizica-c` `CitationSnapshotItem`s only when the per-deployment `Fizica_C`
+   indicator is wired with the citation (RIS) kind + role `fizica-c` (mirrors the maths `citations-per-publication`).
 
    ### Slice 4 — scope (2026-06-29) — final slice
    Verified template layout: summary **table 20** columns `Indicator | A | I | P | C | h | T` (cells 1–6 → C=cell 4,

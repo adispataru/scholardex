@@ -1,8 +1,14 @@
 package ro.uvt.pokedex.core.service.reporting.transfer;
 
 import jakarta.annotation.PostConstruct;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.model.reporting.transfer.ActivitySnapshotItem;
+import ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportInstanceSnapshot;
@@ -13,6 +19,9 @@ import ro.uvt.pokedex.core.service.reporting.EffectiveAuthorCountSupport;
 import ro.uvt.pokedex.core.service.reporting.transfer.binding.TemplateBindingLoader;
 import ro.uvt.pokedex.core.service.reporting.transfer.render.TemplateDocxRenderer;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -101,6 +110,7 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
         }
 
         Map<String, List<Map<String, Object>>> rowsByRole = new LinkedHashMap<>();
+        List<CitationSnapshotItem> citations = new ArrayList<>();
         for (SnapshotItem item : snapshot.getItems()) {
             if (item instanceof PublicationSnapshotItem pub && ROLE_ARTICLES.equals(pub.getRoleKey())) {
                 rowsByRole.computeIfAbsent(ROLE_ARTICLES, k -> new ArrayList<>()).add(articleRow(pub));
@@ -111,6 +121,9 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
                 // A1–A10 activities (didactic A1–A6, patents A7/A8, projects A9/A10): one row per scored entry,
                 // grouped to its A-block by activityName.
                 rowsByRole.computeIfAbsent(act.getRoleKey(), k -> new ArrayList<>()).add(act.toRowMap());
+            } else if (item instanceof CitationSnapshotItem cit && ROLE_CITATIONS.equals(cit.getRoleKey())) {
+                // C citation detail: one cited publication (+ its citing publications) per item.
+                citations.add(cit);
             }
         }
 
@@ -127,7 +140,107 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
         // Composite T = A + P/2 + I/2 + C/20 + h/5.
         totals.put(TOTAL_T, a + p / 2.0 + i / 2.0 + c / 20.0 + h / 5.0);
 
-        return renderer.render(binding, rowsByRole, totals);
+        byte[] bytes = renderer.render(binding, rowsByRole, totals);
+        // The C citation table (table 19) is nested (cited pub → citing pubs), unlike the generic flat tables; fill it
+        // with a POI post-pass here (physics-specific layout, kept out of the generic renderer).
+        return citations.isEmpty() ? bytes : fillCitationTable(bytes, citations);
+    }
+
+    /** 0-based index of the citations detail table in the fišă (table 19, "Nr.publ.citată | … | Punctaj"). */
+    private static final int CITATION_TABLE_INDEX = 19;
+
+    /**
+     * Fill the nested C citation table: each cited publication owns a cited row ({@code I., II., …}, carrying the
+     * reference + its cᵢ/Nefᵢ score) followed by one row per citing publication ({@code 1., 2., …}). The template
+     * ships 3 cited × 2 citing slots; we reuse them and clone (cited-row + citing-rows) groups when there are more.
+     */
+    private byte[] fillCitationTable(byte[] bytes, List<CitationSnapshotItem> citations) {
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(bytes));
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            List<XWPFTable> tables = doc.getTables();
+            if (CITATION_TABLE_INDEX < tables.size()) {
+                writeCitationRows(tables.get(CITATION_TABLE_INDEX), citations);
+            }
+            doc.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to fill the fizica-c citation table", e);
+        }
+    }
+
+    private void writeCitationRows(XWPFTable table, List<CitationSnapshotItem> citations) {
+        // Template data rows: cited rows at 1,4,7 (I./II./III.); each followed by 2 citing rows. We fill in place for
+        // up to the 3 built-in cited slots; deeper expansion is a later refinement (the fišă table is a representative
+        // sample). Cell mapping is derived empirically (merged cells) — see CITED_*/CITING_* constants.
+        int citedSlot = 0;
+        for (CitationSnapshotItem cit : citations) {
+            int citedRow = 1 + 3 * citedSlot;
+            if (citedRow >= table.getNumberOfRows()) {
+                break;
+            }
+            XWPFTableRow cr = table.getRow(citedRow);
+            setCellText(cr.getCell(CITED_REF_CELL), composeCitedReference(cit));
+            int scoreCell = cr.getTableCells().size() - 1;
+            setCellText(cr.getCell(scoreCell), format(cit.getScore()));
+
+            List<CitationSnapshotItem.CitingPublication> citing = cit.getCitingPublications() == null
+                    ? List.of() : cit.getCitingPublications();
+            for (int j = 0; j < 2; j++) {
+                int citingRow = citedRow + 1 + j;
+                if (citingRow >= table.getNumberOfRows()) {
+                    break;
+                }
+                XWPFTableRow cgr = table.getRow(citingRow);
+                setCellText(cgr.getCell(CITING_REF_CELL), j < citing.size() ? composeCiting(citing.get(j)) : "");
+            }
+            citedSlot++;
+        }
+
+        // Footer "Punctaj total indicator … C =" — write the C total (Σ cited-pub scores).
+        double total = citations.stream().mapToDouble(c -> c.getScore() == null ? 0.0 : c.getScore()).sum();
+        for (int r = 0; r < table.getNumberOfRows(); r++) {
+            for (XWPFTableCell footer : table.getRow(r).getTableCells()) {
+                if (footer.getText() != null && footer.getText().contains("C =")) {
+                    setCellText(footer, "C = " + format(total));
+                    return;
+                }
+            }
+        }
+    }
+
+    private static final int CITED_REF_CELL = 1;   // wide "Referinţa bibliografică a publicaţiei citate" cell
+    private static final int CITING_REF_CELL = 2;  // wide citing-reference cell on a "1./2." row
+
+    private String composeCitedReference(CitationSnapshotItem cit) {
+        List<String> parts = new ArrayList<>();
+        if (notBlank(cit.getPublicationTitle())) parts.add(cit.getPublicationTitle());
+        if (notBlank(cit.getPublicationForumName())) parts.add(cit.getPublicationForumName());
+        if (cit.getPublicationYear() != null) parts.add("(" + cit.getPublicationYear() + ")");
+        return String.join(", ", parts);
+    }
+
+    private String composeCiting(CitationSnapshotItem.CitingPublication c) {
+        String s = c.getTitle() == null ? "" : c.getTitle();
+        String meta = "";
+        if (notBlank(c.getForumName())) meta += c.getForumName();
+        if (c.getYear() != null) meta += (meta.isEmpty() ? "" : ", ") + c.getYear();
+        return meta.isEmpty() ? s : s + " (" + meta + ")";
+    }
+
+    private static void setCellText(XWPFTableCell cell, String text) {
+        if (cell == null) {
+            return;
+        }
+        for (int p = cell.getParagraphs().size() - 1; p >= 0; p--) {
+            cell.removeParagraph(p);
+        }
+        XWPFParagraph para = cell.addParagraph();
+        para.createRun().setText(text == null ? "" : text);
+    }
+
+    /** Two-decimal score format matching the renderer's WRITE_SCORE cells. */
+    private static String format(Double value) {
+        return value == null ? "" : String.format(java.util.Locale.US, "%.2f", value);
     }
 
     @Override
