@@ -70,8 +70,10 @@ Done history moved to `TASKS-done.md`.
   match = projected `director_signature` column (projection-only re-run, no full rebuild); CORDIS escalation =
   admin-deferred (no researcher minting); surfacing = director-only (no participant names in the data). Slices:
   (1) director attribution + read-only "My projects" panel; (2) import-as-`Grant Cercetare` (pre-fill + idempotency);
-  (3) link existing activity + admin-deferred not-found. Note: the picker already attaches `PROJECT_GRANT_ID` on
-  create+edit, so basic search/link is largely shipped — the net-new value is surfacing + pre-fill + idempotency.
+  (3) link existing activity + admin-deferred not-found; (4) participant search-and-link when adding a `Grant
+  Cercetare` (self-serve search + pre-fill, `Rol`=participant — participants have no name in the data so they aren't
+  auto-surfaced). Note: the picker already attaches `PROJECT_GRANT_ID` on create+edit, so basic search/link is largely
+  shipped — the net-new value is surfacing + pre-fill + idempotency.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.

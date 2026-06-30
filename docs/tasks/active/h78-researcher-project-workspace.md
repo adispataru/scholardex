@@ -32,9 +32,10 @@ Give a researcher, in the workspace, a project-centric flow on top of the canoni
 - **CORDIS escalation = admin-deferred.** Researchers do **not** mint canonical projects. If a project isn't in the
   canonical layer, the researcher enters a free-text `Grant Cercetare` (today's behavior, unlinked) and/or it's flagged
   for admin import via the existing H64 admin CORDIS path. Project governance stays admin-only.
-- **Director-only surfacing.** `ScholardexProjectFact` carries no participant **names** (only affiliation ids), so
-  "my projects" matches the **director** only. "or participant" from the backlog is not supported by the data yet
-  (revisit if brainmap detail/CORDIS partner-person data is later captured).
+- **Director-only AUTO-surfacing; participants self-serve via search.** `ScholardexProjectFact` carries no participant
+  **names** (only affiliation ids), so the **automatic** "My projects" panel matches the **director** only. Participants
+  aren't auto-surfaced — instead they **search** for the project when adding a `Grant Cercetare` and link it themselves
+  (the picker already supports this; see **Slice 4** for the participant-oriented search-and-link-with-pre-fill flow).
 
 ## Slices
 
@@ -73,6 +74,17 @@ Give a researcher, in the workspace, a project-centric flow on top of the canoni
 - **Not-found path:** when the picker returns nothing, show guidance — enter free-text (unlinked) now, or request admin
   import (link to / note the H64 admin CORDIS endpoint). **No researcher-side minting.**
 - **Tests:** linking sets `PROJECT_GRANT_ID` on an existing instance; idempotency on re-link; not-found guidance shown.
+
+### Slice 4 — Participant search-and-link when adding a `Grant Cercetare` (further slice)
+Participants have no name in the canonical data, so they self-serve: while **adding** a `Grant Cercetare`, search the
+canonical projects and link the one they participated in (vs the director's auto-surfaced "My projects" in slice 1).
+- **Reuse:** the `/api/entities/projects` picker (already on the create form) + the slice-2 pre-fill + idempotency.
+  Net-new is making project search a first-class step of the add flow and defaulting `Rol` to **participant** (e.g.
+  `Membru`) rather than director — i.e. the search-driven counterpart of slice 2's surfacing-driven import.
+- **Pre-fill on pick:** `Nume Proiect`←title, `Buget`←budget, `referenceFields[PROJECT_GRANT_ID]`←id, `Rol`←participant
+  default (user-editable). Idempotency by `PROJECT_GRANT_ID` (slice-2 guard) still applies.
+- **Tests:** picking a project on the add form pre-fills the fields + reference with participant role; idempotency
+  holds; manual `Rol` override preserved.
 
 ## Risks
 - **Homonym mis-attribution** on director→researcher match — mitigated by: read-only surfacing (candidate list, not a
