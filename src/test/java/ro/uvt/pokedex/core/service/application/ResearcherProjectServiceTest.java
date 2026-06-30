@@ -138,6 +138,21 @@ class ResearcherProjectServiceTest {
     }
 
     @Test
+    void importAsParticipantSetsMembruRole() {
+        when(readPort.findById("sproj_b")).thenReturn(project("sproj_b", "U Night", "EC", null, 2022));
+        when(instanceRepository.findAllByResearcherId("a@uvt.ro")).thenReturn(List.of());
+        when(activityRepository.findByName("Grant Cercetare")).thenReturn(List.of(grantCercetare()));
+        when(instanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.importProject("a@uvt.ro", "sproj_b", true); // asParticipant
+
+        org.mockito.ArgumentCaptor<ActivityInstance> cap = org.mockito.ArgumentCaptor.forClass(ActivityInstance.class);
+        verify(instanceRepository).save(cap.capture());
+        // participant → Membru, NOT a director role (despite the EC funder)
+        assertThat(cap.getValue().getFields()).containsEntry("Rol", "Membru");
+    }
+
+    @Test
     void importIsIdempotentOnProjectGrantId() {
         ActivityInstance existing = new ActivityInstance();
         existing.setId("inst_existing");

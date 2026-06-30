@@ -150,6 +150,7 @@ function _renderAll() {
 
     // Wire toolbar
     document.getElementById('ws-acts-add-btn')?.addEventListener('click', () => _toggleCreate());
+    document.getElementById('ws-acts-participant-btn')?.addEventListener('click', () => _toggleParticipantImport());
 
 
     // Render table
@@ -557,6 +558,60 @@ function _openLinkRow(inst, tr) {
     search.focus();
 }
 
+// ── H78 slice 4: participant search-and-import when adding a Grant Cercetare ───
+// Participants have no name in the canonical data, so they self-serve: search a project they took part in and import
+// it as a Grant Cercetare with Rol=participant (Membru). Reuses the slice-2 import path (idempotent + pre-fill).
+function _toggleParticipantImport() {
+    const host = document.getElementById('ws-acts-participant-import');
+    if (!host) return;
+    if (!host.hidden) { host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = `<div class="app-card app-ws-acts__partimport">
+        <div class="app-ws-acts__partimport-title">Search a project you participated in</div>
+        <div class="app-ws-acts__picker">
+            <input class="app-ws-acts__input js-part-search" type="text" autocomplete="off"
+                   placeholder="Search project by title, code, funder…"/>
+            <ul class="app-ws-acts__picker-results js-part-results" hidden></ul>
+        </div>
+        <p class="app-ws-acts__partimport-feedback" hidden></p>
+    </div>`;
+    const search  = host.querySelector('.js-part-search');
+    const results = host.querySelector('.js-part-results');
+    let timer = null;
+    search.addEventListener('input', () => {
+        const q = search.value.trim();
+        clearTimeout(timer);
+        if (q.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
+        timer = setTimeout(() => _searchProjects(q, results, search, null, id => _importParticipantProject(id, host)), 250);
+    });
+    document.addEventListener('click', e => {
+        if (!host.contains(e.target) && e.target.id !== 'ws-acts-participant-btn') results.hidden = true;
+    });
+    search.focus();
+}
+
+function _importParticipantProject(projectId, host) {
+    const feedback = host?.querySelector('.app-ws-acts__partimport-feedback');
+    fetch(`/user/workspace/activities/import-project/${encodeURIComponent(projectId)}?role=participant`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postJsonHeaders(),
+    })
+        .then(r => r.json().then(body => ({ ok: r.ok, body })))
+        .then(({ ok, body }) => {
+            if (!ok) throw new Error();
+            if (body.status === 'EXISTS' && feedback) {
+                feedback.hidden = false;
+                feedback.textContent = `“${body.projectTitle}” is already in your activities.`;
+                return;
+            }
+            _init(_panel); // reload so the new participant activity appears
+        })
+        .catch(() => {
+            if (feedback) { feedback.hidden = false; feedback.textContent = 'Could not add — please try again.'; }
+        });
+}
+
 function _linkProject(instanceId, projectId, container) {
     const feedback = container?.querySelector('.app-ws-acts__link-feedback');
     fetch(`/user/workspace/activities/${encodeURIComponent(instanceId)}/link-project/${encodeURIComponent(projectId)}`, {
@@ -961,7 +1016,11 @@ function _buildToolbar() {
           <button type="button" class="btn btn-sm btn-primary" id="ws-acts-add-btn" aria-expanded="false">
             <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Activity
           </button>
-        </div>`;
+          <button type="button" class="btn btn-sm btn-outline-primary" id="ws-acts-participant-btn">
+            <i class="fa-solid fa-people-group" aria-hidden="true"></i> Add a project you took part in
+          </button>
+        </div>
+        <div id="ws-acts-participant-import" hidden></div>`;
 }
 
 function _buildSummaryCard() {

@@ -116,9 +116,12 @@ public class ResearcherWorkspaceController {
     @PostMapping("/activities/import-project/{projectId}")
     @ResponseBody
     public ResponseEntity<ro.uvt.pokedex.core.service.application.ResearcherProjectService.ImportResult> importProject(
-            @PathVariable String projectId, Authentication authentication) {
+            @PathVariable String projectId,
+            @RequestParam(name = "role", defaultValue = "director") String role,
+            Authentication authentication) {
+        boolean asParticipant = "participant".equalsIgnoreCase(role);
         return currentUser(authentication).map(u -> {
-            var result = researcherProjectService.importProject(u.getEmail(), projectId);
+            var result = researcherProjectService.importProject(u.getEmail(), projectId, asParticipant);
             return switch (result.status()) {
                 case "CREATED", "EXISTS" -> ResponseEntity.ok(result);
                 case "PROJECT_NOT_FOUND" -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);

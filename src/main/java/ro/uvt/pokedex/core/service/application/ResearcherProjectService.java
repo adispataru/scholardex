@@ -76,6 +76,15 @@ public class ResearcherProjectService {
      * activity carrying this {@code PROJECT_GRANT_ID}, returns it ({@code EXISTS}) without creating a duplicate.
      */
     public ImportResult importProject(String researcherEmail, String projectId) {
+        return importProject(researcherEmail, projectId, false);
+    }
+
+    /**
+     * @param asParticipant when true the imported instance's {@code Rol} is the participant value ("Membru") rather
+     *        than an inferred director role — the search-driven entry point (slice 4) for someone who took part in a
+     *        project they don't direct. Everything else (pre-fill, {@code PROJECT_GRANT_ID}, idempotency) is identical.
+     */
+    public ImportResult importProject(String researcherEmail, String projectId, boolean asParticipant) {
         ScholardexProjectListItemResponse project = projectReadPort.findById(projectId);
         if (project == null) {
             return ImportResult.projectNotFound();
@@ -107,7 +116,8 @@ public class ResearcherProjectService {
         if (project.budget() != null) {
             putIfDeclared(activity, fields, "Buget", String.valueOf(project.budget()));
         }
-        putIfDeclared(activity, fields, "Rol", inferDirectorRole(activity, project.funder()));
+        String role = asParticipant ? participantRole(activity) : inferDirectorRole(activity, project.funder());
+        putIfDeclared(activity, fields, "Rol", role);
         instance.setFields(fields);
 
         Map<Activity.ReferenceField, String> refs = new LinkedHashMap<>();
@@ -215,5 +225,18 @@ public class ResearcherProjectService {
     private static boolean contains(String value, String needle) {
         String norm = CanonicalizationSupport.normalizeName(value);
         return norm != null && norm.contains(needle);
+    }
+
+    /** The participant "Rol" value ("Membru") for a search-driven participant import; falls back to the last allowed
+     *  value (typically the non-director one), then null if the activity has no Rol allowed values. */
+    private static String participantRole(Activity activity) {
+        Activity.Field rol = field(activity, "Rol");
+        if (rol == null || rol.getAllowedValues() == null || rol.getAllowedValues().isEmpty()) {
+            return null;
+        }
+        return rol.getAllowedValues().stream()
+                .filter(v -> contains(v, "membru"))
+                .findFirst()
+                .orElse(rol.getAllowedValues().get(rol.getAllowedValues().size() - 1));
     }
 }

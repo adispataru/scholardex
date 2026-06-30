@@ -110,7 +110,16 @@ created a free-text Grant Cercetare (user title, blank Buget) → LINKED → ref
   import (link to / note the H64 admin CORDIS endpoint). **No researcher-side minting.**
 - **Tests:** linking sets `PROJECT_GRANT_ID` on an existing instance; idempotency on re-link; not-found guidance shown.
 
-### Slice 4 — Participant search-and-link when adding a `Grant Cercetare` (further slice)
+### Slice 4 — Participant search-and-link when adding a `Grant Cercetare` — **DONE 2026-06-30**
+Shipped: `importProject(email, projectId, asParticipant)` overload — same pre-fill/idempotency as slice 2 but `Rol`=
+participant (`Membru`) instead of an inferred director role; `participantRole()` picks the "Membru" allowed value.
+Endpoint gained `?role=participant` (default `director`). Frontend: a toolbar button **"Add a project you took part
+in"** opens a search picker; selecting a project imports it as a participant `Grant Cercetare` (idempotent) and
+reloads. Tests: service unit (participant → Membru) + both `@WebMvcTest` slices. **Live (agent-dev):** import
+`?role=participant` → CREATED with `Rol=Membru`, title/Buget pre-filled, reference set; re-import → EXISTS (same id);
+cleaned up.
+
+
 Participants have no name in the canonical data, so they self-serve: while **adding** a `Grant Cercetare`, search the
 canonical projects and link the one they participated in (vs the director's auto-surfaced "My projects" in slice 1).
 - **Reuse:** the `/api/entities/projects` picker (already on the create form) + the slice-2 pre-fill + idempotency.
