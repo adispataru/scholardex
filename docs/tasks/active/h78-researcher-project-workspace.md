@@ -39,7 +39,17 @@ Give a researcher, in the workspace, a project-centric flow on top of the canoni
 
 ## Slices
 
-### Slice 1 — Director attribution + "My projects" panel (read-only)
+### Slice 1 — Director attribution + "My projects" panel (read-only) — **DONE 2026-06-30**
+Shipped: `V20__h78_1_project_director_signature.sql` (indexed `director_signature` column); `ProjectProjectionService`
+computes it via the now-public `ProjectCanonicalizationService.signature(directorFirst+" "+directorLast)`;
+`ScholardexProjectReadPort.findByDirectorSignature` (exact equality); `ResearcherProjectService.myProjects(profile)`
+(researcher signature from firstName+lastName, empty-short-circuit for no name); `GET /user/workspace/projects/mine`;
+read-only "Projects that may be yours" card at the top of the activities tab (lazy fetch, hidden when empty).
+Tests green (service unit, read-port integration incl. order-insensitive + null-safe, both `@WebMvcTest` slices).
+Live: endpoint 200 `[]` end-to-end. **Deploy step:** re-run the project projection once so existing rows get a
+`director_signature` (column is null until then; full-replacement projection, not a full rebuild).
+
+
 - **Migration** `Vxx__h78_director_signature.sql`: add `director_signature TEXT` + index to `scholardex_project_view`.
 - **Projection:** `ProjectProjectionService` computes `director_signature = signature(directorFirst + " " + directorLast)`
   on project (null/blank director → null). Re-run the projection once (projection-only, ~341 rows).
