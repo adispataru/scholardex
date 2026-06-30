@@ -138,10 +138,12 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
    Verified template layout: summary **table 20** columns `Indicator | A | I | P | C | h | T` (cells 1–6 → C=cell 4,
    h=cell 5, T=cell 6; rows: Lector has `-` for C/h, Conf C≥20/h≥5, Prof C≥40/h≥10); **table 19** = citations detail
    (`Nr.publ.citată | Nr.publ.care citează | Referinţa | … | Punctaj`). h has **no** detail table — it's a summary scalar.
-   - **C** = `Σ cᵢ/Nefᵢ` (the post-PDF resolved form, doc line ~73 — Nef-weighted, NOT a raw count; the early "count"
-     note is superseded): per candidate pub, its citations **from IF (non-null JCR) journals, self-excluded**, ÷ Nef,
-     summed. Reuse: the **Mate_C** citation path + the publication **Nef** (slice 1) + **H61 `SelfCitationPolicy=
-     CANDIDATE_ONLY`** + an **IF-journal gate** on the citing venue.
+   - **C** = `Σ cᵢ/Nefᵢ` (post-PDF resolved, Nef-weighted, NOT a raw count — early "count" note superseded). **Pure
+     config, no new scoring code:** reuse **Mate_C's exact kind** (`{strategy:"RIS", excludeSelf:true}`) — that strategy
+     bakes in the IF-journal ("non-null IF") citation universe + self-exclusion and produces the per-pub base `S`; the
+     scorer already binds `Nef` per pub (slice 1, `ScientificProductionService`). The fizica-c formula is just **`S/Nef`**
+     (vs Mate_C's `S >= 0.5 ? 1 : 0`) → summed over pubs = `Σ cᵢ/Nefᵢ`. So the IF-gate + self-exclusion live in the
+     **kind**, the Nef-weighting in the **formula**.
    - **h** = WoS Hirsch: a **`HIRSCH`** strategy indicator, **`HIndexSource.WOS_VENUE`** (H67; *indicative* — computed
      from our citation graph, not the official WoS index — carry the H67 caveat).
    - **T** = `A + P/2 + I/2 + C/20 + h/5` (extend the support's current `A + P/2 + I/2`).
@@ -157,14 +159,13 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
    self-exclusion, Nef-weighted) + `Fizica_h` (`HIRSCH`/`WOS_VENUE`), wired to roles `fizica-c`/`fizica-h`; the full
    per-position threshold rows (Lector/Conf/Prof incl. C/h) in the `fizica-ff` report def.
 
-   **Open questions / risks:**
-   - **C's IF-journal-citation gate**: confirm the mechanism — is "citing venue has a non-null JCR IF" already a
-     filter on the citation path (like a HIndexSource venue restriction), or does it need a new gate? Check how Mate_C
-     scopes its citation universe before building.
-   - **C Nef-weighting wiring**: I/P apply Nef per publication; C must apply Nef per *cited* pub to its qualifying
-     citation count — confirm the citation-count strategy can divide by the cited pub's Nef (vs a flat count).
-   - **Da/Nu (T5 prerequisites)** stay manual (doctorate, ≥2 recommendation letters) — out of scope.
-   - This **completes H65** (full 21-table fišă: I/P/A1–A10/C/h/T + summary vs thresholds).
+   **Resolved (2026-06-29):** C reuses Mate_C's RIS+excludeSelf kind (IF-gate + self-exclusion baked in) with formula
+   `S/Nef` — **no new scoring code** (config only, like A1–A10). The only build complexity left is the **C citation
+   detail rows** (dispatch publication-citation snapshot items into table 19) — confirm the C snapshot item shape
+   (cited pub / citing count / reference) matches Mate_C's existing citation projection, and reuse it.
+   **Risks/notes:** h's `WOS_VENUE` source is *indicative* (H67 caveat — carry it on the report). Da/Nu (T5
+   prerequisites: doctorate, ≥2 recommendation letters) stay manual — out of scope. This **completes H65** (full
+   21-table fišă: I/P/A1–A10/C/h/T + summary vs thresholds).
 
 ## Exit criteria
 Physics fišă exports per a real run: I/P (Nef), A1–A10 + A, C, h, T, summary vs thresholds; corresponding-author
