@@ -127,6 +127,20 @@ public class ResearcherWorkspaceController {
         }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
+    // ── JSON: link an existing activity to a canonical project (H78 slice 3) ──
+    @PostMapping("/activities/{instanceId}/link-project/{projectId}")
+    @ResponseBody
+    public ResponseEntity<ro.uvt.pokedex.core.service.application.ResearcherProjectService.ImportResult> linkProject(
+            @PathVariable String instanceId, @PathVariable String projectId, Authentication authentication) {
+        return currentUser(authentication).map(u -> {
+            var result = researcherProjectService.linkProject(u.getEmail(), instanceId, projectId);
+            return switch (result.status()) {
+                case "LINKED" -> ResponseEntity.ok(result);
+                default -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(result); // PROJECT/INSTANCE_NOT_FOUND
+            };
+        }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
     // ── JSON: search ──────────────────────────────────────────────────────
     @GetMapping("/search")
     @ResponseBody

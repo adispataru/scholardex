@@ -58,11 +58,14 @@ public class ResearcherProjectService {
         return projectReadPort.findByDirectorSignature(signature);
     }
 
-    /** Outcome of an import. {@code status} is one of CREATED / EXISTS / PROJECT_NOT_FOUND / ACTIVITY_NOT_CONFIGURED. */
+    /** Outcome of an import/link. {@code status} ∈ CREATED / EXISTS / LINKED / PROJECT_NOT_FOUND /
+     *  INSTANCE_NOT_FOUND / ACTIVITY_NOT_CONFIGURED. */
     public record ImportResult(String status, String instanceId, String projectTitle) {
         static ImportResult created(String id, String title) { return new ImportResult("CREATED", id, title); }
         static ImportResult exists(String id, String title) { return new ImportResult("EXISTS", id, title); }
+        static ImportResult linked(String id, String title) { return new ImportResult("LINKED", id, title); }
         static ImportResult projectNotFound() { return new ImportResult("PROJECT_NOT_FOUND", null, null); }
+        static ImportResult instanceNotFound() { return new ImportResult("INSTANCE_NOT_FOUND", null, null); }
         static ImportResult activityNotConfigured() { return new ImportResult("ACTIVITY_NOT_CONFIGURED", null, null); }
     }
 
@@ -92,7 +95,7 @@ public class ResearcherProjectService {
         }
         Activity activity = activities.get(0);
 
-        String displayName = project.title() != null && !project.title().isBlank() ? project.title() : project.code();
+        String displayName = displayName(project);
         ActivityInstance instance = new ActivityInstance();
         instance.setResearcherId(researcherEmail);
         instance.setActivity(activity);
@@ -113,6 +116,56 @@ public class ResearcherProjectService {
 
         ActivityInstance saved = activityInstanceRepository.save(instance);
         return ImportResult.created(saved.getId(), displayName);
+    }
+
+    /**
+     * Link an existing activity instance to a canonical project: set its {@code PROJECT_GRANT_ID} reference (re-linking
+     * overwrites a prior one) and back-fill ONLY the blank display fields the activity declares (never clobbering the
+     * researcher's own values). Used for free-text activities entered before the picker existed. The instance must
+     * belong to the researcher.
+     */
+    public ImportResult linkProject(String researcherEmail, String instanceId, String projectId) {
+        ScholardexProjectListItemResponse project = projectReadPort.findById(projectId);
+        if (project == null) {
+            return ImportResult.projectNotFound();
+        }
+        Optional<ActivityInstance> opt = activityInstanceRepository.findById(instanceId);
+        if (opt.isEmpty() || !researcherEmail.equals(opt.get().getResearcherId())) {
+            return ImportResult.instanceNotFound();
+        }
+        ActivityInstance instance = opt.get();
+
+        Map<Activity.ReferenceField, String> refs =
+                instance.getReferenceFields() != null ? instance.getReferenceFields() : new LinkedHashMap<>();
+        refs.put(Activity.ReferenceField.PROJECT_GRANT_ID, projectId);
+        instance.setReferenceFields(refs);
+
+        // Back-fill only blanks from the canonical record (preserve any value the researcher already entered).
+        Activity activity = instance.getActivity();
+        Map<String, String> fields = instance.getFields() != null ? instance.getFields() : new LinkedHashMap<>();
+        backfillIfBlank(activity, fields, "Nume Proiect", displayName(project));
+        if (project.budget() != null) {
+            backfillIfBlank(activity, fields, "Buget", String.valueOf(project.budget()));
+        }
+        instance.setFields(fields);
+
+        ActivityInstance saved = activityInstanceRepository.save(instance);
+        return ImportResult.linked(saved.getId(), displayName(project));
+    }
+
+    private static String displayName(ScholardexProjectListItemResponse p) {
+        return p.title() != null && !p.title().isBlank() ? p.title() : p.code();
+    }
+
+    /** Set {@code fieldName} only if the activity declares it, the value is non-blank, and the current value is blank. */
+    private static void backfillIfBlank(Activity activity, Map<String, String> fields, String fieldName, String value) {
+        if (value == null || value.isBlank() || activity == null || !declaresField(activity, fieldName)) {
+            return;
+        }
+        String current = fields.get(fieldName);
+        if (current == null || current.isBlank()) {
+            fields.put(fieldName, value);
+        }
     }
 
     /** Set {@code fieldName} only if the activity declares it (config-aware) and the value is non-blank. */

@@ -90,7 +90,19 @@ endpoint+service path is fully exercised.
 - **Tests:** pre-fill mapping (title/budget/role/reference); idempotency (second import of the same project → no new
   instance, returns existing); missing budget/role handled; activity-definition without a `Buget` field → skip.
 
-### Slice 3 — Link existing free-text activity + admin-deferred not-found
+### Slice 3 — Link existing free-text activity + admin-deferred not-found — **DONE 2026-06-30**
+Shipped: `ResearcherProjectService.linkProject(email, instanceId, projectId)` — sets `PROJECT_GRANT_ID` (re-link
+overwrites) and **back-fills only blank** declared display fields from the canonical record (never clobbers the
+researcher's own values); ownership-checked (`INSTANCE_NOT_FOUND` if not the researcher's). `POST
+/user/workspace/activities/{instanceId}/link-project/{projectId}` (200 LINKED, 404 PROJECT/INSTANCE_NOT_FOUND).
+Frontend: a quick **"Link"** action on project-supporting rows that aren't linked yet → focused inline picker →
+selecting a project links in one click + reloads; the shared picker's not-found state now shows **admin-deferred
+guidance** ("enter as free text, or ask an admin to import it" — no researcher minting). Tests: service unit
+(blank-only backfill + preserve, not-owned, missing instance/project) + both `@WebMvcTest` slices. **Live (agent-dev):**
+created a free-text Grant Cercetare (user title, blank Buget) → LINKED → reference set, `Buget` back-filled (370000),
+`Nume Proiect` preserved; test data cleaned up.
+
+
 - **Link:** the picker already back-fills `PROJECT_GRANT_ID` on the edit form. Add (a) a one-click "Link to project"
   affordance directly on an existing `Grant Cercetare` row (open picker, set the reference without re-typing fields),
   and (b) optional refresh of display fields from the canonical record on link. Reuse the slice-2 idempotency guard.

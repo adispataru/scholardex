@@ -245,6 +245,13 @@ function _appendRow(tbody, inst) {
             `<span class="app-ws-acts__type-badge">${_esc(actName)}</span>` +
         `</td>` +
         `<td class="app-ws-acts__col-actions" style="text-align:right">` +
+            // H78 — quick "Link" affordance for a project-supporting activity that isn't linked yet.
+            ((_supportsProjectLink(inst) && !_isProjectLinked(inst))
+                ? `<button class="app-ws-acts__action-btn app-ws-acts__link-btn" type="button" ` +
+                        `aria-label="Link to project" data-link-inst="${_esc(inst.id)}">` +
+                        `<i class="fa-solid fa-link" aria-hidden="true"></i> Link` +
+                    `</button>`
+                : '') +
             `<button class="app-ws-acts__action-btn" type="button" ` +
                     `aria-label="Details: ${_esc(name)}" aria-expanded="false" ` +
                     `data-detail-btn="${_esc(inst.id)}">` +
@@ -253,12 +260,16 @@ function _appendRow(tbody, inst) {
         `</td>`;
 
     tr.addEventListener('click', e => {
-        if (e.target.closest('a, button.app-ws-acts__action-btn--danger')) return;
+        if (e.target.closest('a, button.app-ws-acts__action-btn--danger, [data-link-inst]')) return;
         _toggleDetail(inst, tr);
     });
     tr.querySelector('[data-detail-btn]').addEventListener('click', e => {
         e.stopPropagation();
         _toggleDetail(inst, tr);
+    });
+    tr.querySelector('[data-link-inst]')?.addEventListener('click', e => {
+        e.stopPropagation();
+        _openLinkRow(inst, tr);
     });
 
     tbody.appendChild(tr);
@@ -469,13 +480,15 @@ function _wireProjectPickers(root) {
     });
 }
 
-function _searchProjects(q, results, search, hidden) {
+function _searchProjects(q, results, search, hidden, onPick) {
     fetch(`/api/entities/projects?size=8&q=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
         .then(r => (r.ok ? r.json() : null))
         .then(page => {
             const items = page?.items ?? [];
             if (items.length === 0) {
-                results.innerHTML = `<li class="app-ws-acts__picker-empty">No projects found</li>`;
+                // H78 — admin-deferred not-found guidance (researchers don't mint canonical projects).
+                results.innerHTML = `<li class="app-ws-acts__picker-empty">No matching project. Enter it as free `
+                    + `text, or ask an admin to import it.</li>`;
                 results.hidden = false;
                 return;
             }
@@ -485,13 +498,80 @@ function _searchProjects(q, results, search, hidden) {
             results.hidden = false;
             results.querySelectorAll('.app-ws-acts__picker-item').forEach(li => {
                 li.addEventListener('click', () => {
-                    hidden.value  = li.dataset.id;
-                    search.value  = li.dataset.label;
+                    if (hidden) hidden.value = li.dataset.id;
+                    if (search) search.value = li.dataset.label;
                     results.hidden = true;
+                    if (onPick) onPick(li.dataset.id, li.dataset.label);
                 });
             });
         })
         .catch(() => { results.hidden = true; });
+}
+
+// ── H78 slice 3: link an existing activity to a canonical project ──────────────
+// One-click affordance on project-supporting rows that aren't linked yet. Opens a focused picker; selecting a project
+// calls the link endpoint (sets PROJECT_GRANT_ID + back-fills blank display fields), then reloads.
+function _supportsProjectLink(inst) {
+    return (inst.activity?.referenceFields ?? []).includes('PROJECT_GRANT_ID');
+}
+
+function _isProjectLinked(inst) {
+    return !!(inst.referenceFields && inst.referenceFields.PROJECT_GRANT_ID);
+}
+
+function _openLinkRow(inst, tr) {
+    // Toggle: a second click on the same row's Link closes it.
+    const open = document.getElementById('ws-acts-link-row');
+    if (open && open.dataset.forInst === inst.id) { open.remove(); return; }
+    _closeDetail();
+    open?.remove();
+
+    const linkTr = document.createElement('tr');
+    linkTr.id = 'ws-acts-link-row';
+    linkTr.dataset.forInst = inst.id;
+    linkTr.className = 'app-ws-acts__detail-row';
+    const td = document.createElement('td');
+    td.setAttribute('colspan', '4');
+    td.innerHTML = `<div class="app-ws-acts__link-box">
+        <div class="app-ws-acts__link-title">Link “${_esc(inst.name ?? '')}” to a canonical project</div>
+        <div class="app-ws-acts__picker">
+            <input class="app-ws-acts__input js-link-search" type="text" autocomplete="off"
+                   placeholder="Search project by title, code, funder…"/>
+            <ul class="app-ws-acts__picker-results js-link-results" hidden></ul>
+        </div>
+        <p class="app-ws-acts__link-feedback" hidden></p>
+    </div>`;
+    linkTr.appendChild(td);
+    tr.insertAdjacentElement('afterend', linkTr);
+
+    const search  = td.querySelector('.js-link-search');
+    const results = td.querySelector('.js-link-results');
+    let timer = null;
+    search.addEventListener('input', () => {
+        const q = search.value.trim();
+        clearTimeout(timer);
+        if (q.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
+        timer = setTimeout(() => _searchProjects(q, results, search, null, id => _linkProject(inst.id, id, td)), 250);
+    });
+    document.addEventListener('click', e => { if (!td.contains(e.target)) results.hidden = true; });
+    search.focus();
+}
+
+function _linkProject(instanceId, projectId, container) {
+    const feedback = container?.querySelector('.app-ws-acts__link-feedback');
+    fetch(`/user/workspace/activities/${encodeURIComponent(instanceId)}/link-project/${encodeURIComponent(projectId)}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postJsonHeaders(),
+    })
+        .then(r => r.json().then(body => ({ ok: r.ok, body })))
+        .then(({ ok }) => {
+            if (!ok) throw new Error();
+            _init(_panel); // reload so the row reflects the new link
+        })
+        .catch(() => {
+            if (feedback) { feedback.hidden = false; feedback.textContent = 'Could not link — please try again.'; }
+        });
 }
 
 function _buildDetailPanel(inst) {

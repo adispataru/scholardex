@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.repository.ActivityRepository;
 import ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -160,6 +161,49 @@ class ResearcherProjectServiceTest {
         when(instanceRepository.findAllByResearcherId("a@uvt.ro")).thenReturn(List.of());
         when(activityRepository.findByName("Grant Cercetare")).thenReturn(List.of());
         assertThat(service.importProject("a@uvt.ro", "sproj_a").status()).isEqualTo("ACTIVITY_NOT_CONFIGURED");
+        verify(instanceRepository, never()).save(any());
+    }
+
+    // ── linkProject (slice 3) ─────────────────────────────────────────────────
+
+    private ActivityInstance freeText(String id, String owner, Map<String, String> fields) {
+        ActivityInstance i = new ActivityInstance();
+        i.setId(id);
+        i.setResearcherId(owner);
+        i.setActivity(grantCercetare());
+        i.setFields(new java.util.LinkedHashMap<>(fields));
+        return i;
+    }
+
+    @Test
+    void linkSetsReferenceAndBackfillsOnlyBlankFields() {
+        // existing instance already has a user-entered Nume Proiect (must be preserved); Buget is blank (back-filled).
+        ActivityInstance inst = freeText("inst_1", "a@uvt.ro", Map.of("Nume Proiect", "My own title"));
+        when(readPort.findById("sproj_a")).thenReturn(project("sproj_a", "Canonical title", "UEFISCDI", 250000L, 2017));
+        when(instanceRepository.findById("inst_1")).thenReturn(java.util.Optional.of(inst));
+        when(instanceRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        ResearcherProjectService.ImportResult r = service.linkProject("a@uvt.ro", "inst_1", "sproj_a");
+
+        assertThat(r.status()).isEqualTo("LINKED");
+        assertThat(inst.getReferenceFields()).containsEntry(Activity.ReferenceField.PROJECT_GRANT_ID, "sproj_a");
+        assertThat(inst.getFields()).containsEntry("Nume Proiect", "My own title") // preserved, NOT overwritten
+                .containsEntry("Buget", "250000");                                 // blank → back-filled
+    }
+
+    @Test
+    void linkRejectsInstanceNotOwnedOrMissingOrMissingProject() {
+        when(readPort.findById("sproj_a")).thenReturn(project("sproj_a", "T", "UEFISCDI", null, 2017));
+        // owned by someone else
+        when(instanceRepository.findById("inst_other"))
+                .thenReturn(java.util.Optional.of(freeText("inst_other", "other@uvt.ro", Map.of())));
+        assertThat(service.linkProject("a@uvt.ro", "inst_other", "sproj_a").status()).isEqualTo("INSTANCE_NOT_FOUND");
+        // missing instance
+        when(instanceRepository.findById("gone")).thenReturn(java.util.Optional.empty());
+        assertThat(service.linkProject("a@uvt.ro", "gone", "sproj_a").status()).isEqualTo("INSTANCE_NOT_FOUND");
+        // missing project
+        when(readPort.findById("nope")).thenReturn(null);
+        assertThat(service.linkProject("a@uvt.ro", "inst_1", "nope").status()).isEqualTo("PROJECT_NOT_FOUND");
         verify(instanceRepository, never()).save(any());
     }
 }
