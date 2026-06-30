@@ -54,27 +54,6 @@ Done history moved to `TASKS-done.md`.
   per-position threshold model. Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica. Planning doc at
   `docs/tasks/active/h68-criteria-extensions.md`.
 
-- [ ] `H78` Researcher project workspace — import / search / link (spun off from `H64` slice 4c).
-  Goal: give a researcher, in the workspace, a project-centric flow on top of the `H64` canonical project layer:
-  (1) **surface "my projects"** — projects where they are the director (brainmap `director*` → `ResearcherProfile`
-  name match, the deferred 4c attribution) or a participant; (2) **one-click import as activities** — turn a linked
-  canonical project into a `Grant Cercetare` activity instance (pre-filling `Nume Proiect`/`Rol`/`Buget` from the
-  canonical record + the `PROJECT_GRANT_ID` reference), so they don't re-type; (3) **search** the canonical projects
-  (reuse the `H64` `/api/entities/projects` picker) when auto-match misses, with an optional escalation to live CORDIS
-  search/fetch for an EU project not yet in the canonical layer; (4) **link** an existing free-text activity to a
-  canonical project (back-fill `PROJECT_GRANT_ID` on activities entered before the picker existed).
-  Builds entirely on `H64` (canonical facts, picker, `proj_*` injection, CORDIS client). Key risks: homonym
-  mis-attribution on the director→researcher match (read-only candidate surfacing + explicit per-project import, not
-  silent linking); avoiding duplicate activity instances on re-import (idempotency by `PROJECT_GRANT_ID`).
-  **Scoped 2026-06-30** — planning doc `docs/tasks/active/h78-researcher-project-workspace.md`. Decisions: director
-  match = projected `director_signature` column (projection-only re-run, no full rebuild); CORDIS escalation =
-  admin-deferred (no researcher minting); surfacing = director-only (no participant names in the data). Slices:
-  (1) director attribution + read-only "My projects" panel; (2) import-as-`Grant Cercetare` (pre-fill + idempotency);
-  (3) link existing activity + admin-deferred not-found; (4) participant search-and-link when adding a `Grant
-  Cercetare` (self-serve search + pre-fill, `Rol`=participant — participants have no name in the data so they aren't
-  auto-surfaced). Note: the picker already attaches `PROJECT_GRANT_ID` on create+edit, so basic search/link is largely
-  shipped — the net-new value is surfacing + pre-fill + idempotency.
-
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.

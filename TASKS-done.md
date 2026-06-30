@@ -2,6 +2,38 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H78 Researcher project workspace — import / search / link (archived 2026-06-30)
+
+Archived from `TASKS.md` — all 4 slices shipped, unit + `@WebMvcTest` tested, and live-verified end-to-end (agent-dev).
+Spun off from `H64` slice 4c; builds entirely on the H64 canonical project layer. Closed task doc:
+`docs/tasks/closed/h78-researcher-project-workspace.md`.
+
+- [x] `H78` Researcher project workspace. *(completed 2026-06-30)*
+  Goal: a project-centric workspace flow on top of the canonical project layer — surface, import, link.
+  Outcome (4 slices, all routing through one idempotent `ResearcherProjectService`):
+  - **Slice 1 — director attribution + read-only "My projects":** `V20` adds an indexed `director_signature` column to
+    `scholardex_project_view`, computed at projection time via `ProjectCanonicalizationService.signature` (now public)
+    over the director's first+last name; `ScholardexProjectReadPort.findByDirectorSignature` matches by exact equality;
+    `GET /user/workspace/projects/mine` surfaces the researcher's director projects (word-order/diacritic-insensitive);
+    a read-only "Projects that may be yours" card. Homonym-safe (candidate list, never a silent link).
+  - **Slice 2 — one-click import:** `importProject(email, projectId)` builds a pre-filled `Grant Cercetare` instance
+    (config-aware — only declared fields: `Nume Proiect`←title, `Buget`←budget, `Rol`←director role inferred
+    intl/national by funder) + `PROJECT_GRANT_ID`; idempotent on that reference (`EXISTS` returns the existing
+    instance). `POST /activities/import-project/{projectId}`; an Import button per "My projects" row.
+  - **Slice 3 — link existing + not-found:** `linkProject(email, instanceId, projectId)` sets the reference + back-fills
+    only-blank declared fields (preserves the researcher's values), ownership-checked; `POST
+    /activities/{instanceId}/link-project/{projectId}`; a quick "Link" affordance on unlinked project-supporting rows;
+    the shared picker's empty state shows admin-deferred guidance (no researcher minting of canonical projects).
+  - **Slice 4 — participant search-and-import:** `importProject(..., asParticipant)` sets `Rol`=`Membru`; endpoint
+    `?role=participant`; a toolbar "Add a project you took part in" search picker. Participants have no name in the
+    canonical data, so this search-driven path is how they self-serve (vs the director auto-surfacing).
+  - **Decisions settled:** director match = projected signature column (projection-only re-run, no full rebuild);
+    CORDIS escalation = admin-deferred (no researcher minting); auto-surfacing = director-only (no participant names in
+    the data — participants self-serve via search). The H64 picker already attached `PROJECT_GRANT_ID` on create+edit,
+    so the net-new value was surfacing + pre-fill + idempotency.
+  - **Deploy step:** re-run the project projection once so existing `scholardex_project_view` rows get a
+    `director_signature` (column is null until then; full-replacement projection, not a full rebuild).
+
 ## H65 Physics (Fizică / FF) report — DOCX export (archived 2026-06-30)
 
 Archived from `TASKS.md` — engineering complete, all 4 slices shipped + tested against the real 21-table template.
