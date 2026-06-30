@@ -118,6 +118,13 @@ function _renderAll() {
     // Single summary card: hero numbers + distribution bar
     container.insertAdjacentHTML('beforeend', _buildSummaryCard());
 
+    // H78 — "My projects" (canonical projects where the researcher is the director). Read-only, lazy-filled
+    // after mount; hidden until/unless the match returns rows.
+    const myProjects = document.createElement('div');
+    myProjects.id = 'ws-acts-my-projects';
+    myProjects.hidden = true;
+    container.appendChild(myProjects);
+
     // Toolbar
     container.insertAdjacentHTML('beforeend', _buildToolbar());
 
@@ -149,6 +156,9 @@ function _renderAll() {
     if (_instances.length > 0) {
         _renderPage();
     }
+
+    // H78 — fill the "My projects" card (director-attributed canonical projects)
+    _loadMyProjects();
 
     // Escape key
     document.addEventListener('keydown', _handleEscape);
@@ -335,6 +345,46 @@ function _projectLabel(p) {
     if (p.funder) meta.push(p.funder);
     if (p.startYear) meta.push(p.endYear ? `${p.startYear}–${p.endYear}` : `${p.startYear}`);
     return meta.length ? `${head} (${meta.join(', ')})` : head;
+}
+
+// ── H78: "My projects" (director-attributed canonical projects) ───────────────
+// Read-only surfacing. The candidate list is matched by director name, so it's framed as "may be yours"; the
+// import-as-activity action arrives in slice 2.
+function _loadMyProjects() {
+    const host = document.getElementById('ws-acts-my-projects');
+    if (!host) return;
+    fetch('/user/workspace/projects/mine', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => (r.ok ? r.json() : []))
+        .then(projects => {
+            if (!Array.isArray(projects) || projects.length === 0) { host.hidden = true; return; }
+            host.hidden = false;
+            host.innerHTML = _buildMyProjects(projects);
+        })
+        .catch(() => { host.hidden = true; });
+}
+
+function _buildMyProjects(projects) {
+    const items = projects.map(p => {
+        const meta = [p.code, p.funder, _projYears(p)].filter(Boolean).join(' · ');
+        return `<li class="app-ws-acts__myproj-item">
+            <span class="app-ws-acts__myproj-title">${_esc(p.title || p.code || p.id)}</span>
+            ${meta ? `<span class="app-ws-acts__myproj-meta">${_esc(meta)}</span>` : ''}
+        </li>`;
+    }).join('');
+    return `<div class="app-card app-ws-acts__myproj">
+        <div class="app-ws-acts__myproj-head">
+            <i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
+            <span class="app-ws-acts__myproj-heading">Projects that may be yours</span>
+            <span class="app-ws-acts__myproj-count">${projects.length}</span>
+        </div>
+        <p class="app-ws-acts__myproj-hint">Matched to you as project director.</p>
+        <ul class="app-ws-acts__myproj-list">${items}</ul>
+    </div>`;
+}
+
+function _projYears(p) {
+    if (p.startYear) return p.endYear ? `${p.startYear}–${p.endYear}` : `${p.startYear}`;
+    return p.endYear ? `${p.endYear}` : '';
 }
 
 function _projectPickerFieldHtml(label, dataAttr, currentId) {

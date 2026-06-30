@@ -79,6 +79,8 @@ class ResearcherWorkspaceSecurityContractTest {
     @MockitoBean
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ResearcherProjectService researcherProjectService;
+    @MockitoBean
     private ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService researcherOnboardingService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;

@@ -535,3 +535,61 @@
   font-size: 0.83rem;
   color: var(--app-color-text-muted, #667085);
 }
+
+/* H78 — "My projects" (director-attributed canonical projects), read-only card */
+.app-ws-acts__myproj {
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.85rem 1rem;
+}
+
+.app-ws-acts__myproj-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong, #1d2939);
+}
+
+.app-ws-acts__myproj-count {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--app-color-surface-muted, #f2f4f7);
+  color: var(--app-color-text-muted, #667085);
+}
+
+.app-ws-acts__myproj-hint {
+  margin: 0.3rem 0 0.55rem;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted, #667085);
+}
+
+.app-ws-acts__myproj-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.app-ws-acts__myproj-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--app-color-border, #e4e7ec);
+  border-radius: 0.4rem;
+}
+
+.app-ws-acts__myproj-title {
+  font-size: 0.86rem;
+  color: var(--app-color-text-strong, #1d2939);
+}
+
+.app-ws-acts__myproj-meta {
+  font-size: 0.78rem;
+  color: var(--app-color-text-muted, #667085);
+}

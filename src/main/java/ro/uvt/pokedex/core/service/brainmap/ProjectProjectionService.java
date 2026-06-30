@@ -41,8 +41,8 @@ public class ProjectProjectionService {
                     id, eu_grant_id, code, title, title_normalized, plan, competition, funder,
                     director_first, director_last, director_role, coordinator_name, coordinator_affiliation_id,
                     partner_affiliation_ids, brainmap_project_ids, start_year, end_year, budget, source,
-                    build_version, build_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    build_version, build_at, updated_at, director_signature)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         for (int i = 0; i < facts.size(); i += JDBC_BATCH_SIZE) {
             List<ScholardexProjectFact> chunk = facts.subList(i, Math.min(facts.size(), i + JDBC_BATCH_SIZE));
@@ -72,6 +72,11 @@ public class ProjectProjectionService {
                     ps.setString(20, f.getBuilderVersion());
                     setInstant(ps, 21, f.getCreatedAt());
                     setInstant(ps, 22, f.getUpdatedAt());
+                    // director_signature — word-order/diacritic-insensitive key over the director's first+last name,
+                    // matched by the H78 "My projects" panel against the researcher's own signature (null if no name).
+                    ps.setString(23, ProjectCanonicalizationService.signature(
+                            ((f.getDirectorFirst() == null ? "" : f.getDirectorFirst()) + " "
+                                    + (f.getDirectorLast() == null ? "" : f.getDirectorLast())).trim()));
                 }
 
                 @Override

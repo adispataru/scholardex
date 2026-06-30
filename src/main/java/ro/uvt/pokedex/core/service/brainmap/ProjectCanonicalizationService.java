@@ -216,8 +216,9 @@ public class ProjectCanonicalizationService {
         }
     }
 
-    /** Sorted set of normalized, stopword-stripped tokens, joined — a word-order/article-insensitive name key. */
-    static String signature(String value) {
+    /** Sorted set of normalized, stopword-stripped tokens, joined — a word-order/article-insensitive name key.
+     *  Public so the projection (director_signature) + the H78 researcher-project match share one identity key. */
+    public static String signature(String value) {
         String norm = CanonicalizationSupport.normalizeName(value);
         if (norm == null || norm.isBlank()) {
             return null;

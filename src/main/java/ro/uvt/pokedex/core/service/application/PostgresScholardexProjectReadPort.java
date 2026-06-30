@@ -71,6 +71,18 @@ public class PostgresScholardexProjectReadPort implements ScholardexProjectReadP
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    @Override
+    public List<ScholardexProjectListItemResponse> findByDirectorSignature(String signature) {
+        if (signature == null || signature.isBlank()) {
+            return List.of();
+        }
+        MapSqlParameterSource params = new MapSqlParameterSource("sig", signature.trim());
+        return namedParameterJdbcTemplate.query(
+                SELECT_COLS + " WHERE director_signature = :sig ORDER BY start_year DESC NULLS LAST,"
+                        + " title COLLATE \"C\", id COLLATE \"C\"",
+                params, PostgresScholardexProjectReadPort::mapRow);
+    }
+
     private static ScholardexProjectListItemResponse mapRow(ResultSet rs, int rowNum) throws SQLException {
         return new ScholardexProjectListItemResponse(
                 rs.getString("id"),

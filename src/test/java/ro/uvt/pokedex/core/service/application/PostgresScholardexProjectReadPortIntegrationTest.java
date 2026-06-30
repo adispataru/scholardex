@@ -51,11 +51,14 @@ class PostgresScholardexProjectReadPortIntegrationTest {
 
     private void insert(String id, String code, String euGrantId, String title, String funder,
                         String dFirst, String dLast, Integer startY, Integer endY, String coord) {
+        // director_signature is what the projection computes (ProjectCanonicalizationService.signature over first+last).
+        String sig = ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService.signature(
+                (((dFirst == null ? "" : dFirst) + " " + (dLast == null ? "" : dLast)).trim()));
         jdbc.getJdbcTemplate().update(
                 "INSERT INTO reporting_read.scholardex_project_view "
-                        + "(id, code, eu_grant_id, title, funder, director_first, director_last, start_year, end_year, coordinator_name) "
-                        + "VALUES (?,?,?,?,?,?,?,?,?,?)",
-                id, code, euGrantId, title, funder, dFirst, dLast, startY, endY, coord);
+                        + "(id, code, eu_grant_id, title, funder, director_first, director_last, start_year, end_year, coordinator_name, director_signature) "
+                        + "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                id, code, euGrantId, title, funder, dFirst, dLast, startY, endY, coord, sig);
     }
 
     @Test
@@ -96,5 +99,18 @@ class PostgresScholardexProjectReadPortIntegrationTest {
     @Test
     void invalidSortRejected() {
         assertThrows(IllegalArgumentException.class, () -> port.search(0, 25, "bogus", "asc", null));
+    }
+
+    @Test
+    void findByDirectorSignatureMatchesOrderInsensitiveAndNullSafe() {
+        // exact-signature equality; signature() applied to both sides → word-order insensitive ("Paulescu Marius").
+        String sig = ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService.signature("Paulescu Marius");
+        assertThat(port.findByDirectorSignature(sig))
+                .extracting(ScholardexProjectListItemResponse::id).containsExactly("sproj_a");
+        // a director the data doesn't carry → no rows; blank/null → empty (no query)
+        assertThat(port.findByDirectorSignature(
+                ro.uvt.pokedex.core.service.brainmap.ProjectCanonicalizationService.signature("Nobody Here"))).isEmpty();
+        assertThat(port.findByDirectorSignature(null)).isEmpty();
+        assertThat(port.findByDirectorSignature("  ")).isEmpty();
     }
 }

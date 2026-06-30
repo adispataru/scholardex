@@ -67,6 +67,7 @@ public class ResearcherWorkspaceController {
     private final PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
+    private final ro.uvt.pokedex.core.service.application.ResearcherProjectService researcherProjectService;
     private final ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService researcherOnboardingService;
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
@@ -99,6 +100,16 @@ public class ResearcherWorkspaceController {
         return currentUser(authentication).map(u ->
                 ResponseEntity.ok(userActivityInstanceFacade.buildActivityInstancesView(u.getEmail()))
         ).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    // ── JSON: my projects (H78 — director-attributed canonical projects) ──
+    @GetMapping("/projects/mine")
+    @ResponseBody
+    public ResponseEntity<List<ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse>> getMyProjects(
+            Authentication authentication) {
+        return currentUser(authentication)
+                .map(u -> ResponseEntity.ok(researcherProjectService.myProjects(u.getResearcherProfile())))
+                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
     // ── JSON: search ──────────────────────────────────────────────────────
