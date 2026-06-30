@@ -177,6 +177,31 @@ class Fizica2024ReportTypeImportSupportTest {
         }
     }
 
+    @Test
+    void rendersCHAndCompositeTInSummary() throws Exception {
+        ReportInstanceSnapshot snap = new ReportInstanceSnapshot();
+        snap.setReportTypeKey("fizica-ff");
+        snap.getTotals().put("A1", 2.0);                        // A = ΣAᵢ = 2.0
+        snap.getTotals().put("fizica-articles-author", 4.0);    // I
+        snap.getTotals().put("fizica-articles-principal", 2.0); // P
+        snap.getTotals().put("fizica-c", 30.0);                 // C
+        snap.getTotals().put("fizica-h", 8.0);                  // h
+
+        byte[] bytes = support.render(snap, ReportFormat.DOCX);
+
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(bytes))) {
+            // Summary docxTotals format trims trailing zeros (integers → "2", non-integers keep needed decimals).
+            XWPFTable summary = doc.getTables().get(20);
+            assertEquals("2", markerRowCell(summary, "Valoare realizata", 1), "summary A");
+            assertEquals("4", markerRowCell(summary, "Valoare realizata", 2), "summary I");
+            assertEquals("2", markerRowCell(summary, "Valoare realizata", 3), "summary P");
+            assertEquals("30", markerRowCell(summary, "Valoare realizata", 4), "summary C");
+            assertEquals("8", markerRowCell(summary, "Valoare realizata", 5), "summary h");
+            // T = A + P/2 + I/2 + C/20 + h/5 = 2 + 1 + 2 + 1.5 + 1.6 = 8.10 (non-integer → 2 decimals)
+            assertEquals("8.10", markerRowCell(summary, "Valoare realizata", 6), "summary T");
+        }
+    }
+
     private static String cell(XWPFTable t, int row, int col) {
         XWPFTableRow r = t.getRow(row);
         XWPFTableCell c = r == null ? null : r.getCell(col);

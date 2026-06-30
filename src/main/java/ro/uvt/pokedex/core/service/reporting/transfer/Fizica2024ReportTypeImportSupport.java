@@ -35,12 +35,14 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
     private static final String BINDING_RESOURCE = "report-templates/fizica-ff/binding.json";
     private static final String ROLE_ARTICLES = "fizica-articles-author";       // I = ΣAIS/Nef
     private static final String ROLE_PRINCIPAL = "fizica-articles-principal";    // P = ΣAIS (first-or-corresponding)
+    private static final String ROLE_CITATIONS = "fizica-c";                     // C = Σcᵢ/Nefᵢ (IF-journal cites, self-excl)
+    private static final String ROLE_HINDEX = "fizica-h";                        // h = WoS Hirsch (indicative, H67)
     /** A1–A10 didactic + patents/projects activity blocks (totals keyed by block id in the snapshot). */
     private static final List<String> A_BLOCKS =
             List.of("A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10");
     /** Synthetic total key for the didactic subtotal A = ΣAᵢ. */
     private static final String TOTAL_A = "fizica-A";
-    /** Synthetic total key for the composite T = A + P/2 + I/2 + C/20 + h/5 (this slice: C=h=0). */
+    /** Synthetic total key for the composite T = A + P/2 + I/2 + C/20 + h/5. */
     private static final String TOTAL_T = "fizica-T";
 
     private final TemplateBindingLoader bindingLoader;
@@ -117,9 +119,13 @@ public class Fizica2024ReportTypeImportSupport implements ReportTypeImportSuppor
         double p = totals.getOrDefault(ROLE_PRINCIPAL, 0.0);
         // A = ΣA₁..A₁₀ (block totals keyed A1..A10).
         double a = A_BLOCKS.stream().mapToDouble(b -> totals.getOrDefault(b, 0.0)).sum();
+        // C = Σcᵢ/Nefᵢ (the fizica-c indicator total); h = WoS Hirsch (the fizica-h indicator total). Both come from
+        // the snapshot totals keyed by role; absent → 0 (e.g. a Lector row with no C/h requirement).
+        double c = totals.getOrDefault(ROLE_CITATIONS, 0.0);
+        double h = totals.getOrDefault(ROLE_HINDEX, 0.0);
         totals.put(TOTAL_A, a);
-        // Composite T = A + P/2 + I/2 + C/20 + h/5; C=h=0 in this slice.
-        totals.put(TOTAL_T, a + p / 2.0 + i / 2.0);
+        // Composite T = A + P/2 + I/2 + C/20 + h/5.
+        totals.put(TOTAL_T, a + p / 2.0 + i / 2.0 + c / 20.0 + h / 5.0);
 
         return renderer.render(binding, rowsByRole, totals);
     }

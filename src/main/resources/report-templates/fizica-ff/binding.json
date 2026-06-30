@@ -163,6 +163,8 @@
         { "marker": "Valoare realizata", "cellIndex": 1, "totalKey": "fizica-A" },
         { "marker": "Valoare realizata", "cellIndex": 2, "totalKey": "fizica-articles-author" },
         { "marker": "Valoare realizata", "cellIndex": 3, "totalKey": "fizica-articles-principal" },
+        { "marker": "Valoare realizata", "cellIndex": 4, "totalKey": "fizica-c" },
+        { "marker": "Valoare realizata", "cellIndex": 5, "totalKey": "fizica-h" },
         { "marker": "Valoare realizata", "cellIndex": 6, "totalKey": "fizica-T" }
       ]
     }
