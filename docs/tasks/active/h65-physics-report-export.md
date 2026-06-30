@@ -133,6 +133,15 @@ P uses the H63 `PUBLICATIONS_FIRST_OR_CORRESPONDING` role; h uses H67; C self-ci
    (`Rol`); canonical director via H78. A10's `proj_budget` only engages once a researcher links a project (H78) — until
    then it falls back to declared `Buget`, so no score moves on existing data.
 4. **C + h + T + summary** — citation count, Hirsch computation, composite T, T20 obtained row. (Da/Nu manual.)
+   **[SCORE DONE 2026-06-29]** — `Fizica2024ReportTypeImportSupport` reads the `fizica-c` (C=Σcᵢ/Nefᵢ) + `fizica-h`
+   (WoS Hirsch) indicator totals and renders the full composite **T = A + P/2 + I/2 + C/20 + h/5**; binding summary
+   `docxTotals` add cells 4=C, 5=h. Render test vs the real template green. C/h are per-deployment config indicators
+   (C = Mate_C `{RIS, excludeSelf}` kind + formula `S/Nef`; h = `HIRSCH`/`WOS_VENUE`). **This completes the report's
+   SCORING** (I/P/A1–A10/C/h/T + summary vs Lector/Conf/Prof thresholds).
+   **Follow-on (4-citations, deferred):** the **C citation DETAIL table (table 19)** is *nested* — cited-pub rows
+   (`I., II.`) each with citing sub-rows (`1., 2.`) and merged cells — unlike the maths flat `FIXED_TABLE` citation
+   table. Filling it needs renderer work (a nested cited→citing expansion) verified against the rendered output; it is
+   evidence, not score, so it's split out. The other detail tables (I=17, P=18, A1–A10=7–16) already render.
 
    ### Slice 4 — scope (2026-06-29) — final slice
    Verified template layout: summary **table 20** columns `Indicator | A | I | P | C | h | T` (cells 1–6 → C=cell 4,
