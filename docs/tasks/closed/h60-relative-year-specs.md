@@ -1,6 +1,10 @@
 # H60 Relative Year Specs (recent-window + latest-rankings)
 
-**Status:** Planning
+**Status:** DONE (2026-06-30) — mechanism built end-to-end, Matematică re-pointed live, all re-score paths covered,
+exit criteria met, tests green. The one carved-out follow-up (the `Mate_C` SRI boundary) resolved as a **no-op**: the
+Ordin 6129/2016 Matematică text specifies `≥ 0.5`, which the live formula `S >= 0.5 ? 1 : 0` already implements (count
+form; `S` = the citing journal's SRI under the RIS strategy). Operational caveat only: the live instance must run the
+post-H60/H61 build (`CitationPolicyMigrationRunner` self-heals the Citations shape on boot).
 **Created:** 2026-06-15
 
 ## Purpose

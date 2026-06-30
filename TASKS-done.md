@@ -2,6 +2,31 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H60 Relative year specs (recent-window + latest-rankings) (archived 2026-06-30)
+
+Archived from `TASKS.md` — mechanism built end-to-end (2026-06-25), Matematică re-pointed live, all re-score paths
+covered, exit criteria met, tests green. Closed task doc: `docs/tasks/closed/h60-relative-year-specs.md`.
+
+- [x] `H60` Relative year specs. *(completed 2026-06-25; archived 2026-06-30)*
+  Goal: replace fixed absolute year ranges with self-rolling relative windows, anchored on a per-run `referenceYear`
+  for deterministic replay.
+  Outcome:
+  - **Model:** `YearRangeSpec.PreviousNYears(n)` (article inclusion `[t-n..t-1]`) + `ScoreYearRangeSpec.LatestNRankings(n)`
+    (the n most recent DB ranking-years ≤ refYear; empty without context = no stale fallback); `AllYears` caps at
+    referenceYear when set. Legacy codec `PREV:n`/`LATEST:n`. `UserIndividualReportRun.referenceYear` set at creation.
+  - **Threading:** thread-scoped `ScoringReferenceYearContext`; `ReportingLookupPort.getDistinctRankingYears()`
+    (memoized DISTINCT `wos_metric_fact` years); build path wraps with the run's year, live/detail default to current.
+  - **Inclusion enforced** in `ScientificProductionService` (AllYears = fast no-op); all re-score paths (xlsx export,
+    H50 snapshot projectors, apply view, group reports) resolve via `currentOrCurrentYear()`.
+  - **Matematică re-pointed live:** `Mate_S_recent.yearRangeSpec`→`PreviousNYears(7)`; `Mate_S`/`Mate_S_recent`/`Mate_C`
+    `scoreYearRangeSpec`→`LatestNRankings(1)` (resolves to 2024 JCR — the standard's "latest list at submission").
+  - **Shipped alongside:** `CitationPolicyMigrationRunner` (raw-Mongo startup self-heal for the H61 boolean→enum
+    Citations shape — see memory record-component-change-breaks-mongo-deser).
+  - **Carved-out follow-up resolved (2026-06-30, no-op):** the `Mate_C` SRI boundary — Ordin 6129/2016 Matematică
+    specifies `≥ 0.5`, already implemented by the live count formula `S >= 0.5 ? 1 : 0` (`S` = citing journal's SRI
+    under the RIS strategy). Nothing to change.
+  - **Operational caveat:** the live instance must run the post-H60/H61 build (the migration runner self-heals on boot).
+
 ## H78 Researcher project workspace — import / search / link (archived 2026-06-30)
 
 Archived from `TASKS.md` — all 4 slices shipped, unit + `@WebMvcTest` tested, and live-verified end-to-end (agent-dev).

@@ -87,38 +87,6 @@ Done history moved to `TASKS-done.md`.
   standard text (per-cited-paper vs global co-author network; open question in the plan doc). **Caveat shipped:**
   `ANY_COAUTHOR` under-excludes when co-authors aren't canonicalized to the same ids (documented in the enum).
 
-- [ ] `H60` Relative year specs (recent-window + latest-rankings) for indicator scoring.
-  Goal: replace fixed absolute year ranges (which go stale yearly) with self-rolling relative windows — `YearRangeSpec.PreviousNYears(n)` (article inclusion, t‑n…t‑1) and `ScoreYearRangeSpec.LatestNRankings(n)` (the n most recent ranking list-years present in the DB, ≤ the run's referenceYear). Anchored on a `referenceYear` stored on `UserIndividualReportRun` for deterministic replay.
-  Notable: `yearRangeSpec` is currently NOT enforced in scoring (dead config) — inclusion filtering is net-new; `LatestNRankings` resolves against the DB's ranking years (not the journal's own) so a journal dropped from the latest list is correctly excluded rather than falling back to a stale year.
-  Deliverable: the two new sealed-type records + reference-year threading through the scoring chain (incl. the re-scoring export/detail path), enforced publication-year inclusion filtering, a cached "distinct ranking list-years" lookup, admin-editor support, and migration; then re-point the FV Matematică indicators (`Mate_S_recent`→PreviousNYears(7); scoreYearRanges→LatestNRankings(1)).
-  Exit criteria: relative specs resolve deterministically from (referenceYear, DB ranking years), excluded-journal + boundary cases tested; inclusion filtering enforced without regressing AllYears indicators; a run stores referenceYear and replay is stable across later ranking imports; replay-shape guard green. Planning doc at `docs/tasks/active/h60-relative-year-specs.md`.
-  **MECHANISM DONE (2026-06-25) — engine built end-to-end, suite 2437→2452:**
-  - **Model:** `YearRangeSpec.PreviousNYears(n)` (`includes(pubYear, refYear)` = `[t-n..t-1]`) + `ScoreYearRangeSpec.LatestNRankings(n)` (context-aware `allowedYears(ResolutionContext{itemYear, referenceYear, availableRankingYears})`, the n most recent DB ranking-years ≤ refYear; empty without context = no stale fallback). `AllYears` caps at referenceYear when set (deterministic replay). Legacy codec `PREV:n`/`LATEST:n` (fingerprint distinguishes n). `UserIndividualReportRun.referenceYear` set at creation.
-  - **Threading:** thread-scoped `ScoringReferenceYearContext` (chosen over threading `ScoringService.getScore` ×15 for minimal diff); `ReportingLookupPort.getDistinctRankingYears()` (Postgres DISTINCT `wos_metric_fact` years, memoized, delegated through the `@Primary` facade); `getAllowedYearsForPublication` builds the context. Build path wraps with the run's year; live apply/detail (`computeReportScopedIndividualReport`, `buildReportScopedIndicatorDetail`) default to the current year.
-  - **Inclusion enforced:** `ScientificProductionService.calculateScientificProductionScore` drops pubs outside `yearRangeSpec` (AllYears fast no-op). **Live sweep: all 43 indicators are AllYears → score-neutral** (Matematică's Mate_S/Mate_C carry `scoreYearRangeSpec Absolute(2019,2023)`, the already-enforced score path, NOT a yearRangeSpec).
-  - **Admin:** free-text year fields already round-trip via `parse()`; added `PREV:n`/`LATEST:n` help hints.
-  - Tests: spec resolution/boundaries/codec, holder set/restore/nesting, inclusion via the GenericCount path.
-  **MATEMATICĂ RE-POINTED (2026-06-25) — applied to live Mongo config:** `Mate_S_recent.yearRangeSpec`
-  Absolute(2018,2025)→`PreviousNYears(7)`; `Mate_S`/`Mate_S_recent`/`Mate_C.scoreYearRangeSpec`
-  Absolute(2019,2023)→`LatestNRankings(1)`. Verified live: `/admin/indicators` 200, the three render `PREV:7`/
-  `LATEST:1`, deserialize cleanly. Impact: `LatestNRankings(1)` resolves to **[2024]** (latest `wos_metric_fact`
-  year; coverage 22,245 journals ≥ 2023's 21,844 → complete list), so Mate_S/Mate_C now score against the 2024 JCR
-  list instead of best-of-2019–2023 (the standard's "latest list at submission"). Stored runs keep cached scores
-  (fingerprint changes via the new legacy string → future runs + live views re-score). **The `Mate_C` SRI-count
-  formula fix is separate/config-only, out of H60.**
-  **CRITICAL FIX shipped alongside (`033e684`):** the H61 boolean→enum change broke deserialization of all
-  pre-H61 Citations indicators (Info_C/Mate_C/…) — green tests missed it; only booting surfaced it. Fixed by
-  `CitationPolicyMigrationRunner` (raw-Mongo startup migration, self-healing). See memory
-  record-component-change-breaks-mongo-deser. **Caveat:** the live `:8080` (pre-H61 code) mis-reads the migrated
-  Citations shape until restarted on the new build.
-  **Re-score paths covered (2026-06-25):** since Matematică now uses relative specs, every re-score path must
-  resolve them — fixed centrally via `ScoringReferenceYearContext.currentOrCurrentYear()` (defaults to the current
-  year when no run context is set), used by `getAllowedYearsForPublication` + the inclusion filter. Covers the
-  per-indicator xlsx export, the H50 `ReportInstanceSnapshot` projectors (incl. `ROLE_JOURNAL_RECENT`), the apply
-  view, and group reports without per-path wrapping; the run-build path still overrides with the stored year for
-  replay. **H60 is now functionally complete** (only the out-of-scope `Mate_C` formula fix + the `:8080` restart
-  caveat remain).
-
 - [ ] `H50` Individual report export / read-only score-verification import.
   Goal: enable users to export a `UserIndividualReportRun` to a per-report-type template and to upload a corrected file for a transient, read-only score verification (file scores vs the persisted run; never writes, never auto-creates a run). The original 4-bucket reconcile/commit design was superseded (2026-05-19) and its dead code removed (2026-06-14).
   Done: `ReportInstanceSnapshot` DTO + registry (H50.1); xlsx exporter + template for `informatica-2016` (H50.2); xlsx score-verification import across publications/citations/activities — parse+evaluate, per-item+totals comparison UI, `importEnabled` toggle (H50.3); run-backed export, verify-vs-displayed-run, `ReportExportReadinessValidator`, and typed `ExportFailureReason` mapping.
