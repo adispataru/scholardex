@@ -64,9 +64,14 @@ Done history moved to `TASKS-done.md`.
   search/fetch for an EU project not yet in the canonical layer; (4) **link** an existing free-text activity to a
   canonical project (back-fill `PROJECT_GRANT_ID` on activities entered before the picker existed).
   Builds entirely on `H64` (canonical facts, picker, `proj_*` injection, CORDIS client). Key risks: homonym
-  mis-attribution on the director→researcher match (needs a confirm/"is this yours?" step, not silent linking);
-  avoiding duplicate activity instances on re-import (idempotency by `PROJECT_GRANT_ID`). Planning doc to be created at
-  `docs/tasks/active/h78-researcher-project-workspace.md` when work starts.
+  mis-attribution on the director→researcher match (read-only candidate surfacing + explicit per-project import, not
+  silent linking); avoiding duplicate activity instances on re-import (idempotency by `PROJECT_GRANT_ID`).
+  **Scoped 2026-06-30** — planning doc `docs/tasks/active/h78-researcher-project-workspace.md`. Decisions: director
+  match = projected `director_signature` column (projection-only re-run, no full rebuild); CORDIS escalation =
+  admin-deferred (no researcher minting); surfacing = director-only (no participant names in the data). Slices:
+  (1) director attribution + read-only "My projects" panel; (2) import-as-`Grant Cercetare` (pre-fill + idempotency);
+  (3) link existing activity + admin-deferred not-found. Note: the picker already attaches `PROJECT_GRANT_ID` on
+  create+edit, so basic search/link is largely shipped — the net-new value is surfacing + pre-fill + idempotency.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
