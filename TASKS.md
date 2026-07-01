@@ -61,6 +61,8 @@ Done history moved to `TASKS-done.md`.
   Dependency: execute after `H19.9` citation canonicalization so imported Scholar citation edges are canonical-ID compatible at ingest time.
 
 - [ ] `H61` Citation exclusion "any co-author" mode (Scopus all-authors self-citation) for Informatică.
+  **STATUS (2026-06-30): mechanism DONE + tested; ONLY the Informatică re-point remains, and it's BLOCKED on the
+  published Informatică standard (no indicator uses `ANY_COAUTHOR` yet). Not unstarted — do not re-scope the engine.**
   Goal: add a third citation-exclusion mode — exclude a citation when the citing work shares **any** author
   with the *cited* publication (not only the candidate) — for the upcoming Informatică standard. Today we
   support only `CITATIONS` (count all) and `CITATIONS_EXCLUDE_SELF` (candidate-only, which matches Ordin
@@ -88,8 +90,11 @@ Done history moved to `TASKS-done.md`.
   `ANY_COAUTHOR` under-excludes when co-authors aren't canonicalized to the same ids (documented in the enum).
 
 - [ ] `H50` Individual report export / read-only score-verification import.
+  **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
+  verification (H50.6). Entry below refreshed.**
   Goal: enable users to export a `UserIndividualReportRun` to a per-report-type template and to upload a corrected file for a transient, read-only score verification (file scores vs the persisted run; never writes, never auto-creates a run). The original 4-bucket reconcile/commit design was superseded (2026-05-19) and its dead code removed (2026-06-14).
   Done: `ReportInstanceSnapshot` DTO + registry (H50.1); xlsx exporter + template for `informatica-2016` (H50.2); xlsx score-verification import across publications/citations/activities — parse+evaluate, per-item+totals comparison UI, `importEnabled` toggle (H50.3); run-backed export, verify-vs-displayed-run, `ReportExportReadinessValidator`, and typed `ExportFailureReason` mapping.
-  Remaining: docx exporter (H50.4) and docx import (H50.6); extend to the other report types (H50.5) — only `informatica-2016` has a binding today, so the other four definitions can't export/verify.
+  Done since (via H62/H65): **docx export (H50.4)** is wired — `ReportExportFacade` renders any format the support declares, with the DOCX content-type + `TemplateDocxRenderer`. **Report-type coverage (H50.5) largely done** — bindings now exist for `informatica-2016`, `matematica-2016`, **`feaa-2024`**, **`fizica-ff`** (4 of the report types), each with a `ReportTypeImportSupport` that renders docx.
+  Remaining: **docx *import*/verify (H50.6)** — the docx supports' `parse()` still throw `UnsupportedOperationException` (Fizica/Feaa), so score-verification upload is xlsx-only; implement docx parsing for the docx report types. Plus any report definitions still lacking a binding (the remainder of H50.5).
   Exit criteria: each supported report type round-trips export → edit → upload → read-only verify (file-vs-run per-item + totals, no DB writes); xlsx-formula injection and docx-macro inputs are rejected/sanitized; misconfigured export mappings fail readiness instead of silently dropping rows.
   Dependency: none direct; planning doc at `docs/tasks/active/h50-individual-report-export-import.md`.
