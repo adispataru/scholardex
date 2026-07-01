@@ -138,27 +138,75 @@ public final class ReportingComputationSupport {
             List<AbstractReport.Criterion> criteria,
             List<Indicator> indicators,
             Map<String, Double> indicatorScoresByIndicatorId) {
+        // Id-keyed lookup (render/export path). A null-id indicator maps to 0.0.
+        return computeCriterionScores(criteria, indicators,
+                indicator -> indicator.getId() == null
+                        ? 0.0
+                        : indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0));
+    }
+
+    /**
+     * H68 slice 1: the single criterion-score computation, shared by every path (individual render/export, group
+     * runner, and the group {@code IndividualReportComputer}). Callers that hold scores keyed by {@link Indicator}
+     * object (rather than by id — their indicators may have null ids) delegate here so weights + the criterion cap
+     * apply consistently — previously the group paths did a plain sum and silently ignored {@code weights}. Invalid
+     * indicator indices are reported into {@code errors}.
+     */
+    public static Map<Integer, Double> computeCriterionScores(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            Map<Indicator, Double> indicatorScoresByIndicator,
+            List<String> errors) {
+        if (errors != null && criteria != null) {
+            for (int i = 0; i < criteria.size(); i++) {
+                List<Integer> idxs = criteria.get(i).getIndicatorIndices();
+                if (idxs == null) {
+                    continue;
+                }
+                for (Integer idx : idxs) {
+                    if (idx == null || idx < 0 || idx >= indicators.size()) {
+                        errors.add("Invalid indicator index " + idx + " in criterion " + i);
+                    }
+                }
+            }
+        }
+        // Object-keyed lookup (group paths) — works even when indicators carry null ids.
+        return computeCriterionScores(criteria == null ? List.of() : criteria, indicators,
+                indicator -> indicatorScoresByIndicator == null
+                        ? 0.0
+                        : indicatorScoresByIndicator.getOrDefault(indicator, 0.0));
+    }
+
+    /**
+     * The one place criterion scores are aggregated: weighted sum over the criterion's indicators (H65 weights;
+     * absent → 1.0) clamped to the optional criterion cap (H68 {@code maxTotal}; null → no cap). The score lookup is
+     * supplied by the caller so both the id-keyed and object-keyed paths share this logic.
+     */
+    private static Map<Integer, Double> computeCriterionScores(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            java.util.function.ToDoubleFunction<Indicator> scoreLookup) {
         Map<Integer, Double> criterionScores = new HashMap<>();
         for (int i = 0; i < criteria.size(); i++) {
             AbstractReport.Criterion criterion = criteria.get(i);
             double criterionScore = 0.0;
-            if (criterion.getIndicatorIndices() == null) {
-                criterionScores.put(i, criterionScore);
-                continue;
+            if (criterion.getIndicatorIndices() != null) {
+                for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
+                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()) {
+                        continue;
+                    }
+                    Indicator indicator = indicators.get(indicatorIndex);
+                    if (indicator != null) {
+                        double weight = criterion.getWeights() == null
+                                ? 1.0
+                                : criterion.getWeights().getOrDefault(indicatorIndex, 1.0);
+                        criterionScore += weight * scoreLookup.applyAsDouble(indicator);
+                    }
+                }
             }
-            for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
-                if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()) {
-                    continue;
-                }
-                Indicator indicator = indicators.get(indicatorIndex);
-                if (indicator != null && indicator.getId() != null) {
-                    // H65: weighted-sum criteria (e.g. physics T = A + P/2 + I/2 + C/20 + h/5) carry a per-indicator
-                    // coefficient; absent weights default to 1.0 so plain sum criteria are unchanged.
-                    double weight = criterion.getWeights() == null
-                            ? 1.0
-                            : criterion.getWeights().getOrDefault(indicatorIndex, 1.0);
-                    criterionScore += weight * indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0);
-                }
+            // H68 slice 2: criterion-level cap (plafon) — clamp the aggregated score. Null = no cap.
+            if (criterion.getMaxTotal() != null) {
+                criterionScore = Math.min(criterionScore, criterion.getMaxTotal());
             }
             criterionScores.put(i, criterionScore);
         }

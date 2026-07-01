@@ -27,10 +27,20 @@ Build decision (2026-06-30): **do slices 1+2 now** (safe, high-reuse, unambiguou
 consuming report so the ambiguous semantics are pinned by a real standard (avoids the H61 "built-then-mis-specified"
 trap). Consumers aren't being built yet.
 
-- **Slice 1** — criterion `mode` (POINTS_SUM default | ITEM_COUNT: count of qualifying items ≥ threshold) + **unify the
-  two criterion-score paths** so weights + mode apply consistently. Eval + JS compare + render label + admin editor.
-- **Slice 2** — criterion-level cap (`Criterion.maxTotal`) clamping the aggregated criterion score.
-- **Deferred** — post-PhD anchor (profile field may land early), Da/Nu gates, best-of, compensation.
+- **Slice 1 — DONE (2026-06-30):** unified the **three** criterion-score computations (`ReportingComputationSupport`
+  render/export, `IndividualReportComputer`, `GroupReportRunner`) onto one private lookup-agnostic aggregator, so H65
+  `weights` now apply on the group paths too (they previously did a plain sum that ignored weights — the latent bug).
+  Object-keyed lookup for the group paths (their indicators may have null ids), id-keyed for render/export. Tests +
+  full suite green.
+  **Count/point (ITEM_COUNT) deferred:** investigation showed it needs item-count plumbing through all three scorers
+  (they return summed doubles only) AND is largely already expressible via a `[1]`-per-item indicator formula (the sum
+  is then the count — per the assessment's DB reality check). Speculative + not "modest config" → folded into the
+  deferred set with post-PhD/Da-Nu/best-of/compensation, to be pinned by a real consuming standard.
+- **Slice 2 — DONE (2026-06-30):** criterion-level cap `Criterion.maxTotal` clamps the aggregated (post-weight) score;
+  applied in the shared aggregator; admin-editor number input added. Per-indicator caps were already done
+  (`Indicator.maxPoints`). Tested.
+- **Deferred (to first consumer):** count/point mode, post-PhD anchor (profile `phdConferralDate` may land early),
+  Da/Nu gates, best-of assignment, cross-criterion compensation.
 
 
 ## Goal

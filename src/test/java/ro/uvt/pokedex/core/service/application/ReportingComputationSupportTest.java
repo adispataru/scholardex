@@ -310,6 +310,55 @@ class ReportingComputationSupportTest {
         assertEquals(10.0, out.get(1), 0.0001); // plain 4 + 6 (weights null → 1.0)
     }
 
+    @Test
+    void computeCriterionScoresAppliesCriterionLevelCap() {
+        // H68 slice 2: maxTotal clamps the aggregated (post-weight) criterion score.
+        Indicator a = new Indicator();
+        a.setId("A");
+        Indicator b = new Indicator();
+        b.setId("B");
+        List<Indicator> indicators = List.of(a, b);
+
+        AbstractReport.Criterion capped = new AbstractReport.Criterion();
+        capped.setIndicatorIndices(new ArrayList<>(java.util.List.of(0, 1)));
+        capped.setMaxTotal(50.0);
+        AbstractReport.Criterion uncapped = new AbstractReport.Criterion();
+        uncapped.setIndicatorIndices(new ArrayList<>(java.util.List.of(0, 1)));
+
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(capped, uncapped), indicators, Map.of("A", 40.0, "B", 30.0)); // sum 70
+
+        assertEquals(50.0, out.get(0), 0.0001); // clamped to maxTotal
+        assertEquals(70.0, out.get(1), 0.0001); // no cap → full sum
+    }
+
+    @Test
+    void byIndicatorOverloadAppliesWeightsAndCapAndReportsInvalidIndices() {
+        // H68 slice 1: the group paths (IndividualReportComputer / GroupReportRunner) delegate here with scores keyed
+        // by Indicator; weights + cap must apply (previously they did a plain sum) and invalid indices reach errors.
+        Indicator i = new Indicator();
+        i.setId("I");
+        Indicator p = new Indicator();
+        p.setId("P");
+        List<Indicator> indicators = List.of(i, p);
+
+        AbstractReport.Criterion weighted = new AbstractReport.Criterion();
+        weighted.setIndicatorIndices(new ArrayList<>(java.util.List.of(0, 1)));
+        weighted.setWeights(java.util.Map.of(0, 0.5, 1, 0.5));
+        AbstractReport.Criterion cappedBadIndex = new AbstractReport.Criterion();
+        cappedBadIndex.setIndicatorIndices(new ArrayList<>(java.util.Arrays.asList(0, 5)));
+        cappedBadIndex.setMaxTotal(3.0);
+
+        List<String> errors = new ArrayList<>();
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(weighted, cappedBadIndex), indicators,
+                new LinkedHashMap<>(Map.of(i, 4.0, p, 6.0)), errors);
+
+        assertEquals(5.0, out.get(0), 0.0001);            // 0.5*4 + 0.5*6 — weights applied (the bug fix)
+        assertEquals(3.0, out.get(1), 0.0001);            // 4.0 for I clamped to maxTotal 3.0 (index 5 skipped)
+        assertTrue(errors.stream().anyMatch(e -> e.contains("Invalid indicator index 5")));
+    }
+
     private static Score totalScore(double value) {
         Score score = new Score();
         score.setAuthorScore(value);

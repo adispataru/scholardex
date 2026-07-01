@@ -126,24 +126,10 @@ public class IndividualReportComputer {
     private static Map<Integer, Double> computeCriterionScores(
             IndividualReport report, List<Indicator> indicators,
             Map<Indicator, Double> indicatorScores, List<String> errors) {
-        Map<Integer, Double> criterionScores = new HashMap<>();
-        List<AbstractReport.Criterion> criteria = report.getCriteria() == null ? List.of() : report.getCriteria();
-        for (int i = 0; i < criteria.size(); i++) {
-            AbstractReport.Criterion criterion = criteria.get(i);
-            double score = 0.0;
-            if (criterion.getIndicatorIndices() != null) {
-                for (Integer idx : criterion.getIndicatorIndices()) {
-                    if (idx == null || idx < 0 || idx >= indicators.size()) {
-                        errors.add("Invalid indicator index " + idx + " in criterion " + i);
-                        continue;
-                    }
-                    Indicator indicator = indicators.get(idx);
-                    if (indicatorScores.containsKey(indicator)) score += indicatorScores.get(indicator);
-                }
-            }
-            criterionScores.put(i, score);
-        }
-        return criterionScores;
+        // H68 slice 1: delegate to the single shared computation so weights (H65) + the criterion cap apply here too
+        // (this group path previously did a plain sum that ignored both).
+        return ReportingComputationSupport.computeCriterionScores(
+                report.getCriteria() == null ? List.of() : report.getCriteria(), indicators, indicatorScores, errors);
     }
 
     private static List<ScholardexPublicationView> applyAffiliationFilter(

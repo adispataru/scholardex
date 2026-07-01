@@ -29,6 +29,12 @@ public abstract class AbstractReport {
          * sum-of-indicators criteria (every existing report) are unaffected.
          */
         private java.util.Map<Integer, Double> weights;
+        /**
+         * H68 slice 2: optional criterion-level cap (plafon). When set, the aggregated criterion score is clamped to
+         * this maximum (e.g. "maximum 50 puncte for this criterion"). Null = no cap. Applied after the weighted sum,
+         * so it composes with {@link #weights}. Per-indicator caps are separate ({@code Indicator.maxPoints}).
+         */
+        private Double maxTotal;
     }
 
     @Data
