@@ -51,8 +51,12 @@ Done history moved to `TASKS-done.md`.
   Goal: extend the criteria engine for recurring patterns — **post-PhD temporal anchor**, per-indicator/
   per-group **caps (plafoane)**, **best-of single-indicator assignment**, **count + point** mixed criteria,
   **Da/Nu** qualitative gates, cross-criterion compensation. Modest config-level extensions on the existing
-  per-position threshold model. Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica. Planning doc at
-  `docs/tasks/active/h68-criteria-extensions.md`.
+  per-position threshold model. Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica.
+  **SCOPED 2026-06-30** (`docs/tasks/active/h68-criteria-extensions.md`): per-indicator caps already DONE
+  (`applyPointsCap` wired + tested). **Building slices 1+2 now** — (1) criterion `mode` count-vs-points + unify the two
+  criterion-score paths (fixes the H65 weights bug: applied at render/export but not compute); (2) criterion-level cap
+  (`maxTotal`). **Deferred to first consumer** (ambiguous semantics): post-PhD anchor, Da/Nu gates, best-of assignment,
+  cross-criterion compensation.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
