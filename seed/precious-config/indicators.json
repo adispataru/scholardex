@@ -1359,5 +1359,35 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a47f57bf5f5a3371821fd41"
+  },
+  "name": "Info_B (A*, A)",
+  "formula": "(S >= 8) ? (S/max(N-2, 1)) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": {
+   "$numberLong": "2"
+  },
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "6e38017aa60fb0e6c68b1af4cb27d808fcb1c644d0dc435085b9a1e9b678c1b0",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

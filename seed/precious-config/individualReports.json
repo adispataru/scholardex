@@ -832,7 +832,8 @@
    "682100ba04e38843635e0cb8": "activities-perspectiva-d",
    "6820e5552654f8388e8d364c": "activities-perspectiva-d",
    "6a47f17bcb06b11f3b6121f0": "citations-per-publication",
-   "6a47f2d27be56ad867b997c2": "__not_exported__"
+   "6a47f2d27be56ad867b997c2": "__not_exported__",
+   "6a47f57bf5f5a3371821fd41": "__not_exported__"
   },
   "blockByIndicatorId": {
    "665a40689073a275ec9abba1": "Carti/Capitole",
@@ -856,7 +857,8 @@
    "682100ba04e38843635e0cb8": "Pozitii de conducere",
    "6820e5552654f8388e8d364c": "Keynote/invited speaker",
    "6a47f17bcb06b11f3b6121f0": "__not_exported__",
-   "6a47f2d27be56ad867b997c2": "__not_exported__"
+   "6a47f2d27be56ad867b997c2": "__not_exported__",
+   "6a47f57bf5f5a3371821fd41": "__not_exported__"
   },
   "title": "FV Info 2026",
   "description": "FV Info",
@@ -991,6 +993,12 @@
     "$ref": "indicators",
     "$id": {
      "$oid": "6823535fbb926870c1f86fbd"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a47f57bf5f5a3371821fd41"
     }
    }
   ],
@@ -1302,6 +1310,29 @@
       "position": "PROF_UNIV",
       "value": {
        "$numberInt": "236"
+      }
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Publicații A*+A",
+    "indicatorIndices": [
+     {
+      "$numberInt": "22"
+     }
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": {
+       "$numberInt": "24"
+      }
+     },
+     {
+      "position": "HABIL",
+      "value": {
+       "$numberInt": "12"
       }
      }
     ],

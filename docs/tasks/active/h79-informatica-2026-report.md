@@ -77,8 +77,12 @@ re-point, no re-stamp of existing indicators.
    The Publications A*+A+B filter (`Info_B (A*,A,B)`, idx 2) needs **no** 2026 copy here — its only 2026 change is the
    APC exclusion, which is scorer-level (slice 5). End-to-end scoring of the top-citations copy verifies with the
    report in slice 1.
-3. **New `A*+A` prof production indicator** — a category-restricted counter over {A*, A} pubs + the prof `≥24`
-   threshold criterion (2026-only).
+3. **New `A*+A` prof production indicator. [DONE 2026-07-03]** Created `Info_B (A*, A)` (`_id 6a47f57b…`, Publications
+   CS, formula `(S >= 8) ? (S/max(N-2,1)) : 0` — forum points A*=12/A=8/B=4, so the `S>=8` gate keeps only {A*, A});
+   formulaHash re-stamped by the `indicator-migration` profile (`6e38017a…`, saved=1). Added to `informatica-2026`
+   (idx 22) + a **2026-only criterion "Publicații A\*+A"** (PROF_UNIV=24, HABIL=12; no conf/asist/lect). **Live-verified**
+   (florin.spataru): A*+A total 8.571 over 2 qualifying pubs vs A*+A+B 16.571 over 4 — the gate correctly excludes the
+   B-category pubs; criterion renders in the report. Mongo + seed mirrored.
 4. **SENSE 16→12 — keep both indicators.** Refactor `ComputerScienceBookService` to **return the category** (not
    hard-coded points). Keep the 2016 book/chapter indicator (formula → 16/8/4/2/1) AND add a 2026 book/chapter
    indicator (formula → 12/8/4/2/1); the two reports point at their respective indicators.
