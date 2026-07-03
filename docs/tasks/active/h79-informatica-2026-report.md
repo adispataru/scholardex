@@ -9,13 +9,20 @@ compared against the shipped `informatica-2016` report.
 The 2026 Informatica standard (COMISIA 2. INFORMATICĂ) keeps the **conf/prof numeric minima essentially unchanged**
 from 2016 — the changes are structural + a few new data/scoring rules. Verified against code (2026-07-03):
 
-| Perspective | 2026 Conf | 2026 Prof | already in `informatica-2016` |
-|---|---|---|---|
-| b) production | min 32, A*+A+B≥16 | min 56, **A*+A≥24**, A*+A+B≥40 | Perspectiva B 32/56 + "Publicații de top" 16/40 ✓ (A*+A≥24 is **new**) |
-| c) impact (citations) | min 48, A*+A+B≥12 | min 120, A*+A+B≥40 | Perspectiva C 48/120 + "Citări de top" 12/40 ✓ |
-| d) academic | min 36 | min 60 + ≥1 R&D project | Perspectiva D 36/60 ✓ |
+Standard is 4 perspectives a)–d), each **îndeplinit/neîndeplinit**, all eliminatory (must pass). Full 2026 threshold
+grid (extracted from the three HTML files 2026-07-03):
 
-Standard is 4 perspectives a)–d), each **îndeplinit/neîndeplinit**, all eliminatory (must pass).
+| Perspective | Conferențiar | Profesor | Abilitare (HABIL) |
+|---|---|---|---|
+| **b) production** | min **32**; A\*+A+B≥**16** | min **56**; A\*+A≥**24**; A\*+A+B≥**40** | min **44**; A\*+A≥**12**; A\*+A+B≥**28** |
+| **c) impact (citations)** | min **48**; A\*+A+B≥**12** | min **120**; A\*+A+B≥**40** | min **84**; A\*+A+B≥**26** |
+| **d) academic** | min **36** | min **60** (+ ≥1 R&D project) | min **48** |
+
+vs `informatica-2016` (conf/prof unchanged): Perspectiva B 32/56, Perspectiva C 48/120, Perspectiva D 36/60, plus
+"Publicații de top" 16/40 and "Citări de top" 12/40 (= the A\*+A+B praguri). **New in 2026:** the `A*+A` sub-threshold
+(prof ≥24, HABIL ≥12; conf has none), the whole HABIL column, and the asist/lect national rows are gone (kept as
+internal in the 2026 copy per the versioning decision). Note the "Total" grand criterion has no 2026 national
+equivalent.
 
 ## Verified findings (what is / isn't already handled)
 
