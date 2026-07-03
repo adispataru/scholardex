@@ -24,6 +24,9 @@ public class ScientificProductionService {
 
     private final ScoringFactoryService scoringFactoryService;
     private final FormulaEvaluator formulaEvaluator;
+    /** H79: DOAJ fee-journal lookup for the {@code feeJournal} formula variable (2026 APC exclusion). The @Primary
+     *  {@code ReportingLookupFacade} is injected; default-false for lightweight non-Postgres contexts. */
+    private final ReportingLookupPort reportingLookupPort;
 
 
     /**
@@ -272,7 +275,11 @@ public class ScientificProductionService {
                     // H65: effective author count (physics Nef) — the divisor for AIS/Nef-style indicators. A 0-author
                     // pub yields Nef=0 → S/Nef is non-finite, caught by the guard below (contributes 0).
                     .put("Nef", EffectiveAuthorCountSupport.computeNef(numberOfAuthors))
-                    .put("Q", result.getQuarter());
+                    .put("Q", result.getQuarter())
+                    // H79: fee-conditioned (gold-OA APC) journal flag — bound on the SCORED forum (the candidate's pub
+                    // in perspective b, or the citing pub in perspective c). Only 2026 formulas gate on it; every
+                    // pre-2026 formula ignores it, so existing indicators are unaffected.
+                    .put("feeJournal", citing != null && reportingLookupPort.isFeeJournal(citing.getForumId()));
             if (result.getMultiplier() != null) {
                 builder.put("M", result.getMultiplier());
             }

@@ -99,6 +99,16 @@ public interface ReportingLookupPort {
     }
 
     /**
+     * H79 — whether the forum is a fee-conditioned (gold-OA) journal: a {@code database='DOAJ'} membership row with
+     * {@code apc=true}. DOAJ lists only fully-OA journals, so this means publication is conditioned on paying an APC
+     * (e.g. MDPI, IEEE Access). The 2026 Informatică indicators gate this out of the perspective-b/c threshold points.
+     * Default false; the Postgres facade overrides with the real membership query.
+     */
+    default boolean isFeeJournal(String forumId) {
+        return false;
+    }
+
+    /**
      * Whether the forum was indexed in WoS ESCI (Emerging Sources Citation Index, no JIF quartile) as of the given
      * publication year. Year-true with carry-forward: the latest recorded year is used when {@code year} is more
      * recent than the data. Default false; the Postgres facade overrides with the real membership query.

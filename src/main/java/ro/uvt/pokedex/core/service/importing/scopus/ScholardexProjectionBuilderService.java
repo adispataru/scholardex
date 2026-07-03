@@ -740,8 +740,8 @@ public class ScholardexProjectionBuilderService {
     private void insertForumMembershipRows(List<ForumMembershipRow> rows, String buildVersion, Instant buildAt) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_forum_membership_view
-                    (id, forum_id, database, member, as_of, source, build_version, build_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, forum_id, database, member, as_of, source, build_version, build_at, updated_at, apc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
@@ -756,6 +756,12 @@ public class ScholardexProjectionBuilderService {
                 ps.setString(7, buildVersion);
                 setInstant(ps, 8, buildAt);
                 setInstant(ps, 9, buildAt);
+                // H79: DOAJ APC flag (null for non-DOAJ databases).
+                if (row.apc() == null) {
+                    ps.setNull(10, java.sql.Types.BOOLEAN);
+                } else {
+                    ps.setBoolean(10, row.apc());
+                }
             }
 
             @Override
@@ -1210,7 +1216,7 @@ public class ScholardexProjectionBuilderService {
     private record ForumMetricRow(String id, String forumId, int year, String metricType, Double value, String source) {}
     private record ForumCategoryRow(String id, String forumId, int year, String edition, String category,
                                     String metricType, String quarter, Integer quartileRank, Integer rank, String source) {}
-    record ForumMembershipRow(String id, String forumId, String database, String asOf, String source) {}
+    record ForumMembershipRow(String id, String forumId, String database, String asOf, String source, Boolean apc) {}
 
     /** Map each canonical forum's WoS journal ids to its forum id (the FK B2 joins through). */
     private Map<String, String> buildJournalIdToForumId(List<ScholardexForumFact> forums) {
@@ -1321,7 +1327,7 @@ public class ScholardexProjectionBuilderService {
             String source = fact.getSourceType() == null ? "MJL" : fact.getSourceType().name();
             String asOf = fact.getYear() == null ? null : String.valueOf(fact.getYear());
             String key = forumId + "|" + database + "|" + source;
-            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, database, asOf, source));
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, database, asOf, source, null));
         }
         logOrphanJournals("coverage", orphanJournalIds);
         return new ArrayList<>(rows.values());
@@ -1359,7 +1365,7 @@ public class ScholardexProjectionBuilderService {
                 continue;
             }
             String key = forumId + "|DOAJ|DOAJ";
-            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, "DOAJ", doaj.getAsOf(), "DOAJ"));
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, "DOAJ", doaj.getAsOf(), "DOAJ", doaj.getApc()));
         }
         return new ArrayList<>(rows.values());
     }
@@ -1380,7 +1386,7 @@ public class ScholardexProjectionBuilderService {
                 continue;
             }
             String key = forum.getId() + "|SCOPUS|SCOPUS";
-            rows.putIfAbsent(key, new ForumMembershipRow(key, forum.getId(), "SCOPUS", null, "SCOPUS"));
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forum.getId(), "SCOPUS", null, "SCOPUS", null));
         }
         return new ArrayList<>(rows.values());
     }
@@ -1419,10 +1425,10 @@ public class ScholardexProjectionBuilderService {
                 openAccess = openAccess || fact.isOaDoaj();
             }
             String erihKey = forum.getId() + "|ERIH|ERIH";
-            rows.putIfAbsent(erihKey, new ForumMembershipRow(erihKey, forum.getId(), "ERIH", asOf, "ERIH"));
+            rows.putIfAbsent(erihKey, new ForumMembershipRow(erihKey, forum.getId(), "ERIH", asOf, "ERIH", null));
             if (openAccess) {
                 String doajKey = forum.getId() + "|DOAJ|ERIH";
-                rows.putIfAbsent(doajKey, new ForumMembershipRow(doajKey, forum.getId(), "DOAJ", asOf, "ERIH"));
+                rows.putIfAbsent(doajKey, new ForumMembershipRow(doajKey, forum.getId(), "DOAJ", asOf, "ERIH", null));
             }
         }
         return new ArrayList<>(rows.values());

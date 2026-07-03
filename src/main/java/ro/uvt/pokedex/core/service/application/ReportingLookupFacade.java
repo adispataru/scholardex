@@ -33,6 +33,11 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public boolean isFeeJournal(String forumId) {
+        return postgresFacade.isFeeJournal(forumId);
+    }
+
+    @Override
     public boolean isForumInEsci(String forumId, int year) {
         return postgresFacade.isForumInEsci(forumId, year);
     }

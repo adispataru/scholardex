@@ -35,7 +35,8 @@ class ComputerScienceScoringPipelineParityTest {
         ComputerScienceScoringService computerScienceScoringService =
                 new ComputerScienceScoringService(journalService, conferenceService, bookService, lookupPort);
         ScientificProductionService scientificProductionService =
-                new ScientificProductionService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
+                new ScientificProductionService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(),
+                        org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.reporting.ReportingLookupPort.class));
 
         when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 

@@ -107,6 +107,19 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public boolean isFeeJournal(String forumId) {
+        if (forumId == null || forumId.isBlank()) {
+            return false;
+        }
+        Boolean exists = namedParameterJdbcTemplate.queryForObject(
+                "SELECT EXISTS(SELECT 1 FROM reporting_read.scholardex_forum_membership_view "
+                        + "WHERE forum_id = :forumId AND database = 'DOAJ' AND apc IS TRUE)",
+                new MapSqlParameterSource("forumId", forumId),
+                Boolean.class);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    @Override
     public List<WoSRanking> getRankingsByForum(ScholardexForumView forum) {
         if (forum == null) {
             return List.of();
