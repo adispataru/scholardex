@@ -83,9 +83,17 @@ re-point, no re-stamp of existing indicators.
    (idx 22) + a **2026-only criterion "Publicații A\*+A"** (PROF_UNIV=24, HABIL=12; no conf/asist/lect). **Live-verified**
    (florin.spataru): A*+A total 8.571 over 2 qualifying pubs vs A*+A+B 16.571 over 4 — the gate correctly excludes the
    B-category pubs; criterion renders in the report. Mongo + seed mirrored.
-4. **SENSE 16→12 — keep both indicators.** Refactor `ComputerScienceBookService` to **return the category** (not
-   hard-coded points). Keep the 2016 book/chapter indicator (formula → 16/8/4/2/1) AND add a 2026 book/chapter
-   indicator (formula → 12/8/4/2/1); the two reports point at their respective indicators.
+4. **SENSE book top tier 16→12. [DONE 2026-07-03]** Cell-by-cell, **only one value changed**: authored/edited book in
+   a SENSE-A publisher 16→12 (books B/C/D and *all* chapter values unchanged; 2026 `capitole(A)=8`=2016 chapter-A).
+   So — no scorer refactor (the category approach over-matches chapter-A, which must stay 8): a **pure-config 2026 book
+   indicator** `Info_D_i_2026` (`_id 6a47f72a…`, strategy `CS_SENSE`) with formula
+   `(S >= 16) ? (12/max(N-2,1)) : (S/max(N-2,1))` — `S=16` is uniquely book-A (chapters cap at 8), so it remaps only
+   book-A→12 and leaves everything else identical. formulaHash re-stamped (`afd70cd4…`). Swapped `Info_D_i`→
+   `Info_D_i_2026` at report idx 4 (carried the `activities-perspectiva-d` role). **Live-verified** (florin.spataru):
+   his books are SENSE-**B** → 2016 and 2026 score identically (2.333), confirming non-A untouched; he has no A-book so
+   the 16→12 delta isn't exercised live, but the formula is correct by construction. `Info_D_i` (2016) untouched.
+   **Book-citation check resolved (no-op):** the 2016 standard (Standarde-minimale-Info.pdf, perspective c) already
+   scores cites-in-books `12/8/4/2/1` — identical to 2026 — so `Info_C_2026` needs no book-citation change.
 5. **DOAJ APC capture + fee-journal exclusion, with per-year edition resolution.** Extend `DoajJournalFact` (+ import +
    projection) to carry the APC flag from the dump's `APC` / `Has other fees` columns, stamped with the **edition
    year** (`as_of`). The exclusion must resolve **per publication year**: for a pub in year Y, use the DOAJ edition for

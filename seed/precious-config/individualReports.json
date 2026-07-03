@@ -811,7 +811,6 @@
   "reportTypeKey": "informatica-2026",
   "importEnabled": true,
   "indicatorRolesByIndicatorId": {
-   "665a40689073a275ec9abba1": "activities-perspectiva-d",
    "6820ffde04e38843635e0cb5": "activities-perspectiva-d",
    "6820fe4104e38843635e0cb2": "activities-perspectiva-d",
    "6a049c242e64c65c14f9e01a": "conference-publications",
@@ -833,10 +832,10 @@
    "6820e5552654f8388e8d364c": "activities-perspectiva-d",
    "6a47f17bcb06b11f3b6121f0": "citations-per-publication",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
-   "6a47f57bf5f5a3371821fd41": "__not_exported__"
+   "6a47f57bf5f5a3371821fd41": "__not_exported__",
+   "6a47f72a8982d45e2bf2f735": "activities-perspectiva-d"
   },
   "blockByIndicatorId": {
-   "665a40689073a275ec9abba1": "Carti/Capitole",
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
    "6820fe4104e38843635e0cb2": "Carti/Capitole",
    "6a049c242e64c65c14f9e01a": "__not_exported__",
@@ -858,7 +857,8 @@
    "6820e5552654f8388e8d364c": "Keynote/invited speaker",
    "6a47f17bcb06b11f3b6121f0": "__not_exported__",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
-   "6a47f57bf5f5a3371821fd41": "__not_exported__"
+   "6a47f57bf5f5a3371821fd41": "__not_exported__",
+   "6a47f72a8982d45e2bf2f735": "Carti/Capitole"
   },
   "title": "FV Info 2026",
   "description": "FV Info",
@@ -890,7 +890,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "665a40689073a275ec9abba1"
+     "$oid": "6a47f72a8982d45e2bf2f735"
     }
    },
    {
