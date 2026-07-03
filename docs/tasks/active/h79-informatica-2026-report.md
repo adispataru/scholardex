@@ -63,6 +63,11 @@ re-point, no re-stamp of existing indicators.
    existing A*+A+B "top" filter indicators. Create **`Info_C_2026`** (`ANY_COAUTHOR` — H61 mechanism done; the 2026
    text confirms per-cited-paper) and a 2026 copy of the A*+A+B "top" filter indicator; `informatica-2026` points at
    the new ones. `Info_C` itself is never modified.
+   **[Info_C_2026 DONE 2026-07-03]** — created (`_id 6a47f17b…`, `kind {policy:ANY_COAUTHOR, strategy:CS}`, same formula
+   `S/max(N-2,1)` → same `formulaHash` as `Info_C`) in Mongo + mirrored to `seed/precious-config/indicators.json`.
+   **Live-verified** (florin.spataru, temporarily appended to the report then reverted): CANDIDATE_ONLY keeps 16 citing
+   pubs, `ANY_COAUTHOR` keeps **11** — correctly drops the extra shared-co-author citations. `informatica-2016`
+   restored to 22 indicators. Still to do in this slice: the 2026 A*+A+B "top" filter indicator copy.
 3. **New `A*+A` prof production indicator** — a category-restricted counter over {A*, A} pubs + the prof `≥24`
    threshold criterion (2026-only).
 4. **SENSE 16→12 — keep both indicators.** Refactor `ComputerScienceBookService` to **return the category** (not
