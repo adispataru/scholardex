@@ -479,6 +479,8 @@ public class ResearcherWorkspaceController {
         User.ResearcherProfile profile = isNewProfile ? new User.ResearcherProfile() : user.getResearcherProfile();
         profile.setFirstName(request.firstName() != null ? request.firstName().trim() : "");
         profile.setLastName(request.lastName() != null ? request.lastName().trim() : "");
+        // PhD award year is optional — a null clears it (treated as "no post-PhD anchor" by criteria).
+        profile.setPhdAwardYear(request.phdAwardYear());
         // Google Scholar id is retired from the UI; preserve any existing value (it is still an author-resolution
         // lookup key in ResearcherAuthorLookupService) rather than wiping it when the form omits the field.
         if (request.scholarId() != null) {
@@ -1092,6 +1094,7 @@ public class ResearcherWorkspaceController {
     record ProfileSaveRequest(
             String firstName,
             String lastName,
+            Integer phdAwardYear,
             String scholarId,
             List<String> scopusId,
             List<String> wosId,

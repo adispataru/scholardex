@@ -39,8 +39,10 @@ trap). Consumers aren't being built yet.
 - **Slice 2 — DONE (2026-06-30):** criterion-level cap `Criterion.maxTotal` clamps the aggregated (post-weight) score;
   applied in the shared aggregator; admin-editor number input added. Per-indicator caps were already done
   (`Indicator.maxPoints`). Tested.
-- **Deferred (to first consumer):** count/point mode, post-PhD anchor (profile `phdConferralDate` may land early),
-  Da/Nu gates, best-of assignment, cross-criterion compensation.
+- **Deferred (to first consumer):** count/point mode, Da/Nu gates, best-of assignment, cross-criterion compensation.
+  Post-PhD anchor: the **data field landed early (2026-07-03)** — `User.ResearcherProfile.phdAwardYear` (Integer,
+  nullable; workspace profile form + `/profile/save` round-trip, live-verified). The date-filtered *criterion* is still
+  deferred to its first consumer (FSGC/drept), and must treat a null year as "no anchor" (count all).
 
 
 ## Goal

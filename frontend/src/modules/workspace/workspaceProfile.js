@@ -159,6 +159,8 @@ function _buildProfileSection(researcher) {
       <span class="app-ws-prof__info-value">${_esc([researcher?.firstName, researcher?.lastName].filter(Boolean).join(' ') || '—')}</span>
       <span class="app-ws-prof__info-label">ORCID</span>
       <span class="app-ws-prof__info-value">${researcher?.orcid ? _esc(researcher.orcid) : '<em class="app-ws-prof__info-value--muted">Not set</em>'}</span>
+      <span class="app-ws-prof__info-label">PhD award year</span>
+      <span class="app-ws-prof__info-value">${researcher?.phdAwardYear ? _esc(String(researcher.phdAwardYear)) : '<em class="app-ws-prof__info-value--muted">Not set</em>'}</span>
       <span class="app-ws-prof__info-label">Scopus IDs</span>
       <span class="app-ws-prof__info-value">${scopusPills || '<em class="app-ws-prof__info-value--muted">None</em>'}</span>
       <span class="app-ws-prof__info-label">WoS IDs</span>
@@ -226,6 +228,12 @@ function _buildEditForm(researcher, observedAffiliations, affiliationConfirmatio
           <input class="app-ws-prof__input" type="text" id="ws-prof-edit-lastName" name="lastName"
                  value="${_esc(researcher?.lastName ?? '')}" autocomplete="family-name">
         </div>
+      </div>
+      <div class="app-ws-prof__field">
+        <label class="app-ws-prof__label" for="ws-prof-edit-phdYear">PhD award year</label>
+        <input class="app-ws-prof__input" type="number" id="ws-prof-edit-phdYear" name="phdAwardYear"
+               value="${researcher?.phdAwardYear ?? ''}" min="1900" max="2100" placeholder="optional" style="max-width:10rem">
+        <small class="app-ws-prof__hint">Optional — used by evaluation criteria that count only work after your doctorate.</small>
       </div>
       <div class="app-ws-prof__field">
         <label class="app-ws-prof__label" for="ws-prof-edit-orcid">ORCID</label>
@@ -545,6 +553,9 @@ function _saveProfile() {
     const firstName = (_mount.querySelector('#ws-prof-edit-firstName')?.value ?? '').trim();
     const lastName = (_mount.querySelector('#ws-prof-edit-lastName')?.value ?? '').trim();
     const orcid = (_mount.querySelector('#ws-prof-edit-orcid')?.value ?? '').trim() || null;
+    // PhD award year — optional; blank/invalid → null (no post-PhD anchor).
+    const phdRaw = (_mount.querySelector('#ws-prof-edit-phdYear')?.value ?? '').trim();
+    const phdAwardYear = phdRaw && Number.isInteger(Number(phdRaw)) ? Number(phdRaw) : null;
     const scopusEntries = _mount.querySelectorAll('#ws-prof-scopus-entries .app-ws-prof__id-entry-row input');
     const wosEntries = _mount.querySelectorAll('#ws-prof-wos-entries .app-ws-prof__id-entry-row input');
     const scopusId = Array.from(scopusEntries).map((input) => input.value.trim()).filter(Boolean);
@@ -578,6 +589,7 @@ function _saveProfile() {
         body: JSON.stringify({
             firstName,
             lastName,
+            phdAwardYear,
             orcid,
             scopusId,
             wosId,

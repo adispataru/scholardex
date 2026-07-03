@@ -88,6 +88,11 @@ public class User implements UserDetails {
     public static class ResearcherProfile {
         private String firstName;
         private String lastName;
+        /**
+         * Year the researcher was awarded their PhD/doctorate. Nullable — many researchers won't have it set, and
+         * criteria using a post-PhD temporal anchor (H68) must treat a missing value as "no anchor" (count all).
+         */
+        private Integer phdAwardYear;
         private String scholarId;
         private List<String> scopusId = new ArrayList<>();
         private List<String> wosId = new ArrayList<>();
