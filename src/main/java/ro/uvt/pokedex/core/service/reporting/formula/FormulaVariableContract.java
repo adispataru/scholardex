@@ -123,6 +123,9 @@ public final class FormulaVariableContract {
         // H65: Nef (effective author count) is bound on every publication/citation score, so physics indicators can use
         // S/Nef. Always allowed — it's a no-op divisor for indicators that don't reference it.
         allowed.add("Nef");
+        // H79: feeJournal (boolean) is bound on every publication/citation score — true when the scored forum is a
+        // DOAJ gold-OA (APC) journal. The 2026 Informatică indicators gate on it (`!feeJournal ? … : 0`); always allowed.
+        allowed.add("feeJournal");
         if (kind.strategy() == ScoringStrategy.ECONOMICS_JOURNAL_AIS) {
             allowed.add("M");
         }

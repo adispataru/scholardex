@@ -105,20 +105,22 @@ re-point, no re-stamp of existing indicators.
    - **[5a DONE 2026-07-03]** — `DoajJournalFact.apc` (Boolean) + `DoajDataService` parses the `APC` column
      (Yes/No/blank → true/false/null). Re-imported the May-2026 dump: **8430 apc=true, 14485 apc=false, 0 null**. Test
      added. (doaj.journal_facts is reference data, re-importable — not seed-mirrored.)
-   - **[5b remaining]** — bring APC into scoring. At the bind point (`ScientificProductionService.getScore`) only the
-     **forumId** is available (not ISSN), so `feeJournal` needs a **forumId→APC** lookup. Two options: (A) add an `apc`
-     column to `scholardex_forum_membership_view` (migration + the DOAJ projection emits it + a `ReportingLookupPort`
-     `isFeeJournal(forumId)` on BOTH the Postgres facade and the `@Primary` delegator) — the "proper" projected path
-     but needs a projection re-run; (B) a cached **forumId→APC catalog** built once by matching forum ISSN tokens to
-     APC=true DOAJ facts (reuses `buildDoajMembershipRows`' ISSN matching) — leaner, no migration/rebuild. Then bind
-     `feeJournal` in the FormulaContext (additive — 2016 formulas never reference it).
-   - **[5c remaining]** — gate the 2026 perspective-b/c **forum** indicators with `!feeJournal ? … : 0`. Indices 1, 3,
-     22 are already 2026-specific (edit formulas); indices 2 (`Info_B (A*,A,B)`) and 19, 20 (Perspectiva B main) are
-     still shared with 2016 → need 2026 copies with the gated formula, then swap in `informatica-2026`.
+   - **[5b DONE 2026-07-03]** — chose the **projected** path (option A). `V21` adds an `apc` column to
+     `scholardex_forum_membership_view`; the DOAJ membership projection emits `doaj.getApc()` (other databases null).
+     `ReportingLookupPort.isFeeJournal(forumId)` (default false; Postgres facade queries `database='DOAJ' AND apc IS
+     TRUE`; `@Primary` delegator forwards). `ScientificProductionService` binds a `feeJournal` boolean on the **scored**
+     forum (candidate pub in b, citing pub in c); **declared in `FormulaVariableContract`** (like Nef — a missing
+     declaration crashed the migration until added). Ran the full projection: **8427 apc=true membership rows**;
+     florin's JMIR forum row = DOAJ apc=t.
+   - **[5c DONE 2026-07-03]** — gated the 2026 perspective-b/c **journal** indicators `!feeJournal ? … : 0`: edited
+     idx 1/3/22 (already 2026) + created gated 2026 copies of idx 2 (`Info_B (A*,A,B) 2026`) and idx 20 (`Info_B_Jurnale
+     2026`), swapped in. **Conferences (idx 19) skipped** — never in DOAJ, so the gate is a no-op. Hashes re-stamped.
+     **Live-verified** (florin.spataru): his **JMIR Formative Research** paper (gold-OA APC) is now **zeroed** in the
+     2026 `Info_B_Jurnale` (total 12.988→12.655, 8→7 nonzero items; the zeroed item keeps its forumScore 2.0 but
+     authorScore 0), while `informatica-2016` scores it normally (12.988, unchanged). Full suite green.
    - **Per-year:** v1 uses the single May-2026 snapshot as the floor (retroactive exclusion accepted). Per-pub-year
      resolution via closest-earlier DOAJ edition (mirrors H60) is a later add needing historical dumps.
-   - **Verification note:** florin's pubs are all category-B; demonstrating an actual exclusion needs a researcher (or
-     a crafted pub) in a DOAJ-APC journal.
+   - **Deploy note:** production needs the DOAJ re-import (APC parse) + a projection run to populate `membership.apc`.
 
 ## Open questions / notes
 

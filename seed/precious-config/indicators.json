@@ -1306,92 +1306,6 @@
  },
  {
   "_id": {
-   "$oid": "6a47f17bcb06b11f3b6121f0"
-  },
-  "name": "Info_C_2026",
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 11,
-  "kind": {
-   "policy": "ANY_COAUTHOR",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
-  "_id": {
-   "$oid": "6a47f2d27be56ad867b997c2"
-  },
-  "name": "Info_C (A*, A, B) 2026",
-  "formula": "(S >= 4) ? (S/max(N-2, 1)) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "policy": "ANY_COAUTHOR",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "d3776b21e558b45429cfbe647ff5f2e3ae091e0c72289c93e4cc82b8b160615f",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
-  "_id": {
-   "$oid": "6a47f57bf5f5a3371821fd41"
-  },
-  "name": "Info_B (A*, A)",
-  "formula": "(S >= 8) ? (S/max(N-2, 1)) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "2"
-  },
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "6e38017aa60fb0e6c68b1af4cb27d808fcb1c644d0dc435085b9a1e9b678c1b0",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
-  "_id": {
    "$oid": "6a47f72a8982d45e2bf2f735"
   },
   "name": "Info_D_i_2026",
@@ -1414,6 +1328,156 @@
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a47f17bcb06b11f3b6121f0"
+  },
+  "name": "Info_C_2026",
+  "formula": "feeJournal ? 0 : (S/max(N-2, 1))",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": {
+   "$numberLong": "12"
+  },
+  "kind": {
+   "policy": "ANY_COAUTHOR",
+   "strategy": "CS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "c967a44d3340d7b19c25a9b19bd44428443280e67c02ed3b3e73e5b490f0e7c7",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a47f2d27be56ad867b997c2"
+  },
+  "name": "Info_C (A*, A, B) 2026",
+  "formula": "(S >= 4 && !feeJournal) ? (S/max(N-2, 1)) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": {
+   "$numberLong": "2"
+  },
+  "kind": {
+   "policy": "ANY_COAUTHOR",
+   "strategy": "CS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "ad281a9de2347a298850e80286845affc52ebd29022b1a713f100a57ddee1d56",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a47f57bf5f5a3371821fd41"
+  },
+  "name": "Info_B (A*, A)",
+  "formula": "(S >= 8 && !feeJournal) ? (S/max(N-2, 1)) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": {
+   "$numberLong": "3"
+  },
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "fdeda7f7f1554f0f0b3d1d1423fc5532b470d7fecc3de048b8a20c704bcffcf8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a480678cefa56310d7f8023"
+  },
+  "name": "Info_B (A*, A, B) 2026",
+  "formula": "(S >= 4 && !feeJournal) ? (S/max(N-2, 1)) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": {
+   "$numberLong": "2"
+  },
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "ad281a9de2347a298850e80286845affc52ebd29022b1a713f100a57ddee1d56",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a480678cefa56310d7f8024"
+  },
+  "name": "Info_B_Jurnale 2026",
+  "formula": "feeJournal ? 0 : (S/max(N-2, 1))",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": {
+   "$numberLong": "2"
+  },
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS_JOURNAL",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "c967a44d3340d7b19c25a9b19bd44428443280e67c02ed3b3e73e5b490f0e7c7",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
   },
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"

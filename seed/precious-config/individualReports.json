@@ -820,11 +820,9 @@
    "6820e4952654f8388e8d3649": "activities-perspectiva-d",
    "6816987607ff6c4e2956d5c4": "activities-perspectiva-d",
    "6820fbd904e38843635e0cae": "activities-perspectiva-d",
-   "66564362f349c0670bb68b25": "__not_exported__",
    "6820d9bcd7ca817372b6d6f3": "activities-perspectiva-d",
    "6823535fbb926870c1f86fbd": "activities-perspectiva-d",
    "665ce9102dbfdf2e0b3caa33": "__not_exported__",
-   "6a049c682e64c65c14f9e01b": "journal-publications",
    "6820eff604e38843635e0cab": "activities-perspectiva-d",
    "6820e0f6b20a79244588e87d": "activities-perspectiva-d",
    "6820eec804e38843635e0ca8": "activities-perspectiva-d",
@@ -833,7 +831,9 @@
    "6a47f17bcb06b11f3b6121f0": "citations-per-publication",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
-   "6a47f72a8982d45e2bf2f735": "activities-perspectiva-d"
+   "6a47f72a8982d45e2bf2f735": "activities-perspectiva-d",
+   "6a480678cefa56310d7f8023": "__not_exported__",
+   "6a480678cefa56310d7f8024": "journal-publications"
   },
   "blockByIndicatorId": {
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
@@ -845,11 +845,9 @@
    "6820e4952654f8388e8d3649": "Organizare evenimente",
    "6816987607ff6c4e2956d5c4": "Director/editor revista",
    "6820fbd904e38843635e0cae": "Comisii doctorat",
-   "66564362f349c0670bb68b25": "__not_exported__",
    "6820d9bcd7ca817372b6d6f3": "Granturi",
    "6823535fbb926870c1f86fbd": "Keynote/invited speaker",
    "665ce9102dbfdf2e0b3caa33": "__not_exported__",
-   "6a049c682e64c65c14f9e01b": "__not_exported__",
    "6820eff604e38843635e0cab": "Comisii doctorat",
    "6820e0f6b20a79244588e87d": "Membru comitet stiintific",
    "6820eec804e38843635e0ca8": "Consolidarea de echipe",
@@ -858,7 +856,9 @@
    "6a47f17bcb06b11f3b6121f0": "__not_exported__",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
-   "6a47f72a8982d45e2bf2f735": "Carti/Capitole"
+   "6a47f72a8982d45e2bf2f735": "Carti/Capitole",
+   "6a480678cefa56310d7f8023": "__not_exported__",
+   "6a480678cefa56310d7f8024": "__not_exported__"
   },
   "title": "FV Info 2026",
   "description": "FV Info",
@@ -878,7 +878,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "66564362f349c0670bb68b25"
+     "$oid": "6a480678cefa56310d7f8023"
     }
    },
    {
@@ -986,7 +986,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a049c682e64c65c14f9e01b"
+     "$oid": "6a480678cefa56310d7f8024"
     }
    },
    {

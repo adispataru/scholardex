@@ -46,6 +46,8 @@ class ScientificProductionServiceTest {
     private ScoringService scoringService;
     @Mock
     private ScholardexPublicationDblpEvidenceRepository dblpEvidenceRepository;
+    @Mock
+    private ReportingLookupPort reportingLookupPort;
 
     // Real evaluator (no MVEL behavior to mock) — @InjectMocks picks it up via the
     // constructor signature.
