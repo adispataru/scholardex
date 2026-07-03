@@ -1,4 +1,34 @@
 [
-  {"_id":{"$oid":"6a1afd10dc9cebb4272ab84e"},"divisionId":"div-fmi","reportId":"682101ad04e38843635e0cba","selectedBy":"agent@dev.local","selectedAt":{"$date":"2026-05-30T15:06:56.573Z"},"_class":"ro.uvt.pokedex.core.model.org.DivisionReportSelection"},
-  {"_id":{"$oid":"6a2142c28576022a391ccdcb"},"divisionId":"div-fmi","reportId":"6a049bf02e64c65c14f9e019","selectedBy":"florin.spataru@e-uvt.ro","selectedAt":{"$date":"2026-06-04T09:17:54.672Z"},"_class":"ro.uvt.pokedex.core.model.org.DivisionReportSelection"}
+ {
+  "_id": {
+   "$oid": "6a1afd10dc9cebb4272ab84e"
+  },
+  "divisionId": "div-fmi",
+  "reportId": "682101ad04e38843635e0cba",
+  "selectedBy": "agent@dev.local",
+  "selectedAt": {
+   "$date": "2026-05-30T15:06:56.573Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6a2142c28576022a391ccdcb"
+  },
+  "divisionId": "div-fmi",
+  "reportId": "6a049bf02e64c65c14f9e019",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-06-04T09:17:54.672Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": "h79-info2026-sel",
+  "divisionId": "6a35b09424405fbe1e01d8af",
+  "reportId": "6a47f44686ec3f1107f927bb",
+  "selectedBy": "agent@dev.local",
+  "selectedAt": "2026-07-03T00:00:00.000Z",
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ }
 ]

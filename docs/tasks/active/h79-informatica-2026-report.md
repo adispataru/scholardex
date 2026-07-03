@@ -53,12 +53,16 @@ re-point, no re-stamp of existing indicators.
 
 ## Slices
 
-1. **Copy the report.** Leave `informatica-2016` untouched (the 2016 standards, all positions, all users). Create
-   `informatica-2026` as a **copy** that **keeps assistant + lecturer** thresholds too (2026 dropped them nationally,
-   but UVT keeps them as internal standards) and updates **conf / prof** + adds **HABIL** (`HABIL` enum added; extract
-   the numbers from `standarde-abilitare-2025.html` — its section is structured differently, needs a dedicated parse).
-   Open: the 2026 national standard has no grand **Total** (eligibility is per-perspective) — decide whether the 2026
-   copy keeps a Total row for the internal asist/lect continuation.
+1. **Copy the report. [DONE 2026-07-03]** `informatica-2016` left untouched. Cloned → `informatica-2026`
+   (`_id 6a47f446…`, title "FV Info 2026"): kept asist/lect/conf/prof from 2016, added **HABIL** thresholds
+   (Perspectiva B=44, C=84, Publicații de top=28, Citări de top=26, Perspectiva D=48; Total has none — no 2026 HABIL
+   grand-total), repointed the two citation criteria to the 2026 ANY_COAUTHOR indicators (idx1→`Info_C_2026`,
+   idx3→`Info_C (A*,A,B) 2026`) and carried their export roles/blocks. Made visible via a
+   `division_report_selections` row for the same division. **Live-verified** (florin.spataru): the report lists as
+   "FV Info 2026", renders all criteria with the HABIL column on 5 criteria, and Perspectiva C scores via
+   `Info_C_2026` (11 citing pubs, ANY_COAUTHOR) vs 2016's 16. Mongo + seed mirrored (`individualReports.json`,
+   `scholardex.division_report_selections.json`). **Kept the Total row** (inherited) for the internal asist/lect
+   continuation. Remaining for full parity: slice 3 adds the prof/HABIL `A*+A` criterion.
 2. **New versioned indicators (no re-point).** `informatica-2016` keeps pointing at `Info_C` (`CANDIDATE_ONLY`) and its
    existing A*+A+B "top" filter indicators. Create **`Info_C_2026`** (`ANY_COAUTHOR` — H61 mechanism done; the 2026
    text confirms per-cited-paper) and a 2026 copy of the A*+A+B "top" filter indicator; `informatica-2026` points at
