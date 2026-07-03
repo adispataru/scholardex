@@ -94,14 +94,31 @@ re-point, no re-stamp of existing indicators.
    the 16→12 delta isn't exercised live, but the formula is correct by construction. `Info_D_i` (2016) untouched.
    **Book-citation check resolved (no-op):** the 2016 standard (Standarde-minimale-Info.pdf, perspective c) already
    scores cites-in-books `12/8/4/2/1` — identical to 2026 — so `Info_C_2026` needs no book-citation change.
-5. **DOAJ APC capture + fee-journal exclusion, with per-year edition resolution.** Extend `DoajJournalFact` (+ import +
-   projection) to carry the APC flag from the dump's `APC` / `Has other fees` columns, stamped with the **edition
-   year** (`as_of`). The exclusion must resolve **per publication year**: for a pub in year Y, use the DOAJ edition for
-   Y, else the **closest previous edition** (mirrors the H60 ranking-year / forum-list "closest earlier year"
-   resolution). This needs **multiple DOAJ editions over time** — we currently have one snapshot (`…20260517…`), so
-   backfilling history requires older DOAJ dumps; v1 can use the single snapshot as the floor while the multi-edition
-   resolution is wired. Then the CS journal scorer/threshold path excludes fee-charging journals from the
-   perspective-b/c threshold points. (Predatory/Beall's is already gated.)
+5. **DOAJ APC capture + fee-journal exclusion.** Rule (settled 2026-07-03): a journal **in DOAJ AND `APC=Yes`** →
+   excluded from the 2026 perspective-b/c threshold points. DOAJ lists only fully-OA journals, so this is a near-exact
+   proxy for "condiționează publicarea de plata unei taxe" — **hybrids/subscription (ACM, IEEE Transactions) aren't in
+   DOAJ so they're never excluded; gold-OA (MDPI, IEEE Access/Open Journals) are excluded** (verified against the dump:
+   ACM absent; IEEE only its Open-Journal/Access titles, all APC=Yes). **APC-only** (not "other fees"). **New in 2026**
+   (absent from the 2016 PDF) → 2026 indicators only. Applies to **any ranked-journal score**, so it also drops
+   **citations whose citing journal is APC** (perspective c says citing-forum scores inherit "reducerile sau
+   excluderile" from b) — books/theses citations keep their fixed values.
+   - **[5a DONE 2026-07-03]** — `DoajJournalFact.apc` (Boolean) + `DoajDataService` parses the `APC` column
+     (Yes/No/blank → true/false/null). Re-imported the May-2026 dump: **8430 apc=true, 14485 apc=false, 0 null**. Test
+     added. (doaj.journal_facts is reference data, re-importable — not seed-mirrored.)
+   - **[5b remaining]** — bring APC into scoring. At the bind point (`ScientificProductionService.getScore`) only the
+     **forumId** is available (not ISSN), so `feeJournal` needs a **forumId→APC** lookup. Two options: (A) add an `apc`
+     column to `scholardex_forum_membership_view` (migration + the DOAJ projection emits it + a `ReportingLookupPort`
+     `isFeeJournal(forumId)` on BOTH the Postgres facade and the `@Primary` delegator) — the "proper" projected path
+     but needs a projection re-run; (B) a cached **forumId→APC catalog** built once by matching forum ISSN tokens to
+     APC=true DOAJ facts (reuses `buildDoajMembershipRows`' ISSN matching) — leaner, no migration/rebuild. Then bind
+     `feeJournal` in the FormulaContext (additive — 2016 formulas never reference it).
+   - **[5c remaining]** — gate the 2026 perspective-b/c **forum** indicators with `!feeJournal ? … : 0`. Indices 1, 3,
+     22 are already 2026-specific (edit formulas); indices 2 (`Info_B (A*,A,B)`) and 19, 20 (Perspectiva B main) are
+     still shared with 2016 → need 2026 copies with the gated formula, then swap in `informatica-2026`.
+   - **Per-year:** v1 uses the single May-2026 snapshot as the floor (retroactive exclusion accepted). Per-pub-year
+     resolution via closest-earlier DOAJ edition (mirrors H60) is a later add needing historical dumps.
+   - **Verification note:** florin's pubs are all category-B; demonstrating an actual exclusion needs a researcher (or
+     a crafted pub) in a DOAJ-APC journal.
 
 ## Open questions / notes
 
