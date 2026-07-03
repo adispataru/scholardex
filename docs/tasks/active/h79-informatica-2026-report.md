@@ -24,9 +24,10 @@ Standard is 4 perspectives a)–d), each **îndeplinit/neîndeplinit**, all elim
 - **Da/Nu gates — NOT a new feature.** Perspectives b/c/d are score-criteria → the existing criteria model already
   renders per-criterion "îndeplinit (DA/NU)" (seen in the xlsx export); eligibility = all criteria met. Perspective
   a) (ethics/plagiarism) is a manual human judgment, out of the engine. So H68 Da/Nu gates are **not required** here.
-- **Info_C citation exclusion — RE-POINT.** `Info_C.kind.policy = CANDIDATE_ONLY` today; 2026 c) requires *citing pubs
-  share no author/co-author with the cited paper* = **`ANY_COAUTHOR`** (H61 — mechanism already shipped). The standard
-  also **answers H61's open question**: per-cited-paper. Cheap re-point + re-stamp.
+- **Info_C citation exclusion — NEW versioned indicator.** `Info_C.kind.policy = CANDIDATE_ONLY` today; 2026 c)
+  requires *citing pubs share no author/co-author with the cited paper* = **`ANY_COAUTHOR`** (H61 — mechanism already
+  shipped; the 2026 text **answers H61's open question** = per-cited-paper). Per the versioning principle: leave
+  `Info_C` as-is, add **`Info_C_2026`** (`ANY_COAUTHOR`) for the 2026 report.
 - **SENSE book points — 16→12 for the top tier.** `ComputerScienceBookService:125-133` scores **A=16**/B=8/C=4/D,E=2
   (chapter one rank lower); 2026 wants **A=12**/8/4/2/1. Fix: have the SENSE scorer **return the category** and let the
   indicator formula map category→points (so 2016 keeps 16, 2026 uses 12), or a `SENSE2026` variant.
@@ -37,25 +38,42 @@ Standard is 4 perspectives a)–d), each **îndeplinit/neîndeplinit**, all elim
   capture the APC fields yet**. So: extend the DOAJ fact + import + projection to carry the APC flag, then gate the
   Informatica forum threshold-points on non-fee journals. (Predatory/Beall's is already gated.)
 
+## Guiding principle (locked 2026-07-03): version, never mutate
+
+The `informatica-2016` report **and its indicators stay exactly as they are, for everyone** — a stored 2016 run must
+replay identically. Everything new for 2026 is a **parallel copy**: a new report + new (versioned) indicators. No
+re-point, no re-stamp of existing indicators.
+
 ## Slices
 
-1. **Report variants + positions.** Keep `informatica-2016` as an **internal** report (assistant/lecturer national
-   standards were dropped in 2026, but UVT wants them internally). Create a **`informatica-2026`** report (copy) with
-   **conf / prof / HABIL** thresholds only (`HABIL` enum value already added). Extract the HABIL threshold numbers from
-   `standarde-abilitare-2025.html` (its section is structured differently — needs a dedicated parse). Drop the "Total"
-   criterion for the 2026 variant (eligibility is per-perspective, no grand total).
-2. **`Info_C` → `ANY_COAUTHOR`** (config + hash re-stamp via the `indicator-migration` profile).
-3. **New `A*+A` prof production indicator** — a category-restricted counter over {A*, A} pubs + the `≥24` prof
-   threshold criterion.
-4. **SENSE 16→12** — refactor `ComputerScienceBookService` to expose the category; 2026 book/chapter indicator formulas
-   map category→points (12/8/4/2/1); 2016 keeps 16/8/4/2/1.
-5. **APC/fee exclusion** — extend `DoajJournalFact` (+ import + projection + the CS journal scorer/threshold path) to
-   capture and honor the DOAJ APC flag; exclude fee-charging journals from the perspective-b/c threshold points.
+1. **Copy the report.** Leave `informatica-2016` untouched (the 2016 standards, all positions, all users). Create
+   `informatica-2026` as a **copy** that **keeps assistant + lecturer** thresholds too (2026 dropped them nationally,
+   but UVT keeps them as internal standards) and updates **conf / prof** + adds **HABIL** (`HABIL` enum added; extract
+   the numbers from `standarde-abilitare-2025.html` — its section is structured differently, needs a dedicated parse).
+   Open: the 2026 national standard has no grand **Total** (eligibility is per-perspective) — decide whether the 2026
+   copy keeps a Total row for the internal asist/lect continuation.
+2. **New versioned indicators (no re-point).** `informatica-2016` keeps pointing at `Info_C` (`CANDIDATE_ONLY`) and its
+   existing A*+A+B "top" filter indicators. Create **`Info_C_2026`** (`ANY_COAUTHOR` — H61 mechanism done; the 2026
+   text confirms per-cited-paper) and a 2026 copy of the A*+A+B "top" filter indicator; `informatica-2026` points at
+   the new ones. `Info_C` itself is never modified.
+3. **New `A*+A` prof production indicator** — a category-restricted counter over {A*, A} pubs + the prof `≥24`
+   threshold criterion (2026-only).
+4. **SENSE 16→12 — keep both indicators.** Refactor `ComputerScienceBookService` to **return the category** (not
+   hard-coded points). Keep the 2016 book/chapter indicator (formula → 16/8/4/2/1) AND add a 2026 book/chapter
+   indicator (formula → 12/8/4/2/1); the two reports point at their respective indicators.
+5. **DOAJ APC capture + fee-journal exclusion, with per-year edition resolution.** Extend `DoajJournalFact` (+ import +
+   projection) to carry the APC flag from the dump's `APC` / `Has other fees` columns, stamped with the **edition
+   year** (`as_of`). The exclusion must resolve **per publication year**: for a pub in year Y, use the DOAJ edition for
+   Y, else the **closest previous edition** (mirrors the H60 ranking-year / forum-list "closest earlier year"
+   resolution). This needs **multiple DOAJ editions over time** — we currently have one snapshot (`…20260517…`), so
+   backfilling history requires older DOAJ dumps; v1 can use the single snapshot as the floor while the multi-edition
+   resolution is wired. Then the CS journal scorer/threshold path excludes fee-charging journals from the
+   perspective-b/c threshold points. (Predatory/Beall's is already gated.)
 
 ## Open questions / notes
 
-- **APC per-year.** The standard implies per-publication-year APC status; we have a single current DOAJ snapshot
-  (2026-05). v1 = current-snapshot APC flag; historical per-year APC would need historical DOAJ dumps (defer).
+- **DOAJ editions.** Only the 2026-05 snapshot is on disk; per-year APC resolution wants a series of editions. Source
+  older DOAJ dumps (they're published) to backfill; until then the single edition is the floor.
 - **b↔c 20% compensation** (up to 20% of perspective-b thresholds transferable from c) — niche; defer (H68 #6).
 - Prof d) "≥1 R&D project" minimum — a small extra gate; the H64 project layer + `proj_*` injection already supplies
   project data.
