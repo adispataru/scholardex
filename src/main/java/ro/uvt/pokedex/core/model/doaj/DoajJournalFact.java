@@ -29,6 +29,13 @@ public class DoajJournalFact {
     /** Normalized online ISSN (compact 8-char, no hyphen), or null. */
     private String eIssn;
     private String title;
+    /**
+     * H79 — whether this open-access journal charges an Article Processing Charge (DOAJ "APC" column: Yes/No).
+     * DOAJ lists only fully-OA journals, so {@code apc=true} means publication is conditioned on paying a fee
+     * (gold OA, e.g. MDPI / IEEE Access) — the exclusion the 2026 Informatică standard applies to threshold points.
+     * Null when the column is absent/blank. Hybrids/subscription journals are not in DOAJ, so they never carry this.
+     */
+    private Boolean apc;
     /** Snapshot stamp for the import (e.g. the DOAJ dump year); surfaces as membership_view.as_of. */
     private String asOf;
     private String source;

@@ -42,6 +42,7 @@ public class DoajDataService {
     private static final String COL_TITLE = "Journal title";
     private static final String COL_PRINT_ISSN = "Journal ISSN (print version)";
     private static final String COL_EISSN = "Journal EISSN (online version)";
+    private static final String COL_APC = "APC"; // H79 — Yes/No: does the OA journal charge an APC?
 
     private final DoajJournalFactRepository doajJournalFactRepository;
 
@@ -69,6 +70,7 @@ public class DoajDataService {
             Integer titleCol = headerIndex.get(COL_TITLE);
             Integer printIssnCol = headerIndex.get(COL_PRINT_ISSN);
             Integer eIssnCol = headerIndex.get(COL_EISSN);
+            Integer apcCol = headerIndex.get(COL_APC);
             if (printIssnCol == null && eIssnCol == null) {
                 throw new IllegalArgumentException(
                         "DOAJ CSV missing both ISSN columns ('" + COL_PRINT_ISSN + "' / '" + COL_EISSN + "')");
@@ -100,6 +102,9 @@ public class DoajDataService {
                 if (fact.getTitle() == null) {
                     fact.setTitle(safeColumn(row, titleCol));
                 }
+                if (fact.getApc() == null) {
+                    fact.setApc(parseApc(safeColumn(row, apcCol)));
+                }
                 fact.setAsOf(asOf);
                 fact.setSource(SOURCE_DOAJ);
                 fact.setSourceBatchId(batchId);
@@ -128,6 +133,21 @@ public class DoajDataService {
             result.markError("doaj-import-failed: " + ex.getMessage());
         }
         return result;
+    }
+
+    /** DOAJ "APC" column → tri-state: "Yes"→true, "No"→false, blank/absent→null. */
+    private static Boolean parseApc(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String v = raw.trim().toLowerCase(Locale.ROOT);
+        if (v.equals("yes") || v.equals("true")) {
+            return Boolean.TRUE;
+        }
+        if (v.equals("no") || v.equals("false")) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     private static String safeColumn(String[] row, Integer index) {

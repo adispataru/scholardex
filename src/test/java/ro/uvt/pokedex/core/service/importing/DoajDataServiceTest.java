@@ -37,6 +37,30 @@ class DoajDataServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void capturesApcColumnAsTriState(@TempDir Path dir) throws IOException {
+        // H79 — the APC column (Yes/No) becomes DoajJournalFact.apc; a blank/absent value → null.
+        String csv = """
+                Journal title,Journal ISSN (print version),Journal EISSN (online version),APC
+                Gold Journal,1111-1111,,Yes
+                Diamond Journal,2222-2222,,No
+                Unknown Journal,3333-3333,,
+                """;
+        Path path = writeCsv(dir, csv);
+        when(doajJournalFactRepository.findByIdIn(anyCollection())).thenReturn(List.of());
+        DoajDataService service = new DoajDataService(doajJournalFactRepository);
+        service.importDoajCsvFromPath(path.toString(), "b1", "2026");
+
+        ArgumentCaptor<List<DoajJournalFact>> captor = ArgumentCaptor.forClass(List.class);
+        verify(doajJournalFactRepository).saveAll(captor.capture());
+        Map<String, DoajJournalFact> byId = captor.getValue().stream()
+                .collect(Collectors.toMap(DoajJournalFact::getId, f -> f));
+        assertEquals(Boolean.TRUE, byId.get("doaj_11111111").getApc());
+        assertEquals(Boolean.FALSE, byId.get("doaj_22222222").getApc());
+        assertNull(byId.get("doaj_33333333").getApc());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void importsNormalizedIssnsAndSkipsRowsWithoutAnyIssn(@TempDir Path dir) throws IOException {
         String csv = """
                 Journal title,Journal ISSN (print version),Journal EISSN (online version)
