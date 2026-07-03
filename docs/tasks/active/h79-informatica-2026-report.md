@@ -63,11 +63,16 @@ re-point, no re-stamp of existing indicators.
    existing A*+A+B "top" filter indicators. Create **`Info_C_2026`** (`ANY_COAUTHOR` — H61 mechanism done; the 2026
    text confirms per-cited-paper) and a 2026 copy of the A*+A+B "top" filter indicator; `informatica-2026` points at
    the new ones. `Info_C` itself is never modified.
-   **[Info_C_2026 DONE 2026-07-03]** — created (`_id 6a47f17b…`, `kind {policy:ANY_COAUTHOR, strategy:CS}`, same formula
-   `S/max(N-2,1)` → same `formulaHash` as `Info_C`) in Mongo + mirrored to `seed/precious-config/indicators.json`.
-   **Live-verified** (florin.spataru, temporarily appended to the report then reverted): CANDIDATE_ONLY keeps 16 citing
-   pubs, `ANY_COAUTHOR` keeps **11** — correctly drops the extra shared-co-author citations. `informatica-2016`
-   restored to 22 indicators. Still to do in this slice: the 2026 A*+A+B "top" filter indicator copy.
+   **[SLICE 2 DONE 2026-07-03]** — both citation indicators that need `ANY_COAUTHOR` now have 2026 copies (Mongo +
+   seed mirror), formulas unchanged so `formulaHash` reused:
+   - **`Info_C_2026`** (`_id 6a47f17b…`) — perspective C main (report idx 1). `kind {policy:ANY_COAUTHOR, strategy:CS}`,
+     formula `S/max(N-2,1)`. **Live-verified** (florin.spataru, temp-appended then reverted): CANDIDATE_ONLY keeps 16
+     citing pubs, ANY_COAUTHOR keeps **11** — correctly drops shared-co-author citations. `informatica-2016` restored.
+   - **`Info_C (A*, A, B) 2026`** (`_id 6a47f2d2…`) — Citări de top (report idx 3). Same `ANY_COAUTHOR` change; the
+     A*+A+B filter is the `(S >= 4)` gate (A*=12/A=8/B=4), formula unchanged.
+   The Publications A*+A+B filter (`Info_B (A*,A,B)`, idx 2) needs **no** 2026 copy here — its only 2026 change is the
+   APC exclusion, which is scorer-level (slice 5). End-to-end scoring of the top-citations copy verifies with the
+   report in slice 1.
 3. **New `A*+A` prof production indicator** — a category-restricted counter over {A*, A} pubs + the prof `≥24`
    threshold criterion (2026-only).
 4. **SENSE 16→12 — keep both indicators.** Refactor `ComputerScienceBookService` to **return the category** (not
