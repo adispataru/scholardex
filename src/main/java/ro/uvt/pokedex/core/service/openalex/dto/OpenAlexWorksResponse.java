@@ -46,6 +46,19 @@ public class OpenAlexWorksResponse {
         private CitationNormalizedPercentile citation_normalized_percentile;
         // Subject/domain signal (the "is it CS / which domain" routing).
         private PrimaryTopic primary_topic;
+        // H79: the venue's list APC (the price to publish, in USD via value_usd) — the fee-journal signal when
+        // combined with primary_location.source.is_oa. `apc_paid` is what was actually paid; `apc_list` is the
+        // journal's advertised price and is the stable per-venue signal (present even when apc_paid is null).
+        private Apc apc_list;
+        private Apc apc_paid;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Apc {
+        private Integer value;
+        private String currency;
+        private Integer value_usd;         // OpenAlex-normalized USD amount — the currency-agnostic fee signal
     }
 
     @Data
@@ -123,5 +136,11 @@ public class OpenAlexWorksResponse {
         // The authoritative "is this a conference / book series" signal — the work-level `type` is uniformly
         // "article" for both journals and conferences, so this is the only OpenAlex venue discriminator.
         private String type;
+        // H79: gold-OA signal. is_oa=true means the venue is fully open access (publication is conditioned on the
+        // APC) — MDPI-style. A hybrid journal that merely offers a paid OA option carries an apc_list but is_oa=false,
+        // and must NOT count as a fee journal. is_in_doaj is a secondary confirmation (MDPI Electronics is is_oa=true
+        // yet not in DOAJ, which is exactly why the DOAJ-only signal missed it).
+        private Boolean is_oa;
+        private Boolean is_in_doaj;
     }
 }

@@ -2,6 +2,32 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H79 Informatica 2026 report (CNATDCU standards update) (archived 2026-07-04)
+
+Archived from `TASKS.md` — scoped code complete + verified (unit + live). Closed task doc:
+`docs/tasks/closed/h79-informatica-2026-report.md` (full slice-by-slice record).
+
+- [x] `H79` Informatica 2026 report. *(scoped 2026-07-03; code complete + verified 2026-07-04)*
+  Principle held throughout: **version, never mutate** — `FV Info 2016` and its indicators are byte-stable; every 2026
+  change is a parallel copy.
+  Outcome (verified end-to-end against local Mongo/PG via the delegated report path):
+  - **Slices 1–4** (prior session): report clone (asist/lect internal + conf/prof/HABIL); `Info_C_2026`
+    (`ANY_COAUTHOR` citations); A\*+A prof/HABIL indicator + threshold; SENSE book top 16→12 (`Info_D_i_2026`).
+  - **Slice 5 — fee-journal (APC) exclusion.** DOAJ APC capture (`DoajJournalFact.apc`, `V21` membership `apc` column,
+    `feeJournal` formula var, `isFeeJournal`), 2026 journal indicators gated `!feeJournal`. **5d — OpenAlex Source APC
+    ingest** (`OpenAlexSourceApcImportService`, offline from the works dumps) closes the DOAJ coverage gap: derives
+    per-venue `is_oa && apc_usd>0` → `database='OPENALEX'` membership; `isFeeJournal` broadened to any `apc IS TRUE`.
+    Catches gold-OA venues DOAJ misses (MDPI *Electronics* etc.; 177 forums OpenAlex-only). Live: florin's Electronics
+    paper 2016 authorScore 2.0 → 2026 0.0.
+  - **Slice 6 — 2026 conference-workshop category (`id_parA82`).** `Indicator.workshopCategory2026` + scorer threading:
+    workshops relabel A\*/A/B→C, C→D (points 6/4/2/1 unchanged). `Info_B_Conferințe 2026` copy swapped in. **6d —
+    category-based top eligibility**: `topAB` signal (`isTopAStarAB`) gates the 2026 `A*+A+B` indicators on category
+    instead of `S>=4`, so a category-C workshop (6/4 pts) drops out of the top while journals/SENSE-C books are
+    unaffected. Live: dana.petcu's Cluster Workshops paper B(2016)→C(2026), excluded from top, kept in all-conference.
+  - **Deferred (not built):** production deploy sequence (DOAJ re-import → OpenAlex APC import → projection; FV Info 2026
+    division visibility + director-signature projection); posters/system-demos (same `id_parA82` reduction);
+    per-pub-year APC edition resolution; b↔c 20% compensation. Pre-existing `FEEA_P` seed duplicate flagged separately.
+
 ## H60 Relative year specs (recent-window + latest-rankings) (archived 2026-06-30)
 
 Archived from `TASKS.md` — mechanism built end-to-end (2026-06-25), Matematică re-pointed live, all re-score paths

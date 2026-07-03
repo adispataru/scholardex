@@ -58,6 +58,20 @@ public class Indicator {
      */
     private Integer maxPoints;
 
+    /**
+     * H79 — opt into the 2026 Informatică conference-workshop category mapping. The 2016 standard
+     * downgrades a workshop one category (A*&rarr;A, A&rarr;B, B&rarr;C, C&rarr;D); the 2026 standard (id_parA82)
+     * instead flattens A*, A, B all to C and C to D. The point ladder (6/4/2/1) is identical, so only the reported
+     * category changes. {@code null}/false keeps the frozen 2016 behaviour; the 2026 indicators set it
+     * true. Nullable-only: legacy documents deserialize as {@code null} (2016), never mutated.
+     */
+    private Boolean workshopCategory2026;
+
+    /** True when this indicator scores conference workshops with the 2026 flat-C category mapping. */
+    public boolean usesWorkshop2026Categories() {
+        return Boolean.TRUE.equals(workshopCategory2026);
+    }
+
     /** Clamp a computed indicator total to {@link #maxPoints} when a cap is configured. */
     public double applyPointsCap(double total) {
         return maxPoints == null ? total : Math.min(total, maxPoints.doubleValue());

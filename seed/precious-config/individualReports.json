@@ -813,7 +813,6 @@
   "indicatorRolesByIndicatorId": {
    "6820ffde04e38843635e0cb5": "activities-perspectiva-d",
    "6820fe4104e38843635e0cb2": "activities-perspectiva-d",
-   "6a049c242e64c65c14f9e01a": "conference-publications",
    "6820d3a18a61794835d91b24": "activities-perspectiva-d",
    "68191a2f526ce829aca68b34": "activities-perspectiva-d",
    "6820cafbfe404029dad193d1": "activities-perspectiva-d",
@@ -833,12 +832,12 @@
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
    "6a47f72a8982d45e2bf2f735": "activities-perspectiva-d",
    "6a480678cefa56310d7f8023": "__not_exported__",
-   "6a480678cefa56310d7f8024": "journal-publications"
+   "6a480678cefa56310d7f8024": "journal-publications",
+   "6a481bc682ebdb034bfc8e10": "conference-publications"
   },
   "blockByIndicatorId": {
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
    "6820fe4104e38843635e0cb2": "Carti/Capitole",
-   "6a049c242e64c65c14f9e01a": "__not_exported__",
    "6820d3a18a61794835d91b24": "Editor proceedings",
    "68191a2f526ce829aca68b34": "Keynote/invited speaker",
    "6820cafbfe404029dad193d1": "Curs in format electronic",
@@ -858,7 +857,8 @@
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
    "6a47f72a8982d45e2bf2f735": "Carti/Capitole",
    "6a480678cefa56310d7f8023": "__not_exported__",
-   "6a480678cefa56310d7f8024": "__not_exported__"
+   "6a480678cefa56310d7f8024": "__not_exported__",
+   "6a481bc682ebdb034bfc8e10": "__not_exported__"
   },
   "title": "FV Info 2026",
   "description": "FV Info",
@@ -980,7 +980,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a049c242e64c65c14f9e01a"
+     "$oid": "6a481bc682ebdb034bfc8e10"
     }
    },
    {

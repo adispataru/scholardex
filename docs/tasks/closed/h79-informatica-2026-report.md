@@ -118,9 +118,80 @@ re-point, no re-stamp of existing indicators.
      **Live-verified** (florin.spataru): his **JMIR Formative Research** paper (gold-OA APC) is now **zeroed** in the
      2026 `Info_B_Jurnale` (total 12.988→12.655, 8→7 nonzero items; the zeroed item keeps its forumScore 2.0 but
      authorScore 0), while `informatica-2016` scores it normally (12.988, unchanged). Full suite green.
+   - **[5d DONE 2026-07-03] — OpenAlex source APC ingest (offline; closes the DOAJ coverage gap).** DOAJ misses
+     gold-OA venues that aren't in the directory — florin's own **MDPI Electronics** paper (*A Solar Radiation
+     Forecast Platform…*) is the exemplar: `is_oa=true`, **`is_in_doaj=false`**, `apc_usd=2165`, so the DOAJ-only
+     signal never excluded it. Fix, entirely offline from the works dumps we already downloaded
+     (`data/openalex/uvt_works.jsonl` + `uvt_citing_works.jsonl` — no API): each work embeds
+     `primary_location.source` (id/issn/`is_oa`/`is_in_doaj`) plus a work-level `apc_list` (advertised APC,
+     USD-normalized via `value_usd`). Aggregating by source id → one `OpenAlexSourceFact` per venue
+     (`isOa`=OR across works, `apcUsd`=max). **Fee predicate = `isOa && apcUsd>0`** — this cleanly separates gold-OA
+     (MDPI, excluded) from **hybrid** journals (paid OA option but `is_oa=false`, NOT excluded; e.g. ISPRS J.
+     Photogrammetry, apc but is_oa=false). Files: `OpenAlexSourceFact` + repo; `OpenAlexSourceApcImportService`
+     (streams the dumps); DTO gained `apc_list`/`apc_paid` on the work + `is_oa`/`is_in_doaj` on the source; admin
+     endpoint `/openalex/importSourceApc`; projection `buildOpenAlexApcMembershipRows` (ISSN-match → `database='OPENALEX'`,
+     `apc=true`, fee journals only); `isFeeJournal` **broadened** from `database='DOAJ'` to any `apc IS TRUE` (unions
+     DOAJ ∪ OpenAlex). No engine/scorer change; the 2026 indicators' `!feeJournal` gate is unchanged. **Real-data
+     validated** over the own-works dump: 2,514 sources → **363 fee journals, 27 of them not in DOAJ** (all the MDPI
+     titles: Electronics, Sustainability, IJMS, Polymers, JCM, Healthcare…). Unit tests: aggregation (gold vs hybrid
+     vs diamond, max-apc/OR-is_oa across works) + projection membership (ISSN match, hybrid excluded).
    - **Per-year:** v1 uses the single May-2026 snapshot as the floor (retroactive exclusion accepted). Per-pub-year
      resolution via closest-earlier DOAJ edition (mirrors H60) is a later add needing historical dumps.
-   - **Deploy note:** production needs the DOAJ re-import (APC parse) + a projection run to populate `membership.apc`.
+   - **[5d LIVE-VERIFIED 2026-07-03]** — ran the full path locally (agent-dev, 8181): `POST /openalex/importSourceApc`
+     streamed both dumps in ~23 s → **117,422 works → 18,575 sources, 2,140 fee journals**; `POST /scopus/buildProjections`
+     (~240 s) published **2,140 `OPENALEX` apc=true membership rows**. Postgres proof for the **MDPI Electronics** forum
+     (`sforum_76ef61e3a21a411fd466806e`, issn 2079-9292): `DOAJ|apc=f` but `OPENALEX|apc=t` → the broadened
+     `isFeeJournal` returns **true** (was **false** under the DOAJ-only query). **177 forums total are newly flagged by
+     OpenAlex** that DOAJ missed. Report-level end-to-end (delegated refresh of florin.spataru's FV Info 2016 vs 2026):
+     his Electronics paper *A Solar Radiation Forecast Platform…* scores **authorScore 2.0 in 2016** (ungated, frozen)
+     and **authorScore 0.0 in 2026** (`Info_B_Jurnale 2026`, gated) — forumScore stays 2.0 in both (rank preserved,
+     only the threshold contribution zeroed). "Version, never mutate" confirmed: 2016 total 12.988 unchanged, 2026 total
+     10.655.
+   - **Deploy note:** production needs (a) the DOAJ re-import (APC parse), (b) the OpenAlex source APC import
+     (`POST /openalex/importSourceApc` — streams both works dumps offline), then (c) a projection run to populate
+     `membership.apc` from both signals.
+
+6. **Conference-workshop category — 2026 relabel (id_parA82).** The 2026 standard changes how a CORE-unclassified
+   workshop attached to a ranked conference is categorized: 2016 = one category lower (A*→A, A→B, B→C, C→D); **2026 =
+   A*/A/B all → C, C → D**. The **point ladder is identical** (6/4/2/1), so no total moves — only the reported category
+   on the Fișă. Posters/system demos and category-based eligibility were considered and **deferred** (user scope:
+   relabel only). Perspective-d conference indicators are **out of scope** (A82 is a perspective-b rule).
+   - **[6a DONE 2026-07-03] mechanism.** `Indicator.workshopCategory2026` (nullable Boolean; legacy docs → null = frozen
+     2016 behaviour). `ComputerScienceConferenceScoringService` threads the flag from `getScore(pub|activity, indicator)`
+     through `resolveConferenceScore`/`scoreResolvedConference`; new `workshop2026DowngradedRank` (A*/A/B→C, C→D) is used
+     only when the flag is set. Points unchanged. External/classification callers (`VenueClassifier`) default to 2016.
+     Unit tests: A*-workshop 2016→**A**/6pts vs 2026→**C**/6pts; A-workshop 2026→**C**/4pts.
+   - **[6b DONE 2026-07-03] rollout (version, never mutate).** Flag set on the 4 already-2026-only CS indicators
+     (`Info_C_2026`, `Info_C (A*, A, B) 2026`, `Info_B (A*, A)`, `Info_B (A*, A, B) 2026`). The perspective-b conference
+     indicator `Info_B_Conferințe` is **shared** with FV Info 2016 — so a 2026 copy **`Info_B_Conferințe 2026`** (id
+     `6a481bc6…`, flag=true) was created and swapped into FV Info 2026 idx 19 (carrying role/block maps), mirroring the
+     slice-5c journal pattern. 2016 report still references the original. Mongo + seed (`indicators.json` +1 indicator
+     & 5 flags, `individualReports.json` swap) mirrored via a byte-fidelity targeted edit.
+   - **[6d DONE + LIVE-VERIFIED 2026-07-04] — category-based eligibility for the 2026 "top A*/A/B" indicators.**
+     Consequence of 6a/6b that surfaced in review: the top indicators gate on `S >= 4` (points), a proxy for
+     "category ∈ {A*,A,B}" that is exact for every item EXCEPT a workshop, whose 2026 category (C) diverges from its
+     inflated 6/4 points. So `Info_B (A*, A, B) 2026` and `Info_C (A*, A, B) 2026` were wrongly counting A\*/A workshops
+     (6/4 pts ≥ 4) that are now category C. Fix: bind a `topAB` boolean in `ScientificProductionService`
+     (`isTopAStarAB`: for a **workshop-adjusted** item, category ∈ {A\*,A,B} is authoritative; for everything else the
+     legacy `S>=4` is kept verbatim — so journals and **SENSE-scale books** whose category label C carries 4 pts are
+     unaffected, and no unintended 2016↔2026 divergence is introduced). Declared `topAB` in `FormulaVariableContract`;
+     re-pointed the two formulas to `(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0` (re-stamped, hash `6b2c5ba1…`).
+     **Scope decisions:** 2016 is already correct (there category ≡ S>=4 for every workshop case — FV Info 2016 has no
+     A\*+A indicator, only A\*+A+B), and 2026 `Info_B (A*, A)` (S>=8) is already correct (workshop pts ≤6 < 8), so both are
+     left untouched. Unit test (workshop cat C excluded; normal B + SENSE-C book preserved; total). **Live-verified**
+     (dana.petcu Cluster Workshops, cat C / 4 pts, via temp decision then reverted): authorScore **0.0** in
+     `Info_B (A*, A, B) 2026` (top — now excluded) vs **4.0** in `Info_B_Conferințe 2026` (all-conference — still counts).
+   - **[6c LIVE-VERIFIED 2026-07-03]** app boots with the new indicator/field; the versioned indicator computes with no
+     regression. **Definitive 2016-vs-2026 proof** on a real workshop paper: dana.petcu's *"IEEE International Conference
+     on Cluster Computing **Workshops** and Posters"* (parent IEEE Cluster = CORE **A**) — same paper, points unchanged
+     at **4.0**, category **B in FV Info 2016** (`Info_B_Conferințe`, workshop one-lower) vs **C in FV Info 2026**
+     (`Info_B_Conferințe 2026`, flat-C), both `src=SCOPUS+CORE(WS)`. Verified via a temporary CONFIRMED authorship-decision
+     (dana.petcu isn't self-onboarded), then reverted (decision + generated runs/results deleted; decisions back to
+     florin-only). **Correction to an earlier note:** the local dataset is *not* a Mathematics cohort — 40 of 55 users are
+     Informatică (SCIA 20 + TDIS 20), 15 Math; 7 Informatică users have workshop papers. The reason most reports are
+     empty is that **only florin has confirmed authorship decisions** (scoring reads confirmed pubs), not the department.
+     Note: `IPDPSW`-style forums whose parent acronym the CORE matcher doesn't resolve fall to the SCOPUS-D path and are
+     never workshop-adjusted under either standard (a matcher-coverage limitation, unrelated to the 2026 relabel).
 
 ## Open questions / notes
 

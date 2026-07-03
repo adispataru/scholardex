@@ -1249,6 +1249,35 @@
  },
  {
   "_id": {
+   "$oid": "6a481bc682ebdb034bfc8e10"
+  },
+  "name": "Info_B_Conferințe 2026",
+  "formula": "S > 1 ? S/max(N-2, 1) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS_CONFERENCE",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "workshopCategory2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
    "$oid": "6a049c682e64c65c14f9e01b"
   },
   "name": "Info_B_Jurnale",
@@ -1362,6 +1391,7 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
+  "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
@@ -1369,7 +1399,7 @@
    "$oid": "6a47f2d27be56ad867b997c2"
   },
   "name": "Info_C (A*, A, B) 2026",
-  "formula": "(S >= 4 && !feeJournal) ? (S/max(N-2, 1)) : 0",
+  "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -1382,7 +1412,7 @@
    "strategy": "CS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
-  "formulaHash": "ad281a9de2347a298850e80286845affc52ebd29022b1a713f100a57ddee1d56",
+  "formulaHash": "6b2c5ba1af072fbecf11488bbdc1e87a626e604ca7d6836f532e1b5abdff48ce",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -1392,6 +1422,7 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
+  "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
@@ -1422,6 +1453,7 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
+  "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
@@ -1429,7 +1461,7 @@
    "$oid": "6a480678cefa56310d7f8023"
   },
   "name": "Info_B (A*, A, B) 2026",
-  "formula": "(S >= 4 && !feeJournal) ? (S/max(N-2, 1)) : 0",
+  "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -1442,7 +1474,7 @@
    "strategy": "CS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "ad281a9de2347a298850e80286845affc52ebd29022b1a713f100a57ddee1d56",
+  "formulaHash": "6b2c5ba1af072fbecf11488bbdc1e87a626e604ca7d6836f532e1b5abdff48ce",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -1452,6 +1484,7 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
+  "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {

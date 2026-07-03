@@ -18,6 +18,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.doaj.DoajJournalFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact;
 import ro.uvt.pokedex.core.model.erih.ErihJournalFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
@@ -268,6 +269,7 @@ public class ScholardexProjectionBuilderService {
             List<ForumMembershipRow> forumMembershipRows = new ArrayList<>(
                     buildForumMembershipRows(journalIdToForumId, buildVersion, buildAt));
             forumMembershipRows.addAll(buildDoajMembershipRows(canonicalForumsForProjection));
+            forumMembershipRows.addAll(buildOpenAlexApcMembershipRows(canonicalForumsForProjection));
             forumMembershipRows.addAll(buildErihMembershipRows(canonicalForumsForProjection));
             forumMembershipRows.addAll(buildScopusMembershipRows(canonicalForumsForProjection));
 
@@ -1366,6 +1368,52 @@ public class ScholardexProjectionBuilderService {
             }
             String key = forumId + "|DOAJ|DOAJ";
             rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, "DOAJ", doaj.getAsOf(), "DOAJ", doaj.getApc()));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
+    /**
+     * H79: OpenAlex gold-OA (APC) membership. OpenAlex source facts — derived offline from the works dumps —
+     * carry {@code is_oa} + advertised {@code apcUsd} per venue. Match the <em>fee journals</em>
+     * ({@code isOa && apcUsd > 0}) to forums by normalized ISSN token and emit one row
+     * ({@code database='OPENALEX'}, {@code source='OPENALEX'}, {@code apc=true}). This catches gold-OA venues
+     * that DOAJ misses (e.g. MDPI <i>Electronics</i>: is_oa yet absent from DOAJ). Match-only — never creates
+     * forums, and hybrid journals (paid OA option but {@code is_oa=false}) are deliberately excluded.
+     */
+    List<ForumMembershipRow> buildOpenAlexApcMembershipRows(List<ScholardexForumFact> forums) {
+        Map<String, String> forumIdByIssnToken = new HashMap<>();
+        for (ScholardexForumFact forum : forums) {
+            if (forum.getId() == null) {
+                continue;
+            }
+            for (String token : forumIssnTokens(forum)) {
+                forumIdByIssnToken.merge(token, forum.getId(),
+                        (a, b) -> a.compareTo(b) <= 0 ? a : b);
+            }
+        }
+
+        List<OpenAlexSourceFact> sourceFacts =
+                new ArrayList<>(mongoTemplate.findAll(OpenAlexSourceFact.class));
+        sourceFacts.sort(Comparator.comparing(OpenAlexSourceFact::getId, Comparator.nullsLast(String::compareTo)));
+        Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        for (OpenAlexSourceFact src : sourceFacts) {
+            if (!src.isFeeJournal() || src.getIssns() == null) {
+                continue;
+            }
+            String forumId = null;
+            for (String issn : src.getIssns()) {
+                String token = normalizeIssnToken(issn);
+                if (token != null && forumIdByIssnToken.containsKey(token)) {
+                    forumId = forumIdByIssnToken.get(token);
+                    break;
+                }
+            }
+            if (forumId == null) {
+                continue;
+            }
+            String asOf = src.getUpdatedAt() == null ? null : src.getUpdatedAt().toString();
+            String key = forumId + "|OPENALEX|OPENALEX";
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, "OPENALEX", asOf, "OPENALEX", Boolean.TRUE));
         }
         return new ArrayList<>(rows.values());
     }

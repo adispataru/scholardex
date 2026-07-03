@@ -1596,6 +1596,57 @@ class ScholardexProjectionBuilderServiceTest {
     }
 
     @Test
+    void buildOpenAlexApcMembershipRowsMatchesFeeJournalsByIssnAndExcludesHybrid() {
+        ScholardexProjectionBuilderService service = newService();
+
+        ScholardexForumFact goldForum = new ScholardexForumFact();  // MDPI Electronics analogue
+        goldForum.setId("sforum_gold");
+        goldForum.setEIssn("2079-9292");
+        ScholardexForumFact hybridForum = new ScholardexForumFact(); // paid OA option, not gold
+        hybridForum.setId("sforum_hybrid");
+        hybridForum.setIssn("0924-2716");
+        ScholardexForumFact noApcForum = new ScholardexForumFact();
+        noApcForum.setId("sforum_noapc");
+        noApcForum.setIssn("1111-2222");
+
+        ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact gold =
+                new ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact();
+        gold.setId("S4210202905");
+        gold.setIssns(List.of("2079-9292"));
+        gold.setIsOa(true);
+        gold.setIsInDoaj(false); // DOAJ misses it — exactly the gap OpenAlex fills
+        gold.setApcUsd(2165);
+        gold.setUpdatedAt(Instant.parse("2026-07-03T00:00:00Z"));
+
+        ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact hybrid =
+                new ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact();
+        hybrid.setId("S173339282");
+        hybrid.setIssns(List.of("0924-2716"));
+        hybrid.setIsOa(false); // hybrid — apc present but publication not conditioned on it
+        hybrid.setApcUsd(3310);
+
+        ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact noApc =
+                new ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact();
+        noApc.setId("S999");
+        noApc.setIssns(List.of("1111-2222"));
+        noApc.setIsOa(true);
+        noApc.setApcUsd(null); // gold-OA (e.g. diamond) with no fee
+
+        when(mongoTemplate.findAll(ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact.class))
+                .thenReturn(List.of(gold, hybrid, noApc));
+
+        List<ScholardexProjectionBuilderService.ForumMembershipRow> rows =
+                service.buildOpenAlexApcMembershipRows(List.of(goldForum, hybridForum, noApcForum));
+
+        assertEquals(1, rows.size());
+        ScholardexProjectionBuilderService.ForumMembershipRow row = rows.get(0);
+        assertEquals("sforum_gold", row.forumId());
+        assertEquals("OPENALEX", row.database());
+        assertEquals("OPENALEX", row.source());
+        assertEquals(Boolean.TRUE, row.apc());
+    }
+
+    @Test
     void buildErihMembershipRowsProjectsErihAndDoajFromErihByStoredErihIds() {
         ScholardexProjectionBuilderService service = newService();
 

@@ -44,6 +44,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
     private final ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
+    private final ro.uvt.pokedex.core.service.openalex.OpenAlexSourceApcImportService openAlexSourceApcImportService;
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
@@ -466,6 +467,31 @@ public class AdminInitializationController {
                             + ", backboneAffiliations=" + r.backboneInstitutions() + ".");
         } catch (java.io.IOException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "OpenAlex bulk import failed: " + e.getMessage());
+        }
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H79 — derive per-venue APC facts from the OpenAlex works dumps (offline; no API), then they feed the
+     * {@code database='OPENALEX'} fee-journal membership on the next projection run. Streams both the UVT works
+     * and citing works so the fee signal covers own-pub (perspective b) and citing-pub (perspective c) venues.
+     */
+    @PostMapping("/openalex/importSourceApc")
+    public String runOpenAlexSourceApcImport(RedirectAttributes redirectAttributes) {
+        java.util.List<java.nio.file.Path> files = new java.util.ArrayList<>();
+        java.nio.file.Path works = pathOrNull(openAlexWorksFile);
+        java.nio.file.Path citers = pathOrNull(openAlexCitersFile);
+        if (works != null) files.add(works);
+        if (citers != null) files.add(citers);
+        try {
+            var r = openAlexSourceApcImportService.importSourceApc(files, "openalex-source-apc-manual", "admin-manual");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "OpenAlex source APC import complete. worksScanned=" + r.worksScanned()
+                            + ", sourcesUpserted=" + r.sourcesUpserted()
+                            + ", feeJournals=" + r.feeSources()
+                            + ". Run the projection to publish OPENALEX fee-journal membership.");
+        } catch (java.io.IOException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "OpenAlex source APC import failed: " + e.getMessage());
         }
         return "redirect:/admin/initialization";
     }

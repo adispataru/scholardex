@@ -90,10 +90,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         boolean conferenceCandidate = PublicationSubtypeSupport.isSubtype(publication, "cp")
                 || isConferenceProceeding(forum)
                 || lncsBookSeriesCandidate;
+        boolean workshop2026 = indicator != null && indicator.usesWorkshop2026Categories();
         if (conferenceCandidate) {
             Score resolvedScore = null;
             for (int year : allowedYears) {
-                ConferenceScoreResolution resolution = resolveConferenceScore(publication, forum, year, trace);
+                ConferenceScoreResolution resolution = resolveConferenceScore(publication, forum, year, trace, workshop2026);
                 trace = resolution.trace();
                 if (resolution.score().isPresent()) {
                     Score candidate = resolution.score().get();
@@ -164,9 +165,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 allowedYears
         );
 
+        boolean workshop2026 = indicator != null && indicator.usesWorkshop2026Categories();
         Score resolvedScore = null;
         for (int year : allowedYears) {
-            ConferenceScoreResolution resolution = resolveConferenceScore(forum, year, trace);
+            ConferenceScoreResolution resolution = resolveConferenceScore(forum, year, trace, workshop2026);
             if (resolution.score().isPresent()) {
                 Score candidate = resolution.score().get();
                 if (resolvedScore == null || candidate.getScore() > resolvedScore.getScore()) {
@@ -244,15 +246,23 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private ConferenceScoreResolution resolveConferenceScore(ScholardexForumView forum, int year, ConferenceScoreTrace trace) {
+        return resolveConferenceScore(forum, year, trace, false);
+    }
+
+    private ConferenceScoreResolution resolveConferenceScore(ScholardexForumView forum, int year, ConferenceScoreTrace trace, boolean workshop2026) {
         ConferenceMatch match = resolveConferenceMatch(forum == null ? null : forum.getPublicationName(), trace);
         trace = match.trace();
-        return scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS);
+        return scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS, workshop2026);
     }
 
     private ConferenceScoreResolution resolveConferenceScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year, ConferenceScoreTrace trace) {
+        return resolveConferenceScore(publication, forum, year, trace, false);
+    }
+
+    private ConferenceScoreResolution resolveConferenceScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year, ConferenceScoreTrace trace, boolean workshop2026) {
         ConferenceMatch match = resolveConferenceMatch(forum == null ? null : forum.getPublicationName(), trace);
         trace = match.trace();
-        ConferenceScoreResolution scopusResolution = scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS);
+        ConferenceScoreResolution scopusResolution = scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS, workshop2026);
         if (scopusResolution.score().isPresent()) {
             return scopusResolution;
         }
@@ -275,7 +285,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
         ConferenceMatch dblpMatch = resolveConferenceMatch(dblpConferenceTitle, trace);
         trace = dblpMatch.trace();
-        ConferenceScoreResolution dblpResolution = scoreResolvedConference(dblpMatch, year, trace, ResolutionSource.DBLP);
+        ConferenceScoreResolution dblpResolution = scoreResolvedConference(dblpMatch, year, trace, ResolutionSource.DBLP, workshop2026);
         if (dblpResolution.score().isPresent()) {
             return dblpResolution;
         }
@@ -283,6 +293,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource) {
+        return scoreResolvedConference(match, year, trace, resolutionSource, false);
+    }
+
+    private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource, boolean workshop2026) {
         if (!match.resolved()) {
             return new ConferenceScoreResolution(Optional.empty(), trace);
         }
@@ -293,11 +307,12 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         Score scoreResult = new Score();
         CoreConferenceRanking.Rank parentRank = yearlyRank.getRank();
         boolean workshopAdjusted = isWorkshopVariant(match.sourceTitle(), match.ranking());
-        // Standard workshop rule (Informatica-2016): a workshop attached to a category-X conference is treated
-        // as one category lower (A*→A, A→B, B→C, C→D, D→D) and earns the explicit 6/4/2/1/1 ladder. Both the
-        // points AND the reported category follow the downgrade (previously the points halved but the reported
-        // rank stayed the parent's, so a workshop showed e.g. "A*" next to 6 points).
-        CoreConferenceRanking.Rank effectiveRank = workshopAdjusted ? workshopDowngradedRank(parentRank) : parentRank;
+        // Workshop category rule. The POINT ladder is identical across standards (A*→6, A→4, B→2, C/D→1); only the
+        // reported category differs. Informatica-2016: one category lower (A*→A, A→B, B→C, C→D, D→D). Informatica-2026
+        // (id_parA82): workshops of A*/A/B conferences are category C, and of C conferences are category D. The
+        // `workshop2026` flag is carried per-indicator so the frozen 2016 report keeps its one-lower categories.
+        CoreConferenceRanking.Rank effectiveRank = !workshopAdjusted ? parentRank
+                : (workshop2026 ? workshop2026DowngradedRank(parentRank) : workshopDowngradedRank(parentRank));
         double score = workshopAdjusted ? workshopPoints(parentRank) : coreConferencePoints(parentRank);
         scoreResult.setScore(score);
         scoreResult.setCoreRankingEquivalent(effectiveRank.toString());
@@ -322,12 +337,20 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         };
     }
 
-    /** Workshop one-category downgrade: A*→A, A→B, B→C, C→D, D (and anything else) → D. */
+    /** Workshop one-category downgrade (Informatica-2016): A*→A, A→B, B→C, C→D, D (and anything else) → D. */
     private static CoreConferenceRanking.Rank workshopDowngradedRank(CoreConferenceRanking.Rank parent) {
         return switch (parent) {
             case A_STAR -> CoreConferenceRanking.Rank.A;
             case A -> CoreConferenceRanking.Rank.B;
             case B -> CoreConferenceRanking.Rank.C;
+            default -> CoreConferenceRanking.Rank.D; // C, D, … → D
+        };
+    }
+
+    /** Workshop category mapping (Informatica-2026, id_parA82): A*, A, B all &rarr; C; C (and anything else) &rarr; D. */
+    private static CoreConferenceRanking.Rank workshop2026DowngradedRank(CoreConferenceRanking.Rank parent) {
+        return switch (parent) {
+            case A_STAR, A, B -> CoreConferenceRanking.Rank.C;
             default -> CoreConferenceRanking.Rank.D; // C, D, … → D
         };
     }

@@ -9,19 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H79` Informatica 2026 report (CNATDCU standards update). **SCOPED 2026-07-03**
-  (`docs/tasks/active/h79-informatica-2026-report.md`). The 2026 conf/prof minima are ~unchanged; the changes are
-  structural + a few data/scoring rules. Verified: A* forum tier already handled (CS journal scorer, top-20%-Q1=12p);
-  Da/Nu gates NOT needed (per-criterion "îndeplinit" already covers b/c/d; ethics a) is a manual check); SENSE book top
-  tier 16→12 (scorer returns category, formulas map); new `Info_C_2026` (`ANY_COAUTHOR`; 2026 text answers H61's open
-  question = per-cited-paper); **APC/fee data already on disk** in the DOAJ dump (`data/doaj/…APC…` cols) but
-  `DoajJournalFact` doesn't parse it yet. **Principle: version, never mutate — `informatica-2016` + its indicators stay
-  untouched (replay-stable).** Slices: (1) COPY 2016→`informatica-2026` keeping asist/lect (internal) + conf/prof/HABIL;
-  (2) new versioned indicators (`Info_C_2026` + a 2026 A*+A+B "top" copy), no re-point; (3) new `A*+A` prof indicator +
-  `≥24` threshold; (4) SENSE 16→12 keeping BOTH book indicators (scorer returns category); (5) DOAJ APC capture +
-  fee-journal exclusion with **per-year edition resolution** (closest-previous DOAJ edition; needs older dumps). Depends
-  on H61 (done), H64 (projects), DOAJ import. No new engine.
-
 - [ ] `H76` WoS Conference Proceedings Citation Index (CPCI) onboarding. Our `wosForumIds` come only from the WoS
   **journal** Master List / JCR — all 26,338 WoS-indexed forums are journals, **0 are conferences**. So WoS-indexed
   conferences are misclassified as non-WoS (e.g. all ~19 SYNASC proceedings forums are `scopus=True, wos=False`;

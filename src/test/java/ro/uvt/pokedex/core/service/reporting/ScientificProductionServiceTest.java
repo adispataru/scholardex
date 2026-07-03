@@ -97,6 +97,45 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void topABGateExcludes2026WorkshopByCategoryButPreservesNormalAndBookViaPointsProxy() {
+        // H79: the 2026 "top A*/A/B" formula gates on topAB (category) instead of S>=4. A 2026 workshop of an A*
+        // conference is category C but earns 6 points; the old S>=4 proxy wrongly counted it. Normal B papers and
+        // SENSE-C books (category label C, but NOT workshop-adjusted) must be unaffected — they keep the S>=4 path.
+        Indicator indicator = indicator("PUBLICATIONS", "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0");
+
+        ScoringPublication ws = publication("p-ws", "f-ws", "2023-01-01", "cp", "cp",
+                "A* Workshop Paper", List.of("a1", "a2", "a3"));
+        Score wsScore = score(6.0);                    // inflated workshop points
+        wsScore.setCoreRankingEquivalent("C");         // 2026 relabel: A* workshop -> category C
+        wsScore.getScoringInfo().put("workshopAdjusted", true);
+
+        ScoringPublication b = publication("p-b", "f-b", "2023-01-01", "ar", "ar",
+                "Category B Journal", List.of("a1", "a2", "a3"));
+        Score bScore = score(4.0);
+        bScore.setCoreRankingEquivalent("B");          // normal B, not a workshop
+
+        ScoringPublication book = publication("p-book", "f-book", "2023-01-01", "bk", "bk",
+                "SENSE C Book", List.of("a1", "a2", "a3"));
+        Score bookScore = score(4.0);
+        bookScore.setCoreRankingEquivalent("C");       // SENSE-C book: category label C but 4 pts, NOT workshop
+
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(ws, indicator)).thenReturn(wsScore);
+        when(scoringService.getScore(b, indicator)).thenReturn(bScore);
+        when(scoringService.getScore(book, indicator)).thenReturn(bookScore);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
+                List.of(ws, b, book), indicator);
+
+        // Workshop (category C) is excluded from the top -> authorScore 0 (its forumScore 6 keeps it in the map).
+        assertEquals(0.0, result.get("A* Workshop Paper").getAuthorScore(), 1e-9);
+        // Normal B journal + SENSE-C book both still count via the preserved S>=4 path: S/max(N-2,1) = 4/1 each.
+        assertEquals(4.0, result.get("Category B Journal").getAuthorScore(), 1e-9);
+        assertEquals(4.0, result.get("SENSE C Book").getAuthorScore(), 1e-9);
+        assertEquals(8.0, result.get("total").getAuthorScore(), 1e-9);
+    }
+
+    @Test
     void physicsIndicatorDividesAisByNef() {
         // H65: I = ΣAISᵢ/Nefᵢ. 6 authors → Nef = (6+5)/2 = 5.5; AIS (=S) = 4.0 → 4/5.5.
         Indicator indicator = indicator("PUBLICATIONS", "S/Nef");

@@ -126,6 +126,9 @@ public final class FormulaVariableContract {
         // H79: feeJournal (boolean) is bound on every publication/citation score — true when the scored forum is a
         // DOAJ gold-OA (APC) journal. The 2026 Informatică indicators gate on it (`!feeJournal ? … : 0`); always allowed.
         allowed.add("feeJournal");
+        // H79: topAB (boolean) — category-based eligibility for the 2026 "top A*/A/B" indicators. True when the scored
+        // item's forum category is in {A*,A,B} (workshop-authoritative; S>=4 otherwise). Always allowed.
+        allowed.add("topAB");
         if (kind.strategy() == ScoringStrategy.ECONOMICS_JOURNAL_AIS) {
             allowed.add("M");
         }

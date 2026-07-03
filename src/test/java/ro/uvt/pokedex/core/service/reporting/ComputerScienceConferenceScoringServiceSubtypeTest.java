@@ -485,6 +485,46 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void workshopOfAStarConference2026ScoresCategoryCWithSixPoints() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the 45th International Conference on Software Engineering Workshops, ICSE 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
+                ranking("ICSE", "International Conference on Software Engineering", CoreConferenceRanking.Rank.A_STAR)));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        // 2026 (id_parA82): A* workshop → category C (not A), points unchanged at 6.
+        assertEquals(6.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
+    }
+
+    @Test
+    void workshopOfAConference2026ScoresCategoryCWithFourPoints() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("2023 IEEE International Conference on Pervasive Computing and Communications Workshops and Other Affiliated Events Percom Workshops 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("PERCOM")).thenReturn(List.of(
+                ranking("PERCOM", "IEEE International Conference on Pervasive Computing and Communications", CoreConferenceRanking.Rank.A)));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        // 2026: A workshop → category C (2016 would say B); points stay 4.
+        assertEquals(4.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals("SCOPUS+CORE(WS)", score.getScoringSource());
+    }
+
+    @Test
     void workshopOfParentConferenceHalvesResolvedConferenceScore() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
@@ -2277,6 +2317,13 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     private Indicator indicator(String scoreYearRange) {
         Indicator indicator = new Indicator();
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, scoreYearRange);
+        return indicator;
+    }
+
+    /** An indicator opted into the 2026 conference-workshop category mapping (id_parA82). */
+    private Indicator indicator2026(String scoreYearRange) {
+        Indicator indicator = indicator(scoreYearRange);
+        indicator.setWorkshopCategory2026(true);
         return indicator;
     }
 

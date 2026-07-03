@@ -111,9 +111,11 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         if (forumId == null || forumId.isBlank()) {
             return false;
         }
+        // H79: any fee-journal signal counts — DOAJ (gold-OA directory) OR OpenAlex (gold-OA venues DOAJ misses,
+        // e.g. MDPI Electronics). Both write apc=true membership rows; the source-agnostic EXISTS unions them.
         Boolean exists = namedParameterJdbcTemplate.queryForObject(
                 "SELECT EXISTS(SELECT 1 FROM reporting_read.scholardex_forum_membership_view "
-                        + "WHERE forum_id = :forumId AND database = 'DOAJ' AND apc IS TRUE)",
+                        + "WHERE forum_id = :forumId AND apc IS TRUE)",
                 new MapSqlParameterSource("forumId", forumId),
                 Boolean.class);
         return Boolean.TRUE.equals(exists);

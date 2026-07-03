@@ -279,7 +279,12 @@ public class ScientificProductionService {
                     // H79: fee-conditioned (gold-OA APC) journal flag — bound on the SCORED forum (the candidate's pub
                     // in perspective b, or the citing pub in perspective c). Only 2026 formulas gate on it; every
                     // pre-2026 formula ignores it, so existing indicators are unaffected.
-                    .put("feeJournal", citing != null && reportingLookupPort.isFeeJournal(citing.getForumId()));
+                    .put("feeJournal", citing != null && reportingLookupPort.isFeeJournal(citing.getForumId()))
+                    // H79: category-based eligibility for the 2026 "top A*/A/B" indicators. The point threshold
+                    // S>=4 is a proxy for "category in {A*,A,B}" that holds for every item EXCEPT a workshop, whose
+                    // 2026 category (id_parA82: A*/A/B parents -> C) diverges from its inherited 6/4 points. Only
+                    // 2026 top indicators gate on this; pre-2026 formulas ignore it.
+                    .put("topAB", isTopAStarAB(result));
             if (result.getMultiplier() != null) {
                 builder.put("M", result.getMultiplier());
             }
@@ -344,6 +349,27 @@ public class ScientificProductionService {
         // H52 slice 11c: typed multiplier propagates; extra/errors/details are gone.
         target.setMultiplier(source.getMultiplier());
         return target;
+    }
+
+    /**
+     * H79: is this scored item eligible for the "top publications" criterion (category A-star / A / B)?
+     *
+     * <p>For a <b>workshop-adjusted</b> conference item the standard's category is authoritative — a 2026
+     * workshop of an A*, A or B conference is category C (id_parA82) and must NOT count toward the top
+     * (A-star / A / B) despite its inflated 6/4 points; a 2016 workshop keeps its one-lower category
+     * (A*&rarr;A, A&rarr;B) and still qualifies. For
+     * every other item (journals — category derived from points; normal conferences; SENSE-scale books) the
+     * legacy {@code S>=4} threshold is exactly "category in {A*,A,B}" and is preserved verbatim, so book and
+     * journal behaviour is unchanged and no unintended 2016↔2026 divergence is introduced.</p>
+     */
+    private static boolean isTopAStarAB(Score score) {
+        boolean workshopAdjusted = score.getScoringInfo() != null
+                && Boolean.TRUE.equals(score.getScoringInfo().get("workshopAdjusted"));
+        if (workshopAdjusted) {
+            String category = score.getCoreRankingEquivalent();
+            return "A_STAR".equals(category) || "A".equals(category) || "B".equals(category);
+        }
+        return score.getScore() >= 4.0;
     }
 
     private long nanosToMillis(long nanos) {
