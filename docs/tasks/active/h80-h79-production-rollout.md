@@ -50,9 +50,21 @@ is the only thing preventing "one rebuild → complete APC-aware read model".
 
 ---
 
-## Slice A — fold source-APC derivation into the OpenAlex bulk import (CODE)
+## Slice A — fold source-APC derivation into the OpenAlex bulk import (CODE) — **DONE 2026-07-04**
 
 **Decision (2026-07-04): fold into the bulk importer** (single works-stream pass, no second ~23 s scan).
+
+**Done:** extracted the per-work aggregation into a shared stateful `OpenAlexSourceApcAggregator` (`observe(work)` →
+`toFacts(batchId, corrId, now)`); both `OpenAlexSourceApcImportService` (standalone endpoint) and
+`OpenAlexBulkImportService` now use it. `importAll` threads one aggregator through `importWorksFile` + `importCitersFile`
+(mirroring the existing `Set<String> referenced` institution-id threading), calls `sourceApc.observe(work)` per work, and
+upserts the facts after both streams (`persistSourceApc`). `BulkImportResult` gained `apcSources` + `apcFeeJournals`;
+`PipelineRebuildService` logs them. **No pipeline-wiring change needed** — the DAG already calls `importAll`, so a rebuild
+now produces `openalex.source_facts` in-DAG before the stage-4 projection. Unit test
+(`importAllDerivesPerVenueApcFactsFromWorksAndCiters`: gold vs hybrid across works+citers); full suite green (2545).
+End-to-end validation happens naturally during the Slice B full rebuild.
+
+Original design (kept for reference):
 
 `OpenAlexBulkImportService.importAll` already threads a `Set<String> referenced` (institution ids) through both
 `importWorksFile` and `importCitersFile` via `collectInstitutionIds(work, referenced)`. Mirror that pattern exactly:

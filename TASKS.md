@@ -53,9 +53,11 @@ Done history moved to `TASKS-done.md`.
   (`docs/tasks/active/h80-h79-production-rollout.md`). H79 code is merged + verified locally; the ingest→project pipeline
   (`PipelineRebuildService`) already folds in DOAJ APC + the OPENALEX membership projection + the project projection —
   the **only code gap** is that the OpenAlex source-APC derivation is a standalone endpoint, not a pipeline step.
-  - **Slice A (code):** fold the per-venue APC derivation into `OpenAlexBulkImportService.importAll` (single works-stream
-    pass, mirroring the existing `referenced` institution-id threading) → `openalex.source_facts` produced in-DAG before
-    the stage-4 projection. Share the aggregation with the standalone service; keep the endpoint for manual re-runs.
+  - **Slice A (code) — DONE 2026-07-04:** shared `OpenAlexSourceApcAggregator`; `OpenAlexBulkImportService.importAll`
+    folds the per-venue APC derivation into the works/citers stream (mirroring the `referenced` institution-id threading)
+    → `openalex.source_facts` produced in-DAG before the stage-4 projection. Standalone service + endpoint kept for
+    manual re-runs. `BulkImportResult` gained `apcSources`/`apcFeeJournals` (logged in the rebuild). Unit-tested; full
+    suite green. No pipeline-wiring change (the DAG already calls `importAll`).
   - **Slice B (ops):** first prod rollout via a **full rebuild** (`rebuildAllDerivedFromSource(forceReingest=true)` with
     Slice A wired) — regenerates everything incl. APC membership in one run; heed rebuild-fragility (long/non-resumable,
     schedulers controlled, caffeinate, daemonize). Then create `division_report_selections` for the real Informatică

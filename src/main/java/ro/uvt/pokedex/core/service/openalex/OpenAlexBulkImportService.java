@@ -58,29 +58,62 @@ public class OpenAlexBulkImportService {
     // H75 S1.0: persist referenced institutions as a source fact so the V2 engine derives the ROR backbone from
     // them (rather than the importer deriving it during ingest). Additive — V1's backbone write below is unchanged.
     private final ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexInstitutionFactRepository institutionFactRepository;
+    // H80: fold per-venue APC derivation into the works/citers stream so a rebuild produces openalex.source_facts
+    // in-DAG (before the stage-4 forum-membership projection reads them) — no separate 2.6 GB pass.
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexSourceFactRepository sourceFactRepository;
     private final ObjectMapper objectMapper;
 
     public record BulkImportResult(int worksImported, int citersImported,
-                                   int referencedInstitutions, int backboneInstitutions) {
+                                   int referencedInstitutions, int backboneInstitutions,
+                                   int apcSources, int apcFeeJournals) {
     }
 
     /**
      * Run the full bulk import. Any of the three inputs may be {@code null}/absent — that part is skipped.
+     *
+     * <p>H80: while streaming works + citers, also aggregates per-venue APC into {@code openalex.source_facts}
+     * (fed to the fee-journal forum-membership projection) — a single pass, no separate scan of the dumps.</p>
      */
     public BulkImportResult importAll(Path worksFile, Path citersFile, Path institutionsDir,
                                       String batchId, String correlationId) throws IOException {
         Set<String> referenced = new HashSet<>();
-        int works = importWorksFile(worksFile, referenced, batchId, correlationId);
-        int citers = importCitersFile(citersFile, referenced, batchId, correlationId);
+        OpenAlexSourceApcAggregator sourceApc = new OpenAlexSourceApcAggregator();
+        int works = importWorksFile(worksFile, referenced, sourceApc, batchId, correlationId);
+        int citers = importCitersFile(citersFile, referenced, sourceApc, batchId, correlationId);
         int backbone = importInstitutionBackbone(institutionsDir, referenced, batchId, correlationId);
-        log.info("OpenAlex bulk import complete: works={} citers={} referencedInstitutions={} backbone={}",
-                works, citers, referenced.size(), backbone);
-        return new BulkImportResult(works, citers, referenced.size(), backbone);
+        int apcFee = persistSourceApc(sourceApc, batchId, correlationId);
+        log.info("OpenAlex bulk import complete: works={} citers={} referencedInstitutions={} backbone={} "
+                        + "apcSources={} apcFeeJournals={}",
+                works, citers, referenced.size(), backbone, sourceApc.sourceCount(), apcFee);
+        return new BulkImportResult(works, citers, referenced.size(), backbone, sourceApc.sourceCount(), apcFee);
+    }
+
+    /** H80: materialize + upsert the per-venue APC facts collected during the works/citers stream. Returns fee-journal count. */
+    private int persistSourceApc(OpenAlexSourceApcAggregator sourceApc, String batchId, String correlationId) {
+        List<ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact> facts =
+                sourceApc.toFacts(batchId, correlationId, java.time.Instant.now());
+        int fee = 0;
+        List<ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact> buffer = new ArrayList<>(BACKBONE_SAVE_BATCH);
+        for (var fact : facts) {
+            buffer.add(fact);
+            if (fact.isFeeJournal()) {
+                fee++;
+            }
+            if (buffer.size() >= BACKBONE_SAVE_BATCH) {
+                sourceFactRepository.saveAll(buffer);
+                buffer.clear();
+            }
+        }
+        if (!buffer.isEmpty()) {
+            sourceFactRepository.saveAll(buffer);
+        }
+        return fee;
     }
 
     // ── Works (full) ────────────────────────────────────────────────────────
 
-    private int importWorksFile(Path worksFile, Set<String> referenced, String batchId, String correlationId)
+    private int importWorksFile(Path worksFile, Set<String> referenced, OpenAlexSourceApcAggregator sourceApc,
+                                String batchId, String correlationId)
             throws IOException {
         if (worksFile == null || !Files.isRegularFile(worksFile)) {
             log.warn("OpenAlex bulk import: works file missing, skipping ({})", worksFile);
@@ -95,6 +128,7 @@ public class OpenAlexBulkImportService {
                 }
                 OpenAlexWorksResponse.OpenAlexWork work = objectMapper.readValue(line, OpenAlexWorksResponse.OpenAlexWork.class);
                 collectInstitutionIds(work, referenced);
+                sourceApc.observe(work);
                 String id = openAlexImportService.importFullWork(work, batchId, correlationId);
                 if (id != null) {
                     count++;
@@ -110,7 +144,8 @@ public class OpenAlexBulkImportService {
 
     // ── Citers (full — H73 slice 3: store authorships so pub→author→affiliation edges build) ──
 
-    private int importCitersFile(Path citersFile, Set<String> referenced, String batchId, String correlationId)
+    private int importCitersFile(Path citersFile, Set<String> referenced, OpenAlexSourceApcAggregator sourceApc,
+                                 String batchId, String correlationId)
             throws IOException {
         if (citersFile == null || !Files.isRegularFile(citersFile)) {
             log.warn("OpenAlex bulk import: citers file missing, skipping ({})", citersFile);
@@ -125,6 +160,7 @@ public class OpenAlexBulkImportService {
                 }
                 OpenAlexWorksResponse.OpenAlexWork work = objectMapper.readValue(line, OpenAlexWorksResponse.OpenAlexWork.class);
                 collectInstitutionIds(work, referenced);
+                sourceApc.observe(work);
                 // H73 slice 3: citers are imported FULL (with authorships) so their authors/affiliations
                 // canonicalize and the pub→author→affiliation edges build — not bare neighbors anymore.
                 if (openAlexImportService.importFullWork(work, batchId, correlationId) != null) {

@@ -286,8 +286,10 @@ public class PipelineRebuildService {
         try {
             var r = openAlexBulkImportService.importAll(works, citers, institutions,
                     "openalex-bulk-" + now, "full-rebuild");
-            LOG.info("Unified rebuild OpenAlex bulk ingest: works={} citers={} referencedInstitutions={} backbone={}",
-                    r.worksImported(), r.citersImported(), r.referencedInstitutions(), r.backboneInstitutions());
+            LOG.info("Unified rebuild OpenAlex bulk ingest: works={} citers={} referencedInstitutions={} backbone={} "
+                            + "apcSources={} apcFeeJournals={}",
+                    r.worksImported(), r.citersImported(), r.referencedInstitutions(), r.backboneInstitutions(),
+                    r.apcSources(), r.apcFeeJournals());
         } catch (java.io.IOException e) {
             LOG.error("Unified rebuild OpenAlex bulk ingest failed", e);
             throw new IllegalStateException("OpenAlex bulk ingest failed", e);

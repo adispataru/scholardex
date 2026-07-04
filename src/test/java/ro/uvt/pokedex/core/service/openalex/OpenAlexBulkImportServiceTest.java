@@ -36,12 +36,14 @@ class OpenAlexBulkImportServiceTest {
     private ScholardexAffiliationFactRepository affiliationFactRepository;
     @Mock
     private ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexInstitutionFactRepository institutionFactRepository;
+    @Mock
+    private ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexSourceFactRepository sourceFactRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private OpenAlexBulkImportService service() {
         return new OpenAlexBulkImportService(openAlexImportService, affiliationFactRepository,
-                institutionFactRepository, objectMapper);
+                institutionFactRepository, sourceFactRepository, objectMapper);
     }
 
     // ── backbone mapping ──────────────────────────────────────────────────────
@@ -179,6 +181,44 @@ class OpenAlexBulkImportServiceTest {
         // both I1 (from works) and I2 (from citers) are collected → both backboned
         assertThat(result.referencedInstitutions()).isEqualTo(2);
         assertThat(result.backboneInstitutions()).isEqualTo(2);
+    }
+
+    @Test
+    void importAllDerivesPerVenueApcFactsFromWorksAndCiters() throws IOException {
+        // Works: a gold-OA MDPI-style venue (is_oa + apc) → fee journal. Citers: a hybrid venue (apc but is_oa=false)
+        // → NOT a fee journal. The fold must produce both source facts in the single works/citers pass.
+        Path works = Files.createTempFile("uvt-works-apc", ".jsonl");
+        Files.writeString(works,
+                "{\"id\":\"https://openalex.org/W1\",\"title\":\"Gold\"," +
+                        "\"apc_list\":{\"value\":2165,\"currency\":\"USD\",\"value_usd\":2165}," +
+                        "\"primary_location\":{\"source\":{\"id\":\"https://openalex.org/S_gold\"," +
+                        "\"display_name\":\"Electronics\",\"issn\":[\"2079-9292\"],\"is_oa\":true,\"is_in_doaj\":false}}}\n");
+        Path citers = Files.createTempFile("uvt-citers-apc", ".jsonl");
+        Files.writeString(citers,
+                "{\"id\":\"https://openalex.org/W2\",\"title\":\"Hybrid\"," +
+                        "\"apc_list\":{\"value\":3310,\"currency\":\"USD\",\"value_usd\":3310}," +
+                        "\"primary_location\":{\"source\":{\"id\":\"https://openalex.org/S_hybrid\"," +
+                        "\"display_name\":\"ISPRS J\",\"issn\":[\"0924-2716\"],\"is_oa\":false}}}\n");
+
+        when(openAlexImportService.importFullWork(any(), anyString(), anyString())).thenReturn("W1", "W2");
+
+        var result = service().importAll(works, citers, null, "batch", "corr");
+
+        assertThat(result.apcSources()).isEqualTo(2);
+        assertThat(result.apcFeeJournals()).isEqualTo(1); // only the gold-OA venue
+
+        ArgumentCaptor<List<ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact>> cap =
+                ArgumentCaptor.forClass(List.class);
+        verify(sourceFactRepository).saveAll(cap.capture());
+        var facts = cap.getValue();
+        assertThat(facts).extracting(ro.uvt.pokedex.core.model.scopus.canonical.OpenAlexSourceFact::getId)
+                .containsExactlyInAnyOrder("S_gold", "S_hybrid");
+        var gold = facts.stream().filter(f -> f.getId().equals("S_gold")).findFirst().orElseThrow();
+        assertThat(gold.isFeeJournal()).isTrue();
+        assertThat(gold.getApcUsd()).isEqualTo(2165);
+        assertThat(gold.getIssns()).contains("2079-9292");
+        var hybrid = facts.stream().filter(f -> f.getId().equals("S_hybrid")).findFirst().orElseThrow();
+        assertThat(hybrid.isFeeJournal()).isFalse(); // is_oa=false → hybrid, not a fee journal
     }
 
     private static void writeGz(Path path, List<String> lines) throws IOException {
