@@ -313,6 +313,12 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         }
         Score scoreResult = new Score();
         CoreConferenceRanking.Rank parentRank = yearlyRank.getRank();
+        // H80/A81: a CORE national/regional conference is category C under Informatică-2026, but was D under 2016.
+        // Gated on the same per-indicator 2026 flag as the workshop relabel so FV Info 2016 stays frozen. Applied to
+        // the parent rank so all downstream logic (points, workshop/poster reduction, category label) follows.
+        if (parentRank == CoreConferenceRanking.Rank.National || parentRank == CoreConferenceRanking.Rank.National_Regional) {
+            parentRank = workshop2026 ? CoreConferenceRanking.Rank.C : CoreConferenceRanking.Rank.D;
+        }
         boolean workshopAdjusted = isWorkshopVariant(match.sourceTitle(), match.ranking());
         // H80/C1: posters + system demos of a conference get the SAME reduction as workshops (id_parA82), but that clause
         // is a 2026 rule with no 2016 counterpart we can verify — so posters reduce ONLY under 2026 indicators, keeping

@@ -169,6 +169,19 @@ The residual `informatica-2026` scoring rules not yet built. Re-verified against
   is `A71`–`A92`, whose APC rule is the hard exclusion `A91` we built) — likely another domain's section. Worth a 2-min
   confirm it does not apply to Informatică.
 
+- **C4 — CORE national/regional conferences → category C (`id_parA81`). DONE 2026-07-04.** Surfaced by a completeness
+  check for other exclusions (there is **no** short-paper/abstract exclusion in the CS standard). `id_parA81`:
+  *"Workshop-urile/conferințele clasificate de CORE ca naționale sau regionale sunt considerate de categorie C."* Our
+  loader `CoreConferenceRankingService.parseRank` collapsed every `National*`/`Regional` CORE value to **D** at ingest,
+  losing the tier — so those venues scored 1 pt (D) instead of 2 pt (C). Confirmed 2016 = D, 2026 = C (user), so
+  version-gated like the workshop relabel. Fix: `parseRank` now preserves `Rank.National`/`Rank.National_Regional`; the
+  scorer remaps the parent rank `National/National_Regional → C (workshop2026) / D (else)` before points/reduction, so all
+  downstream (points, category, workshop/poster reduction) follows. No other rank consumer breaks (only the scorer scores
+  it; `RankingViewController` just displays it). Unit tests: national@2026 → C/2; national@2016 → D/1. **Live-validated:**
+  CORE re-import re-persisted **124 National + 7 National_Regional** rankings (were 0). **Deploy step (Slice B / stage+prod):
+  a CORE re-import (`POST /admin/initialization/general/coreConference`) is required** — the fix only takes effect once
+  the persisted ranks are re-parsed; a Scopus/WoS rebuild does NOT re-import CORE reference data.
+
 ## Dependencies / references
 
 - Closed task doc (full H79 slice record): `docs/tasks/closed/h79-informatica-2026-report.md`.

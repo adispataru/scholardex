@@ -285,8 +285,16 @@ public class CoreConferenceRankingService {
 
     private CoreConferenceRanking.Rank parseRank(String rankString) {
         rankString = rankString.replace("*", "_STAR");
-        if(rankString.contains("National"))
-            rankString = "D";
+        // H80: preserve the CORE national/regional tier as a distinct rank instead of collapsing it to D at load.
+        // The distinction is needed downstream: the conference scorer maps national/regional to category C for
+        // Informatică-2026 (id_parA81) but keeps it D for 2016. CORE encodes these as "National", "National: USA",
+        // "Regional", etc.
+        if (rankString.contains("National")) {
+            return CoreConferenceRanking.Rank.National;
+        }
+        if (rankString.contains("Regional")) {
+            return CoreConferenceRanking.Rank.National_Regional;
+        }
         try {
             return CoreConferenceRanking.Rank.valueOf(rankString);
         } catch (IllegalArgumentException e) {

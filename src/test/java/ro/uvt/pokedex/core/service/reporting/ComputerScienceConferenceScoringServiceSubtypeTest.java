@@ -524,6 +524,46 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals("SCOPUS+CORE(WS)", score.getScoringSource());
     }
 
+    // ── H80/A81: CORE national/regional conferences — category C in 2026, D in 2016 ──
+
+    @Test
+    void nationalConference2026ScoresCategoryCTwoPoints() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the ACM Information Technology Education Conference, SIGITE 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("SIGITE")).thenReturn(List.of(
+                ranking("SIGITE", "ACM Information Technology Education", CoreConferenceRanking.Rank.National)));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        // 2026 (id_parA81): CORE national/regional → category C, 2 points.
+        assertEquals(2.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void nationalConference2016ScoresCategoryDOnePoint() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the ACM Information Technology Education Conference, SIGITE 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("SIGITE")).thenReturn(List.of(
+                ranking("SIGITE", "ACM Information Technology Education", CoreConferenceRanking.Rank.National)));
+
+        Score score = service.getScore(publication, indicator("IY")); // 2016 indicator
+
+        // version-never-mutate: national stays category D, 1 point, under FV Info 2016.
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+    }
+
     // ── H80/C1: posters & system demonstrations (id_parA82) — title-detected, 2026-gated ──
 
     @Test

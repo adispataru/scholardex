@@ -68,4 +68,9 @@ Done history moved to `TASKS-done.md`.
     (`Poster:`/`Demo:`/`Demonstration:`) reuses the slice-6 reduced path (category A*/A/B→C, C→D + 6/4/2/1 pts + `topAB`
     exclusion), 2026-gated (2016 unchanged), no indicator/seed change, unit-tested. **C2 per-pub-year APC — DROPPED**
     (standard keys APC to "momentul depunerii dosarului" = current state). **C3 b↔c 20% compensation — NOT a platform
-    feature** (`id_parA118` discretionary — a committee exception like perspectiva-a ethics).
+    feature** (`id_parA118` discretionary — a committee exception like perspectiva-a ethics). **C4 CORE national/regional
+    → C (`id_parA81`) — DONE:** completeness check found `parseRank` collapsed National/Regional→D; now preserved as
+    `Rank.National`/`National_Regional`, scorer remaps →C (2026)/D (2016), version-gated; live-validated (124 National +
+    7 Regional re-imported). **No short-paper exclusion exists in the CS standard** (the `rezumate/abstract` list is a
+    different domain). **Deploy step:** stage/prod migration needs a CORE re-import
+    (`POST …/general/coreConference`) — a Scopus/WoS rebuild does not re-import CORE reference data.

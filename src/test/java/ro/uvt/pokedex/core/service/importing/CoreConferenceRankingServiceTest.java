@@ -235,10 +235,19 @@ class CoreConferenceRankingServiceTest {
     }
 
     @Test
-    void parseRank_nationalKeyword_mapsToD() throws Exception {
+    void parseRank_nationalKeyword_mapsToNationalTier() throws Exception {
+        // H80/A81: national/regional is preserved as a distinct rank (the scorer maps it to C for 2026 / D for 2016);
+        // it is no longer collapsed to D at load.
         writeFile("CORE2023-all.csv", header7() + "\n" + row2023("1", "Conf", "NX", "SRC", "National Importance", "X") + "\n");
         service.loadRankingsFromCSVSync(tempDir.toString());
-        assertEquals(CoreConferenceRanking.Rank.D, cache.get(0).getYearlyRankings().get(2023).getRank());
+        assertEquals(CoreConferenceRanking.Rank.National, cache.get(0).getYearlyRankings().get(2023).getRank());
+    }
+
+    @Test
+    void parseRank_regionalKeyword_mapsToNationalRegionalTier() throws Exception {
+        writeFile("CORE2023-all.csv", header7() + "\n" + row2023("1", "Conf", "RX", "SRC", "Regional", "X") + "\n");
+        service.loadRankingsFromCSVSync(tempDir.toString());
+        assertEquals(CoreConferenceRanking.Rank.National_Regional, cache.get(0).getYearlyRankings().get(2023).getRank());
     }
 
     @Test
