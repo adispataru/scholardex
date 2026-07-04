@@ -224,6 +224,32 @@ public class PostgresScholardexProjectionReadPort {
                 new MapSqlParameterSource("ids", forumIds), String.class));
     }
 
+    /**
+     * A forum's full current indexing membership (all database codes it is a member of + whether it charges an APC),
+     * from {@code scholardex_forum_membership_view}. Powers the public provenance badges.
+     */
+    public ro.uvt.pokedex.core.service.application.model.ForumIndexingSnapshot findForumIndexing(String forumId) {
+        if (forumId == null || forumId.isBlank()) {
+            return ro.uvt.pokedex.core.service.application.model.ForumIndexingSnapshot.empty();
+        }
+        Set<String> databases = new java.util.HashSet<>();
+        boolean[] apc = {false};
+        namedParameterJdbcTemplate.query(
+                "SELECT database, apc FROM reporting_read.scholardex_forum_membership_view "
+                        + "WHERE forum_id = :id AND member = true",
+                new MapSqlParameterSource("id", forumId),
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                    String db = rs.getString("database");
+                    if (db != null && !db.isBlank()) {
+                        databases.add(db.trim().toUpperCase(java.util.Locale.ROOT));
+                    }
+                    if (rs.getBoolean("apc")) {
+                        apc[0] = true;
+                    }
+                });
+        return new ro.uvt.pokedex.core.service.application.model.ForumIndexingSnapshot(databases, apc[0]);
+    }
+
     public List<ScholardexForumView> findAllForums() {
         return namedParameterJdbcTemplate.query(
                 "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, aggregation_types FROM reporting_read.scholardex_forum_view",

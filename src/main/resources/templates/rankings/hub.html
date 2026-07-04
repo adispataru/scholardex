@@ -57,6 +57,18 @@
                     <i class="fa-solid fa-layer-group app-tab-bar__tab-icon" aria-hidden="true"></i>
                     <span>WoS</span>
                 </button>
+                <!-- Anonymous visitors get a locked WoS tab that teases the gated feature and links to sign-in. -->
+                <button th:if="${currentUser == null or currentUser.isEmpty()}"
+                        type="button" role="tab"
+                        class="app-tab-bar__tab"
+                        id="tab-trigger-wos"
+                        data-tab-id="wos"
+                        aria-controls="tab-panel-wos"
+                        aria-selected="false"
+                        tabindex="-1">
+                    <i class="fa-solid fa-lock app-tab-bar__tab-icon" aria-hidden="true"></i>
+                    <span>WoS</span>
+                </button>
             </div>
 
             <div class="app-tab-bar__panels">
@@ -383,6 +395,19 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Anonymous visitors: WoS is login-gated (Web of Science licensing). Show a sign-in
+                     teaser instead of the category directory — no category-detail links are emitted. -->
+                <div th:if="${currentUser == null or currentUser.isEmpty()}"
+                     role="tabpanel" class="app-tab-bar__panel" id="tab-panel-wos"
+                     aria-labelledby="tab-trigger-wos" hidden="hidden">
+                    <div class="app-page-intro">
+                        <p class="app-page-intro__body">Web of Science category rankings are available to signed-in members.</p>
+                    </div>
+                    <th:block th:replace="~{fragments :: signin-gate(
+                        title='Web of Science rankings',
+                        body='Sign in to browse the Web of Science category directory — editions, journal coverage, and quartile history.')}"></th:block>
                 </div>
 
             </div>

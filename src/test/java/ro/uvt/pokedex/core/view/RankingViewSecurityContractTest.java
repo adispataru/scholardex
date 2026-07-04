@@ -45,8 +45,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 
 @WebMvcTest(
         value = {RankingViewController.class, AdminViewController.class, AdminScholardexPublicationViewController.class},
@@ -171,6 +174,40 @@ class RankingViewSecurityContractTest {
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/rankings#wos"));
+    }
+
+    @Test
+    void unauthenticatedRankingsHubShowsWosSignInTeaserNotTable() throws Exception {
+        // Anonymous visitors see a locked WoS tab + sign-in gate, but NO category table and NO
+        // /wos/categories links (those would dead-end at /login). Teases the gated feature instead.
+        mockMvc.perform(get("/rankings"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"tab-trigger-wos\"")))
+                .andExpect(content().string(containsString("app-signin-gate")))
+                .andExpect(content().string(containsString("Sign in to browse the Web of Science category directory")))
+                .andExpect(content().string(not(containsString("wos-categories-table"))))
+                .andExpect(content().string(not(containsString("/wos/categories"))));
+    }
+
+    @Test
+    void authenticatedRankingsHubShowsWosCategoryTableNotTeaser() throws Exception {
+        // currentUser gating keys off our own User principal (GlobalControllerAdvice checks
+        // `instanceof ro...model.user.User`), so authenticate with that type — the Spring test
+        // `user(...)` helper yields a different principal and would read as anonymous.
+        ro.uvt.pokedex.core.model.user.User principal = new ro.uvt.pokedex.core.model.user.User();
+        principal.setEmail("researcher@uvt.ro");
+        principal.setPassword("");
+        principal.setRoles(java.util.Set.of(ro.uvt.pokedex.core.model.user.UserRole.RESEARCHER));
+        principal.setLocked(false);
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken token =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        principal, null, principal.getAuthorities());
+
+        mockMvc.perform(get("/rankings")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication(token)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("wos-categories-table")))
+                .andExpect(content().string(not(containsString("app-signin-gate"))));
     }
 
     @Test

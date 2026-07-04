@@ -272,6 +272,7 @@ public class ScholardexProjectionBuilderService {
             forumMembershipRows.addAll(buildOpenAlexApcMembershipRows(canonicalForumsForProjection));
             forumMembershipRows.addAll(buildErihMembershipRows(canonicalForumsForProjection));
             forumMembershipRows.addAll(buildScopusMembershipRows(canonicalForumsForProjection));
+            forumMembershipRows.addAll(buildDblpMembershipRows(canonicalForumsForProjection));
 
             // --- write all tables to PostgreSQL atomically ---
             long writePgNs = System.nanoTime();
@@ -1435,6 +1436,27 @@ public class ScholardexProjectionBuilderService {
             }
             String key = forum.getId() + "|SCOPUS|SCOPUS";
             rows.putIfAbsent(key, new ForumMembershipRow(key, forum.getId(), "SCOPUS", null, "SCOPUS", null));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
+    /**
+     * DBLP membership (database='DBLP') from each forum's stored {@code dblpIds} FK — the DBLP conference-series /
+     * venue ids resolved during canonicalization (H66B Phase 4b). Like Scopus, this is a stored-FK presence check:
+     * a non-empty {@code dblpIds} means the venue is indexed in DBLP.
+     */
+    List<ForumMembershipRow> buildDblpMembershipRows(List<ScholardexForumFact> forums) {
+        Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        for (ScholardexForumFact forum : forums) {
+            if (forum.getId() == null) {
+                continue;
+            }
+            List<String> dblpIds = forum.getDblpIds();
+            if (dblpIds == null || dblpIds.isEmpty()) {
+                continue;
+            }
+            String key = forum.getId() + "|DBLP|DBLP";
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forum.getId(), "DBLP", null, "DBLP", null));
         }
         return new ArrayList<>(rows.values());
     }

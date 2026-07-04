@@ -184,6 +184,13 @@ public class ScholardexProjectionReadService {
         return postgresProjectionReadPort.findForumsCurrentlyInCore(forumIds);
     }
 
+    /** A forum's current indexing membership (databases + APC) for the public provenance badges. */
+    public ro.uvt.pokedex.core.service.application.model.ForumIndexingSnapshot findForumIndexing(String forumId) {
+        String canonical = resolveCanonicalIds(ScholardexEntityType.FORUM, List.of(forumId))
+                .stream().findFirst().orElse(forumId);
+        return postgresProjectionReadPort.findForumIndexing(canonical);
+    }
+
     /** An author's affiliation ids from the author→affiliation edge table (V2 doesn't denormalize them onto the author). */
     public java.util.Set<String> findAffiliationIdsByAuthorId(String authorId) {
         return postgresProjectionReadPort.findAffiliationIdsByAuthorId(authorId);

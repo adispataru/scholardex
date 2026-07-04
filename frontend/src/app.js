@@ -6,6 +6,7 @@ import './styles/login.css';
 import './styles/shared-header.css';
 import './styles/shared-sidebar.css';
 import './styles/shared-table.css';
+import './styles/shared-badges.css';
 import './styles/shared-form.css';
 import './styles/shared-dashboard.css';
 import './styles/shared-tabs.css';

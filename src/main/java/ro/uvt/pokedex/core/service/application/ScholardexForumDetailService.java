@@ -28,6 +28,17 @@ public class ScholardexForumDetailService {
                 .map(this::toViewModel);
     }
 
+    /**
+     * Public provenance/indexing badges for a forum, from its {@code forum_membership_view} snapshot
+     * (Scopus / OpenAlex / WoS editions / DOAJ / ERIH + APC). Web of Science badges are login-gated by the
+     * rendering fragment. Kept off the view model so the many call sites that build it stay untouched.
+     */
+    public java.util.List<ro.uvt.pokedex.core.service.application.model.ProvenanceBadge> provenanceBadges(String forumId) {
+        ro.uvt.pokedex.core.service.application.model.ForumIndexingSnapshot indexing =
+                scholardexProjectionReadService.findForumIndexing(forumId);
+        return ProvenanceBadges.forForum(indexing.databases(), indexing.apc());
+    }
+
     private ScholardexForumDetailViewModel toViewModel(ScholardexForumView forum) {
         ScholardexForumDetailViewModel.ForumType forumType = classifyForumType(forum.getAggregationType());
         WoSRanking wosRanking = null;

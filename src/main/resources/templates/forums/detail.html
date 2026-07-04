@@ -33,6 +33,8 @@
                         </a>
                     </div>
 
+                    <th:block th:replace="~{fragments :: provenance-badges(${badges}, ${currentUser != null and currentUser.isPresent()})}"></th:block>
+
                     <div class="app-summary-grid app-forum-detail__summary-grid">
                         <th:block th:replace="~{fragments :: stat-card(
                             label='Aggregation Type',
@@ -62,10 +64,10 @@
                 </section>
 
                 <div th:if="${detail.forumType().name() == 'JOURNAL' and detail.wosIndexed() and currentUser != null and currentUser.isEmpty()}"
-                     class="alert alert-info app-forum-detail__auth-callout"
-                     role="status">
-                    Sign in to view Web of Science rankings, quartile history, and journal metrics for this forum.
-                    <a href="/login" class="alert-link">Sign in</a>
+                     class="app-forum-detail__auth-callout">
+                    <th:block th:replace="~{fragments :: signin-gate(
+                        title='Web of Science rankings',
+                        body='Sign in to view Web of Science rankings, quartile history, and journal metrics for this forum.')}"></th:block>
                 </div>
 
                 <div th:if="${detail.wosIndexed() and currentUser != null and currentUser.isPresent()}">

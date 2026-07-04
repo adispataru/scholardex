@@ -1100,6 +1100,35 @@
 </header>
 </th:block>
 
+<!-- Public sign-in gate: a uniform "this is gated, sign in to unlock" affordance shown to anonymous
+     visitors in place of a login-only feature (e.g. Web of Science rankings). Title/body are
+     context-specific; the lock icon, styling, and Sign-in CTA are shared so every gated surface reads
+     the same. -->
+<div th:fragment="signin-gate(title, body)" class="alert alert-info app-signin-gate text-center" role="status">
+    <i class="fa-solid fa-lock app-signin-gate__icon fa-lg" aria-hidden="true"></i>
+    <p class="app-signin-gate__title"><strong th:text="${title}">Sign in required</strong></p>
+    <p class="app-signin-gate__body" th:text="${body}">Sign in to view this content.</p>
+    <a href="/login" class="btn btn-primary btn-sm app-signin-gate__action">
+        <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Sign in
+    </a>
+</div>
+
+<!-- Provenance / indexing badges. Renders a `List<ProvenanceBadge>` as pills. Login-gated badges
+     (requiresAuth, e.g. Web of Science) are omitted for anonymous visitors — pass authenticated as
+     `${currentUser != null and currentUser.isPresent()}`. -->
+<div th:fragment="provenance-badges(badges, authenticated)" class="app-badges"
+     th:if="${badges != null and !badges.isEmpty()}">
+    <th:block th:each="b : ${badges}">
+        <span th:if="${authenticated or !b.requiresAuth()}"
+              class="app-badge"
+              th:classappend="${b.tone() == 'success' ? 'app-badge--success' : (b.tone() == 'warning' ? 'app-badge--warning' : '')}"
+              th:title="${b.tooltip()}">
+            <i th:if="${b.icon() != null}" th:classappend="${b.icon()}" class="app-badge__icon" aria-hidden="true"></i>
+            <span th:text="${b.label()}">Badge</span>
+        </span>
+    </th:block>
+</div>
+
 <th:block th:fragment="core-ranking-chart(ranking)">
     <div class="chart-area">
         <canvas id="rankingChart"></canvas>

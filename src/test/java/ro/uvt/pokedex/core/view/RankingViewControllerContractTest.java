@@ -392,6 +392,35 @@ class RankingViewControllerContractTest {
     }
 
     @Test
+    void publicationDetailGatesWosProvenanceBadgeForAnonymous() throws Exception {
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView pub =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView();
+        pub.setId("pub-2");
+        pub.setTitle("Gated Badge Paper");
+        pub.setEid("2-s2.0-999");
+        pub.setWosId("WOS:000999");
+        ro.uvt.pokedex.core.service.application.model.ScholardexPublicationDetailViewModel detail =
+                new ro.uvt.pokedex.core.service.application.model.ScholardexPublicationDetailViewModel(
+                        pub, java.util.List.of(), "Journal", "2024");
+        when(scholardexPublicationMvcService.findDetail(eq("pub-2"))).thenReturn(Optional.of(detail));
+
+        // Anonymous: Scopus provenance badge shown; the WoS badge (login-gated) is hidden. The tooltip
+        // "Indexed in Web of Science" is badge-only (the identifiers table uses "Web of Science ID").
+        mockMvc.perform(get("/publications/{id}", "pub-2"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("app-badge")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Indexed in Scopus")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Indexed in Web of Science"))));
+
+        // Authenticated: the WoS badge is visible.
+        mockMvc.perform(get("/publications/{id}", "pub-2")
+                        .with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Indexed in Web of Science")));
+    }
+
+    @Test
     void missingPublicationDetailRendersNotFound() throws Exception {
         when(scholardexPublicationMvcService.findDetail(eq("missing"))).thenReturn(Optional.empty());
 
@@ -410,7 +439,9 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected=\"true\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"universities\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"events\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("data-tab-id=\"wos\""))))
+                // Anonymous visitors now get a locked WoS teaser tab (sign-in gate); the category
+                // table/JS stay hidden (asserted below + in RankingViewSecurityContractTest).
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"wos\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-search\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-table-body\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<th scope=\"col\">Conference</th>")))

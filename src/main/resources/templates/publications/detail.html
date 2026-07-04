@@ -33,6 +33,8 @@
                 </a>
             </div>
 
+            <th:block th:replace="~{fragments :: provenance-badges(${badges}, ${currentUser != null and currentUser.isPresent()})}"></th:block>
+
             <div class="app-summary-grid">
                 <th:block th:replace="~{fragments :: stat-card(
                     label='Year',
@@ -136,8 +138,8 @@
                     <dd th:text="${publication.wosId != null && !publication.wosId.isBlank() ? publication.wosId : '—'}">WoS ID</dd>
                 </div>
                 <div>
-                    <dt>OpenAlex ID</dt>
-                    <dd th:text="${publication.googleScholarId != null && !publication.googleScholarId.isBlank() ? publication.googleScholarId : '—'}">OpenAlex ID</dd>
+                    <dt>Google Scholar ID</dt>
+                    <dd th:text="${publication.googleScholarId != null && !publication.googleScholarId.isBlank() ? publication.googleScholarId : '—'}">Google Scholar ID</dd>
                 </div>
             </dl>
         </section>

@@ -1683,6 +1683,26 @@ class ScholardexProjectionBuilderServiceTest {
         assertTrue(rows.stream().allMatch(r -> "2026".equals(r.asOf())));
     }
 
+    @Test
+    void buildDblpMembershipRowsProjectsDblpFromStoredDblpIds() {
+        ScholardexProjectionBuilderService service = newService();
+
+        ScholardexForumFact conf = new ScholardexForumFact();
+        conf.setId("sforum_conf");
+        conf.setDblpIds(List.of("conf/icse"));
+        ScholardexForumFact journal = new ScholardexForumFact();
+        journal.setId("sforum_journal"); // no dblpIds -> no row
+
+        List<ScholardexProjectionBuilderService.ForumMembershipRow> rows =
+                service.buildDblpMembershipRows(List.of(conf, journal));
+
+        assertEquals(1, rows.size());
+        ScholardexProjectionBuilderService.ForumMembershipRow row = rows.get(0);
+        assertEquals("sforum_conf", row.forumId());
+        assertEquals("DBLP", row.database());
+        assertEquals("DBLP", row.source());
+    }
+
     private ScholardexProjectionBuilderService newService() {
         return new ScholardexProjectionBuilderService(
                 canonicalForumFactRepository,

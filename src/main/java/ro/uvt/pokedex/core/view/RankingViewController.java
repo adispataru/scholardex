@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
+import ro.uvt.pokedex.core.service.application.ProvenanceBadges;
 import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.ScholardexPublicationMvcService;
@@ -70,6 +71,7 @@ public class RankingViewController {
         }
         model.addAttribute("detail", detail.get());
         model.addAttribute("publication", detail.get().publication());
+        model.addAttribute("badges", ProvenanceBadges.forPublication(detail.get().publication()));
         model.addAttribute("breadcrumbs", List.of(
                 new BreadcrumbItem("Publications", "/publications"),
                 new BreadcrumbItem(detail.get().publication().getTitle())
@@ -104,6 +106,7 @@ public class RankingViewController {
         model.addAttribute("detail", detail.get());
         model.addAttribute("forum", detail.get().forum());
         model.addAttribute("wosRanking", detail.get().wosRanking());
+        model.addAttribute("badges", scholardexForumDetailService.provenanceBadges(id));
         model.addAttribute("breadcrumbs", List.of(
                 new BreadcrumbItem("Forums", "/forums"),
                 new BreadcrumbItem(detail.get().forum().getPublicationName())
