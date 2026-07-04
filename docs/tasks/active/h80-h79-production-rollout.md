@@ -149,11 +149,15 @@ The residual `informatica-2026` scoring rules not yet built. Re-verified against
   exclusion to *"în momentul depunerii dosarului"* (at dossier-submission time = **current** state), not the
   publication's year. So the v1 single-current-snapshot is exactly correct; per-year resolution would be wrong. Removed.
 
-- **C3 — b↔c 20% compensation (`id_parA118`). REAL — exact clause found.** *"Maximum 20% din valorile pragurilor de la
-  perspectiva b) (3,2 puncte pentru Conferențiar) se pot modifica doar prin transfer de la perspectiva c) la perspectiva
-  b), cu păstrarea categoriei forumurilor."* i.e. up to 20% of the perspective-b thresholds may be met by transferring
-  surplus perspective-c points into b, keeping forum category (3.2 pts for Conferențiar). A criteria-engine feature
-  (cross-criterion compensation — overlaps H68's deferred item); modest but touches threshold-eligibility compute.
+- **C3 — b↔c 20% compensation (`id_parA118`). NOT a platform feature — committee exception (decided 2026-07-04).**
+  The clause (*"…se pot modifica **doar prin transfer** de la perspectiva c) la perspectiva b)…"*) is **discretionary**:
+  up to 20% of the perspective-b thresholds MAY be met by moving surplus perspective-c points across, keeping forum
+  category — a marginal eligibility judgment the CNATDCU committee makes after analysing the exported numbers, not a
+  computed score. Auto-applying it would have the platform silently flip a criterion NU→DA (the committee's call). Same
+  class as **perspectiva a (research ethics)** — a manual check, not a gate. The platform already delivers what's needed:
+  accurate perspective-b and perspective-c totals + per-criterion îndeplinit DA/NU. **Not built.** Optional future
+  UI-polish (not scoring): a passive decision-support hint surfacing the transferable headroom ("b short by X; c surplus
+  Y; ≤3.2 pts transferable") — informs the human, decides nothing. Build only if explicitly wanted.
 
   *Note:* `id_parA167` ("APC articles ≤ 1/3 of total") appears in the file but under a non-CS id range (CS perspective-b
   is `A71`–`A92`, whose APC rule is the hard exclusion `A91` we built) — likely another domain's section. Worth a 2-min

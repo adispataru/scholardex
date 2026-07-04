@@ -63,7 +63,8 @@ Done history moved to `TASKS-done.md`.
     Fold produced `source_facts` in-DAG (`apcSources=18575 apcFeeJournals=2140` from cleared-0); projection emitted 2,140
     OPENALEX apc=true rows; MDPI *Electronics* → `isFeeJournal=true`; florin's Electronics zeroed in FV Info 2026 (2016
     unchanged). Deploy to stage/prod is a later **data migration** (gated on Informatică backlog + public-UI polish).
-  - **Slice C (remaining Informatică 2026 rules, re-checked vs the standard 2026-07-04):** **C1 posters/system-demos**
-    (`id_parA82` — real gap, same machinery as workshops, needs a detection signal); **C2 per-pub-year APC — DROPPED**
-    (standard keys APC to "momentul depunerii dosarului" = current state, so v1 snapshot is correct); **C3 b↔c 20%
-    compensation** (`id_parA118` — real: ≤20% of perspective-b thresholds transferable from c, keeping forum category).
+  - **Slice C (remaining Informatică 2026 rules, re-checked vs the standard 2026-07-04):** only **C1 posters/system-demos**
+    remains as a real platform feature (`id_parA82` — same machinery as workshops, needs a poster/demo detection signal).
+    **C2 per-pub-year APC — DROPPED** (standard keys APC to "momentul depunerii dosarului" = current state). **C3 b↔c 20%
+    compensation — NOT a platform feature** (`id_parA118` is discretionary "se pot modifica doar prin transfer" — a
+    committee eligibility exception like perspectiva-a ethics; platform already gives accurate b/c totals + DA/NU).
