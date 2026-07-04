@@ -93,7 +93,21 @@ in prod the full rollout (Slice B) seeds them.
 
 ---
 
-## Slice B — production rollout via full rebuild (OPS)
+## Slice B — production rollout via full rebuild (OPS) — **DONE 2026-07-04**
+
+**The local `scholardex` Mongo/PG IS the production DB** (no separate prod yet). So the full rebuild run on 2026-07-04
+*was* the rollout — the live read model is now APC-aware. Deploying to stage/prod is a later **data migration** (gated on
+clearing the Informatică backlog + public-UI polish), not a re-run.
+
+**Done (2026-07-04):** `POST /admin/initialization/rebuildAllDerived?confirmation=RESET&reingest=true` (caffeinated +
+daemonized, ~34 min, 0 errors). The fold produced `source_facts` in-DAG — `apcSources=18575 apcFeeJournals=2140` from a
+cleared-to-0 collection — the projection emitted **2,140 `OPENALEX` apc=true** membership rows (+ 8,427 DOAJ), MDPI
+*Electronics* resolves `isFeeJournal=true`, and florin's Electronics paper is zeroed in `FV Info 2026` (authorScore 0.0,
+total 10.655) with `FV Info 2016` unchanged. Whole DAG intact (forums 74,919 · pubs 149,899 · citations 512,195).
+Report visibility: `FV Info 2026` has a `division_report_selections` entry mirroring `FV Info 2016` (re-verify the full
+division set — SCIA/TDIS — carries over at stage/prod migration time).
+
+**Original rollout playbook (for the stage/prod migration):**
 
 **Decision (2026-07-04): full rebuild** (`rebuildAllDerivedFromSource(forceReingest=true)`) with Slice A wired, so one
 run regenerates everything from source including `source_facts` → APC membership → APC-aware scoring.
@@ -119,14 +133,31 @@ write, so live report reads during the write see the prior snapshot until it swa
 
 ---
 
-## Slice C — deferred H79 sub-rules (SEPARATE feature work, not deploy)
+## Slice C — remaining Informatică 2026 sub-rules (re-checked against the standard 2026-07-04)
 
-Not required for go-live; split out so they don't block the rollout:
-- **Posters & system demonstrations** — same `id_parA82` reduction as workshops (currently only the `workshop` token is
-  detected; posters/demos score full parent points). Needs poster/demo detection + the same category relabel + `topAB`.
-- **Per-pub-year APC edition resolution** — resolve the fee flag against the closest-earlier DOAJ/OpenAlex edition for
-  the publication year (v1 uses the single current snapshot as a retroactive floor). Needs historical editions.
-- **b↔c 20% compensation** — up to 20% of perspective-b thresholds transferable from perspective c (niche).
+The residual `informatica-2026` scoring rules not yet built. Re-verified against `standarde-conf-2025.html`:
+
+- **C1 — Posters & system demonstrations (`id_parA82`). REAL gap, buildable.** The workshop clause I implemented also
+  names *"posterele și demonstrații de sisteme"*: posters/demos of A*/A/B/C conferences → category C/C/C/D, points
+  6/4/2/1 — the **same** reduction as workshops. Today a poster/demo at an A* conference scores the full A* (12 pts)
+  because the scorer only detects the `workshop` token. The relabel + points + `topAB` machinery already exists (slice
+  6); only the **detection signal** is new — identify posters/demos (title tokens `poster`/`demonstration`/`demo`, or a
+  subtype) and route them to the same workshop-adjusted path. Main unknown: how reliably posters/demos are flagged in
+  Scopus/OpenAlex data — needs a data check before committing to the detector.
+
+- **C2 — Per-pub-year APC resolution. DROPPED — the standard contradicts it.** `id_parA20`/`A28`/`A91` all key the APC
+  exclusion to *"în momentul depunerii dosarului"* (at dossier-submission time = **current** state), not the
+  publication's year. So the v1 single-current-snapshot is exactly correct; per-year resolution would be wrong. Removed.
+
+- **C3 — b↔c 20% compensation (`id_parA118`). REAL — exact clause found.** *"Maximum 20% din valorile pragurilor de la
+  perspectiva b) (3,2 puncte pentru Conferențiar) se pot modifica doar prin transfer de la perspectiva c) la perspectiva
+  b), cu păstrarea categoriei forumurilor."* i.e. up to 20% of the perspective-b thresholds may be met by transferring
+  surplus perspective-c points into b, keeping forum category (3.2 pts for Conferențiar). A criteria-engine feature
+  (cross-criterion compensation — overlaps H68's deferred item); modest but touches threshold-eligibility compute.
+
+  *Note:* `id_parA167` ("APC articles ≤ 1/3 of total") appears in the file but under a non-CS id range (CS perspective-b
+  is `A71`–`A92`, whose APC rule is the hard exclusion `A91` we built) — likely another domain's section. Worth a 2-min
+  confirm it does not apply to Informatică.
 
 ## Dependencies / references
 

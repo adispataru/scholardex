@@ -58,10 +58,12 @@ Done history moved to `TASKS-done.md`.
     → `openalex.source_facts` produced in-DAG before the stage-4 projection. Standalone service + endpoint kept for
     manual re-runs. `BulkImportResult` gained `apcSources`/`apcFeeJournals` (logged in the rebuild). Unit-tested; full
     suite green. No pipeline-wiring change (the DAG already calls `importAll`).
-  - **Slice B (ops):** first prod rollout via a **full rebuild** (`rebuildAllDerivedFromSource(forceReingest=true)` with
-    Slice A wired) — regenerates everything incl. APC membership in one run; heed rebuild-fragility (long/non-resumable,
-    schedulers controlled, caffeinate, daemonize). Then create `division_report_selections` for the real Informatică
-    divisions (SCIA/TDIS) and verify (MDPI *Electronics* → `isFeeJournal=true`; 2026-vs-2016 differs only in APC +
-    workshop rules; 2016 unchanged).
-  - **Slice C (deferred features, not deploy):** posters/system-demos (same `id_parA82` reduction), per-pub-year APC
-    edition resolution, b↔c 20% compensation.
+  - **Slice B (ops) — DONE 2026-07-04:** the local `scholardex` Mongo/PG **is** the prod DB, so the full rebuild
+    (`rebuildAllDerived?confirmation=RESET&reingest=true`, caffeinated+daemonized, ~34 min, 0 errors) **was** the rollout.
+    Fold produced `source_facts` in-DAG (`apcSources=18575 apcFeeJournals=2140` from cleared-0); projection emitted 2,140
+    OPENALEX apc=true rows; MDPI *Electronics* → `isFeeJournal=true`; florin's Electronics zeroed in FV Info 2026 (2016
+    unchanged). Deploy to stage/prod is a later **data migration** (gated on Informatică backlog + public-UI polish).
+  - **Slice C (remaining Informatică 2026 rules, re-checked vs the standard 2026-07-04):** **C1 posters/system-demos**
+    (`id_parA82` — real gap, same machinery as workshops, needs a detection signal); **C2 per-pub-year APC — DROPPED**
+    (standard keys APC to "momentul depunerii dosarului" = current state, so v1 snapshot is correct); **C3 b↔c 20%
+    compensation** (`id_parA118` — real: ≤20% of perspective-b thresholds transferable from c, keeping forum category).
