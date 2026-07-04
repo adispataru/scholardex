@@ -28,6 +28,29 @@ Archived from `TASKS.md` — scoped code complete + verified (unit + live). Clos
     division visibility + director-signature projection); posters/system-demos (same `id_parA82` reduction);
     per-pub-year APC edition resolution; b↔c 20% compensation. Pre-existing `FEEA_P` seed duplicate flagged separately.
 
+## H61 Citation exclusion "any co-author" mode (archived 2026-07-04)
+
+Archived from `TASKS.md` — mechanism was done 2026-06-25; the only remaining item (re-point Informatică to
+`ANY_COAUTHOR`) was completed by H79. Closed task doc: `docs/tasks/closed/h61-citation-coauthor-exclusion.md`.
+
+- [x] `H61` Citation exclusion "any co-author" mode. *(mechanism 2026-06-25; Informatică re-point via H79; archived 2026-07-04)*
+  - **Mechanism:** `SelfCitationPolicy {NONE, CANDIDATE_ONLY, ANY_COAUTHOR}` replaced the boolean in
+    `IndicatorKind.Citations`; legacy codec maps `CITATIONS`/`CITATIONS_EXCLUDE_SELF`→`NONE`/`CANDIDATE_ONLY` +
+    `CITATIONS_EXCLUDE_COAUTHORS`→`ANY_COAUTHOR` (no migration). Both filter sites (`computeCitationView` score +
+    `CitationRowProjector` display) share `citationExclusionAuthorIds(policy, cited, candidateIds)`.
+  - **Informatică re-point (via H79 slice 2):** `Info_C_2026` and `Info_C (A*, A, B) 2026` both use `ANY_COAUTHOR`,
+    live in FV Info 2026 — verified 2026-07-04. Resolved the open per-cited-paper vs global-network question =
+    per-cited-paper (the cited pub's full author set).
+  - **Caveat shipped:** `ANY_COAUTHOR` under-excludes when co-authors aren't canonicalized to the same ids
+    (documented in the enum).
+
+## H20 Google Scholar (PoP) onboarding — DROPPED (2026-07-04)
+
+- [x] `H20` Google Scholar (Publish-or-Perish) user-onboarding. *(dropped 2026-07-04 — not archived-as-done)*
+  Removed from the active backlog as no longer relevant: OpenAlex + Scopus + DBLP (H66B/H73/H75) already provide the
+  canonical publication + citation graph, so a separate Google Scholar / PoP ingestion path isn't needed. Recreate a
+  fresh task if a Scholar-only coverage gap surfaces later.
+
 ## H60 Relative year specs (recent-window + latest-rankings) (archived 2026-06-30)
 
 Archived from `TASKS.md` — mechanism built end-to-end (2026-06-25), Matematică re-pointed live, all re-score paths
