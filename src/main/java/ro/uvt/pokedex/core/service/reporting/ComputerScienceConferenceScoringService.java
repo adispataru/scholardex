@@ -32,6 +32,12 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     private static final Pattern YEAR_TOKEN = Pattern.compile("\\b(19|20)\\d{2}\\b");
     private static final Pattern ORDINAL_TOKEN = Pattern.compile("^\\d+(ST|ND|RD|TH)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern WORKSHOP_TOKEN = Pattern.compile("\\bworkshops?\\b", Pattern.CASE_INSENSITIVE);
+    // H80/C1: a poster or system-demonstration track item. Scopus (`cp`) and OpenAlex (`article`) both classify these
+    // as ordinary conference papers — there is NO structured signal — so the only discriminator is a self-labelling
+    // title prefix ("Poster:", "Demo:", "Demonstration:", or the bare word). Strict prefix only: the loose word matches
+    // real research ("Demonstration of quantum synchronization…", "Laser demonstration…") and must be avoided.
+    private static final Pattern POSTER_DEMO_TITLE = Pattern.compile(
+            "^\\s*(poster|demo|demonstration)\\s*([:\\-\\u2013\\u2014]|$)", Pattern.CASE_INSENSITIVE);
     private static final Set<String> BOILERPLATE_TOKENS = Set.of(
             "proceedings", "of", "the", "international", "conference", "symposium", "workshop",
             "on", "for", "and", "in", "annual", "ieee", "acm", "ifip", "euromicro", "joint"
@@ -91,10 +97,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 || isConferenceProceeding(forum)
                 || lncsBookSeriesCandidate;
         boolean workshop2026 = indicator != null && indicator.usesWorkshop2026Categories();
+        boolean posterOrDemo = publication != null && isPosterOrDemo(publication.getTitle());
         if (conferenceCandidate) {
             Score resolvedScore = null;
             for (int year : allowedYears) {
-                ConferenceScoreResolution resolution = resolveConferenceScore(publication, forum, year, trace, workshop2026);
+                ConferenceScoreResolution resolution = resolveConferenceScore(publication, forum, year, trace, workshop2026, posterOrDemo);
                 trace = resolution.trace();
                 if (resolution.score().isPresent()) {
                     Score candidate = resolution.score().get();
@@ -256,13 +263,13 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private ConferenceScoreResolution resolveConferenceScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year, ConferenceScoreTrace trace) {
-        return resolveConferenceScore(publication, forum, year, trace, false);
+        return resolveConferenceScore(publication, forum, year, trace, false, false);
     }
 
-    private ConferenceScoreResolution resolveConferenceScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year, ConferenceScoreTrace trace, boolean workshop2026) {
+    private ConferenceScoreResolution resolveConferenceScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year, ConferenceScoreTrace trace, boolean workshop2026, boolean posterOrDemo) {
         ConferenceMatch match = resolveConferenceMatch(forum == null ? null : forum.getPublicationName(), trace);
         trace = match.trace();
-        ConferenceScoreResolution scopusResolution = scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS, workshop2026);
+        ConferenceScoreResolution scopusResolution = scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS, workshop2026, posterOrDemo);
         if (scopusResolution.score().isPresent()) {
             return scopusResolution;
         }
@@ -285,18 +292,18 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
         ConferenceMatch dblpMatch = resolveConferenceMatch(dblpConferenceTitle, trace);
         trace = dblpMatch.trace();
-        ConferenceScoreResolution dblpResolution = scoreResolvedConference(dblpMatch, year, trace, ResolutionSource.DBLP, workshop2026);
+        ConferenceScoreResolution dblpResolution = scoreResolvedConference(dblpMatch, year, trace, ResolutionSource.DBLP, workshop2026, posterOrDemo);
         if (dblpResolution.score().isPresent()) {
             return dblpResolution;
         }
         return new ConferenceScoreResolution(Optional.empty(), dblpResolution.trace());
     }
 
-    private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource) {
-        return scoreResolvedConference(match, year, trace, resolutionSource, false);
+    private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource, boolean workshop2026) {
+        return scoreResolvedConference(match, year, trace, resolutionSource, workshop2026, false);
     }
 
-    private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource, boolean workshop2026) {
+    private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource, boolean workshop2026, boolean posterOrDemo) {
         if (!match.resolved()) {
             return new ConferenceScoreResolution(Optional.empty(), trace);
         }
@@ -307,21 +314,25 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         Score scoreResult = new Score();
         CoreConferenceRanking.Rank parentRank = yearlyRank.getRank();
         boolean workshopAdjusted = isWorkshopVariant(match.sourceTitle(), match.ranking());
-        // Workshop category rule. The POINT ladder is identical across standards (A*→6, A→4, B→2, C/D→1); only the
-        // reported category differs. Informatica-2016: one category lower (A*→A, A→B, B→C, C→D, D→D). Informatica-2026
-        // (id_parA82): workshops of A*/A/B conferences are category C, and of C conferences are category D. The
-        // `workshop2026` flag is carried per-indicator so the frozen 2016 report keeps its one-lower categories.
-        CoreConferenceRanking.Rank effectiveRank = !workshopAdjusted ? parentRank
+        // H80/C1: posters + system demos of a conference get the SAME reduction as workshops (id_parA82), but that clause
+        // is a 2026 rule with no 2016 counterpart we can verify — so posters reduce ONLY under 2026 indicators, keeping
+        // FV Info 2016 frozen. Workshops reduce under both (their one-lower vs flat-C mapping is the only 2016↔2026 diff).
+        boolean reduced = workshopAdjusted || (posterOrDemo && workshop2026);
+        // Category rule. The POINT ladder is identical across standards (A*→6, A→4, B→2, C/D→1); only the reported
+        // category differs. Informatica-2016: one category lower (A*→A, A→B, B→C, C→D). Informatica-2026 (id_parA82):
+        // reduced items of A*/A/B conferences are category C, of C conferences category D. Poster/demo reduction only
+        // ever hits the 2026 branch (gated above).
+        CoreConferenceRanking.Rank effectiveRank = !reduced ? parentRank
                 : (workshop2026 ? workshop2026DowngradedRank(parentRank) : workshopDowngradedRank(parentRank));
-        double score = workshopAdjusted ? workshopPoints(parentRank) : coreConferencePoints(parentRank);
+        double score = reduced ? workshopPoints(parentRank) : coreConferencePoints(parentRank);
         scoreResult.setScore(score);
         scoreResult.setCoreRankingEquivalent(effectiveRank.toString());
         scoreResult.setYear(year);
-        setProvenance(scoreResult, scoringSourceLabel(resolutionSource, workshopAdjusted),
-                buildScoringInfo(trace, resolutionSource, year, effectiveRank, workshopAdjusted));
+        setProvenance(scoreResult, scoringSourceLabel(resolutionSource, reduced),
+                buildScoringInfo(trace, resolutionSource, year, effectiveRank, reduced));
         return new ConferenceScoreResolution(Optional.of(scoreResult),
                 trace.withResolvedYear(year, effectiveRank)
-                        .withWorkshopAdjusted(workshopAdjusted)
+                        .withWorkshopAdjusted(reduced)
                         .withResolvedSource(resolutionSource)
                         .withFallbackReason(FallbackReason.NONE));
     }
@@ -445,6 +456,15 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
     private boolean containsWorkshopToken(String value) {
         return value != null && WORKSHOP_TOKEN.matcher(value).find();
+    }
+
+    /**
+     * H80/C1: is this publication a poster or system-demonstration track item, self-labelled by its title prefix?
+     * High-precision by design (strict prefix "Poster:"/"Demo:"/"Demonstration:" or the bare word) — the only signal
+     * available, since neither Scopus (`cp`) nor OpenAlex (`article`) distinguishes these from full conference papers.
+     */
+    private static boolean isPosterOrDemo(String title) {
+        return title != null && POSTER_DEMO_TITLE.matcher(title).find();
     }
 
     private boolean shouldConsultDblp(ScoringPublicationReadModel publication, ScholardexForumView forum) {

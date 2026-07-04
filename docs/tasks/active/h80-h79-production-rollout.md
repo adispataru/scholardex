@@ -137,13 +137,19 @@ write, so live report reads during the write see the prior snapshot until it swa
 
 The residual `informatica-2026` scoring rules not yet built. Re-verified against `standarde-conf-2025.html`:
 
-- **C1 — Posters & system demonstrations (`id_parA82`). REAL gap, buildable.** The workshop clause I implemented also
-  names *"posterele și demonstrații de sisteme"*: posters/demos of A*/A/B/C conferences → category C/C/C/D, points
-  6/4/2/1 — the **same** reduction as workshops. Today a poster/demo at an A* conference scores the full A* (12 pts)
-  because the scorer only detects the `workshop` token. The relabel + points + `topAB` machinery already exists (slice
-  6); only the **detection signal** is new — identify posters/demos (title tokens `poster`/`demonstration`/`demo`, or a
-  subtype) and route them to the same workshop-adjusted path. Main unknown: how reliably posters/demos are flagged in
-  Scopus/OpenAlex data — needs a data check before committing to the detector.
+- **C1 — Posters & system demonstrations (`id_parA82`). DONE 2026-07-04.** Data check first: neither Scopus (`cp`) nor
+  OpenAlex (`article`) distinguishes posters/demos — verified against the raw works dump (no `poster`/`demo` in either
+  vocabulary), and forums carry no poster signal either (0). The **only** discriminator is a self-labelling title prefix
+  (`Poster:` / `Demo:` / `Demonstration:` — 4 such items in the corpus, all at A*/A venues; the loose `demonstration`
+  *word* is 25 real research papers and must be avoided). Built a strict high-precision title detector
+  (`POSTER_DEMO_TITLE`, `isPosterOrDemo`) in `ComputerScienceConferenceScoringService`, threaded a `posterOrDemo` flag
+  through `resolveConferenceScore`/`scoreResolvedConference`, and reused the slice-6 reduced path:
+  `reduced = workshopAdjusted || (posterOrDemo && workshop2026)` → same category downgrade (A*/A/B→C, C→D), same 6/4/2/1
+  points, same `topAB` exclusion from the top A*/A/B criteria. **2026-gated** (no verifiable 2016 poster clause → posters
+  keep full parent under FV Info 2016; version-never-mutate). No indicator/Mongo/seed change — reuses the existing
+  `workshopCategory2026` flag. Unit tests: poster@A* 2026 → C/6 + reduced flag; poster@A* 2016 → full A*/12 unchanged;
+  "Demonstration of quantum synchronization…" → full A*/12 (loose word not matched). Live check not run — no scorable
+  user has a poster paper, and the reduced path itself was already live-verified end-to-end for workshops (dana.petcu).
 
 - **C2 — Per-pub-year APC resolution. DROPPED — the standard contradicts it.** `id_parA20`/`A28`/`A91` all key the APC
   exclusion to *"în momentul depunerii dosarului"* (at dossier-submission time = **current** state), not the

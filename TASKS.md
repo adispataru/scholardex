@@ -63,8 +63,9 @@ Done history moved to `TASKS-done.md`.
     Fold produced `source_facts` in-DAG (`apcSources=18575 apcFeeJournals=2140` from cleared-0); projection emitted 2,140
     OPENALEX apc=true rows; MDPI *Electronics* → `isFeeJournal=true`; florin's Electronics zeroed in FV Info 2026 (2016
     unchanged). Deploy to stage/prod is a later **data migration** (gated on Informatică backlog + public-UI polish).
-  - **Slice C (remaining Informatică 2026 rules, re-checked vs the standard 2026-07-04):** only **C1 posters/system-demos**
-    remains as a real platform feature (`id_parA82` — same machinery as workshops, needs a poster/demo detection signal).
-    **C2 per-pub-year APC — DROPPED** (standard keys APC to "momentul depunerii dosarului" = current state). **C3 b↔c 20%
-    compensation — NOT a platform feature** (`id_parA118` is discretionary "se pot modifica doar prin transfer" — a
-    committee eligibility exception like perspectiva-a ethics; platform already gives accurate b/c totals + DA/NU).
+  - **Slice C — closed 2026-07-04. Informatică scoring backlog now clear.** **C1 posters/system-demos — DONE:** neither
+    Scopus (`cp`) nor OpenAlex (`article`) distinguishes them (verified in the raw dump), so a strict title-prefix detector
+    (`Poster:`/`Demo:`/`Demonstration:`) reuses the slice-6 reduced path (category A*/A/B→C, C→D + 6/4/2/1 pts + `topAB`
+    exclusion), 2026-gated (2016 unchanged), no indicator/seed change, unit-tested. **C2 per-pub-year APC — DROPPED**
+    (standard keys APC to "momentul depunerii dosarului" = current state). **C3 b↔c 20% compensation — NOT a platform
+    feature** (`id_parA118` discretionary — a committee exception like perspectiva-a ethics).

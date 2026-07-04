@@ -524,6 +524,67 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals("SCOPUS+CORE(WS)", score.getScoringSource());
     }
 
+    // ── H80/C1: posters & system demonstrations (id_parA82) — title-detected, 2026-gated ──
+
+    @Test
+    void posterOfAStarConference2026ScoresCategoryCWithSixPoints() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        // Forum is the MAIN ICSE proceedings (no "workshop" token) — the poster signal is the TITLE, not the forum.
+        ScoringPublication publication = posterPublication("forum-1", "2023-01-01", "Poster: Filtering Code Smells Detection Results");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the 45th International Conference on Software Engineering, ICSE 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
+                ranking("ICSE", "International Conference on Software Engineering", CoreConferenceRanking.Rank.A_STAR)));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        // 2026 (id_parA82): a poster at an A* conference is category C, 6 points — reduced like a workshop.
+        assertEquals(6.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals(true, score.getScoringInfo().get("workshopAdjusted")); // topAB reads this → dropped from top A*/A/B
+    }
+
+    @Test
+    void posterOfAStarConference2016ScoresFullParentUnchanged() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = posterPublication("forum-1", "2023-01-01", "Poster: Filtering Code Smells Detection Results");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the 45th International Conference on Software Engineering, ICSE 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
+                ranking("ICSE", "International Conference on Software Engineering", CoreConferenceRanking.Rank.A_STAR)));
+
+        Score score = service.getScore(publication, indicator("IY")); // 2016 indicator — no poster reduction
+
+        // version-never-mutate: posters keep scoring at full parent (A*, 12) under FV Info 2016.
+        assertEquals(12.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void demonstrationResearchPaperIsNotTreatedAsADemoTrackItem() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        // "Demonstration of …" is a real research paper — the loose word must NOT trigger the reduction.
+        ScoringPublication publication = posterPublication("forum-1", "2023-01-01", "Demonstration of quantum synchronization based on second-order coherence");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings of the 45th International Conference on Software Engineering, ICSE 2023");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
+                ranking("ICSE", "International Conference on Software Engineering", CoreConferenceRanking.Rank.A_STAR)));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        assertEquals(12.0, score.getScore()); // full A* — not reduced
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
+    }
+
     @Test
     void workshopOfParentConferenceHalvesResolvedConferenceScore() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
@@ -2308,6 +2369,10 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
     private ScoringPublication conferencePublication(String forumId, String coverDate) {
         return new ScoringPublication(null, null, forumId, coverDate, null, "cp", List.of(), 0, null, null, null, 0, Set.of());
+    }
+
+    private ScoringPublication posterPublication(String forumId, String coverDate, String title) {
+        return new ScoringPublication(null, null, forumId, coverDate, null, "cp", List.of("a1"), 1, null, null, title, 0, Set.of());
     }
 
     private ScoringPublication lncsChapterPublication(String forumId, String coverDate, String id) {
