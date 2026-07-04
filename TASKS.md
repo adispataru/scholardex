@@ -39,6 +39,18 @@ Done history moved to `TASKS-done.md`.
   temporal anchor (field exists, no scoring use yet), Da/Nu qualitative gates, best-of single-indicator assignment,
   cross-criterion compensation. No active consumer — revisit when FSGC/drept/FLIT/FAD/FSP/sport/fizica needs one.
 
+- [ ] `H81` Informatică 2026 Fișă (xlsx export/import). **SCOPED 2026-07-04**
+  (`docs/tasks/active/h81-informatica-2026-fisa-xlsx.md`). A 2026 version of the `informatica-2016` xlsx Fișă, adapted
+  from the 2016 template. Structure barely changes (FV Info 2026 has identical export roles); the deltas are the A*+A
+  publication criterion (a `Centralizator` template formula) and a new perspective-d **director-project count**
+  criterion (`Minim un proiect` as director, ≥50k EUR).
+  - **Slice 1 — DONE 2026-07-04:** GenericActivity indicator `Info_D_Proiecte_Director` counts grants where
+    `Rol != 'Membru' && budget >= 50000` (reuses Info_D_v's `B` pattern → no `Buget` field-type change, 2016 frozen).
+    Added to FV Info 2026 only; live-verified florin count=1. Team-size/competition not in our data (self-declared).
+  - **Slice 2 (TODO):** `INDICATOR_TOTAL` scalar-cell export policy (write an indicator total into a template cell).
+  - **Slice 3 (TODO):** 2026 template (copy 2016) — "Număr proiecte ca director" cell + `count>=1` criterion + A*+A row.
+  - **Slice 4 (TODO):** `informatica-2026` report-type support/binding + set FV Info 2026 `reportTypeKey`.
+
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**

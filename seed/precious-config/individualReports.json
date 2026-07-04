@@ -833,7 +833,8 @@
    "6a47f72a8982d45e2bf2f735": "activities-perspectiva-d",
    "6a480678cefa56310d7f8023": "__not_exported__",
    "6a480678cefa56310d7f8024": "journal-publications",
-   "6a481bc682ebdb034bfc8e10": "conference-publications"
+   "6a481bc682ebdb034bfc8e10": "conference-publications",
+   "6a493be99fe41c33d2883e87": "perspectiva-d-director-count"
   },
   "blockByIndicatorId": {
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
@@ -999,6 +1000,12 @@
     "$ref": "indicators",
     "$id": {
      "$oid": "6a47f57bf5f5a3371821fd41"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a493be99fe41c33d2883e87"
     }
    }
   ],

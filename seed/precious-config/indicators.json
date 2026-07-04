@@ -1516,5 +1516,37 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a493be99fe41c33d2883e87"
+  },
+  "name": "Info_D_Proiecte_Director",
+  "formula": "B = proj_budget != null ? proj_budget : Buget; (Rol != 'Membru' && B >= 50000) ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "94ad3a09d7fc9cea92d5a564d88f72804cdb68ebd05cd5d68873ac8814a45551",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]
