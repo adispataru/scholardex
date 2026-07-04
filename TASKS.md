@@ -49,14 +49,17 @@ Done history moved to `TASKS-done.md`.
   Exit criteria: each supported report type round-trips export → edit → upload → read-only verify (file-vs-run per-item + totals, no DB writes); xlsx-formula injection and docx-macro inputs are rejected/sanitized; misconfigured export mappings fail readiness instead of silently dropping rows.
   Dependency: none direct; planning doc at `docs/tasks/active/h50-individual-report-export-import.md`.
 
-- [ ] `H80` H79 production rollout (get the Informatică 2026 report live). H79 code is merged + verified against local
-  Mongo/PG; production still needs the data + projection steps run against the real DB. Sequence: (1) **DOAJ re-import**
-  with APC parsing (`POST /admin/initialization/forum/importDoaj`); (2) **OpenAlex source APC import**
-  (`POST /admin/initialization/openalex/importSourceApc` — streams both works dumps offline, ~seconds); (3) **projection
-  run** to populate `membership.apc` from DOAJ ∪ OpenAlex; (4) **FV Info 2026 division visibility**
-  (`scholardex.division_report_selections`) + the **director-signature project projection** so the report is assigned +
-  signable. Verify post-run: an APC-only forum (e.g. MDPI *Electronics*) resolves `isFeeJournal=true`, and a spot
-  researcher's 2026 report differs from 2016 only in the documented ways (APC exclusion + workshop category/eligibility).
-  Also carries the H79-deferred sub-rules not yet built: **posters/system-demos** (same `id_parA82` reduction as
-  workshops), **per-pub-year APC edition resolution** (closest-earlier DOAJ/OpenAlex edition), **b↔c 20% compensation**.
-  Closed task doc for context: `docs/tasks/closed/h79-informatica-2026-report.md`.
+- [ ] `H80` H79 production rollout (get the Informatică 2026 report live). **SCOPED 2026-07-04**
+  (`docs/tasks/active/h80-h79-production-rollout.md`). H79 code is merged + verified locally; the ingest→project pipeline
+  (`PipelineRebuildService`) already folds in DOAJ APC + the OPENALEX membership projection + the project projection —
+  the **only code gap** is that the OpenAlex source-APC derivation is a standalone endpoint, not a pipeline step.
+  - **Slice A (code):** fold the per-venue APC derivation into `OpenAlexBulkImportService.importAll` (single works-stream
+    pass, mirroring the existing `referenced` institution-id threading) → `openalex.source_facts` produced in-DAG before
+    the stage-4 projection. Share the aggregation with the standalone service; keep the endpoint for manual re-runs.
+  - **Slice B (ops):** first prod rollout via a **full rebuild** (`rebuildAllDerivedFromSource(forceReingest=true)` with
+    Slice A wired) — regenerates everything incl. APC membership in one run; heed rebuild-fragility (long/non-resumable,
+    schedulers controlled, caffeinate, daemonize). Then create `division_report_selections` for the real Informatică
+    divisions (SCIA/TDIS) and verify (MDPI *Electronics* → `isFeeJournal=true`; 2026-vs-2016 differs only in APC +
+    workshop rules; 2016 unchanged).
+  - **Slice C (deferred features, not deploy):** posters/system-demos (same `id_parA82` reduction), per-pub-year APC
+    edition resolution, b↔c 20% compensation.
