@@ -49,17 +49,52 @@ public class TemplateXlsxRenderer {
     public byte[] render(TemplateBinding binding,
                          Map<String, List<Map<String, Object>>> rowsByRole,
                          Map<String, List<TileData>> tilesByRole) {
+        return render(binding, rowsByRole, tilesByRole, Map.of());
+    }
+
+    public byte[] render(TemplateBinding binding,
+                         Map<String, List<Map<String, Object>>> rowsByRole,
+                         Map<String, List<TileData>> tilesByRole,
+                         Map<String, Double> totalsByRole) {
         try (InputStream in = openTemplate(binding.getTemplateResource());
              Workbook workbook = WorkbookFactory.create(in);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             for (BindingRole role : binding.getRoles()) {
                 renderRole(workbook, role, rowsByRole, tilesByRole);
             }
+            renderScalarCells(workbook, binding, totalsByRole);
             workbook.setForceFormulaRecalculation(true);
             workbook.write(out);
             return out.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to render template " + binding.getTemplateResource(), e);
+        }
+    }
+
+    /**
+     * Write indicator-derived scalar values into fixed template cells. Only {@link BindingPolicy#INDICATOR_TOTAL}
+     * cells are stamped — the value is the run's per-role total keyed by the cell's {@code source} role (e.g. the
+     * perspective-d "Număr proiecte ca director" count). MANUAL cells (Hirsch indices) are left untouched for the
+     * researcher to fill. A missing total or absent sheet is skipped, not fatal, so a template can declare the cell
+     * before its indicator is wired.
+     */
+    private void renderScalarCells(Workbook workbook, TemplateBinding binding, Map<String, Double> totalsByRole) {
+        if (binding.getScalarCells() == null) return;
+        for (var scalarCell : binding.getScalarCells()) {
+            if (scalarCell.getPolicy() != BindingPolicy.INDICATOR_TOTAL || scalarCell.getSource() == null) continue;
+            Double total = totalsByRole.get(scalarCell.getSource());
+            if (total == null) {
+                LOG.warn("Scalar cell '{}': no total for source role '{}'; leaving blank",
+                        scalarCell.getCell(), scalarCell.getSource());
+                continue;
+            }
+            CellReference ref = new CellReference(scalarCell.getCell());
+            Sheet sheet = ref.getSheetName() != null ? workbook.getSheet(ref.getSheetName()) : null;
+            if (sheet == null) {
+                LOG.warn("Scalar cell '{}': sheet '{}' not found; skipping", scalarCell.getCell(), ref.getSheetName());
+                continue;
+            }
+            writeCellValue(getOrCreateCell(sheet, ref), total);
         }
     }
 

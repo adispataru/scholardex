@@ -21,18 +21,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Informatică 2026 Fișă export/import. Structurally identical to {@link Informatica2016ReportTypeImportSupport} (the
+ * FV Info 2026 report declares the same export roles), so it reuses the shared renderer/parser and only swaps in the
+ * 2026 binding + template. The 2026 deltas live in the template/binding, not this class: the A*+A `Centralizator`
+ * criterion (a template formula) and the perspective-d **director-project count** — a scalar cell driven by the
+ * {@code INDICATOR_TOTAL} policy from the {@code perspectiva-d-director-count} role total (H81 slices 1–3).
+ */
 @Component
-public class Informatica2016ReportTypeImportSupport implements ReportTypeImportSupport {
+public class Informatica2026ReportTypeImportSupport implements ReportTypeImportSupport {
 
-    public static final String REPORT_TYPE_KEY = "informatica-2016";
-    private static final String BINDING_RESOURCE = "report-templates/informatica-2016/binding.json";
+    public static final String REPORT_TYPE_KEY = "informatica-2026";
+    private static final String BINDING_RESOURCE = "report-templates/informatica-2026/binding.json";
 
     private final TemplateBindingLoader bindingLoader;
     private final TemplateXlsxRenderer renderer;
     private final TemplateXlsxScoreParser scoreParser;
     private TemplateBinding binding;
 
-    public Informatica2016ReportTypeImportSupport(TemplateBindingLoader bindingLoader,
+    public Informatica2026ReportTypeImportSupport(TemplateBindingLoader bindingLoader,
                                                   TemplateXlsxRenderer renderer,
                                                   TemplateXlsxScoreParser scoreParser) {
         this.bindingLoader = bindingLoader;

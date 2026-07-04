@@ -47,9 +47,24 @@ Done history moved to `TASKS-done.md`.
   - **Slice 1 — DONE 2026-07-04:** GenericActivity indicator `Info_D_Proiecte_Director` counts grants where
     `Rol != 'Membru' && budget >= 50000` (reuses Info_D_v's `B` pattern → no `Buget` field-type change, 2016 frozen).
     Added to FV Info 2026 only; live-verified florin count=1. Team-size/competition not in our data (self-declared).
-  - **Slice 2 (TODO):** `INDICATOR_TOTAL` scalar-cell export policy (write an indicator total into a template cell).
-  - **Slice 3 (TODO):** 2026 template (copy 2016) — "Număr proiecte ca director" cell + `count>=1` criterion + A*+A row.
-  - **Slice 4 (TODO):** `informatica-2026` report-type support/binding + set FV Info 2026 `reportTypeKey`.
+  - **Slice 2 — DONE 2026-07-04:** `INDICATOR_TOTAL` scalar-cell export policy — `TemplateXlsxRenderer` 4-arg overload
+    stamps a template cell with the run's per-role total (`snapshot.getTotals()`, already keyed by role for every report
+    type). MANUAL cells untouched; missing total/sheet = warn-skip. Unit-tested; transfer suite green.
+  - **Slice 3 — DONE 2026-07-04:** `report-templates/informatica-2026/template.xlsx` — `D-Perspectiva D!K24`
+    "Număr proiecte ca director" (outside the points SUM, filled by the scalar cell) + `Centralizator` A*+A criterion
+    (correct `J17+J18+K19+K20` subtotal; 2016's A*-only `E10` left frozen) + director-project `count>=1` criterion +
+    an **Abilitare** block (rows 35–39: B 44/A*+A+B 28/A*+A 12, C 84/26, D 48, combined `AND` — no Total-points gate;
+    references stable `D7`/`D11`/`D15`, doesn't touch Hirsch cells). **Perspectiva-B per-rank *Publicații de top* gates
+    corrected to 2026** (CONF 16 / PROF 40 / HABIL 28) — aligns formulas with the sheet's own labels the 2016 template
+    contradicted (`E10` checked 16 though `C10` said 40; `E8` gated lector though `C8` said "oricare"); prof A*+A subtotal
+    fixed A*-only→A*+A.
+  - **Slice 4 — DONE 2026-07-04:** `informatica-2026/binding.json` (+ `INDICATOR_TOTAL` scalar cell, quoted sheet name)
+    + `Informatica2026ReportTypeImportSupport` (registry auto-discovered). FV Info 2026 already keyed `informatica-2026`
+    (export was failing on the unregistered support — now resolves). Seed consistent. Unit-tested.
+  - **Live E2E — DONE 2026-07-04:** booted `agent-dev`/8181, exported florin's FV Info 2026 Fișă (run
+    `directorScore=1`) → HTTP 200 xlsx with `D-Perspectiva D!K24 = 1.0` (director count stamped end-to-end) + corrected
+    perspectiva-B / A*+A / abilitare formulas intact; POI FormulaShifter correctly followed the B-Conferinte table
+    expansion (>10 conf pubs) so the A*+A refs stayed semantically right. **H81 fully done.**
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
