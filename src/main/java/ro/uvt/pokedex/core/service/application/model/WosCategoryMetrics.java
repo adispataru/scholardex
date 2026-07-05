@@ -20,8 +20,13 @@ public record WosCategoryMetrics(
         QuartileSplit aisQuartiles,
         List<TrendPoint> trend
 ) {
-    /** One year of the category's average AIS / IF (either may be null for a year). */
-    public record TrendPoint(int year, Double avgAis, Double avgIf) {}
+    /** One year of the category's average + median AIS / IF (any value may be null for a year). */
+    public record TrendPoint(int year, Double avgAis, Double avgIf, Double medianAis, Double medianIf) {
+        /** Averages only — callers without median data. */
+        public TrendPoint(int year, Double avgAis, Double avgIf) {
+            this(year, avgAis, avgIf, null, null);
+        }
+    }
 
     /** Count of the category's journals in each latest-year AIS quartile. */
     public record QuartileSplit(int q1, int q2, int q3, int q4) {

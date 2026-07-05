@@ -317,8 +317,10 @@ public class PostgresWosCategoryReadPort {
         namedParameterJdbcTemplate.query(
                 """
                 SELECT year,
-                       MAX(avg_value) FILTER (WHERE metric_type = 'AIS'::reporting_read.metric_type_enum) AS avg_ais,
-                       MAX(avg_value) FILTER (WHERE metric_type = 'IF'::reporting_read.metric_type_enum)  AS avg_if
+                       MAX(avg_value)    FILTER (WHERE metric_type = 'AIS'::reporting_read.metric_type_enum) AS avg_ais,
+                       MAX(avg_value)    FILTER (WHERE metric_type = 'IF'::reporting_read.metric_type_enum)  AS avg_if,
+                       MAX(median_value) FILTER (WHERE metric_type = 'AIS'::reporting_read.metric_type_enum) AS median_ais,
+                       MAX(median_value) FILTER (WHERE metric_type = 'IF'::reporting_read.metric_type_enum)  AS median_if
                 FROM reporting_read.wos_category_metric_agg
                 WHERE category_name_canonical = :name
                   AND edition_normalized = :edition::reporting_read.edition_normalized_enum
@@ -328,7 +330,8 @@ public class PostgresWosCategoryReadPort {
                 params,
                 (org.springframework.jdbc.core.RowCallbackHandler) rs -> trend.add(
                         new WosCategoryMetrics.TrendPoint(rs.getInt("year"),
-                                rs.getObject("avg_ais", Double.class), rs.getObject("avg_if", Double.class))));
+                                rs.getObject("avg_ais", Double.class), rs.getObject("avg_if", Double.class),
+                                rs.getObject("median_ais", Double.class), rs.getObject("median_if", Double.class))));
 
         MetricHead ais = heads.get("AIS");
         MetricHead impact = heads.get("IF");

@@ -80,8 +80,8 @@
                             <div class="chart-area">
                                 <canvas id="wosMetricChart"></canvas>
                             </div>
-                            <p class="app-page-intro__body">Average Article Influence Score (current) and Journal Impact
-                                Factor (JCR — our data ends 2019) across this category's journals, by year.</p>
+                            <p class="app-page-intro__body">Average and median Article Influence Score (current) and Journal
+                                Impact Factor (JCR — our data ends 2019) across this category's journals, by year.</p>
                         </div>
                     </div>
                     <script th:inline="javascript">
@@ -90,6 +90,8 @@
                             var labels = trend.map(function (p) { return p.year; });
                             var aisData = trend.map(function (p) { return p.avgAis; });
                             var ifData = trend.map(function (p) { return p.avgIf; });
+                            var aisMedianData = trend.map(function (p) { return p.medianAis; });
+                            var ifMedianData = trend.map(function (p) { return p.medianIf; });
                             var chart = null;
                             function render() {
                                 var canvas = document.getElementById('wosMetricChart');
@@ -111,9 +113,15 @@
                                             { label: 'Avg AIS', data: aisData, borderColor: aisColor,
                                               backgroundColor: alphaColor(aisColor, 0.12), pointRadius: 3, pointHoverRadius: 4,
                                               spanGaps: false, fill: true, lineTension: 0.3 },
+                                            { label: 'Median AIS', data: aisMedianData, borderColor: alphaColor(aisColor, 0.55),
+                                              backgroundColor: 'transparent', pointRadius: 2, pointHoverRadius: 4, borderWidth: 1.5,
+                                              spanGaps: false, fill: false, borderDash: [2, 3], lineTension: 0.3 },
                                             { label: 'Avg IF (JCR ≤2019)', data: ifData, borderColor: ifColor,
                                               backgroundColor: alphaColor(ifColor, 0.06), pointRadius: 3, pointHoverRadius: 4,
-                                              spanGaps: false, fill: false, borderDash: [5, 3], lineTension: 0.3 }
+                                              spanGaps: false, fill: false, borderDash: [5, 3], lineTension: 0.3 },
+                                            { label: 'Median IF', data: ifMedianData, borderColor: alphaColor(ifColor, 0.55),
+                                              backgroundColor: 'transparent', pointRadius: 2, pointHoverRadius: 4, borderWidth: 1.5,
+                                              spanGaps: false, fill: false, borderDash: [2, 3], lineTension: 0.3 }
                                         ]
                                     },
                                     options: {
