@@ -1211,6 +1211,52 @@ class WosFactBuilderServiceTest {
         assertEquals("J SOUND VIB", contexts.getAllValues().get(1).abbreviatedTitle());
     }
 
+    @Test
+    void enrichmentAssignsTiedValuesTheSameQuartile() {
+        // 4 journals, values 5 / 3 / 3 / 2 -> competition ranks 1,2,2,4; quartile bounds q1=1,q2=2,q3=3.
+        // The tied pair shares rank 2 and must BOTH be Q2 (JCR convention), not split Q2/Q3 by position.
+        metricStore.add(metric("jid-1", 2024, MetricType.AIS, 5.0));
+        metricStore.add(metric("jid-2", 2024, MetricType.AIS, 3.0));
+        metricStore.add(metric("jid-3", 2024, MetricType.AIS, 3.0));
+        metricStore.add(metric("jid-4", 2024, MetricType.AIS, 2.0));
+        WosCategoryFact c1 = category("c1", "jid-1", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        WosCategoryFact c2 = category("c2", "jid-2", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        WosCategoryFact c3 = category("c3", "jid-3", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        WosCategoryFact c4 = category("c4", "jid-4", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        categoryStore.addAll(List.of(c1, c2, c3, c4));
+
+        service.enrichMissingCategoryRankingFields();
+
+        assertEquals("Q1", c1.getQuarter());
+        assertEquals("Q2", c2.getQuarter());
+        assertEquals("Q2", c3.getQuarter());
+        assertEquals("Q4", c4.getQuarter());
+        assertEquals(2, c2.getRank());
+        assertEquals(2, c3.getRank());
+    }
+
+    @Test
+    void scopedEnrichmentRanksAgainstTheFullCategoryCohortNotJustUploadedJournals() {
+        // The upload touches only jid-1, but jid-9 (from an older lineage, different journal) sits in the
+        // same category group with a higher value — the computed rank must account for it.
+        metricStore.add(metric("jid-1", 2024, MetricType.AIS, 5.0));
+        metricStore.add(metric("jid-9", 2024, MetricType.AIS, 9.0));
+        WosCategoryFact target = category("c1", "jid-1", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        target.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        target.setSourceFile("wos.json");
+        target.setSourceVersion("2026-Q1");
+        WosCategoryFact cohortPeer = category("c9", "jid-9", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, "Q1", 1, 1);
+        cohortPeer.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        cohortPeer.setSourceFile("older.json");
+        cohortPeer.setSourceVersion("2025-Q4");
+        categoryStore.addAll(List.of(target, cohortPeer));
+
+        service.enrichMissingCategoryRankingFieldsForSource(WosSourceType.OFFICIAL_WOS_EXTRACT, "wos.json", "2026-Q1");
+
+        assertEquals(2, target.getRank());
+        assertEquals(1, cohortPeer.getRank());
+    }
+
     private WosParserRunResult runOf(List<WosParsedRecord> records) {
         WosParserRunSummary summary = new WosParserRunSummary(10);
         records.forEach(r -> {

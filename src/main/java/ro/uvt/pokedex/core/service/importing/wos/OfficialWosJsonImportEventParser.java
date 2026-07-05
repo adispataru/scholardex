@@ -48,18 +48,20 @@ public class OfficialWosJsonImportEventParser extends AbstractWosImportEventPars
             String issn = normalizeIssn(text(payload, "issn"));
             String eIssn = normalizeIssn(firstNonBlank(text(payload, "eissn"), text(payload, "eIssn")));
             String category = normalizeText(text(payload, "categoryName"));
-            Integer rank = parseInt(text(payload, "rank"));
+            // NOTE: the extract's "rank" field is the category rank by TOTAL CITES, not by AIS/IF — mapping
+            // it into the fact's metric-rank column poisoned "top 20% of category" scoring for 1997-2019.
+            // It stays in the event payload only; the enrichment computes the true metric rank instead.
             String editionRaw = normalizeText(text(payload, "edition"));
             Set<EditionNormalized> editions = WosCanonicalContractSupport.normalizeEditionCandidates(editionRaw);
 
             List<WosParsedRecord> records = new ArrayList<>();
             Double aisValue = parseMetricValue(text(payload, "articleInfluenceScore"));
             if (aisValue != null || payload.has("articleInfluenceScore")) {
-                records.addAll(toRecords(event, title, abbreviatedTitle, issn, eIssn, year, MetricType.AIS, aisValue, category, editionRaw, rank, editions));
+                records.addAll(toRecords(event, title, abbreviatedTitle, issn, eIssn, year, MetricType.AIS, aisValue, category, editionRaw, editions));
             }
             Double ifValue = parseMetricValue(text(payload, "journalImpactFactor"));
             if (ifValue != null || payload.has("journalImpactFactor")) {
-                records.addAll(toRecords(event, title, abbreviatedTitle, issn, eIssn, year, MetricType.IF, ifValue, category, editionRaw, rank, editions));
+                records.addAll(toRecords(event, title, abbreviatedTitle, issn, eIssn, year, MetricType.IF, ifValue, category, editionRaw, editions));
             }
 
             if (records.isEmpty()) {
@@ -82,7 +84,6 @@ public class OfficialWosJsonImportEventParser extends AbstractWosImportEventPars
             Double metricValue,
             String category,
             String editionRaw,
-            Integer rank,
             Set<EditionNormalized> editions
     ) {
         List<WosParsedRecord> records = new ArrayList<>();
@@ -99,7 +100,7 @@ public class OfficialWosJsonImportEventParser extends AbstractWosImportEventPars
                     edition,
                     null,
                     null,
-                    rank,
+                    null,   // rank — computed by the category enrichment (metric-based), never from the extract
                     event.getId(),
                     event.getSourceType(),
                     event.getSourceFile(),

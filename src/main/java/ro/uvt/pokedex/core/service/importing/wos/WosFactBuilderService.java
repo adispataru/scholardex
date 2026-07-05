@@ -385,14 +385,29 @@ public class WosFactBuilderService {
             return result;
         }
 
-        Map<MetricFactKey, WosMetricFact> metricByKey = new LinkedHashMap<>();
-        for (WosMetricFact metricFact : metricFactRepository.findAllByJournalIdIn(new ArrayList<>(affectedJournalIds))) {
-            MetricFactKey key = new MetricFactKey(metricFact.getJournalId(), metricFact.getYear(), metricFact.getMetricType());
-            metricByKey.put(key, metricFact);
+        // rank/quartile are category-cohort properties: the peer pool must be EVERY fact in the affected
+        // (year, metric, category, edition) groups, not just the uploaded journals' facts — otherwise an
+        // upload touching part of a category ranks its journals against that partial subset
+        Set<CategoryEnrichmentGroupKey> affectedGroupKeys = new LinkedHashSet<>();
+        for (WosCategoryFact fact : scopedCategoryFacts) {
+            if (fact.getYear() == null
+                    || fact.getMetricType() == null
+                    || fact.getCategoryNameCanonical() == null
+                    || fact.getCategoryNameCanonical().isBlank()
+                    || fact.getEditionNormalized() == null) {
+                continue;
+            }
+            affectedGroupKeys.add(new CategoryEnrichmentGroupKey(
+                    fact.getYear(),
+                    fact.getMetricType(),
+                    fact.getCategoryNameCanonical(),
+                    fact.getEditionNormalized()
+            ));
         }
 
         Map<CategoryEnrichmentGroupKey, List<WosCategoryFact>> peerGroups = new LinkedHashMap<>();
-        for (WosCategoryFact fact : categoryFactRepository.findAllByJournalIdIn(new ArrayList<>(affectedJournalIds))) {
+        Set<String> peerJournalIds = new LinkedHashSet<>();
+        for (WosCategoryFact fact : categoryFactRepository.findAll()) {
             if (fact.getYear() == null
                     || fact.getMetricType() == null
                     || fact.getCategoryNameCanonical() == null
@@ -406,7 +421,21 @@ public class WosFactBuilderService {
                     fact.getCategoryNameCanonical(),
                     fact.getEditionNormalized()
             );
+            if (!affectedGroupKeys.contains(key)) {
+                continue;
+            }
             peerGroups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fact);
+            if (fact.getJournalId() != null && !fact.getJournalId().isBlank()) {
+                peerJournalIds.add(fact.getJournalId());
+            }
+        }
+
+        Map<MetricFactKey, WosMetricFact> metricByKey = new LinkedHashMap<>();
+        if (!peerJournalIds.isEmpty()) {
+            for (WosMetricFact metricFact : metricFactRepository.findAllByJournalIdIn(new ArrayList<>(peerJournalIds))) {
+                MetricFactKey key = new MetricFactKey(metricFact.getJournalId(), metricFact.getYear(), metricFact.getMetricType());
+                metricByKey.put(key, metricFact);
+            }
         }
 
         Map<CategoryEnrichmentGroupKey, List<WosCategoryFact>> scopedTargets = new LinkedHashMap<>();
@@ -1555,8 +1584,11 @@ public class WosFactBuilderService {
         int q1End = (int) Math.ceil(n / 4.0d);
         int q2End = (int) Math.ceil(n / 2.0d);
         int q3End = (int) Math.ceil((3.0d * n) / 4.0d);
-        for (int i = 0; i < ranked.size(); i++) {
-            int position = i + 1;
+        // boundary by competition rank, not list position: tied journals share the better quartile
+        // (JCR convention) instead of being split by the journalId tie-break
+        Map<String, Integer> rankByFactId = competitionRanks(ranked);
+        for (RankCandidate candidate : ranked) {
+            int position = rankByFactId.get(candidate.fact().getId());
             String quarter;
             if (position <= q1End) {
                 quarter = "Q1";
@@ -1567,7 +1599,7 @@ public class WosFactBuilderService {
             } else {
                 quarter = "Q4";
             }
-            byFactId.put(ranked.get(i).fact().getId(), quarter);
+            byFactId.put(candidate.fact().getId(), quarter);
         }
         return byFactId;
     }

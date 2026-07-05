@@ -209,4 +209,21 @@ class OfficialWosJsonImportEventParserTest {
         event.setPayload(objectMapper.writeValueAsString(payload));
         return event;
     }
+
+    @Test
+    void doesNotMapTheExtractsCitationRankIntoRecords() throws Exception {
+        // the JSON "rank" is the category rank by total cites, not by AIS/IF — it must never become the
+        // fact-level metric rank (the enrichment computes that from metric values)
+        WosParsedEventResult result = parser.parse(event(Map.of(
+                "year", 2010,
+                "journalTitle", "ACOUSTICS AUSTRALIA",
+                "issn", "0814-6039",
+                "categoryName", "ACOUSTICS",
+                "edition", "SCIE",
+                "articleInfluenceScore", 0.5,
+                "rank", 1
+        )));
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        result.records().forEach(record -> assertNull(record.rank()));
+    }
 }
