@@ -30,7 +30,6 @@ import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
 import ro.uvt.pokedex.core.service.application.model.WosCategoryDetailViewModel;
-import ro.uvt.pokedex.core.service.application.model.WosCategoryJournalViewModel;
 
 import java.util.List;
 import java.util.Map;
@@ -633,7 +632,24 @@ class RankingViewControllerContractTest {
                         "SCIE",
                         1,
                         2024,
-                        List.of(new WosCategoryJournalViewModel("j1", "Journal One", "1234-5678", "8765-4321", 2024, "Q1", "Q2", "Q1")),
+                        false,
+                        List.of(
+                                new ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock(
+                                        "AIS", "Article Influence Score", 2024, 2024, 2020, 2024, false,
+                                        List.of(new ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock.Row(
+                                                "j1", "Journal One", "1234-5678", "Q1", 1, 1.85, 1.70,
+                                                List.of(new ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock.MetricPoint(2023, 1.70),
+                                                        new ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock.MetricPoint(2024, 1.85)))),
+                                        List.of(new ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock.FormerMember(
+                                                "j9", "Old Journal", 2008, "Q2", 20, 62)),
+                                        new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics.QuartileSplit(1, 0, 0, 0)),
+                                new ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock(
+                                        "IF", "Journal Impact Factor", 2019, 2019, 2015, 2019, false,
+                                        List.of(new ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock.Row(
+                                                "j1", "Journal One", "1234-5678", "Q1", 2, 3.10, 2.90, List.of())),
+                                        List.of(),
+                                        new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics.QuartileSplit(1, 0, 0, 0))
+                        ),
                         new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics(
                                 1.85, 6.20, 1.50, 2024, 3.10, 42.5, 2.40, 2019,
                                 new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics.QuartileSplit(1, 0, 0, 0),
@@ -651,6 +667,14 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Rankings")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Journal Coverage")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums/j1\"")))
+                // AIS/IF switch buttons carry each block's reference year; panels are per metric
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("AIS · 2024")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("IF · 2019")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-metric-panel=\"AIS\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-metric-panel=\"IF\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Avg 2020–2024")))
+                // former member is labelled with its own era, never mixed into the cohort table
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("#20 of 62 in 2008")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings#wos\"")));
     }
 

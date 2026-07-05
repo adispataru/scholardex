@@ -21,13 +21,16 @@
     }).filter(function (p) { return !isNaN(p.year) && !isNaN(p.value); });
   }
 
-  function sparklineSvg(pts) {
+  // windowFrom/windowTo (when provided) pin the x-axis to the dataset window, so a journal with a
+  // short series still plots in the right place instead of stretching to fill the sparkline
+  function sparklineSvg(pts, windowFrom, windowTo) {
     if (pts.length < 2) {
       return '<span class="app-spark app-spark--empty" aria-hidden="true">—</span>';
     }
     const w = 80, h = 22, pad = 3;
     const ys = pts.map(function (p) { return p.value; });
-    const minX = pts[0].year, maxX = pts[pts.length - 1].year;
+    const minX = isNaN(windowFrom) ? pts[0].year : windowFrom;
+    const maxX = isNaN(windowTo) ? pts[pts.length - 1].year : windowTo;
     const minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
     const spanX = (maxX - minX) || 1, spanY = (maxY - minY) || 1;
     const coords = pts.map(function (p) {
@@ -39,7 +42,7 @@
     }).join(' ');
     const last = coords[coords.length - 1];
     const rising = ys[ys.length - 1] >= ys[0];
-    const title = 'AIS ' + minX + '–' + maxX + ': ' + fmt(ys[0]) + ' → ' + fmt(ys[ys.length - 1]);
+    const title = pts[0].year + '–' + pts[pts.length - 1].year + ': ' + fmt(ys[0]) + ' → ' + fmt(ys[ys.length - 1]);
     return '<svg class="app-spark ' + (rising ? 'app-spark--up' : 'app-spark--down') + '" width="' + w +
       '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + escapeHtml(title) + '">' +
       '<title>' + escapeHtml(title) + '</title>' +
@@ -49,7 +52,35 @@
 
   function renderSparklines() {
     document.querySelectorAll('.app-spark-cell[data-trend]').forEach(function (cell) {
-      cell.innerHTML = sparklineSvg(parseTrend(cell.getAttribute('data-trend')));
+      cell.innerHTML = sparklineSvg(
+        parseTrend(cell.getAttribute('data-trend')),
+        parseInt(cell.getAttribute('data-spark-from'), 10),
+        parseInt(cell.getAttribute('data-spark-to'), 10)
+      );
+    });
+  }
+
+  // AIS/IF switch: shows one metric panel at a time (each panel is a self-consistent metric era)
+  function initMetricToggle() {
+    const buttons = Array.prototype.slice.call(document.querySelectorAll('[data-metric-toggle]'));
+    if (!buttons.length) return;
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const metric = btn.getAttribute('data-metric-toggle');
+        buttons.forEach(function (b) {
+          const active = b === btn;
+          b.classList.toggle('btn-primary', active);
+          b.classList.toggle('btn-outline-primary', !active);
+          b.setAttribute('aria-pressed', String(active));
+        });
+        document.querySelectorAll('[data-metric-panel]').forEach(function (panel) {
+          if (panel.getAttribute('data-metric-panel') === metric) {
+            panel.removeAttribute('hidden');
+          } else {
+            panel.setAttribute('hidden', 'hidden');
+          }
+        });
+      });
     });
   }
 
@@ -86,6 +117,7 @@
 
   function init() {
     renderSparklines();
+    initMetricToggle();
     document.querySelectorAll('table[data-sortable-table]').forEach(makeSortable);
   }
 

@@ -37,12 +37,18 @@
                     </div>
                 </section>
 
+                <div th:if="${categoryDetail.archival()}" class="alert alert-warning" role="status">
+                    <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                    <strong>Historical category</strong> — last ranked in <span th:text="${categoryDetail.latestYear()}">2000</span>.
+                    Web of Science no longer publishes this category; the data below is its final cohort.
+                </div>
+
                 <div class="app-summary-grid mb-4">
                     <th:block th:replace="~{fragments :: stat-card(
                         label='Journals',
                         value=${categoryDetail.journalCount()},
                         accent='primary',
-                        contextLine='Indexed in this category',
+                        contextLine=${'In the ' + categoryDetail.latestYear() + ' cohort'},
                         icon='fa-solid fa-book-open')}"></th:block>
                     <th:block th:replace="~{fragments :: stat-card(
                         label='Avg AIS',
@@ -62,25 +68,6 @@
                         accent='neutral',
                         contextLine=${categoryDetail.metrics().hasIf() ? 'Median ' + #numbers.formatDecimal(categoryDetail.metrics().medianIf(), 1, 2) + ' · IF JCR ' + categoryDetail.metrics().ifYear() : 'No IF data'},
                         icon='fa-solid fa-star')}"></th:block>
-                </div>
-
-                <div th:if="${categoryDetail.metrics().hasQuartiles()}" class="app-quartile-bar mb-4"
-                     th:with="qs=${categoryDetail.metrics().aisQuartiles()}">
-                    <div class="app-quartile-bar__header">
-                        <span class="app-quartile-bar__title">AIS quartile distribution</span>
-                        <span class="app-quartile-bar__meta" th:text="${qs.total()} + ' journals'">0 journals</span>
-                    </div>
-                    <div class="app-quartile-bar__track" role="img"
-                         th:attr="aria-label='Q1 ' + ${qs.q1()} + ', Q2 ' + ${qs.q2()} + ', Q3 ' + ${qs.q3()} + ', Q4 ' + ${qs.q4()}">
-                        <span class="app-quartile-seg app-quartile-seg--q1" th:if="${qs.q1() > 0}"
-                              th:style="'width:' + ${qs.pct(qs.q1())} + '%'" th:text="'Q1 ' + ${qs.q1()}">Q1</span>
-                        <span class="app-quartile-seg app-quartile-seg--q2" th:if="${qs.q2() > 0}"
-                              th:style="'width:' + ${qs.pct(qs.q2())} + '%'" th:text="'Q2 ' + ${qs.q2()}">Q2</span>
-                        <span class="app-quartile-seg app-quartile-seg--q3" th:if="${qs.q3() > 0}"
-                              th:style="'width:' + ${qs.pct(qs.q3())} + '%'" th:text="'Q3 ' + ${qs.q3()}">Q3</span>
-                        <span class="app-quartile-seg app-quartile-seg--q4" th:if="${qs.q4() > 0}"
-                              th:style="'width:' + ${qs.pct(qs.q4())} + '%'" th:text="'Q4 ' + ${qs.q4()}">Q4</span>
-                    </div>
                 </div>
 
                 <div th:if="${categoryDetail.metrics().trend() != null and !categoryDetail.metrics().trend().isEmpty()}"
@@ -157,61 +144,123 @@
                     <div class="app-table-section__surface">
                         <div class="app-table-section__header">
                             <h2 class="app-table-section__title">Journal Coverage</h2>
+                            <!-- AIS/IF switch: one metric era at a time — every column below is anchored to
+                                 the selected metric's reference year, never a mix of AIS and IF years. -->
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Metric" id="wos-metric-toggle">
+                                <button th:each="block, it : ${categoryDetail.blocks()}" type="button"
+                                        class="btn"
+                                        th:classappend="${it.first ? 'btn-primary' : 'btn-outline-primary'}"
+                                        th:attr="data-metric-toggle=${block.metricType()},aria-pressed=${it.first}"
+                                        th:text="${block.metricType() + ' · ' + block.referenceYear()}">AIS · 2024</button>
+                            </div>
                         </div>
                         <div class="app-table-section__body">
-                            <div th:if="${#lists.isEmpty(categoryDetail.journals())}"
-                                 class="app-table-state app-table-state--warning" role="status">
-                                No journals are currently linked to this WoS category.
-                            </div>
-                            <div th:if="${!#lists.isEmpty(categoryDetail.journals())}" class="app-table-scroll">
-                                <table class="table table-bordered app-table" id="wos-category-detail-table"
-                                       data-sortable-table width="100%" cellspacing="0">
-                                    <thead>
-                                    <tr>
-                                        <th data-sortable class="app-table__cell--numeric" title="Rank within the category (by AIS)">Rank</th>
-                                        <th data-sortable>Journal</th>
-                                        <th class="app-table__cell--identifier">ISSN</th>
-                                        <th data-sortable class="app-table__cell--numeric" title="Latest Article Influence Score + quartile">AIS</th>
-                                        <th data-sortable class="app-table__cell--numeric" title="Average AIS over the last 5 data years">AIS 5y</th>
-                                        <th>AIS trend</th>
-                                        <th data-sortable class="app-table__cell--numeric" title="Latest Journal Impact Factor (JCR ≤2019) + quartile">IF</th>
-                                        <th data-sortable class="app-table__cell--numeric" title="Average IF over the last 5 data years">IF 5y</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr th:each="journal : ${categoryDetail.journals()}">
-                                        <td class="app-table__cell--numeric"
-                                            th:attr="data-sort=${journal.rank() != null ? journal.rank() : 999999}"
-                                            th:text="${journal.rank() != null ? '#' + journal.rank() : '—'}">—</td>
-                                        <td th:attr="data-sort=${journal.journalName()}">
-                                            <a th:href="@{/forums/{id}(id=${journal.journalId()})}" th:text="${journal.journalName()}">Journal Name</a></td>
-                                        <td class="app-table__cell--identifier" th:text="${journal.issn() != null ? journal.issn() : '—'}">—</td>
-                                        <td class="app-table__cell--numeric"
-                                            th:attr="data-sort=${journal.latestAis() != null ? journal.latestAis() : -1}">
-                                            <span th:if="${journal.latestAis() != null}" th:text="${#numbers.formatDecimal(journal.latestAis(), 1, 2)}">—</span>
-                                            <span th:unless="${journal.latestAis() != null}">—</span>
-                                            <span th:if="${journal.latestAisQuarter() != null and journal.latestAisQuarter() != '—'}"
-                                                  class="app-quartile" th:classappend="'app-quartile--' + ${#strings.toLowerCase(journal.latestAisQuarter())}"
-                                                  th:text="${journal.latestAisQuarter()}">Q1</span>
-                                        </td>
-                                        <td class="app-table__cell--numeric"
-                                            th:attr="data-sort=${journal.avg5Ais() != null ? journal.avg5Ais() : -1}"
-                                            th:text="${journal.avg5Ais() != null ? #numbers.formatDecimal(journal.avg5Ais(), 1, 2) : '—'}">—</td>
-                                        <td class="app-spark-cell" th:attr="data-trend=${journal.aisTrendCsv()}"></td>
-                                        <td class="app-table__cell--numeric"
-                                            th:attr="data-sort=${journal.latestIf() != null ? journal.latestIf() : -1}">
-                                            <span th:if="${journal.latestIf() != null}" th:text="${#numbers.formatDecimal(journal.latestIf(), 1, 2)}">—</span>
-                                            <span th:unless="${journal.latestIf() != null}">—</span>
-                                            <span th:if="${journal.latestIfQuarter() != null and journal.latestIfQuarter() != '—'}"
-                                                  class="app-quartile" th:classappend="'app-quartile--' + ${#strings.toLowerCase(journal.latestIfQuarter())}"
-                                                  th:text="${journal.latestIfQuarter()}">Q1</span>
-                                        </td>
-                                        <td class="app-table__cell--numeric"
-                                            th:attr="data-sort=${journal.avg5If() != null ? journal.avg5If() : -1}"
-                                            th:text="${journal.avg5If() != null ? #numbers.formatDecimal(journal.avg5If(), 1, 2) : '—'}">—</td>
-                                    </tr>
-                                    </tbody>
-                                </table>
+                            <div th:each="block, it : ${categoryDetail.blocks()}"
+                                 th:attr="data-metric-panel=${block.metricType()},hidden=${!it.first} ? 'hidden' : null">
+
+                                <div th:if="${block.stale() and !categoryDetail.archival()}"
+                                     class="app-table-state app-table-state--warning" role="status"
+                                     th:text="${block.metricLabel() + ' data for this category ends in ' + block.referenceYear() + ' (newest ' + block.metricType() + ' data overall: ' + block.globalLatestYear() + ').'}">
+                                </div>
+
+                                <div th:if="${block.quartileSplit().total() > 0}" class="app-quartile-bar mb-3"
+                                     th:with="qs=${block.quartileSplit()}">
+                                    <div class="app-quartile-bar__header">
+                                        <span class="app-quartile-bar__title"
+                                              th:text="${block.metricType() + ' quartile distribution · ' + block.referenceYear()}">Quartiles</span>
+                                        <span class="app-quartile-bar__meta" th:text="${qs.total()} + ' journals'">0 journals</span>
+                                    </div>
+                                    <div class="app-quartile-bar__track" role="img"
+                                         th:attr="aria-label='Q1 ' + ${qs.q1()} + ', Q2 ' + ${qs.q2()} + ', Q3 ' + ${qs.q3()} + ', Q4 ' + ${qs.q4()}">
+                                        <span class="app-quartile-seg app-quartile-seg--q1" th:if="${qs.q1() > 0}"
+                                              th:style="'width:' + ${qs.pct(qs.q1())} + '%'" th:text="'Q1 ' + ${qs.q1()}">Q1</span>
+                                        <span class="app-quartile-seg app-quartile-seg--q2" th:if="${qs.q2() > 0}"
+                                              th:style="'width:' + ${qs.pct(qs.q2())} + '%'" th:text="'Q2 ' + ${qs.q2()}">Q2</span>
+                                        <span class="app-quartile-seg app-quartile-seg--q3" th:if="${qs.q3() > 0}"
+                                              th:style="'width:' + ${qs.pct(qs.q3())} + '%'" th:text="'Q3 ' + ${qs.q3()}">Q3</span>
+                                        <span class="app-quartile-seg app-quartile-seg--q4" th:if="${qs.q4() > 0}"
+                                              th:style="'width:' + ${qs.pct(qs.q4())} + '%'" th:text="'Q4 ' + ${qs.q4()}">Q4</span>
+                                    </div>
+                                </div>
+
+                                <div th:if="${!block.hasCohort()}"
+                                     class="app-table-state app-table-state--warning" role="status"
+                                     th:text="${'No journals were ranked by ' + block.metricType() + ' in ' + block.referenceYear() + '.'}">
+                                </div>
+                                <div th:if="${block.hasCohort()}" class="app-table-scroll">
+                                    <table class="table table-bordered app-table"
+                                           th:id="'wos-category-detail-table-' + ${#strings.toLowerCase(block.metricType())}"
+                                           data-sortable-table width="100%" cellspacing="0">
+                                        <thead>
+                                        <tr>
+                                            <th data-sortable class="app-table__cell--numeric"
+                                                th:title="${'Rank within the category by ' + block.metricType() + ' in ' + block.referenceYear()}"
+                                                th:text="'Rank ' + ${block.referenceYear()}">Rank</th>
+                                            <th data-sortable>Journal</th>
+                                            <th class="app-table__cell--identifier">ISSN</th>
+                                            <th data-sortable class="app-table__cell--numeric"
+                                                th:title="${block.metricLabel() + ' in ' + block.referenceYear() + ' + quartile'}"
+                                                th:text="${block.metricType() + ' ' + block.referenceYear()}">AIS</th>
+                                            <th data-sortable class="app-table__cell--numeric"
+                                                th:title="${'Average ' + block.metricType() + ' over ' + block.windowFrom() + '–' + block.windowTo()}"
+                                                th:text="${'Avg ' + block.windowFrom() + '–' + block.windowTo()}">Avg</th>
+                                            <th th:text="${'Trend ' + block.windowFrom() + '–' + block.windowTo()}">Trend</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="journal : ${block.cohort()}">
+                                            <td class="app-table__cell--numeric"
+                                                th:attr="data-sort=${journal.rank() != null ? journal.rank() : 999999}"
+                                                th:text="${journal.rank() != null ? '#' + journal.rank() : '—'}">—</td>
+                                            <td th:attr="data-sort=${journal.journalName()}">
+                                                <a th:href="@{/forums/{id}(id=${journal.journalId()})}" th:text="${journal.journalName()}">Journal Name</a></td>
+                                            <td class="app-table__cell--identifier" th:text="${journal.issn()}">—</td>
+                                            <td class="app-table__cell--numeric"
+                                                th:attr="data-sort=${journal.value() != null ? journal.value() : -1}">
+                                                <span th:if="${journal.value() != null}" th:text="${#numbers.formatDecimal(journal.value(), 1, 2)}">—</span>
+                                                <span th:unless="${journal.value() != null}">—</span>
+                                                <span th:if="${journal.quarter() != null and journal.quarter() != '—'}"
+                                                      class="app-quartile" th:classappend="'app-quartile--' + ${#strings.toLowerCase(journal.quarter())}"
+                                                      th:text="${journal.quarter()}">Q1</span>
+                                            </td>
+                                            <td class="app-table__cell--numeric"
+                                                th:attr="data-sort=${journal.windowAvg() != null ? journal.windowAvg() : -1}"
+                                                th:text="${journal.windowAvg() != null ? #numbers.formatDecimal(journal.windowAvg(), 1, 2) : '—'}">—</td>
+                                            <td class="app-spark-cell" th:attr="data-trend=${journal.trendCsv()},data-spark-from=${block.windowFrom()},data-spark-to=${block.windowTo()}"></td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <details th:if="${!#lists.isEmpty(block.formerMembers())}" class="mt-3">
+                                    <summary th:text="${'Former members (' + #lists.size(block.formerMembers()) + ') — journals no longer ranked in this category'}">Former members</summary>
+                                    <div class="app-table-scroll mt-2">
+                                        <table class="table table-bordered app-table" width="100%" cellspacing="0">
+                                            <thead>
+                                            <tr>
+                                                <th>Journal</th>
+                                                <th class="app-table__cell--numeric">Last ranked</th>
+                                                <th class="app-table__cell--numeric">Standing then</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <tr th:each="fm : ${block.formerMembers()}">
+                                                <td><a th:href="@{/forums/{id}(id=${fm.journalId()})}" th:text="${fm.journalName()}">Journal</a></td>
+                                                <td class="app-table__cell--numeric" th:text="${fm.lastYear()}">2008</td>
+                                                <td class="app-table__cell--numeric">
+                                                    <span th:if="${fm.quarter() != null and fm.quarter() != '—'}"
+                                                          class="app-quartile" th:classappend="'app-quartile--' + ${#strings.toLowerCase(fm.quarter())}"
+                                                          th:text="${fm.quarter()}">Q2</span>
+                                                    <span th:if="${fm.rank() != null}"
+                                                          th:text="${'#' + fm.rank() + ' of ' + fm.cohortSizeAtLastYear() + ' in ' + fm.lastYear()}">#20 of 62 in 2008</span>
+                                                    <span th:if="${fm.rank() == null and (fm.quarter() == null or fm.quarter() == '—')}">—</span>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+
                             </div>
                         </div>
                     </div>

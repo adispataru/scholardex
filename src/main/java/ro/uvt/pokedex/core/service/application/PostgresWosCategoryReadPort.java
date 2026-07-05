@@ -10,13 +10,14 @@ import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.service.application.model.WosCategoryDetailViewModel;
-import ro.uvt.pokedex.core.service.application.model.WosCategoryJournalViewModel;
+import ro.uvt.pokedex.core.service.application.model.WosCategoryMetricBlock;
 import ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,22 +41,18 @@ public class PostgresWosCategoryReadPort {
 
         List<WosCategoryFact> facts = namedParameterJdbcTemplate.query(
                 """
-                SELECT journal_id, year, category_name_canonical, edition_normalized,
-                       metric_type, quarter, quartile_rank, rank
+                SELECT journal_id, year, metric_type, quarter, rank
                 FROM reporting_read.wos_category_fact
                 WHERE category_name_canonical = :name
                   AND edition_normalized = :edition::reporting_read.edition_normalized_enum
+                  AND journal_id IS NOT NULL AND journal_id != ''
+                  AND year IS NOT NULL
                 """,
                 params,
                 (rs, rowNum) -> {
                     WosCategoryFact fact = new WosCategoryFact();
                     fact.setJournalId(rs.getString("journal_id"));
                     fact.setYear(rs.getObject("year", Integer.class));
-                    fact.setCategoryNameCanonical(rs.getString("category_name_canonical"));
-                    String ed = rs.getString("edition_normalized");
-                    if (ed != null) {
-                        fact.setEditionNormalized(EditionNormalized.valueOf(ed));
-                    }
                     String mt = rs.getString("metric_type");
                     if (mt != null) {
                         fact.setMetricType(MetricType.valueOf(mt));
@@ -65,148 +62,214 @@ public class PostgresWosCategoryReadPort {
                     return fact;
                 }
         );
-
         if (facts.isEmpty()) {
             return Optional.empty();
         }
 
-        Map<String, List<WosCategoryFact>> factsByJournalId = facts.stream()
-                .filter(fact -> fact.getJournalId() != null && !fact.getJournalId().isBlank())
-                .collect(Collectors.groupingBy(WosCategoryFact::getJournalId, LinkedHashMap::new, Collectors.toList()));
+        Map<MetricType, Integer> globalLatestYearByMetric = loadGlobalLatestYears();
+        Map<String, RankingRow> rankingRows = loadRankingRows(facts.stream()
+                .map(WosCategoryFact::getJournalId).collect(Collectors.toCollection(LinkedHashSet::new)));
 
-        List<String> journalIds = new ArrayList<>(factsByJournalId.keySet());
-        Map<String, RankingRow> rankingRows = new LinkedHashMap<>();
-        if (!journalIds.isEmpty()) {
-            namedParameterJdbcTemplate.query(
-                    "SELECT journal_id, name, issn, e_issn FROM reporting_read.wos_ranking_view WHERE journal_id IN (:ids)",
-                    new MapSqlParameterSource("ids", journalIds),
-                    (rs, rowNum) -> {
-                        rankingRows.put(rs.getString("journal_id"), new RankingRow(
-                                rs.getString("journal_id"),
-                                rs.getString("name"),
-                                rs.getString("issn"),
-                                rs.getString("e_issn")
-                        ));
-                        return null;
-                    }
-            );
+        List<WosCategoryMetricBlock> blocks = new ArrayList<>();
+        for (MetricType metric : List.of(MetricType.AIS, MetricType.IF)) {
+            WosCategoryMetricBlock block = buildMetricBlock(metric, facts, rankingRows, globalLatestYearByMetric.get(metric));
+            if (block != null) {
+                blocks.add(block);
+            }
+        }
+        if (blocks.isEmpty()) {
+            return Optional.empty();
         }
 
-        String key = categoryName + " - " + edition.name();
-        Map<String, JournalMetric> journalMetrics = loadJournalMetrics(new ArrayList<>(factsByJournalId.keySet()));
-        List<WosCategoryJournalViewModel> journals = new ArrayList<>();
-        Integer latestYear = null;
-        int[] aisQuartiles = new int[4]; // Q1..Q4 counts for the category quartile split
-        for (Map.Entry<String, List<WosCategoryFact>> entry : factsByJournalId.entrySet()) {
-            List<WosCategoryFact> journalFacts = entry.getValue();
-            RankingRow row = rankingRows.get(entry.getKey());
-            MetricSnapshot snapshot = buildMetricSnapshot(journalFacts);
-            if (snapshot.latestYear != null && (latestYear == null || snapshot.latestYear > latestYear)) {
-                latestYear = snapshot.latestYear;
-            }
-            String name = row != null && row.name() != null && !row.name().isBlank() ? row.name() : entry.getKey();
-            String issn = row != null ? blankToDash(row.issn()) : "—";
-            String eIssn = row != null ? blankToDash(row.eIssn()) : "—";
-            String aisQuarter = snapshot.metricQuarter(MetricType.AIS);
-            int qIdx = quartileIndex(aisQuarter);
-            if (qIdx >= 0) {
-                aisQuartiles[qIdx]++;
-            }
-            JournalMetric jm = journalMetrics.getOrDefault(entry.getKey(), JournalMetric.empty());
-            journals.add(new WosCategoryJournalViewModel(
-                    entry.getKey(),
-                    name,
-                    issn,
-                    eIssn,
-                    snapshot.latestYear,
-                    aisQuarter,
-                    snapshot.metricQuarter(MetricType.RIS),
-                    snapshot.metricQuarter(MetricType.IF),
-                    snapshot.metricRank(MetricType.AIS),
-                    jm.latestAis(), jm.latestAisYear(),
-                    jm.latestIf(), jm.latestIfYear(),
-                    jm.avg5Ais(), jm.avg5If(),
-                    jm.aisTrend()
-            ));
-        }
+        boolean archival = blocks.stream().allMatch(WosCategoryMetricBlock::stale);
+        Integer latestYear = blocks.stream().map(WosCategoryMetricBlock::referenceYear)
+                .filter(java.util.Objects::nonNull).max(Integer::compareTo).orElse(null);
+        WosCategoryMetrics.QuartileSplit aisSplit = blocks.stream()
+                .filter(b -> MetricType.AIS.name().equals(b.metricType()))
+                .map(WosCategoryMetricBlock::quartileSplit)
+                .findFirst().orElse(new WosCategoryMetrics.QuartileSplit(0, 0, 0, 0));
 
-        journals.sort(Comparator.comparing(WosCategoryJournalViewModel::journalName, String.CASE_INSENSITIVE_ORDER));
-        WosCategoryMetrics.QuartileSplit split =
-                new WosCategoryMetrics.QuartileSplit(aisQuartiles[0], aisQuartiles[1], aisQuartiles[2], aisQuartiles[3]);
         return Optional.of(new WosCategoryDetailViewModel(
-                key,
+                categoryName + " - " + edition.name(),
                 categoryName,
                 edition.name(),
-                journals.size(),
+                blocks.get(0).cohort().size(),
                 latestYear,
-                journals,
-                loadCategoryMetrics(categoryName, edition, split)
+                archival,
+                blocks,
+                loadCategoryMetrics(categoryName, edition, aisSplit)
         ));
     }
 
-    /** Per-journal AIS/IF: latest value+year, last-5-DB-years average, and the AIS trend (for row sparklines). */
-    private Map<String, JournalMetric> loadJournalMetrics(List<String> journalIds) {
-        if (journalIds.isEmpty()) {
-            return Map.of();
+    /**
+     * One metric's cohort view: everything is anchored to the category's reference year for this metric
+     * (its latest year with facts), so quartiles/ranks come from a single cohort and never mix eras. The
+     * trend/average window is the 5 years ending at the reference year; journals with older facts only
+     * become "former members", labelled with the year they were last ranked.
+     */
+    private WosCategoryMetricBlock buildMetricBlock(
+            MetricType metric,
+            List<WosCategoryFact> allFacts,
+            Map<String, RankingRow> rankingRows,
+            Integer globalLatestYear
+    ) {
+        List<WosCategoryFact> metricFacts = allFacts.stream()
+                .filter(f -> f.getMetricType() == metric)
+                .toList();
+        if (metricFacts.isEmpty()) {
+            return null;
         }
-        Map<String, Map<String, java.util.TreeMap<Integer, Double>>> raw = new java.util.HashMap<>();
+        int referenceYear = metricFacts.stream().mapToInt(WosCategoryFact::getYear).max().orElseThrow();
+        int windowFrom = referenceYear - 4;
+
+        Map<String, WosCategoryFact> cohortByJournal = new LinkedHashMap<>();
+        Map<String, WosCategoryFact> lastFactByJournal = new LinkedHashMap<>();
+        Map<Integer, Set<String>> journalsByYear = new java.util.HashMap<>();
+        for (WosCategoryFact fact : metricFacts) {
+            journalsByYear.computeIfAbsent(fact.getYear(), ignored -> new java.util.HashSet<>()).add(fact.getJournalId());
+            if (fact.getYear() == referenceYear) {
+                cohortByJournal.putIfAbsent(fact.getJournalId(), fact);
+            }
+            WosCategoryFact last = lastFactByJournal.get(fact.getJournalId());
+            if (last == null || fact.getYear() > last.getYear()) {
+                lastFactByJournal.put(fact.getJournalId(), fact);
+            }
+        }
+
+        Map<String, java.util.TreeMap<Integer, Double>> valueSeries =
+                loadMetricValues(metric, cohortByJournal.keySet(), windowFrom, referenceYear);
+
+        int[] quartiles = new int[4];
+        List<WosCategoryMetricBlock.Row> cohort = new ArrayList<>();
+        for (Map.Entry<String, WosCategoryFact> entry : cohortByJournal.entrySet()) {
+            WosCategoryFact fact = entry.getValue();
+            RankingRow row = rankingRows.get(entry.getKey());
+            String quarter = normalizeQuarter(fact.getQuarter());
+            int qIdx = quartileIndex(quarter);
+            if (qIdx >= 0) {
+                quartiles[qIdx]++;
+            }
+            java.util.TreeMap<Integer, Double> series =
+                    valueSeries.getOrDefault(entry.getKey(), new java.util.TreeMap<>());
+            List<WosCategoryMetricBlock.MetricPoint> trend = new ArrayList<>();
+            double sum = 0;
+            int count = 0;
+            for (Map.Entry<Integer, Double> point : series.entrySet()) {
+                trend.add(new WosCategoryMetricBlock.MetricPoint(point.getKey(), point.getValue()));
+                sum += point.getValue();
+                count++;
+            }
+            cohort.add(new WosCategoryMetricBlock.Row(
+                    entry.getKey(),
+                    row != null && row.name() != null && !row.name().isBlank() ? row.name() : entry.getKey(),
+                    row != null ? blankToDash(row.issn()) : "—",
+                    quarter,
+                    fact.getRank(),
+                    series.get(referenceYear),
+                    count == 0 ? null : sum / count,
+                    trend
+            ));
+        }
+        cohort.sort(Comparator
+                .comparing(WosCategoryMetricBlock.Row::rank, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(WosCategoryMetricBlock.Row::journalName, String.CASE_INSENSITIVE_ORDER));
+
+        List<WosCategoryMetricBlock.FormerMember> former = new ArrayList<>();
+        for (Map.Entry<String, WosCategoryFact> entry : lastFactByJournal.entrySet()) {
+            if (cohortByJournal.containsKey(entry.getKey())) {
+                continue;
+            }
+            WosCategoryFact fact = entry.getValue();
+            RankingRow row = rankingRows.get(entry.getKey());
+            former.add(new WosCategoryMetricBlock.FormerMember(
+                    entry.getKey(),
+                    row != null && row.name() != null && !row.name().isBlank() ? row.name() : entry.getKey(),
+                    fact.getYear(),
+                    normalizeQuarter(fact.getQuarter()),
+                    fact.getRank(),
+                    journalsByYear.getOrDefault(fact.getYear(), Set.of()).size()
+            ));
+        }
+        former.sort(Comparator
+                .comparing(WosCategoryMetricBlock.FormerMember::lastYear, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(WosCategoryMetricBlock.FormerMember::journalName, String.CASE_INSENSITIVE_ORDER));
+
+        return new WosCategoryMetricBlock(
+                metric.name(),
+                metric == MetricType.AIS ? "Article Influence Score" : "Journal Impact Factor",
+                referenceYear,
+                globalLatestYear,
+                windowFrom,
+                referenceYear,
+                globalLatestYear != null && referenceYear < globalLatestYear,
+                cohort,
+                former,
+                new WosCategoryMetrics.QuartileSplit(quartiles[0], quartiles[1], quartiles[2], quartiles[3])
+        );
+    }
+
+    /** Dataset-wide latest fact year per metric — the yardstick for marking a category's block as stale. */
+    private Map<MetricType, Integer> loadGlobalLatestYears() {
+        Map<MetricType, Integer> out = new EnumMap<>(MetricType.class);
         namedParameterJdbcTemplate.query(
-                """
-                SELECT journal_id, metric_type, year, value
-                FROM reporting_read.wos_metric_fact
-                WHERE journal_id IN (:ids)
-                  AND metric_type IN ('AIS'::reporting_read.metric_type_enum, 'IF'::reporting_read.metric_type_enum)
-                  AND value IS NOT NULL
-                """,
-                new MapSqlParameterSource("ids", journalIds),
+                "SELECT metric_type, MAX(year) AS max_year FROM reporting_read.wos_category_fact GROUP BY metric_type",
+                new MapSqlParameterSource(),
                 (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
-                    String jid = rs.getString("journal_id");
-                    String metric = rs.getString("metric_type");
-                    Integer year = rs.getObject("year", Integer.class);
-                    Double value = rs.getObject("value", Double.class);
-                    if (jid == null || metric == null || year == null || value == null) {
-                        return;
+                    String mt = rs.getString("metric_type");
+                    Integer year = rs.getObject("max_year", Integer.class);
+                    if (mt != null && year != null) {
+                        out.put(MetricType.valueOf(mt), year);
                     }
-                    raw.computeIfAbsent(jid, k -> new java.util.HashMap<>())
-                            .computeIfAbsent(metric, k -> new java.util.TreeMap<>())
-                            .put(year, value);
                 });
-        Map<String, JournalMetric> out = new java.util.HashMap<>();
-        for (Map.Entry<String, Map<String, java.util.TreeMap<Integer, Double>>> e : raw.entrySet()) {
-            java.util.TreeMap<Integer, Double> ais = e.getValue().getOrDefault("AIS", new java.util.TreeMap<>());
-            java.util.TreeMap<Integer, Double> impact = e.getValue().getOrDefault("IF", new java.util.TreeMap<>());
-            out.put(e.getKey(), new JournalMetric(
-                    latestValue(ais), latestKey(ais), latestValue(impact), latestKey(impact),
-                    avgLastFive(ais), avgLastFive(impact), trendLastFive(ais)));
-        }
         return out;
     }
 
-    private static Double latestValue(java.util.TreeMap<Integer, Double> series) {
-        return series.isEmpty() ? null : series.lastEntry().getValue();
-    }
-
-    private static Integer latestKey(java.util.TreeMap<Integer, Double> series) {
-        return series.isEmpty() ? null : series.lastKey();
-    }
-
-    private static Double avgLastFive(java.util.TreeMap<Integer, Double> series) {
-        if (series.isEmpty()) {
-            return null;
+    private Map<String, RankingRow> loadRankingRows(Set<String> journalIds) {
+        Map<String, RankingRow> rankingRows = new LinkedHashMap<>();
+        if (journalIds.isEmpty()) {
+            return rankingRows;
         }
-        java.util.OptionalDouble avg = series.descendingMap().values().stream().limit(5)
-                .mapToDouble(Double::doubleValue).average();
-        return avg.isPresent() ? avg.getAsDouble() : null;
+        namedParameterJdbcTemplate.query(
+                "SELECT journal_id, name, issn, e_issn FROM reporting_read.wos_ranking_view WHERE journal_id IN (:ids)",
+                new MapSqlParameterSource("ids", journalIds),
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> rankingRows.put(rs.getString("journal_id"), new RankingRow(
+                        rs.getString("journal_id"),
+                        rs.getString("name"),
+                        rs.getString("issn"),
+                        rs.getString("e_issn")
+                )));
+        return rankingRows;
     }
 
-    private static List<WosCategoryJournalViewModel.MetricPoint> trendLastFive(java.util.TreeMap<Integer, Double> series) {
-        List<Integer> years = new ArrayList<>(series.navigableKeySet());
-        int from = Math.max(0, years.size() - 5);
-        List<WosCategoryJournalViewModel.MetricPoint> points = new ArrayList<>();
-        for (int i = from; i < years.size(); i++) {
-            points.add(new WosCategoryJournalViewModel.MetricPoint(years.get(i), series.get(years.get(i))));
+    /** Per-journal metric values inside the block window (year → value), for the value/avg/sparkline columns. */
+    private Map<String, java.util.TreeMap<Integer, Double>> loadMetricValues(
+            MetricType metric, Set<String> journalIds, int fromYear, int toYear) {
+        Map<String, java.util.TreeMap<Integer, Double>> out = new java.util.HashMap<>();
+        if (journalIds.isEmpty()) {
+            return out;
         }
-        return points;
+        namedParameterJdbcTemplate.query(
+                """
+                SELECT journal_id, year, value
+                FROM reporting_read.wos_metric_fact
+                WHERE journal_id IN (:ids)
+                  AND metric_type = :metric::reporting_read.metric_type_enum
+                  AND year BETWEEN :from AND :to
+                  AND value IS NOT NULL
+                """,
+                new MapSqlParameterSource("ids", journalIds)
+                        .addValue("metric", metric.name())
+                        .addValue("from", fromYear)
+                        .addValue("to", toYear),
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                    String jid = rs.getString("journal_id");
+                    Integer year = rs.getObject("year", Integer.class);
+                    Double value = rs.getObject("value", Double.class);
+                    if (jid != null && year != null && value != null) {
+                        out.computeIfAbsent(jid, k -> new java.util.TreeMap<>()).put(year, value);
+                    }
+                });
+        return out;
     }
 
     private static int quartileIndex(String quarter) {
@@ -220,13 +283,6 @@ public class PostgresWosCategoryReadPort {
             case "Q4" -> 3;
             default -> -1;
         };
-    }
-
-    private record JournalMetric(Double latestAis, Integer latestAisYear, Double latestIf, Integer latestIfYear,
-                                 Double avg5Ais, Double avg5If, List<WosCategoryJournalViewModel.MetricPoint> aisTrend) {
-        static JournalMetric empty() {
-            return new JournalMetric(null, null, null, null, null, null, List.of());
-        }
     }
 
     /** Headline latest-year AIS/IF (avg + top + median), the per-year avg-AIS/avg-IF trend for the detail chart,
@@ -443,24 +499,6 @@ public class PostgresWosCategoryReadPort {
         return normalized;
     }
 
-    private MetricSnapshot buildMetricSnapshot(List<WosCategoryFact> facts) {
-        MetricSnapshot snapshot = new MetricSnapshot();
-        for (WosCategoryFact fact : facts) {
-            if (fact.getYear() != null && (snapshot.latestYear == null || fact.getYear() > snapshot.latestYear)) {
-                snapshot.latestYear = fact.getYear();
-            }
-            if (fact.getMetricType() == null || fact.getYear() == null) {
-                continue;
-            }
-            MetricObservation current = snapshot.latestByMetric.get(fact.getMetricType());
-            if (current == null || fact.getYear() > current.year()) {
-                snapshot.latestByMetric.put(fact.getMetricType(),
-                        new MetricObservation(fact.getYear(), normalizeQuarter(fact.getQuarter()), fact.getRank()));
-            }
-        }
-        return snapshot;
-    }
-
     private String normalizeQuarter(String rawQuarter) {
         if (rawQuarter == null || rawQuarter.isBlank()) {
             return "—";
@@ -493,20 +531,4 @@ public class PostgresWosCategoryReadPort {
 
     private record RankingRow(String journalId, String name, String issn, String eIssn) {}
 
-    private static final class MetricSnapshot {
-        private Integer latestYear;
-        private final Map<MetricType, MetricObservation> latestByMetric = new EnumMap<>(MetricType.class);
-
-        private String metricQuarter(MetricType metricType) {
-            MetricObservation observation = latestByMetric.get(metricType);
-            return observation == null ? "—" : observation.quarter();
-        }
-
-        private Integer metricRank(MetricType metricType) {
-            MetricObservation observation = latestByMetric.get(metricType);
-            return observation == null ? null : observation.rank();
-        }
-    }
-
-    private record MetricObservation(Integer year, String quarter, Integer rank) {}
 }
