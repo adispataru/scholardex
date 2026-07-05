@@ -45,17 +45,112 @@
                         contextLine='Indexed in this category',
                         icon='fa-solid fa-book-open')}"></th:block>
                     <th:block th:replace="~{fragments :: stat-card(
-                        label='Edition',
-                        value=${categoryDetail.edition()},
-                        accent='neutral',
-                        contextLine='WoS edition',
-                        icon='fa-solid fa-layer-group')}"></th:block>
+                        label='Avg AIS',
+                        value=${categoryDetail.metrics().hasAis() ? #numbers.formatDecimal(categoryDetail.metrics().avgAis(), 1, 2) : '—'},
+                        accent='success',
+                        contextLine=${categoryDetail.metrics().hasAis() ? 'Median ' + #numbers.formatDecimal(categoryDetail.metrics().medianAis(), 1, 2) + ' · AIS ' + categoryDetail.metrics().aisYear() : 'No AIS data'},
+                        icon='fa-solid fa-chart-line')}"></th:block>
                     <th:block th:replace="~{fragments :: stat-card(
-                        label='Latest Year',
-                        value=${categoryDetail.latestYear() != null ? categoryDetail.latestYear() : '—'},
+                        label='Top AIS',
+                        value=${categoryDetail.metrics().hasAis() ? #numbers.formatDecimal(categoryDetail.metrics().topAis(), 1, 2) : '—'},
                         accent='neutral',
-                        contextLine='Most recent data year',
-                        icon='fa-solid fa-calendar')}"></th:block>
+                        contextLine='Highest AIS in this category',
+                        icon='fa-solid fa-arrow-trend-up')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card(
+                        label='Avg IF',
+                        value=${categoryDetail.metrics().hasIf() ? #numbers.formatDecimal(categoryDetail.metrics().avgIf(), 1, 2) : '—'},
+                        accent='neutral',
+                        contextLine=${categoryDetail.metrics().hasIf() ? 'Median ' + #numbers.formatDecimal(categoryDetail.metrics().medianIf(), 1, 2) + ' · IF JCR ' + categoryDetail.metrics().ifYear() : 'No IF data'},
+                        icon='fa-solid fa-star')}"></th:block>
+                </div>
+
+                <div th:if="${categoryDetail.metrics().hasQuartiles()}" class="app-quartile-bar mb-4"
+                     th:with="qs=${categoryDetail.metrics().aisQuartiles()}">
+                    <div class="app-quartile-bar__header">
+                        <span class="app-quartile-bar__title">AIS quartile distribution</span>
+                        <span class="app-quartile-bar__meta" th:text="${qs.total()} + ' journals'">0 journals</span>
+                    </div>
+                    <div class="app-quartile-bar__track" role="img"
+                         th:attr="aria-label='Q1 ' + ${qs.q1()} + ', Q2 ' + ${qs.q2()} + ', Q3 ' + ${qs.q3()} + ', Q4 ' + ${qs.q4()}">
+                        <span class="app-quartile-seg app-quartile-seg--q1" th:if="${qs.q1() > 0}"
+                              th:style="'width:' + ${qs.pct(qs.q1())} + '%'" th:text="'Q1 ' + ${qs.q1()}">Q1</span>
+                        <span class="app-quartile-seg app-quartile-seg--q2" th:if="${qs.q2() > 0}"
+                              th:style="'width:' + ${qs.pct(qs.q2())} + '%'" th:text="'Q2 ' + ${qs.q2()}">Q2</span>
+                        <span class="app-quartile-seg app-quartile-seg--q3" th:if="${qs.q3() > 0}"
+                              th:style="'width:' + ${qs.pct(qs.q3())} + '%'" th:text="'Q3 ' + ${qs.q3()}">Q3</span>
+                        <span class="app-quartile-seg app-quartile-seg--q4" th:if="${qs.q4() > 0}"
+                              th:style="'width:' + ${qs.pct(qs.q4())} + '%'" th:text="'Q4 ' + ${qs.q4()}">Q4</span>
+                    </div>
+                </div>
+
+                <div th:if="${categoryDetail.metrics().trend() != null and !categoryDetail.metrics().trend().isEmpty()}"
+                     class="app-table-section mb-4">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__header">
+                            <h2 class="app-table-section__title">Metric trend</h2>
+                        </div>
+                        <div class="app-table-section__body">
+                            <div class="chart-area">
+                                <canvas id="wosMetricChart"></canvas>
+                            </div>
+                            <p class="app-page-intro__body">Average Article Influence Score (current) and Journal Impact
+                                Factor (JCR — our data ends 2019) across this category's journals, by year.</p>
+                        </div>
+                    </div>
+                    <script th:inline="javascript">
+                        document.addEventListener('DOMContentLoaded', function () {
+                            var trend = /*[[${categoryDetail.metrics().trend()}]]*/ [];
+                            var labels = trend.map(function (p) { return p.year; });
+                            var aisData = trend.map(function (p) { return p.avgAis; });
+                            var ifData = trend.map(function (p) { return p.avgIf; });
+                            var chart = null;
+                            function render() {
+                                var canvas = document.getElementById('wosMetricChart');
+                                if (!canvas || typeof Chart === 'undefined') return;
+                                var themeApi = window.appChartTheme || {};
+                                var theme = themeApi.getChartTheme ? themeApi.getChartTheme() : {
+                                    series: ['#22c55e', '#3b82f6'], text: '#334155', textStrong: '#0f172a',
+                                    textMuted: '#64748b', border: '#dbe4f0', chartGrid: '#dbe4f0', chartTooltipBg: '#ffffff'
+                                };
+                                var alphaColor = themeApi.alphaColor || function (c) { return c; };
+                                var aisColor = theme.series[0];
+                                var ifColor = theme.series[1] || theme.series[0];
+                                if (chart) { chart.destroy(); }
+                                chart = new Chart(canvas.getContext('2d'), {
+                                    type: 'line',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [
+                                            { label: 'Avg AIS', data: aisData, borderColor: aisColor,
+                                              backgroundColor: alphaColor(aisColor, 0.12), pointRadius: 3, pointHoverRadius: 4,
+                                              spanGaps: false, fill: true, lineTension: 0.3 },
+                                            { label: 'Avg IF (JCR ≤2019)', data: ifData, borderColor: ifColor,
+                                              backgroundColor: alphaColor(ifColor, 0.06), pointRadius: 3, pointHoverRadius: 4,
+                                              spanGaps: false, fill: false, borderDash: [5, 3], lineTension: 0.3 }
+                                        ]
+                                    },
+                                    options: {
+                                        maintainAspectRatio: false,
+                                        layout: { padding: { left: 10, right: 20, top: 20, bottom: 0 } },
+                                        scales: {
+                                            xAxes: [{ gridLines: { display: false, drawBorder: false },
+                                                      ticks: { fontColor: theme.textMuted } }],
+                                            yAxes: [{ ticks: { beginAtZero: true, padding: 10, fontColor: theme.textMuted },
+                                                      gridLines: { color: theme.chartGrid, drawBorder: false, borderDash: [2] } }]
+                                        },
+                                        legend: { display: true, labels: { fontColor: theme.textMuted } },
+                                        tooltips: {
+                                            backgroundColor: theme.chartTooltipBg, bodyFontColor: theme.text,
+                                            titleFontColor: theme.textStrong, borderColor: theme.border, borderWidth: 1,
+                                            xPadding: 12, yPadding: 12, intersect: false, mode: 'index'
+                                        }
+                                    }
+                                });
+                            }
+                            render();
+                            window.addEventListener('app:themechange', render);
+                        });
+                    </script>
                 </div>
 
                 <div class="app-table-section">
@@ -69,27 +164,51 @@
                                 No journals are currently linked to this WoS category.
                             </div>
                             <div th:if="${!#lists.isEmpty(categoryDetail.journals())}" class="app-table-scroll">
-                                <table class="table table-bordered app-table" id="wos-category-detail-table" width="100%" cellspacing="0">
+                                <table class="table table-bordered app-table" id="wos-category-detail-table"
+                                       data-sortable-table width="100%" cellspacing="0">
                                     <thead>
                                     <tr>
-                                        <th>Journal</th>
-                                        <th>ISSN</th>
-                                        <th>eISSN</th>
-                                        <th>Latest Year</th>
-                                        <th>AIS Quarter</th>
-                                        <th>RIS Quarter</th>
-                                        <th>IF Quarter</th>
+                                        <th data-sortable class="app-table__cell--numeric" title="Rank within the category (by AIS)">Rank</th>
+                                        <th data-sortable>Journal</th>
+                                        <th class="app-table__cell--identifier">ISSN</th>
+                                        <th data-sortable class="app-table__cell--numeric" title="Latest Article Influence Score + quartile">AIS</th>
+                                        <th data-sortable class="app-table__cell--numeric" title="Average AIS over the last 5 data years">AIS 5y</th>
+                                        <th>AIS trend</th>
+                                        <th data-sortable class="app-table__cell--numeric" title="Latest Journal Impact Factor (JCR ≤2019) + quartile">IF</th>
+                                        <th data-sortable class="app-table__cell--numeric" title="Average IF over the last 5 data years">IF 5y</th>
                                     </tr>
                                     </thead>
                                     <tbody>
                                     <tr th:each="journal : ${categoryDetail.journals()}">
-                                        <td><a th:href="@{/forums/{id}(id=${journal.journalId()})}" th:text="${journal.journalName()}">Journal Name</a></td>
+                                        <td class="app-table__cell--numeric"
+                                            th:attr="data-sort=${journal.rank() != null ? journal.rank() : 999999}"
+                                            th:text="${journal.rank() != null ? '#' + journal.rank() : '—'}">—</td>
+                                        <td th:attr="data-sort=${journal.journalName()}">
+                                            <a th:href="@{/forums/{id}(id=${journal.journalId()})}" th:text="${journal.journalName()}">Journal Name</a></td>
                                         <td class="app-table__cell--identifier" th:text="${journal.issn() != null ? journal.issn() : '—'}">—</td>
-                                        <td class="app-table__cell--identifier" th:text="${journal.eIssn() != null ? journal.eIssn() : '—'}">—</td>
-                                        <td th:text="${journal.latestYear() != null ? journal.latestYear() : '—'}">—</td>
-                                        <td th:text="${journal.latestAisQuarter() != null ? journal.latestAisQuarter() : '—'}">—</td>
-                                        <td th:text="${journal.latestRisQuarter() != null ? journal.latestRisQuarter() : '—'}">—</td>
-                                        <td th:text="${journal.latestIfQuarter() != null ? journal.latestIfQuarter() : '—'}">—</td>
+                                        <td class="app-table__cell--numeric"
+                                            th:attr="data-sort=${journal.latestAis() != null ? journal.latestAis() : -1}">
+                                            <span th:if="${journal.latestAis() != null}" th:text="${#numbers.formatDecimal(journal.latestAis(), 1, 2)}">—</span>
+                                            <span th:unless="${journal.latestAis() != null}">—</span>
+                                            <span th:if="${journal.latestAisQuarter() != null and journal.latestAisQuarter() != '—'}"
+                                                  class="app-quartile" th:classappend="'app-quartile--' + ${#strings.toLowerCase(journal.latestAisQuarter())}"
+                                                  th:text="${journal.latestAisQuarter()}">Q1</span>
+                                        </td>
+                                        <td class="app-table__cell--numeric"
+                                            th:attr="data-sort=${journal.avg5Ais() != null ? journal.avg5Ais() : -1}"
+                                            th:text="${journal.avg5Ais() != null ? #numbers.formatDecimal(journal.avg5Ais(), 1, 2) : '—'}">—</td>
+                                        <td class="app-spark-cell" th:attr="data-trend=${journal.aisTrendCsv()}"></td>
+                                        <td class="app-table__cell--numeric"
+                                            th:attr="data-sort=${journal.latestIf() != null ? journal.latestIf() : -1}">
+                                            <span th:if="${journal.latestIf() != null}" th:text="${#numbers.formatDecimal(journal.latestIf(), 1, 2)}">—</span>
+                                            <span th:unless="${journal.latestIf() != null}">—</span>
+                                            <span th:if="${journal.latestIfQuarter() != null and journal.latestIfQuarter() != '—'}"
+                                                  class="app-quartile" th:classappend="'app-quartile--' + ${#strings.toLowerCase(journal.latestIfQuarter())}"
+                                                  th:text="${journal.latestIfQuarter()}">Q1</span>
+                                        </td>
+                                        <td class="app-table__cell--numeric"
+                                            th:attr="data-sort=${journal.avg5If() != null ? journal.avg5If() : -1}"
+                                            th:text="${journal.avg5If() != null ? #numbers.formatDecimal(journal.avg5If(), 1, 2) : '—'}">—</td>
                                     </tr>
                                     </tbody>
                                 </table>
@@ -109,6 +228,7 @@
     </a>
 </div>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script src="/js/wos-category-detail.js"></script>
 
 </body>
 </html>

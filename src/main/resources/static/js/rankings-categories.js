@@ -65,6 +65,42 @@
       .replaceAll("'", '&#39;');
   }
 
+  function fmtNum(value, digits) {
+    if (value == null || isNaN(value)) return '—';
+    return Number(value).toFixed(digits == null ? 2 : digits);
+  }
+
+  // Inline SVG sparkline of a category's average-AIS trend. Colours by direction (rising = success),
+  // via currentColor so it inherits the app theme. Returns a muted dash for <2 points.
+  function sparklineSvg(trend) {
+    const pts = (trend || []).filter(function (p) { return p && p.avg != null; });
+    if (pts.length < 2) {
+      return '<span class="app-spark app-spark--empty" aria-hidden="true">—</span>';
+    }
+    const w = 88, h = 24, pad = 3;
+    const ys = pts.map(function (p) { return p.avg; });
+    const minX = pts[0].year, maxX = pts[pts.length - 1].year;
+    const minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    const spanX = (maxX - minX) || 1, spanY = (maxY - minY) || 1;
+    const coords = pts.map(function (p) {
+      return [
+        pad + (p.year - minX) / spanX * (w - 2 * pad),
+        h - pad - (p.avg - minY) / spanY * (h - 2 * pad)
+      ];
+    });
+    const d = coords.map(function (c, i) {
+      return (i === 0 ? 'M' : 'L') + c[0].toFixed(1) + ' ' + c[1].toFixed(1);
+    }).join(' ');
+    const last = coords[coords.length - 1];
+    const rising = ys[ys.length - 1] >= ys[0];
+    const title = 'Avg AIS ' + minX + '–' + maxX + ': ' + fmtNum(ys[0]) + ' → ' + fmtNum(ys[ys.length - 1]);
+    return '<svg class="app-spark ' + (rising ? 'app-spark--up' : 'app-spark--down') + '" width="' + w +
+      '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + escapeHtml(title) + '">' +
+      '<title>' + escapeHtml(title) + '</title>' +
+      '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2" fill="currentColor"/></svg>';
+  }
+
   function renderRows(items) {
     const detailBase = els.table.dataset.detailBase || '/wos/categories';
     els.tableBody.innerHTML = (items || []).map(function (item) {
@@ -73,7 +109,10 @@
         '<td><a href="' + detailBase + '/' + key + '">' + escapeHtml(item.categoryName) + '</a></td>' +
         '<td class="app-table__cell--identifier">' + escapeHtml(item.edition || '—') + '</td>' +
         '<td class="app-table__cell--numeric">' + escapeHtml(item.journalCount == null ? '—' : item.journalCount) + '</td>' +
-        '<td class="app-table__cell--numeric">' + escapeHtml(item.latestYear == null ? '—' : item.latestYear) + '</td>' +
+        '<td class="app-table__cell--numeric">' + fmtNum(item.avgAis) + '</td>' +
+        '<td class="app-table__cell--numeric">' + fmtNum(item.topAis) + '</td>' +
+        '<td class="app-spark-cell">' + sparklineSvg(item.aisTrend) + '</td>' +
+        '<td class="app-table__cell--numeric">' + fmtNum(item.avgIf) + '</td>' +
         '</tr>';
     }).join('');
   }

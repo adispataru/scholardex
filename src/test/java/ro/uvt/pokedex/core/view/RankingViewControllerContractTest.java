@@ -521,7 +521,33 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("cdn.jsdelivr.net"))));
     }
 
-@Test
+    @Test
+    void coreRankingChartMapsNationalAndRegionalTiers() throws Exception {
+        CoreConferenceRanking conf = new CoreConferenceRanking();
+        conf.setId("NAT-Some National Conference");
+        conf.setName("Some National Conference");
+        conf.setAcronym("NATCON");
+        conf.setSource("CORE");
+        conf.setSourceId("CORE-NATCON");
+        CoreConferenceRanking.YearlyRanking national = new CoreConferenceRanking.YearlyRanking();
+        national.setRank(CoreConferenceRanking.Rank.National);
+        CoreConferenceRanking.YearlyRanking regional = new CoreConferenceRanking.YearlyRanking();
+        regional.setRank(CoreConferenceRanking.Rank.National_Regional);
+        conf.setYearlyRankings(Map.of(2021, national, 2023, regional));
+        when(adminCatalogFacade.findCoreRankingById(eq("NAT-Some National Conference")))
+                .thenReturn(Optional.of(conf));
+
+        mockMvc.perform(get("/core/rankings/{id}", "NAT-Some National Conference"))
+                .andExpect(status().isOk())
+                // The chart scale now maps the national/regional tiers (previously undefined -> dropped off the graph).
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"National\": 2")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"National_Regional\": 1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("1: \"Regional\"")))
+                // Latest (2023) tier label uses the friendly "Regional" instead of the enum name.
+                .andExpect(model().attribute("latestRankLabel", "Regional"));
+    }
+
+    @Test
     void urapRankingDetailRendersCanonicalPublicProfile() throws Exception {
         URAPUniversityRanking ranking = new URAPUniversityRanking();
         ranking.setName("West University");
@@ -605,7 +631,13 @@ class RankingViewControllerContractTest {
                         "SCIE",
                         1,
                         2024,
-                        List.of(new WosCategoryJournalViewModel("j1", "Journal One", "1234-5678", "8765-4321", 2024, "Q1", "Q2", "Q1"))
+                        List.of(new WosCategoryJournalViewModel("j1", "Journal One", "1234-5678", "8765-4321", 2024, "Q1", "Q2", "Q1")),
+                        new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics(
+                                1.85, 6.20, 1.50, 2024, 3.10, 42.5, 2.40, 2019,
+                                new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics.QuartileSplit(1, 0, 0, 0),
+                                java.util.List.of(
+                                        new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics.TrendPoint(2023, 1.70, null),
+                                        new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics.TrendPoint(2024, 1.85, null)))
                 )
         ));
 

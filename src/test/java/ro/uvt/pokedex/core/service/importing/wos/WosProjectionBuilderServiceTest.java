@@ -83,8 +83,12 @@ class WosProjectionBuilderServiceTest {
 
         // 1 journal identity + 2 category facts = 3 imported items
         assertEquals(3, result.getImportedCount());
-        // TRUNCATE must be issued inside the transaction (kills removed-call mutation on execute)
-        verify(jdbcTemplate).execute(anyString());
+        // The projection TRUNCATE must be issued inside the transaction (kills removed-call mutation on execute).
+        // Matched specifically (contains wos_ranking_view) so it is not conflated with the category-metric-agg
+        // rebuild's own TRUNCATE/INSERT executes.
+        verify(jdbcTemplate).execute(org.mockito.ArgumentMatchers.contains("wos_ranking_view"));
+        // The aggregate rollup is rebuilt in the same transaction.
+        verify(jdbcTemplate).execute(org.mockito.ArgumentMatchers.contains("INTO reporting_read.wos_category_metric_agg"));
     }
 
     @Test

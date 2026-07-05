@@ -165,6 +165,7 @@ public class RankingViewController {
         if (yr == null || yr.getRank() == null) return "—";
         return switch (yr.getRank()) {
             case A_STAR -> "A*";
+            case National_Regional -> "Regional";
             case NON_RANK -> "Unranked";
             case REMOVED -> "Removed";
             default -> yr.getRank().name();

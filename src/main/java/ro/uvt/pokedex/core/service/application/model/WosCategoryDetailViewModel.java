@@ -8,6 +8,7 @@ public record WosCategoryDetailViewModel(
         String edition,
         long journalCount,
         Integer latestYear,
-        List<WosCategoryJournalViewModel> journals
+        List<WosCategoryJournalViewModel> journals,
+        WosCategoryMetrics metrics
 ) {
 }

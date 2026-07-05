@@ -30,7 +30,11 @@ class WosCategoryPageServiceTest {
     @Test
     void findCategoryDelegatesToPostgresPort() {
         WosCategoryDetailViewModel viewModel = new WosCategoryDetailViewModel(
-                "Computer Science - SCIE", "Computer Science", "SCIE", 2, 2024, List.of()
+                "Computer Science - SCIE", "Computer Science", "SCIE", 2, 2024, List.of(),
+                new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics(
+                        1.2, 5.0, 1.0, 2024, 2.5, 30.0, 2.0, 2019,
+                        new ro.uvt.pokedex.core.service.application.model.WosCategoryMetrics.QuartileSplit(1, 1, 0, 0),
+                        List.of())
         );
         when(postgresWosCategoryReadPort.findCategoryPage("Computer Science", ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized.SCIE))
                 .thenReturn(Optional.of(viewModel));

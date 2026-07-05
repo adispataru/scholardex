@@ -191,6 +191,7 @@ public class WosProjectionBuilderService {
                 insertWosMetricRows(metricFactsForWrite);
                 insertWosCategoryRows(categoryFactsForWrite);
                 insertWosScoringRows(scoringViewsForWrite);
+                rebuildCategoryMetricAgg();
             });
             long writePgMs = nanosToMillis(System.nanoTime() - writePgNs);
 
@@ -205,6 +206,30 @@ public class WosProjectionBuilderService {
             log.error("WoS projection rebuild failed", e);
         }
         return result;
+    }
+
+    /**
+     * Full recompute of {@code wos_category_metric_agg} from the just-written journal-year facts — the source
+     * for the signed-in categories list (avg/top IF &amp; AIS), per-category trend charts and row sparklines.
+     * Joins {@code wos_category_fact} (category membership per metric) to {@code wos_metric_fact} (numeric value)
+     * on journal+year+metric and groups by category/edition/year/metric. Cheap (a few tens of thousands of rows);
+     * runs inside the projection write transaction so it is atomic with the facts it derives from.
+     */
+    void rebuildCategoryMetricAgg() {
+        jdbcTemplate.execute("TRUNCATE TABLE reporting_read.wos_category_metric_agg");
+        jdbcTemplate.execute("""
+                INSERT INTO reporting_read.wos_category_metric_agg
+                    (category_name_canonical, edition_normalized, year, metric_type, journal_count, avg_value, max_value, median_value)
+                SELECT cf.category_name_canonical, cf.edition_normalized, cf.year, mf.metric_type,
+                       COUNT(DISTINCT mf.journal_id), AVG(mf.value), MAX(mf.value),
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY mf.value)
+                FROM reporting_read.wos_category_fact cf
+                JOIN reporting_read.wos_metric_fact mf
+                  ON cf.journal_id = mf.journal_id AND cf.year = mf.year AND cf.metric_type = mf.metric_type
+                WHERE cf.category_name_canonical IS NOT NULL AND cf.category_name_canonical <> ''
+                  AND mf.value IS NOT NULL
+                GROUP BY cf.category_name_canonical, cf.edition_normalized, cf.year, mf.metric_type
+                """);
     }
 
     public ImportProcessingResult rebuildWosProjectionsForJournals(Set<String> affectedJournalIds) {

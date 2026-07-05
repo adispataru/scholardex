@@ -142,6 +142,25 @@ class PostgresWosCategoryReadPortTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void searchByAggregatedMetricJoinsAggTableAndOrdersByMappedColumn() {
+        when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.of());
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Long.class)))
+                .thenReturn(0L);
+
+        readPort.search(0, 25, "avgAis", "desc", null);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(namedParameterJdbcTemplate).query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));
+        String sql = sqlCaptor.getValue();
+        assertTrue(sql.contains("reporting_read.wos_category_metric_agg"), "joins the aggregate table");
+        assertTrue(sql.contains("LEFT JOIN LATERAL"), "uses lateral latest-metric joins");
+        assertTrue(sql.contains("ais_avg"), "maps avgAis -> ais_avg in ORDER BY");
+        assertTrue(sql.contains("NULLS LAST"), "keeps metric-less categories last");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void searchBuildsItemsAndSafePageFromCount() throws Exception {
         when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(RowMapper.class)))
                 .thenAnswer(inv -> {

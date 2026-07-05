@@ -219,3 +219,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* CORE conference rank-over-years chart. Explicit height (Chart.js otherwise falls back to a short
+   ~150px default) so the full nine-tier y-axis (A*…Regional…Unranked) has room to breathe. */
+.chart-area {
+  position: relative;
+  height: 300px;
+  padding-block: 0.5rem;
+}

@@ -1137,8 +1137,17 @@
         document.addEventListener('DOMContentLoaded', function () {
             var years = [2008, 2010, 2013, 2014, 2017, 2018, 2020, 2021, 2023];
             var yearlyRankings = /*[[${ranking.yearlyRankings}]]*/ {};
-            var rankMapping = { "A_STAR": 5, "A": 4, "B": 3, "C": 2, "D": 1, "NON_RANK": 0 };
-            var reverseRankMapping = { 5: "A*", 4: "A", 3: "B", 2: "C", 1: "D", 0: "Unranked" };
+            // Full CORE tier scale (higher = better). Includes the national/regional tiers that the
+            // scorer now preserves (previously collapsed to D) plus the historical Australasian tier —
+            // without these, a conference ranked National/Regional/Australasian dropped off the graph.
+            var rankMapping = {
+                "A_STAR": 8, "A": 7, "B": 6, "C": 5, "D": 4,
+                "Australasian": 3, "National": 2, "National_Regional": 1, "NON_RANK": 0
+            };
+            var reverseRankMapping = {
+                8: "A*", 7: "A", 6: "B", 5: "C", 4: "D",
+                3: "Australasian", 2: "National", 1: "Regional", 0: "Unranked"
+            };
 
             var labels = years;
             var rankData = labels.map(function (year) {
@@ -1191,7 +1200,7 @@
                             yAxes: [{
                                 ticks: {
                                     callback: function (value) { return reverseRankMapping[value]; },
-                                    max: 5, min: 0, stepSize: 1, padding: 10, fontColor: theme.textMuted
+                                    max: 8, min: 0, stepSize: 1, padding: 10, fontColor: theme.textMuted
                                 },
                                 gridLines: {
                                     color: theme.chartGrid, zeroLineColor: theme.chartGrid,

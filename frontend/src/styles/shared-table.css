@@ -515,3 +515,93 @@
     grid-column: span 1;
   }
 }
+
+/* Inline metric sparklines in table rows (e.g. WoS category average-AIS trend). Colour by direction via
+   currentColor; the SVG path uses stroke:currentColor. */
+.app-spark-cell {
+  width: 104px;
+  text-align: center;
+}
+
+.app-spark {
+  display: inline-block;
+  vertical-align: middle;
+  color: var(--app-color-text-muted);
+}
+
+.app-spark--up {
+  color: var(--app-color-success);
+}
+
+.app-spark--down {
+  color: var(--app-color-warning);
+}
+
+.app-spark--empty {
+  color: var(--app-color-text-muted);
+  font-weight: 600;
+}
+
+/* Sortable table headers (click to sort). */
+.app-sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+.app-sortable-th::after {
+  content: '\2195';
+  margin-left: 0.3rem;
+  font-size: 0.7rem;
+  opacity: 0.35;
+}
+.app-sortable-th[data-sort-dir='asc']::after { content: '\2191'; opacity: 0.85; }
+.app-sortable-th[data-sort-dir='desc']::after { content: '\2193'; opacity: 0.85; }
+
+/* JCR quartile badges (Q1 best -> Q4). Inline with a metric value. */
+.app-quartile {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.04rem 0.34rem;
+  border-radius: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #fff;
+  vertical-align: middle;
+}
+.app-quartile--q1 { background: var(--app-ranking-q1); color: #fff; }
+.app-quartile--q2 { background: var(--app-ranking-q2); color: #1f2937; }
+.app-quartile--q3 { background: var(--app-ranking-q3); color: #1f2937; }
+.app-quartile--q4 { background: var(--app-ranking-q4); color: #1f2937; }
+
+/* Category AIS quartile distribution bar. */
+.app-quartile-bar { max-width: 560px; }
+.app-quartile-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+.app-quartile-bar__title { font-weight: 600; font-size: 0.85rem; }
+.app-quartile-bar__meta { color: var(--app-color-text-muted); font-size: 0.78rem; }
+.app-quartile-bar__track {
+  display: flex;
+  height: 1.4rem;
+  border-radius: 0.4rem;
+  overflow: hidden;
+  border: 1px solid var(--app-color-border);
+}
+.app-quartile-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.app-quartile-seg--q1 { background: var(--app-ranking-q1); color: #fff; }
+.app-quartile-seg--q2 { background: var(--app-ranking-q2); color: #1f2937; }
+.app-quartile-seg--q3 { background: var(--app-ranking-q3); color: #1f2937; }
+.app-quartile-seg--q4 { background: var(--app-ranking-q4); color: #1f2937; }
