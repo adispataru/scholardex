@@ -67,7 +67,8 @@
                      class="app-forum-detail__auth-callout">
                     <th:block th:replace="~{fragments :: signin-gate(
                         title='Web of Science rankings',
-                        body='Sign in to view Web of Science rankings, quartile history, and journal metrics for this forum.')}"></th:block>
+                        body='Sign in to view Web of Science rankings, quartile history, and journal metrics for this forum.',
+                        target=null)}"></th:block>
                 </div>
 
                 <div th:if="${detail.wosIndexed() and currentUser != null and currentUser.isPresent()}">

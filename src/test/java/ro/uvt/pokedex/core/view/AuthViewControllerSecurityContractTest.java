@@ -150,6 +150,67 @@ class AuthViewControllerSecurityContractTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void signInFromGatedPageReturnsThereAfterLogin() throws Exception {
+        // the sign-in gate CTA carries redirect=<gated page>; the form login must land back there
+        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
+                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
+
+        MvcResult loginPage = mockMvc.perform(get("/login").param("redirect", "/forums/sfor_abc123"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        mockMvc.perform(post("/login")
+                        .session((MockHttpSession) loginPage.getRequest().getSession(false))
+                        .with(csrf())
+                        .param("username", "admin@uvt.ro")
+                        .param("password", "secret"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/forums/sfor_abc123"));
+    }
+
+    @Test
+    void unsafeRedirectTargetsAreIgnoredAndFallBackToDefault() throws Exception {
+        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
+                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
+
+        for (String unsafe : new String[] {"https://evil.example", "//evil.example", "/ok\\evil", "javascript:alert(1)"}) {
+            MvcResult loginPage = mockMvc.perform(get("/login").param("redirect", unsafe))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            mockMvc.perform(post("/login")
+                            .session((MockHttpSession) loginPage.getRequest().getSession(false))
+                            .with(csrf())
+                            .param("username", "admin@uvt.ro")
+                            .param("password", "secret"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/"));
+        }
+    }
+
+    @Test
+    void plainLoginVisitClearsAPreviouslyStoredRedirectTarget() throws Exception {
+        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
+                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
+
+        MvcResult withTarget = mockMvc.perform(get("/login").param("redirect", "/forums/sfor_abc123"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) withTarget.getRequest().getSession(false);
+
+        // revisiting /login without a redirect must forget the old target
+        mockMvc.perform(get("/login").session(session)).andExpect(status().isOk());
+
+        mockMvc.perform(post("/login")
+                        .session(session)
+                        .with(csrf())
+                        .param("username", "admin@uvt.ro")
+                        .param("password", "secret"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
+    }
+
     private User validPlatformAdmin(String email, String rawPassword) {
         User user = new User();
         user.setEmail(email);

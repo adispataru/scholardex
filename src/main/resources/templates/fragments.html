@@ -1103,12 +1103,14 @@
 <!-- Public sign-in gate: a uniform "this is gated, sign in to unlock" affordance shown to anonymous
      visitors in place of a login-only feature (e.g. Web of Science rankings). Title/body are
      context-specific; the lock icon, styling, and Sign-in CTA are shared so every gated surface reads
-     the same. -->
-<div th:fragment="signin-gate(title, body)" class="alert alert-info app-signin-gate text-center" role="status">
+     the same. `target` is the post-login destination (null falls back to the current page), so the
+     visitor returns to the gated content instead of the landing page. -->
+<div th:fragment="signin-gate(title, body, target)" class="alert alert-info app-signin-gate text-center" role="status"
+     th:with="signinTarget=${target != null and !#strings.isEmpty(target) ? target : requestUri}">
     <i class="fa-solid fa-lock app-signin-gate__icon fa-lg" aria-hidden="true"></i>
     <p class="app-signin-gate__title"><strong th:text="${title}">Sign in required</strong></p>
     <p class="app-signin-gate__body" th:text="${body}">Sign in to view this content.</p>
-    <a href="/login" class="btn btn-primary btn-sm app-signin-gate__action">
+    <a th:href="@{/login(redirect=${signinTarget})}" href="/login" class="btn btn-primary btn-sm app-signin-gate__action">
         <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Sign in
     </a>
 </div>

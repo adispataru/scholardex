@@ -442,6 +442,8 @@ class RankingViewControllerContractTest {
                 // Anonymous visitors now get a locked WoS teaser tab (sign-in gate); the category
                 // table/JS stay hidden (asserted below + in RankingViewSecurityContractTest).
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"wos\"")))
+                // the gate CTA carries the post-login destination so sign-in returns to the WoS tab
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/login?redirect=/rankings%23wos")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-search\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-table-body\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<th scope=\"col\">Conference</th>")))
