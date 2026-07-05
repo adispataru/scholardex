@@ -834,7 +834,9 @@ public class WosImportEventIngestionService {
             return Set.of();
         }
         if ("AIS".equals(metricType)) {
-            if (year >= 2020 && year <= 2023) {
+            // 2020+ layouts carry ISSN in c1 and eISSN in c2 — both are identity columns, otherwise
+            // eISSN-only journals (ISSN "N/A") are dropped at ingest (bit AIS_2024 before the bound was lifted)
+            if (year >= 2020) {
                 return Set.of("c1", "c2");
             }
             if (year >= 2014 && year <= 2017) {

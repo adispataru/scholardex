@@ -412,6 +412,10 @@ public class WosProjectionBuilderService {
                 insertWosMetricRows(scopedMetricFacts);
                 insertWosCategoryRows(scopedCategoryFacts);
                 insertWosScoringRows(scoringViews);
+                // the per-year category aggregates (category list/detail avg/top/median + reference years)
+                // derive from the fact rows just written — an incremental upload of a new year must refresh
+                // them or the UI keeps the previous year as "latest"; the recompute is one cheap INSERT..SELECT
+                rebuildCategoryMetricAgg();
             });
         } catch (Exception e) {
             result.markError("projection-rebuild-error=" + e.getMessage());

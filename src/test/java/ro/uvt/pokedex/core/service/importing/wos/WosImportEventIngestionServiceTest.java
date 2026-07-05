@@ -72,7 +72,7 @@ class WosImportEventIngestionServiceTest {
     @Test
     void ingestDirectoryImportsExcelAndOfficialJsonEvents() throws Exception {
         Path dir = Files.createTempDirectory("wos-events");
-        createSampleExcel(dir.resolve("AIS_2024.xlsx"), 1.1);
+        createSampleExcel(dir.resolve("AIS_2019.xlsx"), 1.1);
         createSampleExcel(dir.resolve("RIS_2024.xlsx"), 2.2);
         createSampleJson(dir.resolve("wos-json-1997-2019"), "journals-SCIE-year-2019.json");
 
@@ -89,11 +89,11 @@ class WosImportEventIngestionServiceTest {
         assertTrue(store.containsSourceType(WosSourceType.GOV_AIS_RIS));
         assertTrue(store.containsSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT));
 
-        WosImportEvent govEvent = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "1");
+        WosImportEvent govEvent = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2019.xlsx", "v2019", "1");
         assertNotNull(govEvent);
         assertEquals(WosSourceType.GOV_AIS_RIS, govEvent.getSourceType());
-        assertEquals("AIS_2024.xlsx", govEvent.getSourceFile());
-        assertEquals("v2024", govEvent.getSourceVersion());
+        assertEquals("AIS_2019.xlsx", govEvent.getSourceFile());
+        assertEquals("v2019", govEvent.getSourceVersion());
         assertEquals("1", govEvent.getSourceRowItem());
         assertEquals("excel-row", govEvent.getPayloadFormat());
         assertNotNull(govEvent.getPayload());
@@ -151,7 +151,8 @@ class WosImportEventIngestionServiceTest {
     @Test
     void rerunIsIdempotentAndChangesProduceUpdates() throws Exception {
         Path dir = Files.createTempDirectory("wos-events-rerun");
-        Path ais = dir.resolve("AIS_2024.xlsx");
+        // 3-column fixture (title, ISSN, value in c2) matches the 2018/2019 layout; 2020+ treats c2 as eISSN
+        Path ais = dir.resolve("AIS_2019.xlsx");
         createSampleExcel(ais, 1.1);
         createSampleJson(dir.resolve("wos-json-1997-2019"), "journals-SSCI-year-2018.json");
 
@@ -169,7 +170,7 @@ class WosImportEventIngestionServiceTest {
         assertTrue(second.getSkippedCount() > 0);
         assertEquals(0, second.getErrorCount());
 
-        WosImportEvent eventRef = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "batch-1", "1");
+        WosImportEvent eventRef = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2019.xlsx", "batch-1", "1");
         assertNotNull(eventRef);
         String checksumBeforeChange = eventRef.getChecksum();
         assertEquals(1, eventRef.getVersion());
@@ -185,7 +186,7 @@ class WosImportEventIngestionServiceTest {
         assertEquals(0, third.getErrorCount());
         assertTrue(first.getImportedCount() > 0);
 
-        WosImportEvent updatedEvent = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "batch-1", "1");
+        WosImportEvent updatedEvent = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2019.xlsx", "batch-1", "1");
         assertNotNull(updatedEvent);
         assertEquals("excel-row", updatedEvent.getPayloadFormat());
         assertNotNull(updatedEvent.getChecksum());
@@ -221,7 +222,7 @@ class WosImportEventIngestionServiceTest {
     @Test
     void ingestDirectoryEvaluatesFormulaCellsInsteadOfPersistingFormulaText() throws Exception {
         Path dir = Files.createTempDirectory("wos-events-formula");
-        createFormulaExcel(dir.resolve("AIS_2024.xlsx"));
+        createFormulaExcel(dir.resolve("AIS_2019.xlsx"));
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
@@ -230,7 +231,7 @@ class WosImportEventIngestionServiceTest {
         ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
 
         assertEquals(1, result.getImportedCount());
-        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "1");
+        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2019.xlsx", "v2019", "1");
         JsonNode payload = new ObjectMapper().readTree(event.getPayload());
         assertEquals("Journal Formula", payload.path("cells").path("c0").asText());
     }
@@ -528,14 +529,15 @@ class WosImportEventIngestionServiceTest {
         // mutations cause both types to fall through to dataFormatter, which returns Strings.
         // isNumber()/isBoolean() catch the difference; asDouble()/booleanValue() do not.
         Path dir = Files.createTempDirectory("wos-events-cell-types");
-        createExcelWithNumericAndBooleanCells(dir.resolve("AIS_2024.xlsx"));
+        // 2019 layout keeps c2 as a numeric value column (2020+ treats c2 as an eISSN identity column)
+        createExcelWithNumericAndBooleanCells(dir.resolve("AIS_2019.xlsx"));
 
         EventStore store = new EventStore();
         WosImportEventIngestionService service = newService(repositoryMock(store));
 
         service.ingestDirectory(dir.toString(), null);
 
-        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "1");
+        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2019.xlsx", "v2019", "1");
         assertNotNull(event);
         JsonNode cells = new ObjectMapper().readTree(event.getPayload()).path("cells");
 

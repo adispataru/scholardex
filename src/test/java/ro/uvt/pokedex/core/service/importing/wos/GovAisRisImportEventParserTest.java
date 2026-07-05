@@ -149,6 +149,28 @@ class GovAisRisImportEventParserTest {
     }
 
     @Test
+    void parsesAis2025UsingCurrentLayoutIncludingEissnOnlyRows() throws Exception {
+        // AIS_2025 (JCR June 2026) keeps the >=2023 layout: name | ISSN | eISSN | category | edition | value
+        WosImportEvent event = event("AIS", "2025", Map.of(
+                "c0", "Acoustics",
+                "c1", "N/A",
+                "c2", "2624-599X",
+                "c3", "ACOUSTICS",
+                "c4", "ESCI",
+                "c5", "0.310"
+        ));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(EditionNormalized.ESCI, result.records().get(0).editionNormalized());
+        assertNull(result.records().get(0).issn());
+        assertEquals("2624599X", result.records().get(0).eIssn());
+        assertEquals(0.310, result.records().get(0).value());
+        assertEquals(2025, result.records().get(0).year());
+    }
+
+    @Test
     void parsesRis2024WithEditionInC3AndValueInC4() throws Exception {
         WosParsedEventResult ris2024 = parser.parse(event("RIS", "2024", Map.of(
                 "c0", "Journal C",

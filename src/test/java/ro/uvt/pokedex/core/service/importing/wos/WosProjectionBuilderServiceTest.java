@@ -178,7 +178,12 @@ class WosProjectionBuilderServiceTest {
         );
 
         assertEquals(2, result.getImportedCount());
-        verify(jdbcTemplate, never()).execute(anyString());
+        // the scoped rebuild now refreshes the per-year category aggregates (new-year uploads must move
+        // the categories' reference years) — the only execute() calls are the agg TRUNCATE + INSERT..SELECT
+        org.mockito.ArgumentCaptor<String> executed = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, org.mockito.Mockito.times(2)).execute(executed.capture());
+        assertTrue(executed.getAllValues().get(0).contains("TRUNCATE TABLE reporting_read.wos_category_metric_agg"));
+        assertTrue(executed.getAllValues().get(1).contains("INTO reporting_read.wos_category_metric_agg"));
         verify(jdbcTemplate, never()).batchUpdate(eq("DELETE FROM reporting_read.wos_ranking_view WHERE journal_id = ?"), anyList(), anyInt(), any());
         verify(jdbcTemplate).batchUpdate(eq("DELETE FROM reporting_read.wos_metric_fact WHERE journal_id = ? AND year = ? AND metric_type = ?"), anyList(), anyInt(), any());
         verify(jdbcTemplate).batchUpdate(eq("DELETE FROM reporting_read.wos_category_fact WHERE journal_id = ? AND year = ? AND category_name_canonical = ? AND edition_normalized = ? AND metric_type = ?"), anyList(), anyInt(), any());
