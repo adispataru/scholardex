@@ -72,37 +72,25 @@
                 </div>
 
                 <div th:if="${detail.wosIndexed() and currentUser != null and currentUser.isPresent()}">
-                    <section class="app-forum-detail__section" aria-labelledby="journal-details-title">
+                    <!-- Name/ISSN/eISSN already live in the summary cards above — this section only carries
+                         what the cards don't: the journal's WoS aliases. Hidden entirely when there are none. -->
+                    <section th:if="${(wosRanking.alternativeNames != null && !wosRanking.alternativeNames.isEmpty())
+                                      || (wosRanking.alternativeIssns != null && !wosRanking.alternativeIssns.isEmpty())}"
+                             class="app-forum-detail__section" aria-labelledby="journal-details-title">
                         <div class="app-forum-detail__section-header">
                             <div>
                                 <p class="app-forum-detail__eyebrow">Web of Science</p>
-                                <h2 id="journal-details-title" class="app-forum-detail__section-title">Journal Details</h2>
+                                <h2 id="journal-details-title" class="app-forum-detail__section-title">Also Known As</h2>
                             </div>
                         </div>
                         <dl class="app-forum-detail__definition-grid">
-                            <div>
-                                <dt>Forum</dt>
-                                <dd th:text="${wosRanking.name}">Name</dd>
-                            </div>
-                            <div>
-                                <dt>ISSN</dt>
-                                <dd th:text="${wosRanking.issn != null && !wosRanking.issn.isBlank() ? wosRanking.issn : '—'}">ISSN</dd>
-                            </div>
-                            <div>
-                                <dt>eISSN</dt>
-                                <dd th:text="${wosRanking.eIssn != null && !wosRanking.eIssn.isBlank() ? wosRanking.eIssn : '—'}">eISSN</dd>
-                            </div>
-                            <div>
+                            <div th:if="${wosRanking.alternativeNames != null && !wosRanking.alternativeNames.isEmpty()}">
                                 <dt>Alternative names</dt>
-                                <dd th:if="${wosRanking.alternativeNames == null || wosRanking.alternativeNames.isEmpty()}">—</dd>
-                                <dd th:if="${wosRanking.alternativeNames != null && !wosRanking.alternativeNames.isEmpty()}"
-                                    th:text="${#strings.listJoin(wosRanking.alternativeNames, ', ')}">Alt names</dd>
+                                <dd th:text="${#strings.listJoin(wosRanking.alternativeNames, ', ')}">Alt names</dd>
                             </div>
-                            <div>
+                            <div th:if="${wosRanking.alternativeIssns != null && !wosRanking.alternativeIssns.isEmpty()}">
                                 <dt>Alternative ISSNs</dt>
-                                <dd th:if="${wosRanking.alternativeIssns == null || wosRanking.alternativeIssns.isEmpty()}">—</dd>
-                                <dd th:if="${wosRanking.alternativeIssns != null && !wosRanking.alternativeIssns.isEmpty()}"
-                                    th:text="${#strings.listJoin(wosRanking.alternativeIssns, ', ')}">Alt ISSNs</dd>
+                                <dd th:text="${#strings.listJoin(wosRanking.alternativeIssns, ', ')}">Alt ISSNs</dd>
                             </div>
                         </dl>
                     </section>

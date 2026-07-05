@@ -153,6 +153,7 @@ class RankingViewControllerContractTest {
         WoSRanking wosRanking = new WoSRanking();
         wosRanking.setId("w1");
         wosRanking.setName("Test Journal");
+        wosRanking.setAlternativeNames(java.util.List.of("TEST J"));
         wosRanking.setWebOfScienceCategoryIndex(java.util.Map.of());
         ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
                 forum,
@@ -177,6 +178,10 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-breadcrumb app-breadcrumb--default\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("app-summary-card--primary")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-forum-detail__definition-grid\"")))
+                // identifiers live in the summary cards only; the WoS section carries just the aliases
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Also Known As")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("TEST J")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Journal Details"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("General Metrics")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Category Rankings")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"forum-wos-category-data\"")))
@@ -194,6 +199,7 @@ class RankingViewControllerContractTest {
         WoSRanking wosRanking = new WoSRanking();
         wosRanking.setId("w1");
         wosRanking.setName("Test Journal");
+        wosRanking.setAlternativeNames(java.util.List.of("TEST J"));
         wosRanking.setWebOfScienceCategoryIndex(java.util.Map.of());
         ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
                 forum,
