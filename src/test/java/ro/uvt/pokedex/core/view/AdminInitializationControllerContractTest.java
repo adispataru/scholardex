@@ -634,7 +634,7 @@ class AdminInitializationControllerContractTest {
     @Test
     void resetWosCanonicalStateRedirectsToInitializationPage() throws Exception {
         when(rankingMaintenanceFacade.resetWosCanonicalState())
-                .thenReturn(new WosBigBangMigrationService.CanonicalResetResult(10, 8, 6, 6, 2, 3, 7, 7, 4, 4));
+                .thenReturn(new WosBigBangMigrationService.CanonicalResetResult(10, 8, 6, 6, 5, 2, 3, 7, 7, 4, 4));
 
         mockMvc.perform(post("/admin/initialization/wos/resetCanonicalState")
                         .param("confirmation", "RESET"))

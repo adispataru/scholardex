@@ -31,13 +31,16 @@ public class WosIdentityResolutionService {
 
     private final WosJournalIdentityRepository journalIdentityRepository;
     private final WosIdentityConflictRepository identityConflictRepository;
+    private final WosTitleAuthority titleAuthority;
 
     public WosIdentityResolutionService(
             WosJournalIdentityRepository journalIdentityRepository,
-            WosIdentityConflictRepository identityConflictRepository
+            WosIdentityConflictRepository identityConflictRepository,
+            WosTitleAuthority titleAuthority
     ) {
         this.journalIdentityRepository = journalIdentityRepository;
         this.identityConflictRepository = identityConflictRepository;
+        this.titleAuthority = titleAuthority;
     }
 
     public IdentityResolutionResult resolveIdentity(
@@ -64,7 +67,7 @@ public class WosIdentityResolutionService {
                 ? null
                 : journalIdentityRepository.findByIdentityKey(identityKey).orElse(null);
         if (matchedByKey != null) {
-            maybeUpdateAliases(matchedByKey, normalizedIssns, rawTitle, normalizedTitle);
+            maybeUpdateAliases(matchedByKey, normalizedIssns, rawTitle, normalizedTitle, context.abbreviatedTitle());
             return new IdentityResolutionResult(matchedByKey.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
         }
 
@@ -164,7 +167,7 @@ public class WosIdentityResolutionService {
             WosJournalIdentity resolved = resolveBestCandidate(candidates, normalizedIssns);
             if (resolved != null) {
                 resolved.setIdentityKey(identityKey);
-                maybeUpdateAliases(resolved, normalizedIssns, rawTitle, normalizedTitle);
+                maybeUpdateAliases(resolved, normalizedIssns, rawTitle, normalizedTitle, context.abbreviatedTitle());
                 return new IdentityResolutionResult(resolved.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
             }
             return createConflictIdentity(rawIssn, rawEIssn, rawTitle, normalizedIssns, normalizedTitle, identityKey, context, candidates);
@@ -172,10 +175,11 @@ public class WosIdentityResolutionService {
         if (candidates.size() == 1) {
             WosJournalIdentity candidate = candidates.getFirst();
             candidate.setIdentityKey(identityKey);
-            maybeUpdateAliases(candidate, normalizedIssns, rawTitle, normalizedTitle);
+            maybeUpdateAliases(candidate, normalizedIssns, rawTitle, normalizedTitle, context.abbreviatedTitle());
             return new IdentityResolutionResult(candidate.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
         }
-        WosJournalIdentity created = createIdentity(rawIssn, rawEIssn, rawTitle, normalizedIssns, normalizedTitle, identityKey, null, null);
+        WosJournalIdentity created = createIdentity(rawIssn, rawEIssn, rawTitle, context.abbreviatedTitle(),
+                normalizedIssns, identityKey, null, null);
         return new IdentityResolutionResult(created.getId(), identityKey, WosIdentityResolutionStatus.CREATED, null);
     }
 
@@ -192,7 +196,8 @@ public class WosIdentityResolutionService {
         return result;
     }
 
-    private void maybeUpdateAliases(WosJournalIdentity identity, Set<String> normalizedIssns, String rawTitle, String normalizedTitle) {
+    private void maybeUpdateAliases(WosJournalIdentity identity, Set<String> normalizedIssns, String rawTitle,
+                                    String normalizedTitle, String rawAbbreviatedTitle) {
         boolean changed = false;
         if (identity.getPrimaryIssn() == null && !normalizedIssns.isEmpty()) {
             identity.setPrimaryIssn(normalizedIssns.iterator().next());
@@ -227,33 +232,152 @@ public class WosIdentityResolutionService {
             }
         }
 
-        String incomingTitle = rawTitle == null ? null : rawTitle.trim();
-        if (incomingTitle != null && incomingTitle.isBlank()) {
-            incomingTitle = null;
-        }
-        String normalizedCanonicalTitle = WosCanonicalContractSupport.normalizeTitleFingerprint(identity.getTitle());
-
-        if ((identity.getTitle() == null || identity.getTitle().isBlank()) && incomingTitle != null) {
-            identity.setTitle(incomingTitle);
-            identity.setNormalizedTitle(normalizedTitle);
-            changed = true;
-        } else if (incomingTitle != null) {
-            String normalizedIncomingTitle = WosCanonicalContractSupport.normalizeTitleFingerprint(incomingTitle);
-            if (normalizedIncomingTitle != null
-                    && normalizedCanonicalTitle != null
-                    && !normalizedIncomingTitle.equals(normalizedCanonicalTitle)
-                    && !containsAlternativeName(identity.getAlternativeNames(), normalizedIncomingTitle)
-                    && !normalizedIncomingTitle.equals(normalizedCanonicalTitle)) {
-                identity.getAlternativeNames().add(incomingTitle);
-                changed = true;
-            }
-        }
+        changed |= applyTitleAndAbbreviation(identity, rawTitle, rawAbbreviatedTitle);
 
         if (changed) {
             identity.setUpdatedAt(Instant.now());
             identity.setBuilderVersion(BuilderVersion.WOS_FACT);
             journalIdentityRepository.save(identity);
         }
+    }
+
+    /**
+     * Content-based naming rules (JCR/MJL-seeded pipeline): the display title is always a full journal title;
+     * WoS abbreviations (recognized via the JCR-backed {@link WosTitleAuthority} or the source's own
+     * abbreviation field) land in {@code abbreviatedTitle}, never in {@code title} or the alternative names.
+     * A same-fingerprint incoming title with better casing upgrades the display title (WoS reference files
+     * are ALL-CAPS; the newer government files carry nicely-cased titles). Genuinely different full titles
+     * keep the existing behavior and accumulate as alternative names.
+     */
+    private boolean applyTitleAndAbbreviation(WosJournalIdentity identity, String rawTitle, String rawAbbreviatedTitle) {
+        boolean changed = false;
+        String sourceAbbreviation = rawAbbreviatedTitle == null || rawAbbreviatedTitle.isBlank()
+                ? null
+                : rawAbbreviatedTitle.trim();
+        if (sourceAbbreviation != null && !Objects.equals(
+                WosCanonicalContractSupport.normalizeTitleFingerprint(sourceAbbreviation),
+                WosCanonicalContractSupport.normalizeTitleFingerprint(identity.getTitle()))) {
+            changed |= setAbbreviatedTitleIfEmpty(identity, sourceAbbreviation);
+        }
+
+        String incomingTitle = rawTitle == null ? null : rawTitle.trim();
+        if (incomingTitle == null || incomingTitle.isBlank()) {
+            return changed;
+        }
+        String incomingFingerprint = WosCanonicalContractSupport.normalizeTitleFingerprint(incomingTitle);
+        String currentFingerprint = WosCanonicalContractSupport.normalizeTitleFingerprint(identity.getTitle());
+        boolean incomingIsAbbreviation = titleAuthority.isAbbreviation(incomingTitle);
+
+        if (currentFingerprint == null) {
+            if (incomingIsAbbreviation) {
+                WosTitleAuthority.ReferenceEntry entry = titleAuthority.byAbbreviation(incomingTitle);
+                identity.setTitle(entry.fullTitle());
+                identity.setNormalizedTitle(WosCanonicalContractSupport.normalizeTitleFingerprint(entry.fullTitle()));
+                setAbbreviatedTitleIfEmpty(identity, incomingTitle);
+            } else {
+                identity.setTitle(incomingTitle);
+                identity.setNormalizedTitle(incomingFingerprint);
+                maybeSetAbbreviationFromFullTitle(identity, incomingTitle);
+            }
+            return true;
+        }
+        if (Objects.equals(incomingFingerprint, currentFingerprint)) {
+            if (hasBetterCasing(incomingTitle, identity.getTitle())) {
+                identity.setTitle(incomingTitle);
+                return true;
+            }
+            return changed || maybeSetAbbreviationFromFullTitle(identity, incomingTitle);
+        }
+        if (incomingIsAbbreviation) {
+            // recognized WoS abbreviation of an ISSN-matched journal — record it, never as title/alt name
+            return setAbbreviatedTitleIfEmpty(identity, incomingTitle) || changed;
+        }
+        if (currentTitleIsAbbreviation(identity)) {
+            // legacy/residual repair: a full title arrives for an identity still titled by its abbreviation
+            String oldTitle = identity.getTitle();
+            identity.setTitle(incomingTitle);
+            identity.setNormalizedTitle(incomingFingerprint);
+            setAbbreviatedTitleIfEmpty(identity, oldTitle);
+            return true;
+        }
+        if (incomingFingerprint != null
+                && !containsAlternativeName(identity.getAlternativeNames(), incomingFingerprint)) {
+            identity.getAlternativeNames().add(incomingTitle);
+            return true;
+        }
+        return changed;
+    }
+
+    private boolean setAbbreviatedTitleIfEmpty(WosJournalIdentity identity, String abbreviation) {
+        if (abbreviation == null || abbreviation.isBlank()) {
+            return false;
+        }
+        if (identity.getAbbreviatedTitle() == null || identity.getAbbreviatedTitle().isBlank()) {
+            identity.setAbbreviatedTitle(abbreviation.trim());
+            return true;
+        }
+        return false;
+    }
+
+    /** When the identity's (full) title is known to JCR, attach its Title20 abbreviation. */
+    private boolean maybeSetAbbreviationFromFullTitle(WosJournalIdentity identity, String fullTitle) {
+        WosTitleAuthority.ReferenceEntry entry = titleAuthority.byFullTitle(fullTitle);
+        if (entry == null) {
+            return false;
+        }
+        String abbreviationFingerprint = WosCanonicalContractSupport.normalizeTitleFingerprint(entry.abbreviatedTitle());
+        String fullFingerprint = WosCanonicalContractSupport.normalizeTitleFingerprint(fullTitle);
+        if (Objects.equals(abbreviationFingerprint, fullFingerprint)) {
+            return false;
+        }
+        return setAbbreviatedTitleIfEmpty(identity, entry.abbreviatedTitle());
+    }
+
+    private boolean currentTitleIsAbbreviation(WosJournalIdentity identity) {
+        String title = identity.getTitle();
+        if (title == null || title.isBlank()) {
+            return false;
+        }
+        if (titleAuthority.isAbbreviation(title)) {
+            return true;
+        }
+        String titleFingerprint = WosCanonicalContractSupport.normalizeTitleFingerprint(title);
+        String abbreviationFingerprint = WosCanonicalContractSupport.normalizeTitleFingerprint(identity.getAbbreviatedTitle());
+        return abbreviationFingerprint != null && abbreviationFingerprint.equals(titleFingerprint);
+    }
+
+    /** True when {@code candidate} is mixed-case while {@code current} is ALL-CAPS (same journal, nicer display). */
+    private boolean hasBetterCasing(String candidate, String current) {
+        return isAllCapsWithLetters(current) && containsLowercase(candidate);
+    }
+
+    private boolean isAllCapsWithLetters(String value) {
+        if (value == null) {
+            return false;
+        }
+        boolean hasLetter = false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isLetter(c)) {
+                hasLetter = true;
+                if (Character.isLowerCase(c)) {
+                    return false;
+                }
+            }
+        }
+        return hasLetter;
+    }
+
+    private boolean containsLowercase(String value) {
+        if (value == null) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.isLowerCase(value.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean containsAlternativeName(List<String> alternativeNames, String normalizedIncomingTitle) {
@@ -395,8 +519,8 @@ public class WosIdentityResolutionService {
                 rawIssn,
                 rawEIssn,
                 rawTitle,
+                context.abbreviatedTitle(),
                 normalizedIssns,
-                normalizedTitle,
                 identityKey,
                 CONFLICT_TYPE_AMBIGUOUS_MATCH,
                 CONFLICT_REASON_ISSN_COLLISION
@@ -408,8 +532,8 @@ public class WosIdentityResolutionService {
             String rawIssn,
             String rawEIssn,
             String rawTitle,
+            String rawAbbreviatedTitle,
             Set<String> normalizedIssns,
-            String normalizedTitle,
             String identityKey,
             String conflictType,
             String conflictReason
@@ -419,10 +543,10 @@ public class WosIdentityResolutionService {
         identity.setIdentityKey(identityKey);
         identity.setPrimaryIssn(WosCanonicalContractSupport.normalizeIssnToken(rawIssn));
         identity.setEIssn(WosCanonicalContractSupport.normalizeIssnToken(rawEIssn));
-        identity.setTitle(rawTitle == null ? null : rawTitle.trim());
-        identity.setNormalizedTitle(normalizedTitle);
         identity.setAliasIssns(new ArrayList<>());
         identity.setAlternativeNames(new ArrayList<>());
+        // title starts null so the shared naming rules pick the full-title/abbreviation split
+        applyTitleAndAbbreviation(identity, rawTitle, rawAbbreviatedTitle);
         for (String token : normalizedIssns) {
             if (!token.equals(identity.getPrimaryIssn()) && !token.equals(identity.getEIssn())) {
                 identity.getAliasIssns().add(token);

@@ -21,6 +21,31 @@ public record WosParsedRecord(
         WosSourceType sourceType,
         String sourceFile,
         String sourceVersion,
-        String sourceRowItem
+        String sourceRowItem,
+        String abbreviatedTitle
 ) {
+    /** Legacy shape without abbreviatedTitle — sources that don't carry the WoS abbreviation. */
+    public WosParsedRecord(
+            String title,
+            String issn,
+            String eIssn,
+            Integer year,
+            MetricType metricType,
+            Double value,
+            String categoryNameCanonical,
+            String editionRaw,
+            EditionNormalized editionNormalized,
+            String quarter,
+            Integer quartileRank,
+            Integer rank,
+            String sourceEventId,
+            WosSourceType sourceType,
+            String sourceFile,
+            String sourceVersion,
+            String sourceRowItem
+    ) {
+        this(title, issn, eIssn, year, metricType, value, categoryNameCanonical, editionRaw, editionNormalized,
+                quarter, quartileRank, rank, sourceEventId, sourceType, sourceFile, sourceVersion, sourceRowItem,
+                null);
+    }
 }

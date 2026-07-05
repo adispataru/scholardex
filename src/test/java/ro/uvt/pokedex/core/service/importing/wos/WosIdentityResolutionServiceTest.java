@@ -13,6 +13,8 @@ import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosCanonicalContractSupport;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentityResolutionStatus;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentitySourceContext;
+import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
+import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedRecord;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,10 +54,12 @@ class WosIdentityResolutionServiceTest {
     private final AtomicInteger conflictSeq = new AtomicInteger(1);
 
     private WosIdentityResolutionService service;
+    private WosTitleAuthority titleAuthority;
 
     @BeforeEach
     void setUp() {
-        service = new WosIdentityResolutionService(journalIdentityRepository, identityConflictRepository);
+        titleAuthority = new WosTitleAuthority();
+        service = new WosIdentityResolutionService(journalIdentityRepository, identityConflictRepository, titleAuthority);
 
         lenient().when(journalIdentityRepository.findByIdentityKey(anyString()))
                 .thenAnswer(invocation -> Optional.ofNullable(identitiesByKey.get(invocation.getArgument(0))));
@@ -510,6 +514,110 @@ class WosIdentityResolutionServiceTest {
         }
         conflicts.add(conflict);
         return conflict;
+    }
+
+
+    // --- JCR title-authority naming rules (H-WoS naming: JCR+MJL-seeded resolution) ---
+
+    private void loadAuthority() {
+        titleAuthority.load(List.of(
+                jcrRecord("ACOUST AUST", "ACOUSTICS AUSTRALIA"),
+                jcrRecord("NATURE", "NATURE")
+        ));
+    }
+
+    private WosParsedRecord jcrRecord(String title20, String fullTitle) {
+        return new WosParsedRecord(fullTitle, null, null, 2025, null, null, null, "SCIE", null,
+                null, null, null, "ev-jcr", WosSourceType.JCR_REFERENCE, "JCR 2025.csv", "2025", title20, title20);
+    }
+
+    @Test
+    void abbreviatedTitleCreatesIdentityWithJcrFullTitle() {
+        loadAuthority();
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2011, "SCIE", "ev-abbr", "AIS_2011.xlsx", "v2011", "1");
+
+        IdentityResolutionResult result = service.resolveIdentity("0814-6039", null, "ACOUST AUST", context);
+
+        assertEquals(WosIdentityResolutionStatus.CREATED, result.status());
+        WosJournalIdentity identity = identitiesById.get(result.journalId());
+        assertEquals("ACOUSTICS AUSTRALIA", identity.getTitle());
+        assertEquals("ACOUST AUST", identity.getAbbreviatedTitle());
+        assertTrue(identity.getAlternativeNames().isEmpty());
+    }
+
+    @Test
+    void abbreviationArrivingOnFullTitledIdentityIsRecordedNotAliased() {
+        loadAuthority();
+        WosIdentitySourceContext mjl = new WosIdentitySourceContext(2025, "SCIE", "ev-mjl", "mjl.csv", "2025", "1");
+        WosIdentitySourceContext gov = new WosIdentitySourceContext(2011, "SCIE", "ev-gov", "AIS_2011.xlsx", "v2011", "2");
+
+        IdentityResolutionResult seeded = service.resolveIdentity("0814-6039", "1839-2571", "ACOUSTICS AUSTRALIA", mjl);
+        IdentityResolutionResult matched = service.resolveIdentity("0814-6039", null, "ACOUST AUST", gov);
+
+        assertEquals(seeded.journalId(), matched.journalId());
+        WosJournalIdentity identity = identitiesById.get(seeded.journalId());
+        assertEquals("ACOUSTICS AUSTRALIA", identity.getTitle());
+        assertEquals("ACOUST AUST", identity.getAbbreviatedTitle());
+        assertTrue(identity.getAlternativeNames().isEmpty());
+    }
+
+    @Test
+    void sameFingerprintMixedCaseTitleUpgradesAllCapsDisplayTitle() {
+        loadAuthority();
+        WosIdentitySourceContext mjl = new WosIdentitySourceContext(2025, "SCIE", "ev-mjl", "mjl.csv", "2025", "1");
+        WosIdentitySourceContext ris = new WosIdentitySourceContext(2019, "SCIE", "ev-ris", "RIS_2019.xlsx", "v2019", "2");
+
+        IdentityResolutionResult seeded = service.resolveIdentity("0814-6039", "1839-2571", "ACOUSTICS AUSTRALIA", mjl);
+        service.resolveIdentity("0814-6039", null, "Acoustics Australia", ris);
+
+        WosJournalIdentity identity = identitiesById.get(seeded.journalId());
+        assertEquals("Acoustics Australia", identity.getTitle());
+        assertEquals("ACOUST AUST", identity.getAbbreviatedTitle());
+        assertTrue(identity.getAlternativeNames().isEmpty());
+    }
+
+    @Test
+    void fullTitlePromotesOverExistingAbbreviationTitle() {
+        loadAuthority();
+        WosIdentitySourceContext gov = new WosIdentitySourceContext(2011, "SCIE", "ev-gov", "AIS_2011.xlsx", "v2011", "1");
+        WosIdentitySourceContext ris = new WosIdentitySourceContext(2019, "SCIE", "ev-ris", "RIS_2019.xlsx", "v2019", "2");
+
+        // legacy-shaped identity: created while the authority was empty, so the abbreviation became the title
+        titleAuthority.load(List.of());
+        IdentityResolutionResult created = service.resolveIdentity("0814-6039", null, "ACOUST AUST", gov);
+        assertEquals("ACOUST AUST", identitiesById.get(created.journalId()).getTitle());
+
+        loadAuthority();
+        service.resolveIdentity("0814-6039", null, "Acoustics Australia", ris);
+
+        WosJournalIdentity identity = identitiesById.get(created.journalId());
+        assertEquals("Acoustics Australia", identity.getTitle());
+        assertEquals("ACOUST AUST", identity.getAbbreviatedTitle());
+        assertTrue(identity.getAlternativeNames().isEmpty());
+    }
+
+    @Test
+    void shortTitleEqualToItsOwnTitle20IsNotTreatedAsAbbreviation() {
+        loadAuthority();
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2019, "SCIE", "ev-nat", "RIS_2019.xlsx", "v2019", "1");
+
+        IdentityResolutionResult result = service.resolveIdentity("0028-0836", null, "Nature", context);
+
+        WosJournalIdentity identity = identitiesById.get(result.journalId());
+        assertEquals("Nature", identity.getTitle());
+        assertNull(identity.getAbbreviatedTitle());
+    }
+
+    @Test
+    void sourceAbbreviationFromContextIsCaptured() {
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2018, "SCIE", "ev-json", "journals-SCIE-year-2018.json",
+                "v2018", "1", "J SOUND VIB");
+
+        IdentityResolutionResult result = service.resolveIdentity("0022-460X", null, "Journal of Sound and Vibration", context);
+
+        WosJournalIdentity identity = identitiesById.get(result.journalId());
+        assertEquals("Journal of Sound and Vibration", identity.getTitle());
+        assertEquals("J SOUND VIB", identity.getAbbreviatedTitle());
     }
 
     private void addToken(Set<String> collector, String token) {

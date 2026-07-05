@@ -23,6 +23,8 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentityResolutionStatus;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedRecord;
+import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentitySourceContext;
+import org.mockito.ArgumentCaptor;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParserRunResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParserRunSummary;
 
@@ -74,6 +76,7 @@ class WosFactBuilderServiceTest {
         service = new WosFactBuilderService(
                 parserOrchestrator,
                 identityResolutionService,
+                new WosTitleAuthority(),
                 metricFactRepository,
                 categoryFactRepository,
                 coverageFactRepository,
@@ -1120,6 +1123,7 @@ class WosFactBuilderServiceTest {
         return new WosFactBuilderService(
                 parserOrchestrator,
                 identityResolutionService,
+                new WosTitleAuthority(),
                 metricFactRepository,
                 categoryFactRepository,
                 coverageFactRepository,
@@ -1173,6 +1177,38 @@ class WosFactBuilderServiceTest {
                 year,
                 editionRaw
         );
+    }
+
+
+    @Test
+    void resolutionOrderIsMjlThenOfficialThenGovNewestFirstAndJcrNeverResolves() {
+        WosParsedRecord gov2011 = new WosParsedRecord("ACOUST AUST", "1111-1111", "2222-2222", 2011,
+                MetricType.AIS, 1.0, null, "SCIE", EditionNormalized.SCIE, null, null, null,
+                "ev-gov11", WosSourceType.GOV_AIS_RIS, "AIS_2011.xlsx", "v2011", "1", null);
+        WosParsedRecord gov2019 = new WosParsedRecord("Some Other Journal", "3333-3333", "4444-4444", 2019,
+                MetricType.RIS, 1.0, null, "SCIE", EditionNormalized.SCIE, null, null, null,
+                "ev-gov19", WosSourceType.GOV_AIS_RIS, "RIS_2019.xlsx", "v2019", "1", null);
+        WosParsedRecord official = new WosParsedRecord("Journal of Sound and Vibration", "0022-460X", "1095-8568", 2018,
+                MetricType.AIS, 1.0, null, "SCIE", EditionNormalized.SCIE, null, null, null,
+                "ev-json", WosSourceType.OFFICIAL_WOS_EXTRACT, "journals-SCIE-year-2018.json", "v2018", "1", "J SOUND VIB");
+        WosParsedRecord mjl = new WosParsedRecord("ACOUSTICS AUSTRALIA", "0814-6039", "1839-2571", 2025,
+                null, null, "Acoustics", "SCIE", EditionNormalized.SCIE, null, null, null,
+                "ev-mjl", WosSourceType.MJL_COVERAGE, "scie.csv", "2025", "0814-6039|SCIE", null);
+        WosParsedRecord jcr = new WosParsedRecord("ACOUSTICS AUSTRALIA", null, null, 2025,
+                null, null, null, "SCIE", null, null, null, null,
+                "ev-jcr", WosSourceType.JCR_REFERENCE, "JCR 2025.csv", "2025", "ACOUST AUST", "ACOUST AUST");
+        // deliberately shuffled input: the ordered-rebuild contract must impose the source priority
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(gov2011, gov2019, jcr, official, mjl)));
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<WosIdentitySourceContext> contexts = ArgumentCaptor.forClass(WosIdentitySourceContext.class);
+        verify(identityResolutionService, times(4))
+                .resolveIdentityWithPrefetchedCandidates(any(), any(), any(), contexts.capture(), any());
+        List<String> resolvedOrder = contexts.getAllValues().stream().map(WosIdentitySourceContext::sourceFile).toList();
+        // JCR never resolves (naming reference only); MJL first, then official extract, then GOV newest-first
+        assertEquals(List.of("scie.csv", "journals-SCIE-year-2018.json", "RIS_2019.xlsx", "AIS_2011.xlsx"), resolvedOrder);
+        assertEquals("J SOUND VIB", contexts.getAllValues().get(1).abbreviatedTitle());
     }
 
     private WosParserRunResult runOf(List<WosParsedRecord> records) {

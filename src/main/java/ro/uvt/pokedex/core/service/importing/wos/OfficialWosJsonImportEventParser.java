@@ -40,9 +40,10 @@ public class OfficialWosJsonImportEventParser extends AbstractWosImportEventPars
             if (year == null) {
                 return WosParsedEventResult.error("missing year");
             }
+            String abbreviatedTitle = normalizeText(text(payload, "abbrJournal"));
             String title = normalizeText(text(payload, "journalTitle"));
             if (isBlank(title)) {
-                title = normalizeText(text(payload, "abbrJournal"));
+                title = abbreviatedTitle;
             }
             String issn = normalizeIssn(text(payload, "issn"));
             String eIssn = normalizeIssn(firstNonBlank(text(payload, "eissn"), text(payload, "eIssn")));
@@ -54,11 +55,11 @@ public class OfficialWosJsonImportEventParser extends AbstractWosImportEventPars
             List<WosParsedRecord> records = new ArrayList<>();
             Double aisValue = parseMetricValue(text(payload, "articleInfluenceScore"));
             if (aisValue != null || payload.has("articleInfluenceScore")) {
-                records.addAll(toRecords(event, title, issn, eIssn, year, MetricType.AIS, aisValue, category, editionRaw, rank, editions));
+                records.addAll(toRecords(event, title, abbreviatedTitle, issn, eIssn, year, MetricType.AIS, aisValue, category, editionRaw, rank, editions));
             }
             Double ifValue = parseMetricValue(text(payload, "journalImpactFactor"));
             if (ifValue != null || payload.has("journalImpactFactor")) {
-                records.addAll(toRecords(event, title, issn, eIssn, year, MetricType.IF, ifValue, category, editionRaw, rank, editions));
+                records.addAll(toRecords(event, title, abbreviatedTitle, issn, eIssn, year, MetricType.IF, ifValue, category, editionRaw, rank, editions));
             }
 
             if (records.isEmpty()) {
@@ -73,6 +74,7 @@ public class OfficialWosJsonImportEventParser extends AbstractWosImportEventPars
     private List<WosParsedRecord> toRecords(
             WosImportEvent event,
             String title,
+            String abbreviatedTitle,
             String issn,
             String eIssn,
             Integer year,
@@ -102,7 +104,8 @@ public class OfficialWosJsonImportEventParser extends AbstractWosImportEventPars
                     event.getSourceType(),
                     event.getSourceFile(),
                     event.getSourceVersion(),
-                    event.getSourceRowItem()
+                    event.getSourceRowItem(),
+                    abbreviatedTitle
             ));
         }
         return records;

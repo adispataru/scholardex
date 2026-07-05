@@ -259,6 +259,7 @@ public class AdminInitializationController {
                         + ", journalIdentities=" + result.journalIdentities()
                         + ", metricFacts=" + result.metricFacts()
                         + ", categoryFacts=" + result.categoryFacts()
+                        + ", coverageFacts=" + result.coverageFacts()
                         + ", identityConflicts=" + result.identityConflicts()
                         + ", factConflicts=" + result.factConflicts()
                         + ", rankingViews=" + result.rankingViewRows()

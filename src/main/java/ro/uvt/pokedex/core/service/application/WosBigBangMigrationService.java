@@ -250,6 +250,7 @@ public class WosBigBangMigrationService {
         long journalIdentities = journalIdentityRepository.count();
         long metricFacts = metricFactRepository.count();
         long categoryFacts = categoryFactRepository.count();
+        long coverageFacts = mongoTemplate.count(new Query(), ro.uvt.pokedex.core.model.reporting.wos.WosCoverageFact.class);
         long identityConflicts = identityConflictRepository.count();
         long factConflicts = factConflictRepository.count();
         long rankingRows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_ranking_view", Long.class);
@@ -267,10 +268,18 @@ public class WosBigBangMigrationService {
         identityConflictRepository.deleteAll();
         categoryFactRepository.deleteAll();
         metricFactRepository.deleteAll();
+        // coverage facts key on the ISSN-set-derived journal id; a from-scratch rebuild can re-key journals
+        // (e.g. when MJL seeding completes the ISSN set), so stale rows must not survive the reset
+        mongoTemplate.remove(new Query(), ro.uvt.pokedex.core.model.reporting.wos.WosCoverageFact.class);
         journalIdentityRepository.deleteAll();
         importEventRepository.deleteAll();
         mongoTemplate.remove(wosCanonicalForumQuery(), ScholardexForumFact.class);
         mongoTemplate.remove(wosForumSourceLinkQuery(), ScholardexSourceLink.class);
+        // WoS-side forum identity conflicts reference the wiped journal ids; keeping RESOLVED rows trips the
+        // open-conflict unique index when the next forum onboarding re-detects the same (journal, reason)
+        mongoTemplate.remove(
+                Query.query(Criteria.where("entityType").is(ScholardexEntityType.FORUM).and("incomingSource").is("WOS")),
+                ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict.class);
         factBuilderService.resetFactBuildCheckpoint();
 
         return new CanonicalResetResult(
@@ -278,6 +287,7 @@ public class WosBigBangMigrationService {
                 journalIdentities,
                 metricFacts,
                 categoryFacts,
+                coverageFacts,
                 identityConflicts,
                 factConflicts,
                 rankingRows,
@@ -372,6 +382,7 @@ public class WosBigBangMigrationService {
             long journalIdentities,
             long metricFacts,
             long categoryFacts,
+            long coverageFacts,
             long identityConflicts,
             long factConflicts,
             long rankingViewRows,

@@ -116,8 +116,9 @@ class WosImportEventIngestionServiceTest {
                 "\"Journal title\",\"ISSN\",\"eISSN\",\"Publisher name\",\"Publisher address\",\"Languages\",\"Web of Science Categories\"\n"
                         + "\"Journal of Things\",\"1234-5678\",\"8765-4321\",\"Elsevier\",\"addr\",\"English\",\"COMPUTER SCIENCE\"\n"
                         + "\"E-Only Journal\",\"\",\"2222-0000\",\"MDPI\",\"addr\",\"English\",\"PHYSICS\"\n");
-        // The JCR matrix file (no edition token in its name, no ISSN) must be skipped entirely.
-        Files.writeString(dir.resolve("JCR 2025.csv"), "Title20,Title,Country,SCIE,SSCI,AHCI,ESCI\nX,X,US,1,0,0,0\n");
+        // The JCR matrix file (no edition token in its name, no ISSN) becomes JCR_REFERENCE naming events.
+        Files.writeString(dir.resolve("JCR 2025.csv"), "Title20,Title,Country,SCIE,SSCI,AHCI,ESCI\n"
+                + "ACOUST AUST,ACOUSTICS AUSTRALIA,AUSTRALIA,X,,,\n");
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
@@ -125,10 +126,16 @@ class WosImportEventIngestionServiceTest {
 
         ImportProcessingResult result = service.ingestMjlDirectory(dir.toString(), "2025");
 
-        assertEquals(2, result.getProcessedCount()); // 2 SCIE rows; JCR matrix skipped
-        assertEquals(2, result.getImportedCount());
+        assertEquals(3, result.getProcessedCount()); // 2 SCIE rows + 1 JCR matrix row
+        assertEquals(3, result.getImportedCount());
         assertEquals(0, result.getErrorCount());
         assertTrue(store.containsSourceType(WosSourceType.MJL_COVERAGE));
+
+        WosImportEvent jcr = store.get(WosSourceType.JCR_REFERENCE, "JCR 2025.csv", "2025", "ACOUST AUST");
+        assertNotNull(jcr);
+        assertEquals("jcr-csv-row", jcr.getPayloadFormat());
+        assertTrue(jcr.getPayload().contains("ACOUSTICS AUSTRALIA"));
+        assertTrue(jcr.getPayload().contains("SCIE"));
 
         WosImportEvent ev = store.get(WosSourceType.MJL_COVERAGE,
                 "Science Citation Index Expanded (SCIE) (1).csv", "2025", "1234-5678|SCIE");

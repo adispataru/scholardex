@@ -51,6 +51,7 @@ public class WosFactBuilderService {
 
     private final WosImportEventParserOrchestrator parserOrchestrator;
     private final WosIdentityResolutionService identityResolutionService;
+    private final WosTitleAuthority titleAuthority;
     private final WosMetricFactRepository metricFactRepository;
     private final WosCategoryFactRepository categoryFactRepository;
     private final ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository;
@@ -66,6 +67,7 @@ public class WosFactBuilderService {
     public WosFactBuilderService(
             WosImportEventParserOrchestrator parserOrchestrator,
             WosIdentityResolutionService identityResolutionService,
+            WosTitleAuthority titleAuthority,
             WosMetricFactRepository metricFactRepository,
             WosCategoryFactRepository categoryFactRepository,
             ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository,
@@ -79,6 +81,7 @@ public class WosFactBuilderService {
     ) {
         this.parserOrchestrator = parserOrchestrator;
         this.identityResolutionService = identityResolutionService;
+        this.titleAuthority = titleAuthority;
         this.metricFactRepository = metricFactRepository;
         this.categoryFactRepository = categoryFactRepository;
         this.coverageFactRepository = coverageFactRepository;
@@ -94,6 +97,7 @@ public class WosFactBuilderService {
     public WosFactBuilderService(
             WosImportEventParserOrchestrator parserOrchestrator,
             WosIdentityResolutionService identityResolutionService,
+            WosTitleAuthority titleAuthority,
             WosMetricFactRepository metricFactRepository,
             WosCategoryFactRepository categoryFactRepository,
             ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository,
@@ -107,6 +111,7 @@ public class WosFactBuilderService {
         this(
                 parserOrchestrator,
                 identityResolutionService,
+                titleAuthority,
                 metricFactRepository,
                 categoryFactRepository,
                 coverageFactRepository,
@@ -156,7 +161,8 @@ public class WosFactBuilderService {
         }
         Map<String, String> identityCache = new BoundedLruCache<>(Math.max(1024, optimizationProperties.getIdentityLruMaxSize()));
         Map<String, String> tokenSetResolutionCache = new BoundedLruCache<>(Math.max(1024, optimizationProperties.getIdentityLruMaxSize()));
-        List<WosParsedRecord> records = parserRun.records();
+        loadTitleAuthority(parserRun.records());
+        List<WosParsedRecord> records = orderForResolution(parserRun.records());
         int total = records.size();
         int chunkSize = Math.max(1, optimizationProperties.getFactChunkSize());
         int totalBatches = total == 0 ? 0 : ((total - 1) / chunkSize) + 1;
@@ -208,6 +214,57 @@ public class WosFactBuilderService {
                 resumedFromCheckpoint,
                 checkpointLastCompletedBatch
         );
+    }
+
+    /**
+     * Feed the JCR naming reference into {@link WosTitleAuthority} before any identity resolution: from the
+     * run's own JCR records when present (the full-rebuild path), otherwise from the stored JCR import
+     * events (per-source incremental builds). No-op when no JCR reference was ever ingested.
+     */
+    private void loadTitleAuthority(List<WosParsedRecord> allRecords) {
+        List<WosParsedRecord> jcrRecords = allRecords.stream()
+                .filter(record -> record.sourceType() == WosSourceType.JCR_REFERENCE)
+                .toList();
+        if (!jcrRecords.isEmpty()) {
+            titleAuthority.load(jcrRecords);
+            return;
+        }
+        if (!titleAuthority.isLoaded()) {
+            WosParserRunResult jcrRun = parserOrchestrator.parseAllEventsOfType(WosSourceType.JCR_REFERENCE);
+            if (jcrRun != null) {
+                titleAuthority.load(jcrRun.records());
+            }
+        }
+    }
+
+    /**
+     * The ordered-rebuild contract: reference-quality sources resolve first so they seed/name identities and
+     * the metric sources land on them — MJL (full titles, both ISSNs), then the official extracts, then the
+     * government AIS/RIS files; within a source, newest year first (newer files carry full, nicely-cased
+     * titles; the 2011–2013 AIS files are abbreviated). JCR records never reach resolution — they are the
+     * in-memory naming reference loaded by {@link #loadTitleAuthority}. Deterministic across rebuilds.
+     */
+    private List<WosParsedRecord> orderForResolution(List<WosParsedRecord> records) {
+        return records.stream()
+                .filter(record -> record.sourceType() != WosSourceType.JCR_REFERENCE)
+                .sorted(Comparator
+                        .comparingInt((WosParsedRecord record) -> sourcePriority(record.sourceType()))
+                        .thenComparing(WosParsedRecord::year, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(WosParsedRecord::sourceFile, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(WosParsedRecord::sourceRowItem, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
+
+    private static int sourcePriority(WosSourceType sourceType) {
+        if (sourceType == null) {
+            return Integer.MAX_VALUE;
+        }
+        return switch (sourceType) {
+            case MJL_COVERAGE -> 0;
+            case JCR_REFERENCE -> 1;
+            case OFFICIAL_WOS_EXTRACT -> 2;
+            case GOV_AIS_RIS -> 3;
+        };
     }
 
     public Optional<WosFactBuildCheckpoint> readFactBuildCheckpoint() {
@@ -769,7 +826,8 @@ public class WosFactBuilderService {
                             record.sourceEventId(),
                             record.sourceFile(),
                             record.sourceVersion(),
-                            record.sourceRowItem()
+                            record.sourceRowItem(),
+                            record.abbreviatedTitle()
                     ),
                     prefetchedCandidates
             );

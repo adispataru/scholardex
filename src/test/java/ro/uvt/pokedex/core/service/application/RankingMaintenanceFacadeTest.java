@@ -245,7 +245,7 @@ class RankingMaintenanceFacadeTest {
     @Test
     void resetWosCanonicalStateDelegatesToMigrationService() {
         WosBigBangMigrationService.CanonicalResetResult expected =
-                new WosBigBangMigrationService.CanonicalResetResult(10, 7, 5, 5, 1, 2, 7, 7, 4, 4);
+                new WosBigBangMigrationService.CanonicalResetResult(10, 7, 5, 5, 5, 1, 2, 7, 7, 4, 4);
         when(wosBigBangMigrationService.resetCanonicalState()).thenReturn(expected);
 
         WosBigBangMigrationService.CanonicalResetResult result = facade.resetWosCanonicalState();

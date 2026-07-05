@@ -43,6 +43,12 @@ public class WosImportEventParserOrchestrator {
         return parseEvents(events);
     }
 
+    /** Parse every event of one source type — e.g. the JCR naming reference before a per-source build. */
+    public WosParserRunResult parseAllEventsOfType(WosSourceType sourceType) {
+        List<WosImportEvent> events = new ArrayList<>(importEventRepository.findAllBySourceType(sourceType));
+        return parseEvents(events);
+    }
+
     public WosParserRunResult parseSourceLineage(
             WosSourceType sourceType,
             String sourceFile,

@@ -15,6 +15,8 @@ public interface WosImportEventRepository extends MongoRepository<WosImportEvent
             String sourceRowItem
     );
 
+    List<WosImportEvent> findAllBySourceType(WosSourceType sourceType);
+
     List<WosImportEvent> findAllBySourceTypeAndSourceFileAndSourceVersion(
             WosSourceType sourceType,
             String sourceFile,

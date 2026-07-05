@@ -31,6 +31,8 @@ public class WosJournalIdentity {
     private String conflictReason;
     private Instant conflictDetectedAt;
     private String title;
+    /** Official WoS abbreviation (JCR Title20 / extract abbrJournal), e.g. "ACOUST AUST" — never the display title. */
+    private String abbreviatedTitle;
     @Indexed
     private String normalizedTitle;
     private List<String> alternativeNames = new ArrayList<>();

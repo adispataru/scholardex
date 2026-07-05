@@ -51,6 +51,7 @@ import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventParser;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventParserOrchestrator;
 import ro.uvt.pokedex.core.service.importing.wos.WosOptimizationProperties;
+import ro.uvt.pokedex.core.service.importing.wos.WosTitleAuthority;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.io.FileOutputStream;
@@ -159,12 +160,13 @@ class WosAdminInitializationWorkflowIntegrationTest {
         WosImportEventParserOrchestrator parserOrchestrator =
                 new WosImportEventParserOrchestrator(importEventRepository, parsers);
         WosIdentityResolutionService identityResolutionService =
-                new WosIdentityResolutionService(journalIdentityRepository, identityConflictRepository);
+                new WosIdentityResolutionService(journalIdentityRepository, identityConflictRepository, new WosTitleAuthority());
         WosFactBuildCheckpointService checkpointService =
                 new WosFactBuildCheckpointService(checkpointRepository);
         WosFactBuilderService factBuilderService = new WosFactBuilderService(
                 parserOrchestrator,
                 identityResolutionService,
+                new WosTitleAuthority(),
                 metricFactRepository,
                 categoryFactRepository,
                 coverageFactRepository,

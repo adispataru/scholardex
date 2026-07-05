@@ -62,6 +62,12 @@ class WosJournalIdentityDeduplicationServiceTest {
         return f;
     }
 
+    private WosMetricFact metric(String journalId, Integer year, MetricType type, Double value) {
+        WosMetricFact f = metric(journalId, year, type);
+        f.setValue(value);
+        return f;
+    }
+
     @Test
     void mergesPrintAndEIssnSwappedDuplicatesOfSameJournal() {
         // The H66B M9 pattern: two identities for one journal with the print/eISSN roles swapped, same
@@ -142,6 +148,43 @@ class WosJournalIdentityDeduplicationServiceTest {
         WosJournalIdentityDeduplicationService.WosIdentityDedupResult result = service().deduplicate();
 
         assertEquals(2, result.identitiesScanned());
+        assertEquals(0, result.groupsMerged());
+        verify(journalIdentityRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    void mergesIssnSuccessionPairWithSameTitleAndComplementaryYears() {
+        // Current Psychology pattern: the journal changed its ISSN record — two identities, identical
+        // normalized title, fully disjoint ISSN sets, complementary metric-year ranges. Pass 2 merges them.
+        WosJournalIdentity current = identity("jid_new", "10461310", "19364733", "current psychology", List.of(), Instant.parse("2026-01-01T00:00:00Z"));
+        WosJournalIdentity former = identity("jid_old", "07378262", null, "current psychology", List.of(), Instant.parse("2026-02-01T00:00:00Z"));
+        when(journalIdentityRepository.findAll()).thenReturn(List.of(current, former));
+        when(metricFactRepository.findAllByJournalId("jid_new")).thenReturn(List.of(metric("jid_new", 2020, MetricType.AIS, 1.2)));
+        when(metricFactRepository.findAllByJournalId("jid_old")).thenReturn(List.of(metric("jid_old", 2005, MetricType.AIS, 0.4)));
+
+        WosJournalIdentityDeduplicationService.WosIdentityDedupResult result = service().deduplicate();
+
+        assertEquals(1, result.groupsMerged());
+        assertEquals(1, result.identitiesMerged());
+        // winner = the current record (more ISSN tokens); the former ISSN folds in as an alias
+        ArgumentCaptor<WosJournalIdentity> savedWinner = ArgumentCaptor.forClass(WosJournalIdentity.class);
+        verify(journalIdentityRepository).save(savedWinner.capture());
+        assertEquals("jid_new", savedWinner.getValue().getId());
+        assertTrue(savedWinner.getValue().getAliasIssns().contains("07378262"));
+    }
+
+    @Test
+    void quarantinesSameTitleGroupWithConflictingMetricYears() {
+        // Two same-named identities whose metric facts disagree on the same (year, metricType) are
+        // concurrent distinct journals (homonyms), not an ISSN succession — never merged.
+        WosJournalIdentity left = identity("jid_a", "11112222", null, "applied optics", List.of(), Instant.parse("2026-01-01T00:00:00Z"));
+        WosJournalIdentity right = identity("jid_b", "33334444", null, "applied optics", List.of(), Instant.parse("2026-02-01T00:00:00Z"));
+        when(journalIdentityRepository.findAll()).thenReturn(List.of(left, right));
+        when(metricFactRepository.findAllByJournalId("jid_a")).thenReturn(List.of(metric("jid_a", 2020, MetricType.AIS, 1.2)));
+        when(metricFactRepository.findAllByJournalId("jid_b")).thenReturn(List.of(metric("jid_b", 2020, MetricType.AIS, 0.7)));
+
+        WosJournalIdentityDeduplicationService.WosIdentityDedupResult result = service().deduplicate();
+
         assertEquals(0, result.groupsMerged());
         verify(journalIdentityRepository, never()).deleteAll(any());
     }

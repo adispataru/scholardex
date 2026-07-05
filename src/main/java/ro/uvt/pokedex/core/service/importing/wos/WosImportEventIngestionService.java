@@ -104,7 +104,10 @@ public class WosImportEventIngestionService {
         for (File file : files) {
             String edition = editionFromMjlFileName(file.getName());
             if (edition == null) {
-                continue; // not an edition coverage file (e.g. the JCR matrix) — skip
+                if (isJcrMatrixFileName(file.getName())) {
+                    ingestJcrReferenceFile(file, sourceVersion, total);
+                }
+                continue; // not an edition coverage file — skip
             }
             ingestMjlEditionFile(file, edition, sourceVersion, total);
         }
@@ -168,6 +171,66 @@ public class WosImportEventIngestionService {
             flushBatch(toPersist);
         } catch (Exception e) {
             total.markError("mjl-file=" + fileName + ", error=" + e.getMessage());
+        }
+    }
+
+    private static boolean isJcrMatrixFileName(String fileName) {
+        return fileName != null && fileName.toUpperCase(Locale.ROOT).contains("JCR");
+    }
+
+    /**
+     * Ingest the JCR matrix CSV (Title20,Title,Country,SCIE,SSCI,AHCI,ESCI) — the naming reference the
+     * identity resolution consults (via {@link WosTitleAuthority}) to map WoS abbreviations to full titles.
+     * One {@link WosSourceType#JCR_REFERENCE} event per row, keyed by Title20.
+     */
+    private void ingestJcrReferenceFile(File file, String sourceVersion, ImportProcessingResult total) {
+        String fileName = file.getName();
+        try (CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            List<String[]> rows = reader.readAll();
+            if (rows.isEmpty()) {
+                return;
+            }
+            Map<String, Integer> header = new HashMap<>();
+            String[] head = rows.get(0);
+            for (int i = 0; i < head.length; i++) {
+                if (head[i] != null) {
+                    header.put(head[i].trim().toLowerCase(Locale.ROOT), i);
+                }
+            }
+            Integer title20Col = header.get("title20");
+            Integer titleCol = header.get("title");
+            Integer countryCol = header.get("country");
+            Map<String, WosImportEvent> existingByRowItem = loadExistingByRowItem(WosSourceType.JCR_REFERENCE, fileName, sourceVersion);
+            List<WosImportEvent> toPersist = new ArrayList<>();
+            for (int i = 1; i < rows.size(); i++) {
+                String[] row = rows.get(i);
+                String title20 = mjlCell(row, title20Col);
+                String title = mjlCell(row, titleCol);
+                if (title20 == null || title == null) {
+                    total.markSkipped("jcr=" + fileName + "#row" + i + " missing title20/title");
+                    continue;
+                }
+                StringBuilder editions = new StringBuilder();
+                for (String edition : List.of("scie", "ssci", "ahci", "esci")) {
+                    if (mjlCell(row, header.get(edition)) != null) {
+                        if (editions.length() > 0) {
+                            editions.append('|');
+                        }
+                        editions.append(edition.toUpperCase(Locale.ROOT));
+                    }
+                }
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("title20", title20);
+                payload.put("title", title);
+                payload.put("country", mjlCell(row, countryCol));
+                payload.put("editions", editions.length() == 0 ? null : editions.toString());
+                processEventFast(WosSourceType.JCR_REFERENCE, fileName, sourceVersion, title20, "jcr-csv-row",
+                        payload, existingByRowItem, toPersist, total);
+                flushBatchIfNeeded(toPersist);
+            }
+            flushBatch(toPersist);
+        } catch (Exception e) {
+            total.markError("jcr-file=" + fileName + ", error=" + e.getMessage());
         }
     }
 

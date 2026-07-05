@@ -66,13 +66,58 @@ public class WosJournalIdentityDeduplicationService {
     public WosIdentityDedupResult deduplicate() {
         long startedAt = System.nanoTime();
         List<WosJournalIdentity> all = journalIdentityRepository.findAll();
-        List<List<WosJournalIdentity>> groups = groupDuplicates(all);
+        MergeCounts issnPass = mergeGroups(groupDuplicates(all));
 
+        // Pass 2 — ISSN succession: the same journal under identical full titles but fully disjoint ISSN
+        // sets (the journal changed its ISSN record, e.g. Current Psychology 0737-8262 → 1046-1310), which
+        // pass 1 can never see. Same-title-only is unsafe for homonyms, so a group merges only when its
+        // members' metric facts never disagree on the same (year, metricType) — succession records cover
+        // complementary year ranges; genuinely distinct same-named journals conflict and stay quarantined.
+        List<WosJournalIdentity> remaining = all.stream()
+                .filter(identity -> !issnPass.removedIds().contains(identity.getId()))
+                .toList();
+        List<List<WosJournalIdentity>> titleGroups = groupByNormalizedTitle(remaining);
+        List<List<WosJournalIdentity>> mergeable = new ArrayList<>();
+        int successionQuarantined = 0;
+        for (List<WosJournalIdentity> group : titleGroups) {
+            if (hasConflictingMetrics(group)) {
+                successionQuarantined++;
+            } else {
+                mergeable.add(group);
+            }
+        }
+        MergeCounts titlePass = mergeGroups(mergeable);
+
+        WosIdentityDedupResult result = new WosIdentityDedupResult(
+                all.size(),
+                issnPass.groupsMerged() + titlePass.groupsMerged(),
+                issnPass.identitiesMerged() + titlePass.identitiesMerged(),
+                issnPass.metricRepointed() + titlePass.metricRepointed(),
+                issnPass.metricDropped() + titlePass.metricDropped(),
+                issnPass.categoryRepointed() + titlePass.categoryRepointed(),
+                issnPass.categoryDropped() + titlePass.categoryDropped(),
+                issnPass.coverageRepointed() + titlePass.coverageRepointed(),
+                issnPass.coverageDropped() + titlePass.coverageDropped()
+        );
+        log.info("WoS journal-identity dedup complete: identities={} groupsMerged={} (issn={}, titleSuccession={}, "
+                        + "successionQuarantined={}) identitiesMerged={} metric[repointed={}, dropped={}] "
+                        + "category[repointed={}, dropped={}] coverage[repointed={}, dropped={}] totalMs={}",
+                all.size(), result.groupsMerged(), issnPass.groupsMerged(), titlePass.groupsMerged(),
+                successionQuarantined, result.identitiesMerged(),
+                result.metricFactsRepointed(), result.metricFactsDropped(),
+                result.categoryFactsRepointed(), result.categoryFactsDropped(),
+                result.coverageFactsRepointed(), result.coverageFactsDropped(),
+                (System.nanoTime() - startedAt) / 1_000_000);
+        return result;
+    }
+
+    private MergeCounts mergeGroups(List<List<WosJournalIdentity>> groups) {
         int groupsMerged = 0;
         int identitiesMerged = 0;
         long metricRepointed = 0, metricDropped = 0;
         long categoryRepointed = 0, categoryDropped = 0;
         long coverageRepointed = 0, coverageDropped = 0;
+        Set<String> removedIds = new LinkedHashSet<>();
 
         for (List<WosJournalIdentity> group : groups) {
             if (group.size() < 2) {
@@ -99,24 +144,61 @@ public class WosJournalIdentityDeduplicationService {
             winner.setBuilderVersion(BuilderVersion.WOS_FACT);
             journalIdentityRepository.save(winner);
             journalIdentityRepository.deleteAll(losers);
+            losers.forEach(loser -> removedIds.add(loser.getId()));
 
             groupsMerged++;
             identitiesMerged += losers.size();
         }
+        return new MergeCounts(groupsMerged, identitiesMerged,
+                metricRepointed, metricDropped, categoryRepointed, categoryDropped, coverageRepointed, coverageDropped,
+                removedIds);
+    }
 
-        WosIdentityDedupResult result = new WosIdentityDedupResult(
-                all.size(), groupsMerged, identitiesMerged,
-                metricRepointed, metricDropped,
-                categoryRepointed, categoryDropped,
-                coverageRepointed, coverageDropped
-        );
-        log.info("WoS journal-identity dedup complete: identities={} groupsMerged={} identitiesMerged={} "
-                        + "metric[repointed={}, dropped={}] category[repointed={}, dropped={}] "
-                        + "coverage[repointed={}, dropped={}] totalMs={}",
-                all.size(), groupsMerged, identitiesMerged,
-                metricRepointed, metricDropped, categoryRepointed, categoryDropped,
-                coverageRepointed, coverageDropped, (System.nanoTime() - startedAt) / 1_000_000);
-        return result;
+    /** Identities sharing an identical non-blank normalized title (only multi-member groups). */
+    private List<List<WosJournalIdentity>> groupByNormalizedTitle(List<WosJournalIdentity> identities) {
+        Map<String, List<WosJournalIdentity>> byTitle = new LinkedHashMap<>();
+        for (WosJournalIdentity identity : identities) {
+            String title = identity.getNormalizedTitle();
+            if (title == null || title.isBlank()) {
+                continue;
+            }
+            byTitle.computeIfAbsent(title, k -> new ArrayList<>()).add(identity);
+        }
+        return byTitle.values().stream().filter(g -> g.size() > 1).toList();
+    }
+
+    /**
+     * True when two members carry a metric fact for the same (year, metricType) with different values —
+     * the signature of two concurrent, genuinely distinct journals rather than one journal's ISSN succession.
+     */
+    private boolean hasConflictingMetrics(List<WosJournalIdentity> group) {
+        Map<String, WosMetricFact> firstByKey = new LinkedHashMap<>();
+        for (WosJournalIdentity identity : group) {
+            for (WosMetricFact fact : metricFactRepository.findAllByJournalId(identity.getId())) {
+                String key = fact.getYear() + "|" + fact.getMetricType();
+                WosMetricFact seen = firstByKey.putIfAbsent(key, fact);
+                if (seen != null
+                        && !Objects.equals(seen.getJournalId(), fact.getJournalId())
+                        && seen.getValue() != null && fact.getValue() != null
+                        && !Objects.equals(seen.getValue(), fact.getValue())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private record MergeCounts(
+            int groupsMerged,
+            int identitiesMerged,
+            long metricRepointed,
+            long metricDropped,
+            long categoryRepointed,
+            long categoryDropped,
+            long coverageRepointed,
+            long coverageDropped,
+            Set<String> removedIds
+    ) {
     }
 
     /**
@@ -225,6 +307,10 @@ public class WosJournalIdentityDeduplicationService {
                 if (!primaryAndE.contains(token) && !winner.getAliasIssns().contains(token)) {
                     winner.getAliasIssns().add(token);
                 }
+            }
+            if ((winner.getAbbreviatedTitle() == null || winner.getAbbreviatedTitle().isBlank())
+                    && loser.getAbbreviatedTitle() != null && !loser.getAbbreviatedTitle().isBlank()) {
+                winner.setAbbreviatedTitle(loser.getAbbreviatedTitle());
             }
             if (loser.getAlternativeNames() != null) {
                 for (String alt : loser.getAlternativeNames()) {
