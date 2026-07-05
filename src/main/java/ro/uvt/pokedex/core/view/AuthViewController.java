@@ -17,18 +17,17 @@ public class AuthViewController {
     static final String SAVED_REQUEST_ATTRIBUTE = "SPRING_SECURITY_SAVED_REQUEST";
 
     /**
-     * Renders the login page. A sign-in CTA on a public page (e.g. the WoS gate on a forum) passes
-     * {@code redirect} so the visitor returns to where they were instead of the landing page: a safe
-     * internal path is stored as the Spring Security saved request; anything else (absolute URLs,
-     * protocol-relative, control characters) is ignored and any stale saved target is cleared so a plain
-     * {@code /login} visit always lands on the default page.
+     * Renders the login page. Two flows feed the post-login destination and both must survive this page:
+     * a sign-in CTA on a public page passes {@code redirect} (stored as the Spring Security saved request
+     * when it is a safe internal path), while an interrupted request to a protected page (session expiry /
+     * app restart → refresh → redirect here) has already been saved by the security filter chain. A plain
+     * {@code /login} visit therefore leaves any existing saved request UNTOUCHED — clearing it would send
+     * the interrupted visitor to the landing page instead of the page they asked for.
      */
     @GetMapping("/login")
     public String login(@RequestParam(name = "redirect", required = false) String redirect, HttpServletRequest request) {
         if (isSafeInternalPath(redirect)) {
             request.getSession().setAttribute(SAVED_REQUEST_ATTRIBUTE, new SimpleSavedRequest(redirect));
-        } else {
-            request.getSession().removeAttribute(SAVED_REQUEST_ATTRIBUTE);
         }
         return "login";
     }

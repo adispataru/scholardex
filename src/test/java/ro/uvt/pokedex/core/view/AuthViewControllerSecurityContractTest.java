@@ -190,7 +190,9 @@ class AuthViewControllerSecurityContractTest {
     }
 
     @Test
-    void plainLoginVisitClearsAPreviouslyStoredRedirectTarget() throws Exception {
+    void plainLoginVisitPreservesAPendingRedirectTarget() throws Exception {
+        // an interrupted request (or a gate CTA) already stored the destination; rendering the login page
+        // without a redirect param must NOT forget it — that is the app-restart → refresh → sign-in flow
         when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
                 .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
 
@@ -199,7 +201,6 @@ class AuthViewControllerSecurityContractTest {
                 .andReturn();
         MockHttpSession session = (MockHttpSession) withTarget.getRequest().getSession(false);
 
-        // revisiting /login without a redirect must forget the old target
         mockMvc.perform(get("/login").session(session)).andExpect(status().isOk());
 
         mockMvc.perform(post("/login")
@@ -208,7 +209,32 @@ class AuthViewControllerSecurityContractTest {
                         .param("username", "admin@uvt.ro")
                         .param("password", "secret"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"));
+                .andExpect(redirectedUrl("/forums/sfor_abc123"));
+    }
+
+    @Test
+    void interruptedRequestToProtectedPageResumesThereAfterLogin() throws Exception {
+        // fresh session (e.g. after an app restart) hits a protected URL → login → back to that URL
+        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
+                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
+
+        MvcResult intercepted = mockMvc.perform(get("/user/workspace"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) intercepted.getRequest().getSession(false);
+
+        mockMvc.perform(get("/login").session(session)).andExpect(status().isOk());
+
+        MvcResult login = mockMvc.perform(post("/login")
+                        .session(session)
+                        .with(csrf())
+                        .param("username", "admin@uvt.ro")
+                        .param("password", "secret"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+        String target = login.getResponse().getRedirectedUrl();
+        org.junit.jupiter.api.Assertions.assertTrue(target != null && target.contains("/user/workspace"),
+                "expected redirect back to the interrupted page, got: " + target);
     }
 
     private User validPlatformAdmin(String email, String rawPassword) {
