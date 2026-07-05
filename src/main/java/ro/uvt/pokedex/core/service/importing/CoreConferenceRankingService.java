@@ -53,7 +53,10 @@ public class CoreConferenceRankingService {
             try (CSVReader reader = new CSVReader(new FileReader(file))) {
                 List<String[]> rows = reader.readAll();
 
-                for (int i = 1; i < rows.size(); i++) { // Start from row 1 to skip headers
+                // The portal exports carry no header row — skipping row 0 unconditionally dropped each
+                // edition's first conference (e.g. WEBIST from CORE2023). Skip only a genuine header.
+                int startIndex = !rows.isEmpty() && looksLikeHeader(rows.get(0)) ? 1 : 0;
+                for (int i = startIndex; i < rows.size(); i++) {
                     fileResult.markProcessed();
                     totalResult.markProcessed();
                     try {
@@ -119,6 +122,9 @@ public class CoreConferenceRankingService {
                 break;
             case 2023:
                 updateRankingFromRow2023(row, year);
+                break;
+            case 2026:
+                updateRankingFromRow2026(row, year);
                 break;
             default:
                 logger.error("Unsupported year format: {}", year);
@@ -236,6 +242,28 @@ public class CoreConferenceRankingService {
         updateRanking(null, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, null, year);
     }
 
+    private void updateRankingFromRow2026(String[] row, int year) {
+        // ICORE2026 keeps the 2020+ CSV format (fields of research in column 6); the source column
+        // carries the portal's own label ("ICORE2026")
+        String source = row[3].trim();
+        String sourceId = row[0].trim();
+        String name = row[1].trim();
+        String acronym = row[2].trim();
+        CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
+        String rankString = row[4].trim();
+        String[] fieldsOfResearch = row[6].trim().split(";");
+
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, null, year);
+    }
+
+    /** A header row has a non-numeric id column (the exports normally ship without one). */
+    private boolean looksLikeHeader(String[] row) {
+        if (row.length == 0 || row[0] == null) {
+            return false;
+        }
+        return !row[0].trim().matches("\\d+");
+    }
+
     private void updateRanking(String id, String source, String sourceId, String name, String acronym, CoreConferenceRanking.Rank rank, String rankString, String[] fieldsOfResearch, String[] fieldsOfResearchNames, int year) {
         CoreConferenceRanking ranking = null;
         int pos = -1;
@@ -296,9 +324,10 @@ public class CoreConferenceRankingService {
             return CoreConferenceRanking.Rank.National_Regional;
         }
         try {
-            return CoreConferenceRanking.Rank.valueOf(rankString);
+            // "Australasian C" → AustralasianC (the enum encodes the tier without the space)
+            return CoreConferenceRanking.Rank.valueOf(rankString.replace(" ", ""));
         } catch (IllegalArgumentException e) {
-            logger.error("Invalid rank value: {}", rankString);
+            logger.warn("Unmapped CORE rank value treated as NON_RANK: {}", rankString);
             return CoreConferenceRanking.Rank.NON_RANK;
         }
     }

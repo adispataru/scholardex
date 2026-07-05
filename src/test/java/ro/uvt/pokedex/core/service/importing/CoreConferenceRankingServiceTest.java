@@ -302,6 +302,51 @@ class CoreConferenceRankingServiceTest {
 
     // --- helpers ---
 
+    // --- ICORE2026 + headerless exports (the portal ships CSVs without a header row) ---
+
+    @Test
+    void year2026_conferenceAddedFromIcoreExport() throws Exception {
+        writeFile("CORE2026-all.csv", row2023("2264", "AAAI Conference on Human Computation", "HCOMP", "ICORE2026", "B", "4608") + "\n");
+
+        service.loadRankingsFromCSVSync(tempDir.toString());
+
+        assertEquals(1, cache.size());
+        assertEquals("ICORE2026", cache.get(0).getSource());
+        assertEquals(CoreConferenceRanking.Rank.B, cache.get(0).getYearlyRankings().get(2026).getRank());
+    }
+
+    @Test
+    void headerlessFileDoesNotDropTheFirstConference() throws Exception {
+        // the real exports have NO header — row 0 is data and must be imported
+        writeFile("CORE2023-all.csv",
+                row2023("1270", "Web Information Systems", "WEBIST", "CORE2023", "C", "46") + "\n" +
+                row2023("2199", "Computational Creativity", "ICCC", "CORE2023", "C", "46") + "\n");
+
+        service.loadRankingsFromCSVSync(tempDir.toString());
+
+        assertEquals(2, cache.size());
+        assertTrue(cache.stream().anyMatch(r -> "WEBIST".equals(r.getAcronym())));
+    }
+
+    @Test
+    void australasianAndNationalRankStringsMapToTheirEnumTiers() throws Exception {
+        writeFile("CORE2026-all.csv",
+                row2023("1", "Aussie Conf", "AUC", "ICORE2026", "Australasian C", "46") + "\n" +
+                row2023("2", "Romanian Conf", "ROC", "ICORE2026", "National: Romania", "46") + "\n" +
+                row2023("3", "Merged Conf", "MGC", "ICORE2026", "unranked: merged", "46") + "\n");
+
+        service.loadRankingsFromCSVSync(tempDir.toString());
+
+        assertEquals(3, cache.size());
+        assertEquals(CoreConferenceRanking.Rank.AustralasianC, findByAcronym("AUC").getYearlyRankings().get(2026).getRank());
+        assertEquals(CoreConferenceRanking.Rank.National, findByAcronym("ROC").getYearlyRankings().get(2026).getRank());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK, findByAcronym("MGC").getYearlyRankings().get(2026).getRank());
+    }
+
+    private CoreConferenceRanking findByAcronym(String acronym) {
+        return cache.stream().filter(r -> acronym.equals(r.getAcronym())).findFirst().orElseThrow();
+    }
+
     private void writeFile(String name, String content) throws IOException {
         Files.writeString(tempDir.resolve(name), content);
     }
