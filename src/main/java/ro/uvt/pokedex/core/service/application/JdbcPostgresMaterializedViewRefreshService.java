@@ -18,6 +18,7 @@ public class JdbcPostgresMaterializedViewRefreshService implements PostgresMater
     static final String SLICE_SCOPUS = "scopus";
 
     static final String MV_WOS_TOP_RANKINGS = "reporting_read.mv_wos_top_rankings_q1_ais";
+    static final String MV_WOS_TOP_RANKINGS_IF = "reporting_read.mv_wos_top_rankings_q1_if";
     static final String MV_SCOPUS_CITATION_CONTEXT = "reporting_read.mv_scholardex_citation_context";
 
     private static final String STATUS_RUNNING = "RUNNING";
@@ -58,7 +59,7 @@ public class JdbcPostgresMaterializedViewRefreshService implements PostgresMater
         return runRefresh(
                 TRIGGER_MANUAL,
                 null,
-                Set.of(MV_WOS_TOP_RANKINGS, MV_SCOPUS_CITATION_CONTEXT)
+                Set.of(MV_WOS_TOP_RANKINGS, MV_WOS_TOP_RANKINGS_IF, MV_SCOPUS_CITATION_CONTEXT)
         );
     }
 
@@ -238,6 +239,7 @@ public class JdbcPostgresMaterializedViewRefreshService implements PostgresMater
             String normalized = slice.trim().toLowerCase();
             if (SLICE_WOS.equals(normalized)) {
                 views.add(MV_WOS_TOP_RANKINGS);
+                views.add(MV_WOS_TOP_RANKINGS_IF);
             }
             if (SLICE_SCOPUS.equals(normalized)) {
                 views.add(MV_SCOPUS_CITATION_CONTEXT);

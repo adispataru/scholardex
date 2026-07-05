@@ -82,6 +82,7 @@ class JdbcPostgresMaterializedViewRefreshServiceTest {
         assertEquals(
                 Set.of(
                         JdbcPostgresMaterializedViewRefreshService.MV_WOS_TOP_RANKINGS,
+                        JdbcPostgresMaterializedViewRefreshService.MV_WOS_TOP_RANKINGS_IF,
                         JdbcPostgresMaterializedViewRefreshService.MV_SCOPUS_CITATION_CONTEXT
                 ),
                 JdbcPostgresMaterializedViewRefreshService.mapSlicesToViews(Set.of(" WOS ", "scopus"))

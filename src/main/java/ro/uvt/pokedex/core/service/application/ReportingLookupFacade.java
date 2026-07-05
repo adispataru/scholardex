@@ -87,6 +87,11 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public int getTopRankingsIf(String categoryIndex, Integer year) {
+        return postgresFacade.getTopRankingsIf(categoryIndex, year);
+    }
+
+    @Override
     public Set<String> getUniversityAuthorIds() {
         return postgresFacade.getUniversityAuthorIds();
     }

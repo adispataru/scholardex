@@ -63,6 +63,9 @@ public interface ReportingLookupPort {
 
     int getTopRankings(String categoryIndex, Integer year);
 
+    /** IF-side twin of {@link #getTopRankings}: Q1-by-JIF journal count for the top-20% (A*) boundary. */
+    int getTopRankingsIf(String categoryIndex, Integer year);
+
     /**
      * H60: the distinct ranking list-years present in the DB (the JCR/WoS metric years), ascending. The
      * journal-independent universe that {@code ScoreYearRangeSpec.LatestNRankings} selects its latest-n from (capped

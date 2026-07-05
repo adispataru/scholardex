@@ -52,12 +52,13 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             // ItemYear indicators score in the paper's own year, but JCR rankings lag — carry the journal's last
             // known quartile forward so current-year papers still score.
             boolean carryForward = indicator.getEffectiveScoreYearRange() instanceof ScoreYearRangeSpec.ItemYear;
+            boolean bestOfAisIf = indicator.usesJournalBestQuartile2026();
             computeScores(
                     domain,
                     forum,
                     allowedYears,
                     scoreResult,
-                    this::computeCSScore,
+                    (ranking, year, category, rank) -> computeCSScore(ranking, year, category, rank, bestOfAisIf),
                     this::compareScoresByPoints,
                     carryForward
             );
@@ -146,12 +147,13 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
                 indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
         boolean carryForward = indicator.getEffectiveScoreYearRange() instanceof ScoreYearRangeSpec.ItemYear;
+        boolean bestOfAisIf = indicator.usesJournalBestQuartile2026();
         computeScores(
                 domain,
                 forum,
                 allowedYears,
                 scoreResult,
-                this::computeCSScore,
+                (ranking, year, category, rank) -> computeCSScore(ranking, year, category, rank, bestOfAisIf),
                 this::compareScoresByPoints,
                 carryForward
         );
@@ -177,18 +179,43 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     /*  CS-specific scoring logic                                        */
     /* ------------------------------------------------------------------ */
 
-    private Optional<Score> computeCSScore(WoSRanking ranking, int year, String category, WoSRanking.Rank rank) {
-        WoSRanking.Quarter quarter = rank.getQAis().get(year);
+    private Optional<Score> computeCSScore(
+            WoSRanking ranking, int year, String category, WoSRanking.Rank rank, boolean bestOfAisIf) {
+        // 2016 standard: classification by AIS quartile alone. 2026 standard: the journal takes the BEST of
+        // its AIS and JIF placements for the resolved year (each metric ranked against its own cohort). The
+        // comparison is per-year, so years without JIF data (our JCR IF ends 2019 for now) fall back to AIS.
+        WoSRanking.Quarter aisQuarter = rank.getQAis().get(year);
+        Optional<Score> aisScore = aisQuarter == null
+                ? Optional.empty()
+                : scoreQuartilePlacement(year, category, aisQuarter, rank.getRankAis().get(year),
+                        "AIS", lookupPort.getTopRankings(category, year));
+        if (!bestOfAisIf) {
+            return aisScore;
+        }
+        WoSRanking.Quarter ifQuarter = rank.getQIF().get(year);
+        Optional<Score> ifScore = ifQuarter == null
+                ? Optional.empty()
+                : scoreQuartilePlacement(year, category, ifQuarter, rank.getRankIF().get(year),
+                        "IF", lookupPort.getTopRankingsIf(category, year));
+        if (aisScore.isEmpty()) {
+            return ifScore;
+        }
+        if (ifScore.isEmpty()) {
+            return aisScore;
+        }
+        // ties keep AIS (the primary metric) as the reported placement
+        return ifScore.get().getScore() > aisScore.get().getScore() ? ifScore : aisScore;
+    }
+
+    private Optional<Score> scoreQuartilePlacement(
+            int year, String category, WoSRanking.Quarter quarter, Integer metricRank, String metric, int topQ1Count) {
         if (quarter == null) {
             return Optional.empty();
         }
 
         Score score = new Score();
-
-        // TODO Come up with a better caching mechanism
-        int top = lookupPort.getTopRankings(category, year);
-        int numTop = (int) (0.2 * top);
-        int rankPosition = rank.getRankAis().getOrDefault(year, Integer.MAX_VALUE);
+        int numTop = (int) (0.2 * topQ1Count);
+        int rankPosition = metricRank == null ? Integer.MAX_VALUE : metricRank;
 
         double points;
         switch (quarter) {
@@ -207,6 +234,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         scoringInfo.put("resolvedYear", year);
         scoringInfo.put("resolvedRank", score.getCoreRankingEquivalent());
         scoringInfo.put("quarter", quarter.toString());
+        scoringInfo.put("quartileMetric", metric);
         scoringInfo.put("wosCategory", category);
         scoringInfo.put("sourcesConsulted", List.of("WOS"));
         setProvenance(score, "WOS", scoringInfo);
@@ -225,7 +253,8 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     @Override
     public String getDescription() {
         return """
-                Scoring strategy for CNATDCU's Computer Science domain.(Category translation from WoS quarters)
+                Scoring strategy for CNATDCU's Computer Science domain.(Category translation from WoS quarters;
+                2026 indicators take the journal's BEST placement of AIS and JIF quartiles per year)
                 x = 20% * num(Q1) in the same WoS category
                 A* = 12p (first x in Q1)
                 A = 8p (rest of Q1 + first x in Q2)

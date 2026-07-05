@@ -72,6 +72,18 @@ public class Indicator {
         return Boolean.TRUE.equals(workshopCategory2026);
     }
 
+    /**
+     * 2026 Informatică journal rule: the journal's category is the BEST of its AIS and JIF quartile
+     * placements for the resolved year (the 2016 standard classifies by AIS alone). Nullable-only: legacy
+     * documents deserialize as {@code null} (2016 behaviour); the 2026 indicators set it true.
+     */
+    private Boolean journalBestQuartile2026;
+
+    /** True when this indicator classifies journals by the better of AIS and JIF quartiles (2026 standard). */
+    public boolean usesJournalBestQuartile2026() {
+        return Boolean.TRUE.equals(journalBestQuartile2026);
+    }
+
     /** Clamp a computed indicator total to {@link #maxPoints} when a cap is configured. */
     public double applyPointsCap(double total) {
         return maxPoints == null ? total : Math.min(total, maxPoints.doubleValue());

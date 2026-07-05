@@ -53,7 +53,7 @@ class PostgresMaterializedViewRefreshServiceIntegrationTest {
         PostgresMaterializedViewRefreshService.MaterializedViewRefreshRunSummary run = service.refreshAllManual();
 
         assertEquals("SUCCESS", run.status());
-        assertEquals(2, run.views().size());
+        assertEquals(3, run.views().size());
         assertEquals(1L, tableCount("reporting_read.mv_wos_top_rankings_q1_ais"));
         assertEquals(1L, tableCount("reporting_read.mv_scholardex_citation_context"));
         assertNotNull(service.latestStatus().latestRun());
@@ -67,8 +67,12 @@ class PostgresMaterializedViewRefreshServiceIntegrationTest {
                 service.refreshManualForSlices(java.util.Set.of("wos"));
 
         assertEquals("SUCCESS", run.status());
-        assertEquals(1, run.views().size());
-        assertEquals("reporting_read.mv_wos_top_rankings_q1_ais", run.views().getFirst().viewName());
+        assertEquals(2, run.views().size());
+        java.util.Set<String> refreshed = run.views().stream()
+                .map(v -> v.viewName()).collect(java.util.stream.Collectors.toSet());
+        assertEquals(java.util.Set.of(
+                "reporting_read.mv_wos_top_rankings_q1_ais",
+                "reporting_read.mv_wos_top_rankings_q1_if"), refreshed);
     }
 
     @Test
@@ -83,6 +87,7 @@ class PostgresMaterializedViewRefreshServiceIntegrationTest {
         assertEquals(
                 java.util.Set.of(
                         "reporting_read.mv_wos_top_rankings_q1_ais",
+                        "reporting_read.mv_wos_top_rankings_q1_if",
                         "reporting_read.mv_scholardex_citation_context"
                 ),
                 JdbcPostgresMaterializedViewRefreshService.mapSlicesToViews(java.util.Set.of(" WOS ", "SCOPUS"))

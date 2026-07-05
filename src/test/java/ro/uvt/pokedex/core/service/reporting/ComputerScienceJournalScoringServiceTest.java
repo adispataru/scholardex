@@ -446,6 +446,69 @@ class ComputerScienceJournalScoringServiceTest {
         assertEquals(8.0, score.getScore());
     }
 
+    // --- 2026 rule: journal category = BEST of AIS and JIF quartile placements ---
+
+    private Score scoreWithQuartiles(WoSRanking.Quarter qAis, WoSRanking.Quarter qIf, boolean bestOf2026) {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        indicator.setJournalBestQuartile2026(bestOf2026);
+
+        ScoringPublication publication = publication("forum-1", null, "ar", null);
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setIssn("1234-5678");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        if (qAis != null) {
+            rank.setQAis(Map.of(2019, qAis));
+            rank.setRankAis(Map.of(2019, 999)); // outside any top-20% boundary
+        }
+        if (qIf != null) {
+            rank.setQIF(Map.of(2019, qIf));
+            rank.setRankIF(Map.of(2019, 999));
+        }
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("j-1");
+        ranking.setWebOfScienceCategoryIndex(Map.of("ACOUSTICS - SCIE", rank));
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking));
+        org.mockito.Mockito.lenient().when(lookupPort.getTopRankings("ACOUSTICS - SCIE", 2019)).thenReturn(10);
+        org.mockito.Mockito.lenient().when(lookupPort.getTopRankingsIf("ACOUSTICS - SCIE", 2019)).thenReturn(10);
+
+        return service.getScore(publication, indicator);
+    }
+
+    @Test
+    void bestQuartile2026TakesTheIfPlacementWhenBetterThanAis() {
+        Score score = scoreWithQuartiles(WoSRanking.Quarter.Q3, WoSRanking.Quarter.Q1, true);
+        assertEquals(8.0, score.getScore());
+        assertEquals("Q1", score.getQuarter());
+        assertEquals("A", score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void bestQuartile2026KeepsAisOnTies() {
+        Score score = scoreWithQuartiles(WoSRanking.Quarter.Q2, WoSRanking.Quarter.Q2, true);
+        assertEquals(4.0, score.getScore());
+        assertEquals("Q2", score.getQuarter());
+    }
+
+    @Test
+    void bestQuartile2026FallsBackToIfWhenAisMissingForTheYear() {
+        Score score = scoreWithQuartiles(null, WoSRanking.Quarter.Q2, true);
+        assertEquals(4.0, score.getScore());
+        assertEquals("Q2", score.getQuarter());
+    }
+
+    @Test
+    void legacyIndicatorsClassifyByAisAloneEvenWhenIfIsBetter() {
+        Score score = scoreWithQuartiles(WoSRanking.Quarter.Q3, WoSRanking.Quarter.Q1, false);
+        assertEquals(2.0, score.getScore());
+        assertEquals("Q3", score.getQuarter());
+    }
+
     private ScoringPublication publication(String forumId, String coverDate, String subtype, String scopusSubtype) {
         return new ScoringPublication(
                 "pub-1",

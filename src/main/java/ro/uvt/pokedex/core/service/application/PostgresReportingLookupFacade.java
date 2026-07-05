@@ -260,6 +260,15 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     @Override
     public int getTopRankings(String categoryIndex, Integer year) {
+        return topRankingsForMetric(categoryIndex, year, "topRankings", "reporting_read.mv_wos_top_rankings_q1_ais");
+    }
+
+    @Override
+    public int getTopRankingsIf(String categoryIndex, Integer year) {
+        return topRankingsForMetric(categoryIndex, year, "topRankingsIf", "reporting_read.mv_wos_top_rankings_q1_if");
+    }
+
+    private int topRankingsForMetric(String categoryIndex, Integer year, String memoScope, String materializedView) {
         if (year == null || categoryIndex == null || categoryIndex.isBlank()) {
             return 0;
         }
@@ -273,9 +282,9 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         String memoKey = year + "|" + parsedCategory.categoryNameCanonical() + "|" + editionMemoKey;
         return reportingLookupMemoization.getOrCompute(
                 "postgres",
-                "topRankings",
+                memoScope,
                 memoKey,
-                () -> loadTopRankings(parsedCategory, year)
+                () -> loadTopRankings(parsedCategory, year, materializedView)
         );
     }
 
@@ -504,7 +513,7 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         return rankings;
     }
 
-    private Integer loadTopRankings(ParsedCategory parsedCategory, Integer year) {
+    private Integer loadTopRankings(ParsedCategory parsedCategory, Integer year, String materializedView) {
         Set<EditionNormalized> editions = parsedCategory.editionNormalized() == null
                 ? OPERATIONAL_EDITIONS
                 : Set.of(parsedCategory.editionNormalized());
@@ -530,11 +539,11 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
         String sql = """
                 SELECT COALESCE(SUM(top_journal_count), 0)
-                FROM reporting_read.mv_wos_top_rankings_q1_ais
+                FROM %s
                 WHERE year = :year
                   AND category_name_canonical = :category
                   AND %s
-                """.formatted(editionPredicate);
+                """.formatted(materializedView, editionPredicate);
 
         Integer count = namedParameterJdbcTemplate.queryForObject(sql, params, Integer.class);
         return count == null ? 0 : count;
