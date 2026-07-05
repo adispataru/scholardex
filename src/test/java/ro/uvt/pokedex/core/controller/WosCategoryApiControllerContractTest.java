@@ -34,7 +34,7 @@ class WosCategoryApiControllerContractTest {
 
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
-        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", null))
+        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", null, "AIS"))
                 .thenReturn(new WosCategoryPageResponse(
                         List.of(
                                 item("Computer Science - SCIE", "Computer Science", "SCIE", 3, 2024),
@@ -56,7 +56,7 @@ class WosCategoryApiControllerContractTest {
 
     @Test
     void pagingSortingAndDirectionAreApplied() throws Exception {
-        when(wosCategoryQueryService.search(1, 2, "latestYear", "desc", null))
+        when(wosCategoryQueryService.search(1, 2, "latestYear", "desc", null, "AIS"))
                 .thenReturn(new WosCategoryPageResponse(
                         List.of(item("Design - SCIE", "Design", "SCIE", 4, 2022)),
                         1, 2, 3, 2
@@ -77,9 +77,9 @@ class WosCategoryApiControllerContractTest {
 
     @Test
     void queryMatchesConfiguredFields() throws Exception {
-        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", "computer"))
+        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", "computer", "AIS"))
                 .thenReturn(new WosCategoryPageResponse(List.of(item("Computer Science - SCIE", "Computer Science", "SCIE", 3, 2024)), 0, 25, 1, 1));
-        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", "ssci"))
+        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", "ssci", "AIS"))
                 .thenReturn(new WosCategoryPageResponse(List.of(item("Economics - SSCI", "Economics", "SSCI", 2, 2023)), 0, 25, 1, 1));
 
         mockMvc.perform(get("/api/rankings/categories").param("q", "computer"))
@@ -93,11 +93,11 @@ class WosCategoryApiControllerContractTest {
 
     @Test
     void invalidParamsReturnBadRequestEnvelope() throws Exception {
-        when(wosCategoryQueryService.search(0, 25, "bad", "asc", null))
+        when(wosCategoryQueryService.search(0, 25, "bad", "asc", null, "AIS"))
                 .thenThrow(new IllegalArgumentException("Invalid sort parameter. Allowed: categoryName, edition, journalCount, latestYear."));
-        when(wosCategoryQueryService.search(0, 25, "categoryName", "up", null))
+        when(wosCategoryQueryService.search(0, 25, "categoryName", "up", null, "AIS"))
                 .thenThrow(new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc."));
-        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", "x".repeat(101)))
+        when(wosCategoryQueryService.search(0, 25, "categoryName", "asc", "x".repeat(101), "AIS"))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
         mockMvc.perform(get("/api/rankings/categories").param("page", "-1"))

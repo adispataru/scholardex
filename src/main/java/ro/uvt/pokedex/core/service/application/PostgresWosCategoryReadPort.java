@@ -345,12 +345,14 @@ public class PostgresWosCategoryReadPort {
 
     private record MetricHead(Double avg, Double max, Double median, Integer year) {}
 
-    public WosCategoryPageResponse search(int page, int size, String sort, String direction, String q) {
+    public WosCategoryPageResponse search(int page, int size, String sort, String direction, String q, MetricType metric) {
+        MetricType safeMetric = metric == null ? MetricType.AIS : metric;
         String normalizedSort = normalizeSort(sort);
         String normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
         int safeSize = size <= 0 ? 25 : size;
         MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("metric", safeMetric.name());
 
         StringBuilder whereClause = buildSearchWhereClause();
 
@@ -374,72 +376,71 @@ public class PostgresWosCategoryReadPort {
         params.addValue("limit", safeSize);
         params.addValue("offset", (long) safePage * safeSize);
 
-        // The base category list (journal count + latest year) is joined LATERALLY to the latest-year
-        // AIS and IF aggregate rows so the list can show + sort by avg/top of each metric. NULLS LAST keeps
-        // categories that lack a given metric (e.g. AHCI with no IF) at the bottom of a metric sort.
+        // Metric-scoped list (the AIS/IF switch): the category list joins LATERALLY to the SELECTED metric's
+        // latest aggregate row only — its year is the category's reference year for that metric, its
+        // journal_count the reference-year cohort size. NULLS LAST keeps categories that lack the metric at
+        // the bottom of metric sorts.
         String aggregateSql = """
-                SELECT c.key, c.category_name_canonical, c.edition_normalized, c.journal_count, c.latest_year,
-                       ais.avg_value AS ais_avg, ais.max_value AS ais_top, ais.year AS ais_year,
-                       if_agg.avg_value AS if_avg, if_agg.max_value AS if_top, if_agg.year AS if_year
+                SELECT c.key, c.category_name_canonical, c.edition_normalized,
+                       m.journal_count AS cohort_count, m.year AS metric_year,
+                       m.avg_value AS avg_val, m.max_value AS top_val
                 FROM (
                     SELECT category_name_canonical || ' - ' || edition_normalized AS key,
                            category_name_canonical,
-                           edition_normalized,
-                           COUNT(DISTINCT journal_id) AS journal_count,
-                           MAX(year)                  AS latest_year
+                           edition_normalized
                     FROM reporting_read.wos_category_fact
                     """ + whereClause + """
                     GROUP BY category_name_canonical, edition_normalized
                 ) c
                 LEFT JOIN LATERAL (
-                    SELECT avg_value, max_value, year FROM reporting_read.wos_category_metric_agg a
+                    SELECT journal_count, year, avg_value, max_value FROM reporting_read.wos_category_metric_agg a
                     WHERE a.category_name_canonical = c.category_name_canonical
                       AND a.edition_normalized = c.edition_normalized
-                      AND a.metric_type = 'AIS'::reporting_read.metric_type_enum
+                      AND a.metric_type = :metric::reporting_read.metric_type_enum
                     ORDER BY a.year DESC LIMIT 1
-                ) ais ON true
-                LEFT JOIN LATERAL (
-                    SELECT avg_value, max_value, year FROM reporting_read.wos_category_metric_agg a
-                    WHERE a.category_name_canonical = c.category_name_canonical
-                      AND a.edition_normalized = c.edition_normalized
-                      AND a.metric_type = 'IF'::reporting_read.metric_type_enum
-                    ORDER BY a.year DESC LIMIT 1
-                ) if_agg ON true
+                ) m ON true
                 ORDER BY """ + " " + normalizedSort + " " + normalizedDirection + " NULLS LAST " + """
                 LIMIT :limit OFFSET :offset
                 """;
 
+        Integer globalLatestYear = globalLatestAggregateYear(safeMetric);
         List<WosCategoryListItemResponse> items = namedParameterJdbcTemplate.query(
                 aggregateSql,
                 params,
-                (rs, rowNum) -> new WosCategoryListItemResponse(
-                        rs.getString("key"),
-                        rs.getString("category_name_canonical"),
-                        rs.getString("edition_normalized"),
-                        rs.getLong("journal_count"),
-                        rs.getObject("latest_year", Integer.class),
-                        rs.getObject("ais_avg", Double.class),
-                        rs.getObject("ais_top", Double.class),
-                        rs.getObject("ais_year", Integer.class),
-                        rs.getObject("if_avg", Double.class),
-                        rs.getObject("if_top", Double.class),
-                        rs.getObject("if_year", Integer.class),
-                        List.of()
-                )
+                (rs, rowNum) -> {
+                    Integer year = rs.getObject("metric_year", Integer.class);
+                    return new WosCategoryListItemResponse(
+                            rs.getString("key"),
+                            rs.getString("category_name_canonical"),
+                            rs.getString("edition_normalized"),
+                            safeMetric.name(),
+                            year,
+                            year != null && globalLatestYear != null && year < globalLatestYear,
+                            toLong(rs.getObject("cohort_count", Integer.class)),
+                            rs.getObject("avg_val", Double.class),
+                            rs.getObject("top_val", Double.class),
+                            List.of()
+                    );
+                }
         );
-        return new WosCategoryPageResponse(attachAisTrend(items), safePage, safeSize, total, totalPages);
+        return new WosCategoryPageResponse(attachTrend(items, safeMetric, globalLatestYear), safePage, safeSize, total, totalPages);
     }
 
-    /** Attach each page item's last-5-years average-AIS series (for the row sparkline) in one extra query. */
-    private List<WosCategoryListItemResponse> attachAisTrend(List<WosCategoryListItemResponse> items) {
-        if (items.isEmpty()) {
-            return items;
-        }
-        Integer latestAisYear = namedParameterJdbcTemplate.queryForObject(
+    private static Long toLong(Integer value) {
+        return value == null ? null : value.longValue();
+    }
+
+    private Integer globalLatestAggregateYear(MetricType metric) {
+        return namedParameterJdbcTemplate.queryForObject(
                 "SELECT MAX(year) FROM reporting_read.wos_category_metric_agg "
-                        + "WHERE metric_type = 'AIS'::reporting_read.metric_type_enum",
-                new MapSqlParameterSource(), Integer.class);
-        if (latestAisYear == null) {
+                        + "WHERE metric_type = :metric::reporting_read.metric_type_enum",
+                new MapSqlParameterSource("metric", metric.name()), Integer.class);
+    }
+
+    /** Attach each page item's recent average series for the selected metric (row sparkline), one extra query. */
+    private List<WosCategoryListItemResponse> attachTrend(
+            List<WosCategoryListItemResponse> items, MetricType metric, Integer globalLatestYear) {
+        if (items.isEmpty() || globalLatestYear == null) {
             return items;
         }
         List<String> names = items.stream().map(WosCategoryListItemResponse::categoryName).distinct().toList();
@@ -448,12 +449,15 @@ public class PostgresWosCategoryReadPort {
                 """
                 SELECT category_name_canonical, edition_normalized, year, avg_value
                 FROM reporting_read.wos_category_metric_agg
-                WHERE metric_type = 'AIS'::reporting_read.metric_type_enum
+                WHERE metric_type = :metric::reporting_read.metric_type_enum
                   AND category_name_canonical IN (:names)
                   AND year >= :minYear
                 ORDER BY category_name_canonical, edition_normalized, year
                 """,
-                new MapSqlParameterSource().addValue("names", names).addValue("minYear", latestAisYear - 4),
+                new MapSqlParameterSource()
+                        .addValue("metric", metric.name())
+                        .addValue("names", names)
+                        .addValue("minYear", globalLatestYear - 4),
                 (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
                     String key = rs.getString("category_name_canonical") + " - " + rs.getString("edition_normalized");
                     trendByKey.computeIfAbsent(key, k -> new ArrayList<>())
@@ -462,25 +466,23 @@ public class PostgresWosCategoryReadPort {
                 });
         return items.stream()
                 .map(it -> new WosCategoryListItemResponse(
-                        it.key(), it.categoryName(), it.edition(), it.journalCount(), it.latestYear(),
-                        it.avgAis(), it.topAis(), it.aisYear(), it.avgIf(), it.topIf(), it.ifYear(),
+                        it.key(), it.categoryName(), it.edition(), it.metric(), it.year(), it.stale(),
+                        it.journalCount(), it.avg(), it.top(),
                         trendByKey.getOrDefault(it.key(), List.of())))
                 .toList();
     }
 
     private String normalizeSort(String sort) {
-        String normalized = sort == null ? "" : sort.trim();
+        String normalized = sort == null ? "categoryName" : sort.trim();
         return switch (normalized) {
-            case "categoryName" -> "category_name_canonical";
+            case "categoryName", "" -> "category_name_canonical";
             case "edition" -> "edition_normalized";
-            case "journalCount" -> "journal_count";
-            case "latestYear" -> "latest_year";
-            case "avgAis" -> "ais_avg";
-            case "topAis" -> "ais_top";
-            case "avgIf" -> "if_avg";
-            case "topIf" -> "if_top";
+            case "journalCount" -> "cohort_count";
+            case "year", "latestYear" -> "metric_year";
+            case "avg" -> "avg_val";
+            case "top" -> "top_val";
             default -> throw new IllegalArgumentException(
-                    "Invalid sort parameter. Allowed: categoryName, edition, journalCount, latestYear, avgAis, topAis, avgIf, topIf.");
+                    "Invalid sort parameter. Allowed: categoryName, edition, journalCount, year, avg, top.");
         };
     }
 

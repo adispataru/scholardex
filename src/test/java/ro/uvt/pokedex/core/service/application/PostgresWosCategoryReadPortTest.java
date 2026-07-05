@@ -51,7 +51,7 @@ class PostgresWosCategoryReadPortTest {
         when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Long.class)))
                 .thenReturn(0L);
 
-        var result = readPort.search(0, 25, "categoryName", "asc", "scie");
+        var result = readPort.search(0, 25, "categoryName", "asc", "scie", ro.uvt.pokedex.core.model.reporting.wos.MetricType.AIS);
 
         assertEquals(0, result.totalItems());
 
@@ -212,7 +212,10 @@ class PostgresWosCategoryReadPortTest {
     @Test
     void privateHelperContracts() throws Exception {
         assertEquals("edition_normalized", invoke("normalizeSort", new Class[]{String.class}, "edition"));
-        assertEquals("journal_count", invoke("normalizeSort", new Class[]{String.class}, "journalCount"));
+        assertEquals("cohort_count", invoke("normalizeSort", new Class[]{String.class}, "journalCount"));
+        assertEquals("metric_year", invoke("normalizeSort", new Class[]{String.class}, "year"));
+        assertEquals("avg_val", invoke("normalizeSort", new Class[]{String.class}, "avg"));
+        assertEquals("top_val", invoke("normalizeSort", new Class[]{String.class}, "top"));
         assertEquals("ASC", invoke("normalizeDirection", new Class[]{String.class}, "asc"));
         assertEquals("DESC", invoke("normalizeDirection", new Class[]{String.class}, "desc"));
         assertEquals(null, invoke("normalizeQuery", new Class[]{String.class}, (Object) null));

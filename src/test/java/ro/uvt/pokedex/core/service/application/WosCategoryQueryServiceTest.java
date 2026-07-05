@@ -36,10 +36,10 @@ class WosCategoryQueryServiceTest {
         WosCategoryPageResponse expected = new WosCategoryPageResponse(
                 List.of(new WosCategoryListItemResponse("Computer Science - SCIE", "Computer Science", "SCIE", 2, 2024)),
                 0, 1, 2, 2);
-        when(postgresWosCategoryReadPort.search(anyInt(), anyInt(), anyString(), anyString(), isNull()))
+        when(postgresWosCategoryReadPort.search(anyInt(), anyInt(), anyString(), anyString(), isNull(), any(ro.uvt.pokedex.core.model.reporting.wos.MetricType.class)))
                 .thenReturn(expected);
 
-        WosCategoryPageResponse result = service.search(0, 1, "journalCount", "desc", null);
+        WosCategoryPageResponse result = service.search(0, 1, "journalCount", "desc", null, "AIS");
 
         assertEquals(0, result.page());
         assertEquals(1, result.size());
@@ -48,7 +48,7 @@ class WosCategoryQueryServiceTest {
         assertEquals(1, result.items().size());
         assertEquals("Computer Science - SCIE", result.items().get(0).key());
         assertEquals(2, result.items().get(0).journalCount());
-        verify(postgresWosCategoryReadPort).search(0, 1, "journalCount", "desc", null);
+        verify(postgresWosCategoryReadPort).search(0, 1, "journalCount", "desc", null, ro.uvt.pokedex.core.model.reporting.wos.MetricType.AIS);
     }
 
     @Test
@@ -56,10 +56,10 @@ class WosCategoryQueryServiceTest {
         WosCategoryPageResponse expected = new WosCategoryPageResponse(
                 List.of(new WosCategoryListItemResponse("Economics - SSCI", "Economics", "SSCI", 2, 2023)),
                 0, 25, 1, 1);
-        when(postgresWosCategoryReadPort.search(anyInt(), anyInt(), anyString(), anyString(), anyString()))
+        when(postgresWosCategoryReadPort.search(anyInt(), anyInt(), anyString(), anyString(), anyString(), any(ro.uvt.pokedex.core.model.reporting.wos.MetricType.class)))
                 .thenReturn(expected);
 
-        WosCategoryPageResponse result = service.search(0, 25, "categoryName", "asc", "ssci");
+        WosCategoryPageResponse result = service.search(0, 25, "categoryName", "asc", "ssci", null);
 
         assertEquals(1, result.items().size());
         assertEquals("Economics - SSCI", result.items().get(0).key());

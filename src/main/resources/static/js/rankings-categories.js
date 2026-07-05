@@ -4,7 +4,8 @@
     size: 25,
     sort: 'categoryName',
     direction: 'asc',
-    q: ''
+    q: '',
+    metric: 'AIS'
   };
 
   let totalPages = 0;
@@ -24,7 +25,12 @@
     pageInfo: document.getElementById('wos-categories-page-info'),
     totalInfo: document.getElementById('wos-categories-total-info'),
     prev: document.getElementById('wos-categories-prev'),
-    next: document.getElementById('wos-categories-next')
+    next: document.getElementById('wos-categories-next'),
+    metricToggle: document.getElementById('wos-categories-metric'),
+    yearHeader: document.getElementById('wos-categories-year-header'),
+    avgHeader: document.getElementById('wos-categories-avg-header'),
+    topHeader: document.getElementById('wos-categories-top-header'),
+    trendHeader: document.getElementById('wos-categories-trend-header')
   };
 
   function setLoading(isLoading) {
@@ -93,7 +99,7 @@
     }).join(' ');
     const last = coords[coords.length - 1];
     const rising = ys[ys.length - 1] >= ys[0];
-    const title = 'Avg AIS ' + minX + '–' + maxX + ': ' + fmtNum(ys[0]) + ' → ' + fmtNum(ys[ys.length - 1]);
+    const title = 'Avg ' + state.metric + ' ' + minX + '–' + maxX + ': ' + fmtNum(ys[0]) + ' → ' + fmtNum(ys[ys.length - 1]);
     return '<svg class="app-spark ' + (rising ? 'app-spark--up' : 'app-spark--down') + '" width="' + w +
       '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + escapeHtml(title) + '">' +
       '<title>' + escapeHtml(title) + '</title>' +
@@ -105,16 +111,28 @@
     const detailBase = els.table.dataset.detailBase || '/wos/categories';
     els.tableBody.innerHTML = (items || []).map(function (item) {
       const key = encodeURIComponent(item.key || '');
+      // a stale year (behind the dataset-wide latest for the metric) marks a retired category
+      const yearCell = item.year == null
+        ? '—'
+        : (item.stale
+            ? '<span class="text-muted" title="Last year with ' + escapeHtml(state.metric) + ' data — this category is no longer published">' + escapeHtml(item.year) + '</span>'
+            : escapeHtml(item.year));
       return '<tr>' +
         '<td><a href="' + detailBase + '/' + key + '">' + escapeHtml(item.categoryName) + '</a></td>' +
         '<td class="app-table__cell--identifier">' + escapeHtml(item.edition || '—') + '</td>' +
         '<td class="app-table__cell--numeric">' + escapeHtml(item.journalCount == null ? '—' : item.journalCount) + '</td>' +
-        '<td class="app-table__cell--numeric">' + fmtNum(item.avgAis) + '</td>' +
-        '<td class="app-table__cell--numeric">' + fmtNum(item.topAis) + '</td>' +
-        '<td class="app-spark-cell">' + sparklineSvg(item.aisTrend) + '</td>' +
-        '<td class="app-table__cell--numeric">' + fmtNum(item.avgIf) + '</td>' +
+        '<td class="app-table__cell--numeric">' + yearCell + '</td>' +
+        '<td class="app-table__cell--numeric">' + fmtNum(item.avg) + '</td>' +
+        '<td class="app-table__cell--numeric">' + fmtNum(item.top) + '</td>' +
+        '<td class="app-spark-cell">' + sparklineSvg(item.trend) + '</td>' +
         '</tr>';
     }).join('');
+  }
+
+  function updateMetricHeaders() {
+    if (els.avgHeader) els.avgHeader.textContent = 'Avg ' + state.metric;
+    if (els.topHeader) els.topHeader.textContent = 'Top ' + state.metric;
+    if (els.trendHeader) els.trendHeader.textContent = state.metric + ' trend';
   }
 
   function buildUrl() {
@@ -123,6 +141,7 @@
     params.set('size', String(state.size));
     params.set('sort', state.sort);
     params.set('direction', state.direction);
+    params.set('metric', state.metric);
     if (state.q) {
       params.set('q', state.q);
     }
@@ -180,6 +199,24 @@
   }
 
   function bindEvents() {
+    if (els.metricToggle) {
+      els.metricToggle.querySelectorAll('[data-metric]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (btn.getAttribute('data-metric') === state.metric) return;
+          state.metric = btn.getAttribute('data-metric');
+          state.page = 0;
+          els.metricToggle.querySelectorAll('[data-metric]').forEach(function (b) {
+            const active = b === btn;
+            b.classList.toggle('btn-primary', active);
+            b.classList.toggle('btn-outline-primary', !active);
+            b.setAttribute('aria-pressed', String(active));
+          });
+          updateMetricHeaders();
+          fetchPage();
+        });
+      });
+    }
+
     els.search.addEventListener('input', function () {
       const value = els.search.value.trim();
       if (searchDebounce) {

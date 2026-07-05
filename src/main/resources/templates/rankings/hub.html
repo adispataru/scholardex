@@ -341,9 +341,9 @@
                                     <option value="categoryName">Category</option>
                                     <option value="edition">Edition</option>
                                     <option value="journalCount">Journals</option>
-                                    <option value="avgAis">Avg AIS</option>
-                                    <option value="topAis">Top AIS</option>
-                                    <option value="avgIf">Avg IF (2019)</option>
+                                    <option value="year">Year</option>
+                                    <option value="avg">Avg</option>
+                                    <option value="top">Top</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
@@ -368,6 +368,13 @@
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
                                 <h2 class="app-table-section__title">WoS Category Directory</h2>
+                                <!-- One metric era at a time (mirrors the category detail page): every metric
+                                     column below belongs to the selected metric; each category's Year column is
+                                     its own latest year for that metric. -->
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Metric" id="wos-categories-metric">
+                                    <button type="button" class="btn btn-primary" data-metric="AIS" aria-pressed="true">AIS</button>
+                                    <button type="button" class="btn btn-outline-primary" data-metric="IF" aria-pressed="false">IF</button>
+                                </div>
                                 <span id="wos-categories-total-info" class="app-table-toolbar__meta"></span>
                             </div>
                             <div class="app-table-section__body">
@@ -381,11 +388,14 @@
                                         <tr>
                                             <th scope="col">Category</th>
                                             <th scope="col">Edition</th>
-                                            <th scope="col">Journals</th>
-                                            <th scope="col" title="Average Article Influence Score across the category's journals (latest year)">Avg AIS</th>
-                                            <th scope="col" title="Highest Article Influence Score in the category (latest year)">Top AIS</th>
-                                            <th scope="col">AIS trend</th>
-                                            <th scope="col" title="Average Journal Impact Factor — JCR 2019, the latest available in our data">Avg IF (2019)</th>
+                                            <th scope="col" title="Journals ranked in the category's latest year for the selected metric">Journals</th>
+                                            <th scope="col" id="wos-categories-year-header"
+                                                title="The category's latest year with data for the selected metric">Year</th>
+                                            <th scope="col" id="wos-categories-avg-header"
+                                                title="Average of the selected metric across the category's journals in its latest year">Avg AIS</th>
+                                            <th scope="col" id="wos-categories-top-header"
+                                                title="Highest value of the selected metric in the category's latest year">Top AIS</th>
+                                            <th scope="col" id="wos-categories-trend-header">AIS trend</th>
                                         </tr>
                                         </thead>
                                         <tbody id="wos-categories-table-body"></tbody>

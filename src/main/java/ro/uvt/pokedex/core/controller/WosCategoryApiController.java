@@ -26,8 +26,9 @@ public class WosCategoryApiController {
             @RequestParam(defaultValue = "25") @Min(1) @Max(100) int size,
             @RequestParam(defaultValue = "categoryName") String sort,
             @RequestParam(defaultValue = "asc") String direction,
-            @RequestParam(required = false) String q
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "AIS") String metric
     ) {
-        return ResponseEntity.ok(wosCategoryQueryService.search(page, size, sort, direction, q));
+        return ResponseEntity.ok(wosCategoryQueryService.search(page, size, sort, direction, q, metric));
     }
 }
