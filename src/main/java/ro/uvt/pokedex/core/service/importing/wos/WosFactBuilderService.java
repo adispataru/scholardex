@@ -303,12 +303,7 @@ public class WosFactBuilderService {
                 result.markSkipped("insufficient-grouping-data factId=" + fact.getId());
                 continue;
             }
-            CategoryEnrichmentGroupKey key = new CategoryEnrichmentGroupKey(
-                    fact.getYear(),
-                    fact.getMetricType(),
-                    fact.getCategoryNameCanonical(),
-                    fact.getEditionNormalized()
-            );
+            CategoryEnrichmentGroupKey key = enrichmentGroupKey(fact);
             groups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fact);
         }
 
@@ -397,12 +392,7 @@ public class WosFactBuilderService {
                     || fact.getEditionNormalized() == null) {
                 continue;
             }
-            affectedGroupKeys.add(new CategoryEnrichmentGroupKey(
-                    fact.getYear(),
-                    fact.getMetricType(),
-                    fact.getCategoryNameCanonical(),
-                    fact.getEditionNormalized()
-            ));
+            affectedGroupKeys.add(enrichmentGroupKey(fact));
         }
 
         Map<CategoryEnrichmentGroupKey, List<WosCategoryFact>> peerGroups = new LinkedHashMap<>();
@@ -415,12 +405,7 @@ public class WosFactBuilderService {
                     || fact.getEditionNormalized() == null) {
                 continue;
             }
-            CategoryEnrichmentGroupKey key = new CategoryEnrichmentGroupKey(
-                    fact.getYear(),
-                    fact.getMetricType(),
-                    fact.getCategoryNameCanonical(),
-                    fact.getEditionNormalized()
-            );
+            CategoryEnrichmentGroupKey key = enrichmentGroupKey(fact);
             if (!affectedGroupKeys.contains(key)) {
                 continue;
             }
@@ -452,12 +437,7 @@ public class WosFactBuilderService {
                 result.markSkipped("insufficient-grouping-data factId=" + fact.getId());
                 continue;
             }
-            CategoryEnrichmentGroupKey key = new CategoryEnrichmentGroupKey(
-                    fact.getYear(),
-                    fact.getMetricType(),
-                    fact.getCategoryNameCanonical(),
-                    fact.getEditionNormalized()
-            );
+            CategoryEnrichmentGroupKey key = enrichmentGroupKey(fact);
             scopedTargets.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fact);
         }
 
@@ -1484,11 +1464,15 @@ public class WosFactBuilderService {
             List<WosCategoryFact> pendingUpdates,
             ImportProcessingResult result
     ) {
-        List<RankCandidate> ranked = new ArrayList<>();
         Set<String> targetFactIds = targetFacts.stream()
                 .map(WosCategoryFact::getId)
                 .collect(Collectors.toSet());
         List<WosCategoryFact> uncomputable = new ArrayList<>();
+        // one candidate per JOURNAL, not per fact: in the unified (cross-edition) cohorts a journal can
+        // carry facts under two editions of the same category — counting it twice would inflate the
+        // denominator JCR ranks against
+        Map<String, RankCandidate> candidateByJournal = new LinkedHashMap<>();
+        List<WosCategoryFact> computableTargets = new ArrayList<>();
         for (WosCategoryFact fact : peerFacts) {
             MetricFactKey metricKey = new MetricFactKey(fact.getJournalId(), fact.getYear(), fact.getMetricType());
             WosMetricFact metricFact = metricByKey.get(metricKey);
@@ -1499,47 +1483,48 @@ public class WosFactBuilderService {
                 }
                 continue;
             }
-            ranked.add(new RankCandidate(fact, metricValue));
+            candidateByJournal.putIfAbsent(fact.getJournalId(), new RankCandidate(fact, metricValue));
+            if (targetFactIds.contains(fact.getId())) {
+                computableTargets.add(fact);
+            }
         }
+        List<RankCandidate> ranked = new ArrayList<>(candidateByJournal.values());
 
         ranked.sort(Comparator
                 .comparing(RankCandidate::metricValue, Comparator.reverseOrder())
                 .thenComparing(candidate -> candidate.fact().getJournalId(), Comparator.nullsFirst(String::compareTo)));
 
-        Map<String, Integer> rankByFactId = competitionRanks(ranked);
-        Map<String, String> computedQuarterByFactId = computedQuarterByFactId(ranked);
-        Map<String, String> effectiveQuarterByFactId = new HashMap<>();
+        Map<String, Integer> rankByJournal = competitionRanks(ranked);
+        Map<String, String> computedQuarterByJournal = computedQuarterByJournal(ranked);
+        Map<String, String> effectiveQuarterByJournal = new HashMap<>();
         for (RankCandidate candidate : ranked) {
             WosCategoryFact fact = candidate.fact();
             String sourceQuarter = normalizeQuarter(fact.getQuarter());
-            String computedQuarter = computedQuarterByFactId.get(fact.getId());
-            effectiveQuarterByFactId.put(fact.getId(), sourceQuarter == null ? computedQuarter : sourceQuarter);
+            String computedQuarter = computedQuarterByJournal.get(fact.getJournalId());
+            effectiveQuarterByJournal.put(fact.getJournalId(), sourceQuarter == null ? computedQuarter : sourceQuarter);
         }
-        Map<String, Integer> quartileRankByFactId = quartileRankByFactId(ranked, effectiveQuarterByFactId);
+        Map<String, Integer> quartileRankByJournal = quartileRankByJournal(ranked, effectiveQuarterByJournal);
 
-        for (RankCandidate candidate : ranked) {
-            WosCategoryFact fact = candidate.fact();
-            if (!targetFactIds.contains(fact.getId())) {
-                continue;
-            }
+        for (WosCategoryFact fact : computableTargets) {
             boolean changed = false;
+            String journalId = fact.getJournalId();
 
             if (fact.getRank() == null) {
-                Integer computedRank = rankByFactId.get(fact.getId());
+                Integer computedRank = rankByJournal.get(journalId);
                 if (computedRank != null) {
                     fact.setRank(computedRank);
                     changed = true;
                 }
             }
             if (isBlank(fact.getQuarter())) {
-                String computedQuarter = computedQuarterByFactId.get(fact.getId());
+                String computedQuarter = computedQuarterByJournal.get(journalId);
                 if (computedQuarter != null) {
                     fact.setQuarter(computedQuarter);
                     changed = true;
                 }
             }
             if (fact.getQuartileRank() == null) {
-                Integer computedQuartileRank = quartileRankByFactId.get(fact.getId());
+                Integer computedQuartileRank = quartileRankByJournal.get(journalId);
                 if (computedQuartileRank != null) {
                     fact.setQuartileRank(computedQuartileRank);
                     changed = true;
@@ -1561,7 +1546,7 @@ public class WosFactBuilderService {
     }
 
     private Map<String, Integer> competitionRanks(List<RankCandidate> ranked) {
-        Map<String, Integer> byFactId = new HashMap<>();
+        Map<String, Integer> byJournal = new HashMap<>();
         Double previousValue = null;
         int currentRank = 0;
         for (int i = 0; i < ranked.size(); i++) {
@@ -1569,26 +1554,26 @@ public class WosFactBuilderService {
             if (previousValue == null || Double.compare(previousValue, candidate.metricValue()) != 0) {
                 currentRank = i + 1;
             }
-            byFactId.put(candidate.fact().getId(), currentRank);
+            byJournal.put(candidate.fact().getJournalId(), currentRank);
             previousValue = candidate.metricValue();
         }
-        return byFactId;
+        return byJournal;
     }
 
-    private Map<String, String> computedQuarterByFactId(List<RankCandidate> ranked) {
-        Map<String, String> byFactId = new HashMap<>();
+    private Map<String, String> computedQuarterByJournal(List<RankCandidate> ranked) {
+        Map<String, String> byJournal = new HashMap<>();
         int n = ranked.size();
         if (n == 0) {
-            return byFactId;
+            return byJournal;
         }
         int q1End = (int) Math.ceil(n / 4.0d);
         int q2End = (int) Math.ceil(n / 2.0d);
         int q3End = (int) Math.ceil((3.0d * n) / 4.0d);
         // boundary by competition rank, not list position: tied journals share the better quartile
         // (JCR convention) instead of being split by the journalId tie-break
-        Map<String, Integer> rankByFactId = competitionRanks(ranked);
+        Map<String, Integer> rankByJournal = competitionRanks(ranked);
         for (RankCandidate candidate : ranked) {
-            int position = rankByFactId.get(candidate.fact().getId());
+            int position = rankByJournal.get(candidate.fact().getJournalId());
             String quarter;
             if (position <= q1End) {
                 quarter = "Q1";
@@ -1599,19 +1584,19 @@ public class WosFactBuilderService {
             } else {
                 quarter = "Q4";
             }
-            byFactId.put(candidate.fact().getId(), quarter);
+            byJournal.put(candidate.fact().getJournalId(), quarter);
         }
-        return byFactId;
+        return byJournal;
     }
 
-    private Map<String, Integer> quartileRankByFactId(
+    private Map<String, Integer> quartileRankByJournal(
             List<RankCandidate> ranked,
-            Map<String, String> effectiveQuarterByFactId
+            Map<String, String> effectiveQuarterByJournal
     ) {
-        Map<String, Integer> byFactId = new HashMap<>();
+        Map<String, Integer> byJournal = new HashMap<>();
         Map<String, List<RankCandidate>> byQuarter = new LinkedHashMap<>();
         for (RankCandidate candidate : ranked) {
-            String quarter = normalizeQuarter(effectiveQuarterByFactId.get(candidate.fact().getId()));
+            String quarter = normalizeQuarter(effectiveQuarterByJournal.get(candidate.fact().getJournalId()));
             if (quarter == null) {
                 continue;
             }
@@ -1619,9 +1604,9 @@ public class WosFactBuilderService {
         }
         for (List<RankCandidate> quarterCandidates : byQuarter.values()) {
             Map<String, Integer> quarterRanks = competitionRanks(quarterCandidates);
-            byFactId.putAll(quarterRanks);
+            byJournal.putAll(quarterRanks);
         }
-        return byFactId;
+        return byJournal;
     }
 
     private boolean requiresCategoryRankingEnrichment(WosCategoryFact fact) {
@@ -1753,6 +1738,25 @@ public class WosFactBuilderService {
             String categoryNameCanonical,
             EditionNormalized editionNormalized
     ) {
+    }
+
+    /**
+     * Since the 2023 JCR data year, Clarivate ranks each category ACROSS editions combined (one
+     * "PSYCHOLOGY, APPLIED" list holding the SSCI and ESCI journals together — verified against the JCR
+     * portal's own denominators, e.g. 111 = 84 SSCI + 27 ESCI). Before that, editions were ranked apart
+     * (ESCI/AHCI had no JIF at all). The enrichment cohorts must follow the same rule or boundary journals
+     * land one quartile too low (~23% of 2023+ placements, 95% biased worse).
+     */
+    private static final int JCR_UNIFIED_RANKING_FROM_YEAR = 2023;
+
+    private static CategoryEnrichmentGroupKey enrichmentGroupKey(WosCategoryFact fact) {
+        boolean unified = fact.getYear() != null && fact.getYear() >= JCR_UNIFIED_RANKING_FROM_YEAR;
+        return new CategoryEnrichmentGroupKey(
+                fact.getYear(),
+                fact.getMetricType(),
+                fact.getCategoryNameCanonical(),
+                unified ? null : fact.getEditionNormalized()
+        );
     }
 
     private record CategoryEnrichmentGroupKey(

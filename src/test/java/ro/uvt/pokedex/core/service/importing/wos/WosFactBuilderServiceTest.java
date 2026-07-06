@@ -786,7 +786,9 @@ class WosFactBuilderServiceTest {
         assertEquals(2, result.getProcessedCount());
         assertEquals(2, result.getUpdatedCount());
         assertEquals(1, target.getRank());
-        assertEquals(3, peerInAffectedSlice.getRank());
+        // jid-1 has TWO facts in this cohort (c1 + the other-lineage c2) — ranking is journal-distinct,
+        // so jid-2 ranks 2nd, not 3rd (a journal never counts twice in the denominator)
+        assertEquals(2, peerInAffectedSlice.getRank());
         assertEquals(null, unrelatedSameJournal.getRank());
         verify(categoryFactRepository, times(1)).saveAll(argThat(facts -> {
             List<String> ids = new ArrayList<>();
@@ -1255,6 +1257,55 @@ class WosFactBuilderServiceTest {
 
         assertEquals(2, target.getRank());
         assertEquals(1, cohortPeer.getRank());
+    }
+
+    @Test
+    void enrichmentUnifiesEditionsIntoOneCohortFrom2023() {
+        // JCR ranks categories ACROSS editions since the 2023 data year: 2 SSCI journals + 2 weaker ESCI
+        // journals = one cohort of 4 (quartile bounds q1=1). Per-edition cohorts would make jid-2 Q2 of 2.
+        metricStore.add(metric("jid-1", 2023, MetricType.AIS, 4.0));
+        metricStore.add(metric("jid-2", 2023, MetricType.AIS, 3.0));
+        metricStore.add(metric("jid-3", 2023, MetricType.AIS, 2.0));
+        metricStore.add(metric("jid-4", 2023, MetricType.AIS, 1.0));
+        WosCategoryFact ssci1 = category("s1", "jid-1", 2023, MetricType.AIS, "PSYCHOLOGY", EditionNormalized.SSCI, null, null, null);
+        WosCategoryFact ssci2 = category("s2", "jid-2", 2023, MetricType.AIS, "PSYCHOLOGY", EditionNormalized.SSCI, null, null, null);
+        WosCategoryFact esci1 = category("e1", "jid-3", 2023, MetricType.AIS, "PSYCHOLOGY", EditionNormalized.ESCI, null, null, null);
+        WosCategoryFact esci2 = category("e2", "jid-4", 2023, MetricType.AIS, "PSYCHOLOGY", EditionNormalized.ESCI, null, null, null);
+        categoryStore.addAll(List.of(ssci1, ssci2, esci1, esci2));
+
+        service.enrichMissingCategoryRankingFields();
+
+        // unified cohort of 4: ranks span editions and quartiles come from the combined list
+        assertEquals(1, ssci1.getRank());
+        assertEquals("Q1", ssci1.getQuarter());
+        assertEquals(2, ssci2.getRank());
+        assertEquals("Q2", ssci2.getQuarter());
+        assertEquals(3, esci1.getRank());
+        assertEquals("Q3", esci1.getQuarter());
+        assertEquals(4, esci2.getRank());
+        assertEquals("Q4", esci2.getQuarter());
+    }
+
+    @Test
+    void enrichmentKeepsPerEditionCohortsBefore2023() {
+        // pre-unification years rank each edition apart: the two SSCI journals form their own cohort of 2
+        metricStore.add(metric("jid-1", 2019, MetricType.AIS, 4.0));
+        metricStore.add(metric("jid-2", 2019, MetricType.AIS, 3.0));
+        metricStore.add(metric("jid-3", 2019, MetricType.AIS, 2.0));
+        WosCategoryFact ssci1 = category("s1", "jid-1", 2019, MetricType.AIS, "PSYCHOLOGY", EditionNormalized.SSCI, null, null, null);
+        WosCategoryFact ssci2 = category("s2", "jid-2", 2019, MetricType.AIS, "PSYCHOLOGY", EditionNormalized.SSCI, null, null, null);
+        WosCategoryFact esci1 = category("e1", "jid-3", 2019, MetricType.AIS, "PSYCHOLOGY", EditionNormalized.ESCI, null, null, null);
+        categoryStore.addAll(List.of(ssci1, ssci2, esci1));
+
+        service.enrichMissingCategoryRankingFields();
+
+        // SSCI cohort of 2 (jid-3 not in it); ESCI cohort of 1
+        assertEquals(1, ssci1.getRank());
+        assertEquals("Q1", ssci1.getQuarter());
+        assertEquals(2, ssci2.getRank());
+        assertEquals("Q3", ssci2.getQuarter());
+        assertEquals(1, esci1.getRank());
+        assertEquals("Q1", esci1.getQuarter());
     }
 
     private WosParserRunResult runOf(List<WosParsedRecord> records) {
