@@ -190,6 +190,43 @@ class EconomicsJournalScoringServiceTest {
         );
     }
 
+    @Test
+    void esciPlacementInNamedCategoryGetsNoMultiplier() {
+        // Table 1 of the FEAA standard is bounded to the SCIE/SSCI (JCR) universe — its residual tier is
+        // literally "Social Science & Science". An ESCI journal in category ECONOMICS must not take x10.
+        EconomicsJournalScoringService service = new EconomicsJournalScoringService(lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forum("1111-1111"));
+        when(lookupPort.getRankingsByIssn("1111-1111")).thenReturn(List.of(ranking("ECONOMICS - ESCI", 2023, 2.5, WoSRanking.Quarter.Q1)));
+
+        Score score = service.getScore(publication("ar"), indicator("IY"));
+
+        assertTrue(score.getMultiplier() == null || score.getMultiplier() == 0,
+                "expected no multiplier tier, got " + score.getMultiplier());
+    }
+
+    @Test
+    void ssciNamedCategoryBeatsEsciPlacementOnMultiplierTieBreak() {
+        // same journal listed in both editions: identical AIS value, so the multiplier tie-break must
+        // pick the SSCI placement (x10) over the gated ESCI one (x0)
+        EconomicsJournalScoringService service = new EconomicsJournalScoringService(lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forum("1111-1111"));
+        WoSRanking.Score wosScore = new WoSRanking.Score();
+        wosScore.setAis(Map.of(2023, 2.0));
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        rank.setQAis(Map.of(2023, WoSRanking.Quarter.Q1));
+        WoSRanking ranking = new WoSRanking();
+        ranking.setScore(wosScore);
+        ranking.setWebOfScienceCategoryIndex(Map.of(
+                "ECONOMICS - ESCI", rank,
+                "ECONOMICS - SSCI", rank));
+        when(lookupPort.getRankingsByIssn("1111-1111")).thenReturn(List.of(ranking));
+
+        Score score = service.getScore(publication("ar"), indicator("IY"));
+
+        assertEquals(2.0, score.getScore());
+        assertEquals(10, score.getMultiplier());
+    }
+
     private WoSRanking ranking(String category, int year, double ais, WoSRanking.Quarter quarter) {
         WoSRanking.Score score = new WoSRanking.Score();
         score.setAis(Map.of(year, ais));

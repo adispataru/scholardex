@@ -159,16 +159,21 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     }
 
     private int resolveMultiplier(String categoryName, String categoryIndex) {
+        // The FEAA standard's Table 1 ("revistelor ISI ... conform JCR") lives entirely inside the
+        // SCIE/SSCI universe — its residual tier is literally named "Social Science & Science". The named
+        // Core-Economics/Infoeconomics tiers are subsets OF that universe, so an ESCI placement in e.g.
+        // category "ECONOMICS" never qualifies for any multiplier (ESCI journals carry AIS values in the
+        // data since ~2018, which made them silently match the name-only tiers before this gate).
+        if (!othersIndices.contains(categoryIndex)) {
+            return 0;
+        }
         if(CORE_ECONOMICS.contains(categoryName)) {
             return CORE_ECONOMICS_MULTIPLIER;
         }
         if (INFOECONOMICS.contains(categoryName)) {
             return INFOECONOMICS_MULTIPLIER;
         }
-        if (othersIndices.contains(categoryIndex)) {
-            return OTHER_ECONOMICS_MULTIPLIER;
-        }
-        return 0;
+        return OTHER_ECONOMICS_MULTIPLIER;
     }
 
     /* ------------------------------------------------------------------ */
