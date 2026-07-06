@@ -41,6 +41,7 @@ class DepartmentReportFacadeTest {
     @Mock private OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
     @Mock private ReportingDataEpochService reportingDataEpochService;
     @Mock private ReportVisibilityService reportVisibilityService;
+    @Mock private GroupMembershipService groupMembershipService;
 
     private DepartmentReportFacade facade;
 
@@ -48,7 +49,7 @@ class DepartmentReportFacadeTest {
     void wireFacade() {
         // Real roster + rollup services over mocked repositories — the facade is just plumbing.
         OrgUnitRosterService rosterService = new OrgUnitRosterService(
-                departmentRepository, departmentAffiliationRepository, userRepository);
+                departmentRepository, departmentAffiliationRepository, userRepository, groupMembershipService);
         OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(
                 userIndividualReportRunRepository, reportingDataEpochService);
         facade = new DepartmentReportFacade(departmentRepository, individualReportRepository,

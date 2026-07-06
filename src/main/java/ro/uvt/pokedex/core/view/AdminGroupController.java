@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.format.annotation.DateTimeFormat;
 import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -22,18 +24,20 @@ import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
+import ro.uvt.pokedex.core.service.application.OrgUnitReportRefreshService;
 import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
-import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupListViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
+import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 import ro.uvt.pokedex.core.service.importing.GroupService;
 
 import java.io.ByteArrayInputStream;
+import java.time.Instant;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
@@ -56,6 +60,7 @@ public class AdminGroupController {
     // Remaining H02 debt is cross-layer coupling (V02+).
     private final GroupManagementFacade groupManagementFacade;
     private final GroupReportFacade groupReportFacade;
+    private final OrgUnitReportRefreshService orgUnitReportRefreshService;
     private final GroupExportFacade groupExportFacade;
     private final GroupCnfisExportFacade groupCnfisExportFacade;
     private final GroupService groupService;
@@ -140,22 +145,38 @@ public class AdminGroupController {
 
     @GetMapping("{gid}/reports/view/{id}")
     @PreAuthorize("@groupAccess.canView(#gid, authentication)")
-    public String viewIndividualReport(Model model, Authentication authentication, @PathVariable String gid, @PathVariable String id) {
-        GroupIndividualReportViewModel viewModel = groupReportFacade.buildGroupIndividualReportView(gid, id);
-        if (viewModel.redirect() != null) {
-            return viewModel.redirect();
+    public String viewIndividualReport(Model model, Authentication authentication,
+                                       @PathVariable String gid, @PathVariable String id,
+                                       @RequestParam(value = "compareTo", required = false)
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant compareTo) {
+        Optional<OrgUnitReportViewModel> view = groupReportFacade.buildGroupIndividualReportView(gid, id, compareTo);
+        if (view.isEmpty()) {
+            return "redirect:/admin/groups";
         }
-        viewModel.attributes().forEach(model::addAttribute);
-        return "admin/group-individualReport-view";
+        model.addAttribute("unitType", "group");
+        model.addAttribute("vm", view.get());
+        model.addAttribute("backHref", "/admin/groups/" + gid);
+        return "admin/orgunit-report-view";
     }
 
     @PostMapping("{gid}/reports/view/{id}/refresh")
     @PreAuthorize("@groupAccess.canEdit(#gid, authentication)")
     public String refreshIndividualReport(@PathVariable String gid,
-                                          @PathVariable String id) {
-        GroupIndividualReportViewModel viewModel = groupReportFacade.refreshGroupIndividualReportView(gid, id);
-        if (viewModel.redirect() != null) {
-            return viewModel.redirect();
+                                          @PathVariable String id,
+                                          Authentication authentication,
+                                          RedirectAttributes flash) {
+        try {
+            OrgUnitReportRefreshService.RefreshAllResult result = orgUnitReportRefreshService.refreshAll(
+                    OrgUnitReportRefreshEvent.UnitType.GROUP, gid, id,
+                    OrgUnitReportRefreshService.Scope.ALL, null,
+                    authentication == null ? null : authentication.getName());
+            flash.addFlashAttribute("successMessage",
+                    "Refreshed " + result.refreshed() + " of " + result.rosterSize() + " member(s)."
+                            + (result.failed() > 0 ? " " + result.failed() + " failed — see the server log." : "")
+                            + (result.skippedProvisional() > 0
+                                    ? " " + result.skippedProvisional() + " provisional run(s) skipped." : ""));
+        } catch (IllegalArgumentException ex) {
+            flash.addFlashAttribute("errorMessage", ex.getMessage());
         }
         return "redirect:/admin/groups/" + gid + "/reports/view/" + id;
     }

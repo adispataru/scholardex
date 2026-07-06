@@ -22,7 +22,8 @@ import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
-import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
+import ro.uvt.pokedex.core.service.application.OrgUnitReportRefreshService;
+import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
@@ -63,6 +64,8 @@ class AdminGroupControllerContractTest {
     private GroupManagementFacade groupManagementFacade;
     @MockitoBean
     private GroupReportFacade groupReportFacade;
+    @MockitoBean
+    private OrgUnitReportRefreshService orgUnitReportRefreshService;
     @MockitoBean
     private GroupExportFacade groupExportFacade;
     @MockitoBean
@@ -368,13 +371,17 @@ class AdminGroupControllerContractTest {
     }
 
     @Test
-    void refreshIndividualReportRedirectsToViewRoute() throws Exception {
-        when(groupReportFacade.refreshGroupIndividualReportView("g1", "rep1"))
-                .thenReturn(new GroupIndividualReportViewModel(null, Map.of()));
+    void refreshIndividualReportDelegatesToTheBatchRefreshAndRedirectsToViewRoute() throws Exception {
+        when(orgUnitReportRefreshService.refreshAll(
+                eq(ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent.UnitType.GROUP),
+                eq("g1"), eq("rep1"), eq(OrgUnitReportRefreshService.Scope.ALL),
+                org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new OrgUnitReportRefreshService.RefreshAllResult(2, 0, 0, 0, 2, 1000));
 
         mockMvc.perform(post("/admin/groups/{gid}/reports/view/{id}/refresh", "g1", "rep1"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/groups/g1/reports/view/rep1"));
+                .andExpect(redirectedUrl("/admin/groups/g1/reports/view/rep1"))
+                .andExpect(flash().attributeExists("successMessage"));
     }
 
     @Test
@@ -401,20 +408,9 @@ class AdminGroupControllerContractTest {
         unnamed.setName(" ");
         report.setCriteria(List.of(named, unnamed));
 
-        when(groupReportFacade.buildGroupIndividualReportView("g1", "rep1"))
-                .thenReturn(new GroupIndividualReportViewModel(
-                        null,
-                        Map.of(
-                                "report", report,
-                                "group", group,
-                                "researchers", List.of(member),
-                                "researcherScores", Map.of("r1", Map.of(0, 1.0, 1, 2.0)),
-                                "criteriaThresholds", Map.of(),
-                                "runCreatedAt", Instant.parse("2026-03-05T10:00:00Z"),
-                                "runStatus", "READY",
-                                "runBuildErrors", List.of()
-                        )
-                ));
+        when(groupReportFacade.buildGroupIndividualReportView("g1", "rep1", null))
+                .thenReturn(Optional.of(orgUnitVm(group, report, List.of(member),
+                        Map.of("r1", Map.of(0, 1.0, 1, 2.0)), Map.of())));
 
         String html = mockMvc.perform(get("/admin/groups/{gid}/reports/view/{id}", "g1", "rep1"))
                 .andExpect(status().isOk())
@@ -448,22 +444,36 @@ class AdminGroupControllerContractTest {
         criterion.setName("Citations");
         report.setCriteria(List.of(criterion));
 
-        when(groupReportFacade.buildGroupIndividualReportView("g1", "rep1"))
-                .thenReturn(new GroupIndividualReportViewModel(
-                        null,
-                        Map.of(
-                                "report", report,
-                                "group", group,
-                                "researchers", List.of(member),
-                                "researcherScores", Map.of("r1", Map.of(0, 1.0)),
-                                "criteriaThresholds", Map.of(0, Map.of()),
-                                "runCreatedAt", Instant.parse("2026-03-05T10:00:00Z"),
-                                "runStatus", "READY",
-                                "runBuildErrors", List.of()
-                        )
-                ));
+        when(groupReportFacade.buildGroupIndividualReportView("g1", "rep1", null))
+                .thenReturn(Optional.of(orgUnitVm(group, report, List.of(member),
+                        Map.of("r1", Map.of(0, 1.0)), Map.of(0, Map.of()))));
 
         mockMvc.perform(get("/admin/groups/{gid}/reports/view/{id}", "g1", "rep1"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void groupIndividualReportViewRedirectsToGroupListWhenGroupMissing() throws Exception {
+        when(groupReportFacade.buildGroupIndividualReportView("missing", "rep1", null))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/admin/groups/{gid}/reports/view/{id}", "missing", "rep1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups"));
+    }
+
+    private static OrgUnitReportViewModel orgUnitVm(Group group, IndividualReport report,
+                                                    List<User> researchers,
+                                                    Map<String, Map<Integer, Double>> researcherScores,
+                                                    Map<Integer, Map<String, Double>> criteriaThresholds) {
+        Map<String, OrgUnitReportViewModel.RunMeta> runMeta = new java.util.LinkedHashMap<>();
+        for (String email : researcherScores.keySet()) {
+            runMeta.put(email, new OrgUnitReportViewModel.RunMeta(
+                    Instant.parse("2026-03-05T10:00:00Z"), false, false,
+                    ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun.Status.READY));
+        }
+        return new OrgUnitReportViewModel(group.getId(), group.getName(), report, researchers,
+                researcherScores, criteriaThresholds, List.of(), Map.of(), runMeta,
+                0, 0, 0, null, null, null, null, List.of());
     }
 }

@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.service.application.GroupCnfisExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
+import ro.uvt.pokedex.core.service.application.OrgUnitReportRefreshService;
 import ro.uvt.pokedex.core.service.importing.GroupService;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -35,6 +36,8 @@ class AdminGroupSecurityContractTest {
     private GroupManagementFacade groupManagementFacade;
     @MockitoBean
     private GroupReportFacade groupReportFacade;
+    @MockitoBean
+    private OrgUnitReportRefreshService orgUnitReportRefreshService;
     @MockitoBean
     private GroupExportFacade groupExportFacade;
     @MockitoBean

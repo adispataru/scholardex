@@ -28,6 +28,13 @@
                         (their confirmed publications) — the numbers they see in their own workspace.</span>
                     </p>
                     <div class="app-workflow__actions">
+                        <form th:if="${unitType == 'group'}" method="post" class="d-inline"
+                              th:action="@{'/admin/groups/' + ${vm.unitId} + '/reports/view/' + ${vm.report.id} + '/refresh'}">
+                            <button type="submit" class="btn btn-primary btn-sm"
+                                    title="Recompute every member's run">
+                                <i class="fa-solid fa-rotate mr-1"></i>Refresh all members
+                            </button>
+                        </form>
                         <form th:if="${unitType != 'group'}" method="post" class="d-inline"
                               th:action="@{'/admin/' + ${unitType} + 's/' + ${vm.unitId} + '/reports/' + ${vm.report.id} + '/refresh-all'}">
                             <input type="hidden" name="scope" value="stale"/>

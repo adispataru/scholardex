@@ -106,8 +106,7 @@ public class OrgUnitReportRefreshService {
         return switch (unitType) {
             case DIVISION -> orgUnitRosterService.divisionRoster(unitId);
             case DEPARTMENT -> orgUnitRosterService.departmentRoster(unitId);
-            // Wired when the group report view converges on the shared org-unit shell.
-            case GROUP -> throw new IllegalArgumentException("Group batch refresh is not available yet");
+            case GROUP -> orgUnitRosterService.groupRoster(unitId);
         };
     }
 

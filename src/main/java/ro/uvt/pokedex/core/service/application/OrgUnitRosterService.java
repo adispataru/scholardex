@@ -29,6 +29,7 @@ public class OrgUnitRosterService {
     private final DepartmentRepository departmentRepository;
     private final DepartmentAffiliationRepository departmentAffiliationRepository;
     private final UserRepository userRepository;
+    private final GroupMembershipService groupMembershipService;
 
     /**
      * A unit member. {@code departmentLabel} is empty except for division rosters, where it names
@@ -69,6 +70,11 @@ public class OrgUnitRosterService {
         LinkedHashSet<String> userIds = new LinkedHashSet<>();
         for (DepartmentAffiliation a : affiliations) userIds.add(a.getUserId());
         return toMembers(userIds, Map.of());
+    }
+
+    /** Researchers currently in the group (current memberships, i.e. validTo == null). */
+    public List<RosterMember> groupRoster(String groupId) {
+        return toMembers(new LinkedHashSet<>(groupMembershipService.listCurrentMemberUserIds(groupId)), Map.of());
     }
 
     private List<RosterMember> toMembers(Set<String> userIds, Map<String, String> labelByUserId) {
