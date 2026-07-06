@@ -5,8 +5,9 @@ and writes one raw JSONL per year under data/jcr-web/. Resumable (per year+offse
 gently paced (2–4s jitter), subscriber-session based (reuses scopus-python/_state/jcr_state.json;
 run jcr_discover.py again if the session has expired).
 
-The POSTs are issued from INSIDE an authenticated page (same-origin fetch), so whatever cookies or
-headers the SPA relies on are the browser's own — we never reverse-engineer auth material.
+The POSTs reuse the headers of the SPA's OWN grid request (captured at page load — the API needs
+session auth material beyond cookies), so we never reverse-engineer the auth scheme; a stale header
+mid-run triggers one grid reload + re-capture.
 
 Run:  python3 scopus-python/jcr_dump.py [--years 2020-2025] [--page-size 200] [--limit N]
 Then: python3 scopus-python/jcr_convert.py   (raw JSONL -> per-year/edition wos-json ingest files)
@@ -42,7 +43,7 @@ def save_checkpoint(cp):
 
 
 def request_body(year: int, start: int, count: int) -> dict:
-    # exactly the UI's request, with an ISSN-stable sort so pagination never shuffles between pages
+    # the UI's own request shape, with a name-stable sort so pagination never shuffles between pages
     return {
         "journalFilterParameters": {
             "query": "", "journals": [], "categories": [], "publishers": [], "countryRegions": [],
@@ -55,22 +56,46 @@ def request_body(year: int, start: int, count: int) -> dict:
     }
 
 
-def fetch_page(page, year: int, start: int, count: int):
-    result = page.evaluate(
-        """async ({apiPath, body}) => {
-            const res = await fetch(apiPath, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(body),
-            });
-            const text = await res.text();
-            return {status: res.status, text};
-        }""",
-        {"apiPath": API_PATH, "body": request_body(year, start, count)},
+# Headers cloned from the SPA's own search-result POST (it carries session auth material a plain
+# fetch doesn't send — that's why the naive same-origin fetch got a 401). Captured at page load.
+cloned_headers = {}
+SKIP_HEADERS = {"content-length", "host", "connection", "accept-encoding"}
+
+
+def on_request(request):
+    if API_PATH in request.url and request.method == "POST" and not cloned_headers:
+        for k, v in request.headers.items():
+            if k.lower() not in SKIP_HEADERS and not k.startswith(":"):
+                cloned_headers[k] = v
+        print(f"   captured the SPA's own request headers ({len(cloned_headers)} headers)")
+
+
+def wait_for_headers(page, timeout_s=30):
+    waited = 0.0
+    while not cloned_headers and waited < timeout_s:
+        page.wait_for_timeout(500)
+        waited += 0.5
+    if not cloned_headers:
+        raise RuntimeError("never saw the SPA's own search-result POST — is the browse grid loading? "
+                           "(session may be expired; re-run jcr_discover.py)")
+
+
+def fetch_page(ctx, page, year: int, start: int, count: int, retried=False):
+    response = ctx.request.post(
+        "https://jcr.clarivate.com" + API_PATH,
+        headers=cloned_headers,
+        data=json.dumps(request_body(year, start, count)),
     )
-    if result["status"] != 200:
-        raise RuntimeError(f"HTTP {result['status']} for year={year} start={start}: {result['text'][:300]}")
-    payload = json.loads(result["text"])
+    if response.status == 401 and not retried:
+        # session header went stale mid-run — reload the grid so the SPA mints fresh auth, re-clone
+        print("   401 mid-run: reloading the grid to refresh the session header, then retrying once")
+        cloned_headers.clear()
+        page.reload(wait_until="domcontentloaded")
+        wait_for_headers(page)
+        return fetch_page(ctx, page, year, start, count, retried=True)
+    if response.status != 200:
+        raise RuntimeError(f"HTTP {response.status} for year={year} start={start}: {response.text()[:300]}")
+    payload = response.json()
     if payload.get("status") != "Success":
         raise RuntimeError(f"API status={payload.get('status')} for year={year} start={start}")
     return payload
@@ -99,14 +124,16 @@ def main():
         browser = p.chromium.launch(headless=True)
         ctx = browser.new_context(storage_state=str(STATE_FILE), viewport={"width": 1400, "height": 900})
         page = ctx.new_page()
+        page.on("request", on_request)
         print(f"1) opening {BROWSE_URL} with the saved session")
         page.goto(BROWSE_URL, wait_until="domcontentloaded", timeout=90_000)
         page.wait_for_timeout(5000)
         if "login" in page.url or "access.clarivate" in page.url:
             sys.exit("ERROR: session expired (redirected to login). Re-run jcr_discover.py to refresh it.")
+        wait_for_headers(page)
 
         # probe: confirms auth + the effective page size the API tolerates
-        probe = fetch_page(page, years[0], 1, args.page_size)
+        probe = fetch_page(ctx, page, years[0], 1, args.page_size)
         got = len(probe.get("data", []))
         page_size = args.page_size if got == args.page_size else max(got, 25)
         print(f"   probe ok: totalCount({years[0]})={probe.get('totalCount')} pageSize={page_size}")
@@ -125,7 +152,7 @@ def main():
                         save_checkpoint(checkpoint)
                         return
                     start = year_cp["nextStart"]
-                    payload = fetch_page(page, year, start, page_size)
+                    payload = fetch_page(ctx, page, year, start, page_size)
                     rows = payload.get("data", [])
                     total = int(payload.get("totalCount", 0))
                     for row in rows:
