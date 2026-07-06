@@ -181,7 +181,7 @@ class OrgUnitRunRollupServiceTest {
         OrgUnitRunRollupService.OrgUnitRunRollup rollup = rollupService.rollup(
                 List.of(memberWithLabel("ana@uvt.ro", "Ana", "Pop", "Computer Science"),
                         member("dan@uvt.ro", "Dan")), report);
-        OrgUnitReportViewModel vm = rollupService.toViewModel("div-1", "FMI", report, rollup);
+        OrgUnitReportViewModel vm = rollupService.toViewModel("div-1", "FMI", report, rollup, List.of());
 
         assertEquals("div-1", vm.unitId());
         assertEquals("FMI", vm.unitName());
@@ -195,6 +195,82 @@ class OrgUnitRunRollupServiceTest {
         assertEquals(UserIndividualReportRun.Status.PARTIAL, meta.status());
         assertFalse(vm.runMetaByEmail().containsKey("dan@uvt.ro"));
         assertEquals(1, vm.membersWithoutRun());
+        // No compare instant → no delta view.
+        assertNull(vm.delta());
+    }
+
+    @Test
+    void compareModeResolvesBaselinesAndComputesPerCriterionDeltas() {
+        IndividualReport report = report("rep-1");
+        Instant compareTo = Instant.parse("2026-07-01T00:00:00Z");
+        when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
+
+        // Ana: current 4.0 / baseline 6.5 → delta -2.5 on criterion 0; criterion 1 unchanged.
+        when(runRepository.findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(run("run-ana-2", "ana@uvt.ro",
+                        Instant.parse("2026-07-03T10:00:00Z"), Map.of(0, 4.0, 1, 3.0), false)));
+        when(runRepository.findTopByUserEmailAndReportDefinitionIdAndCreatedAtBeforeOrderByCreatedAtDesc(
+                "ana@uvt.ro", "rep-1", compareTo))
+                .thenReturn(Optional.of(run("run-ana-1", "ana@uvt.ro",
+                        Instant.parse("2026-06-15T10:00:00Z"), Map.of(0, 6.5, 1, 3.001), false)));
+        // Dan: current run but nothing before the compare point → "new".
+        when(runRepository.findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("dan@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(run("run-dan", "dan@uvt.ro",
+                        Instant.parse("2026-07-03T10:00:00Z"), Map.of(0, 1.0), false)));
+        when(runRepository.findTopByUserEmailAndReportDefinitionIdAndCreatedAtBeforeOrderByCreatedAtDesc(
+                "dan@uvt.ro", "rep-1", compareTo))
+                .thenReturn(Optional.empty());
+
+        OrgUnitRunRollupService.OrgUnitRunRollup rollup = rollupService.rollup(
+                List.of(member("ana@uvt.ro", "Ana"), member("dan@uvt.ro", "Dan")), report, compareTo);
+        OrgUnitReportViewModel vm = rollupService.toViewModel("div-1", "FMI", report, rollup, List.of());
+
+        assertNotNull(vm.delta());
+        assertEquals(compareTo, vm.delta().compareTo());
+        // Only the real change survives; the 0.001 wiggle on criterion 1 is display noise.
+        assertEquals(Map.of(0, -2.5), vm.delta().deltasByEmail().get("ana@uvt.ro"));
+        assertFalse(vm.delta().deltasByEmail().containsKey("dan@uvt.ro"));
+        assertEquals(java.util.Set.of("dan@uvt.ro"), vm.delta().newMemberEmails());
+    }
+
+    @Test
+    void baselineCoversCriteriaMissingFromTheCurrentRun() {
+        IndividualReport report = report("rep-1");
+        Instant compareTo = Instant.parse("2026-07-01T00:00:00Z");
+        when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
+        when(runRepository.findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(run("run-2", "ana@uvt.ro",
+                        Instant.parse("2026-07-03T10:00:00Z"), Map.of(0, 4.0), false)));
+        when(runRepository.findTopByUserEmailAndReportDefinitionIdAndCreatedAtBeforeOrderByCreatedAtDesc(
+                "ana@uvt.ro", "rep-1", compareTo))
+                .thenReturn(Optional.of(run("run-1", "ana@uvt.ro",
+                        Instant.parse("2026-06-15T10:00:00Z"), Map.of(0, 4.0, 1, 2.0), false)));
+
+        OrgUnitRunRollupService.OrgUnitRunRollup rollup = rollupService.rollup(
+                List.of(member("ana@uvt.ro", "Ana")), report, compareTo);
+        OrgUnitReportViewModel vm = rollupService.toViewModel("div-1", "FMI", report, rollup, List.of());
+
+        // Criterion 1 disappeared from the current run → reads as a -2.0 drop.
+        assertEquals(Map.of(1, -2.0), vm.delta().deltasByEmail().get("ana@uvt.ro"));
+    }
+
+    @Test
+    void toCompareOptionsLabelsEventsWithTheirLabelOrActor() {
+        ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent labeled =
+                new ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent();
+        labeled.setCreatedAt(Instant.parse("2026-07-01T10:00:00Z"));
+        labeled.setLabel("before evaluation");
+        ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent unlabeled =
+                new ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent();
+        unlabeled.setCreatedAt(Instant.parse("2026-06-01T10:00:00Z"));
+        unlabeled.setTriggeredByEmail("admin@uvt.ro");
+        unlabeled.setRefreshed(42);
+
+        List<OrgUnitReportViewModel.CompareOption> options =
+                rollupService.toCompareOptions(List.of(labeled, unlabeled));
+
+        assertEquals("before evaluation", options.get(0).label());
+        assertEquals("Refresh by admin@uvt.ro (42 refreshed)", options.get(1).label());
     }
 
     private static OrgUnitRosterService.RosterMember member(String email, String firstName) {

@@ -4,11 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.org.OrgDivision;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent;
 import ro.uvt.pokedex.core.repository.org.OrgDivisionRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.repository.reporting.OrgUnitReportRefreshEventRepository;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +30,7 @@ public class DivisionReportFacade {
     private final IndividualReportRepository individualReportRepository;
     private final OrgUnitRosterService orgUnitRosterService;
     private final OrgUnitRunRollupService orgUnitRunRollupService;
+    private final OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
     private final ReportVisibilityService reportVisibilityService;
 
     /**
@@ -46,7 +50,7 @@ public class DivisionReportFacade {
         return orgDivisionRepository.findById(divisionId);
     }
 
-    public Optional<OrgUnitReportViewModel> buildView(String divisionId, String reportId) {
+    public Optional<OrgUnitReportViewModel> buildView(String divisionId, String reportId, Instant compareTo) {
         Optional<OrgDivision> divOpt = orgDivisionRepository.findById(divisionId);
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
         if (divOpt.isEmpty() || reportOpt.isEmpty()) return Optional.empty();
@@ -54,8 +58,11 @@ public class DivisionReportFacade {
         IndividualReport report = reportOpt.get();
 
         List<OrgUnitRosterService.RosterMember> members = orgUnitRosterService.divisionRoster(divisionId);
-        OrgUnitRunRollupService.OrgUnitRunRollup rollup = orgUnitRunRollupService.rollup(members, report);
+        OrgUnitRunRollupService.OrgUnitRunRollup rollup = orgUnitRunRollupService.rollup(members, report, compareTo);
+        List<OrgUnitReportViewModel.CompareOption> compareOptions = orgUnitRunRollupService.toCompareOptions(
+                orgUnitReportRefreshEventRepository.findTop20ByUnitTypeAndUnitIdAndReportDefinitionIdOrderByCreatedAtDesc(
+                        OrgUnitReportRefreshEvent.UnitType.DIVISION, divisionId, reportId));
         return Optional.of(orgUnitRunRollupService.toViewModel(
-                division.getId(), division.getName(), report, rollup));
+                division.getId(), division.getName(), report, rollup, compareOptions));
     }
 }

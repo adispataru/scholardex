@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.repository.org.OrgDivisionRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.repository.reporting.OrgUnitReportRefreshEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
@@ -40,6 +41,7 @@ class DivisionReportFacadeTest {
     @Mock private UserRepository userRepository;
     @Mock private IndividualReportRepository individualReportRepository;
     @Mock private UserIndividualReportRunRepository userIndividualReportRunRepository;
+    @Mock private OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
     @Mock private ReportingDataEpochService reportingDataEpochService;
     @Mock private ReportVisibilityService reportVisibilityService;
 
@@ -53,8 +55,11 @@ class DivisionReportFacadeTest {
         OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(
                 userIndividualReportRunRepository, reportingDataEpochService);
         facade = new DivisionReportFacade(orgDivisionRepository, individualReportRepository,
-                rosterService, rollupService, reportVisibilityService);
+                rosterService, rollupService, orgUnitReportRefreshEventRepository, reportVisibilityService);
         lenient().when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
+        lenient().when(orgUnitReportRefreshEventRepository
+                        .findTop20ByUnitTypeAndUnitIdAndReportDefinitionIdOrderByCreatedAtDesc(any(), any(), any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -84,7 +89,7 @@ class DivisionReportFacadeTest {
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ioana@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(run("run-ioana", "ioana@uvt.ro", Map.of(0, 6.0))));
 
-        Optional<OrgUnitReportViewModel> view = facade.buildView("div-fmi", "rep-1");
+        Optional<OrgUnitReportViewModel> view = facade.buildView("div-fmi", "rep-1", null);
 
         assertTrue(view.isPresent());
         OrgUnitReportViewModel vm = view.get();
@@ -121,7 +126,7 @@ class DivisionReportFacadeTest {
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(run("run-ana", "ana@uvt.ro", Map.of(0, 4.0))));
 
-        Optional<OrgUnitReportViewModel> view = facade.buildView("div-fmi", "rep-1");
+        Optional<OrgUnitReportViewModel> view = facade.buildView("div-fmi", "rep-1", null);
 
         OrgUnitReportViewModel vm = view.orElseThrow();
         // Ana appears once
@@ -146,7 +151,7 @@ class DivisionReportFacadeTest {
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("dan@uvt.ro", "rep-1"))
                 .thenReturn(Optional.empty());
 
-        OrgUnitReportViewModel vm = facade.buildView("div-fmi", "rep-1").orElseThrow();
+        OrgUnitReportViewModel vm = facade.buildView("div-fmi", "rep-1", null).orElseThrow();
 
         assertEquals(1, vm.researchers().size());
         assertTrue(vm.researcherScores().isEmpty());
@@ -163,7 +168,7 @@ class DivisionReportFacadeTest {
         when(individualReportRepository.findById("rep-1")).thenReturn(Optional.of(report));
         when(departmentRepository.findByDivisionId("div-empty")).thenReturn(List.of());
 
-        OrgUnitReportViewModel vm = facade.buildView("div-empty", "rep-1").orElseThrow();
+        OrgUnitReportViewModel vm = facade.buildView("div-empty", "rep-1", null).orElseThrow();
         assertTrue(vm.researchers().isEmpty());
         assertTrue(vm.researcherScores().isEmpty());
     }

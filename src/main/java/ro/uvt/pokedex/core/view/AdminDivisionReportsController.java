@@ -1,15 +1,18 @@
 package ro.uvt.pokedex.core.view;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import ro.uvt.pokedex.core.service.application.DivisionReportFacade;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -42,8 +45,10 @@ public class AdminDivisionReportsController {
     @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
     public String viewReport(@PathVariable String divisionId,
                              @PathVariable String reportId,
+                             @RequestParam(value = "compareTo", required = false)
+                             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant compareTo,
                              Model model) {
-        Optional<OrgUnitReportViewModel> view = divisionReportFacade.buildView(divisionId, reportId);
+        Optional<OrgUnitReportViewModel> view = divisionReportFacade.buildView(divisionId, reportId, compareTo);
         if (view.isEmpty()) return "redirect:/admin/divisions/" + divisionId + "/reports";
         OrgUnitReportViewModel vm = view.get();
         model.addAttribute("unitType", "division");

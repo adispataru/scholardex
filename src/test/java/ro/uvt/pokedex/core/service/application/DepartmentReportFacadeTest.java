@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.repository.reporting.OrgUnitReportRefreshEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
@@ -37,6 +38,7 @@ class DepartmentReportFacadeTest {
     @Mock private UserRepository userRepository;
     @Mock private IndividualReportRepository individualReportRepository;
     @Mock private UserIndividualReportRunRepository userIndividualReportRunRepository;
+    @Mock private OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
     @Mock private ReportingDataEpochService reportingDataEpochService;
     @Mock private ReportVisibilityService reportVisibilityService;
 
@@ -50,8 +52,11 @@ class DepartmentReportFacadeTest {
         OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(
                 userIndividualReportRunRepository, reportingDataEpochService);
         facade = new DepartmentReportFacade(departmentRepository, individualReportRepository,
-                rosterService, rollupService, reportVisibilityService);
+                rosterService, rollupService, orgUnitReportRefreshEventRepository, reportVisibilityService);
         lenient().when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
+        lenient().when(orgUnitReportRefreshEventRepository
+                        .findTop20ByUnitTypeAndUnitIdAndReportDefinitionIdOrderByCreatedAtDesc(any(), any(), any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -59,7 +64,7 @@ class DepartmentReportFacadeTest {
         when(departmentRepository.findById("nope")).thenReturn(Optional.empty());
         when(individualReportRepository.findById("rep-1")).thenReturn(Optional.of(report("rep-1")));
 
-        assertTrue(facade.buildView("nope", "rep-1").isEmpty());
+        assertTrue(facade.buildView("nope", "rep-1", null).isEmpty());
     }
 
     @Test
@@ -67,7 +72,7 @@ class DepartmentReportFacadeTest {
         when(departmentRepository.findById("dept-cs")).thenReturn(Optional.of(department("dept-cs", "CS")));
         when(individualReportRepository.findById("nope")).thenReturn(Optional.empty());
 
-        assertTrue(facade.buildView("dept-cs", "nope").isEmpty());
+        assertTrue(facade.buildView("dept-cs", "nope", null).isEmpty());
     }
 
     @Test
@@ -92,7 +97,7 @@ class DepartmentReportFacadeTest {
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("dan@uvt.ro", "rep-1"))
                 .thenReturn(Optional.empty());
 
-        Optional<OrgUnitReportViewModel> view = facade.buildView("dept-cs", "rep-1");
+        Optional<OrgUnitReportViewModel> view = facade.buildView("dept-cs", "rep-1", null);
 
         assertTrue(view.isPresent());
         OrgUnitReportViewModel vm = view.get();
@@ -118,7 +123,7 @@ class DepartmentReportFacadeTest {
         when(departmentAffiliationRepository.findByDepartmentIdAndValidToIsNull("dept-cs"))
                 .thenReturn(List.of());
 
-        Optional<OrgUnitReportViewModel> view = facade.buildView("dept-cs", "rep-1");
+        Optional<OrgUnitReportViewModel> view = facade.buildView("dept-cs", "rep-1", null);
 
         assertTrue(view.isPresent());
         assertTrue(view.get().researchers().isEmpty());

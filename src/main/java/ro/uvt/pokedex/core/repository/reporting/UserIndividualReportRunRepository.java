@@ -12,6 +12,10 @@ public interface UserIndividualReportRunRepository extends MongoRepository<UserI
 
     Optional<UserIndividualReportRun> findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(String userEmail, String reportDefinitionId);
 
+    /** Latest run strictly before {@code before} — the baseline lookup for org-unit delta views. */
+    Optional<UserIndividualReportRun> findTopByUserEmailAndReportDefinitionIdAndCreatedAtBeforeOrderByCreatedAtDesc(
+            String userEmail, String reportDefinitionId, java.time.Instant before);
+
     List<UserIndividualReportRun> findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(String userEmail, String reportDefinitionId);
 
     long deleteByUserEmail(String userEmail);

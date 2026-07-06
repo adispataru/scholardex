@@ -35,10 +35,26 @@ public record OrgUnitReportViewModel(
         Instant oldestRunAt,
         /** When the reporting data last changed (epoch bump); null if no rebuild was ever recorded. */
         Instant epochUpdatedAt,
-        String epochLastReason
+        String epochLastReason,
+        /** Per-cell deltas vs a chosen point in time; null when the view is not in compare mode. */
+        DeltaView delta,
+        /** Recent batch-refresh events as compare-picker options (may be empty). */
+        List<CompareOption> compareOptions
 ) {
 
     /** Metadata of a member's latest run; {@code stale} = run predates the last data-rebuild epoch bump. */
     public record RunMeta(Instant createdAt, boolean provisional, boolean stale,
                           UserIndividualReportRun.Status status) {}
+
+    /**
+     * Compare mode: each member's latest run vs their latest run before {@code compareTo}.
+     * {@code deltasByEmail} holds only non-trivial per-criterion changes; members with a current
+     * run but no baseline run are listed in {@code newMemberEmails}.
+     */
+    public record DeltaView(Instant compareTo,
+                            Map<String, Map<Integer, Double>> deltasByEmail,
+                            java.util.Set<String> newMemberEmails) {}
+
+    /** A nameable compare point — the instant of a past batch refresh. */
+    public record CompareOption(Instant instant, String label) {}
 }

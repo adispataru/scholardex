@@ -49,6 +49,32 @@
                 <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
+                <form th:if="${!vm.compareOptions.isEmpty()}" method="get" class="form-inline mb-3"
+                      th:with="viewHref=${unitType == 'group'
+                          ? '/admin/groups/' + vm.unitId + '/reports/view/' + vm.report.id
+                          : '/admin/' + unitType + 's/' + vm.unitId + '/reports/' + vm.report.id}"
+                      th:action="${viewHref}">
+                    <label class="mr-2" for="orgunit-compare-to">Compare with</label>
+                    <select name="compareTo" id="orgunit-compare-to" class="form-control form-control-sm mr-2">
+                        <option value="">— pick a past refresh —</option>
+                        <option th:each="opt : ${vm.compareOptions}"
+                                th:value="${opt.instant}"
+                                th:selected="${vm.delta != null and vm.delta.compareTo.equals(opt.instant)}"
+                                th:text="${#temporals.format(opt.instant, 'yyyy-MM-dd HH:mm')} + ' — ' + ${opt.label}">refresh</option>
+                    </select>
+                    <button type="submit" class="btn btn-outline-primary btn-sm mr-2">Compare</button>
+                    <a th:if="${vm.delta != null}" th:href="${viewHref}"
+                       class="btn btn-outline-secondary btn-sm">Clear</a>
+                </form>
+
+                <div th:if="${vm.delta != null}" class="alert alert-info">
+                    <i class="fa-solid fa-code-compare mr-1"></i>
+                    Comparing each member's latest run against their runs as of
+                    <strong th:text="${#temporals.format(vm.delta.compareTo, 'yyyy-MM-dd HH:mm')}">date</strong>.
+                    <span th:if="${!vm.delta.newMemberEmails.isEmpty()}"
+                          th:text="${#sets.size(vm.delta.newMemberEmails)} + ' member(s) had no run back then (marked new).'"></span>
+                </div>
+
                 <div th:if="${vm.staleCount > 0}" class="alert alert-warning">
                     <i class="fa-solid fa-clock-rotate-left mr-1"></i>
                     <strong th:text="${vm.staleCount}">0</strong> of
@@ -98,6 +124,11 @@
                                                            and vm.criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()] != null
                                                            and vm.researcherScores[researcher.email][stat.index] >= vm.criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()]}"
                                                    class="fa-solid fa-check text-success ml-1"></i>
+                                                <span th:with="d=${vm.delta != null and vm.delta.deltasByEmail[researcher.email] != null
+                                                                   ? vm.delta.deltasByEmail[researcher.email][stat.index] : null}"
+                                                      th:if="${d != null}"
+                                                      th:class="${d > 0 ? 'badge badge-success ml-1' : 'badge badge-danger ml-1'}"
+                                                      th:text="${(d > 0 ? '+' : '−') + #numbers.formatDecimal(d > 0 ? d : -d, 1, 2)}">+0.00</span>
                                             </th:block>
                                             <th:block th:unless="${scored}">
                                                 <span class="text-muted" title="No report run yet for this researcher">—</span>
@@ -114,6 +145,9 @@
                                                 <span th:if="${meta.status != null and meta.status.name() != 'READY'}"
                                                       class="badge badge-secondary ml-1"
                                                       th:text="${#strings.toLowerCase(meta.status.name())}">status</span>
+                                                <span th:if="${vm.delta != null and vm.delta.newMemberEmails.contains(researcher.email)}"
+                                                      class="badge badge-success ml-1"
+                                                      title="No run existed at the compare point">new</span>
                                             </th:block>
                                             <span th:if="${meta == null}" class="text-muted" title="No report run yet">no run</span>
                                         </td>
