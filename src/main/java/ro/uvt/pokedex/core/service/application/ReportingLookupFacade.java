@@ -100,4 +100,9 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     public List<Integer> getDistinctRankingYears() {
         return postgresFacade.getDistinctRankingYears();
     }
+
+    @Override
+    public int maxAvailableYear() {
+        return postgresFacade.maxAvailableYear();
+    }
 }

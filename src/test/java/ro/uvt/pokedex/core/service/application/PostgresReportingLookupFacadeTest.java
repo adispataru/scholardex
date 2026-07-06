@@ -103,6 +103,22 @@ class PostgresReportingLookupFacadeTest {
     }
 
     @Test
+    void maxAvailableYearIsTheLatestDistinctRankingYear() {
+        when(namedParameterJdbcTemplate.queryForList(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))
+                .thenReturn(List.of(1997, 2023, 2025));
+
+        assertEquals(2025, facade.maxAvailableYear());
+    }
+
+    @Test
+    void maxAvailableYearFallsBackToPortDefaultWhenNoRankingYearsExist() {
+        when(namedParameterJdbcTemplate.queryForList(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))
+                .thenReturn(List.of());
+
+        assertEquals(2023, facade.maxAvailableYear());
+    }
+
+    @Test
     void getRankingsByIssnReturnsEmptyOnBlankInput() {
         assertTrue(facade.getRankingsByIssn(" ").isEmpty());
     }

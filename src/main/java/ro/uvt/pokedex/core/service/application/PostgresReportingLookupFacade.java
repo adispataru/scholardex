@@ -303,6 +303,15 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                         new MapSqlParameterSource(), Integer.class));
     }
 
+    @Override
+    public int maxAvailableYear() {
+        // The interface default is a frozen 2023 constant; left unoverridden it silently clamps every newer
+        // publication's ranking lookup to 2023 (getAllowedYearsForPublication replaces [pubYear] with [maxYear]
+        // when pubYear exceeds it). Serve the real latest ranking year instead.
+        List<Integer> years = getDistinctRankingYears();
+        return years.isEmpty() ? ReportingLookupPort.super.maxAvailableYear() : years.getLast();
+    }
+
     private List<WoSRanking> loadRankingsByIssn(String normalizedIssn) {
         List<WosRankingView> views = namedParameterJdbcTemplate.query(
                 """
