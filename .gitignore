@@ -63,3 +63,6 @@ arcmutate-licence.txt
 
 # local prod-config backups (mongodump/EJSON of indicators etc.)
 backups/
+
+# JCR harvest session state (Clarivate SSO cookies) — never commit
+scopus-python/_state/
