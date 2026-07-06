@@ -100,6 +100,9 @@ class UserReportFacadeTest {
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     @Mock
     private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
+    // Real instance (not a mock): getOrCompute must pass through to the supplier for every test.
+    @org.mockito.Spy
+    private ReportingLookupMemoization reportingLookupMemoization = new ReportingLookupMemoization();
 
     @InjectMocks
     private UserReportFacade facade;

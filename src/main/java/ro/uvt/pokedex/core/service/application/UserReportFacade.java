@@ -79,6 +79,7 @@ public class UserReportFacade {
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final ReportingLookupPort reportingLookupPort;
     private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
+    private final ReportingLookupMemoization reportingLookupMemoization;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
         // userEmail kept in signature to lock facade contract for later permission-aware extensions.
@@ -1127,8 +1128,14 @@ public class UserReportFacade {
         ReportingComputationSupport.applyFinalSelector(indicator, scores);
     }
 
+    // The three per-user scoring inputs below are re-requested for every indicator of a Refresh All
+    // (3 passes x N indicators). Memoized in the surrounding refresh scope (opened by
+    // UserIndividualReportRunService / the group runners) so each is fetched once per refresh;
+    // outside a scope the memoization is a pass-through and behavior is unchanged.
     private List<ScholardexAuthorView> findAuthorsByIds(Collection<String> authorIds) {
-        return scholardexProjectionReadService.findAuthorsByIdIn(authorIds);
+        String key = authorIds == null ? "" : authorIds.stream().sorted().collect(Collectors.joining(","));
+        return reportingLookupMemoization.getOrCompute("userReport", "authorsByIds", key,
+                () -> scholardexProjectionReadService.findAuthorsByIdIn(authorIds));
     }
 
     private List<ScholardexPublicationView> findPublicationsByAuthorIds(Collection<String> authorIds) {
@@ -1140,7 +1147,8 @@ public class UserReportFacade {
     }
 
     private List<ScholardexPublicationView> findConfirmedPublicationsForScoring(String userEmail) {
-        return effectiveAuthorshipReadService.findConfirmedPublicationsForScoring(userEmail);
+        return reportingLookupMemoization.getOrCompute("userReport", "confirmedPublications", userEmail,
+                () -> effectiveAuthorshipReadService.findConfirmedPublicationsForScoring(userEmail));
     }
 
     public boolean hasConfirmedPublicationsForScoring(String userEmail) {
@@ -1168,8 +1176,9 @@ public class UserReportFacade {
     }
 
     private Optional<User> findUserWithProfile(String userEmail) {
-        return userService.getUserByEmail(userEmail)
-                .filter(user -> user.getResearcherProfile() != null);
+        return reportingLookupMemoization.getOrCompute("userReport", "userWithProfile", userEmail,
+                () -> userService.getUserByEmail(userEmail)
+                        .filter(user -> user.getResearcherProfile() != null));
     }
 
     private Optional<IndividualReport> findReport(String reportId) {

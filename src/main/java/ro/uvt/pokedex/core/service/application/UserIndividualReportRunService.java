@@ -30,6 +30,7 @@ public class UserIndividualReportRunService {
     private final UserService userService;
     private final UserIndicatorResultService userIndicatorResultService;
     private final UserReportFacade userReportFacade;
+    private final ReportingLookupMemoization reportingLookupMemoization;
 
     public Optional<IndividualReportRunDto> getOrCreateLatestRun(String userEmail, String reportDefinitionId) {
         Optional<UserIndividualReportRun> existing = userIndividualReportRunRepository
@@ -53,8 +54,13 @@ public class UserIndividualReportRunService {
     }
 
     public Optional<IndividualReportRunDto> refreshRun(String userEmail, String reportDefinitionId) {
-        refreshLatestForReportIndicators(userEmail, reportDefinitionId);
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of(), userEmail);
+        // One memoization scope for the whole refresh: the ranking/forum/input lookups repeat heavily
+        // across the report's indicators (and across the recompute passes), so scope-cache them like
+        // the group/department runners already do. All reads inside are point-in-time consistent.
+        return reportingLookupMemoization.withRefreshScope(() -> {
+            refreshLatestForReportIndicators(userEmail, reportDefinitionId);
+            return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of(), userEmail);
+        });
     }
 
     public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail, String reportDefinitionId) {
@@ -70,8 +76,11 @@ public class UserIndividualReportRunService {
     public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail,
                                                                         String reportDefinitionId,
                                                                         String actorEmail) {
-        refreshLatestForReportIndicators(userEmail, reportDefinitionId);
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of(), actorEmail);
+        // Same single-scope treatment as refreshRun — see the comment there.
+        return reportingLookupMemoization.withRefreshScope(() -> {
+            refreshLatestForReportIndicators(userEmail, reportDefinitionId);
+            return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of(), actorEmail);
+        });
     }
 
     /**
@@ -103,6 +112,17 @@ public class UserIndividualReportRunService {
                                                              IndividualReportRunDto.Source source,
                                                              Map<String, Integer> latestRefreshVersionsByIndicatorId,
                                                              String actorEmail) {
+        // Nested scopes are no-ops, so this also covers the getOrCreateLatestRun (first-visit) path
+        // while the refresh entry points keep their wider scope.
+        return reportingLookupMemoization.withRefreshScope(() ->
+                buildAndSaveRunInternal(userEmail, reportDefinitionId, source, latestRefreshVersionsByIndicatorId, actorEmail));
+    }
+
+    private Optional<IndividualReportRunDto> buildAndSaveRunInternal(String userEmail,
+                                                                     String reportDefinitionId,
+                                                                     IndividualReportRunDto.Source source,
+                                                                     Map<String, Integer> latestRefreshVersionsByIndicatorId,
+                                                                     String actorEmail) {
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportDefinitionId);
         if (reportOpt.isEmpty()) {
             return Optional.empty();
@@ -194,6 +214,15 @@ public class UserIndividualReportRunService {
         }
         IndividualReport report = reportOpt.get();
 
+        return reportingLookupMemoization.withRefreshScope(
+                () -> buildAndSaveProvisionalRunInternal(subjectEmail, reportDefinitionId, resolvedAuthorIds, adminEmail, report));
+    }
+
+    private Optional<IndividualReportRunDto> buildAndSaveProvisionalRunInternal(String subjectEmail,
+                                                                                String reportDefinitionId,
+                                                                                java.util.Collection<String> resolvedAuthorIds,
+                                                                                String adminEmail,
+                                                                                IndividualReport report) {
         UserIndividualReportRun run = new UserIndividualReportRun();
         run.setUserEmail(subjectEmail);
         run.setResearcherId(subjectEmail);

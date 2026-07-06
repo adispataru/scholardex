@@ -136,7 +136,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 cacheService,
                 publicationEnrichmentLinkerService,
                 reportingLookupPort,
-                effectiveAuthorshipReadService
+                effectiveAuthorshipReadService,
+                new ReportingLookupMemoization()
         );
 
         IndicatorPayloadSerializer payloadSerializer = new IndicatorPayloadSerializer(new ObjectMapper());
@@ -152,7 +153,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 individualReportRepository,
                 userService,
                 userIndicatorResultService,
-                userReportFacade
+                userReportFacade,
+                new ReportingLookupMemoization()
         );
     }
 

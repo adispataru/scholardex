@@ -49,7 +49,7 @@ class UserIndividualReportRunServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new UserIndividualReportRunService(runRepository, reportRepository, userService, indicatorResultService, userReportFacade);
+        service = new UserIndividualReportRunService(runRepository, reportRepository, userService, indicatorResultService, userReportFacade, new ReportingLookupMemoization());
     }
 
     @Test
