@@ -19,6 +19,7 @@ import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.repository.reporting.OrgUnitReportRefreshEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
+import ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportViewAssembler;
 import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
 
 import java.time.Instant;
@@ -55,8 +56,11 @@ class DivisionReportFacadeTest {
                 departmentRepository, departmentAffiliationRepository, userRepository, groupMembershipService);
         OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(
                 userIndividualReportRunRepository, reportingDataEpochService);
+        OrgUnitReportViewAssembler assembler = new OrgUnitReportViewAssembler(
+                new com.fasterxml.jackson.databind.ObjectMapper());
         facade = new DivisionReportFacade(orgDivisionRepository, individualReportRepository,
-                rosterService, rollupService, orgUnitReportRefreshEventRepository, reportVisibilityService);
+                rosterService, rollupService, assembler, orgUnitReportRefreshEventRepository,
+                reportVisibilityService);
         lenient().when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
         lenient().when(orgUnitReportRefreshEventRepository
                         .findTop20ByUnitTypeAndUnitIdAndReportDefinitionIdOrderByCreatedAtDesc(any(), any(), any()))

@@ -4,24 +4,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
-import ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent;
 import ro.uvt.pokedex.core.model.reporting.ReportingDataEpoch;
 import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.application.OrgUnitRosterService;
 import ro.uvt.pokedex.core.service.application.ReportingDataEpochService;
-import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * Rolls an org-unit roster up over each member's latest persisted {@link UserIndividualReportRun}
@@ -112,79 +107,6 @@ public class OrgUnitRunRollupService {
         return new OrgUnitRunRollup(rows, thresholdsByCriterion(report),
                 membersWithoutRun, provisionalCount, staleCount, oldestRunAt, epochUpdatedAt, epochLastReason,
                 compareTo);
-    }
-
-    /** Deltas smaller than the 2-decimal display precision are treated as unchanged. */
-    private static final double DELTA_DISPLAY_EPSILON = 0.005;
-
-    /** Packs a rollup into the shared org-unit view model (per-member build errors get name-prefixed). */
-    public OrgUnitReportViewModel toViewModel(String unitId, String unitName, IndividualReport report,
-                                              OrgUnitRunRollup rollup,
-                                              List<OrgUnitReportViewModel.CompareOption> compareOptions) {
-        List<User> researchers = new ArrayList<>();
-        Map<String, Map<Integer, Double>> scoresByEmail = new LinkedHashMap<>();
-        Map<String, String> departmentLabelByResearcher = new LinkedHashMap<>();
-        Map<String, OrgUnitReportViewModel.RunMeta> runMetaByEmail = new LinkedHashMap<>();
-        List<String> buildErrors = new ArrayList<>();
-        for (MemberRunRow row : rollup.rows()) {
-            User user = row.user();
-            researchers.add(user);
-            if (row.departmentLabel() != null && !row.departmentLabel().isBlank()) {
-                departmentLabelByResearcher.put(user.getEmail(), row.departmentLabel());
-            }
-            RunSummary run = row.current();
-            if (run == null) continue;
-            scoresByEmail.put(user.getEmail(), run.criteriaScores());
-            runMetaByEmail.put(user.getEmail(), new OrgUnitReportViewModel.RunMeta(
-                    run.createdAt(), run.provisional(), row.stale(), run.status()));
-            for (String err : run.buildErrors()) {
-                buildErrors.add(user.getResearcherProfile().getName().trim() + ": " + err);
-            }
-        }
-        return new OrgUnitReportViewModel(unitId, unitName, report, researchers, scoresByEmail,
-                rollup.criteriaThresholds(), buildErrors, departmentLabelByResearcher, runMetaByEmail,
-                rollup.membersWithoutRun(), rollup.provisionalCount(), rollup.staleCount(),
-                rollup.oldestRunAt(), rollup.epochUpdatedAt(), rollup.epochLastReason(),
-                toDeltaView(rollup), compareOptions == null ? List.of() : compareOptions);
-    }
-
-    /** Labels the last batch-refresh events as picker options for the compare form. */
-    public List<OrgUnitReportViewModel.CompareOption> toCompareOptions(List<OrgUnitReportRefreshEvent> events) {
-        return events.stream()
-                .filter(e -> e.getCreatedAt() != null)
-                .map(e -> new OrgUnitReportViewModel.CompareOption(e.getCreatedAt(),
-                        e.getLabel() != null ? e.getLabel()
-                                : "Refresh by " + e.getTriggeredByEmail() + " (" + e.getRefreshed() + " refreshed)"))
-                .toList();
-    }
-
-    private static OrgUnitReportViewModel.DeltaView toDeltaView(OrgUnitRunRollup rollup) {
-        if (rollup.compareTo() == null) return null;
-        Map<String, Map<Integer, Double>> deltasByEmail = new LinkedHashMap<>();
-        Set<String> newMemberEmails = new LinkedHashSet<>();
-        for (MemberRunRow row : rollup.rows()) {
-            if (row.current() == null) continue;
-            if (row.baseline() == null) {
-                newMemberEmails.add(row.user().getEmail());
-                continue;
-            }
-            Map<Integer, Double> current = row.current().criteriaScores();
-            Map<Integer, Double> baseline = row.baseline().criteriaScores();
-            Map<Integer, Double> deltas = new LinkedHashMap<>();
-            Set<Integer> indices = new java.util.TreeSet<>();
-            indices.addAll(current.keySet());
-            indices.addAll(baseline.keySet());
-            for (Integer i : indices) {
-                double delta = current.getOrDefault(i, 0.0) - baseline.getOrDefault(i, 0.0);
-                if (Math.abs(delta) >= DELTA_DISPLAY_EPSILON) {
-                    deltas.put(i, delta);
-                }
-            }
-            if (!deltas.isEmpty()) {
-                deltasByEmail.put(row.user().getEmail(), deltas);
-            }
-        }
-        return new OrgUnitReportViewModel.DeltaView(rollup.compareTo(), deltasByEmail, newMemberEmails);
     }
 
     private static RunSummary toSummary(UserIndividualReportRun run, IndividualReport report) {

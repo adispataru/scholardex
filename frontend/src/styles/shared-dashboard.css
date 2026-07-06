@@ -1171,3 +1171,29 @@
     grid-template-columns: 1fr;
   }
 }
+
+.app-orgunit-chart {
+  position: relative;
+  height: 260px;
+}
+
+/* Org-unit report score cells, tinted by score/threshold ratio (dark-mode aware via theme vars). */
+.app-heat--high {
+  background: color-mix(in srgb, var(--app-color-success) 22%, transparent);
+}
+
+.app-heat--met {
+  background: color-mix(in srgb, var(--app-color-success) 12%, transparent);
+}
+
+.app-heat--near {
+  background: color-mix(in srgb, var(--app-color-warning) 16%, transparent);
+}
+
+.app-heat--below {
+  background: color-mix(in srgb, var(--app-color-danger) 10%, transparent);
+}
+
+.app-heat--far {
+  background: color-mix(in srgb, var(--app-color-danger) 20%, transparent);
+}

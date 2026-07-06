@@ -39,7 +39,14 @@ public record OrgUnitReportViewModel(
         /** Per-cell deltas vs a chosen point in time; null when the view is not in compare mode. */
         DeltaView delta,
         /** Recent batch-refresh events as compare-picker options (may be empty). */
-        List<CompareOption> compareOptions
+        List<CompareOption> compareOptions,
+        /** Position buckets in enum order (Unclassified last); empty buckets omitted. */
+        List<PositionAggregateRow> positionAggregates,
+        /** email → criterion index → heat CSS class; absent = no class (no run / no threshold / OTHER). */
+        Map<String, Map<Integer, String>> cellHeatClass,
+        DashboardTotals totals,
+        /** Chart + CSV payload, JSON-serialized server-side ('<' escaped for inline script safety). */
+        String dashboardJson
 ) {
 
     /** Metadata of a member's latest run; {@code stale} = run predates the last data-rebuild epoch bump. */
@@ -57,4 +64,20 @@ public record OrgUnitReportViewModel(
 
     /** A nameable compare point — the instant of a past batch refresh. */
     public record CompareOption(Instant instant, String label) {}
+
+    /** One position bucket of the dashboard; {@code byCriterion} has one entry per report criterion. */
+    public record PositionAggregateRow(String positionKey, String positionLabel, int researcherCount,
+                                       List<PositionCriterionStats> byCriterion) {}
+
+    /**
+     * Position × criterion aggregate over members WITH a run ({@code count}). Threshold-derived
+     * numbers ({@code metCount}/{@code metPercent}/{@code nearMissCount}) are null when no
+     * threshold applies to the bucket (Unclassified, OTHER, or none defined for the position).
+     */
+    public record PositionCriterionStats(int criterionIndex, int count, Integer metCount, Double metPercent,
+                                         Double medianScore, Integer nearMissCount, Double threshold) {}
+
+    /** {@code overallMetPercent} spans all applicable (member, criterion) checks; null when none apply. */
+    public record DashboardTotals(int researcherCount, int scoredCount, Integer overallMetPercent,
+                                  int nearMissCount, int unclassifiedCount) {}
 }

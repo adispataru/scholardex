@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.service.application.reporting.GroupPublicationAggregator;
+import ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportViewAssembler;
 import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
 import ro.uvt.pokedex.core.service.application.reporting.VenueClassifier;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
@@ -103,10 +104,12 @@ class GroupReportFacadeTest {
                 null, null, userRepository, groupMembershipService);
         OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(
                 userIndividualReportRunRepository, reportingDataEpochService);
+        OrgUnitReportViewAssembler assembler = new OrgUnitReportViewAssembler(
+                new com.fasterxml.jackson.databind.ObjectMapper());
 
         facade = new GroupReportFacade(
                 groupRepository, individualReportRepository, rosterService, rollupService,
-                orgUnitReportRefreshEventRepository, aggregator);
+                assembler, orgUnitReportRefreshEventRepository, aggregator);
     }
     @Test
     void buildGroupPublicationsViewReturnsRedirectWhenGroupMissing() {

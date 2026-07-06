@@ -474,6 +474,10 @@ class AdminGroupControllerContractTest {
         }
         return new OrgUnitReportViewModel(group.getId(), group.getName(), report, researchers,
                 researcherScores, criteriaThresholds, List.of(), Map.of(), runMeta,
-                0, 0, 0, null, null, null, null, List.of());
+                0, 0, 0, null, null, null, null, List.of(),
+                List.of(), Map.of(),
+                new OrgUnitReportViewModel.DashboardTotals(researchers.size(), researcherScores.size(),
+                        null, 0, 0),
+                "{}");
     }
 }

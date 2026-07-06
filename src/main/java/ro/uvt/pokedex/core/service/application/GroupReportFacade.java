@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.repository.reporting.OrgUnitReportRefreshEventReposit
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 import ro.uvt.pokedex.core.service.application.reporting.GroupPublicationAggregator;
+import ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportViewAssembler;
 import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
 
 import java.time.Instant;
@@ -30,6 +31,7 @@ public class GroupReportFacade {
     private final IndividualReportRepository individualReportRepository;
     private final OrgUnitRosterService orgUnitRosterService;
     private final OrgUnitRunRollupService orgUnitRunRollupService;
+    private final OrgUnitReportViewAssembler orgUnitReportViewAssembler;
     private final OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
     private final GroupPublicationAggregator groupPublicationAggregator;
 
@@ -47,10 +49,10 @@ public class GroupReportFacade {
 
         List<OrgUnitRosterService.RosterMember> members = orgUnitRosterService.groupRoster(groupId);
         OrgUnitRunRollupService.OrgUnitRunRollup rollup = orgUnitRunRollupService.rollup(members, report, compareTo);
-        List<OrgUnitReportViewModel.CompareOption> compareOptions = orgUnitRunRollupService.toCompareOptions(
+        List<OrgUnitReportViewModel.CompareOption> compareOptions = orgUnitReportViewAssembler.toCompareOptions(
                 orgUnitReportRefreshEventRepository.findTop20ByUnitTypeAndUnitIdAndReportDefinitionIdOrderByCreatedAtDesc(
                         OrgUnitReportRefreshEvent.UnitType.GROUP, groupId, reportId));
-        return Optional.of(orgUnitRunRollupService.toViewModel(
+        return Optional.of(orgUnitReportViewAssembler.toViewModel(
                 group.getId(), group.getName(), report, rollup, compareOptions));
     }
 }

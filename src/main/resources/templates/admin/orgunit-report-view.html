@@ -100,11 +100,101 @@
                     </ul>
                 </div>
 
-                <div class="app-table-section">
+                <div th:if="${!vm.researchers.isEmpty()}" class="app-summary-grid mb-3">
+                    <th:block th:replace="~{fragments :: stat-card('Researchers', ${vm.totals.researcherCount},
+                        'primary', 'currently affiliated', 'fa-solid fa-users')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card('With a run', ${vm.totals.scoredCount},
+                        ${vm.membersWithoutRun > 0 ? 'warning' : 'success'},
+                        ${vm.membersWithoutRun} + ' without a run yet', 'fa-solid fa-clipboard-check')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card('Met thresholds',
+                        ${vm.totals.overallMetPercent != null ? vm.totals.overallMetPercent + '%' : '—'},
+                        'success', 'of applicable researcher-criterion checks', 'fa-solid fa-check-double')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card('Near misses', ${vm.totals.nearMissCount},
+                        'warning', 'within 10% below a threshold', 'fa-solid fa-arrows-up-to-line')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card('Runs to refresh', ${vm.membersWithoutRun + vm.staleCount},
+                        ${vm.membersWithoutRun + vm.staleCount > 0 ? 'warning' : 'success'},
+                        ${vm.staleCount} + ' stale · ' + ${vm.provisionalCount} + ' provisional',
+                        'fa-solid fa-rotate')}"></th:block>
+                </div>
+
+                <div th:if="${vm.totals.scoredCount > 0}" class="row">
+                    <div class="col-lg-5 mb-3">
+                        <div class="app-summary-card h-100">
+                            <p class="app-summary-card__label">Researchers by position</p>
+                            <div class="app-orgunit-chart">
+                                <canvas id="orgunit-position-count-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-7 mb-3">
+                        <div class="app-summary-card h-100">
+                            <p class="app-summary-card__label">Met threshold % by position</p>
+                            <div class="app-orgunit-chart">
+                                <canvas id="orgunit-met-percent-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${vm.totals.scoredCount > 0 and !vm.positionAggregates.isEmpty()}" class="app-table-section mb-3">
                     <div class="app-table-section__surface">
                         <div class="app-table-section__body">
                             <div class="app-table-scroll">
                                 <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Position</th>
+                                        <th>Researchers</th>
+                                        <th th:each="crit, stat : ${vm.report.criteria}"
+                                            th:text="${crit.name != null and !#strings.isEmpty(#strings.trim(crit.name)) ? crit.name : 'Criterion ' + (stat.index + 1)}">Criterion</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="row : ${vm.positionAggregates}">
+                                        <td th:text="${row.positionLabel}">POS</td>
+                                        <td th:text="${row.researcherCount}">0</td>
+                                        <td th:each="stats : ${row.byCriterion}">
+                                            <th:block th:if="${stats.count > 0}">
+                                                <span th:if="${stats.metPercent != null}"
+                                                      th:text="${#numbers.formatDecimal(stats.metPercent, 1, 0)} + '% met'">met</span>
+                                                <span th:if="${stats.metPercent == null}" class="text-muted"
+                                                      title="No threshold defined for this position">n/a</span>
+                                                <span class="text-muted"
+                                                      th:text="'· median ' + ${#numbers.formatDecimal(stats.medianScore, 1, 2)} + ' · n=' + ${stats.count}">detail</span>
+                                                <span th:if="${stats.nearMissCount != null and stats.nearMissCount > 0}"
+                                                      class="badge badge-warning ml-1"
+                                                      th:text="${stats.nearMissCount} + ' near'">near</span>
+                                            </th:block>
+                                            <span th:if="${stats.count == 0}" class="text-muted">—</span>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${!vm.researchers.isEmpty()}" class="d-flex align-items-center mb-2">
+                    <label class="mr-2 mb-0" for="orgunit-position-filter">Position</label>
+                    <select id="orgunit-position-filter" class="form-control form-control-sm mr-2" style="width: auto;">
+                        <option value="">All positions</option>
+                        <option th:each="row : ${vm.positionAggregates}"
+                                th:value="${row.positionKey == 'UNCLASSIFIED' ? '' : row.positionKey}"
+                                th:text="${row.positionLabel}">POS</option>
+                    </select>
+                    <button type="button" id="orgunit-export-csv" class="btn btn-outline-secondary btn-sm ml-auto">
+                        <i class="fa-solid fa-file-csv mr-1"></i>Export CSV
+                    </button>
+                </div>
+
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__body">
+                            <div class="app-table-scroll">
+                                <table id="orgunit-report-table" class="table app-table"
+                                       th:classappend="${!vm.researchers.isEmpty()} ? 'js-datatable'"
+                                       data-datatable-page-length="25">
                                     <thead>
                                     <tr>
                                         <th>Researcher</th>
@@ -122,7 +212,9 @@
                                         <td th:text="${researcher.researcherProfile?.position}"></td>
                                         <td th:if="${unitType == 'division'}"
                                             th:text="${vm.departmentLabelByResearcher.getOrDefault(researcher.email, '—')}"></td>
-                                        <td th:each="crit, stat : ${vm.report.criteria}">
+                                        <td th:each="crit, stat : ${vm.report.criteria}"
+                                            th:classappend="${vm.cellHeatClass[researcher.email] != null ? vm.cellHeatClass[researcher.email][stat.index] : null}"
+                                            th:attr="data-order=${scored ? vm.researcherScores[researcher.email][stat.index] : -1}">
                                             <th:block th:if="${scored}">
                                                 <span th:text="${#numbers.formatDecimal(vm.researcherScores[researcher.email][stat.index], 1, 2)}">0</span>
                                                 <i th:if="${researcher.researcherProfile?.position != null
@@ -141,7 +233,8 @@
                                                 <span class="text-muted" title="No report run yet for this researcher">—</span>
                                             </th:block>
                                         </td>
-                                        <td th:with="meta=${vm.runMetaByEmail[researcher.email]}">
+                                        <td th:with="meta=${vm.runMetaByEmail[researcher.email]}"
+                                            th:attr="data-order=${meta != null and meta.createdAt != null ? meta.createdAt.toEpochMilli() : 0}">
                                             <th:block th:if="${meta != null}">
                                                 <span class="text-nowrap"
                                                       th:text="${meta.createdAt != null ? #temporals.format(meta.createdAt, 'yyyy-MM-dd') : '—'}">date</span>
@@ -162,7 +255,6 @@
                                     <tr th:if="${vm.researchers.isEmpty()}" class="app-admin-empty-row">
                                         <td th:colspan="${unitType == 'division' ? #lists.size(vm.report.criteria) + 4 : #lists.size(vm.report.criteria) + 3}">
                                             <th:block th:replace="~{fragments :: admin-empty-state(
-                                                'fa-solid fa-people-line',
                                                 'No researchers affiliated',
                                                 'Assign at least one researcher via the Department admin page or the CSV import.',
                                                 '', '')}"></th:block>
@@ -174,6 +266,9 @@
                         </div>
                     </div>
                 </div>
+
+                <script type="application/json" id="orgunit-dashboard-data"
+                        th:utext="${vm.dashboardJson != null ? vm.dashboardJson : '{}'}"></script>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
         </div>
