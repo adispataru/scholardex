@@ -579,26 +579,11 @@ public class UserReportFacade {
         }
 
         if (indicator != null && indicator.isPublicationOutput()) {
-            // H52 slice 11d.2: typed author-role dispatch. {@code AuthorRole.MAIN}
-            // keeps first-author=university; {@code .CO} keeps first-author≠university;
-            // {@code .ALL} (or null) keeps everything.
-            List<ScholardexPublicationView> filteredPublications = publications;
-            ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole role = indicator.publicationAuthorRole();
-            if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN) {
-                filteredPublications = publications.stream()
-                        .filter(p -> {
-                            String firstAuthorId = firstAuthorId(p);
-                            return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
-                        })
-                        .collect(Collectors.toList());
-            } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.CO) {
-                filteredPublications = publications.stream()
-                        .filter(p -> {
-                            String firstAuthorId = firstAuthorId(p);
-                            return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
-                        })
-                        .collect(Collectors.toList());
-            }
+            // Shared typed author-role dispatch (ALL / MAIN / CO / FIRST_OR_CORRESPONDING) — the same filter the
+            // roll-up uses, so the detail rows always match the publications that contributed to the score.
+            // (The inline copy this replaces skipped FIRST_OR_CORRESPONDING, so H63 indicators showed extra rows.)
+            List<ScholardexPublicationView> filteredPublications =
+                    ReportingComputationSupport.filterByAuthorRole(indicator, authors, publications);
             Map<String, Score> scores = scoredPublicationMap(indicator, filteredPublications);
             Score totalScore = scores.remove("total");
             double total = totalScore != null ? totalScore.getAuthorScore() : 0.0;
@@ -793,24 +778,10 @@ public class UserReportFacade {
     }
 
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {
-        // H52 slice 11d.2: same author-role dispatch as handleScientificProduction.
-        List<ScholardexPublicationView> filteredPublications = publications;
-        ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole role = indicator.publicationAuthorRole();
-        if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN) {
-            filteredPublications = publications.stream()
-                    .filter(p -> {
-                        String firstAuthorId = firstAuthorId(p);
-                        return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
-                    })
-                    .collect(Collectors.toList());
-        } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.CO) {
-            filteredPublications = publications.stream()
-                    .filter(p -> {
-                        String firstAuthorId = firstAuthorId(p);
-                        return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
-                    })
-                    .collect(Collectors.toList());
-        }
+        // Shared typed author-role dispatch — same filter as the roll-up and the report-scoped detail
+        // (the inline copy this replaces skipped FIRST_OR_CORRESPONDING).
+        List<ScholardexPublicationView> filteredPublications =
+                ReportingComputationSupport.filterByAuthorRole(indicator, authors, publications);
         Map<String, Score> scores = scoredPublicationMap(indicator, filteredPublications);
         attrs.put("total", String.format("%.2f", scores.get("total").getAuthorScore()));
         scores.remove("total");
@@ -1252,13 +1223,6 @@ public class UserReportFacade {
             ReportScopedIndicatorScoringSupport.CitationContext citationContext,
             Map<Indicator, Map<String, Score>> baseScoresByIndicator
     ) {
-    }
-
-    private String firstAuthorId(ScholardexPublicationView publication) {
-        if (publication == null || publication.getAuthors() == null || publication.getAuthors().isEmpty()) {
-            return null;
-        }
-        return publication.getAuthors().getFirst();
     }
 
     private List<ScholardexPublicationView> findPublicationsByIds(Collection<String> publicationIds) {

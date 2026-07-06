@@ -1118,6 +1118,54 @@ class UserReportFacadeTest {
     }
 
     @Test
+    void buildReportScopedIndicatorDetailFirstOrCorrespondingFiltersLikeTheRollUp() {
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-foc");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS_FIRST_OR_CORRESPONDING");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-foc");
+        report.setIndicators(List.of(indicator));
+
+        ScholardexPublicationView first = new ScholardexPublicationView();
+        first.setId("p-first");
+        first.setTitle("First");
+        first.setAuthors(List.of("a1", "x"));
+        ScholardexPublicationView corresponding = new ScholardexPublicationView();
+        corresponding.setId("p-corr");
+        corresponding.setTitle("Corresponding");
+        corresponding.setAuthors(List.of("x", "a1"));
+        corresponding.setCorrespondingAuthorIds(List.of("a1"));
+        ScholardexPublicationView neither = new ScholardexPublicationView();
+        neither.setId("p-neither");
+        neither.setTitle("Neither");
+        neither.setAuthors(List.of("x", "a1"));
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(individualReportRepository.findById("rep-foc")).thenReturn(Optional.of(report));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro"))
+                .thenReturn(List.of(first, corresponding, neither));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
+                .thenAnswer(invocation -> {
+                    List<?> pubs = invocation.getArgument(0);
+                    LinkedHashMap<String, Score> scores = new LinkedHashMap<>();
+                    pubs.forEach(p -> scores.put(((ScoringPublicationReadModel) p).getTitle(), totalScore(1.0)));
+                    scores.put("total", totalScore(pubs.size()));
+                    return scores;
+                });
+
+        var detail = facade.buildReportScopedIndicatorDetail("user@uvt.ro", "rep-foc", "ind-foc").orElseThrow();
+
+        // The detail must score/list exactly the roll-up's publication set: first-author + corresponding, not "Neither".
+        @SuppressWarnings("unchecked")
+        List<ScholardexPublicationView> listed = (List<ScholardexPublicationView>) detail.rawGraph().get("publications");
+        assertEquals(List.of("p-first", "p-corr"), listed.stream().map(ScholardexPublicationView::getId).toList());
+        assertEquals(2.0, detail.summary().totalScore());
+    }
+
+    @Test
     void buildReportScopedIndicatorDetailMainAuthorDoesNotCrashOnPublicationWithNoAuthors() {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator main = new Indicator();
