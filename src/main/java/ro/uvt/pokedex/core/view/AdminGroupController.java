@@ -181,6 +181,26 @@ public class AdminGroupController {
         return "redirect:/admin/groups/" + gid + "/reports/view/" + id;
     }
 
+    @PostMapping("{gid}/reports/view/{id}/score-provisional")
+    @PreAuthorize("@groupAccess.canEdit(#gid, authentication)")
+    public String scoreProvisionalIndividualReport(@PathVariable String gid,
+                                                   @PathVariable String id,
+                                                   @RequestParam(required = false) String label,
+                                                   Authentication authentication,
+                                                   RedirectAttributes flash) {
+        try {
+            OrgUnitReportRefreshService.ProvisionalScoreResult result =
+                    orgUnitReportRefreshService.scoreProvisionalUnlinked(
+                            OrgUnitReportRefreshEvent.UnitType.GROUP, gid, id, label,
+                            authentication == null ? null : authentication.getName());
+            flash.addFlashAttribute("successMessage",
+                    AdminOrgUnitReportRefreshController.summarizeProvisional(result));
+        } catch (IllegalArgumentException ex) {
+            flash.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/groups/" + gid + "/reports/view/" + id;
+    }
+
     @GetMapping("/{id}/publications/export")
     @ResponseBody
     @PreAuthorize("@groupAccess.canView(#id, authentication)")

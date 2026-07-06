@@ -129,20 +129,27 @@ class OrgUnitReportViewAssemblerTest {
     }
 
     @Test
-    void toCompareOptionsLabelsEventsWithTheirLabelOrActor() {
+    void toCompareOptionsLabelsEventsWithTheirLabelOrActorAndMode() {
         OrgUnitReportRefreshEvent labeled = new OrgUnitReportRefreshEvent();
         labeled.setCreatedAt(Instant.parse("2026-07-01T10:00:00Z"));
         labeled.setLabel("before evaluation");
-        OrgUnitReportRefreshEvent unlabeled = new OrgUnitReportRefreshEvent();
-        unlabeled.setCreatedAt(Instant.parse("2026-06-01T10:00:00Z"));
-        unlabeled.setTriggeredByEmail("admin@uvt.ro");
-        unlabeled.setRefreshed(42);
+        // Legacy document: mode is null → reads as a refresh.
+        OrgUnitReportRefreshEvent legacy = new OrgUnitReportRefreshEvent();
+        legacy.setCreatedAt(Instant.parse("2026-06-01T10:00:00Z"));
+        legacy.setTriggeredByEmail("admin@uvt.ro");
+        legacy.setRefreshed(42);
+        OrgUnitReportRefreshEvent provisional = new OrgUnitReportRefreshEvent();
+        provisional.setCreatedAt(Instant.parse("2026-05-01T10:00:00Z"));
+        provisional.setMode(OrgUnitReportRefreshEvent.Mode.PROVISIONAL);
+        provisional.setTriggeredByEmail("admin@uvt.ro");
+        provisional.setRefreshed(7);
 
         List<OrgUnitReportViewModel.CompareOption> options =
-                assembler.toCompareOptions(List.of(labeled, unlabeled));
+                assembler.toCompareOptions(List.of(labeled, legacy, provisional));
 
         assertEquals("before evaluation", options.get(0).label());
         assertEquals("Refresh by admin@uvt.ro (42 refreshed)", options.get(1).label());
+        assertEquals("Provisional scoring by admin@uvt.ro (7 scored)", options.get(2).label());
     }
 
     @Test

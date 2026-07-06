@@ -78,10 +78,17 @@ public class OrgUnitReportViewAssembler {
     public List<OrgUnitReportViewModel.CompareOption> toCompareOptions(List<OrgUnitReportRefreshEvent> events) {
         return events.stream()
                 .filter(e -> e.getCreatedAt() != null)
-                .map(e -> new OrgUnitReportViewModel.CompareOption(e.getCreatedAt(),
-                        e.getLabel() != null ? e.getLabel()
-                                : "Refresh by " + e.getTriggeredByEmail() + " (" + e.getRefreshed() + " refreshed)"))
+                .map(e -> new OrgUnitReportViewModel.CompareOption(e.getCreatedAt(), compareOptionLabel(e)))
                 .toList();
+    }
+
+    private static String compareOptionLabel(OrgUnitReportRefreshEvent event) {
+        if (event.getLabel() != null) return event.getLabel();
+        // Legacy events carry no mode — they predate provisional batches, so read as refreshes.
+        if (event.getMode() == OrgUnitReportRefreshEvent.Mode.PROVISIONAL) {
+            return "Provisional scoring by " + event.getTriggeredByEmail() + " (" + event.getRefreshed() + " scored)";
+        }
+        return "Refresh by " + event.getTriggeredByEmail() + " (" + event.getRefreshed() + " refreshed)";
     }
 
     // ---------------------------------------------------------------- deltas

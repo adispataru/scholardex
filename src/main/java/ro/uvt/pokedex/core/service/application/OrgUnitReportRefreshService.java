@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.repository.reporting.OrgUnitReportRefreshEventReposit
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +35,8 @@ public class OrgUnitReportRefreshService {
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final ReportingDataEpochService reportingDataEpochService;
     private final OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
+    private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
+    private final ProfileLinkedAuthorResolutionService profileLinkedAuthorResolutionService;
 
     public enum Scope {
         /** Refresh only members with no run, a stale run, or a run predating the last data rebuild. */
@@ -80,25 +83,103 @@ public class OrgUnitReportRefreshService {
         }
         long durationMs = System.currentTimeMillis() - startedAt;
 
-        OrgUnitReportRefreshEvent event = new OrgUnitReportRefreshEvent();
-        event.setUnitType(unitType);
-        event.setUnitId(unitId);
-        event.setReportDefinitionId(report.getId());
-        event.setCreatedAt(Instant.now());
-        event.setTriggeredByEmail(actorEmail);
-        event.setLabel(label == null || label.isBlank() ? null : label.trim());
+        OrgUnitReportRefreshEvent event = newEvent(OrgUnitReportRefreshEvent.Mode.CONFIRMED,
+                unitType, unitId, report.getId(), label, actorEmail, members.size(), durationMs);
         event.setRefreshed(refreshed);
         event.setFailed(failed);
         event.setSkippedProvisional(skippedProvisional);
         event.setSkippedFresh(skippedFresh);
-        event.setRosterSize(members.size());
-        event.setDurationMs(durationMs);
         orgUnitReportRefreshEventRepository.save(event);
 
         log.info("refresh-all {} {} report {} ({}): {} refreshed, {} failed, {} provisional skipped, {} fresh skipped of {} in {} ms",
                 unitType, unitId, report.getId(), scope, refreshed, failed, skippedProvisional, skippedFresh,
                 members.size(), durationMs);
         return new RefreshAllResult(refreshed, failed, skippedProvisional, skippedFresh, members.size(), durationMs);
+    }
+
+    public record ProvisionalScoreResult(int scored, int failed, int skippedConfirmed, int unresolved,
+                                         int rosterSize, long durationMs, List<String> unresolvedNames) {}
+
+    /**
+     * Provisionally score every roster member WITHOUT confirmed publications, resolving their
+     * canonical authors from profile-linked identifiers (Scopus/WoS/Scholar/ORCID — never names)
+     * and persisting provisional runs via the H77 machinery. Members with confirmed publications
+     * are skipped — their CONFIRMED runs are authoritative. Candidates are always re-scored (the
+     * action is explicit); members with no resolvable identifier get no run and are reported back.
+     */
+    public ProvisionalScoreResult scoreProvisionalUnlinked(OrgUnitReportRefreshEvent.UnitType unitType,
+                                                           String unitId, String reportDefinitionId,
+                                                           String label, String actorEmail) {
+        IndividualReport report = individualReportRepository.findById(reportDefinitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown report: " + reportDefinitionId));
+        List<OrgUnitRosterService.RosterMember> members = resolveRoster(unitType, unitId);
+
+        long startedAt = System.currentTimeMillis();
+        int scored = 0;
+        int failed = 0;
+        int skippedConfirmed = 0;
+        List<String> unresolvedNames = new ArrayList<>();
+        for (OrgUnitRosterService.RosterMember member : members) {
+            String email = member.user().getEmail();
+            try {
+                if (effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring(email)) {
+                    skippedConfirmed++;
+                    continue;
+                }
+                List<String> authorIds = profileLinkedAuthorResolutionService
+                        .resolveCanonicalAuthorIds(member.user().getResearcherProfile());
+                if (authorIds.isEmpty()) {
+                    unresolvedNames.add(displayName(member.user()));
+                    continue;
+                }
+                boolean saved = userIndividualReportRunService
+                        .buildAndSaveProvisionalRun(email, report.getId(), authorIds, actorEmail)
+                        .isPresent();
+                if (saved) scored++;
+                else failed++;
+            } catch (Exception ex) {
+                failed++;
+                log.warn("score-provisional {} {}: scoring failed for {}", unitType, unitId, email, ex);
+            }
+        }
+        long durationMs = System.currentTimeMillis() - startedAt;
+
+        OrgUnitReportRefreshEvent event = newEvent(OrgUnitReportRefreshEvent.Mode.PROVISIONAL,
+                unitType, unitId, report.getId(), label, actorEmail, members.size(), durationMs);
+        event.setRefreshed(scored);
+        event.setFailed(failed);
+        event.setSkippedConfirmed(skippedConfirmed);
+        event.setUnresolved(unresolvedNames.size());
+        orgUnitReportRefreshEventRepository.save(event);
+
+        log.info("score-provisional {} {} report {}: {} scored, {} failed, {} confirmed skipped, {} unresolved of {} in {} ms",
+                unitType, unitId, report.getId(), scored, failed, skippedConfirmed, unresolvedNames.size(),
+                members.size(), durationMs);
+        return new ProvisionalScoreResult(scored, failed, skippedConfirmed, unresolvedNames.size(),
+                members.size(), durationMs, unresolvedNames);
+    }
+
+    private static OrgUnitReportRefreshEvent newEvent(OrgUnitReportRefreshEvent.Mode mode,
+                                                      OrgUnitReportRefreshEvent.UnitType unitType, String unitId,
+                                                      String reportDefinitionId, String label, String actorEmail,
+                                                      int rosterSize, long durationMs) {
+        OrgUnitReportRefreshEvent event = new OrgUnitReportRefreshEvent();
+        event.setMode(mode);
+        event.setUnitType(unitType);
+        event.setUnitId(unitId);
+        event.setReportDefinitionId(reportDefinitionId);
+        event.setCreatedAt(Instant.now());
+        event.setTriggeredByEmail(actorEmail);
+        event.setLabel(label == null || label.isBlank() ? null : label.trim());
+        event.setRosterSize(rosterSize);
+        event.setDurationMs(durationMs);
+        return event;
+    }
+
+    private static String displayName(ro.uvt.pokedex.core.model.user.User user) {
+        String name = user.getResearcherProfile() == null ? "" : user.getResearcherProfile().getName();
+        String trimmed = name == null ? "" : name.trim();
+        return trimmed.isBlank() ? user.getEmail() : trimmed;
     }
 
     private List<OrgUnitRosterService.RosterMember> resolveRoster(

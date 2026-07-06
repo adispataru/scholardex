@@ -24,16 +24,23 @@ public class OrgUnitReportRefreshEvent {
     private UnitType unitType;
     private String unitId;
     private String reportDefinitionId;
+    /** How the runs were produced; null on legacy documents ⇒ treat as {@link Mode#CONFIRMED}. */
+    private Mode mode;
 
     private Instant createdAt;
     private String triggeredByEmail;
     /** Optional admin-supplied name for this refresh, shown in the compare picker. */
     private String label;
 
+    /** Runs written by the batch (confirmed refreshes or provisional scorings, per {@code mode}). */
     private int refreshed;
     private int failed;
     private int skippedProvisional;
     private int skippedFresh;
+    /** PROVISIONAL mode: members skipped because they have confirmed publications (authoritative runs). */
+    private int skippedConfirmed;
+    /** PROVISIONAL mode: members with no linked identifiers resolving to a canonical author. */
+    private int unresolved;
     private int rosterSize;
     private long durationMs;
 
@@ -41,5 +48,12 @@ public class OrgUnitReportRefreshEvent {
         DIVISION,
         DEPARTMENT,
         GROUP
+    }
+
+    public enum Mode {
+        /** Normal refresh through the researcher's CONFIRMED-publication path. */
+        CONFIRMED,
+        /** Provisional scoring from profile-linked identifiers (unvalidated authorship). */
+        PROVISIONAL
     }
 }

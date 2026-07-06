@@ -22,8 +22,10 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,6 +39,8 @@ class OrgUnitReportRefreshServiceTest {
     @Mock private UserIndividualReportRunService userIndividualReportRunService;
     @Mock private ReportingDataEpochService reportingDataEpochService;
     @Mock private OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
+    @Mock private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
+    @Mock private ProfileLinkedAuthorResolutionService profileLinkedAuthorResolutionService;
 
     @InjectMocks
     private OrgUnitReportRefreshService refreshService;
@@ -158,6 +162,120 @@ class OrgUnitReportRefreshServiceTest {
     }
 
     @Test
+    void refreshAllRecordsConfirmedModeOnItsEvent() {
+        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(member("ana@uvt.ro")));
+        when(userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
+                .thenReturn(Optional.empty());
+
+        refreshService.refreshAll(OrgUnitReportRefreshEvent.UnitType.DEPARTMENT, "dept-cs", "rep-1",
+                OrgUnitReportRefreshService.Scope.STALE, null, "admin@uvt.ro");
+
+        ArgumentCaptor<OrgUnitReportRefreshEvent> captor = ArgumentCaptor.forClass(OrgUnitReportRefreshEvent.class);
+        verify(orgUnitReportRefreshEventRepository).save(captor.capture());
+        assertEquals(OrgUnitReportRefreshEvent.Mode.CONFIRMED, captor.getValue().getMode());
+    }
+
+    @Test
+    void provisionalScoringSkipsMembersWithConfirmedPublications() {
+        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(
+                member("confirmed@uvt.ro"), member("unlinked@uvt.ro")));
+        when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("confirmed@uvt.ro"))
+                .thenReturn(true);
+        when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("unlinked@uvt.ro"))
+                .thenReturn(false);
+        when(profileLinkedAuthorResolutionService.resolveCanonicalAuthorIds(any()))
+                .thenReturn(List.of("sauth_1"));
+        when(userIndividualReportRunService.buildAndSaveProvisionalRun(
+                eq("unlinked@uvt.ro"), eq("rep-1"), eq(List.of("sauth_1")), eq("admin@uvt.ro")))
+                .thenReturn(Optional.of(runDto()));
+
+        OrgUnitReportRefreshService.ProvisionalScoreResult result = refreshService.scoreProvisionalUnlinked(
+                OrgUnitReportRefreshEvent.UnitType.DEPARTMENT, "dept-cs", "rep-1", null, "admin@uvt.ro");
+
+        assertEquals(1, result.scored());
+        assertEquals(1, result.skippedConfirmed());
+        assertEquals(0, result.unresolved());
+        verify(userIndividualReportRunService, never())
+                .buildAndSaveProvisionalRun(eq("confirmed@uvt.ro"), any(), any(), any());
+    }
+
+    @Test
+    void membersWithoutResolvableIdentifiersAreReportedNotScored() {
+        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(member("noids@uvt.ro")));
+        when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("noids@uvt.ro")).thenReturn(false);
+        when(profileLinkedAuthorResolutionService.resolveCanonicalAuthorIds(any())).thenReturn(List.of());
+
+        OrgUnitReportRefreshService.ProvisionalScoreResult result = refreshService.scoreProvisionalUnlinked(
+                OrgUnitReportRefreshEvent.UnitType.DEPARTMENT, "dept-cs", "rep-1", null, "admin@uvt.ro");
+
+        assertEquals(0, result.scored());
+        assertEquals(1, result.unresolved());
+        assertEquals(List.of("noids"), result.unresolvedNames());
+        verify(userIndividualReportRunService, never()).buildAndSaveProvisionalRun(any(), any(), any(), any());
+    }
+
+    @Test
+    void provisionalScoringAlwaysRescoresCandidatesAndIsolatesFailures() {
+        // boom's scoring explodes; ok has a provisional-latest run already — still re-scored.
+        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(
+                member("boom@uvt.ro"), member("ok@uvt.ro")));
+        when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring(any())).thenReturn(false);
+        when(profileLinkedAuthorResolutionService.resolveCanonicalAuthorIds(any()))
+                .thenReturn(List.of("sauth_1"));
+        when(userIndividualReportRunService.buildAndSaveProvisionalRun(
+                eq("boom@uvt.ro"), any(), any(), any()))
+                .thenThrow(new RuntimeException("scoring exploded"));
+        when(userIndividualReportRunService.buildAndSaveProvisionalRun(
+                eq("ok@uvt.ro"), any(), any(), any()))
+                .thenReturn(Optional.of(runDto()));
+
+        OrgUnitReportRefreshService.ProvisionalScoreResult result = refreshService.scoreProvisionalUnlinked(
+                OrgUnitReportRefreshEvent.UnitType.DEPARTMENT, "dept-cs", "rep-1", null, "admin@uvt.ro");
+
+        assertEquals(1, result.scored());
+        assertEquals(1, result.failed());
+    }
+
+    @Test
+    void provisionalBatchPersistsAnEventWithModeAndCounts() {
+        when(orgUnitRosterService.divisionRoster("div-fmi")).thenReturn(List.of(
+                member("confirmed@uvt.ro"), member("scored@uvt.ro"), member("noids@uvt.ro")));
+        when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("confirmed@uvt.ro")).thenReturn(true);
+        when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("scored@uvt.ro")).thenReturn(false);
+        when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("noids@uvt.ro")).thenReturn(false);
+        when(profileLinkedAuthorResolutionService.resolveCanonicalAuthorIds(argThat(p ->
+                p != null && "scored".equals(p.getFirstName())))).thenReturn(List.of("sauth_1"));
+        when(profileLinkedAuthorResolutionService.resolveCanonicalAuthorIds(argThat(p ->
+                p != null && "noids".equals(p.getFirstName())))).thenReturn(List.of());
+        when(userIndividualReportRunService.buildAndSaveProvisionalRun(any(), any(), any(), any()))
+                .thenReturn(Optional.of(runDto()));
+
+        refreshService.scoreProvisionalUnlinked(OrgUnitReportRefreshEvent.UnitType.DIVISION,
+                "div-fmi", "rep-1", "  first pass  ", "admin@uvt.ro");
+
+        ArgumentCaptor<OrgUnitReportRefreshEvent> captor = ArgumentCaptor.forClass(OrgUnitReportRefreshEvent.class);
+        verify(orgUnitReportRefreshEventRepository).save(captor.capture());
+        OrgUnitReportRefreshEvent event = captor.getValue();
+        assertEquals(OrgUnitReportRefreshEvent.Mode.PROVISIONAL, event.getMode());
+        assertEquals(1, event.getRefreshed());
+        assertEquals(1, event.getSkippedConfirmed());
+        assertEquals(1, event.getUnresolved());
+        assertEquals(3, event.getRosterSize());
+        assertEquals("first pass", event.getLabel());
+        assertEquals("admin@uvt.ro", event.getTriggeredByEmail());
+    }
+
+    @Test
+    void unknownReportFailsFastForProvisionalScoringToo() {
+        when(individualReportRepository.findById("nope")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> refreshService.scoreProvisionalUnlinked(
+                OrgUnitReportRefreshEvent.UnitType.DEPARTMENT, "dept-cs", "nope", null, "admin@uvt.ro"));
+        verify(orgUnitRosterService, never()).departmentRoster(any());
+    }
+
+    @Test
     void unknownReportFailsFastWithoutTouchingTheRoster() {
         when(individualReportRepository.findById("nope")).thenReturn(Optional.empty());
 
@@ -165,6 +283,14 @@ class OrgUnitReportRefreshServiceTest {
                 OrgUnitReportRefreshEvent.UnitType.DEPARTMENT, "dept-cs", "nope",
                 OrgUnitReportRefreshService.Scope.STALE, null, "admin@uvt.ro"));
         verify(orgUnitRosterService, never()).departmentRoster(any());
+    }
+
+    private static ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto runDto() {
+        return new ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto(
+                "run-1", "rep-1", java.util.List.of(), java.util.Map.of(), java.util.Map.of(),
+                Instant.parse("2026-07-07T10:00:00Z"),
+                ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto.Source.ADMIN_PROVISIONAL,
+                "admin@uvt.ro");
     }
 
     private static OrgUnitRosterService.RosterMember member(String email) {

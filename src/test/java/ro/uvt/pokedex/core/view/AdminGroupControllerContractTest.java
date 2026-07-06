@@ -453,6 +453,20 @@ class AdminGroupControllerContractTest {
     }
 
     @Test
+    void groupProvisionalScoringDelegatesAndRedirectsToViewRoute() throws Exception {
+        when(orgUnitReportRefreshService.scoreProvisionalUnlinked(
+                eq(ro.uvt.pokedex.core.model.reporting.OrgUnitReportRefreshEvent.UnitType.GROUP),
+                eq("g1"), eq("rep1"), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new OrgUnitReportRefreshService.ProvisionalScoreResult(
+                        2, 0, 0, 1, 3, 2000, List.of("Ana Pop")));
+
+        mockMvc.perform(post("/admin/groups/{gid}/reports/view/{id}/score-provisional", "g1", "rep1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups/g1/reports/view/rep1"))
+                .andExpect(flash().attributeExists("successMessage"));
+    }
+
+    @Test
     void groupIndividualReportViewRedirectsToGroupListWhenGroupMissing() throws Exception {
         when(groupReportFacade.buildGroupIndividualReportView("missing", "rep1", null))
                 .thenReturn(Optional.empty());
