@@ -446,6 +446,44 @@ class ComputerScienceJournalScoringServiceTest {
         assertEquals(8.0, score.getScore());
     }
 
+    @Test
+    void esciQuartilePlacementDoesNotScoreQuartilePoints() {
+        // ESCI cohorts carry quartiles in the data (AIS files + JCR 2023+ JIF), but the standard treats
+        // ESCI as "indexed, not core": the journal floors at C via the ESCI membership path instead.
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        indicator.setJournalBestQuartile2026(true);
+
+        ScoringPublication publication = publication("forum-esci", null, "ar", null);
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-esci");
+        forum.setIssn("2624-599X");
+        forum.setAggregationType("Journal");
+        when(lookupPort.getForum("forum-esci")).thenReturn(forum);
+
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        rank.setQAis(Map.of(2024, WoSRanking.Quarter.Q1));
+        rank.setRankAis(Map.of(2024, 1));
+        rank.setQIF(Map.of(2024, WoSRanking.Quarter.Q1));
+        rank.setRankIF(Map.of(2024, 1));
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("j-esci");
+        ranking.setWebOfScienceCategoryIndex(Map.of("ACOUSTICS - ESCI", rank));
+        when(lookupPort.getRankingsByIssn("2624-599X")).thenReturn(List.of(ranking));
+        when(lookupPort.isForumInEsci(org.mockito.ArgumentMatchers.eq("forum-esci"), org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(2.0, score.getScore());
+        assertEquals("C", score.getCoreRankingEquivalent());
+        // the fixture publication has a Scopus eid, so SCOPUS leads the reported index list; ESCI is included
+        assertEquals("SCOPUS", score.getQuarter());
+        assertEquals("SCOPUS+ESCI", score.getScoringSource());
+    }
+
     // --- 2026 rule: journal category = BEST of AIS and JIF quartile placements ---
 
     private Score scoreWithQuartiles(WoSRanking.Quarter qAis, WoSRanking.Quarter qIf, boolean bestOf2026) {

@@ -1,0 +1,32 @@
+{
+ "2025": {
+  "nextStart": 22644,
+  "totalCount": 22643,
+  "done": true
+ },
+ "2020": {
+  "nextStart": 20995,
+  "totalCount": 20994,
+  "done": true
+ },
+ "2021": {
+  "nextStart": 21495,
+  "totalCount": 21494,
+  "done": true
+ },
+ "2022": {
+  "nextStart": 21763,
+  "totalCount": 21762,
+  "done": true
+ },
+ "2023": {
+  "nextStart": 21974,
+  "totalCount": 21973,
+  "done": true
+ },
+ "2024": {
+  "nextStart": 22401,
+  "totalCount": 22400,
+  "done": true
+ }
+}

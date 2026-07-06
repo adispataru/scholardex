@@ -181,6 +181,13 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
 
     private Optional<Score> computeCSScore(
             WoSRanking ranking, int year, String category, WoSRanking.Rank rank, boolean bestOfAisIf) {
+        // Only SCIE/SSCI placements count as quartile categories for Informatică. ESCI/AHCI journals carry
+        // quartiles in the data (JCR ranks them since 2023, and the AIS files include ESCI cohorts), but the
+        // standard treats those editions as "indexed, not core" — they fall through to the ESCI/AHCI
+        // floor-at-C path in getScore instead of scoring Q1-Q4 points here.
+        if (!isCoreQuartileEdition(category)) {
+            return Optional.empty();
+        }
         // 2016 standard: classification by AIS quartile alone. 2026 standard: the journal takes the BEST of
         // its AIS and JIF placements for the resolved year (each metric ranked against its own cohort). The
         // comparison is per-year, so years without JIF data (our JCR IF ends 2019 for now) fall back to AIS.
@@ -205,6 +212,15 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         }
         // ties keep AIS (the primary metric) as the reported placement
         return ifScore.get().getScore() > aisScore.get().getScore() ? ifScore : aisScore;
+    }
+
+    /** The category index keys are "CATEGORY - EDITION"; quartile points only come from SCIE/SSCI. */
+    private boolean isCoreQuartileEdition(String categoryIndexKey) {
+        if (categoryIndexKey == null) {
+            return false;
+        }
+        String key = categoryIndexKey.trim().toUpperCase(java.util.Locale.ROOT);
+        return key.endsWith(" - SCIE") || key.endsWith(" - SSCI") || !key.contains(" - ");
     }
 
     private Optional<Score> scoreQuartilePlacement(
