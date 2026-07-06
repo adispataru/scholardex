@@ -156,8 +156,8 @@ public final class ReportingComputationSupport {
     }
 
     /**
-     * H68 slice 1: the single criterion-score computation, shared by every path (individual render/export, group
-     * runner, and the group {@code IndividualReportComputer}). Callers that hold scores keyed by {@link Indicator}
+     * H68 slice 1: the single criterion-score computation, shared by every path (individual render/export and the
+     * group runner). Callers that hold scores keyed by {@link Indicator}
      * object (rather than by id — their indicators may have null ids) delegate here so weights + the criterion cap
      * apply consistently — previously the group paths did a plain sum and silently ignored {@code weights}. Invalid
      * indicator indices are reported into {@code errors}.

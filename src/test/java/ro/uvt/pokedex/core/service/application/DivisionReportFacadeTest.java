@@ -3,26 +3,28 @@ package ro.uvt.pokedex.core.service.application;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.org.DepartmentAffiliation;
 import ro.uvt.pokedex.core.model.org.OrgDivision;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.repository.org.OrgDivisionRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
-import ro.uvt.pokedex.core.service.application.reporting.IndividualReportComputer;
+import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
 
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,16 +39,22 @@ class DivisionReportFacadeTest {
     @Mock private DepartmentAffiliationRepository departmentAffiliationRepository;
     @Mock private UserRepository userRepository;
     @Mock private IndividualReportRepository individualReportRepository;
-    @Mock private IndividualReportComputer individualReportComputer;
-    @Mock private ReportingLookupMemoization reportingLookupMemoization;
+    @Mock private UserIndividualReportRunRepository userIndividualReportRunRepository;
+    @Mock private ReportingDataEpochService reportingDataEpochService;
+    @Mock private ReportVisibilityService reportVisibilityService;
 
-    @InjectMocks
     private DivisionReportFacade facade;
 
     @BeforeEach
-    void passThroughMemoization() {
-        lenient().when(reportingLookupMemoization.withRefreshScope(any(Supplier.class)))
-                .thenAnswer(inv -> ((Supplier<?>) inv.getArgument(0)).get());
+    void wireFacade() {
+        // Real roster + rollup services over mocked repositories — the facade is just plumbing.
+        OrgUnitRosterService rosterService = new OrgUnitRosterService(
+                departmentRepository, departmentAffiliationRepository, userRepository);
+        OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(
+                userIndividualReportRunRepository, reportingDataEpochService);
+        facade = new DivisionReportFacade(orgDivisionRepository, individualReportRepository,
+                rosterService, rollupService, reportVisibilityService);
+        lenient().when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
     }
 
     @Test
@@ -69,13 +77,12 @@ class DivisionReportFacadeTest {
                 user("ana@uvt.ro", "Ana"),
                 user("ioana@uvt.ro", "Ioana")));
 
-        when(individualReportComputer.compute(any(), any())).thenReturn(
-                new IndividualReportComputer.Computation(
-                        List.of(
-                                new IndividualReportComputer.ResearcherScoreEntry("ana@uvt.ro", Map.of(0, 4.0)),
-                                new IndividualReportComputer.ResearcherScoreEntry("ioana@uvt.ro", Map.of(0, 6.0))),
-                        List.of(),
-                        Map.of()));
+        when(userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(run("run-ana", "ana@uvt.ro", Map.of(0, 4.0))));
+        when(userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ioana@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(run("run-ioana", "ioana@uvt.ro", Map.of(0, 6.0))));
 
         Optional<OrgUnitReportViewModel> view = facade.buildView("div-fmi", "rep-1");
 
@@ -89,6 +96,7 @@ class DivisionReportFacadeTest {
         assertEquals(Map.of(0, 6.0), vm.researcherScores().get("ioana@uvt.ro"));
         assertEquals("Computer Science", vm.departmentLabelByResearcher().get("ana@uvt.ro"));
         assertEquals("Mathematics", vm.departmentLabelByResearcher().get("ioana@uvt.ro"));
+        assertEquals(0, vm.membersWithoutRun());
     }
 
     @Test
@@ -109,10 +117,9 @@ class DivisionReportFacadeTest {
                 .thenReturn(List.of(affiliation("dept-math", "ana@uvt.ro")));
 
         when(userRepository.findAllById(any())).thenReturn(List.of(user("ana@uvt.ro", "Ana")));
-        when(individualReportComputer.compute(any(), any())).thenReturn(
-                new IndividualReportComputer.Computation(
-                        List.of(new IndividualReportComputer.ResearcherScoreEntry("ana@uvt.ro", Map.of(0, 4.0))),
-                        List.of(), Map.of()));
+        when(userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(run("run-ana", "ana@uvt.ro", Map.of(0, 4.0))));
 
         Optional<OrgUnitReportViewModel> view = facade.buildView("div-fmi", "rep-1");
 
@@ -124,6 +131,30 @@ class DivisionReportFacadeTest {
     }
 
     @Test
+    void membersWithoutARunShowNoScoresButStayInTheRoster() {
+        OrgDivision fmi = division("div-fmi", "FMI");
+        Department cs = department("dept-cs", "Computer Science");
+        IndividualReport report = report("rep-1");
+
+        when(orgDivisionRepository.findById("div-fmi")).thenReturn(Optional.of(fmi));
+        when(individualReportRepository.findById("rep-1")).thenReturn(Optional.of(report));
+        when(departmentRepository.findByDivisionId("div-fmi")).thenReturn(List.of(cs));
+        when(departmentAffiliationRepository.findByDepartmentIdAndValidToIsNull("dept-cs"))
+                .thenReturn(List.of(affiliation("dept-cs", "dan@uvt.ro")));
+        when(userRepository.findAllById(any())).thenReturn(List.of(user("dan@uvt.ro", "Dan")));
+        when(userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("dan@uvt.ro", "rep-1"))
+                .thenReturn(Optional.empty());
+
+        OrgUnitReportViewModel vm = facade.buildView("div-fmi", "rep-1").orElseThrow();
+
+        assertEquals(1, vm.researchers().size());
+        assertTrue(vm.researcherScores().isEmpty());
+        assertTrue(vm.runMetaByEmail().isEmpty());
+        assertEquals(1, vm.membersWithoutRun());
+    }
+
+    @Test
     void emptyDivisionStillProducesViewWithNoResearchers() {
         OrgDivision empty = division("div-empty", "Empty");
         IndividualReport report = report("rep-1");
@@ -131,8 +162,6 @@ class DivisionReportFacadeTest {
         when(orgDivisionRepository.findById("div-empty")).thenReturn(Optional.of(empty));
         when(individualReportRepository.findById("rep-1")).thenReturn(Optional.of(report));
         when(departmentRepository.findByDivisionId("div-empty")).thenReturn(List.of());
-        when(individualReportComputer.compute(any(), any())).thenReturn(
-                new IndividualReportComputer.Computation(List.of(), List.of(), Map.of()));
 
         OrgUnitReportViewModel vm = facade.buildView("div-empty", "rep-1").orElseThrow();
         assertTrue(vm.researchers().isEmpty());
@@ -175,5 +204,15 @@ class DivisionReportFacadeTest {
         r.setId(id);
         r.setTitle("Test report");
         return r;
+    }
+
+    private static UserIndividualReportRun run(String id, String email, Map<Integer, Double> criteriaScores) {
+        UserIndividualReportRun run = new UserIndividualReportRun();
+        run.setId(id);
+        run.setUserEmail(email);
+        run.setCreatedAt(Instant.parse("2026-07-01T10:00:00Z"));
+        run.setCriteriaScores(new HashMap<>(criteriaScores));
+        run.setStatus(UserIndividualReportRun.Status.READY);
+        return run;
     }
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.ReportingDataEpoch;
 
 import java.time.Instant;
+import java.util.Optional;
 
 /**
  * The reporting data epoch — see {@link ReportingDataEpoch}. {@code bump} is called by the deliberate
@@ -32,6 +33,13 @@ public class ReportingDataEpochService {
             ReportingDataEpoch doc = mongoTemplate.findById(ReportingDataEpoch.SINGLETON_ID, ReportingDataEpoch.class);
             return doc == null ? 0L : doc.getEpoch();
         });
+    }
+
+    /** The full epoch document (bump timestamp + reason), for staleness display; memoized like {@link #currentEpoch}. */
+    public Optional<ReportingDataEpoch> currentEpochInfo() {
+        return Optional.ofNullable(
+                reportingLookupMemoization.getOrCompute("userReport", "reportingDataEpochDoc", "singleton", () ->
+                        mongoTemplate.findById(ReportingDataEpoch.SINGLETON_ID, ReportingDataEpoch.class)));
     }
 
     /** Atomically increment the epoch (upserting the singleton) and record why. Returns the new value. */

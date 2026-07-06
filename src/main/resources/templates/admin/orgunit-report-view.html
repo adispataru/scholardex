@@ -20,11 +20,27 @@
                         <strong th:text="${vm.unitName}">unit</strong>:
                         report <strong th:text="${vm.report.title}">name</strong>,
                         <span th:text="${#lists.size(vm.researchers)}">0</span> researcher(s)
-                        currently affiliated.
+                        currently affiliated<th:block th:if="${vm.membersWithoutRun > 0}">,
+                        <span th:text="${vm.membersWithoutRun}">0</span> without a report run yet</th:block><th:block
+                        th:if="${vm.provisionalCount > 0}">,
+                        <span th:text="${vm.provisionalCount}">0</span> provisional</th:block>.
+                        <span class="text-muted">Scores are each researcher's latest report run
+                        (their confirmed publications) — the numbers they see in their own workspace.</span>
                     </p>
                     <div class="app-workflow__actions">
                         <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← All reports</a>
                     </div>
+                </div>
+
+                <div th:if="${vm.staleCount > 0}" class="alert alert-warning">
+                    <i class="fa-solid fa-clock-rotate-left mr-1"></i>
+                    <strong th:text="${vm.staleCount}">0</strong> of
+                    <span th:text="${#maps.size(vm.runMetaByEmail)}">0</span> runs predate the last
+                    data rebuild<th:block th:if="${vm.epochLastReason != null}">
+                    (<span th:text="${vm.epochLastReason}">reason</span><th:block
+                        th:if="${vm.epochUpdatedAt != null}">,
+                    <span th:text="${#temporals.format(vm.epochUpdatedAt, 'yyyy-MM-dd HH:mm')}">when</span></th:block>)</th:block>
+                    — their scores may not reflect the current data.
                 </div>
 
                 <div th:if="${!vm.buildErrors.isEmpty()}" class="alert alert-warning">
@@ -46,6 +62,7 @@
                                         <th th:if="${unitType == 'division'}">Department</th>
                                         <th th:each="crit, stat : ${vm.report.criteria}"
                                             th:text="${crit.name != null and !#strings.isEmpty(#strings.trim(crit.name)) ? crit.name : 'Criterion ' + (stat.index + 1)}">Criterion</th>
+                                        <th>Latest run</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -66,12 +83,26 @@
                                                    class="fa-solid fa-check text-success ml-1"></i>
                                             </th:block>
                                             <th:block th:unless="${scored}">
-                                                <span class="text-muted" title="No score — see compute warnings above">—</span>
+                                                <span class="text-muted" title="No report run yet for this researcher">—</span>
                                             </th:block>
+                                        </td>
+                                        <td th:with="meta=${vm.runMetaByEmail[researcher.email]}">
+                                            <th:block th:if="${meta != null}">
+                                                <span class="text-nowrap"
+                                                      th:text="${meta.createdAt != null ? #temporals.format(meta.createdAt, 'yyyy-MM-dd') : '—'}">date</span>
+                                                <span th:if="${meta.provisional}" class="badge badge-info ml-1"
+                                                      title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">provisional</span>
+                                                <span th:if="${meta.stale}" class="badge badge-warning ml-1"
+                                                      title="Run predates the last data rebuild">stale</span>
+                                                <span th:if="${meta.status != null and meta.status.name() != 'READY'}"
+                                                      class="badge badge-secondary ml-1"
+                                                      th:text="${#strings.toLowerCase(meta.status.name())}">status</span>
+                                            </th:block>
+                                            <span th:if="${meta == null}" class="text-muted" title="No report run yet">no run</span>
                                         </td>
                                     </tr>
                                     <tr th:if="${vm.researchers.isEmpty()}" class="app-admin-empty-row">
-                                        <td th:colspan="${unitType == 'division' ? #lists.size(vm.report.criteria) + 3 : #lists.size(vm.report.criteria) + 2}">
+                                        <td th:colspan="${unitType == 'division' ? #lists.size(vm.report.criteria) + 4 : #lists.size(vm.report.criteria) + 3}">
                                             <th:block th:replace="~{fragments :: admin-empty-state(
                                                 'fa-solid fa-people-line',
                                                 'No researchers affiliated',

@@ -3,28 +3,29 @@ package ro.uvt.pokedex.core.service.application;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.org.DepartmentAffiliation;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
-import ro.uvt.pokedex.core.service.application.reporting.IndividualReportComputer;
+import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
 
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -35,17 +36,22 @@ class DepartmentReportFacadeTest {
     @Mock private DepartmentAffiliationRepository departmentAffiliationRepository;
     @Mock private UserRepository userRepository;
     @Mock private IndividualReportRepository individualReportRepository;
-    @Mock private IndividualReportComputer individualReportComputer;
-    @Mock private ReportingLookupMemoization reportingLookupMemoization;
+    @Mock private UserIndividualReportRunRepository userIndividualReportRunRepository;
+    @Mock private ReportingDataEpochService reportingDataEpochService;
+    @Mock private ReportVisibilityService reportVisibilityService;
 
-    @InjectMocks
     private DepartmentReportFacade facade;
 
     @BeforeEach
-    void passThroughMemoization() {
-        // The memoization wrapper just runs the supplier in test contexts.
-        lenient().when(reportingLookupMemoization.withRefreshScope(any(Supplier.class)))
-                .thenAnswer(inv -> ((Supplier<?>) inv.getArgument(0)).get());
+    void wireFacade() {
+        // Real roster + rollup services over mocked repositories — the facade is just plumbing.
+        OrgUnitRosterService rosterService = new OrgUnitRosterService(
+                departmentRepository, departmentAffiliationRepository, userRepository);
+        OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(
+                userIndividualReportRunRepository, reportingDataEpochService);
+        facade = new DepartmentReportFacade(departmentRepository, individualReportRepository,
+                rosterService, rollupService, reportVisibilityService);
+        lenient().when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
     }
 
     @Test
@@ -65,24 +71,26 @@ class DepartmentReportFacadeTest {
     }
 
     @Test
-    void buildViewResolvesResearchersThroughCurrentAffiliationsAndDelegatesToComputer() {
+    void buildViewResolvesResearchersThroughCurrentAffiliationsAndReadsTheirLatestRuns() {
         Department cs = department("dept-cs", "Computer Science");
         IndividualReport report = report("rep-1");
-        DepartmentAffiliation a1 = affiliation("dept-cs", "ana@uvt.ro");
-        DepartmentAffiliation a2 = affiliation("dept-cs", "dan@uvt.ro");
         User ana = user("ana@uvt.ro", "Ana");
         User dan = user("dan@uvt.ro", "Dan");
 
         when(departmentRepository.findById("dept-cs")).thenReturn(Optional.of(cs));
         when(individualReportRepository.findById("rep-1")).thenReturn(Optional.of(report));
         when(departmentAffiliationRepository.findByDepartmentIdAndValidToIsNull("dept-cs"))
-                .thenReturn(List.of(a1, a2));
+                .thenReturn(List.of(affiliation("dept-cs", "ana@uvt.ro"), affiliation("dept-cs", "dan@uvt.ro")));
         when(userRepository.findAllById(any())).thenReturn(List.of(ana, dan));
-        when(individualReportComputer.compute(any(), eq(report))).thenReturn(
-                new IndividualReportComputer.Computation(
-                        List.of(new IndividualReportComputer.ResearcherScoreEntry("ana@uvt.ro", Map.of(0, 8.0))),
-                        List.of("No authors found for Dan"),
-                        Map.of(0, Map.of("PROF_UNIV", 5.0))));
+
+        UserIndividualReportRun anaRun = run("run-ana", "ana@uvt.ro", Map.of(0, 8.0));
+        anaRun.setBuildErrors(List.of("No authors found"));
+        when(userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(anaRun));
+        when(userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("dan@uvt.ro", "rep-1"))
+                .thenReturn(Optional.empty());
 
         Optional<OrgUnitReportViewModel> view = facade.buildView("dept-cs", "rep-1");
 
@@ -92,10 +100,12 @@ class DepartmentReportFacadeTest {
         assertEquals("Computer Science", vm.unitName());
         assertEquals(List.of("Ana", "Dan"),
                 vm.researchers().stream().map(u -> u.getResearcherProfile().getName().trim()).toList());
-        // Ana scored; Dan didn't — only Ana's email is in the score map.
+        // Ana has a run; Dan doesn't — only Ana's email is in the score map.
         assertEquals(Map.of(0, 8.0), vm.researcherScores().get("ana@uvt.ro"));
         assertFalse(vm.researcherScores().containsKey("dan@uvt.ro"));
-        assertEquals(List.of("No authors found for Dan"), vm.buildErrors());
+        // Per-member run errors are name-prefixed for the unit-level warning list.
+        assertEquals(List.of("Ana: No authors found"), vm.buildErrors());
+        assertEquals(1, vm.membersWithoutRun());
         // departmentLabelByResearcher stays empty for department views.
         assertTrue(vm.departmentLabelByResearcher().isEmpty());
     }
@@ -107,8 +117,6 @@ class DepartmentReportFacadeTest {
         when(individualReportRepository.findById("rep-1")).thenReturn(Optional.of(report("rep-1")));
         when(departmentAffiliationRepository.findByDepartmentIdAndValidToIsNull("dept-cs"))
                 .thenReturn(List.of());
-        when(individualReportComputer.compute(any(), any())).thenReturn(
-                new IndividualReportComputer.Computation(List.of(), List.of(), Map.of()));
 
         Optional<OrgUnitReportViewModel> view = facade.buildView("dept-cs", "rep-1");
 
@@ -145,5 +153,15 @@ class DepartmentReportFacadeTest {
         r.setId(id);
         r.setTitle("Test report");
         return r;
+    }
+
+    private static UserIndividualReportRun run(String id, String email, Map<Integer, Double> criteriaScores) {
+        UserIndividualReportRun run = new UserIndividualReportRun();
+        run.setId(id);
+        run.setUserEmail(email);
+        run.setCreatedAt(Instant.parse("2026-07-01T10:00:00Z"));
+        run.setCriteriaScores(new HashMap<>(criteriaScores));
+        run.setStatus(UserIndividualReportRun.Status.READY);
+        return run;
     }
 }

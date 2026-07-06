@@ -5,37 +5,29 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.org.DepartmentAffiliation;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
-import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.UserRepository;
-import ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
-import ro.uvt.pokedex.core.service.application.reporting.IndividualReportComputer;
+import ro.uvt.pokedex.core.service.application.reporting.OrgUnitRunRollupService;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
  * Department-level roll-up of an {@link IndividualReport}. Researchers are resolved through
  * the current (validTo == null) {@link DepartmentAffiliation} entries, so joint appointments
  * count toward every department they're currently affiliated with — which is what the
- * "every faculty/department report" semantics demand.
+ * "every faculty/department report" semantics demand. Scores come from each member's latest
+ * persisted report run (what the researcher sees in their workspace) — the view never recomputes.
  */
 @Service
 @RequiredArgsConstructor
 public class DepartmentReportFacade {
 
     private final DepartmentRepository departmentRepository;
-    private final DepartmentAffiliationRepository departmentAffiliationRepository;
-    private final UserRepository userRepository;
     private final IndividualReportRepository individualReportRepository;
-    private final IndividualReportComputer individualReportComputer;
-    private final ReportingLookupMemoization reportingLookupMemoization;
+    private final OrgUnitRosterService orgUnitRosterService;
+    private final OrgUnitRunRollupService orgUnitRunRollupService;
     private final ReportVisibilityService reportVisibilityService;
 
     /**
@@ -62,42 +54,9 @@ public class DepartmentReportFacade {
         Department department = deptOpt.get();
         IndividualReport report = reportOpt.get();
 
-        List<User> researchers = loadResearchers(departmentId);
-
-        IndividualReportComputer.Computation computation = reportingLookupMemoization.withRefreshScope(
-                () -> individualReportComputer.compute(researchers, report));
-
-        Map<String, Map<Integer, Double>> scoresByEmail = new LinkedHashMap<>();
-        for (User u : researchers) {
-            for (IndividualReportComputer.ResearcherScoreEntry entry : computation.researcherScores()) {
-                if (u.getEmail() != null && u.getEmail().equals(entry.userId())) {
-                    scoresByEmail.put(u.getEmail(), entry.criterionScores());
-                    break;
-                }
-            }
-        }
-
-        return Optional.of(new OrgUnitReportViewModel(
-                department.getId(),
-                department.getName(),
-                report,
-                researchers,
-                scoresByEmail,
-                computation.criteriaThresholds(),
-                computation.errors(),
-                Map.of()));
-    }
-
-    /** Researchers currently affiliated with the department, sorted by display name. */
-    List<User> loadResearchers(String departmentId) {
-        List<DepartmentAffiliation> affiliations =
-                departmentAffiliationRepository.findByDepartmentIdAndValidToIsNull(departmentId);
-        if (affiliations.isEmpty()) return List.of();
-        java.util.LinkedHashSet<String> userIds = new java.util.LinkedHashSet<>();
-        for (DepartmentAffiliation a : affiliations) userIds.add(a.getUserId());
-        java.util.List<User> researchers = new java.util.ArrayList<>(userRepository.findAllById(userIds));
-        researchers.removeIf(u -> u.getResearcherProfile() == null);
-        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
-        return researchers;
+        List<OrgUnitRosterService.RosterMember> members = orgUnitRosterService.departmentRoster(departmentId);
+        OrgUnitRunRollupService.OrgUnitRunRollup rollup = orgUnitRunRollupService.rollup(members, report);
+        return Optional.of(orgUnitRunRollupService.toViewModel(
+                department.getId(), department.getName(), report, rollup));
     }
 }
