@@ -28,9 +28,26 @@
                         (their confirmed publications) — the numbers they see in their own workspace.</span>
                     </p>
                     <div class="app-workflow__actions">
+                        <form th:if="${unitType != 'group'}" method="post" class="d-inline"
+                              th:action="@{'/admin/' + ${unitType} + 's/' + ${vm.unitId} + '/reports/' + ${vm.report.id} + '/refresh-all'}">
+                            <input type="hidden" name="scope" value="stale"/>
+                            <button type="submit" class="btn btn-primary btn-sm"
+                                    title="Recompute runs that are missing or predate the last data rebuild">
+                                <i class="fa-solid fa-rotate mr-1"></i>Refresh stale runs
+                            </button>
+                        </form>
+                        <form th:if="${unitType != 'group'}" method="post" class="d-inline"
+                              th:action="@{'/admin/' + ${unitType} + 's/' + ${vm.unitId} + '/reports/' + ${vm.report.id} + '/refresh-all'}">
+                            <input type="hidden" name="scope" value="all"/>
+                            <button type="submit" class="btn btn-outline-primary btn-sm"
+                                    title="Recompute every member's run (may take minutes for large units)">Refresh all</button>
+                        </form>
                         <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← All reports</a>
                     </div>
                 </div>
+
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
                 <div th:if="${vm.staleCount > 0}" class="alert alert-warning">
                     <i class="fa-solid fa-clock-rotate-left mr-1"></i>
