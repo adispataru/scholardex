@@ -57,6 +57,7 @@ class WosProjectionBuilderServiceTest {
     @Mock private WosIndexMaintenanceService wosIndexMaintenanceService;
     @Mock private JdbcTemplate jdbcTemplate;
     @Mock private PlatformTransactionManager transactionManager;
+    @Mock private ro.uvt.pokedex.core.service.application.ReportingDataEpochService reportingDataEpochService;
 
     @Test
     void rebuildCreatesProjectionRowsWithStableContracts() {
@@ -652,7 +653,8 @@ class WosProjectionBuilderServiceTest {
                 wosIndexMaintenanceService,
                 properties,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
     }
 

@@ -146,7 +146,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 indicatorRepository,
                 userService,
                 userReportFacade,
-                payloadSerializer
+                payloadSerializer,
+                org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.application.ReportingDataEpochService.class)
         );
         userIndividualReportRunService = new UserIndividualReportRunService(
                 userIndividualReportRunRepository,

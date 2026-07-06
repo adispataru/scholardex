@@ -203,7 +203,8 @@ class WosAdminInitializationWorkflowIntegrationTest {
                 indexMaintenanceService,
                 optimizationProperties,
                 jdbcTemplate,
-                txManager
+                txManager,
+                org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.application.ReportingDataEpochService.class)
         );
         WosParityReconciliationService parityReconciliationService = new WosParityReconciliationService(
                 new DefaultResourceLoader(),

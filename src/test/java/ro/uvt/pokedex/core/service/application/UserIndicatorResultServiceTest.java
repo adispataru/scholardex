@@ -45,6 +45,8 @@ class UserIndicatorResultServiceTest {
     private UserService userService;
     @Mock
     private UserReportFacade userReportFacade;
+    @Mock
+    private ReportingDataEpochService reportingDataEpochService;
 
     private UserIndicatorResultService service;
 
@@ -55,7 +57,8 @@ class UserIndicatorResultServiceTest {
                 indicatorRepository,
                 userService,
                 userReportFacade,
-                new IndicatorPayloadSerializer(new ObjectMapper())
+                new IndicatorPayloadSerializer(new ObjectMapper()),
+                reportingDataEpochService
         );
     }
 
@@ -71,7 +74,7 @@ class UserIndicatorResultServiceTest {
         persisted.setId("r1");
         persisted.setIndicatorId("ind-1");
         persisted.setMode(UserIndicatorResult.Mode.LATEST);
-        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance");
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
         persisted.setViewName("user/indicators-apply-publications");
         persisted.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(Map.of("total", "1.00")));
         persisted.setCreatedAt(Instant.now());
@@ -86,6 +89,41 @@ class UserIndicatorResultServiceTest {
         assertEquals("r1", dto.resultId());
         assertEquals(IndicatorApplyResultDto.Source.PERSISTED, dto.source());
         verify(userReportFacade, times(0)).buildIndicatorApplyView(any(), any());
+    }
+
+    @Test
+    void getOrCreateLatestRecomputesWhenDataEpochAdvances() {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
+        indicator.setFormula("S");
+
+        // Cached at data epoch 0; a rebuild has since bumped the epoch to 1.
+        UserIndicatorResult persisted = new UserIndicatorResult();
+        persisted.setId("r1");
+        persisted.setIndicatorId("ind-1");
+        persisted.setMode(UserIndicatorResult.Mode.LATEST);
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+        persisted.setCreatedAt(Instant.now());
+        persisted.setUpdatedAt(Instant.now());
+        when(reportingDataEpochService.currentEpoch()).thenReturn(1L);
+
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-1", UserIndicatorResult.Mode.LATEST))
+                .thenReturn(Optional.of(persisted));
+        when(userReportFacade.buildIndicatorApplyView("u@uvt.ro", "ind-1"))
+                .thenReturn(new UserIndicatorApplyViewModel("user/indicators-apply-publications",
+                        Map.of("indicator", indicator, "total", "3.00", "allQuarters", List.of(), "allValues", List.of())));
+        when(userIndicatorResultRepository.save(any(UserIndicatorResult.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        IndicatorApplyResultDto dto = service.getOrCreateLatest("u@uvt.ro", "ind-1");
+
+        assertEquals(IndicatorApplyResultDto.Source.COMPUTED, dto.source());
+        ArgumentCaptor<UserIndicatorResult> captor = ArgumentCaptor.forClass(UserIndicatorResult.class);
+        verify(userIndicatorResultRepository).save(captor.capture());
+        assertEquals("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-1",
+                captor.getValue().getFingerprint());
     }
 
     @Test
@@ -269,7 +307,7 @@ class UserIndicatorResultServiceTest {
         latest.setId("latest");
         latest.setIndicatorId("ind-1");
         latest.setMode(UserIndicatorResult.Mode.LATEST);
-        latest.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance");
+        latest.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
         latest.setViewName("user/indicators");
         latest.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(Map.of("total", "1.00")));
         latest.setRefreshVersion(9);
@@ -310,7 +348,7 @@ class UserIndicatorResultServiceTest {
         persisted.setId("r2");
         persisted.setIndicatorId("ind-1");
         persisted.setMode(UserIndicatorResult.Mode.LATEST);
-        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance");
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
         persisted.setViewName("user/indicators-apply-publications");
         persisted.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(
                 Map.of("total", "1.00", "scores", Map.of("Paper", score))
@@ -496,7 +534,7 @@ class UserIndicatorResultServiceTest {
         assertEquals(UserIndicatorResult.SourceType.APPLY_PAGE, saved.getSourceType());
         assertEquals(null, saved.getSourceReportId());
         assertEquals(UserIndicatorResult.Mode.LATEST, saved.getMode());
-        assertEquals("ind-existing|PUBLICATIONS|GENERIC_COUNT|||||payload-v2-scoring-provenance", saved.getFingerprint());
+        assertEquals("ind-existing|PUBLICATIONS|GENERIC_COUNT|||||payload-v2-scoring-provenance|data-epoch-0", saved.getFingerprint());
     }
 
     @Test
@@ -529,6 +567,6 @@ class UserIndicatorResultServiceTest {
 
         ArgumentCaptor<UserIndicatorResult> captor = ArgumentCaptor.forClass(UserIndicatorResult.class);
         verify(userIndicatorResultRepository).save(captor.capture());
-        assertEquals("ind-null-segments|||||||payload-v2-scoring-provenance", captor.getValue().getFingerprint());
+        assertEquals("ind-null-segments|||||||payload-v2-scoring-provenance|data-epoch-0", captor.getValue().getFingerprint());
     }
 }

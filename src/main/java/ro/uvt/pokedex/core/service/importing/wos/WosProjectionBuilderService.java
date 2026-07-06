@@ -21,6 +21,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
+import ro.uvt.pokedex.core.service.application.ReportingDataEpochService;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
@@ -55,6 +56,7 @@ public class WosProjectionBuilderService {
     private final WosOptimizationProperties optimizationProperties;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
+    private final ReportingDataEpochService reportingDataEpochService;
 
     public WosProjectionBuilderService(
             WosJournalIdentityRepository identityRepository,
@@ -62,7 +64,8 @@ public class WosProjectionBuilderService {
             WosIndexMaintenanceService wosIndexMaintenanceService,
             WosOptimizationProperties optimizationProperties,
             JdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            ReportingDataEpochService reportingDataEpochService
     ) {
         this.identityRepository = identityRepository;
         this.mongoTemplate = mongoTemplate;
@@ -70,6 +73,7 @@ public class WosProjectionBuilderService {
         this.optimizationProperties = optimizationProperties;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.reportingDataEpochService = reportingDataEpochService;
     }
 
     public ImportProcessingResult rebuildWosProjections() {
@@ -205,7 +209,15 @@ public class WosProjectionBuilderService {
             result.markError("projection-rebuild-error=" + e.getMessage());
             log.error("WoS projection rebuild failed", e);
         }
+        bumpEpochOnSuccess(result, "wos-projection-full-rebuild");
         return result;
+    }
+
+    /** A successful projection write means the reporting data changed — invalidate cached indicator results. */
+    private void bumpEpochOnSuccess(ImportProcessingResult result, String reason) {
+        if (result.getErrorCount() == 0) {
+            reportingDataEpochService.bump(reason);
+        }
     }
 
     /**
@@ -321,6 +333,7 @@ public class WosProjectionBuilderService {
             result.markError("projection-rebuild-error=" + e.getMessage());
             log.error("WoS scoped projection rebuild failed: journalCount={}", journalIds.size(), e);
         }
+        bumpEpochOnSuccess(result, "wos-projection-journal-scoped-rebuild");
         return result;
     }
 
@@ -427,6 +440,7 @@ public class WosProjectionBuilderService {
                     e
             );
         }
+        bumpEpochOnSuccess(result, "wos-projection-slice-scoped-rebuild");
         return result;
     }
 

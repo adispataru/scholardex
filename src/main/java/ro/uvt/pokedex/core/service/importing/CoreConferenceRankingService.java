@@ -28,6 +28,7 @@ public class CoreConferenceRankingService {
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
 
     private final CacheService cacheService;
+    private final ro.uvt.pokedex.core.service.application.ReportingDataEpochService reportingDataEpochService;
     @Async("taskExecutor")
     public void loadRankingsFromCSV(String directoryPath) {
         loadRankingsFromCSVSync(directoryPath);
@@ -92,6 +93,10 @@ public class CoreConferenceRankingService {
                 totalResult.getSkippedCount(),
                 totalResult.getErrorCount(),
                 totalResult.getErrorsSample());
+        if (totalResult.getImportedCount() > 0) {
+            // Conference rankings feed the CS scorers — invalidate cached indicator results.
+            reportingDataEpochService.bump("core-conference-rankings-import");
+        }
     }
 
     private void updateRankingFromRow(String[] row, int year) {

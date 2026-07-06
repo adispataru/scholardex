@@ -35,7 +35,7 @@ class CoreConferenceRankingServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CoreConferenceRankingService(repository, cacheService);
+        service = new CoreConferenceRankingService(repository, cacheService, org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.application.ReportingDataEpochService.class));
         cache = new ArrayList<>();
         lenient().when(cacheService.getCachedConfRankings(any())).thenReturn(cache);
     }

@@ -112,7 +112,8 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 Mockito.mock(WosIndexMaintenanceService.class),
                 optimizationProperties,
                 jdbcTemplate,
-                txManager
+                txManager,
+                org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.application.ReportingDataEpochService.class)
         );
 
         ScholardexProjectionBuilderService scopusBuilder = new ScholardexProjectionBuilderService(
@@ -128,7 +129,8 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                txManager
+                txManager,
+                org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.application.ReportingDataEpochService.class)
         );
 
         PostgresReportingProjectionProperties properties = new PostgresReportingProjectionProperties();

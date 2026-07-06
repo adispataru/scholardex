@@ -94,7 +94,8 @@ class WosProjectionBuilderServiceIntegrationTest {
                 Mockito.mock(WosIndexMaintenanceService.class),
                 props,
                 jdbcTemplate,
-                txManager
+                txManager,
+                org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.application.ReportingDataEpochService.class)
         );
     }
 

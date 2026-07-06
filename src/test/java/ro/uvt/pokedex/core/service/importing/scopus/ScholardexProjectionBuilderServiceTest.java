@@ -92,6 +92,8 @@ class ScholardexProjectionBuilderServiceTest {
     private JdbcTemplate jdbcTemplate;
     @Mock
     private PlatformTransactionManager transactionManager;
+    @Mock
+    private ro.uvt.pokedex.core.service.application.ReportingDataEpochService reportingDataEpochService;
 
     @Test
     void toForumViewMapsAllCoreFields() {
@@ -280,7 +282,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -331,7 +334,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -411,7 +415,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -448,7 +453,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -496,7 +502,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -545,7 +552,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -580,7 +588,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -642,7 +651,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -708,7 +718,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -769,7 +780,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -865,7 +877,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -939,7 +952,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -989,7 +1003,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -1059,7 +1074,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -1198,7 +1214,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -1377,7 +1394,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -1476,7 +1494,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
@@ -1717,7 +1736,8 @@ class ScholardexProjectionBuilderServiceTest {
                 wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
-                transactionManager
+                transactionManager,
+                reportingDataEpochService
         );
     }
 }

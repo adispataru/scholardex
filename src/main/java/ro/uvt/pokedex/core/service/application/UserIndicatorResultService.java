@@ -25,6 +25,7 @@ public class UserIndicatorResultService {
     private final UserService userService;
     private final UserReportFacade userReportFacade;
     private final IndicatorPayloadSerializer payloadSerializer;
+    private final ReportingDataEpochService reportingDataEpochService;
 
     public IndicatorApplyResultDto getOrCreateLatest(String userEmail, String indicatorId) {
         Optional<UserIndicatorResult> existing = userIndicatorResultRepository
@@ -189,7 +190,11 @@ public class UserIndicatorResultService {
                 ind.getYearRange() == null ? "" : ind.getYearRange(),
                 ind.getScoreYearRange() == null ? "" : ind.getScoreYearRange(),
                 ind.getSelector() == null ? "" : ind.getSelector(),
-                PAYLOAD_VERSION
+                PAYLOAD_VERSION,
+                // Data-epoch segment: bumped by every reporting-data rebuild (projections, MV refresh,
+                // forum reconcile, CORE import), so cached LATEST results self-invalidate on the next
+                // view after a rebuild instead of serving pre-rebuild scores until a manual refresh.
+                "data-epoch-" + reportingDataEpochService.currentEpoch()
         );
     }
 

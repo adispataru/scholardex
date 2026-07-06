@@ -37,6 +37,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosCoverageFact;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository;
+import ro.uvt.pokedex.core.service.application.ReportingDataEpochService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.sql.Array;
@@ -102,6 +103,7 @@ public class ScholardexProjectionBuilderService {
     private final MongoTemplate mongoTemplate;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
+    private final ReportingDataEpochService reportingDataEpochService;
 
     public ScholardexProjectionBuilderService(
             ScholardexForumFactRepository canonicalForumFactRepository,
@@ -116,7 +118,8 @@ public class ScholardexProjectionBuilderService {
             WosCoverageFactRepository wosCoverageFactRepository,
             MongoTemplate mongoTemplate,
             JdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            ReportingDataEpochService reportingDataEpochService
     ) {
         this.canonicalForumFactRepository = canonicalForumFactRepository;
         this.authorFactRepository = authorFactRepository;
@@ -131,6 +134,7 @@ public class ScholardexProjectionBuilderService {
         this.mongoTemplate = mongoTemplate;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.reportingDataEpochService = reportingDataEpochService;
     }
 
     public ImportProcessingResult rebuildViews() {
@@ -301,7 +305,15 @@ public class ScholardexProjectionBuilderService {
             result.markError("scopus-projection-rebuild-error=" + e.getMessage());
             log.error("Scopus projection rebuild failed", e);
         }
+        bumpEpochOnSuccess(result, "scopus-projection-full-rebuild");
         return result;
+    }
+
+    /** A successful projection write means the reporting data changed — invalidate cached indicator results. */
+    private void bumpEpochOnSuccess(ImportProcessingResult result, String reason) {
+        if (result.getErrorCount() == 0) {
+            reportingDataEpochService.bump(reason);
+        }
     }
 
     public ImportProcessingResult rebuildViewsForBatch(String sourceBatchId) {
@@ -341,6 +353,7 @@ public class ScholardexProjectionBuilderService {
             result.markError("scopus-projection-batch-rebuild-error=" + e.getMessage());
             log.error("Scopus projection batch rebuild failed: sourceBatchId={}", sourceBatchId, e);
         }
+        bumpEpochOnSuccess(result, "scopus-projection-batch-rebuild");
         return result;
     }
 
