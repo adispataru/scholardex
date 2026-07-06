@@ -33,6 +33,20 @@ def clean(value):
     return None if s in ("", "N/A", "n/a") else s
 
 
+def clean_metric(value):
+    """JCR reports sub-threshold JIFs as "<0.1" — map to 0.05 so those journals stay in the cohort
+    (the ingest's number parser would otherwise drop them, shrinking quartile/rank denominators)."""
+    s = clean(value)
+    if s is None:
+        return None
+    if s.startswith("<"):
+        try:
+            return str(float(s[1:]) / 2)
+        except ValueError:
+            return None
+    return s
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--years", default="2020-2025")
@@ -55,8 +69,8 @@ def main():
                 continue
             rows += 1
             row = json.loads(line)
-            jif = clean(row.get("jif2019"))
-            ais = clean(row.get("articleInfluenceScore"))
+            jif = clean_metric(row.get("jif2019"))
+            ais = clean_metric(row.get("articleInfluenceScore"))
             for cq in row.get("categoryQuartiles") or []:
                 edition = clean(cq.get("edition"))
                 category = clean(cq.get("category"))
