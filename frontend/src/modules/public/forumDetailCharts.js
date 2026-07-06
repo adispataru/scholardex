@@ -86,12 +86,9 @@ function renderCategoryHeatmap(container, entry, years) {
       rankMap: getField(entry, ['rankAis', 'rankAIS']),
       quartileRankMap: getField(entry, ['quartileRankAis', 'quartileRankAIS'])
     },
-    {
-      label: 'RIS',
-      quarterMap: getField(entry, ['qris', 'qRis']),
-      rankMap: getField(entry, ['rankRis', 'rankRIS']),
-      quartileRankMap: getField(entry, ['quartileRankRis', 'quartileRankRIS'])
-    },
+    // RIS is intentionally absent: it is AIS scaled by the category median (a monotone within-category
+    // transform), so its quartiles equal the AIS quartiles — and the RIS source files carry no category
+    // column, so the row could only ever render empty cells.
     {
       label: 'IF',
       quarterMap: getField(entry, ['qif', 'qIF']),
@@ -147,8 +144,6 @@ function renderForumDetailCharts() {
     const category = categoryData[categoryKey] || {};
     collectYearKeys(category.qAis, yearSet);
     collectYearKeys(category.rankAis, yearSet);
-    collectYearKeys(category.qRis, yearSet);
-    collectYearKeys(category.rankRis, yearSet);
     collectYearKeys(category.qif, yearSet);
     collectYearKeys(category.qIF, yearSet);
     collectYearKeys(category.rankIf, yearSet);
