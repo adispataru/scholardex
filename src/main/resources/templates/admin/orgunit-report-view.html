@@ -232,11 +232,14 @@
                                                            and vm.criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()] != null
                                                            and vm.researcherScores[researcher.email][stat.index] >= vm.criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()]}"
                                                    class="fa-solid fa-check text-success ml-1"></i>
-                                                <span th:with="d=${vm.delta != null and vm.delta.deltasByEmail[researcher.email] != null
-                                                                   ? vm.delta.deltasByEmail[researcher.email][stat.index] : null}"
-                                                      th:if="${d != null}"
-                                                      th:class="${d > 0 ? 'badge badge-success ml-1' : 'badge badge-danger ml-1'}"
-                                                      th:text="${(d > 0 ? '+' : '−') + #numbers.formatDecimal(d > 0 ? d : -d, 1, 2)}">+0.00</span>
+                                                <!-- th:if outranks th:with on the same element (300 vs 600), so the variable
+                                                     must be bound on a wrapping block for the guard to see it. -->
+                                                <th:block th:with="d=${vm.delta != null and vm.delta.deltasByEmail[researcher.email] != null
+                                                                      ? vm.delta.deltasByEmail[researcher.email][stat.index] : null}">
+                                                    <span th:if="${d != null}"
+                                                          th:class="${d > 0 ? 'badge badge-success ml-1' : 'badge badge-danger ml-1'}"
+                                                          th:text="${(d > 0 ? '+' : '−') + #numbers.formatDecimal(d > 0 ? d : -d, 1, 2)}">+0.00</span>
+                                                </th:block>
                                             </th:block>
                                             <th:block th:unless="${scored}">
                                                 <span class="text-muted" title="No report run yet for this researcher">—</span>

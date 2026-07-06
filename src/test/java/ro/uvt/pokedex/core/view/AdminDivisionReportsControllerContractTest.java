@@ -72,19 +72,30 @@ class AdminDivisionReportsControllerContractTest {
     }
 
     @Test
-    void compareToParamIsPlumbedThroughToTheFacade() throws Exception {
-        Instant compareTo = Instant.parse("2026-07-01T10:00:00Z");
-        OrgUnitReportViewModel vm = sampleVm();
+    void compareModeRendersSignedDeltaBadgesOnScoreCells() throws Exception {
+        // Regression: th:if outranks th:with on the same element, which once made the badge
+        // silently never render — assert the actual markup, not just a 200.
+        Instant compareTo = Instant.parse("2026-07-01T09:00:00Z");
+        OrgUnitReportViewModel vm = sampleVm(compareTo);
         when(divisionReportFacade.buildView(eq("div-1"), eq("rep-1"), eq(compareTo)))
                 .thenReturn(Optional.of(vm));
 
-        mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1")
-                        .param("compareTo", "2026-07-01T10:00:00Z"))
-                .andExpect(status().isOk());
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1")
+                        .param("compareTo", "2026-07-01T09:00:00Z"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(html.contains("Comparing each member"));
+        // Current 6.0 vs baseline 2.0 → +4.00 badge on the score cell.
+        assertTrue(html.matches("(?s).*badge badge-success ml-1\">\\+4[.,]00.*"));
+    }
+
+    private static OrgUnitReportViewModel sampleVm() {
+        return sampleVm(null);
     }
 
     /** Realistic VM built through the real assembler over a fabricated rollup. */
-    private static OrgUnitReportViewModel sampleVm() {
+    private static OrgUnitReportViewModel sampleVm(Instant compareTo) {
         IndividualReport report = new IndividualReport();
         report.setId("rep-1");
         report.setTitle("CS 2026");
@@ -114,12 +125,22 @@ class AdminDivisionReportsControllerContractTest {
         UserIndividualReportRunRepository runRepository = mock(UserIndividualReportRunRepository.class);
         when(runRepository.findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(any(), any()))
                 .thenReturn(Optional.of(run));
+        if (compareTo != null) {
+            UserIndividualReportRun baseline = new UserIndividualReportRun();
+            baseline.setId("run-0");
+            baseline.setUserEmail("ana@uvt.ro");
+            baseline.setCreatedAt(compareTo.minusSeconds(3600));
+            baseline.setCriteriaScores(new HashMap<>(Map.of(0, 2.0)));
+            baseline.setStatus(UserIndividualReportRun.Status.READY);
+            when(runRepository.findTopByUserEmailAndReportDefinitionIdAndCreatedAtBeforeOrderByCreatedAtDesc(
+                    any(), any(), eq(compareTo))).thenReturn(Optional.of(baseline));
+        }
         ReportingDataEpochService epochService = mock(ReportingDataEpochService.class);
         when(epochService.currentEpochInfo()).thenReturn(Optional.empty());
 
         OrgUnitRunRollupService rollupService = new OrgUnitRunRollupService(runRepository, epochService);
         OrgUnitRunRollupService.OrgUnitRunRollup rollup = rollupService.rollup(
-                List.of(new OrgUnitRosterService.RosterMember(ana, "Computer Science")), report);
+                List.of(new OrgUnitRosterService.RosterMember(ana, "Computer Science")), report, compareTo);
         OrgUnitReportViewModel vm = new OrgUnitReportViewAssembler(new ObjectMapper())
                 .toViewModel("div-1", "FMI", report, rollup, List.of());
         assertFalse(vm.cellHeatClass().isEmpty());
