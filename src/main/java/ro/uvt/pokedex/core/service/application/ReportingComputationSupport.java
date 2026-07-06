@@ -24,6 +24,20 @@ public final class ReportingComputationSupport {
             List<ScholardexAuthorView> authors,
             List<ScholardexPublicationView> publications,
             ScientificProductionService scientificProductionService) {
+        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
+                filterByAuthorRole(indicator, authors, publications).stream()
+                        .map(ScholardexPublicationView::toScoringPublication).toList(),
+                indicator
+        );
+        return scores.get("total").getAuthorScore();
+    }
+
+    /** The indicator's typed author-role filter (ALL / MAIN / CO / FIRST_OR_CORRESPONDING), extracted so callers
+     *  that memoize the scoring step can filter first and key the cache by the actual publication set. */
+    public static List<ScholardexPublicationView> filterByAuthorRole(
+            Indicator indicator,
+            List<ScholardexAuthorView> authors,
+            List<ScholardexPublicationView> publications) {
 
         // H52 slice 11d.2: typed author-role dispatch.
         ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole role = indicator.publicationAuthorRole();
@@ -61,11 +75,7 @@ public final class ReportingComputationSupport {
         } else {
             filtered = publications;
         }
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
-                filtered.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
-                indicator
-        );
-        return scores.get("total").getAuthorScore();
+        return filtered;
     }
 
     /**

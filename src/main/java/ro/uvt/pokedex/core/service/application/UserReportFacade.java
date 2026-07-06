@@ -599,9 +599,7 @@ public class UserReportFacade {
                         })
                         .collect(Collectors.toList());
             }
-            Map<String, Score> scores = new HashMap<>(scientificProductionService.calculateScientificProductionScore(
-                    filteredPublications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
-                    indicator));
+            Map<String, Score> scores = scoredPublicationMap(indicator, filteredPublications);
             Score totalScore = scores.remove("total");
             double total = totalScore != null ? totalScore.getAuthorScore() : 0.0;
             rawGraph.put("total", String.format(Locale.ROOT, "%.2f", total));
@@ -813,10 +811,7 @@ public class UserReportFacade {
                     })
                     .collect(Collectors.toList());
         }
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
-                filteredPublications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
-                indicator
-        );
+        Map<String, Score> scores = scoredPublicationMap(indicator, filteredPublications);
         attrs.put("total", String.format("%.2f", scores.get("total").getAuthorScore()));
         scores.remove("total");
         attrs.put("scores", scores);
@@ -980,7 +975,27 @@ public class UserReportFacade {
     }
 
     private double calculatePublicationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
-        return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
+        List<ScholardexPublicationView> filtered =
+                ReportingComputationSupport.filterByAuthorRole(indicator, authors, publications);
+        return scoredPublicationMap(indicator, filtered).get("total").getAuthorScore();
+    }
+
+    /**
+     * The one heavy publication-scoring step, memoized in the surrounding refresh scope. A Refresh All computes
+     * each indicator up to three times (LATEST refresh, report-scoped totals, per-indicator run detail) over the
+     * same publication set — the score map is identical each time, so compute it once per
+     * (indicator, referenceYear, publication set) and hand every caller its own shallow copy (callers restructure
+     * the map — remove("total") etc. — but never mutate the Score values). Outside a scope this is a pass-through.
+     */
+    private Map<String, Score> scoredPublicationMap(Indicator indicator, List<ScholardexPublicationView> publications) {
+        String key = indicator.getId()
+                + "|y=" + ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext.currentOrCurrentYear()
+                + "|" + publications.stream().map(ScholardexPublicationView::getId).sorted().collect(Collectors.joining(","));
+        Map<String, Score> cached = reportingLookupMemoization.getOrCompute("userReport", "publicationScoreMap", key,
+                () -> scientificProductionService.calculateScientificProductionScore(
+                        publications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
+                        indicator));
+        return new HashMap<>(cached);
     }
 
     private double calculateCitationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
@@ -1008,10 +1023,7 @@ public class UserReportFacade {
     }
 
     private void handlePublicationsWorkbook(Workbook workbook, Indicator indicator, List<ScholardexPublicationView> publications, Map<String, ScholardexForumView> forumMap) {
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
-                publications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
-                indicator
-        );
+        Map<String, Score> scores = scoredPublicationMap(indicator, publications);
         Sheet sheet = workbook.getSheet("Publications");
         if (sheet == null) {
             sheet = workbook.createSheet("Publications");
@@ -1208,14 +1220,31 @@ public class UserReportFacade {
                     Map.of()
             );
         }
+        // The citation context (the cited->citing publication graph) is indicator-independent and Mongo-heavy;
+        // a Refresh All rebuilds it once for the report pass and once per citation indicator's run detail over
+        // the same publication set — memoize it in the refresh scope. Read-only after construction.
+        String contextKey = publications.stream()
+                .map(ScholardexPublicationView::getId).sorted().collect(Collectors.joining(","));
         ReportScopedIndicatorScoringSupport.CitationContext citationContext =
-                ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
-        Map<Indicator, Map<String, Score>> baseScoresByIndicator =
-                ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
-                        indicators,
-                        citationContext,
-                        scientificProductionService
-                );
+                reportingLookupMemoization.getOrCompute("userReport", "citationContext", contextKey,
+                        () -> ReportScopedIndicatorScoringSupport.prepareCitationContext(
+                                publications, scholardexProjectionReadService));
+        // Same treatment for the per-indicator base scores over the citing publications (the heaviest citation
+        // step): score each citation indicator's citing set once per refresh. The maps are read-only downstream.
+        int referenceYear = ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext.currentOrCurrentYear();
+        Map<Indicator, Map<String, Score>> baseScoresByIndicator = new HashMap<>();
+        for (Indicator indicator : indicators) {
+            if (indicator == null || !indicator.isCitationsOutput()) {
+                continue;
+            }
+            Map<String, Score> baseScores = reportingLookupMemoization.getOrCompute(
+                    "userReport", "citationBaseScores",
+                    indicator.getId() + "|y=" + referenceYear + "|" + contextKey,
+                    () -> ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
+                                    List.of(indicator), citationContext, scientificProductionService)
+                            .getOrDefault(indicator, Map.of()));
+            baseScoresByIndicator.put(indicator, baseScores);
+        }
         return new CitationPrecomputeBundle(citationContext, baseScoresByIndicator);
     }
 
