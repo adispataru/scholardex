@@ -1137,17 +1137,20 @@
     </div>
     <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', function () {
-            var years = [2008, 2010, 2013, 2014, 2017, 2018, 2020, 2021, 2023];
+            var years = [2008, 2010, 2013, 2014, 2017, 2018, 2020, 2021, 2023, 2026];
             var yearlyRankings = /*[[${ranking.yearlyRankings}]]*/ {};
-            // Full CORE tier scale (higher = better). Includes the national/regional tiers that the
-            // scorer now preserves (previously collapsed to D) plus the historical Australasian tier —
-            // without these, a conference ranked National/Regional/Australasian dropped off the graph.
+            // Full CORE tier scale (higher = better), matching Rank.tierValue() server-side (the hub
+            // sparklines plot the same values). Includes the national/regional tiers the scorer
+            // preserves plus the historical Australasian sub-tiers — without these, a conference
+            // ranked National/Regional/Australasian dropped off the graph.
             var rankMapping = {
-                "A_STAR": 8, "A": 7, "B": 6, "C": 5, "D": 4,
-                "Australasian": 3, "National": 2, "National_Regional": 1, "NON_RANK": 0
+                "A_STAR": 12, "A": 11, "AustralasianA": 10, "B": 9, "AustralasianB": 8,
+                "C": 7, "AustralasianC": 6, "D": 5, "AustralasianD": 4,
+                "Australasian": 3, "National": 2, "National_Regional": 1, "REMOVED": 0, "NON_RANK": 0
             };
             var reverseRankMapping = {
-                8: "A*", 7: "A", 6: "B", 5: "C", 4: "D",
+                12: "A*", 11: "A", 10: "Aus. A", 9: "B", 8: "Aus. B",
+                7: "C", 6: "Aus. C", 5: "D", 4: "Aus. D",
                 3: "Australasian", 2: "National", 1: "Regional", 0: "Unranked"
             };
 
@@ -1202,7 +1205,7 @@
                             yAxes: [{
                                 ticks: {
                                     callback: function (value) { return reverseRankMapping[value]; },
-                                    max: 8, min: 0, stepSize: 1, padding: 10, fontColor: theme.textMuted
+                                    max: 12, min: 0, stepSize: 1, padding: 10, fontColor: theme.textMuted
                                 },
                                 gridLines: {
                                     color: theme.chartGrid, zeroLineColor: theme.chartGrid,

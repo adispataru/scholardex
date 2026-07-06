@@ -50,6 +50,11 @@ public class CoreConferenceRanking {
         return closest;
     }
 
+    /** Editions sorted ascending by year, with year keys normalized (Mongo may store them as strings). */
+    public Map<Integer, YearlyRanking> sortedYearlyRankings() {
+        return normalizeYearlyRankings();
+    }
+
     private Map<Integer, YearlyRanking> normalizeYearlyRankings() {
         if (yearlyRankings == null || yearlyRankings.isEmpty()) {
             return Map.of();
@@ -103,6 +108,44 @@ public class CoreConferenceRanking {
         National,
         National_Regional,
         REMOVED,
-        NON_RANK
+        NON_RANK;
+
+        /**
+         * Numeric tier for trend plotting, higher = better. The Australasian sub-tiers slot just under their
+         * global counterparts (a historical scale that predates the global one); National/Regional and
+         * REMOVED/NON_RANK sit at the bottom so a drop off the list reads as a decline.
+         */
+        public int tierValue() {
+            return switch (this) {
+                case A_STAR -> 12;
+                case A -> 11;
+                case AustralasianA -> 10;
+                case B -> 9;
+                case AustralasianB -> 8;
+                case C -> 7;
+                case AustralasianC -> 6;
+                case D -> 5;
+                case AustralasianD -> 4;
+                case Australasian -> 3;
+                case National -> 2;
+                case National_Regional -> 1;
+                case REMOVED, NON_RANK -> 0;
+            };
+        }
+
+        /** Human label (A*, Regional, ...) — the single place the display names live. */
+        public String displayLabel() {
+            return switch (this) {
+                case A_STAR -> "A*";
+                case AustralasianA -> "Australasian A";
+                case AustralasianB -> "Australasian B";
+                case AustralasianC -> "Australasian C";
+                case AustralasianD -> "Australasian D";
+                case National_Regional -> "Regional";
+                case NON_RANK -> "Unranked";
+                case REMOVED -> "Removed";
+                default -> name();
+            };
+        }
     }
 }

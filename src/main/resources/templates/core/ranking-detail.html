@@ -38,7 +38,7 @@
                     label='CORE Rank',
                     value=${latestRankLabel},
                     accent=${latestRankAccent},
-                    contextLine='Closest to 2023',
+                    contextLine=${latestYear != null ? 'CORE ' + latestYear + ' edition' : 'No ranked edition'},
                     icon='fa-solid fa-ranking-star')}"></th:block>
                 <th:block th:replace="~{fragments :: stat-card(
                     label='Acronym',
@@ -56,8 +56,38 @@
         </section>
 
         <section class="mt-4" aria-labelledby="conf-chart-title">
-            <h2 id="conf-chart-title" class="app-university-detail__section-title">Rankings Over the Years</h2>
+            <div class="app-university-detail__section-header">
+                <h2 id="conf-chart-title" class="app-university-detail__section-title">Rankings Over the Years</h2>
+            </div>
             <th:block th:replace="~{fragments :: core-ranking-chart(${conf})}"></th:block>
+        </section>
+
+        <section class="mt-4" th:if="${!editions.isEmpty()}" aria-labelledby="conf-editions-title">
+            <div class="app-university-detail__section-header">
+                <h2 id="conf-editions-title" class="app-university-detail__section-title">Editions</h2>
+            </div>
+            <div class="app-table-scroll">
+                <table class="table table-bordered app-table">
+                    <thead>
+                    <tr>
+                        <th scope="col">Edition</th>
+                        <th scope="col">Rank</th>
+                        <th scope="col">Fields of research</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="edition : ${editions}">
+                        <td class="app-table__cell--numeric" th:text="${edition.key}">2026</td>
+                        <td th:text="${edition.value.rank != null ? edition.value.rank.displayLabel() : (edition.value.rankString ?: '—')}">A</td>
+                        <td th:text="${edition.value.fieldsOfResearchNames != null and edition.value.fieldsOfResearchNames.length > 0
+                                       ? #strings.arrayJoin(edition.value.fieldsOfResearchNames, ', ')
+                                       : (edition.value.fieldsOfResearch != null and edition.value.fieldsOfResearch.length > 0
+                                          ? #strings.arrayJoin(edition.value.fieldsOfResearch, ', ')
+                                          : '—')}">Information systems</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
     </div>
 </main>

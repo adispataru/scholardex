@@ -134,7 +134,9 @@
                                         <tr>
                                             <th scope="col">Conference</th>
                                             <th scope="col">Acronym</th>
-                                            <th scope="col">Category 2023</th>
+                                            <th scope="col" title="CORE rank in the conference's latest ranked edition">Rank</th>
+                                            <th scope="col" title="The latest CORE edition that ranked this conference">Edition</th>
+                                            <th scope="col" title="Rank across the last CORE editions">Rank trend</th>
                                         </tr>
                                         </thead>
                                         <tbody id="core-table-body"></tbody>
@@ -434,6 +436,7 @@
 
 <th:block th:replace="~{fragments :: app-footer}"></th:block>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script src="/js/sparkline.js"></script>
 <script src="/js/rankings-core.js"></script>
 <script src="/js/rankings-urap.js"></script>
 <script src="/js/events.js"></script>

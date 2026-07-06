@@ -148,8 +148,16 @@ public class RankingViewController {
         Optional<CoreConferenceRanking> ranking = adminCatalogFacade.findCoreRankingById(id);
         if (ranking.isPresent()) {
             CoreConferenceRanking conf = ranking.get();
-            CoreConferenceRanking.YearlyRanking latest = conf.getClosestYear(2023);
+            // Latest edition with a rank (editions are irregular: 2008, 2010, 2013 ... 2026).
+            List<Map.Entry<Integer, CoreConferenceRanking.YearlyRanking>> editions =
+                    conf.sortedYearlyRankings().entrySet().stream()
+                            .filter(e -> e.getValue().getRank() != null)
+                            .toList();
+            Integer latestCoreYear = editions.isEmpty() ? null : editions.getLast().getKey();
+            CoreConferenceRanking.YearlyRanking latest = editions.isEmpty() ? null : editions.getLast().getValue();
             model.addAttribute("conf", conf);
+            model.addAttribute("editions", editions.reversed());
+            model.addAttribute("latestYear", latestCoreYear);
             model.addAttribute("latestRankLabel", formatCoreRank(latest));
             model.addAttribute("latestRankAccent", coreRankAccent(latest));
             model.addAttribute("breadcrumbs", List.of(
@@ -163,13 +171,7 @@ public class RankingViewController {
 
     private static String formatCoreRank(CoreConferenceRanking.YearlyRanking yr) {
         if (yr == null || yr.getRank() == null) return "—";
-        return switch (yr.getRank()) {
-            case A_STAR -> "A*";
-            case National_Regional -> "Regional";
-            case NON_RANK -> "Unranked";
-            case REMOVED -> "Removed";
-            default -> yr.getRank().name();
-        };
+        return yr.getRank().displayLabel();
     }
 
     private static String coreRankAccent(CoreConferenceRanking.YearlyRanking yr) {

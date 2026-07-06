@@ -90,11 +90,26 @@
       return '<tr>' +
         '<td><a href="' + detailBase + '/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
         '<td class="app-table__cell--identifier">' + escapeHtml(item.acronym || '—') + '</td>' +
-        '<td>' + escapeHtml(item.category2023 || '—') + '</td>' +
+        '<td>' + escapeHtml(item.latestRank || '—') + '</td>' +
+        '<td class="app-table__cell--numeric">' + escapeHtml(item.latestYear == null ? '—' : item.latestYear) + '</td>' +
+        '<td class="app-spark-cell">' + rankSparkline(item.trend) + '</td>' +
         '</tr>';
     }).join('');
 
     els.tableBody.innerHTML = html;
+  }
+
+  // CORE editions are irregular (2008, 2010, 2013 ... 2026), so points are evenly spaced and the
+  // tooltip carries the edition years. The server sends numeric tiers (higher = better) + labels.
+  function rankSparkline(trend) {
+    const pts = (trend || [])
+      .filter(function (p) { return p && p.value != null; })
+      .map(function (p) { return { x: p.year, y: p.value, label: p.label }; });
+    const title = pts.length >= 2
+      ? 'CORE ' + pts[0].x + '–' + pts[pts.length - 1].x + ': ' +
+        pts[0].label + ' → ' + pts[pts.length - 1].label
+      : null;
+    return window.appSparkline.render(pts, { title: title, evenSpacing: true });
   }
 
   function buildUrl() {

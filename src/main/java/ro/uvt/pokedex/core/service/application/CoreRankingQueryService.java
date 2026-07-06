@@ -44,13 +44,29 @@ public class CoreRankingQueryService {
         return new CoreRankingPageResponse(items, page, size, totalItems, totalPages);
     }
 
+    /** CORE editions are irregular (2008, 2010, 2013 ... 2026); the trend shows the last few editions. */
+    private static final int TREND_EDITIONS = 6;
+
     private CoreRankingListItemResponse toListItem(CoreConferenceRanking ranking) {
-        String category2023 = null;
-        Map<Integer, CoreConferenceRanking.YearlyRanking> yearlyRankings = ranking.getYearlyRankings();
-        if (yearlyRankings != null && yearlyRankings.get(2023) != null && yearlyRankings.get(2023).getRank() != null) {
-            category2023 = yearlyRankings.get(2023).getRank().name();
+        Map<Integer, CoreConferenceRanking.YearlyRanking> byYear = ranking.sortedYearlyRankings();
+        List<CoreRankingListItemResponse.TrendPoint> trend = byYear.entrySet().stream()
+                .filter(e -> e.getValue().getRank() != null)
+                .map(e -> new CoreRankingListItemResponse.TrendPoint(
+                        e.getKey(),
+                        e.getValue().getRank().tierValue(),
+                        e.getValue().getRank().displayLabel()))
+                .toList();
+        if (trend.size() > TREND_EDITIONS) {
+            trend = trend.subList(trend.size() - TREND_EDITIONS, trend.size());
         }
-        return new CoreRankingListItemResponse(ranking.getId(), ranking.getName(), ranking.getAcronym(), category2023);
+        CoreRankingListItemResponse.TrendPoint latest = trend.isEmpty() ? null : trend.getLast();
+        return new CoreRankingListItemResponse(
+                ranking.getId(),
+                ranking.getName(),
+                ranking.getAcronym(),
+                latest == null ? null : latest.label(),
+                latest == null ? null : latest.year(),
+                trend);
     }
 
     private String normalizeSort(String sort) {

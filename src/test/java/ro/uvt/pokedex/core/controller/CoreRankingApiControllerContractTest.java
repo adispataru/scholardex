@@ -133,7 +133,9 @@ class CoreRankingApiControllerContractTest {
                 .andExpect(jsonPath("$.error").value("bad_request"));
     }
 
-    private CoreRankingListItemResponse item(String id, String name, String acronym, String category2023) {
-        return new CoreRankingListItemResponse(id, name, acronym, category2023);
+    private CoreRankingListItemResponse item(String id, String name, String acronym, String latestRank) {
+        return new CoreRankingListItemResponse(id, name, acronym, latestRank, latestRank == null ? null : 2026,
+                latestRank == null ? java.util.List.of()
+                        : java.util.List.of(new CoreRankingListItemResponse.TrendPoint(2026, 11, latestRank)));
     }
 }

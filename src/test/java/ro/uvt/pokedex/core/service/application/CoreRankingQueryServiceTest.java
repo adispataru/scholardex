@@ -51,8 +51,12 @@ class CoreRankingQueryServiceTest {
         assertEquals(11L, result.totalItems());
         assertEquals(3, result.totalPages());
         assertEquals(2, result.items().size());
-        assertEquals("A", result.items().get(0).category2023());
-        assertEquals(null, result.items().get(1).category2023());
+        assertEquals("A", result.items().get(0).latestRank());
+        assertEquals(2023, result.items().get(0).latestYear());
+        assertEquals(List.of(new ro.uvt.pokedex.core.controller.dto.CoreRankingListItemResponse.TrendPoint(2023, 11, "A")),
+                result.items().get(0).trend());
+        assertEquals(null, result.items().get(1).latestRank());
+        assertEquals(List.of(), result.items().get(1).trend());
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
         verify(mongoTemplate).find(findQueryCaptor.capture(), eq(CoreConferenceRanking.class));
@@ -110,5 +114,40 @@ class CoreRankingQueryServiceTest {
         CoreConferenceRanking.YearlyRanking yearly = new CoreConferenceRanking.YearlyRanking();
         yearly.setRank(CoreConferenceRanking.Rank.valueOf(rankName));
         return yearly;
+    }
+
+    @Test
+    void listItemTrendKeepsTheLastEditionsSortedAndLabelled() {
+        CoreConferenceRanking conf = new CoreConferenceRanking();
+        conf.setId("c");
+        conf.setName("Conf");
+        conf.setAcronym("C");
+        // Unsorted map with string keys (Mongo shape) across 7 editions; only the last 6 make the trend.
+        Map<Object, CoreConferenceRanking.YearlyRanking> editions = new java.util.HashMap<>();
+        editions.put("2008", yearly("C"));
+        editions.put("2013", yearly("B"));
+        editions.put("2014", yearly("B"));
+        editions.put("2017", yearly("A"));
+        editions.put("2020", yearly("A"));
+        editions.put("2023", yearly("A_STAR"));
+        editions.put("2026", yearly("A_STAR"));
+        @SuppressWarnings("unchecked")
+        Map<Integer, CoreConferenceRanking.YearlyRanking> cast = (Map<Integer, CoreConferenceRanking.YearlyRanking>) (Map<?, ?>) editions;
+        conf.setYearlyRankings(cast);
+
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(CoreConferenceRanking.class)))
+                .thenReturn(List.of(conf));
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(CoreConferenceRanking.class)))
+                .thenReturn(1L);
+
+        var item = service.search(0, 25, "name", "asc", null).items().getFirst();
+
+        assertEquals("A*", item.latestRank());
+        assertEquals(2026, item.latestYear());
+        assertEquals(6, item.trend().size());
+        assertEquals(2013, item.trend().getFirst().year()); // 2008 dropped by the 6-edition window
+        assertEquals(2026, item.trend().getLast().year());
+        assertEquals(12, item.trend().getLast().value());
+        assertEquals("A*", item.trend().getLast().label());
     }
 }

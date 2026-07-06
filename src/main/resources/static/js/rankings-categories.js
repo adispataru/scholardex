@@ -76,35 +76,17 @@
     return Number(value).toFixed(digits == null ? 2 : digits);
   }
 
-  // Inline SVG sparkline of a category's average-AIS trend. Colours by direction (rising = success),
-  // via currentColor so it inherits the app theme. Returns a muted dash for <2 points.
+  // Inline SVG sparkline of a category's average-AIS trend, via the shared window.appSparkline
+  // helper (see sparkline.js). Higher metric value = better, so default direction colouring applies.
   function sparklineSvg(trend) {
-    const pts = (trend || []).filter(function (p) { return p && p.avg != null; });
-    if (pts.length < 2) {
-      return '<span class="app-spark app-spark--empty" aria-hidden="true">—</span>';
-    }
-    const w = 88, h = 24, pad = 3;
-    const ys = pts.map(function (p) { return p.avg; });
-    const minX = pts[0].year, maxX = pts[pts.length - 1].year;
-    const minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
-    const spanX = (maxX - minX) || 1, spanY = (maxY - minY) || 1;
-    const coords = pts.map(function (p) {
-      return [
-        pad + (p.year - minX) / spanX * (w - 2 * pad),
-        h - pad - (p.avg - minY) / spanY * (h - 2 * pad)
-      ];
-    });
-    const d = coords.map(function (c, i) {
-      return (i === 0 ? 'M' : 'L') + c[0].toFixed(1) + ' ' + c[1].toFixed(1);
-    }).join(' ');
-    const last = coords[coords.length - 1];
-    const rising = ys[ys.length - 1] >= ys[0];
-    const title = 'Avg ' + state.metric + ' ' + minX + '–' + maxX + ': ' + fmtNum(ys[0]) + ' → ' + fmtNum(ys[ys.length - 1]);
-    return '<svg class="app-spark ' + (rising ? 'app-spark--up' : 'app-spark--down') + '" width="' + w +
-      '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + escapeHtml(title) + '">' +
-      '<title>' + escapeHtml(title) + '</title>' +
-      '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2" fill="currentColor"/></svg>';
+    const pts = (trend || [])
+      .filter(function (p) { return p && p.avg != null; })
+      .map(function (p) { return { x: p.year, y: p.avg, label: fmtNum(p.avg) }; });
+    const title = pts.length >= 2
+      ? 'Avg ' + state.metric + ' ' + pts[0].x + '–' + pts[pts.length - 1].x + ': ' +
+        pts[0].label + ' → ' + pts[pts.length - 1].label
+      : null;
+    return window.appSparkline.render(pts, { title: title });
   }
 
   function renderRows(items) {
