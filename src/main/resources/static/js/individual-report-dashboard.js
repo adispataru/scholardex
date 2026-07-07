@@ -130,6 +130,7 @@
     });
     if (!found) return;
     updateEvidenceHeader(root, idx, _position);
+    updateSparkline(root, idx, _position);
     if (opts.updateHash !== false) {
       history.replaceState(null, '', '#criterion-' + idx);
     }
@@ -151,6 +152,113 @@
         selectCriterion(root, parseInt(tile.getAttribute('data-criterion-index'), 10));
       });
     });
+  }
+
+  // ── Next best actions strip ───────────────────────────────────────────────
+
+  /** Top near-miss criteria for the position: within 20% below their threshold, smallest gap first. */
+  function renderNearMisses(root, position) {
+    var strip = document.getElementById('eval-actions-strip');
+    var mount = document.getElementById('eval-near-miss');
+    if (!strip || !mount) return;
+
+    var misses = [];
+    _thresholds.forEach(function (entry) {
+      if (!entry) return;
+      var threshold = thresholdByPosition(entry.index, position);
+      if (threshold == null || threshold <= 0) return;
+      var score = toNumber(entry.score);
+      if (score < threshold && score >= 0.8 * threshold) {
+        misses.push({ index: entry.index, name: entry.name, gap: threshold - score });
+      }
+    });
+    misses.sort(function (a, b) { return a.gap - b.gap; });
+
+    var html = '';
+    misses.slice(0, 3).forEach(function (m) {
+      html += '<button type="button" class="app-eval-actions__chip app-eval-actions__chip--near"' +
+        ' data-criterion-index="' + m.index + '"' +
+        ' title="Select this criterion to see what could close the gap">' +
+        '<i class="fa-solid fa-arrows-up-to-line" aria-hidden="true"></i> ' +
+        esc(m.name) + ': +' + m.gap.toFixed(2) + ' needed</button>';
+    });
+    mount.innerHTML = html;
+
+    // The strip shows when it has anything to say (server-rendered pending chip or near-misses).
+    var hasPendingChip = !!strip.querySelector('.app-eval-actions__chip--pending');
+    strip.hidden = !hasPendingChip && misses.length === 0;
+
+    mount.querySelectorAll('[data-criterion-index]').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        selectCriterion(root, parseInt(chip.getAttribute('data-criterion-index'), 10));
+        var tile = root.querySelector('.app-eval-rail__tile.is-active');
+        if (tile) tile.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    });
+  }
+
+  // ── Criterion trend sparkline (inline SVG, from window.evalPriorRuns) ────
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function sparklineSeries(criterionIndex) {
+    if (!Array.isArray(window.evalPriorRuns)) return [];
+    return window.evalPriorRuns
+      .filter(function (run) { return run.status === 'READY' && run.criteriaScores; })
+      .slice(0, 12) // list arrives newest-first; cap before ordering oldest→newest
+      .reverse()
+      .map(function (run) {
+        var v = run.criteriaScores[criterionIndex];
+        return v == null ? 0 : toNumber(v);
+      });
+  }
+
+  function renderSparkline(el, values, threshold) {
+    el.innerHTML = '';
+    if (!el.ownerDocument || values.length < 2) return;
+
+    var w = 110, h = 28, pad = 3;
+    var max = Math.max.apply(null, values.concat(threshold != null ? [threshold] : []));
+    var min = Math.min.apply(null, values.concat(threshold != null ? [threshold] : [0]));
+    if (max === min) max = min + 1;
+    function x(i) { return pad + (w - 2 * pad) * (values.length === 1 ? 0 : i / (values.length - 1)); }
+    function y(v) { return h - pad - (h - 2 * pad) * ((v - min) / (max - min)); }
+
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Score trend across last ' + values.length + ' runs');
+    svg.setAttribute('class', 'eval-trend__svg');
+
+    if (threshold != null) {
+      var tLine = document.createElementNS(SVG_NS, 'line');
+      tLine.setAttribute('x1', pad); tLine.setAttribute('x2', w - pad);
+      tLine.setAttribute('y1', y(threshold)); tLine.setAttribute('y2', y(threshold));
+      tLine.setAttribute('class', 'eval-trend__threshold');
+      svg.appendChild(tLine);
+    }
+
+    var line = document.createElementNS(SVG_NS, 'polyline');
+    line.setAttribute('points', values.map(function (v, i) { return x(i) + ',' + y(v); }).join(' '));
+    line.setAttribute('class', 'eval-trend__line');
+    svg.appendChild(line);
+
+    var dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('cx', x(values.length - 1));
+    dot.setAttribute('cy', y(values[values.length - 1]));
+    dot.setAttribute('r', 2.5);
+    dot.setAttribute('class', 'eval-trend__dot');
+    svg.appendChild(dot);
+
+    el.appendChild(svg);
+  }
+
+  function updateSparkline(root, idx, position) {
+    var mount = root.querySelector('.eval-trend[data-criterion-index="' + idx + '"]');
+    if (!mount) return;
+    renderSparkline(mount, sparklineSeries(idx), thresholdByPosition(idx, position));
   }
 
   // ── Indicator inline detail ───────────────────────────────────────────────
@@ -608,8 +716,11 @@
     updateCriteriaMet(position);
     var active = root.querySelector('.app-eval-rail__tile.is-active');
     if (active) {
-      updateEvidenceHeader(root, parseInt(active.getAttribute('data-criterion-index'), 10), position);
+      var activeIdx = parseInt(active.getAttribute('data-criterion-index'), 10);
+      updateEvidenceHeader(root, activeIdx, position);
+      updateSparkline(root, activeIdx, position);
     }
+    renderNearMisses(root, position);
   }
 
   function initPositionSelector(root, researcherPosition) {
@@ -1173,6 +1284,7 @@
     readThresholds();
     initPositionSelector(root, researcherPosition);
     renderRail(root, _position);
+    renderNearMisses(root, _position);
     initRail(root);
     initIndicatorHashClicks(root);
     initCitationModal(root, _reportId, _apiBase);

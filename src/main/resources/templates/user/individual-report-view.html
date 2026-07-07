@@ -180,8 +180,18 @@
                     </div>
                 </div>
 
-                <!-- ── Next best actions strip (chips filled by JS + commit 4) ── -->
-                <div class="app-eval-actions" id="eval-actions-strip" hidden></div>
+                <!-- ── Next best actions strip ─────────────────────────────── -->
+                <div class="app-eval-actions" id="eval-actions-strip" hidden>
+                    <span class="app-eval-actions__label">Next best actions</span>
+                    <a th:if="${!#bools.isTrue(delegated) and pendingReviewCount != null and pendingReviewCount > 0}"
+                       class="app-eval-actions__chip app-eval-actions__chip--pending"
+                       href="/user/workspace#publications"
+                       th:title="'Confirming authorship makes these publications count toward your scores'">
+                        <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                        <span th:text="${pendingReviewCount} + ' publication(s) awaiting your confirmation'">pending</span>
+                    </a>
+                    <span id="eval-near-miss"></span>
+                </div>
 
                 <div th:if="${confirmedPublicationScoringWarning == true}"
                      class="alert alert-warning mb-3"

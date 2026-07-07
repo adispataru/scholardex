@@ -96,6 +96,18 @@ class EvaluationWorkspaceControllerContractTest {
     }
 
     @Test
+    void evaluationTemplateShipsTheActionsStrip() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-actions-strip\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-near-miss\""));
+        // The pending-confirmations chip is self-only and links into My Publications.
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains(
+                "th:if=\"${!#bools.isTrue(delegated) and pendingReviewCount != null and pendingReviewCount > 0}\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("href=\"/user/workspace#publications\""));
+    }
+
+    @Test
     void showEvaluationExposesThresholdsJsonForTheWorkbench() throws Exception {
         User user = userPrincipal("u@uvt.ro");
         Indicator indicator = publicationIndicator("ind-pub");
