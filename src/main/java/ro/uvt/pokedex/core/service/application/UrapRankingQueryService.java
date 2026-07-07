@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.controller.dto.UrapRankingListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.UrapRankingPageResponse;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -44,31 +43,33 @@ public class UrapRankingQueryService {
         return new UrapRankingPageResponse(items, page, size, totalItems, totalPages);
     }
 
-    private UrapRankingListItemResponse toListItem(URAPUniversityRanking ranking) {
-        Integer latestYear = null;
-        URAPUniversityRanking.Score latestScore = null;
+    /** The trend sparkline covers the last URAP editions (yearly, unlike CORE's irregular ones). */
+    private static final int TREND_YEARS = 6;
 
-        Map<Integer, URAPUniversityRanking.Score> scores = ranking.getScores();
-        if (scores != null && !scores.isEmpty()) {
-            latestYear = scores.keySet().stream().max(Comparator.naturalOrder()).orElse(null);
-            if (latestYear != null) {
-                latestScore = scores.get(latestYear);
-            }
+    private UrapRankingListItemResponse toListItem(URAPUniversityRanking ranking) {
+        Map<Integer, URAPUniversityRanking.Score> scores =
+                ranking.getScores() == null ? Map.of() : ranking.getScores();
+        List<UrapRankingListItemResponse.TrendPoint> trend = scores.entrySet().stream()
+                .filter(e -> e.getKey() != null && e.getValue() != null)
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> new UrapRankingListItemResponse.TrendPoint(
+                        e.getKey(),
+                        e.getValue().getRank() > 0 ? e.getValue().getRank() : null,
+                        e.getValue().getTotal()))
+                .toList();
+        if (trend.size() > TREND_YEARS) {
+            trend = trend.subList(trend.size() - TREND_YEARS, trend.size());
         }
+        UrapRankingListItemResponse.TrendPoint latest = trend.isEmpty() ? null : trend.getLast();
 
         return new UrapRankingListItemResponse(
                 ranking.getName(),
                 ranking.getName(),
                 ranking.getCountry(),
-                latestYear,
-                latestScore == null ? null : latestScore.getRank(),
-                latestScore == null ? null : latestScore.getArticle(),
-                latestScore == null ? null : latestScore.getCitation(),
-                latestScore == null ? null : latestScore.getTotalDocument(),
-                latestScore == null ? null : latestScore.getAIT(),
-                latestScore == null ? null : latestScore.getCIT(),
-                latestScore == null ? null : latestScore.getCollaboration(),
-                latestScore == null ? null : latestScore.getTotal()
+                latest == null ? null : latest.year(),
+                latest == null ? null : latest.rank(),
+                latest == null ? null : latest.total(),
+                trend
         );
     }
 

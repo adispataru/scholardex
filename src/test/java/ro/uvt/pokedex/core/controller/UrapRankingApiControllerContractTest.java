@@ -128,6 +128,8 @@ class UrapRankingApiControllerContractTest {
     }
 
     private UrapRankingListItemResponse item(String id, String name, String country, Integer year, Integer rank) {
-        return new UrapRankingListItemResponse(id, name, country, year, rank, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0);
+        return new UrapRankingListItemResponse(id, name, country, year, rank, 7.0,
+                year == null ? java.util.List.of()
+                        : java.util.List.of(new UrapRankingListItemResponse.TrendPoint(year, rank, 7.0)));
     }
 }

@@ -4,8 +4,10 @@
     size: 25,
     sort: 'name',
     direction: 'asc',
-    q: ''
+    q: '',
+    metric: 'rank'
   };
+  let lastItems = [];
 
   let totalPages = 0;
   let totalItems = 0;
@@ -21,6 +23,8 @@
     empty: document.getElementById('urap-empty'),
     table: document.getElementById('urap-table'),
     tableBody: document.getElementById('urap-table-body'),
+    metricToggle: document.getElementById('urap-metric'),
+    trendHeader: document.getElementById('urap-trend-header'),
     pageInfo: document.getElementById('urap-page-info'),
     totalInfo: document.getElementById('urap-total-info'),
     prev: document.getElementById('urap-prev'),
@@ -85,31 +89,55 @@
     return String(value);
   }
 
+  // Trend of the selected metric over the last URAP editions. Both metrics ship in the same
+  // payload, so the Rank | Total Score toggle re-renders without a refetch. Rank improves
+  // DOWNWARD, so its direction colouring is inverted (higherIsBetter: false).
+  function trendSparkline(trend) {
+    const isRank = state.metric === 'rank';
+    const pts = (trend || [])
+      .filter(function (p) { return p && p[state.metric] != null; })
+      .map(function (p) { return { x: p.year, y: p[state.metric], label: formatNumber(p[state.metric]) }; });
+    const title = pts.length >= 2
+      ? (isRank ? 'Rank ' : 'Total score ') + pts[0].x + '\u2013' + pts[pts.length - 1].x + ': ' +
+        pts[0].label + ' \u2192 ' + pts[pts.length - 1].label
+      : null;
+    return window.appSparkline.render(pts, { title: title, higherIsBetter: !isRank });
+  }
+
   function renderRows(items) {
-    if (!items || items.length === 0) {
+    lastItems = items || [];
+    if (lastItems.length === 0) {
       els.tableBody.innerHTML = '';
       return;
     }
 
     const detailBase = els.table.dataset.detailBase || '/universities';
-    const html = items.map(function (item) {
+    const html = lastItems.map(function (item) {
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +
-        '<td>' + escapeHtml(item.rank) + '</td>' +
+        '<td class="app-table__cell--numeric">' + escapeHtml(item.rank == null ? '\u2014' : item.rank) + '</td>' +
         '<td><a href="' + detailBase + '/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
         '<td>' + escapeHtml(item.country) + '</td>' +
-        '<td>' + escapeHtml(item.year) + '</td>' +
-        '<td>' + formatNumber(item.article) + '</td>' +
-        '<td>' + formatNumber(item.citation) + '</td>' +
-        '<td>' + formatNumber(item.totalDocument) + '</td>' +
-        '<td>' + formatNumber(item.ait) + '</td>' +
-        '<td>' + formatNumber(item.cit) + '</td>' +
-        '<td>' + formatNumber(item.collaboration) + '</td>' +
-        '<td>' + formatNumber(item.total) + '</td>' +
+        '<td class="app-table__cell--numeric">' + escapeHtml(item.year == null ? '\u2014' : item.year) + '</td>' +
+        '<td class="app-table__cell--numeric">' + formatNumber(item.total) + '</td>' +
+        '<td class="app-spark-cell">' + trendSparkline(item.trend) + '</td>' +
         '</tr>';
     }).join('');
 
     els.tableBody.innerHTML = html;
+  }
+
+  function updateMetricToggle() {
+    if (els.trendHeader) {
+      els.trendHeader.textContent = state.metric === 'rank' ? 'Rank trend' : 'Score trend';
+    }
+    if (!els.metricToggle) return;
+    els.metricToggle.querySelectorAll('button[data-metric]').forEach(function (btn) {
+      const active = btn.dataset.metric === state.metric;
+      btn.classList.toggle('btn-primary', active);
+      btn.classList.toggle('btn-outline-primary', !active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
   }
 
   function buildUrl() {
@@ -188,6 +216,16 @@
   }
 
   function bindEvents() {
+    if (els.metricToggle) {
+      els.metricToggle.addEventListener('click', function (event) {
+        const btn = event.target.closest('button[data-metric]');
+        if (!btn || btn.dataset.metric === state.metric) return;
+        state.metric = btn.dataset.metric;
+        updateMetricToggle();
+        renderRows(lastItems);
+      });
+    }
+
     els.search.addEventListener('input', function () {
       const value = els.search.value.trim();
       if (searchDebounce) {
@@ -240,6 +278,7 @@
       return;
     }
     bindEvents();
+    updateMetricToggle();
     updatePager();
     fetchPage();
   }

@@ -201,6 +201,12 @@
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
                                 <h2 class="app-table-section__title">University Rankings</h2>
+                                <!-- The trend column plots the selected metric; rank improves downward, so the
+                                     sparkline's direction colouring is inverted for it. -->
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Trend metric" id="urap-metric">
+                                    <button type="button" class="btn btn-primary" data-metric="rank" aria-pressed="true">Rank</button>
+                                    <button type="button" class="btn btn-outline-primary" data-metric="total" aria-pressed="false">Total Score</button>
+                                </div>
                                 <span id="urap-total-info" class="app-table-toolbar__meta"></span>
                             </div>
                             <div class="app-table-section__body">
@@ -212,17 +218,12 @@
                                     <table class="table table-bordered app-table" id="urap-table" data-detail-base="/universities" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col">Rank</th>
+                                            <th scope="col" title="URAP world rank in the university's latest edition">Rank</th>
                                             <th scope="col">University</th>
                                             <th scope="col">Country</th>
-                                            <th scope="col">Year</th>
-                                            <th scope="col">Article</th>
-                                            <th scope="col">Citation</th>
-                                            <th scope="col">Total Document</th>
-                                            <th scope="col">AIT</th>
-                                            <th scope="col">CIT</th>
-                                            <th scope="col">Collaboration</th>
-                                            <th scope="col">Total Score</th>
+                                            <th scope="col" title="The university's latest URAP edition">Year</th>
+                                            <th scope="col" title="URAP total score in the latest edition">Total Score</th>
+                                            <th scope="col" id="urap-trend-header">Rank trend</th>
                                         </tr>
                                         </thead>
                                         <tbody id="urap-table-body"></tbody>

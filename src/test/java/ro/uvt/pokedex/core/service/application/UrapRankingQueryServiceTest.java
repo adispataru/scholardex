@@ -57,8 +57,14 @@ class UrapRankingQueryServiceTest {
         assertEquals(2, result.items().size());
         assertEquals(2025, result.items().get(0).year());
         assertEquals(5, result.items().get(0).rank());
-        assertEquals(3.0, result.items().get(0).article());
+        assertEquals(9.0, result.items().get(0).total());
+        // Trend carries both metrics per year, sorted ascending.
+        assertEquals(List.of(
+                new ro.uvt.pokedex.core.controller.dto.UrapRankingListItemResponse.TrendPoint(2023, 10, 7.0),
+                new ro.uvt.pokedex.core.controller.dto.UrapRankingListItemResponse.TrendPoint(2025, 5, 9.0)),
+                result.items().get(0).trend());
         assertNull(result.items().get(1).year());
+        assertEquals(List.of(), result.items().get(1).trend());
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
         verify(mongoTemplate).find(findQueryCaptor.capture(), eq(URAPUniversityRanking.class));
