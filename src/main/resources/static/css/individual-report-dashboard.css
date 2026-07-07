@@ -9,6 +9,13 @@
  * CSS custom properties that automatically adapt to the active colour theme.
  */
 
+/* The app bundle has no global [hidden] reset (only per-component guards), so any element
+   here that sets its own display would silently ignore the hidden attribute — the overflow
+   menu shipped always-open because of exactly that. One page-scoped guard ends the class. */
+.individual-report-dashboard [hidden] {
+  display: none !important;
+}
+
 /* ── Aggregate score panel ─────────────────────────────────────────────── */
 
 .individual-report-dashboard .app-eval-aggregate {
