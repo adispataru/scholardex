@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
@@ -314,6 +315,8 @@ class ComputerScienceJournalScoringServiceTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(0.0, score.getScore());
+        // A real journal article (candidate) that resolved no rank/index is NOT a venue-type mismatch.
+        assertNull(score.getScoringInfo().get("zeroReason"));
     }
 
     @Test
@@ -341,6 +344,8 @@ class ComputerScienceJournalScoringServiceTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(0.0, score.getScore());
+        // Not a journal article → the zero is explained as a venue-type mismatch.
+        assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
     }
 
     @Test
@@ -368,6 +373,7 @@ class ComputerScienceJournalScoringServiceTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(0.0, score.getScore());
+        assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
     }
 
     @Test

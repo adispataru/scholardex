@@ -159,11 +159,13 @@ public final class IndicatorDetailResponseAssembler {
                     // never reach this map: ScientificProductionService drops base==0 entries.)
                     if (authorScore > 0 || forumScore > 0) {
                         PubLink link = linkFor(pubsByTitle, entry.getKey().toString());
+                        // In-map items can carry a zeroReason too (e.g. FEE_JOURNAL: positive venue
+                        // points, formula-zeroed by the APC gate) — flow it, don't assume null.
                         items.add(new ScoredItem(entry.getKey().toString(), extractYear(entry.getValue()),
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "publication", null,
-                                link.publicationId(), link.forumId(), null));
+                                link.publicationId(), link.forumId(), extractZeroReason(entry.getValue())));
                     }
                 }
             }

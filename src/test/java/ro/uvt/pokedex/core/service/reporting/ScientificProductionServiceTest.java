@@ -181,6 +181,46 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void feeJournalGateZeroIsExplainedByTheCounterfactualProbe() {
+        // 2026 APC exclusion: the formula zeroes fee journals outright. The counterfactual re-eval with
+        // feeJournal=false turns positive, proving the APC gate alone caused the zero -> FEE_JOURNAL stamp.
+        Indicator indicator = indicator("PUBLICATIONS", "feeJournal ? 0 : (S/max(N-2, 1))");
+        ScoringPublication pub = publication("p-apc", "f-apc", "2026-01-01", "ar", "ar",
+                "Gold OA Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(pub, indicator)).thenReturn(score(4.0));
+        when(reportingLookupPort.isFeeJournal("f-apc")).thenReturn(true);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(pub), indicator);
+
+        // The item stays IN the scores map (venue points survive) — only the author score is zeroed.
+        assertEquals(0.0, result.get("Gold OA Paper").getAuthorScore(), 1e-9);
+        assertEquals(4.0, result.get("Gold OA Paper").getScore(), 1e-9);
+        assertEquals("FEE_JOURNAL", result.get("Gold OA Paper").getScoringInfo().get("zeroReason"));
+        assertEquals(0.0, result.get("total").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void feeJournalZeroIsNotStampedWhenAnotherGateAlsoFails() {
+        // Two-gate honesty: category C fails topAB, so flipping feeJournal alone does NOT clear the zero.
+        // The probe stays 0 and no FEE_JOURNAL reason is stamped — the generic fallback copy is correct here.
+        Indicator indicator = indicator("PUBLICATIONS", "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0");
+        ScoringPublication pub = publication("p-apc-c", "f-apc-c", "2026-01-01", "ar", "ar",
+                "Gold OA Category C Paper", List.of("a1"));
+        Score cScore = score(3.0);
+        cScore.setCoreRankingEquivalent("C"); // below the top A*/A/B cut AND below the S>=4 proxy
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(pub, indicator)).thenReturn(cScore);
+        when(reportingLookupPort.isFeeJournal("f-apc-c")).thenReturn(true);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(pub), indicator);
+
+        assertEquals(0.0, result.get("Gold OA Category C Paper").getAuthorScore(), 1e-9);
+        org.junit.jupiter.api.Assertions.assertNull(
+                result.get("Gold OA Category C Paper").getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
     void physicsIndicatorDividesAisByNef() {
         // H65: I = ΣAISᵢ/Nefᵢ. 6 authors → Nef = (6+5)/2 = 5.5; AIS (=S) = 4.0 → 4/5.5.
         Indicator indicator = indicator("PUBLICATIONS", "S/Nef");

@@ -356,7 +356,9 @@
     'EXCLUDED_VENUE':       'Venue is on the standards exclusion list — scores 0 by rule.',
     'NON_RESEARCH_SUBTYPE': 'Not an original research contribution (editorial, note, letter, erratum, …).',
     'ROLE_FILTERED':        'Your authorship role on this publication does not match this indicator.',
-    'NOT_IN_TOP_N':         'Outside the top-N selection this indicator counts.'
+    'NOT_IN_TOP_N':         'Outside the top-N selection this indicator counts.',
+    'VENUE_TYPE_MISMATCH':  'Different venue type — this publication is counted by the matching journal/conference indicator, not this one.',
+    'FEE_JOURNAL':          'Published in an APC/fee (gold open access) journal — excluded by the 2026 standard.'
   };
 
   /**
@@ -374,7 +376,94 @@
     }
     var isCitations = outputMode === 'citations';
 
-    var html = '<table class="app-eval-evidence-table"><thead><tr>' +
+    function buildRow(item, mismatch) {
+      var isZeroScored = !isCitations && toNumber(item.authorScore) <= 0;
+      var rowAttrs = '';
+      if (isCitations && indicatorId) {
+        rowAttrs = ' class="app-eval-evidence-table__row--clickable" role="button" tabindex="0"' +
+          ' data-citation-pub="' + esc(item.key) + '"' +
+          ' data-indicator-id="' + esc(indicatorId) + '"' +
+          ' aria-label="View citations for ' + esc(item.key) + '"';
+      } else if (mismatch) {
+        rowAttrs = ' class="app-eval-evidence-table__row--zero app-eval-evidence-table__row--mismatch" hidden';
+      } else if (isZeroScored) {
+        rowAttrs = ' class="app-eval-evidence-table__row--zero"';
+      }
+      var row = '<tr' + rowAttrs + '>';
+
+      // Publication title — linked when the payload resolved a publication id.
+      row += '<td class="app-eval-evidence-table__title">';
+      if (item.publicationId && !isCitations) {
+        row += '<a href="/publications/' + encodeURIComponent(item.publicationId) + '"' +
+          ' title="' + esc(item.key) + '">' + esc(item.key) + '</a>';
+      } else {
+        row += '<span title="' + esc(item.key) + '">' + esc(item.key) + '</span>';
+      }
+      row += '</td>';
+
+      row += '<td>' + (item.year ? item.year : '—') + '</td>';
+
+      row += '<td class="app-eval-evidence-table__rank">';
+      if (item.quarter) row += rankBadge(item.quarter);
+      if (item.coreRankingEquivalent && item.coreRankingEquivalent !== item.quarter) {
+        row += rankBadge(item.coreRankingEquivalent);
+      }
+      if (item.scoringSource) {
+        row += '<span class="eval-scored-item__meta-text">' + esc(item.scoringSource) + '</span>';
+      }
+      row += '</td>';
+
+      row += '<td>';
+      if (item.forumId) {
+        row += '<a href="/forums/' + encodeURIComponent(item.forumId) + '" title="Open venue page">venue' +
+          ' <i class="fa-solid fa-arrow-up-right-from-square fa-xs" aria-hidden="true"></i></a>';
+      } else {
+        row += '<span class="app-eval-muted">—</span>';
+      }
+      row += '</td>';
+
+      row += '<td class="app-eval-evidence-table__num">';
+      if (item.zeroReason) {
+        var reason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
+        var label = item.zeroReason === 'VENUE_TYPE_MISMATCH' ? 'other venue type'
+          : item.zeroReason === 'FEE_JOURNAL' ? 'APC journal' : 'why?';
+        row += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">' + label + ' ' +
+          '<i class="fa-solid fa-circle-info fa-xs" aria-hidden="true"></i></span> ';
+      } else if (isZeroScored) {
+        row += '<span class="eval-scored-item__zero-flag" title="Categorized for this indicator, but the scoring formula produced 0">below threshold</span> ';
+      }
+      row += '<strong>' + toNumber(item.authorScore).toFixed(2) + '</strong></td>';
+
+      if (_selfMode) {
+        row += '<td class="app-eval-evidence-table__actions">';
+        if (item.publicationId && !isCitations) {
+          row += '<a href="/user/workspace#publications" title="Manage in My Publications">manage</a>';
+        }
+        row += '</td>';
+      }
+      row += '</tr>';
+      return row;
+    }
+
+    // Stable partition: counted first, then visible zeros (with their reasons), then
+    // wrong-venue-type rows — hidden by default behind the toggle below the table.
+    var counted = [], zeros = [], mismatched = [];
+    items.forEach(function (item) {
+      if (!isCitations && item.zeroReason === 'VENUE_TYPE_MISMATCH') mismatched.push(item);
+      else if (!isCitations && toNumber(item.authorScore) <= 0) zeros.push(item);
+      else counted.push(item);
+    });
+
+    var html = '';
+    if (!isCitations && (zeros.length > 0 || mismatched.length > 0)) {
+      html += '<div class="app-eval-evidence-summary">' +
+        counted.length + ' counted' +
+        (mismatched.length > 0 ? ' · ' + mismatched.length + ' other venue type' : '') +
+        (zeros.length > 0 ? ' · ' + zeros.length + ' zero' : '') +
+        '</div>';
+    }
+
+    html += '<table class="app-eval-evidence-table"><thead><tr>' +
       '<th scope="col">' + (isCitations ? 'Publication (click for citations)' : 'Publication') + '</th>' +
       '<th scope="col">Year</th>' +
       '<th scope="col">Rank</th>' +
@@ -383,72 +472,35 @@
       (_selfMode ? '<th scope="col"><span class="sr-only">Actions</span></th>' : '') +
       '</tr></thead><tbody>';
 
-    items.forEach(function (item) {
-      var isZeroScored = !isCitations && toNumber(item.authorScore) <= 0;
-      var rowAttrs = '';
-      if (isCitations && indicatorId) {
-        rowAttrs = ' class="app-eval-evidence-table__row--clickable" role="button" tabindex="0"' +
-          ' data-citation-pub="' + esc(item.key) + '"' +
-          ' data-indicator-id="' + esc(indicatorId) + '"' +
-          ' aria-label="View citations for ' + esc(item.key) + '"';
-      } else if (isZeroScored) {
-        rowAttrs = ' class="app-eval-evidence-table__row--zero"';
-      }
-      html += '<tr' + rowAttrs + '>';
-
-      // Publication title — linked when the payload resolved a publication id.
-      html += '<td class="app-eval-evidence-table__title">';
-      if (item.publicationId && !isCitations) {
-        html += '<a href="/publications/' + encodeURIComponent(item.publicationId) + '"' +
-          ' title="' + esc(item.key) + '">' + esc(item.key) + '</a>';
-      } else {
-        html += '<span title="' + esc(item.key) + '">' + esc(item.key) + '</span>';
-      }
-      html += '</td>';
-
-      html += '<td>' + (item.year ? item.year : '—') + '</td>';
-
-      html += '<td class="app-eval-evidence-table__rank">';
-      if (item.quarter) html += rankBadge(item.quarter);
-      if (item.coreRankingEquivalent && item.coreRankingEquivalent !== item.quarter) {
-        html += rankBadge(item.coreRankingEquivalent);
-      }
-      if (item.scoringSource) {
-        html += '<span class="eval-scored-item__meta-text">' + esc(item.scoringSource) + '</span>';
-      }
-      html += '</td>';
-
-      html += '<td>';
-      if (item.forumId) {
-        html += '<a href="/forums/' + encodeURIComponent(item.forumId) + '" title="Open venue page">venue' +
-          ' <i class="fa-solid fa-arrow-up-right-from-square fa-xs" aria-hidden="true"></i></a>';
-      } else {
-        html += '<span class="app-eval-muted">—</span>';
-      }
-      html += '</td>';
-
-      html += '<td class="app-eval-evidence-table__num">';
-      if (item.zeroReason) {
-        var reason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
-        html += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">why? ' +
-          '<i class="fa-solid fa-circle-info fa-xs" aria-hidden="true"></i></span> ';
-      } else if (isZeroScored) {
-        html += '<span class="eval-scored-item__zero-flag" title="Categorized for this indicator, but the scoring formula produced 0">below threshold</span> ';
-      }
-      html += '<strong>' + toNumber(item.authorScore).toFixed(2) + '</strong></td>';
-
-      if (_selfMode) {
-        html += '<td class="app-eval-evidence-table__actions">';
-        if (item.publicationId && !isCitations) {
-          html += '<a href="/user/workspace#publications" title="Manage in My Publications">manage</a>';
-        }
-        html += '</td>';
-      }
-      html += '</tr>';
-    });
+    counted.forEach(function (item) { html += buildRow(item, false); });
+    zeros.forEach(function (item) { html += buildRow(item, false); });
+    mismatched.forEach(function (item) { html += buildRow(item, true); });
 
     html += '</tbody></table>';
+
+    if (mismatched.length > 0) {
+      html += '<button type="button" class="app-eval-mismatch-toggle" aria-expanded="false">' +
+        mismatched.length + ' publication' + (mismatched.length !== 1 ? 's are' : ' is') +
+        ' another venue type — show</button>';
+    }
     return html;
+  }
+
+  // Reveal/hide the wrong-venue-type rows of one indicator's evidence table (delegated —
+  // tables are re-rendered on every detail fetch, so the handler lives on the root).
+  function initMismatchToggles(root) {
+    root.addEventListener('click', function (e) {
+      var btn = e.target.closest('.app-eval-mismatch-toggle');
+      if (!btn) return;
+      var table = btn.previousElementSibling;
+      if (!table || !table.matches('table')) return;
+      var show = btn.getAttribute('aria-expanded') !== 'true';
+      table.querySelectorAll('.app-eval-evidence-table__row--mismatch').forEach(function (row) {
+        row.hidden = !show;
+      });
+      btn.setAttribute('aria-expanded', String(show));
+      btn.textContent = btn.textContent.replace(show ? /show$/ : /hide$/, show ? 'hide' : 'show');
+    });
   }
 
   // ── Bootstrap modal helpers (no Bootstrap JS required) ───────────────────
@@ -1287,6 +1339,7 @@
     renderNearMisses(root, _position);
     initRail(root);
     initIndicatorHashClicks(root);
+    initMismatchToggles(root);
     initCitationModal(root, _reportId, _apiBase);
     initReportSwitcher();
     var currentRunId = root.getAttribute('data-run-id') || (window.evalCurrentRunId || null);

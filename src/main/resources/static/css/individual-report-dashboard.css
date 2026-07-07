@@ -1220,3 +1220,25 @@
 .individual-report-dashboard .eval-trend__dot {
   fill: var(--app-color-primary);
 }
+
+/* ── Evidence summary + venue-mismatch toggle ──────────────────────────── */
+
+.individual-report-dashboard .app-eval-evidence-summary {
+  font-size: 0.75rem;
+  color: var(--app-color-text-muted);
+  margin-top: 0.5rem;
+}
+
+.individual-report-dashboard .app-eval-mismatch-toggle {
+  background: none;
+  border: none;
+  padding: 0.35rem 0;
+  font-size: 0.78rem;
+  color: var(--app-color-text-muted);
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.individual-report-dashboard .app-eval-mismatch-toggle:hover {
+  color: var(--app-color-primary);
+}

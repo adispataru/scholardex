@@ -150,7 +150,14 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         }
 
         logTrace(trace, scoreResult.bestPoints.get(), scoreResult.bestYear.get(), scoreResult.bestCategory.get(), scoreResult.bestQuarter.get());
-        return createScore(scoreResult);
+        Score score = createScore(scoreResult);
+        if (!conferenceCandidate) {
+            // Not a conference contribution at all (journal article, book chapter, …): this indicator
+            // does not cover it — the matching journal/book indicator does. Candidate zeros (a real
+            // conference paper that simply resolved no rank) deliberately stay unstamped.
+            score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
+        }
+        return score;
     }
 
     /* ------------------------------------------------------------------ */

@@ -111,7 +111,14 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS", "WOS"));
         }
 
-        return createScore(scoreResult);
+        Score score = createScore(scoreResult);
+        if (!isJournalPublicationCandidate(publication, forum)) {
+            // Not a journal article at all (conference paper, book chapter, …): this indicator does
+            // not cover it — the matching conference/book indicator does. Candidate zeros (a real
+            // journal with no quartile and no recognized index) deliberately stay unstamped.
+            score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
+        }
+        return score;
     }
 
     private boolean isJournalPublicationCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {

@@ -178,6 +178,30 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void inMapZeroReasonSurfacesForFormulaZeroedScores() {
+        // FEE_JOURNAL zeros keep positive venue points, so they stay IN the scores map (not excludedItems);
+        // the assembler must surface their scoringInfo reason too. In-map scores are always Score beans:
+        // IndicatorPayloadSerializer.normalizeScore rehydrates cached LATEST maps back into beans.
+        Score feeBean = score(0.0, 4.0, 2026, "Q1");
+        feeBean.getScoringInfo().put("zeroReason", "FEE_JOURNAL");
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Gold OA Paper", feeBean);
+        scores.put("Counted Paper", score(4.0, 4.0, 2026, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 4.0));
+
+        IndicatorDetailResponseAssembler.ScoredItem fee = resp.items().stream()
+                .filter(i -> i.key().equals("Gold OA Paper")).findFirst().orElseThrow();
+        assertEquals("FEE_JOURNAL", fee.zeroReason());
+        IndicatorDetailResponseAssembler.ScoredItem counted = resp.items().stream()
+                .filter(i -> i.key().equals("Counted Paper")).findFirst().orElseThrow();
+        assertEquals(null, counted.zeroReason());
+    }
+
+    @Test
     void buildCitationsAggregatesCitingPapersForOnePublication() {
         Map<String, Object> citing = new LinkedHashMap<>();
         citing.put("Citing 1", score(2.0, 1.0, 2023, "Q2"));

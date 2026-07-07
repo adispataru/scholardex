@@ -287,6 +287,7 @@ public class ScientificProductionService {
         if(result.getScore() > 0) {
             int numberOfAuthors = cited.getAuthorCount();
 
+            boolean feeJournal = citing != null && reportingLookupPort.isFeeJournal(citing.getForumId());
             // H52 slice 11c: typed-only path. M comes from the typed multiplier slot
             // (populated by EconomicsJournalScoringService); the legacy
             // {@code extra["M"]} bag is gone.
@@ -300,7 +301,7 @@ public class ScientificProductionService {
                     // H79: fee-conditioned (gold-OA APC) journal flag — bound on the SCORED forum (the candidate's pub
                     // in perspective b, or the citing pub in perspective c). Only 2026 formulas gate on it; every
                     // pre-2026 formula ignores it, so existing indicators are unaffected.
-                    .put("feeJournal", citing != null && reportingLookupPort.isFeeJournal(citing.getForumId()))
+                    .put("feeJournal", feeJournal)
                     // H79: category-based eligibility for the 2026 "top A*/A/B" indicators. The point threshold
                     // S>=4 is a proxy for "category in {A*,A,B}" that holds for every item EXCEPT a workshop, whose
                     // 2026 category (id_parA82: A*/A/B parents -> C) diverges from its inherited 6/4 points. Only
@@ -322,6 +323,20 @@ public class ScientificProductionService {
             // so the remaining valid publications still sum correctly. Surfaced by H77 provisional scoring (a RIS
             // forum metric projected as Infinity made whole-department reports show ∞).
             result.setAuthorScore(Double.isFinite(finalScore) ? finalScore : 0.0);
+
+            // Counterfactual APC diagnosis: a fee-journal item zeroed by the formula re-evaluates with
+            // feeJournal=false; turning positive proves the APC gate alone caused the zero — record the
+            // cause so the drilldown can explain it. If a second gate also fails (e.g. below the rank
+            // cut) the probe stays 0 and no reason is stamped, which is the honest outcome. The eval is
+            // cheap: the compiled-formula cache makes the second pass a map lookup + MVEL run.
+            if (feeJournal && result.getAuthorScore() == 0.0) {
+                FormulaContext.Builder probeBuilder = FormulaContext.builder();
+                ctx.variables().forEach((k, v) -> probeBuilder.put(k, "feeJournal".equals(k) ? Boolean.FALSE : v));
+                double probe = formulaEvaluator.eval(indicator.getFormula(), probeBuilder.build());
+                if (Double.isFinite(probe) && probe > 0.0) {
+                    result.getScoringInfo().put("zeroReason", "FEE_JOURNAL");
+                }
+            }
         }
         return result;
     }

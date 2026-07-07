@@ -111,6 +111,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
         assertEquals(0.0, score.getScore());
         assertNull(score.getScoringSource());
+        // A real conference paper (candidate) that resolved no rank is NOT a venue-type mismatch.
+        assertNull(score.getScoringInfo().get("zeroReason"));
     }
 
     @Test
@@ -186,6 +188,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         assertNull(score.getScoringSource());
+        // Not a conference contribution → the zero is explained as a venue-type mismatch.
+        assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
     }
 
     @Test
