@@ -42,7 +42,9 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         Domain domain = indicator.getDomain();
         ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
         if (PredatoryVenueSupport.isExcludedVenue(forum)) {
-            return createScore(initializeScoreResult()); // standard-excluded venue (WSEAS/IAENG/DAAAM): no points
+            Score excluded = createScore(initializeScoreResult()); // standard-excluded venue (WSEAS/IAENG/DAAAM): no points
+            excluded.getScoringInfo().put("zeroReason", "EXCLUDED_VENUE");
+            return excluded;
         }
 
         ScoreResult scoreResult = initializeScoreResult();

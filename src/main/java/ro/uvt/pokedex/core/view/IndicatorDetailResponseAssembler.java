@@ -43,7 +43,9 @@ public final class IndicatorDetailResponseAssembler {
                              String quarter, String coreRankingEquivalent, String scoringSource,
                              String type, String details,
                              /** Canonical ids for detail-page links; null when not resolvable (see title join). */
-                             String publicationId, String forumId) {}
+                             String publicationId, String forumId,
+                             /** Why a gate zeroed/dropped this item (EXCLUDED_VENUE, …); null for scored items. */
+                             String zeroReason) {}
 
     /** Publication/forum ids resolved for a scored item; both null when the title join is ambiguous. */
     private record PubLink(String publicationId, String forumId) {
@@ -92,7 +94,7 @@ public final class IndicatorDetailResponseAssembler {
                                 extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()),
-                                "publication", null, null, null));
+                                "publication", null, null, null, null));
                         total += authorScore;
                     }
                 }
@@ -121,7 +123,7 @@ public final class IndicatorDetailResponseAssembler {
                             items.add(new ScoredItem(pubTitle, extractYear(totalObj), authorScore, forumScore,
                                     extractQuarter(totalObj), extractCoreRankingEquivalent(totalObj),
                                     extractScoringSource(totalObj), "citation", null,
-                                    link.publicationId(), link.forumId()));
+                                    link.publicationId(), link.forumId(), null));
                         }
                     }
                 }
@@ -139,7 +141,7 @@ public final class IndicatorDetailResponseAssembler {
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
-                                null, null));
+                                null, null, null));
                     }
                 }
             }
@@ -161,12 +163,46 @@ public final class IndicatorDetailResponseAssembler {
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "publication", null,
-                                link.publicationId(), link.forumId()));
+                                link.publicationId(), link.forumId(), null));
                     }
+                }
+            }
+            // Gate-dropped publications (excluded venue, non-research subtype, role filter, top-N)
+            // are appended after the scored items with the reason the gate recorded, so the
+            // drilldown explains a zero instead of silently hiding the publication.
+            Object excludedObj = graph.get("excludedItems");
+            if (excludedObj instanceof Map<?, ?> excluded) {
+                for (Map.Entry<?, ?> entry : excluded.entrySet()) {
+                    PubLink link = linkFor(pubsByTitle, entry.getKey().toString());
+                    items.add(new ScoredItem(entry.getKey().toString(), extractYear(entry.getValue()),
+                            0.0, extractForumScore(entry.getValue()), extractQuarter(entry.getValue()),
+                            extractCoreRankingEquivalent(entry.getValue()),
+                            extractScoringSource(entry.getValue()), "publication", null,
+                            link.publicationId(), link.forumId(), extractZeroReason(entry.getValue())));
                 }
             }
         }
         return items;
+    }
+
+    /** Reads scoringInfo.zeroReason from a Score bean or its cached plain-map form. */
+    private static String extractZeroReason(Object scoreObj) {
+        if (scoreObj == null) return null;
+        Object scoringInfo;
+        if (scoreObj instanceof Map<?, ?> map) {
+            scoringInfo = map.get("scoringInfo");
+        } else {
+            try {
+                scoringInfo = scoreObj.getClass().getMethod("getScoringInfo").invoke(scoreObj);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        if (scoringInfo instanceof Map<?, ?> info) {
+            Object reason = info.get("zeroReason");
+            return reason != null ? reason.toString() : null;
+        }
+        return null;
     }
 
     /**

@@ -79,6 +79,51 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void detailedVariantCollectsGateDroppedPublicationsWithoutChangingTheScoresMap() {
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication scored = publication("p-ok", "f-ok", "2022-01-01", "ar", "ar",
+                "Scored Paper", List.of("a1"));
+        ScoringPublication dropped = publication("p-wseas", "f-wseas", "2021-01-01", "ar", "ar",
+                "Excluded Venue Paper", List.of("a1"));
+        Score zero = new Score();
+        zero.getScoringInfo().put("zeroReason", "EXCLUDED_VENUE");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(scored, indicator)).thenReturn(score(3.0));
+        when(scoringService.getScore(dropped, indicator)).thenReturn(zero);
+
+        ScientificProductionService.ScoredProductionResult result =
+                scientificProductionService.calculateScientificProductionScoreDetailed(
+                        List.of(scored, dropped), indicator);
+
+        // Regression pin: the scores map behaves exactly as before — dropped items absent.
+        assertEquals(3.0, result.scores().get("Scored Paper").getAuthorScore(), 0.0001);
+        assertEquals(3.0, result.scores().get("total").getAuthorScore(), 0.0001);
+        org.junit.jupiter.api.Assertions.assertFalse(result.scores().containsKey("Excluded Venue Paper"));
+        // The dropped item is reported separately, reason intact.
+        assertEquals("EXCLUDED_VENUE",
+                result.excluded().get("Excluded Venue Paper").getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void nonResearchSubtypeIsDroppedWithItsReasonBeforeTheScorerRuns() {
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        // 'ed' (editorial) fails the universal research-contribution gate.
+        ScoringPublication editorial = publication("p-ed", "f-1", "2022-01-01", "ed", "ed",
+                "An Editorial", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+
+        ScientificProductionService.ScoredProductionResult result =
+                scientificProductionService.calculateScientificProductionScoreDetailed(
+                        List.of(editorial), indicator);
+
+        assertEquals("NON_RESEARCH_SUBTYPE",
+                result.excluded().get("An Editorial").getScoringInfo().get("zeroReason"));
+        verify(scoringService, never()).getScore(editorial, indicator);
+    }
+
+    @Test
     void publicationScoreDisplaysPublicationYearNotTheRankingYear() {
         // A fallback scorer (SCOPUS C/D, LNCS, SENSE) sets the score year to a constant ranking year (e.g. 2023).
         // The displayed item year must be the publication's OWN cover-date year (2020), not the ranking year.

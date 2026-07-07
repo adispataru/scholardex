@@ -52,7 +52,15 @@ public class ScientificProductionService {
                 .toList();
     }
 
+    /** The scores map plus the publications that were dropped from it, keyed by title, with their zero {@link Score}s. */
+    public record ScoredProductionResult(Map<String, Score> scores, Map<String, Score> excluded) {}
+
     public Map<String, Score> calculateScientificProductionScore(List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
+        return calculateScientificProductionScoreDetailed(publications, indicator).scores();
+    }
+
+    public ScoredProductionResult calculateScientificProductionScoreDetailed(
+            List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
 
         // H60: article-inclusion — drop publications outside the indicator's yearRangeSpec window before scoring/
         // counting. No-op for AllYears (the current default for every indicator), so this is score-neutral until an
@@ -75,18 +83,23 @@ public class ScientificProductionService {
             Score total = new Score();
             total.setAuthorScore(publications.size());
             result.put("total", total);
-            return result;
+            return new ScoredProductionResult(result, Map.of());
         }
         ScoringService scoringService = scoringFactoryService.getScoringService(indicator.getScoringStrategy());
 
         double totalScore = 0;
         Map<String, Score> interResult = new HashMap<>();
+        // Publications the gate dropped from the scores map, kept with their zero Score (whose
+        // scoringInfo.zeroReason says WHY) so detail views can explain instead of hiding them.
+        Map<String, Score> excluded = new HashMap<>();
         if(scoringService != null) {
             for (ScoringPublicationReadModel publication : publications) {
                 Score score = calculatePublicationScore(publication, indicator, scoringService);
                 if(score.getScore() + score.getAuthorScore() > 0.0) {
                     interResult.put(publication.getTitle(), score);
                     totalScore += score.getAuthorScore();
+                } else {
+                    excluded.put(publication.getTitle(), score);
                 }
             }
         }
@@ -113,6 +126,12 @@ public class ScientificProductionService {
                         totalScore += score.getAuthorScore();
                     }
                 }
+                for (Map.Entry<String, Score> entry : interResult.entrySet()) {
+                    if (!result.containsKey(entry.getKey())) {
+                        entry.getValue().getScoringInfo().put("zeroReason", "NOT_IN_TOP_N");
+                        excluded.put(entry.getKey(), entry.getValue());
+                    }
+                }
             }
         }else{
             result = interResult;
@@ -121,7 +140,7 @@ public class ScientificProductionService {
         total.setAuthorScore(totalScore);
         result.put("total", total);
 
-        return result;
+        return new ScoredProductionResult(result, excluded);
     }
 
     public Map<String, Score> calculateScientificImpactScore(
@@ -246,7 +265,9 @@ public class ScientificProductionService {
         // letter, …) score nothing whether they are the candidate's own publication
         // (perspective b) or a citing publication (perspective c).
         if (!PublicationSubtypeSupport.isResearchContribution(citing)) {
-            return new Score();
+            Score gated = new Score();
+            gated.getScoringInfo().put("zeroReason", "NON_RESEARCH_SUBTYPE");
+            return gated;
         }
 
         Score baseScore = null;

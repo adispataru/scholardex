@@ -109,6 +109,13 @@ class UserReportFacadeTest {
 
     @BeforeEach
     void setUpLookupService() {
+        // The facade fetches scores through the detailed variant; existing tests stub the plain
+        // map method — adapt by wrapping whatever that stub returns with an empty excluded map.
+        lenient().when(scientificProductionService.calculateScientificProductionScoreDetailed(anyList(), any()))
+                .thenAnswer(invocation -> new ScientificProductionService.ScoredProductionResult(
+                        scientificProductionService.calculateScientificProductionScore(
+                                invocation.getArgument(0), invocation.getArgument(1)),
+                        Map.of()));
         lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class)))
                 .thenAnswer(invocation -> {
                     User.ResearcherProfile profile = invocation.getArgument(0);
@@ -1045,6 +1052,48 @@ class UserReportFacadeTest {
         assertEquals("user/indicators-apply", detail.viewName());
         assertEquals(2.0, detail.summary().totalScore());
         assertEquals("activities", detail.rawGraph().get("outputMode"));
+    }
+
+    @Test
+    void buildReportScopedIndicatorDetailAttachesExcludedItemsWithoutTouchingScores() {
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-pub");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-pub");
+        report.setIndicators(List.of(indicator));
+
+        ScholardexPublicationView pub = new ScholardexPublicationView();
+        pub.setId("p1");
+        pub.setTitle("Scored Paper");
+
+        Score scored = totalScore(3.0);
+        Score zero = new Score();
+        zero.getScoringInfo().put("zeroReason", "EXCLUDED_VENUE");
+        var detailed = new ScientificProductionService.ScoredProductionResult(
+                new LinkedHashMap<>(Map.of("Scored Paper", scored, "total", totalScore(3.0))),
+                Map.of("WSEAS Paper", zero));
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(individualReportRepository.findById("rep-pub")).thenReturn(Optional.of(report));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro"))
+                .thenReturn(List.of(pub));
+        // doReturn: the when(...) form would execute the @BeforeEach delegation answer mid-stubbing.
+        org.mockito.Mockito.doReturn(detailed).when(scientificProductionService)
+                .calculateScientificProductionScoreDetailed(anyList(), eq(indicator));
+
+        var detail = facade.buildReportScopedIndicatorDetail("user@uvt.ro", "rep-pub", "ind-pub").orElseThrow();
+
+        assertEquals("publications", detail.rawGraph().get("outputMode"));
+        @SuppressWarnings("unchecked")
+        Map<String, Score> scores = (Map<String, Score>) detail.rawGraph().get("scores");
+        assertTrue(scores.containsKey("Scored Paper"));
+        assertFalse(scores.containsKey("WSEAS Paper"));
+        @SuppressWarnings("unchecked")
+        Map<String, Score> excluded = (Map<String, Score>) detail.rawGraph().get("excludedItems");
+        assertEquals("EXCLUDED_VENUE", excluded.get("WSEAS Paper").getScoringInfo().get("zeroReason"));
     }
 
     @Test

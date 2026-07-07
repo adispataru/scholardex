@@ -584,12 +584,15 @@ public class UserReportFacade {
             // (The inline copy this replaces skipped FIRST_OR_CORRESPONDING, so H63 indicators showed extra rows.)
             List<ScholardexPublicationView> filteredPublications =
                     ReportingComputationSupport.filterByAuthorRole(indicator, authors, publications);
-            Map<String, Score> scores = scoredPublicationMap(indicator, filteredPublications);
+            ScientificProductionService.ScoredProductionResult detailed =
+                    scoredPublicationDetailed(indicator, filteredPublications);
+            Map<String, Score> scores = new HashMap<>(detailed.scores());
             Score totalScore = scores.remove("total");
             double total = totalScore != null ? totalScore.getAuthorScore() : 0.0;
             rawGraph.put("total", String.format(Locale.ROOT, "%.2f", total));
             rawGraph.put("scores", scores);
             rawGraph.put("publications", filteredPublications);
+            rawGraph.put("excludedItems", excludedItemsFor(detailed, publications, filteredPublications));
             rawGraph.put("outputMode", "publications");
             Map<String, Integer> qHist = new HashMap<>();
             scores.forEach((k, v) -> {
@@ -782,10 +785,13 @@ public class UserReportFacade {
         // (the inline copy this replaces skipped FIRST_OR_CORRESPONDING).
         List<ScholardexPublicationView> filteredPublications =
                 ReportingComputationSupport.filterByAuthorRole(indicator, authors, publications);
-        Map<String, Score> scores = scoredPublicationMap(indicator, filteredPublications);
+        ScientificProductionService.ScoredProductionResult detailed =
+                scoredPublicationDetailed(indicator, filteredPublications);
+        Map<String, Score> scores = new HashMap<>(detailed.scores());
         attrs.put("total", String.format("%.2f", scores.get("total").getAuthorScore()));
         scores.remove("total");
         attrs.put("scores", scores);
+        attrs.put("excludedItems", excludedItemsFor(detailed, publications, filteredPublications));
         filteredPublications = filteredPublications.stream().filter(p -> scores.containsKey(p.getTitle()) && scores.get(p.getTitle()).getAuthorScore() > 0.0).collect(Collectors.toList());
         attrs.put("publications", filteredPublications);
 
@@ -959,14 +965,42 @@ public class UserReportFacade {
      * the map — remove("total") etc. — but never mutate the Score values). Outside a scope this is a pass-through.
      */
     private Map<String, Score> scoredPublicationMap(Indicator indicator, List<ScholardexPublicationView> publications) {
+        return new HashMap<>(scoredPublicationDetailed(indicator, publications).scores());
+    }
+
+    private ScientificProductionService.ScoredProductionResult scoredPublicationDetailed(
+            Indicator indicator, List<ScholardexPublicationView> publications) {
         String key = indicator.getId()
                 + "|y=" + ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext.currentOrCurrentYear()
                 + "|" + publications.stream().map(ScholardexPublicationView::getId).sorted().collect(Collectors.joining(","));
-        Map<String, Score> cached = reportingLookupMemoization.getOrCompute("userReport", "publicationScoreMap", key,
-                () -> scientificProductionService.calculateScientificProductionScore(
+        return reportingLookupMemoization.getOrCompute("userReport", "publicationScoreMap", key,
+                () -> scientificProductionService.calculateScientificProductionScoreDetailed(
                         publications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
                         indicator));
-        return new HashMap<>(cached);
+    }
+
+    /**
+     * Gate-dropped publications for the detail views: the scorer's excluded map (zero score, with
+     * {@code scoringInfo.zeroReason}) plus publications removed by the author-role filter before
+     * scoring. Only the two detail-build paths attach this — the scores map every roll-up/export
+     * consumer iterates stays untouched.
+     */
+    private Map<String, Score> excludedItemsFor(ScientificProductionService.ScoredProductionResult detailed,
+                                                List<ScholardexPublicationView> allPublications,
+                                                List<ScholardexPublicationView> filteredPublications) {
+        Map<String, Score> excluded = new LinkedHashMap<>(detailed.excluded());
+        Set<String> filteredIds = filteredPublications.stream()
+                .map(ScholardexPublicationView::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        for (ScholardexPublicationView pub : allPublications) {
+            if (pub.getId() != null && !filteredIds.contains(pub.getId()) && pub.getTitle() != null) {
+                Score roleFiltered = new Score();
+                roleFiltered.getScoringInfo().put("zeroReason", "ROLE_FILTERED");
+                excluded.putIfAbsent(pub.getTitle(), roleFiltered);
+            }
+        }
+        return excluded;
     }
 
     private double calculateCitationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {

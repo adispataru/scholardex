@@ -243,6 +243,14 @@
     return html;
   }
 
+  // Human copy for the backend's zeroReason gate markers.
+  var ZERO_REASON_COPY = {
+    'EXCLUDED_VENUE':       'Venue is on the standards exclusion list — scores 0 by rule.',
+    'NON_RESEARCH_SUBTYPE': 'Not an original research contribution (editorial, note, letter, erratum, …).',
+    'ROLE_FILTERED':        'Your authorship role on this publication does not match this indicator.',
+    'NOT_IN_TOP_N':         'Outside the top-N selection this indicator counts.'
+  };
+
   /**
    * Full-width evidence table for the workbench pane. Titles link to /publications/{id} and
    * venues to /forums/{id} when the payload carries ids; citation-mode rows keep the
@@ -312,7 +320,11 @@
       html += '</td>';
 
       html += '<td class="app-eval-evidence-table__num">';
-      if (isZeroScored) {
+      if (item.zeroReason) {
+        var reason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
+        html += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">why? ' +
+          '<i class="fa-solid fa-circle-info fa-xs" aria-hidden="true"></i></span> ';
+      } else if (isZeroScored) {
         html += '<span class="eval-scored-item__zero-flag" title="Categorized for this indicator, but the scoring formula produced 0">below threshold</span> ';
       }
       html += '<strong>' + toNumber(item.authorScore).toFixed(2) + '</strong></td>';

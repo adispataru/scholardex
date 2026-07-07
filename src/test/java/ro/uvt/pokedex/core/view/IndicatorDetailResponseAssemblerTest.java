@@ -142,6 +142,42 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void excludedItemsAreAppendedWithTheirZeroReasonFromBeanAndMapForms() {
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Scored Paper", score(5.0, 3.0, 2022, "Q1"));
+        Score excludedBean = score(0.0, 0.0, 2021, null);
+        excludedBean.getScoringInfo().put("zeroReason", "EXCLUDED_VENUE");
+        Map<String, Object> excluded = new LinkedHashMap<>();
+        excluded.put("WSEAS Paper", excludedBean);
+        // Cached LATEST form: a plain property map with nested scoringInfo.
+        excluded.put("Role Filtered Paper", Map.of(
+                "score", 0.0, "authorScore", 0.0, "year", 2020,
+                "scoringInfo", Map.of("zeroReason", "ROLE_FILTERED")));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+        graph.put("excludedItems", excluded);
+        graph.put("publications", List.of(
+                Map.of("id", "spub_1", "title", "WSEAS Paper", "forumId", "sforum_2")));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0));
+
+        assertEquals(3, resp.items().size());
+        IndicatorDetailResponseAssembler.ScoredItem scored = resp.items().stream()
+                .filter(i -> i.key().equals("Scored Paper")).findFirst().orElseThrow();
+        assertEquals(null, scored.zeroReason());
+        IndicatorDetailResponseAssembler.ScoredItem wseas = resp.items().stream()
+                .filter(i -> i.key().equals("WSEAS Paper")).findFirst().orElseThrow();
+        assertEquals("EXCLUDED_VENUE", wseas.zeroReason());
+        assertEquals(0.0, wseas.authorScore());
+        // Excluded items still get the title-join links.
+        assertEquals("spub_1", wseas.publicationId());
+        IndicatorDetailResponseAssembler.ScoredItem roleFiltered = resp.items().stream()
+                .filter(i -> i.key().equals("Role Filtered Paper")).findFirst().orElseThrow();
+        assertEquals("ROLE_FILTERED", roleFiltered.zeroReason());
+    }
+
+    @Test
     void buildCitationsAggregatesCitingPapersForOnePublication() {
         Map<String, Object> citing = new LinkedHashMap<>();
         citing.put("Citing 1", score(2.0, 1.0, 2023, "Q2"));

@@ -53,6 +53,8 @@ class ComputerScienceJournalScoringServiceTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(0.0, score.getScore());
+        // The zero carries its cause so detail views can explain instead of hiding the item.
+        assertEquals("EXCLUDED_VENUE", score.getScoringInfo().get("zeroReason"));
     }
 
     @Test

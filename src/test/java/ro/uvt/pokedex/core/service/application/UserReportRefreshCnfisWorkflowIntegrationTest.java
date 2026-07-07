@@ -376,6 +376,12 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                             "Workflow Publication", publicationScore
                     ));
                 });
+        // The facade fetches scores through the detailed variant — delegate to the stub above.
+        when(scientificProductionService.calculateScientificProductionScoreDetailed(anyList(), any(Indicator.class)))
+                .thenAnswer(invocation -> new ScientificProductionService.ScoredProductionResult(
+                        scientificProductionService.calculateScientificProductionScore(
+                                invocation.getArgument(0), invocation.getArgument(1)),
+                        Map.of()));
     }
 
     private Score score(double authorScore, String quarter) {
