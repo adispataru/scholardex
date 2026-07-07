@@ -158,7 +158,8 @@ public class ResearcherReportController {
                                                                              @RequestParam("report") String reportId) {
         Optional<IndicatorApplyResultDto> result =
                 userReportFacade.buildReportScopedIndicatorDetail(email, reportId, indicatorId);
-        return result.map(r -> ResponseEntity.ok(IndicatorDetailResponseAssembler.buildDetail(r)))
+        return result.map(r -> ResponseEntity.ok(
+                        IndicatorDetailResponseAssembler.buildDetail(r, userReportFacade::resolveForumName)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 

@@ -1085,22 +1085,47 @@
   width: 100%;
   margin-top: 0.5rem;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  /* Close to the workbench body copy (1rem base) — the previous 0.85rem read as a different, denser
+     typographic voice than the surrounding cards. */
+  font-size: 0.92rem;
+  /* Fixed layout: the metadata columns get set widths below and the title takes every
+     remaining pixel — auto layout let the nowrap chip/badge cells squeeze the title instead. */
+  table-layout: fixed;
+}
+
+.individual-report-dashboard .app-eval-evidence-table thead th:nth-child(2) { /* Year */
+  width: 3.9rem;
+}
+
+.individual-report-dashboard .app-eval-evidence-table thead th:nth-child(3) { /* Rank */
+  width: 7.5rem;
+}
+
+.individual-report-dashboard .app-eval-evidence-table thead th:nth-child(4) { /* Forum */
+  width: 7rem;
+}
+
+.individual-report-dashboard .app-eval-evidence-table thead th:nth-child(5) { /* Points */
+  width: 8rem;
+}
+
+.individual-report-dashboard .app-eval-evidence-table thead th:nth-child(6) { /* Actions (self mode) */
+  width: 4.5rem;
 }
 
 .individual-report-dashboard .app-eval-evidence-table th {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--app-color-text-muted);
   text-align: left;
-  padding: 0.35rem 0.5rem;
+  padding: 0.45rem 0.6rem;
   border-bottom: 1px solid var(--app-color-border);
 }
 
 .individual-report-dashboard .app-eval-evidence-table td {
-  padding: 0.45rem 0.5rem;
+  padding: 0.55rem 0.6rem;
   border-bottom: 1px solid color-mix(in srgb, var(--app-color-border) 60%, transparent);
   vertical-align: top;
 }
@@ -1109,14 +1134,35 @@
   overflow-wrap: anywhere;
 }
 
+.individual-report-dashboard th.app-eval-evidence-table__num {
+  text-align: right; /* header aligns with the right-aligned numbers below it */
+}
+
 .individual-report-dashboard .app-eval-evidence-table__num {
   text-align: right;
-  white-space: nowrap;
+  /* Cell may wrap (the zero-reason chip drops onto its own line above the number)… */
+  white-space: normal;
   font-variant-numeric: tabular-nums;
 }
 
+/* …but the chip sits whole on its own line above the number (also keeps the column's
+   preferred width down to max(chip, number), giving the freed space to the title). */
+.individual-report-dashboard .app-eval-evidence-table__num .eval-scored-item__zero-flag {
+  white-space: nowrap;
+  display: block;
+  width: max-content;
+  margin-left: auto;
+  margin-bottom: 0.15rem;
+}
+
+.individual-report-dashboard .app-eval-evidence-table__num strong {
+  white-space: nowrap;
+}
+
 .individual-report-dashboard .app-eval-evidence-table__rank .eval-scored-item__meta-text {
-  margin-left: 0.3rem;
+  /* Source label under the badges instead of beside them — halves the column's preferred width. */
+  display: block;
+  margin-top: 0.15rem;
 }
 
 .individual-report-dashboard .app-eval-evidence-table__actions {
@@ -1241,4 +1287,36 @@
 
 .individual-report-dashboard .app-eval-mismatch-toggle:hover {
   color: var(--app-color-primary);
+}
+
+/* Sortable Year/Points headers: neutral ↕ hint, solid arrow once a direction is active. */
+.individual-report-dashboard .app-eval-evidence-table th[data-sort-key] {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.individual-report-dashboard .app-eval-evidence-table th[data-sort-key]::after {
+  content: '\2195'; /* ↕ */
+  margin-left: 0.3rem;
+  opacity: 0.35;
+}
+
+.individual-report-dashboard .app-eval-evidence-table th[data-sort-key][aria-sort='descending']::after {
+  content: '\2193'; /* ↓ */
+  opacity: 0.85;
+}
+
+.individual-report-dashboard .app-eval-evidence-table th[data-sort-key][aria-sort='ascending']::after {
+  content: '\2191'; /* ↑ */
+  opacity: 0.85;
+}
+
+.individual-report-dashboard .app-eval-evidence-table th[data-sort-key]:hover,
+.individual-report-dashboard .app-eval-evidence-table th[data-sort-key]:focus-visible {
+  color: var(--app-color-text);
+}
+
+.individual-report-dashboard .app-eval-evidence-table__forum {
+  white-space: nowrap;
 }

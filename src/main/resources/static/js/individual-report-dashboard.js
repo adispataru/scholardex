@@ -361,11 +361,18 @@
     'FEE_JOURNAL':          'Published in an APC/fee (gold open access) journal — excluded by the 2026 standard.'
   };
 
+  // Short label for the forum link: first 10 chars + ellipsis; the full name lives in the tooltip.
+  function forumExcerpt(name) {
+    if (!name) return 'forum';
+    var trimmed = String(name).trim();
+    return trimmed.length > 11 ? trimmed.slice(0, 10).replace(/[\s,.:;-]+$/, '') + '…' : trimmed;
+  }
+
   /**
    * Full-width evidence table for the workbench pane. Titles link to /publications/{id} and
-   * venues to /forums/{id} when the payload carries ids; citation-mode rows keep the
+   * forums to /forums/{id} when the payload carries ids; citation-mode rows keep the
    * click-to-drill behavior of the modal. Activities keep the compact list renderer — they
-   * have no links or venue columns.
+   * have no links or forum columns.
    */
   function renderEvidenceTable(items, outputMode, indicatorId) {
     if (outputMode === 'activities') {
@@ -413,10 +420,12 @@
       }
       row += '</td>';
 
-      row += '<td>';
+      row += '<td class="app-eval-evidence-table__forum">';
       if (item.forumId) {
-        row += '<a href="/forums/' + encodeURIComponent(item.forumId) + '" title="Open venue page">venue' +
-          ' <i class="fa-solid fa-arrow-up-right-from-square fa-xs" aria-hidden="true"></i></a>';
+        var forumLabel = forumExcerpt(item.forumName);
+        var forumTitle = item.forumName ? item.forumName : 'Open forum page';
+        row += '<a href="/forums/' + encodeURIComponent(item.forumId) + '" title="' + esc(forumTitle) + '">' +
+          esc(forumLabel) + '</a>';
       } else {
         row += '<span class="app-eval-muted">—</span>';
       }
@@ -465,10 +474,10 @@
 
     html += '<table class="app-eval-evidence-table"><thead><tr>' +
       '<th scope="col">' + (isCitations ? 'Publication (click for citations)' : 'Publication') + '</th>' +
-      '<th scope="col">Year</th>' +
+      '<th scope="col" data-sort-key="year" tabindex="0" role="button" title="Sort by year">Year</th>' +
       '<th scope="col">Rank</th>' +
-      '<th scope="col">Venue</th>' +
-      '<th scope="col" class="app-eval-evidence-table__num">Points</th>' +
+      '<th scope="col">Forum</th>' +
+      '<th scope="col" class="app-eval-evidence-table__num" data-sort-key="points" tabindex="0" role="button" title="Sort by points">Points</th>' +
       (_selfMode ? '<th scope="col"><span class="sr-only">Actions</span></th>' : '') +
       '</tr></thead><tbody>';
 
@@ -484,6 +493,42 @@
         ' another venue type — show</button>';
     }
     return html;
+  }
+
+  // Client-side sort for the Year/Points columns (delegated — tables are re-rendered on every
+  // detail fetch, so the handler lives on the root). First click sorts descending (newest / most
+  // points first); clicking again flips the direction. Hidden venue-mismatch rows keep their
+  // hidden state wherever they land.
+  function initEvidenceSort(root) {
+    function sortBy(th) {
+      var table = th.closest('table');
+      var tbody = table ? table.querySelector('tbody') : null;
+      if (!tbody) return;
+      var descending = th.getAttribute('aria-sort') !== 'descending';
+      table.querySelectorAll('th[data-sort-key]').forEach(function (h) { h.removeAttribute('aria-sort'); });
+      th.setAttribute('aria-sort', descending ? 'descending' : 'ascending');
+      var cellIndex = th.cellIndex;
+      var usePoints = th.getAttribute('data-sort-key') === 'points';
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+      function value(row) {
+        var cell = row.cells[cellIndex];
+        if (!cell) return -Infinity;
+        var el = usePoints ? cell.querySelector('strong') : null;
+        var n = parseFloat(String((el || cell).textContent).replace(/[^0-9.\-]/g, ''));
+        return isNaN(n) ? -Infinity : n;
+      }
+      rows.sort(function (a, b) { return descending ? value(b) - value(a) : value(a) - value(b); });
+      rows.forEach(function (row) { tbody.appendChild(row); });
+    }
+    root.addEventListener('click', function (e) {
+      var th = e.target.closest('.app-eval-evidence-table th[data-sort-key]');
+      if (th) sortBy(th);
+    });
+    root.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var th = e.target.closest ? e.target.closest('.app-eval-evidence-table th[data-sort-key]') : null;
+      if (th) { e.preventDefault(); sortBy(th); }
+    });
   }
 
   // Reveal/hide the wrong-venue-type rows of one indicator's evidence table (delegated —
@@ -1340,6 +1385,7 @@
     initRail(root);
     initIndicatorHashClicks(root);
     initMismatchToggles(root);
+    initEvidenceSort(root);
     initCitationModal(root, _reportId, _apiBase);
     initReportSwitcher();
     var currentRunId = root.getAttribute('data-run-id') || (window.evalCurrentRunId || null);

@@ -202,6 +202,25 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void forumNameResolverFillsForumNameForLinkedItems() {
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Paper A", score(5.0, 3.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+        graph.put("publications", List.of(
+                Map.of("id", "spub_1", "title", "Paper A", "forumId", "sforum_9")));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0),
+                id -> "sforum_9".equals(id) ? "Jmir Formative Research" : null);
+
+        assertEquals("Jmir Formative Research", resp.items().getFirst().forumName());
+        // The resolver-less overload leaves the name unset.
+        assertEquals(null, IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0))
+                .items().getFirst().forumName());
+    }
+
+    @Test
     void buildCitationsAggregatesCitingPapersForOnePublication() {
         Map<String, Object> citing = new LinkedHashMap<>();
         citing.put("Citing 1", score(2.0, 1.0, 2023, "Q2"));

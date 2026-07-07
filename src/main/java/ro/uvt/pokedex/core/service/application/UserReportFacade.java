@@ -510,6 +510,18 @@ public class UserReportFacade {
     }
 
     /**
+     * Forum display name for the drilldown's forum links (the scores map only carries forum ids);
+     * null when the id is unknown. Backed by the startup-preloaded forum cache — a plain map get.
+     */
+    public String resolveForumName(String forumId) {
+        if (forumId == null || forumId.isBlank()) {
+            return null;
+        }
+        ScholardexForumView forum = cacheService.getCachedForums(forumId);
+        return forum != null ? forum.getPublicationName() : null;
+    }
+
+    /**
      * Computes the full indicator detail (raw graph with per-item scores) in the context of a
      * specific report, applying the report's affiliation filter to the publication set.
      * Used by the detail and citation-drilldown endpoints so that expanded indicator rows show

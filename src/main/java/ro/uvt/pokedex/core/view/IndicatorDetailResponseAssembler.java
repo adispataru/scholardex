@@ -45,7 +45,9 @@ public final class IndicatorDetailResponseAssembler {
                              /** Canonical ids for detail-page links; null when not resolvable (see title join). */
                              String publicationId, String forumId,
                              /** Why a gate zeroed/dropped this item (EXCLUDED_VENUE, …); null for scored items. */
-                             String zeroReason) {}
+                             String zeroReason,
+                             /** Forum display name for the forum link; null when unresolved. */
+                             String forumName) {}
 
     /** Publication/forum ids resolved for a scored item; both null when the title join is ambiguous. */
     private record PubLink(String publicationId, String forumId) {
@@ -55,9 +57,19 @@ public final class IndicatorDetailResponseAssembler {
     public record CitationDetailResponse(String pubTitle, double totalScore, List<ScoredItem> citations) {}
 
     public static IndicatorDetailResponse buildDetail(IndicatorApplyResultDto result) {
+        return buildDetail(result, id -> null);
+    }
+
+    /**
+     * @param forumNameResolver forum id → display name for the evidence table's forum links (the
+     *   scores map only carries ids); returning null leaves the item's forumName unset. Passed in
+     *   so the assembler stays a pure function of the DTO (no Spring beans).
+     */
+    public static IndicatorDetailResponse buildDetail(
+            IndicatorApplyResultDto result, java.util.function.Function<String, String> forumNameResolver) {
         Map<String, Object> graph = result.rawGraph();
         String outputMode = graph.getOrDefault("outputMode", "publications").toString();
-        List<ScoredItem> items = extractScoredItems(graph, outputMode);
+        List<ScoredItem> items = extractScoredItems(graph, outputMode, forumNameResolver);
         return new IndicatorDetailResponse(
                 result.indicatorId(),
                 indicatorNameFrom(graph),
@@ -94,7 +106,7 @@ public final class IndicatorDetailResponseAssembler {
                                 extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()),
-                                "publication", null, null, null, null));
+                                "publication", null, null, null, null, null));
                         total += authorScore;
                     }
                 }
@@ -104,7 +116,9 @@ public final class IndicatorDetailResponseAssembler {
         return new CitationDetailResponse(pubTitle, total, citations);
     }
 
-    private static List<ScoredItem> extractScoredItems(Map<String, Object> graph, String outputMode) {
+    private static List<ScoredItem> extractScoredItems(
+            Map<String, Object> graph, String outputMode,
+            java.util.function.Function<String, String> forumNameResolver) {
         Object scoresObj = graph.get("scores");
         if (scoresObj == null) return List.of();
 
@@ -123,7 +137,8 @@ public final class IndicatorDetailResponseAssembler {
                             items.add(new ScoredItem(pubTitle, extractYear(totalObj), authorScore, forumScore,
                                     extractQuarter(totalObj), extractCoreRankingEquivalent(totalObj),
                                     extractScoringSource(totalObj), "citation", null,
-                                    link.publicationId(), link.forumId(), null));
+                                    link.publicationId(), link.forumId(), null,
+                                    forumNameResolver.apply(link.forumId())));
                         }
                     }
                 }
@@ -141,7 +156,7 @@ public final class IndicatorDetailResponseAssembler {
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
-                                null, null, null));
+                                null, null, null, null));
                     }
                 }
             }
@@ -165,7 +180,8 @@ public final class IndicatorDetailResponseAssembler {
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "publication", null,
-                                link.publicationId(), link.forumId(), extractZeroReason(entry.getValue())));
+                                link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
+                                forumNameResolver.apply(link.forumId())));
                     }
                 }
             }
@@ -180,7 +196,8 @@ public final class IndicatorDetailResponseAssembler {
                             0.0, extractForumScore(entry.getValue()), extractQuarter(entry.getValue()),
                             extractCoreRankingEquivalent(entry.getValue()),
                             extractScoringSource(entry.getValue()), "publication", null,
-                            link.publicationId(), link.forumId(), extractZeroReason(entry.getValue())));
+                            link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
+                            forumNameResolver.apply(link.forumId())));
                 }
             }
         }
