@@ -190,11 +190,12 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
 
     private Optional<Score> computeCSScore(
             WoSRanking ranking, int year, String category, WoSRanking.Rank rank, boolean bestOfAisIf) {
-        // Only SCIE/SSCI placements count as quartile categories for Informatică. ESCI/AHCI journals carry
-        // quartiles in the data (JCR ranks them since 2023, and the AIS files include ESCI cohorts), but the
-        // standard treats those editions as "indexed, not core" — they fall through to the ESCI/AHCI
-        // floor-at-C path in getScore instead of scoring Q1-Q4 points here.
-        if (!isCoreQuartileEdition(category)) {
+        // SCIE/SSCI placements always count as quartile categories for Informatică. ESCI placements count
+        // only from the unified-ranking era (2023 metrics year): from then on the ESCI quartile/rank is
+        // computed against the SAME per-category list as SCIE/SSCI, so it is a real category placement.
+        // Pre-2023 ESCI quartiles (tiny edition-only cohorts) and AHCI still fall through to the
+        // ESCI/AHCI floor-at-C path in getScore instead of scoring Q1-Q4 points here.
+        if (!isQuartileEditionForYear(category, year)) {
             return Optional.empty();
         }
         // 2016 standard: classification by AIS quartile alone. 2026 standard: the journal takes the BEST of
@@ -223,13 +224,31 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         return ifScore.get().getScore() > aisScore.get().getScore() ? ifScore : aisScore;
     }
 
-    /** The category index keys are "CATEGORY - EDITION"; quartile points only come from SCIE/SSCI. */
-    private boolean isCoreQuartileEdition(String categoryIndexKey) {
+    /**
+     * The category index keys are "CATEGORY - EDITION"; quartile points come from SCIE/SSCI for any year,
+     * and from ESCI only for ranking years in the unified-category era (see
+     * {@link ScoringCategorySupport#ESCI_UNIFIED_FROM_YEAR}).
+     */
+    private boolean isQuartileEditionForYear(String categoryIndexKey, int year) {
         if (categoryIndexKey == null) {
             return false;
         }
         String key = categoryIndexKey.trim().toUpperCase(java.util.Locale.ROOT);
-        return key.endsWith(" - SCIE") || key.endsWith(" - SSCI") || !key.contains(" - ");
+        if (key.endsWith(" - SCIE") || key.endsWith(" - SSCI") || !key.contains(" - ")) {
+            return true;
+        }
+        return key.endsWith(" - ESCI") && year >= ScoringCategorySupport.ESCI_UNIFIED_FROM_YEAR;
+    }
+
+    /**
+     * Widens the shared SCIE/SSCI-only domain gate so "CATEGORY - ESCI" placements reach
+     * {@code computeCSScore}, which applies the per-year unified-era acceptance. Every other scorer keeps
+     * the base gate, so ESCI rows (loaded for years >= 2023 by the Postgres reads) stay invisible to them.
+     */
+    @Override
+    protected boolean isCategoryInDomain(Domain domain, String category) {
+        return super.isCategoryInDomain(domain, category)
+                || ScoringCategorySupport.isEsciCategoryEligibleForDomain(domain, category);
     }
 
     private Optional<Score> scoreQuartilePlacement(

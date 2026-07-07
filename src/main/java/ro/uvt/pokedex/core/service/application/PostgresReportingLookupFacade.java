@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
+import ro.uvt.pokedex.core.service.reporting.ScoringCategorySupport;
 
 import java.sql.Array;
 import java.sql.ResultSet;
@@ -382,11 +383,15 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         List<WosMetricFact> metricFacts = namedParameterJdbcTemplate.query(
                 metricSql.toString(), metricParams, (rs, rowNum) -> mapForumMetricFact(rs, forumId));
 
+        // ESCI joins the unified per-category ranking from the 2023 metrics year — load those rows too so
+        // year-aware scorers (CS journal) can accept them; pre-2023 ESCI stays out (edition-only cohorts).
         StringBuilder categorySql = new StringBuilder(
                 "SELECT year, category, edition, metric_type, quarter, quartile_rank, \"rank\" AS rank_value "
                         + "FROM reporting_read.scholardex_forum_category_view "
-                        + "WHERE forum_id = :forumId AND edition IN ('SCIE', 'SSCI')");
-        MapSqlParameterSource categoryParams = new MapSqlParameterSource("forumId", forumId);
+                        + "WHERE forum_id = :forumId AND (edition IN ('SCIE', 'SSCI') "
+                        + "OR (edition = 'ESCI' AND year >= :esciUnifiedFromYear))");
+        MapSqlParameterSource categoryParams = new MapSqlParameterSource("forumId", forumId)
+                .addValue("esciUnifiedFromYear", ScoringCategorySupport.ESCI_UNIFIED_FROM_YEAR);
         if (!years.isEmpty()) {
             categorySql.append(" AND year IN (:years)");
             categoryParams.addValue("years", years);
@@ -471,15 +476,20 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                 }
         );
 
+        // Same ESCI widening as loadRankingsByForumId: this legacy path is the scoped read's fallback, so
+        // it must stay a superset or scoring would flip depending on which path serves the rankings.
         List<WosCategoryFact> categoryFacts = namedParameterJdbcTemplate.query(
                 """
                         SELECT journal_id, year, category_name_canonical, edition_normalized,
                                metric_type, quarter, quartile_rank, "rank" AS rank_value
                         FROM reporting_read.wos_category_fact
                         WHERE journal_id IN (:journalIds)
-                          AND edition_normalized IN ('SCIE', 'SSCI')
+                          AND (edition_normalized IN ('SCIE', 'SSCI')
+                               OR (edition_normalized = 'ESCI' AND year >= :esciUnifiedFromYear))
                         """,
-                new MapSqlParameterSource().addValue("journalIds", journalIds),
+                new MapSqlParameterSource()
+                        .addValue("journalIds", journalIds)
+                        .addValue("esciUnifiedFromYear", ScoringCategorySupport.ESCI_UNIFIED_FROM_YEAR),
                 (rs, rowNum) -> {
                     WosCategoryFact fact = new WosCategoryFact();
                     fact.setJournalId(rs.getString("journal_id"));

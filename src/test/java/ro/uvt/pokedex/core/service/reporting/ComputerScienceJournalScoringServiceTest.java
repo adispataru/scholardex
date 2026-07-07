@@ -291,6 +291,87 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
+    void esciQuartileScoresAsCategoryPlacementFromUnifiedRankingEra() {
+        // From the 2023 metrics year, ESCI journals are ranked in the SAME per-category list as SCIE/SSCI —
+        // an ESCI quartile is a real category placement, not just "indexed". Q2 at rank 39 of a 100-Q1
+        // category -> B (4p), reported as a WoS quartile match instead of the ESCI floor-at-C.
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        ScoringPublication publication = publication("forum-esci", "2023-06-01", "ar", "ar");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-esci");
+        forum.setAggregationType("Journal");
+        forum.setEIssn("2561-326X");
+        when(lookupPort.getForum("forum-esci")).thenReturn(forum);
+
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        rank.setQAis(Map.of(2023, WoSRanking.Quarter.Q2));
+        rank.setRankAis(Map.of(2023, 39));
+
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("jid-jmir-formative");
+        ranking.setWebOfScienceCategoryIndex(Map.of("MEDICAL INFORMATICS - ESCI", rank));
+
+        when(lookupPort.getRankingsByIssn("2561-326X")).thenReturn(List.of(ranking));
+        when(lookupPort.getTopRankings("MEDICAL INFORMATICS - ESCI", 2023)).thenReturn(100);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(4.0, score.getScore());
+        assertEquals("B", score.getCoreRankingEquivalent());
+        assertEquals("Q2", score.getQuarter());
+        assertEquals("SCOPUS+WOS", score.getScoringSource());
+    }
+
+    @Test
+    void preUnifiedEsciQuartileStillFloorsAtC() {
+        // Before the 2023 metrics year an ESCI quartile is computed against a tiny edition-only cohort —
+        // not comparable to a category placement. The placement is ignored and the journal takes the
+        // recognized-index floor at C instead.
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        ScoringPublication publication = publication("forum-esci", "2022-06-01", "ar", "ar");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-esci");
+        forum.setAggregationType("Journal");
+        forum.setEIssn("2561-326X");
+        when(lookupPort.getForum("forum-esci")).thenReturn(forum);
+
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        rank.setQAis(Map.of(2022, WoSRanking.Quarter.Q2)); // Q2 of a ~10-journal ESCI cohort: ignored
+
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("jid-jmir-formative");
+        ranking.setWebOfScienceCategoryIndex(Map.of("MEDICAL INFORMATICS - ESCI", rank));
+
+        when(lookupPort.getRankingsByIssn("2561-326X")).thenReturn(List.of(ranking));
+        when(lookupPort.isForumInAhci("forum-esci", 2022)).thenReturn(false);
+        when(lookupPort.isForumInEsci("forum-esci", 2022)).thenReturn(true);
+
+        Score score = service.getScore(publication, indicator);
+
+        // The paper's own Scopus eid puts SCOPUS first in the recognized-index floor; ESCI is reported too.
+        assertEquals(2.0, score.getScore());
+        assertEquals("C", score.getCoreRankingEquivalent());
+        assertEquals("SCOPUS", score.getQuarter());
+        assertEquals("SCOPUS+ESCI", score.getScoringSource());
+    }
+
+    @Test
     void journalNotInScopusAndWithoutEidScoresZero() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
 

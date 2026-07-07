@@ -233,6 +233,8 @@ class PostgresReportingLookupFacadeTest {
         assertTrue(!rankingSql.contains(":issn = ANY(alternative_issns_norm)"));
         assertTrue(!rankingSql.contains("WHERE issn_norm = :issn\n                           OR e_issn_norm = :issn"));
         assertTrue(categorySql.contains("edition_normalized IN ('SCIE', 'SSCI')"));
+        // ESCI rows are loaded only from the unified-ranking era (year-gated in SQL).
+        assertTrue(categorySql.contains("edition_normalized = 'ESCI' AND year >= :esciUnifiedFromYear"));
         assertTrue(!categorySql.contains("edition_normalized::text"));
     }
 
