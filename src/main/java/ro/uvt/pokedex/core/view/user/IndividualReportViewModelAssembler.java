@@ -31,6 +31,10 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class IndividualReportViewModelAssembler {
 
+    /** Static mapper for the page-level thresholds JSON — not a bean, so no @WebMvcTest mock ripple. */
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON =
+            new com.fasterxml.jackson.databind.ObjectMapper();
+
     private final UserIndividualReportRunRepository userIndividualReportRunRepository;
     private final ReportImportRegistry reportImportRegistry;
 
@@ -118,12 +122,48 @@ public class IndividualReportViewModelAssembler {
         model.addAttribute("runMetaTriggeredBy", run.triggeredByEmail());
         model.addAttribute("priorRuns", priorRuns);
         model.addAttribute("user", researcher);
+        model.addAttribute("thresholdsJson", thresholdsJson(report, criterionScores));
 
         // Export format the report type drives (XLSX → "Excel", DOCX → "Word"), so the export
         // action labels/links correctly instead of hardcoding xlsx.
         ReportFormat exportFormat = resolveExportFormat(report);
         model.addAttribute("exportFormat", exportFormat.name());
         model.addAttribute("exportFormatLabel", exportFormat == ReportFormat.DOCX ? "Word" : "Excel");
+    }
+
+    /**
+     * The page-level criteria/thresholds JSON (script tag {@code #eval-thresholds-data}) that the
+     * workbench JS renders the rail, criteria-met count, and position selector from. Shape:
+     * {@code [{index, name, score, contributesToTotal, thresholds:[{position, value}]}]}.
+     */
+    private String thresholdsJson(IndividualReport report, Map<Integer, Double> criterionScores) {
+        List<Map<String, Object>> criteria = new java.util.ArrayList<>();
+        List<AbstractReport.Criterion> reportCriteria = report.getCriteria() == null ? List.of() : report.getCriteria();
+        for (int i = 0; i < reportCriteria.size(); i++) {
+            AbstractReport.Criterion crit = reportCriteria.get(i);
+            List<Map<String, Object>> thresholds = new java.util.ArrayList<>();
+            if (crit.getThresholds() != null) {
+                for (AbstractReport.Threshold t : crit.getThresholds()) {
+                    if (t.getPosition() != null && t.getValue() != null) {
+                        thresholds.add(Map.of("position", t.getPosition().name(), "value", t.getValue()));
+                    }
+                }
+            }
+            Map<String, Object> entry = new java.util.LinkedHashMap<>();
+            entry.put("index", i);
+            entry.put("name", crit.getName() != null && !crit.getName().isBlank()
+                    ? crit.getName().trim() : "Criterion " + (i + 1));
+            entry.put("score", criterionScores.getOrDefault(i, 0.0));
+            entry.put("contributesToTotal", crit.isContributesToTotal());
+            entry.put("thresholds", thresholds);
+            criteria.add(entry);
+        }
+        try {
+            // '<' is escaped so a hostile criterion name cannot close the inline <script> tag.
+            return JSON.writeValueAsString(criteria).replace("<", "\\u003c");
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return "[]";
+        }
     }
 
     private ReportFormat resolveExportFormat(IndividualReport report) {

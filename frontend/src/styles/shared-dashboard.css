@@ -204,10 +204,8 @@
 
 .app-summary-grid + .app-table-section,
 .app-summary-grid + .app-summary-panel,
-.app-summary-grid + .app-report-grid,
 .app-summary-panel + .app-table-section,
-.app-summary-panel + .app-summary-panel,
-.app-summary-panel + .app-report-grid {
+.app-summary-panel + .app-summary-panel {
   margin-top: 0.35rem;
 }
 
@@ -632,236 +630,6 @@
   border-radius: 0.45rem;
 }
 
-.app-report-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.app-report-card {
-  height: 100%;
-}
-
-.app-report-card .card-header {
-  padding: 1rem 1.15rem;
-}
-
-.app-report-card .card-body {
-  padding: 1.15rem;
-}
-
-.app-report-card .criterion-card {
-  border: 0;
-}
-
-.app-report-card .criterion-total-block {
-  border-left: 4px solid var(--app-color-primary);
-  background: color-mix(in srgb, var(--app-color-primary) 8%, var(--app-color-card-bg-muted));
-  border-radius: 0.75rem;
-  padding: 0.85rem 1rem;
-  margin-bottom: 1rem;
-}
-
-.app-report-card .criterion-score-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: nowrap;
-}
-
-.app-report-card .threshold-inline-wrap {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  overflow-x: auto;
-  flex: 1 1 auto;
-}
-
-.app-report-card .threshold-icon-rail {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 0.35rem;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.app-report-card .threshold-icon-btn {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--app-color-border);
-  border-radius: 999px;
-  background: var(--app-color-card-bg);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-
-.app-report-card .threshold-icon-btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--app-color-primary) 20%, transparent);
-}
-
-.app-report-card .threshold-icon {
-  font-size: 0.95rem;
-  color: var(--app-color-text-muted);
-  line-height: 1;
-}
-
-.app-report-card .threshold-icon-btn.is-passed .threshold-icon {
-  color: var(--app-color-success);
-}
-
-.app-report-card .threshold-icon-btn.is-passed {
-  border-color: color-mix(in srgb, var(--app-color-success) 28%, var(--app-color-border));
-}
-
-.app-report-card .threshold-icon-btn.is-selected-pass {
-  border-color: color-mix(in srgb, var(--app-color-primary) 40%, var(--app-color-border));
-  background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
-}
-
-.app-report-card .threshold-icon-btn.is-selected-pass .threshold-icon {
-  color: var(--app-color-primary);
-}
-
-.app-report-card .threshold-icon-btn.is-selected-fail {
-  border-color: color-mix(in srgb, var(--app-color-danger) 40%, var(--app-color-border));
-  background: color-mix(in srgb, var(--app-color-danger) 10%, transparent);
-}
-
-.app-report-card .threshold-icon-btn.is-selected-fail .threshold-icon {
-  color: var(--app-color-danger);
-}
-
-.app-report-card .criterion-score-display {
-  text-align: right;
-  flex: 0 0 auto;
-}
-
-.app-report-card .criterion-selected-position {
-  white-space: nowrap;
-}
-
-.app-report-card .criterion-score-ratio {
-  font-size: 1.25rem;
-  line-height: 1.1;
-  font-weight: 700;
-  color: var(--app-color-text-strong);
-  white-space: nowrap;
-}
-
-.app-report-card .indicator-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.app-report-card .indicator-list.is-collapsed {
-  display: none;
-}
-
-.app-report-card .indicator-toggle {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 0.15rem 0 0.65rem;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-  cursor: pointer;
-}
-
-.app-report-card .indicator-toggle-icon {
-  color: var(--app-color-primary);
-  font-size: 0.8rem;
-  transition: transform 0.15s ease-in-out;
-}
-
-.app-report-card .indicator-toggle[aria-expanded='true'] .indicator-toggle-icon {
-  transform: rotate(180deg);
-}
-
-.app-report-card .indicator-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 1.35rem;
-}
-
-.app-report-card .indicator-link {
-  font-size: 0.82rem;
-  color: var(--app-color-primary);
-  font-weight: 600;
-  text-decoration: none;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.app-report-card .indicator-link:hover,
-.app-report-card .indicator-link:focus {
-  color: var(--app-color-primary-strong);
-  text-decoration: underline;
-}
-
-.app-report-card .indicator-row-score {
-  font-size: 0.88rem;
-  color: var(--app-color-text-strong);
-  font-weight: 700;
-  text-align: right;
-  flex: 0 0 auto;
-}
-
-.app-report-card__meta,
-.app-report-card__empty {
-  font-size: 0.82rem;
-  color: var(--app-color-text-muted);
-}
-
-.app-report-card__surface {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border: 1px solid var(--app-color-border);
-  border-radius: var(--app-radius-card);
-  background: var(--app-color-card-bg);
-  box-shadow: var(--app-shadow-card);
-}
-
-.app-report-card__header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--app-color-border);
-}
-
-.app-report-card__title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--app-color-text-strong);
-}
-
-.app-report-card__body {
-  padding: 1.25rem;
-}
-
-.app-report-card__eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--app-color-text-muted);
-}
-
 .detail-shell {
   background: color-mix(in srgb, var(--app-color-card-bg-muted) 88%, transparent);
   border: 1px solid var(--app-color-border);
@@ -882,8 +650,7 @@
 }
 
 @media (max-width: 1199.98px) {
-  .app-summary-grid,
-  .app-report-grid {
+  .app-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -897,18 +664,6 @@
     grid-column: span 3;
   }
 
-  .app-report-card .criterion-score-ratio {
-    font-size: 1.05rem;
-  }
-
-  .app-report-card .indicator-row {
-    align-items: baseline;
-  }
-
-  .app-report-card .threshold-icon-btn {
-    width: 28px;
-    height: 28px;
-  }
 }
 
 @media (max-width: 767.98px) {
@@ -922,8 +677,7 @@
     flex: 1 1 100%;
   }
 
-  .app-summary-grid,
-  .app-report-grid {
+  .app-summary-grid {
     grid-template-columns: 1fr;
   }
 
@@ -978,16 +732,6 @@
     height: 96px;
   }
 
-  .app-report-card .criterion-score-row,
-  .app-report-card .indicator-row {
-    flex-wrap: wrap;
-  }
-
-  .app-report-card .criterion-score-display,
-  .app-report-card .indicator-row-score {
-    width: 100%;
-    text-align: left;
-  }
 }
 
 /* ── Overview panel drag-and-drop ──────────────────────────────────────── */

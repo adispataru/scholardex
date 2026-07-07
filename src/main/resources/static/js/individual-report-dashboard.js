@@ -36,109 +36,119 @@
   var _compareData  = null;
   var _modalTrigger = null; // element to restore focus to when citation modal closes
 
-  // ── Threshold icon rail ───────────────────────────────────────────────────
+  // Workbench state — set once in boot(), read everywhere below.
+  var _root = null;
+  var _reportId = '';
+  var _apiBase = '/user/evaluation';
+  var _selfMode = true;      // false on the delegated read-only view
+  var _position = '';        // currently selected evaluation position
+  var _thresholds = [];      // parsed #eval-thresholds-data entries, indexed by criterion index
 
-  function applySelection(row, button) {
-    var score = toNumber(row.getAttribute('data-criterion-score'));
-    var selectedPosition = button.getAttribute('data-position') || 'Position';
-    var selectedThreshold = toNumber(button.getAttribute('data-threshold-value'));
+  // ── Criteria rail + evidence pane ─────────────────────────────────────────
 
-    var label = row.querySelector('.criterion-selected-position');
-    var ratio = row.querySelector('.criterion-score-ratio');
-    if (label) {
-      label.textContent = selectedPosition;
-    }
-    if (ratio) {
-      ratio.textContent = formatScore(score) + ' / ' + formatScore(selectedThreshold);
-    }
-
-    var buttons = row.querySelectorAll('.threshold-icon-btn');
-    buttons.forEach(function (node) {
-      var thresholdValue = toNumber(node.getAttribute('data-threshold-value'));
-      node.classList.remove('is-passed', 'is-failed', 'is-selected-pass', 'is-selected-fail');
-      node.classList.add(score >= thresholdValue ? 'is-passed' : 'is-failed');
-    });
-
-    button.classList.add(score >= selectedThreshold ? 'is-selected-pass' : 'is-selected-fail');
-  }
-
-  function findInitialButton(row, researcherPosition) {
-    var buttons = Array.prototype.slice.call(row.querySelectorAll('.threshold-icon-btn'));
-    if (buttons.length === 0) return null;
-    if (researcherPosition) {
-      var matching = buttons.find(function (btn) {
-        return btn.getAttribute('data-position') === researcherPosition;
+  function readThresholds() {
+    _thresholds = [];
+    var el = document.getElementById('eval-thresholds-data');
+    if (!el) return;
+    try {
+      var parsed = JSON.parse(el.textContent || '[]');
+      (parsed || []).forEach(function (entry) {
+        if (entry && typeof entry.index === 'number') _thresholds[entry.index] = entry;
       });
-      if (matching) return matching;
-    }
-    return buttons[0];
+    } catch (e) { /* malformed JSON → rail renders scores without thresholds */ }
   }
 
-  function initThresholdRows(root, researcherPosition) {
-    root.querySelectorAll('.criterion-score-row').forEach(function (row) {
-      var initial = findInitialButton(row, researcherPosition);
-      if (!initial) return;
-      applySelection(row, initial);
-      row.querySelectorAll('.threshold-icon-btn').forEach(function (button) {
-        button.addEventListener('click', function () {
-          applySelection(row, button);
-        });
+  function thresholdByPosition(criterionIndex, position) {
+    var entry = _thresholds[criterionIndex];
+    if (!entry || !Array.isArray(entry.thresholds) || !position) return null;
+    var match = entry.thresholds.find(function (t) { return t.position === position; });
+    return match ? toNumber(match.value) : null;
+  }
+
+  function criterionScore(criterionIndex) {
+    var entry = _thresholds[criterionIndex];
+    return entry ? toNumber(entry.score) : 0;
+  }
+
+  /** met / near (within 20% below) / below; null when no threshold applies. */
+  function chipFor(score, threshold) {
+    if (threshold == null || threshold <= 0) return null;
+    if (score >= threshold) return { label: 'met', cls: 'app-eval-chip--met' };
+    if (score >= 0.8 * threshold) return { label: 'near', cls: 'app-eval-chip--near' };
+    return { label: 'below', cls: 'app-eval-chip--below' };
+  }
+
+  function applyChip(el, score, threshold) {
+    if (!el) return;
+    var chip = chipFor(score, threshold);
+    if (!chip) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    el.hidden = false;
+    el.textContent = chip.label;
+    el.className = el.className.split(' ')[0] + ' app-eval-chip ' + chip.cls;
+  }
+
+  function ratioText(score, threshold) {
+    return threshold != null ? formatScore(score) + ' / ' + formatScore(threshold) : formatScore(score);
+  }
+
+  function renderRail(root, position) {
+    root.querySelectorAll('.app-eval-rail__tile').forEach(function (tile) {
+      var idx = parseInt(tile.getAttribute('data-criterion-index'), 10);
+      var score = criterionScore(idx);
+      var threshold = thresholdByPosition(idx, position);
+      var ratio = tile.querySelector('.app-eval-rail__ratio');
+      if (ratio) ratio.textContent = ratioText(score, threshold);
+      applyChip(tile.querySelector('.app-eval-rail__chip'), score, threshold);
+    });
+  }
+
+  function updateEvidenceHeader(root, idx, position) {
+    var section = root.querySelector('.app-eval-evidence__criterion[data-criterion-index="' + idx + '"]');
+    if (!section) return;
+    var score = criterionScore(idx);
+    var threshold = thresholdByPosition(idx, position);
+    var ratio = section.querySelector('.app-eval-evidence__ratio');
+    if (ratio) ratio.textContent = ratioText(score, threshold);
+    applyChip(section.querySelector('.app-eval-evidence__chip'), score, threshold);
+  }
+
+  function selectCriterion(root, idx, opts) {
+    opts = opts || {};
+    var found = false;
+    root.querySelectorAll('.app-eval-rail__tile').forEach(function (tile) {
+      var active = tile.getAttribute('data-criterion-index') === String(idx);
+      tile.classList.toggle('is-active', active);
+      if (active) { tile.setAttribute('aria-current', 'true'); found = true; }
+      else tile.removeAttribute('aria-current');
+    });
+    root.querySelectorAll('.app-eval-evidence__criterion').forEach(function (section) {
+      section.hidden = section.getAttribute('data-criterion-index') !== String(idx);
+    });
+    if (!found) return;
+    updateEvidenceHeader(root, idx, _position);
+    if (opts.updateHash !== false) {
+      history.replaceState(null, '', '#criterion-' + idx);
+    }
+    // Eager-load every indicator detail in the selected criterion (once; panels stay rendered).
+    var section = root.querySelector('.app-eval-evidence__criterion[data-criterion-index="' + idx + '"]');
+    if (section) {
+      section.querySelectorAll('.indicator-detail-panel').forEach(function (panel) {
+        panel.hidden = false;
+        if (panel.getAttribute('data-loaded')) return;
+        panel.setAttribute('data-loaded', 'true');
+        loadIndicatorDetail(panel, panel.getAttribute('data-indicator-id'), _reportId, _apiBase);
       });
-    });
-  }
-
-  // ── Criterion accordion ───────────────────────────────────────────────────
-  // Default: one criterion expanded at a time.
-
-  function openCriterion(root, toggle, target) {
-    // Close all others first
-    root.querySelectorAll('.indicator-toggle[aria-expanded="true"]').forEach(function (t) {
-      if (t !== toggle) {
-        var otherId = t.getAttribute('data-target');
-        var other = otherId ? root.querySelector('#' + otherId) : null;
-        t.setAttribute('aria-expanded', 'false');
-        t.classList.add('collapsed');
-        if (other) {
-          other.classList.add('is-collapsed');
-          other.hidden = true;
-        }
-      }
-    });
-
-    toggle.setAttribute('aria-expanded', 'true');
-    toggle.classList.remove('collapsed');
-    target.classList.remove('is-collapsed');
-    target.hidden = false;
-
-    // Update hash to criterion wrapper
-    var wrapper = toggle.closest('.criterion-wrapper');
-    if (wrapper && wrapper.id) {
-      history.replaceState(null, '', '#' + wrapper.id);
     }
   }
 
-  function closeCriterion(toggle, target) {
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.classList.add('collapsed');
-    target.classList.add('is-collapsed');
-    target.hidden = true;
-    history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
-
-  function initCriterionToggles(root) {
-    root.querySelectorAll('.indicator-toggle').forEach(function (toggle) {
-      var targetId = toggle.getAttribute('data-target');
-      if (!targetId) return;
-      var target = root.querySelector('#' + targetId);
-      if (!target) return;
-
-      toggle.addEventListener('click', function () {
-        var expanded = toggle.getAttribute('aria-expanded') === 'true';
-        if (expanded) {
-          closeCriterion(toggle, target);
-        } else {
-          openCriterion(root, toggle, target);
-        }
+  function initRail(root) {
+    root.querySelectorAll('.app-eval-rail__tile').forEach(function (tile) {
+      tile.addEventListener('click', function () {
+        selectCriterion(root, parseInt(tile.getAttribute('data-criterion-index'), 10));
       });
     });
   }
@@ -167,7 +177,7 @@
 
   function renderDetailList(items, outputMode, indicatorId) {
     if (!items || items.length === 0) {
-      return '<p class="app-report-card__meta mt-2">No scored items found.</p>';
+      return '<p class="app-eval-muted mt-2">No scored items found.</p>';
     }
     var isActivities = outputMode === 'activities';
     var isCitations  = outputMode === 'citations';
@@ -230,6 +240,94 @@
     });
 
     html += '</div>';
+    return html;
+  }
+
+  /**
+   * Full-width evidence table for the workbench pane. Titles link to /publications/{id} and
+   * venues to /forums/{id} when the payload carries ids; citation-mode rows keep the
+   * click-to-drill behavior of the modal. Activities keep the compact list renderer — they
+   * have no links or venue columns.
+   */
+  function renderEvidenceTable(items, outputMode, indicatorId) {
+    if (outputMode === 'activities') {
+      return renderDetailList(items, outputMode, indicatorId);
+    }
+    if (!items || items.length === 0) {
+      return '<p class="app-eval-muted mt-2">No scored items found.</p>';
+    }
+    var isCitations = outputMode === 'citations';
+
+    var html = '<table class="app-eval-evidence-table"><thead><tr>' +
+      '<th scope="col">' + (isCitations ? 'Publication (click for citations)' : 'Publication') + '</th>' +
+      '<th scope="col">Year</th>' +
+      '<th scope="col">Rank</th>' +
+      '<th scope="col">Venue</th>' +
+      '<th scope="col" class="app-eval-evidence-table__num">Points</th>' +
+      (_selfMode ? '<th scope="col"><span class="sr-only">Actions</span></th>' : '') +
+      '</tr></thead><tbody>';
+
+    items.forEach(function (item) {
+      var isZeroScored = !isCitations && toNumber(item.authorScore) <= 0;
+      var rowAttrs = '';
+      if (isCitations && indicatorId) {
+        rowAttrs = ' class="app-eval-evidence-table__row--clickable" role="button" tabindex="0"' +
+          ' data-citation-pub="' + esc(item.key) + '"' +
+          ' data-indicator-id="' + esc(indicatorId) + '"' +
+          ' aria-label="View citations for ' + esc(item.key) + '"';
+      } else if (isZeroScored) {
+        rowAttrs = ' class="app-eval-evidence-table__row--zero"';
+      }
+      html += '<tr' + rowAttrs + '>';
+
+      // Publication title — linked when the payload resolved a publication id.
+      html += '<td class="app-eval-evidence-table__title">';
+      if (item.publicationId && !isCitations) {
+        html += '<a href="/publications/' + encodeURIComponent(item.publicationId) + '"' +
+          ' title="' + esc(item.key) + '">' + esc(item.key) + '</a>';
+      } else {
+        html += '<span title="' + esc(item.key) + '">' + esc(item.key) + '</span>';
+      }
+      html += '</td>';
+
+      html += '<td>' + (item.year ? item.year : '—') + '</td>';
+
+      html += '<td class="app-eval-evidence-table__rank">';
+      if (item.quarter) html += rankBadge(item.quarter);
+      if (item.coreRankingEquivalent && item.coreRankingEquivalent !== item.quarter) {
+        html += rankBadge(item.coreRankingEquivalent);
+      }
+      if (item.scoringSource) {
+        html += '<span class="eval-scored-item__meta-text">' + esc(item.scoringSource) + '</span>';
+      }
+      html += '</td>';
+
+      html += '<td>';
+      if (item.forumId) {
+        html += '<a href="/forums/' + encodeURIComponent(item.forumId) + '" title="Open venue page">venue' +
+          ' <i class="fa-solid fa-arrow-up-right-from-square fa-xs" aria-hidden="true"></i></a>';
+      } else {
+        html += '<span class="app-eval-muted">—</span>';
+      }
+      html += '</td>';
+
+      html += '<td class="app-eval-evidence-table__num">';
+      if (isZeroScored) {
+        html += '<span class="eval-scored-item__zero-flag" title="Categorized for this indicator, but the scoring formula produced 0">below threshold</span> ';
+      }
+      html += '<strong>' + toNumber(item.authorScore).toFixed(2) + '</strong></td>';
+
+      if (_selfMode) {
+        html += '<td class="app-eval-evidence-table__actions">';
+        if (item.publicationId && !isCitations) {
+          html += '<a href="/user/workspace#publications" title="Manage in My Publications">manage</a>';
+        }
+        html += '</td>';
+      }
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
     return html;
   }
 
@@ -320,7 +418,7 @@
       })
       .catch(function (err) {
         bodyEl.innerHTML =
-          '<p class="app-report-card__meta text-danger">Failed to load citations. ' + esc(err.message) + '</p>';
+          '<p class="app-eval-muted text-danger">Failed to load citations. ' + esc(err.message) + '</p>';
       });
   }
 
@@ -406,66 +504,28 @@
             '<span class="indicator-detail-total">Total score: <strong>' + toNumber(data.totalScore).toFixed(2) + '</strong>' + indicatorDeltaHtml + '</span>' +
             '<span class="indicator-detail-updated">Updated: ' + esc(data.updatedAt ? data.updatedAt.substring(0, 10) : '—') + '</span>' +
             '</div>';
-          content.innerHTML = headerHtml + renderDetailList(data.items, data.outputMode, data.indicatorId);
+          content.innerHTML = headerHtml + renderEvidenceTable(data.items, data.outputMode, data.indicatorId);
         }
-        // Update hash to indicator
-        history.replaceState(null, '', '#indicator-' + indicatorId);
       })
       .catch(function (err) {
         if (skeleton) skeleton.hidden = true;
         if (content) {
-          content.innerHTML = '<p class="app-report-card__meta text-danger mt-2">Failed to load detail. ' + esc(err.message) + '</p>';
+          content.innerHTML = '<p class="app-eval-muted text-danger mt-2">Failed to load detail. ' + esc(err.message) + '</p>';
         }
       });
   }
 
-  function openIndicatorPanel(panel) {
-    panel.hidden = false;
-  }
-
-  function closeIndicatorPanel(panel) {
-    panel.hidden = true;
-    var content = panel.querySelector('.indicator-detail-content');
-    if (content) content.innerHTML = '';
-    var skeleton = panel.querySelector('.indicator-detail-skeleton');
-    if (skeleton) skeleton.hidden = true;
-  }
-
-  function initIndicatorExpand(root, reportId, apiBase) {
-    root.querySelectorAll('.indicator-expand-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var indicatorId = btn.getAttribute('data-indicator-id');
-        var panelId = btn.getAttribute('aria-controls');
-        var panel = panelId ? root.querySelector('#' + panelId) : null;
-        if (!panel) return;
-
-        var isExpanded = btn.getAttribute('aria-expanded') === 'true';
-        if (isExpanded) {
-          btn.setAttribute('aria-expanded', 'false');
-          closeIndicatorPanel(panel);
-          // Revert hash to criterion level
-          var wrapper = btn.closest('.criterion-wrapper');
-          if (wrapper && wrapper.id) {
-            history.replaceState(null, '', '#' + wrapper.id);
-          }
-        } else {
-          // Close other indicators in same criterion first
-          var criterion = btn.closest('.indicator-list');
-          if (criterion) {
-            criterion.querySelectorAll('.indicator-expand-btn[aria-expanded="true"]').forEach(function (other) {
-              if (other !== btn) {
-                other.setAttribute('aria-expanded', 'false');
-                var otherId = other.getAttribute('aria-controls');
-                var otherPanel = otherId ? root.querySelector('#' + otherId) : null;
-                if (otherPanel) closeIndicatorPanel(otherPanel);
-              }
-            });
-          }
-          btn.setAttribute('aria-expanded', 'true');
-          openIndicatorPanel(panel);
-          loadIndicatorDetail(panel, indicatorId, reportId, apiBase);
-        }
-      });
+  // Indicator sections are always expanded in the workbench; clicking an indicator name just
+  // anchors the URL to it (deep-linkable) and scrolls its section into view.
+  function initIndicatorHashClicks(root) {
+    root.addEventListener('click', function (e) {
+      var btn = e.target.closest('.app-eval-indicator__name');
+      if (!btn) return;
+      var indicatorId = btn.getAttribute('data-indicator-id');
+      if (!indicatorId) return;
+      history.replaceState(null, '', '#indicator-' + indicatorId);
+      var section = btn.closest('.app-eval-indicator');
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }
 
@@ -476,6 +536,7 @@
     'LECT_UNIV':  'Lect. Univ.',
     'CONF_UNIV':  'Conf. Univ.',
     'PROF_UNIV':  'Prof. Univ.',
+    'HABIL':      'Abilitare',
     'CS_I':       'CS I',
     'CS_II':      'CS II',
     'CS_III':     'CS III',
@@ -483,27 +544,25 @@
     'OTHER':      'Other'
   };
 
-  /** Returns {met, total} for criteria applicable to the given position. */
-  function computeCriteriaMet(root, position) {
+  /** Returns {met, total} for criteria applicable to the given position (from the thresholds JSON). */
+  function computeCriteriaMet(position) {
     var met = 0, total = 0;
-    root.querySelectorAll('.criterion-score-row').forEach(function (row) {
-      var btn = Array.prototype.slice.call(row.querySelectorAll('.threshold-icon-btn'))
-        .find(function (b) { return b.getAttribute('data-position') === position; });
-      if (!btn) return; // no threshold for this position — criterion not applicable
+    _thresholds.forEach(function (entry) {
+      if (!entry) return;
+      var threshold = thresholdByPosition(entry.index, position);
+      if (threshold == null) return; // no threshold for this position — criterion not applicable
       total++;
-      var score     = toNumber(row.getAttribute('data-criterion-score'));
-      var threshold = toNumber(btn.getAttribute('data-threshold-value'));
-      if (score >= threshold) met++;
+      if (toNumber(entry.score) >= threshold) met++;
     });
     return { met: met, total: total };
   }
 
-  function updateCriteriaMet(root, position) {
+  function updateCriteriaMet(position) {
     var valueEl = document.getElementById('eval-criteria-met-value');
     var barEl   = document.getElementById('eval-criteria-met-bar');
     if (!valueEl) return;
 
-    var result = computeCriteriaMet(root, position);
+    var result = computeCriteriaMet(position);
     if (result.total === 0) {
       valueEl.textContent = '—';
       if (barEl) barEl.style.width = '0%';
@@ -513,36 +572,51 @@
     }
   }
 
-  function initPositionSelector(root, researcherPosition) {
-    var select = document.querySelector('[data-eval-position-selector]');
-    if (!select) return;
-
-    // Collect unique positions that actually appear in the report's thresholds
+  function reportPositions() {
     var seen = {};
-    var orderedPositions = [];
-    root.querySelectorAll('.threshold-icon-btn[data-position]').forEach(function (btn) {
-      var pos = btn.getAttribute('data-position');
-      if (pos && !seen[pos]) {
-        seen[pos] = true;
-        orderedPositions.push(pos);
-      }
+    var positions = [];
+    _thresholds.forEach(function (entry) {
+      if (!entry || !Array.isArray(entry.thresholds)) return;
+      entry.thresholds.forEach(function (t) {
+        if (t.position && !seen[t.position]) {
+          seen[t.position] = true;
+          positions.push(t.position);
+        }
+      });
     });
+    var ORDER = ['ASIST_UNIV','LECT_UNIV','CONF_UNIV','PROF_UNIV','HABIL','CS_I','CS_II','CS_III','ASIST_C','OTHER'];
+    positions.sort(function (a, b) { return ORDER.indexOf(a) - ORDER.indexOf(b); });
+    return positions;
+  }
 
-    // Sort by the canonical enum order
-    var ORDER = ['ASIST_UNIV','LECT_UNIV','CONF_UNIV','PROF_UNIV','CS_I','CS_II','CS_III','ASIST_C','OTHER'];
-    orderedPositions.sort(function (a, b) {
-      return ORDER.indexOf(a) - ORDER.indexOf(b);
-    });
+  function applyPosition(root, position) {
+    _position = position;
+    root.setAttribute('data-researcher-position', position);
+    renderRail(root, position);
+    updateCriteriaMet(position);
+    var active = root.querySelector('.app-eval-rail__tile.is-active');
+    if (active) {
+      updateEvidenceHeader(root, parseInt(active.getAttribute('data-criterion-index'), 10), position);
+    }
+  }
 
-    if (orderedPositions.length === 0) {
+  function initPositionSelector(root, researcherPosition) {
+    _position = researcherPosition || '';
+    var select = document.querySelector('[data-eval-position-selector]');
+    var positions = reportPositions();
+
+    if (!select) return; // delegated view: fixed researcher position, no selector
+
+    if (positions.length === 0) {
       // No thresholds at all — hide the selector cell
       var cell = select.closest('.app-eval-aggregate__cell');
       if (cell) cell.hidden = true;
       return;
     }
 
-    // Populate options
-    orderedPositions.forEach(function (pos) {
+    var seen = {};
+    positions.forEach(function (pos) {
+      seen[pos] = true;
       var opt = document.createElement('option');
       opt.value = pos;
       opt.textContent = POSITION_LABELS[pos] || pos;
@@ -551,20 +625,14 @@
     });
 
     // If researcher's position isn't in the list, pick the first available
-    if (!seen[researcherPosition] && orderedPositions.length > 0) {
-      select.value = orderedPositions[0];
+    if (!seen[researcherPosition]) {
+      select.value = positions[0];
     }
+    _position = select.value;
+    updateCriteriaMet(_position);
 
-    // Initial criteria-met update (may differ from server-rendered value if
-    // the researcher's actual position has no thresholds in this report)
-    updateCriteriaMet(root, select.value);
-
-    // Re-apply thresholds and recount on change
     select.addEventListener('change', function () {
-      var pos = select.value;
-      root.setAttribute('data-researcher-position', pos);
-      initThresholdRows(root, pos);
-      updateCriteriaMet(root, pos);
+      applyPosition(root, select.value);
     });
   }
 
@@ -580,45 +648,61 @@
 
   // ── Hash restoration ──────────────────────────────────────────────────────
 
+  /** Restores #criterion-N / #indicator-ID deep links; returns true when the hash selected a criterion. */
   function applyHashState(root) {
     var hash = window.location.hash;
-    if (!hash) return;
+    if (!hash) return false;
 
-    // #indicator-{id} → expand the criterion that contains it, then expand the indicator
+    // #indicator-{id} → select the owning criterion, then scroll the indicator section into view
     var indMatch = hash.match(/^#indicator-(.+)$/);
     if (indMatch) {
-      var indicatorId = indMatch[1];
-      var btn = root.querySelector('.indicator-expand-btn[data-indicator-id="' + indicatorId + '"]');
-      if (btn) {
-        // First open the criterion
-        var list = btn.closest('.indicator-list');
-        var wrapper = btn.closest('.criterion-wrapper');
-        if (list && wrapper) {
-          var toggle = wrapper.querySelector('.indicator-toggle');
-          if (toggle && toggle.getAttribute('aria-expanded') !== 'true') {
-            openCriterion(root, toggle, list);
-          }
-        }
-        // Then trigger indicator expand
-        btn.click();
-        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return;
+      var panel = root.querySelector('.indicator-detail-panel[data-indicator-id="' + indMatch[1] + '"]');
+      var section = panel ? panel.closest('.app-eval-evidence__criterion') : null;
+      if (section) {
+        selectCriterion(root, parseInt(section.getAttribute('data-criterion-index'), 10), { updateHash: false });
+        var indicator = panel.closest('.app-eval-indicator');
+        if (indicator) indicator.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return true;
       }
+      return false;
     }
 
-    // #criterion-{index} → expand that criterion
+    // #criterion-{index} → select that criterion
     var critMatch = hash.match(/^#criterion-(\d+)$/);
-    if (critMatch) {
-      var wrapper2 = root.querySelector('#criterion-' + critMatch[1]);
-      if (wrapper2) {
-        var toggle2 = wrapper2.querySelector('.indicator-toggle');
-        var list2 = toggle2 ? root.querySelector('#' + toggle2.getAttribute('data-target')) : null;
-        if (toggle2 && list2 && toggle2.getAttribute('aria-expanded') !== 'true') {
-          openCriterion(root, toggle2, list2);
-          wrapper2.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }
+    if (critMatch && root.querySelector('.app-eval-rail__tile[data-criterion-index="' + critMatch[1] + '"]')) {
+      selectCriterion(root, parseInt(critMatch[1], 10), { updateHash: false });
+      return true;
     }
+    return false;
+  }
+
+  // ── Overflow menu (compare/snapshot/export/verify live here on the self view) ─
+
+  function initOverflowMenu() {
+    var btn = document.getElementById('eval-overflow-btn');
+    var menu = document.getElementById('eval-overflow-menu');
+    if (!btn || !menu) return;
+
+    function close() {
+      menu.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = menu.hidden;
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', function (e) {
+      if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !menu.hidden) {
+        close();
+        btn.focus();
+      }
+    });
   }
 
   // ── Comparison mode ───────────────────────────────────────────────────────
@@ -626,11 +710,11 @@
   function applyComparisonDeltas(root, data) {
     _compareData = data;
 
-    // 1. Criterion delta spans
-    root.querySelectorAll('.criterion-score-row').forEach(function (row) {
-      var idx = parseInt(row.getAttribute('data-criterion-index'), 10);
+    // 1. Criterion delta spans (on the rail tiles)
+    root.querySelectorAll('.app-eval-rail__tile').forEach(function (tile) {
+      var idx = parseInt(tile.getAttribute('data-criterion-index'), 10);
       var dp = data.criterionDeltas ? data.criterionDeltas[idx] : null;
-      var span = row.querySelector('.eval-criterion-delta');
+      var span = tile.querySelector('.eval-criterion-delta');
       if (!span || !dp) return;
       span.className = 'eval-criterion-delta eval-delta ' + deltaClass(dp.delta);
       span.textContent = deltaText(dp.delta);
@@ -1065,25 +1149,34 @@
     var root = document.querySelector('.individual-report-dashboard');
     if (!root) return;
 
+    _root = root;
     var researcherPosition = root.getAttribute('data-researcher-position') || '';
-    var reportId = root.getAttribute('data-report-id') || '';
+    _reportId = root.getAttribute('data-report-id') || '';
     // Drilldown fetch base: '/user/evaluation' for the researcher's own page, or
     // '/reports/researcher/{email}' for the delegated admin/supervisor view. Same JS, same
     // endpoints shape — only the prefix differs, so the two surfaces cannot drift.
-    var apiBase = root.getAttribute('data-eval-api-base') || '/user/evaluation';
+    _apiBase = root.getAttribute('data-eval-api-base') || '/user/evaluation';
+    _selfMode = _apiBase === '/user/evaluation';
 
+    readThresholds();
     initPositionSelector(root, researcherPosition);
-    initThresholdRows(root, researcherPosition);
-    initCriterionToggles(root);
-    initIndicatorExpand(root, reportId, apiBase);
-    initCitationModal(root, reportId, apiBase);
+    renderRail(root, _position);
+    initRail(root);
+    initIndicatorHashClicks(root);
+    initCitationModal(root, _reportId, _apiBase);
     initReportSwitcher();
     var currentRunId = root.getAttribute('data-run-id') || (window.evalCurrentRunId || null);
-    initComparisonControls(root, reportId, currentRunId);
-    initSnapshotPanel(root, reportId, currentRunId);
+    initComparisonControls(root, _reportId, currentRunId);
+    initSnapshotPanel(root, _reportId, currentRunId);
+    initOverflowMenu();
 
-    // Apply hash state after a tick so the DOM is stable
-    setTimeout(function () { applyHashState(root); }, 0);
+    // Apply hash state after a tick so the DOM is stable; default to the first criterion.
+    setTimeout(function () {
+      if (!applyHashState(root)) {
+        var first = root.querySelector('.app-eval-rail__tile');
+        if (first) selectCriterion(root, parseInt(first.getAttribute('data-criterion-index'), 10), { updateHash: false });
+      }
+    }, 0);
   }
 
   if (document.readyState === 'loading') {

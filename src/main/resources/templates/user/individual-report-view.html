@@ -58,8 +58,8 @@
                     Viewing <strong th:text="${delegatedSubjectName}">researcher</strong>'s report — read-only.
                 </div>
 
-                <!-- ── Toolbar ──────────────────────────────────────────────── -->
-                <div class="app-page-toolbar">
+                <!-- ── Summary band: report switcher + score summary + actions ── -->
+                <div class="app-eval-aggregate app-eval-summary mb-3">
                     <!-- Delegated report switcher: plain links (no dashboard JS in read-only mode) -->
                     <div class="app-eval-report-switcher" th:if="${#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
                         <label class="app-eval-report-switcher__label">Report</label>
@@ -80,8 +80,45 @@
                                     th:selected="${r.id == report.id}"></option>
                         </select>
                     </div>
+                    <!-- Total score (only shown when at least one criterion is flagged contributesToTotal) -->
+                    <div class="app-eval-aggregate__cell" th:if="${totalScore != null}">
+                        <span class="app-eval-aggregate__label">Total Score</span>
+                        <span class="app-eval-aggregate__value"
+                              th:text="${#numbers.formatDecimal(totalScore, 1, 2)}">0.00</span>
+                    </div>
+                    <!-- Criteria Met — values updated by JS when position changes -->
+                    <div class="app-eval-aggregate__cell" id="eval-criteria-met-cell">
+                        <span class="app-eval-aggregate__label">Criteria Met</span>
+                        <span class="app-eval-aggregate__value" id="eval-criteria-met-value"
+                              th:text="${criteriaTotal != null and criteriaTotal > 0 ? criteriaMet + ' / ' + criteriaTotal : '—'}">—</span>
+                        <div class="app-eval-aggregate__progress-bar">
+                            <div class="app-eval-aggregate__progress-fill" id="eval-criteria-met-bar"
+                                 th:style="${criteriaTotal != null and criteriaTotal > 0 ? 'width:' + (criteriaMet * 100 / criteriaTotal) + '%' : 'width:0%'}"></div>
+                        </div>
+                    </div>
+                    <!-- Position selector -->
+                    <div class="app-eval-aggregate__cell" th:unless="${delegated}">
+                        <label for="eval-position-select" class="app-eval-aggregate__label">View as Position</label>
+                        <select id="eval-position-select"
+                                class="form-control form-control-sm app-eval-position-select"
+                                data-eval-position-selector>
+                            <!-- populated by individual-report-dashboard.js from the thresholds JSON -->
+                        </select>
+                    </div>
+                    <div class="app-eval-aggregate__cell app-eval-aggregate__cell--meta">
+                        <span class="app-eval-aggregate__label">Last Run</span>
+                        <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
+                              th:text="${runMetaCreatedAt != null ? #temporals.format(runMetaCreatedAt, 'yyyy-MM-dd HH:mm') : '—'}">—</span>
+                        <span th:if="${runMetaTriggeredBy != null and user != null and runMetaTriggeredBy != user.email}"
+                              class="app-eval-aggregate__value app-eval-aggregate__value--sm text-muted"
+                              th:text="'by ' + ${runMetaTriggeredBy}">by someone</span>
+                    </div>
+                    <div class="app-eval-aggregate__cell" id="eval-compare-delta-cell" hidden>
+                        <span class="app-eval-aggregate__label">Score Δ</span>
+                        <span class="app-eval-aggregate__value app-eval-aggregate__value--sm" id="eval-aggregate-delta">—</span>
+                    </div>
                     <!-- Delegated actions: export (read-only) + refresh (attributed recompute) -->
-                    <div class="app-dashboard__actions" th:if="${delegated}">
+                    <div class="app-eval-summary__actions" th:if="${delegated}">
                         <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
                            th:href="@{/reports/researcher/{e}/report/{r}/export(e=${delegatedSubjectEmail},r=${report.id},format=${exportFormat},run=${runMetaId})}"
                            class="btn btn-sm btn-outline-secondary"
@@ -94,45 +131,57 @@
                             </button>
                         </form>
                     </div>
-                    <div class="app-dashboard__actions" th:unless="${delegated}">
-                        <!-- Compare run picker (hidden until toggled) -->
-                        <div class="app-eval-compare-picker" id="eval-compare-picker" hidden>
-                            <select id="eval-compare-select" class="form-control form-control-sm" aria-label="Select comparison run or snapshot">
-                                <option value="">— select a run or snapshot —</option>
-                            </select>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-compare-btn">
-                            <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i> Compare with&hellip;
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger" id="eval-clear-compare-btn" hidden>
-                            <i class="fa-solid fa-xmark fa-sm" aria-hidden="true"></i> Clear comparison
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-save-snapshot-btn">
-                            <i class="fa-solid fa-camera fa-sm" aria-hidden="true"></i> Save Snapshot
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-snapshots-btn"
-                                aria-expanded="false" aria-controls="eval-snapshots-panel">
-                            <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
-                        </button>
-                        <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
-                           th:href="@{/user/evaluation/export(report=${report.id},run=${runMetaId},format=${exportFormat})}"
-                           class="btn btn-sm btn-outline-secondary"
-                           th:title="'Download this report as ' + ${exportFormatLabel}">
-                            <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}">Export</span>
-                        </a>
-                        <a th:if="${importAvailable == true}"
-                           th:href="@{/user/evaluation/import(report=${report.id},run=${runMetaId})}"
-                           class="btn btn-sm btn-outline-secondary"
-                           title="Verify a filled file against platform scores">
-                            <i class="fa-solid fa-file-circle-check fa-sm" aria-hidden="true"></i> Verify from file
-                        </a>
-                        <form th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post">
+                    <!-- Self actions: refresh inline, everything else in the overflow menu -->
+                    <div class="app-eval-summary__actions" th:unless="${delegated}">
+                        <form th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
                                 <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh All
                             </button>
                         </form>
+                        <div class="app-eval-overflow">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-overflow-btn"
+                                    aria-haspopup="true" aria-expanded="false" aria-controls="eval-overflow-menu">
+                                <i class="fa-solid fa-ellipsis" aria-hidden="true"></i> More
+                            </button>
+                            <div class="app-eval-overflow__menu" id="eval-overflow-menu" hidden>
+                                <!-- Compare run picker (hidden until toggled) -->
+                                <div class="app-eval-compare-picker" id="eval-compare-picker" hidden>
+                                    <select id="eval-compare-select" class="form-control form-control-sm" aria-label="Select comparison run or snapshot">
+                                        <option value="">— select a run or snapshot —</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-compare-btn">
+                                    <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i> Compare with&hellip;
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="eval-clear-compare-btn" hidden>
+                                    <i class="fa-solid fa-xmark fa-sm" aria-hidden="true"></i> Clear comparison
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-save-snapshot-btn">
+                                    <i class="fa-solid fa-camera fa-sm" aria-hidden="true"></i> Save Snapshot
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-snapshots-btn"
+                                        aria-expanded="false" aria-controls="eval-snapshots-panel">
+                                    <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
+                                </button>
+                                <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
+                                   th:href="@{/user/evaluation/export(report=${report.id},run=${runMetaId},format=${exportFormat})}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   th:title="'Download this report as ' + ${exportFormatLabel}">
+                                    <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}">Export</span>
+                                </a>
+                                <a th:if="${importAvailable == true}"
+                                   th:href="@{/user/evaluation/import(report=${report.id},run=${runMetaId})}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   title="Verify a filled file against platform scores">
+                                    <i class="fa-solid fa-file-circle-check fa-sm" aria-hidden="true"></i> Verify from file
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- ── Next best actions strip (chips filled by JS + commit 4) ── -->
+                <div class="app-eval-actions" id="eval-actions-strip" hidden></div>
 
                 <div th:if="${confirmedPublicationScoringWarning == true}"
                      class="alert alert-warning mb-3"
@@ -162,154 +211,86 @@
                     </div>
                 </div>
 
-                <!-- ── Aggregate score panel ────────────────────────────────── -->
-                <div class="app-eval-aggregate mb-3">
-                    <!-- Total score (only shown when at least one criterion is flagged contributesToTotal) -->
-                    <div class="app-eval-aggregate__cell" th:if="${totalScore != null}">
-                        <span class="app-eval-aggregate__label">Total Score</span>
-                        <span class="app-eval-aggregate__value"
-                              th:text="${#numbers.formatDecimal(totalScore, 1, 2)}">0.00</span>
-                    </div>
-                    <!-- Criteria Met — values updated by JS when position changes -->
-                    <div class="app-eval-aggregate__cell" id="eval-criteria-met-cell">
-                        <span class="app-eval-aggregate__label">Criteria Met</span>
-                        <span class="app-eval-aggregate__value" id="eval-criteria-met-value"
-                              th:text="${criteriaTotal != null and criteriaTotal > 0 ? criteriaMet + ' / ' + criteriaTotal : '—'}">—</span>
-                        <div class="app-eval-aggregate__progress-bar">
-                            <div class="app-eval-aggregate__progress-fill" id="eval-criteria-met-bar"
-                                 th:style="${criteriaTotal != null and criteriaTotal > 0 ? 'width:' + (criteriaMet * 100 / criteriaTotal) + '%' : 'width:0%'}"></div>
-                        </div>
-                    </div>
-                    <!-- Position selector -->
-                    <div class="app-eval-aggregate__cell" th:unless="${delegated}">
-                        <label for="eval-position-select" class="app-eval-aggregate__label">View as Position</label>
-                        <select id="eval-position-select"
-                                class="form-control form-control-sm app-eval-position-select"
-                                data-eval-position-selector>
-                            <!-- populated by individual-report-dashboard.js from threshold buttons in the report -->
-                        </select>
-                    </div>
-                    <div class="app-eval-aggregate__cell app-eval-aggregate__cell--meta">
-                        <span class="app-eval-aggregate__label">Last Run</span>
-                        <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
-                              th:text="${runMetaCreatedAt != null ? #temporals.format(runMetaCreatedAt, 'yyyy-MM-dd HH:mm') : '—'}">—</span>
-                        <span th:if="${runMetaTriggeredBy != null and user != null and runMetaTriggeredBy != user.email}"
-                              class="app-eval-aggregate__value app-eval-aggregate__value--sm text-muted"
-                              th:text="'by ' + ${runMetaTriggeredBy}">by someone</span>
-                    </div>
-                    <div class="app-eval-aggregate__cell" id="eval-compare-delta-cell" hidden>
-                        <span class="app-eval-aggregate__label">Score Δ</span>
-                        <span class="app-eval-aggregate__value app-eval-aggregate__value--sm" id="eval-aggregate-delta">—</span>
-                    </div>
-                </div>
+                <!-- ── Workbench: criteria rail + evidence pane ─────────────── -->
+                <div class="app-eval-workbench">
+                    <nav class="app-eval-rail" aria-label="Criteria">
+                        <button th:each="criterion, critIndex : ${report.criteria}"
+                                type="button"
+                                class="app-eval-rail__tile"
+                                th:attr="data-criterion-index=${critIndex.index},data-criterion-score=${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)},id=${'criterion-' + critIndex.index}">
+                            <span class="app-eval-rail__name"
+                                  th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}">Criterion</span>
+                            <span class="app-eval-rail__ratio"
+                                  th:text="${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)}">0.00</span>
+                            <span class="app-eval-rail__chip" hidden></span>
+                            <span class="eval-criterion-delta"></span>
+                        </button>
+                    </nav>
 
-                <!-- ── Criterion grid ───────────────────────────────────────── -->
-                <div class="app-report-grid">
-                    <div th:each="criterion, critIndex : ${report.criteria}" class="criterion-wrapper"
-                         th:attr="data-criterion-index=${critIndex.index},id=${'criterion-' + critIndex.index}">
-                        <div class="app-report-card__surface app-report-card criterion-card">
-                            <div class="app-report-card__header">
-                                <h6 class="app-report-card__title"
-                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}"></h6>
-                            </div>
+                    <div class="app-eval-evidence">
+                        <section th:each="criterion, critIndex : ${report.criteria}"
+                                 class="app-eval-evidence__criterion"
+                                 th:attr="data-criterion-index=${critIndex.index}"
+                                 hidden>
+                            <header class="app-eval-evidence__header">
+                                <h2 class="app-eval-evidence__title"
+                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}">Criterion</h2>
+                                <span class="app-eval-evidence__ratio"></span>
+                                <span class="app-eval-evidence__chip" hidden></span>
+                                <span class="eval-trend" th:attr="data-criterion-index=${critIndex.index}"></span>
+                            </header>
 
-                            <div class="app-report-card__body">
-                                <div class="criterion-main">
-                                    <div class="criterion-total-block">
-                                        <div class="criterion-score-row"
-                                             th:attr="data-criterion-index=${critIndex.index},data-criterion-score=${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)}">
-                                            <div class="threshold-inline-wrap"
-                                                 th:if="${criterion.thresholds != null && !criterion.thresholds.isEmpty()}">
-                                                <div class="threshold-icon-rail">
-                                                    <button type="button"
-                                                            th:each="threshold : ${criterion.thresholds}"
-                                                            class="threshold-icon-btn"
-                                                            th:attr="data-position=${threshold.position != null ? threshold.position.toString() : ''},data-threshold-value=${#numbers.formatDecimal(threshold.value, 1, 2)},data-criterion-index=${critIndex.index}"
-                                                            aria-label="Threshold">
-                                                        <i class="threshold-icon"
-                                                           th:classappend="${((threshold.position != null && (threshold.position.toString().equals('ASIST_UNIV') || threshold.position.toString().equals('ASIST_C'))) ? ' fa-solid fa-leaf' :
-                                                                           (threshold.position != null && (threshold.position.toString().equals('LECT_UNIV') || threshold.position.toString().equals('CS_III'))) ? ' fa-solid fa-seedling' :
-                                                                           (threshold.position != null && (threshold.position.toString().equals('CONF_UNIV') || threshold.position.toString().equals('CS_II'))) ? ' fa-solid fa-tree' :
-                                                                           (threshold.position != null && (threshold.position.toString().equals('PROF_UNIV') || threshold.position.toString().equals('CS_I'))) ? ' fa-solid fa-clover' :
-                                                                           ' fa-solid fa-circle')}"
-                                                           aria-hidden="true"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="criterion-score-display">
-                                                <div class="app-report-card__eyebrow criterion-selected-position">Position</div>
-                                                <div class="criterion-score-ratio"
-                                                     th:text="${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)} + ' / 0.00'">0.00 / 0.00</div>
-                                                <span class="eval-criterion-delta"></span>
-                                            </div>
-                                        </div>
+                            <th:block th:each="indicatorIndex : ${criterion.indicatorIndices}">
+                                <!-- valid indicator ref -->
+                                <section th:if="${indicatorIndex != null && indicatorIndex >= 0 && indicatorIndex < #lists.size(report.indicators)}"
+                                         th:with="indicator=${report.indicators[indicatorIndex]}"
+                                         class="app-eval-indicator"
+                                         th:attr="data-indicator-id=${indicator.id}">
+                                    <div class="app-eval-indicator__header">
+                                        <button type="button" class="app-eval-indicator__name"
+                                                th:attr="data-indicator-id=${indicator.id}"
+                                                th:text="${indicator.name}">Indicator Name</button>
+                                        <span class="indicator-row-score"
+                                              th:text="${indicatorScores[indicator.id] != null ? #numbers.formatDecimal(indicatorScores[indicator.id], 1, 2) : '0.00'}">0.00</span>
+                                        <span class="eval-indicator-delta" th:attr="data-indicator-id=${indicator.id}"></span>
+                                        <a class="indicator-row-export"
+                                           th:unless="${delegated}"
+                                           th:href="@{/user/indicators/export/{id}(id=${indicator.id})}"
+                                           title="Export Excel"
+                                           aria-label="Export indicator to Excel">
+                                            <i class="fa-solid fa-download fa-xs" aria-hidden="true"></i>
+                                        </a>
                                     </div>
-
-                                    <button type="button"
-                                            class="indicator-toggle collapsed"
-                                            th:attr="data-target=${'indicator-list-' + critIndex.index},aria-controls=${'indicator-list-' + critIndex.index}"
-                                            aria-expanded="false">
-                                        <span class="app-report-card__eyebrow">Indicators</span>
-                                        <i class="fa-solid fa-chevron-down indicator-toggle-icon" aria-hidden="true"></i>
-                                    </button>
-
-                                    <div class="indicator-list is-collapsed"
-                                         th:attr="id=${'indicator-list-' + critIndex.index}"
+                                    <div class="indicator-detail-panel"
+                                         th:id="${'indicator-detail-' + indicator.id}"
+                                         th:attr="data-indicator-id=${indicator.id}"
                                          hidden>
-                                        <th:block th:each="indicatorIndex : ${criterion.indicatorIndices}">
-                                            <!-- valid indicator ref -->
-                                            <div th:if="${indicatorIndex != null && indicatorIndex >= 0 && indicatorIndex < #lists.size(report.indicators)}"
-                                                 th:with="indicator=${report.indicators[indicatorIndex]}"
-                                                 class="indicator-block">
-                                                <div class="indicator-row">
-                                                    <button type="button"
-                                                            class="indicator-link indicator-expand-btn"
-                                                            th:attr="data-indicator-id=${indicator.id},
-                                                                     aria-controls=${'indicator-detail-' + indicator.id},
-                                                                     aria-expanded='false'"
-                                                            th:text="${indicator.name}">Indicator Name</button>
-                                                    <div class="indicator-row-right">
-                                                        <span class="indicator-row-score"
-                                                              th:text="${indicatorScores[indicator.id] != null ? #numbers.formatDecimal(indicatorScores[indicator.id], 1, 2) : '0.00'}">0.00</span>
-                                                        <span class="eval-indicator-delta" th:attr="data-indicator-id=${indicator.id}"></span>
-                                                        <a class="indicator-row-export"
-                                                           th:unless="${delegated}"
-                                                           th:href="@{/user/indicators/export/{id}(id=${indicator.id})}"
-                                                           title="Export Excel"
-                                                           aria-label="Export indicator to Excel">
-                                                            <i class="fa-solid fa-download fa-xs" aria-hidden="true"></i>
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                <div class="indicator-detail-panel"
-                                                     th:id="${'indicator-detail-' + indicator.id}"
-                                                     th:attr="data-indicator-id=${indicator.id}"
-                                                     hidden>
-                                                    <div class="indicator-detail-skeleton" hidden>
-                                                        <div class="app-skeleton-block" style="height:1.5rem;width:60%;margin-bottom:0.5rem;"></div>
-                                                        <div class="app-skeleton-block" style="height:1rem;width:100%;margin-bottom:0.35rem;"></div>
-                                                        <div class="app-skeleton-block" style="height:1rem;width:100%;margin-bottom:0.35rem;"></div>
-                                                        <div class="app-skeleton-block" style="height:1rem;width:80%;"></div>
-                                                    </div>
-                                                    <div class="indicator-detail-content"></div>
-                                                </div>
-                                            </div>
-                                            <!-- missing indicator ref -->
-                                            <div th:if="${indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= #lists.size(report.indicators)}"
-                                                 class="indicator-row">
-                                                <span class="indicator-link app-report-card__meta">Indicator reference unavailable</span>
-                                                <div class="indicator-row-score">N/A</div>
-                                            </div>
-                                        </th:block>
-                                        <div th:if="${criterion.indicatorIndices == null || criterion.indicatorIndices.isEmpty()}">
-                                            <div class="app-report-card__empty">No indicators in this criterion.</div>
+                                        <div class="indicator-detail-skeleton" hidden>
+                                            <div class="app-skeleton-block" style="height:1.5rem;width:60%;margin-bottom:0.5rem;"></div>
+                                            <div class="app-skeleton-block" style="height:1rem;width:100%;margin-bottom:0.35rem;"></div>
+                                            <div class="app-skeleton-block" style="height:1rem;width:100%;margin-bottom:0.35rem;"></div>
+                                            <div class="app-skeleton-block" style="height:1rem;width:80%;"></div>
                                         </div>
+                                        <div class="indicator-detail-content"></div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
+                                </section>
+                                <!-- missing indicator ref -->
+                                <section th:if="${indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= #lists.size(report.indicators)}"
+                                         class="app-eval-indicator">
+                                    <div class="app-eval-indicator__header">
+                                        <span class="app-eval-muted">Indicator reference unavailable</span>
+                                        <span class="indicator-row-score">N/A</span>
+                                    </div>
+                                </section>
+                            </th:block>
+                            <div th:if="${criterion.indicatorIndices == null || criterion.indicatorIndices.isEmpty()}"
+                                 class="app-eval-muted">No indicators in this criterion.</div>
+                        </section>
                     </div>
                 </div>
+
+                <script type="application/json" id="eval-thresholds-data"
+                        th:utext="${thresholdsJson != null ? thresholdsJson : '[]'}"></script>
 
             </div>
 

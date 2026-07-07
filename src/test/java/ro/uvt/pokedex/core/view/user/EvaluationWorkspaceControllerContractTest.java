@@ -81,6 +81,55 @@ class EvaluationWorkspaceControllerContractTest {
     }
 
     @Test
+    void evaluationTemplateShipsTheWorkbenchStructure() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-thresholds-data\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("class=\"app-eval-rail\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("app-eval-evidence__criterion"));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-overflow-menu\""));
+        // The overflow menu (compare/snapshot/export/verify) stays self-only.
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains(
+                "<div class=\"app-eval-summary__actions\" th:unless=\"${delegated}\">"));
+        // Export link keeps the current run pinned in its URL.
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("run=${runMetaId}"));
+    }
+
+    @Test
+    void showEvaluationExposesThresholdsJsonForTheWorkbench() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        Indicator indicator = publicationIndicator("ind-pub");
+        IndividualReport report = report("rep-1", indicator);
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion criterion =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        criterion.setName("Articles");
+        criterion.setIndicatorIndices(List.of(0));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold threshold =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        threshold.setPosition(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV);
+        threshold.setValue(5.0);
+        criterion.setThresholds(List.of(threshold));
+        report.setCriteria(List.of(criterion));
+
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(report)));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(runDto("run-1")));
+        when(userIndividualReportRunRepository.findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "rep-1"))
+                .thenReturn(List.of());
+
+        String thresholdsJson = (String) mockMvc.perform(
+                        get("/user/evaluation").param("report", "rep-1").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andReturn().getModelAndView().getModel().get("thresholdsJson");
+
+        org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("\"name\":\"Articles\""));
+        org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("\"position\":\"PROF_UNIV\""));
+        org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("\"value\":5.0"));
+    }
+
+    @Test
     void showEvaluationAddsConfirmedPublicationWarningForPublicationBackedReports() throws Exception {
         User user = userPrincipal("u@uvt.ro");
         IndividualReport report = report("rep-1", publicationIndicator("ind-pub"));

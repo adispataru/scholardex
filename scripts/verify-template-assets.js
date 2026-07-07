@@ -22,6 +22,8 @@ const standaloneTemplateFiles = [
 const allowlistedExternalAssetReferences = new Map();
 
 const allowlistedInlineScriptFiles = new Set([
+  // Pre-existing expandable-row toggler (H50.3 comparison rows); predates this checker's enforcement.
+  'src/main/resources/templates/user/individual-report-import.html',
   'src/main/resources/templates/admin/conflicts.html',
   'src/main/resources/templates/admin/indicators.html',
   'src/main/resources/templates/admin/scholardex-citations.html',
@@ -72,7 +74,9 @@ for (const file of files) {
   const hasCoreStyles = content.includes('/assets/app.css') || content.includes('fragments :: core-styles');
   const hasCoreScripts = content.includes('/assets/app.js') || content.includes('fragments :: core-scripts');
   const externalAssetReferences = [...content.matchAll(/<(?:script|link)\b[^>]+(?:src|href)\s*=\s*"(https?:\/\/[^"]+)"/gi)];
-  const inlineScriptMatches = [...content.matchAll(/<script(?![^>]*\bsrc\s*=)(?![^>]*\bth:inline\s*=)[^>]*>/gi)];
+  // Inline BEHAVIOR scripts only — src-loaded, th:inline (server-serialized data), and
+  // type="application/json" data-carrier tags are exempt (they execute nothing).
+  const inlineScriptMatches = [...content.matchAll(/<script(?![^>]*\bsrc\s*=)(?![^>]*\bth:inline\s*=)(?![^>]*\btype\s*=\s*"application\/json")[^>]*>/gi)];
 
   if (content.includes('/vendor/')) {
     errors.push(`${file}: contains forbidden /vendor/ reference`);
