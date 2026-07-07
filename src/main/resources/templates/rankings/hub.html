@@ -97,6 +97,8 @@
                                 <select id="core-sort" class="form-control">
                                     <option value="name">Conference</option>
                                     <option value="acronym">Acronym</option>
+                                    <option value="rank">Rank</option>
+                                    <option value="year">Edition</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
@@ -132,10 +134,10 @@
                                     <table class="table table-bordered app-table" id="core-table" data-detail-base="/core/rankings" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col">Conference</th>
-                                            <th scope="col">Acronym</th>
-                                            <th scope="col" title="CORE rank in the conference's latest ranked edition">Rank</th>
-                                            <th scope="col" title="The latest CORE edition that ranked this conference">Edition</th>
+                                            <th scope="col" data-sort-key="name">Conference</th>
+                                            <th scope="col" data-sort-key="acronym">Acronym</th>
+                                            <th scope="col" data-sort-key="rank" title="CORE rank in the conference's latest ranked edition">Rank</th>
+                                            <th scope="col" data-sort-key="year" title="The latest CORE edition that ranked this conference">Edition</th>
                                             <th scope="col" title="Rank across the last CORE editions">Rank trend</th>
                                         </tr>
                                         </thead>
@@ -177,6 +179,9 @@
                                 <select id="urap-sort" class="form-control">
                                     <option value="name">University</option>
                                     <option value="country">Country</option>
+                                    <option value="rank">Rank</option>
+                                    <option value="year">Year</option>
+                                    <option value="total">Total Score</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
@@ -218,11 +223,11 @@
                                     <table class="table table-bordered app-table" id="urap-table" data-detail-base="/universities" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col" title="URAP world rank in the university's latest edition">Rank</th>
-                                            <th scope="col">University</th>
-                                            <th scope="col">Country</th>
-                                            <th scope="col" title="The university's latest URAP edition">Year</th>
-                                            <th scope="col" title="URAP total score in the latest edition">Total Score</th>
+                                            <th scope="col" data-sort-key="rank" title="URAP world rank in the university's latest edition">Rank</th>
+                                            <th scope="col" data-sort-key="name">University</th>
+                                            <th scope="col" data-sort-key="country">Country</th>
+                                            <th scope="col" data-sort-key="year" title="The university's latest URAP edition">Year</th>
+                                            <th scope="col" data-sort-key="total" title="URAP total score in the latest edition">Total Score</th>
                                             <th scope="col" id="urap-trend-header">Rank trend</th>
                                         </tr>
                                         </thead>
@@ -389,14 +394,14 @@
                                     <table class="table table-bordered app-table" id="wos-categories-table" data-detail-base="/wos/categories" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col">Category</th>
-                                            <th scope="col">Edition</th>
-                                            <th scope="col" title="Journals ranked in the category's latest year for the selected metric">Journals</th>
-                                            <th scope="col" id="wos-categories-year-header"
+                                            <th scope="col" data-sort-key="categoryName">Category</th>
+                                            <th scope="col" data-sort-key="edition">Edition</th>
+                                            <th scope="col" data-sort-key="journalCount" title="Journals ranked in the category's latest year for the selected metric">Journals</th>
+                                            <th scope="col" id="wos-categories-year-header" data-sort-key="year"
                                                 title="The category's latest year with data for the selected metric">Year</th>
-                                            <th scope="col" id="wos-categories-avg-header"
+                                            <th scope="col" id="wos-categories-avg-header" data-sort-key="avg"
                                                 title="Average of the selected metric across the category's journals in its latest year">Avg AIS</th>
-                                            <th scope="col" id="wos-categories-top-header"
+                                            <th scope="col" id="wos-categories-top-header" data-sort-key="top"
                                                 title="Highest value of the selected metric in the category's latest year">Top AIS</th>
                                             <th scope="col" id="wos-categories-trend-header">AIS trend</th>
                                         </tr>
@@ -438,6 +443,7 @@
 <th:block th:replace="~{fragments :: app-footer}"></th:block>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 <script src="/js/sparkline.js"></script>
+<script src="/js/table-sort.js"></script>
 <script src="/js/rankings-core.js"></script>
 <script src="/js/rankings-urap.js"></script>
 <script src="/js/events.js"></script>

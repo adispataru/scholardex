@@ -9,6 +9,7 @@
   };
 
   let totalPages = 0;
+  let headerSort = null;
   let totalItems = 0;
   let searchDebounce = null;
 
@@ -211,12 +212,25 @@
       }, 300);
     });
 
+    if (window.appTableSort) {
+      headerSort = window.appTableSort.attach(els.table, function (key, direction) {
+        state.sort = key;
+        state.direction = direction;
+        if (els.sort) els.sort.value = key;
+        if (els.direction) els.direction.value = direction;
+        state.page = 0;
+        fetchPage();
+      });
+      headerSort.update(state.sort, state.direction);
+    }
+
     [els.sort, els.direction, els.size].forEach(function (element) {
       element.addEventListener('change', function () {
         state.sort = els.sort.value;
         state.direction = els.direction.value;
         state.size = Number(els.size.value);
         state.page = 0;
+        if (headerSort) headerSort.update(state.sort, state.direction);
         fetchPage();
       });
     });

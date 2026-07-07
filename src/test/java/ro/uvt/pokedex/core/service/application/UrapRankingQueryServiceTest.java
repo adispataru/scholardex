@@ -108,6 +108,26 @@ class UrapRankingQueryServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "name", "asc", "x".repeat(101)));
     }
 
+    @Test
+    void computedSortsOrderByLatestEditionInMemory() {
+        URAPUniversityRanking first = ranking("Uni A", "RO", Map.of(2024, score(100, 1.0)));
+        URAPUniversityRanking second = ranking("Uni B", "RO", Map.of(2024, score(50, 2.0)));
+        URAPUniversityRanking noData = ranking("Uni C", "RO", Map.of());
+
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(URAPUniversityRanking.class)))
+                .thenReturn(List.of(first, noData, second));
+
+        UrapRankingPageResponse byRank = service.search(0, 10, "rank", "asc", null);
+        assertEquals(3, byRank.totalItems());
+        assertEquals("Uni B", byRank.items().get(0).name()); // rank 50 before 100
+        assertEquals("Uni A", byRank.items().get(1).name());
+        assertEquals("Uni C", byRank.items().get(2).name()); // missing values last
+
+        UrapRankingPageResponse byTotalDesc = service.search(0, 10, "total", "desc", null);
+        assertEquals("Uni B", byTotalDesc.items().get(0).name()); // total 8.0 (2.0+6) before 7.0
+        assertEquals("Uni C", byTotalDesc.items().get(2).name()); // still last on desc
+    }
+
     private URAPUniversityRanking ranking(String name, String country, Map<Integer, URAPUniversityRanking.Score> scores) {
         URAPUniversityRanking ranking = new URAPUniversityRanking();
         ranking.setName(name);

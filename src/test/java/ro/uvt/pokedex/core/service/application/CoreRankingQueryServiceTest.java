@@ -97,6 +97,31 @@ class CoreRankingQueryServiceTest {
     }
 
     @Test
+    void computedRankSortOrdersByLatestTierInMemoryAndPages() {
+        // rank/year sorts derive from yearlyRankings, so the service loads all matches and sorts in memory.
+        CoreConferenceRanking aStar = ranking("1", "Alpha", "AL", "A_STAR");
+        CoreConferenceRanking b = ranking("2", "Beta", "BE", "B");
+        CoreConferenceRanking unranked = ranking("3", "Gamma", "GA", null);
+
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(CoreConferenceRanking.class)))
+                .thenReturn(List.of(b, unranked, aStar));
+
+        CoreRankingPageResponse desc = service.search(0, 2, "rank", "desc", null);
+        assertEquals(3, desc.totalItems());
+        assertEquals(2, desc.totalPages());
+        assertEquals("Alpha", desc.items().get(0).name()); // A* (tier 12) first
+        assertEquals("Beta", desc.items().get(1).name());
+
+        CoreRankingPageResponse descPage2 = service.search(1, 2, "rank", "desc", null);
+        assertEquals("Gamma", descPage2.items().get(0).name()); // unranked stays last
+
+        CoreRankingPageResponse asc = service.search(0, 3, "rank", "asc", null);
+        assertEquals("Beta", asc.items().get(0).name());
+        assertEquals("Alpha", asc.items().get(1).name());
+        assertEquals("Gamma", asc.items().get(2).name()); // missing values last in BOTH directions
+    }
+
+    @Test
     void invalidQueryLengthThrowsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "name", "asc", "x".repeat(101)));
     }

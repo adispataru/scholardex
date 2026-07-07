@@ -11,8 +11,10 @@ import ro.uvt.pokedex.core.controller.dto.UrapRankingListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.UrapRankingPageResponse;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Service
@@ -26,13 +28,22 @@ public class UrapRankingQueryService {
         Sort.Direction normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
 
-        Query query = new Query().with(PageRequest.of(page, size, Sort.by(normalizedDirection, normalizedSort)));
+        Criteria criteria = null;
         if (normalizedQuery != null) {
             String pattern = ".*" + Pattern.quote(normalizedQuery) + ".*";
-            query.addCriteria(new Criteria().orOperator(
+            criteria = new Criteria().orOperator(
                     Criteria.where("_id").regex(pattern, "i"),
                     Criteria.where("country").regex(pattern, "i")
-            ));
+            );
+        }
+
+        if (COMPUTED_SORTS.contains(normalizedSort)) {
+            return searchByComputedSort(page, size, normalizedSort, normalizedDirection, criteria);
+        }
+
+        Query query = new Query().with(PageRequest.of(page, size, Sort.by(normalizedDirection, normalizedSort)));
+        if (criteria != null) {
+            query.addCriteria(criteria);
         }
 
         List<URAPUniversityRanking> rows = mongoTemplate.find(query, URAPUniversityRanking.class);
@@ -41,6 +52,42 @@ public class UrapRankingQueryService {
 
         List<UrapRankingListItemResponse> items = rows.stream().map(this::toListItem).toList();
         return new UrapRankingPageResponse(items, page, size, totalItems, totalPages);
+    }
+
+    /** Sort keys computed from the latest edition of the scores map — not stored fields, so Mongo can't
+     *  sort on them. The collection is small (~3.6k docs); load the filtered set, sort/page in memory. */
+    private static final Set<String> COMPUTED_SORTS = Set.of("rank", "year", "total");
+
+    private UrapRankingPageResponse searchByComputedSort(
+            int page, int size, String sort, Sort.Direction direction, Criteria criteria) {
+        Query query = criteria == null ? new Query() : new Query(criteria);
+        List<UrapRankingListItemResponse> all = mongoTemplate.find(query, URAPUniversityRanking.class).stream()
+                .map(this::toListItem)
+                .toList();
+
+        Comparator<UrapRankingListItemResponse> byKey = computedComparator(sort, direction);
+        List<UrapRankingListItemResponse> sorted = all.stream()
+                .sorted(byKey.thenComparing(UrapRankingListItemResponse::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        long totalItems = sorted.size();
+        int totalPages = (int) Math.ceil(totalItems / (double) size);
+        int from = Math.min(page * size, sorted.size());
+        int to = Math.min(from + size, sorted.size());
+        return new UrapRankingPageResponse(sorted.subList(from, to), page, size, totalItems, totalPages);
+    }
+
+    /** Universities without a value for the key stay at the bottom in BOTH directions. */
+    private static Comparator<UrapRankingListItemResponse> computedComparator(String sort, Sort.Direction direction) {
+        boolean desc = direction == Sort.Direction.DESC;
+        return switch (sort) {
+            case "rank" -> Comparator.comparing(UrapRankingListItemResponse::rank,
+                    desc ? Comparator.nullsLast(Comparator.reverseOrder()) : Comparator.nullsLast(Comparator.naturalOrder()));
+            case "total" -> Comparator.comparing(UrapRankingListItemResponse::total,
+                    desc ? Comparator.nullsLast(Comparator.reverseOrder()) : Comparator.nullsLast(Comparator.naturalOrder()));
+            default -> Comparator.comparing(UrapRankingListItemResponse::year,
+                    desc ? Comparator.nullsLast(Comparator.reverseOrder()) : Comparator.nullsLast(Comparator.naturalOrder()));
+        };
     }
 
     /** The trend sparkline covers the last URAP editions (yearly, unlike CORE's irregular ones). */
@@ -75,8 +122,11 @@ public class UrapRankingQueryService {
 
     private String normalizeSort(String sort) {
         String normalized = sort == null ? "" : sort.trim();
+        if (COMPUTED_SORTS.contains(normalized)) {
+            return normalized;
+        }
         if (!normalized.equals("name") && !normalized.equals("country")) {
-            throw new IllegalArgumentException("Invalid sort parameter. Allowed: name, country.");
+            throw new IllegalArgumentException("Invalid sort parameter. Allowed: name, country, rank, year, total.");
         }
         return normalized.equals("name") ? "_id" : "country";
     }

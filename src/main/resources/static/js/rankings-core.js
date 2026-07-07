@@ -187,7 +187,23 @@
     }
   }
 
+  let headerSort = null;
+
+  function applySort(key, direction) {
+    state.sort = key;
+    state.direction = direction;
+    if (els.sort) els.sort.value = key;
+    if (els.direction) els.direction.value = direction;
+    state.page = 0;
+    fetchPage();
+  }
+
   function bindEvents() {
+    if (window.appTableSort) {
+      headerSort = window.appTableSort.attach(els.table, applySort);
+      headerSort.update(state.sort, state.direction);
+    }
+
     els.search.addEventListener('input', function () {
       const value = els.search.value.trim();
       if (searchDebounce) {
@@ -203,12 +219,14 @@
     els.sort.addEventListener('change', function () {
       state.sort = els.sort.value;
       state.page = 0;
+      if (headerSort) headerSort.update(state.sort, state.direction);
       fetchPage();
     });
 
     els.direction.addEventListener('change', function () {
       state.direction = els.direction.value;
       state.page = 0;
+      if (headerSort) headerSort.update(state.sort, state.direction);
       fetchPage();
     });
 
