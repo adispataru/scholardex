@@ -136,6 +136,14 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         if (DoiVenueSupport.isSpringerBookSeriesProceedings(publication)) {
             return false;
         }
+        // A Conference-Proceeding forum disqualifies BEFORE the subtype check: OpenAlex labels every work
+        // "article", so an OpenAlex conference paper looks like an article — the venue is authoritative.
+        // The conference scorer claims the paper by this same forum signal, so without this veto the paper
+        // shows in BOTH indicators. (The reverse carve-out survives: a "cp" paper in a Journal forum — a
+        // WoS-indexed special issue — still journal-scores via the aggregation-type branch below.)
+        if (forum != null && forum.hasAggregationType("Conference Proceeding")) {
+            return false;
+        }
         if (isArticleOrReview(publication)) {
             return true;
         }

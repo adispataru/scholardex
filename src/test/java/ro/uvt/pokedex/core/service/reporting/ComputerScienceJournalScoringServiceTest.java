@@ -430,6 +430,37 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
+    void articleSubtypeInConferenceProceedingForumIsAVenueTypeMismatch() {
+        // OpenAlex labels every work "article", so an OpenAlex conference paper (e.g. ISPDC, IEEE DOI)
+        // arrives as subtype "ar" — the Conference-Proceeding forum is authoritative. The conference
+        // indicator claims it by the same forum signal; here it must be a stamped mismatch, not a
+        // reasonless "below threshold" journal zero.
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        ScoringPublication publication = new ScoringPublication(
+                "pub-1", null, "forum-ispdc", "2021-01-01", "article", null,
+                java.util.List.of("a1"), 1, "https://doi.org/10.1109/ispdc52870.2021.9521639", null,
+                "Parallel Cloud Movement Forecasting", 0, java.util.Set.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-ispdc");
+        forum.setPublicationName("ISPDC");
+        forum.setAggregationType("Conference Proceeding");
+        when(lookupPort.getForum("forum-ispdc")).thenReturn(forum);
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(0.0, score.getScore());
+        assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
     void springerIsbnDoiLabeledAsArticleIsNotScoredAsJournal() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
 
