@@ -59,6 +59,19 @@ public class UserPublicationFacade {
         return Optional.of(viewModel);
     }
 
+    /**
+     * How many of the researcher's workspace publications still await an authorship decision.
+     * Same PENDING semantics as {@code pendingReviewCount} on the workspace publications view,
+     * without paying for the full view model (no author/forum maps, no suspicious-triage pass).
+     */
+    public int countPendingAuthorshipReviews(String userEmail) {
+        List<ScholardexPublicationView> publications = dedupeAndSortPublications(
+                effectiveAuthorshipReadService.findWorkspaceReviewPublicationsForUser(userEmail));
+        return (int) buildReviewStateByPublicationId(userEmail, publications).values().stream()
+                .filter(state -> state != null && state.status() == PublicationAuthorshipReviewState.Status.PENDING)
+                .count();
+    }
+
     public Optional<UserPublicationsViewModel> buildWorkspacePublicationsView(String userEmail) {
         long startedAtNanos = System.nanoTime();
         log.info("Workspace publications load started: userEmail={}", userEmail);

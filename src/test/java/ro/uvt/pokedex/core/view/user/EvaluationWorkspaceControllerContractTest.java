@@ -66,6 +66,8 @@ class EvaluationWorkspaceControllerContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
+    @MockitoBean
     private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry reportImportRegistry; // assembler dep
 
     @Test
@@ -97,6 +99,34 @@ class EvaluationWorkspaceControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/individual-report-view"))
                 .andExpect(model().attribute("confirmedPublicationScoringWarning", true));
+    }
+
+    @Test
+    void showEvaluationExposesPendingReviewCountAndPriorRunScores() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        IndividualReport report = report("rep-1", publicationIndicator("ind-pub"));
+
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(report)));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(runDto("run-1")));
+        ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun priorRun =
+                new ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun();
+        priorRun.setId("run-0");
+        priorRun.setCreatedAt(java.time.Instant.parse("2026-06-01T10:00:00Z"));
+        priorRun.setStatus(ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun.Status.READY);
+        priorRun.setCriteriaScores(new java.util.HashMap<>(Map.of(0, 4.5)));
+        when(userIndividualReportRunRepository.findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "rep-1"))
+                .thenReturn(List.of(priorRun));
+        when(userPublicationFacade.countPendingAuthorshipReviews("u@uvt.ro")).thenReturn(3);
+
+        mockMvc.perform(get("/user/evaluation").param("report", "rep-1").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("pendingReviewCount", 3))
+                .andExpect(model().attribute("priorRuns",
+                        List.of(new ro.uvt.pokedex.core.view.user.PriorRunView(
+                                "run-0", "2026-06-01T10:00:00Z", "READY", Map.of(0, 4.5)))));
     }
 
     @Test

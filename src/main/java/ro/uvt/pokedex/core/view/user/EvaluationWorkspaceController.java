@@ -50,6 +50,7 @@ public class EvaluationWorkspaceController {
     private final ReportExportFacade reportExportFacade;
     private final ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
     private final ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
+    private final ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
 
     // ── MVC: main evaluation page ────────────────────────────────────────────
@@ -92,6 +93,8 @@ public class EvaluationWorkspaceController {
 
         individualReportViewModelAssembler.populate(model, currentUser, report, run, reports);
         model.addAttribute("importAvailable", reportImportVerificationFacade.isImportAvailable(resolvedReportId));
+        model.addAttribute("pendingReviewCount",
+                userPublicationFacade.countPendingAuthorshipReviews(currentUser.getEmail()));
         return "user/individual-report-view";
     }
 

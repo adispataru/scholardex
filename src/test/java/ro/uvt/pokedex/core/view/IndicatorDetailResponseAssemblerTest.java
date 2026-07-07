@@ -60,6 +60,88 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void titleJoinResolvesPublicationAndForumIdsFromLivePublicationBeans() {
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Paper A", score(5.0, 3.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView pub =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView() { };
+        pub.setId("spub_1");
+        pub.setTitle("Paper A");
+        pub.setForum("sforum_9");
+        graph.put("publications", List.of(pub));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0));
+
+        IndicatorDetailResponseAssembler.ScoredItem item = resp.items().getFirst();
+        assertEquals("spub_1", item.publicationId());
+        assertEquals("sforum_9", item.forumId());
+    }
+
+    @Test
+    void titleJoinResolvesIdsFromCachedMapFormPublications() {
+        // LATEST blobs round-trip publications as plain property maps, not beans.
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Paper A", score(5.0, 3.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+        graph.put("publications", List.of(
+                Map.of("id", "spub_1", "title", "Paper A", "forumId", "sforum_9")));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0));
+
+        IndicatorDetailResponseAssembler.ScoredItem item = resp.items().getFirst();
+        assertEquals("spub_1", item.publicationId());
+        assertEquals("sforum_9", item.forumId());
+    }
+
+    @Test
+    void duplicateTitlesAndMissingPublicationsListLeaveItemsUnlinked() {
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Paper A", score(5.0, 3.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+        // Two publications share the title → ambiguous → no link.
+        graph.put("publications", List.of(
+                Map.of("id", "spub_1", "title", "Paper A"),
+                Map.of("id", "spub_2", "title", "Paper A")));
+
+        IndicatorDetailResponse ambiguous = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0));
+        assertEquals(null, ambiguous.items().getFirst().publicationId());
+        assertEquals(null, ambiguous.items().getFirst().forumId());
+
+        graph.remove("publications");
+        IndicatorDetailResponse absent = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0));
+        assertEquals(null, absent.items().getFirst().publicationId());
+    }
+
+    @Test
+    void citationsOutputModeLinksTheResearchersOwnCitedPublications() {
+        Map<String, Object> citing = new LinkedHashMap<>();
+        citing.put("total", score(5.0, 2.0, 2024, null));
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Cited Pub", citing);
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "citations");
+        graph.put("scores", scores);
+        graph.put("publications", List.of(Map.of("id", "spub_7", "title", "Cited Pub", "forum", "sforum_3")));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0));
+
+        IndicatorDetailResponseAssembler.ScoredItem item = resp.items().getFirst();
+        assertEquals("spub_7", item.publicationId());
+        // forumId falls back to the 'forum' property name when 'forumId' is absent in map form.
+        assertEquals("sforum_3", item.forumId());
+        // Citing papers inside the drilldown modal stay unlinked (third-party publications).
+        CitationDetailResponse citations = IndicatorDetailResponseAssembler.buildCitations(dto(graph, 5.0), "Cited Pub");
+        assertEquals(0, citations.citations().size());
+    }
+
+    @Test
     void buildCitationsAggregatesCitingPapersForOnePublication() {
         Map<String, Object> citing = new LinkedHashMap<>();
         citing.put("Citing 1", score(2.0, 1.0, 2023, "Q2"));

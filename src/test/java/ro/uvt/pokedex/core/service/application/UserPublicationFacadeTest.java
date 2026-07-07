@@ -110,6 +110,23 @@ class UserPublicationFacadeTest {
     }
 
     @Test
+    void countPendingAuthorshipReviewsCountsUndecidedPublicationsOnly() {
+        ScholardexPublicationView pending = publication("p1", "Pending", "2024-01-01", 1, "f1", List.of("a1"));
+        ScholardexPublicationView confirmed = publication("p2", "Confirmed", "2024-01-01", 2, "f1", List.of("a1"));
+        ScholardexPublicationView rejected = publication("p3", "Rejected", "2024-01-01", 3, "f1", List.of("a1"));
+
+        when(effectiveAuthorshipReadService.findWorkspaceReviewPublicationsForUser("r1"))
+                .thenReturn(List.of(pending, confirmed, rejected));
+        when(publicationAuthorshipDecisionService.findDecisionsForUserAndPublications(eq("r1"), anyCollection()))
+                .thenReturn(List.of(
+                        decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED, "confirmed"),
+                        decision("p3", PublicationAuthorshipDecision.Status.REJECTED, "not mine")
+                ));
+
+        assertEquals(1, facade.countPendingAuthorshipReviews("r1"));
+    }
+
+    @Test
     void buildWorkspacePublicationsViewCountsRecommendedPendingSeparately() {
         ScholardexPublicationView safePending = publication("p1", "Pending", "2024-01-01", 1, "f1", List.of("a1"));
         ScholardexPublicationView suspiciousPending = publication("p2", "Suspicious", "2024-01-01", 1, "f1", List.of("a1"));

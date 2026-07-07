@@ -56,12 +56,13 @@ public class IndividualReportViewModelAssembler {
                 .map(Enum::name)
                 .orElse("");
 
-        List<RunSummary> priorRuns = userIndividualReportRunRepository
+        List<PriorRunView> priorRuns = userIndividualReportRunRepository
                 .findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(researcher.getEmail(), report.getId())
                 .stream()
-                .map(r -> new RunSummary(r.getId(),
+                .map(r -> new PriorRunView(r.getId(),
                         r.getCreatedAt() != null ? r.getCreatedAt().toString() : null,
-                        r.getStatus().name(), null))
+                        r.getStatus().name(),
+                        r.getCriteriaScores() != null ? r.getCriteriaScores() : Map.of()))
                 .toList();
 
         Map<Integer, Double> criterionScores = run.criteriaScores() != null ? run.criteriaScores() : Map.of();
