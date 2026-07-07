@@ -65,7 +65,9 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
         // Springer ISBN DOI alone would also catch real Springer monographs, which ARE books). Once the DBLP
         // sweep re-stamps such a paper onto its conf/X forum, the Conference-Proceeding guard keeps it out too.
         boolean conferenceForum = forum != null && forum.hasAggregationType("Conference Proceeding");
-        if (("ch".equals(subtype) || "bk".equals(subtype)) && !isLectureNotesSeries(forum) && !conferenceForum) {
+        boolean bookCandidate = ("ch".equals(subtype) || "bk".equals(subtype))
+                && !isLectureNotesSeries(forum) && !conferenceForum;
+        if (bookCandidate) {
             computeScoresWithForum(
                     domain,
                     forum,
@@ -87,7 +89,15 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             scoreResult.bestQuarter.set(ro.uvt.pokedex.core.model.WoSRanking.Quarter.SENSE);
         }
 
-        return createScore(scoreResult);
+        Score score = createScore(scoreResult);
+        if (!bookCandidate) {
+            // Not a book/chapter for this indicator: wrong subtype, or a conference proceeding disguised
+            // as a chapter (LNCS-family series / Conference-Proceeding forum) that the conference
+            // indicator counts instead. Candidate zeros (a real book whose publisher resolved no SENSE
+            // rank) deliberately stay unstamped.
+            score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
+        }
+        return score;
     }
 
     /* ------------------------------------------------------------------ */

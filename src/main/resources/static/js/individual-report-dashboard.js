@@ -357,7 +357,7 @@
     'NON_RESEARCH_SUBTYPE': 'Not an original research contribution (editorial, note, letter, erratum, …).',
     'ROLE_FILTERED':        'Your authorship role on this publication does not match this indicator.',
     'NOT_IN_TOP_N':         'Outside the top-N selection this indicator counts.',
-    'VENUE_TYPE_MISMATCH':  'Different venue type — this publication is counted by the matching journal/conference indicator, not this one.',
+    'VENUE_TYPE_MISMATCH':  'Different venue type — this publication is counted by the indicator matching its venue type (journal/conference/book), not this one.',
     'FEE_JOURNAL':          'Published in an APC/fee (gold open access) journal — excluded by the 2026 standard.'
   };
 

@@ -63,6 +63,37 @@ class ComputerScienceBookServiceTest {
         Score score = service.getScore(publication("cp", "ch"), indicator());
 
         assertEquals(0.0, score.getScore());
+        // A proceedings paper disguised as a chapter is a venue-type mismatch for the book indicator.
+        assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void chapterInConferenceProceedingForumIsMarkedVenueTypeMismatch() {
+        // Subtype "ch" but the forum is a Conference Proceeding (e.g. after the DBLP sweep re-stamped
+        // the paper onto its conf/X forum): the conference indicator counts it, not the book one.
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        ScholardexForumView proceedings = new ScholardexForumView();
+        proceedings.setPublicationName("Euro-Par Workshops");
+        proceedings.setPublisher("Springer");
+        proceedings.setAggregationType("Conference Proceeding");
+        when(lookupPort.getForum("forum-1")).thenReturn(proceedings);
+
+        Score score = service.getScore(publication("ch", "ch"), indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void articleSubtypeIsMarkedVenueTypeMismatch() {
+        // A journal article is never a book/chapter — the zero carries the venue-type mismatch reason.
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Springer"));
+
+        Score score = service.getScore(publication("ar", "ar"), indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
     }
 
     @Test
@@ -114,6 +145,8 @@ class ComputerScienceBookServiceTest {
         Score score = service.getScore(publication("ch", "ch"), indicator());
 
         assertEquals(0.0, score.getScore());
+        // A real chapter (candidate) whose publisher resolved no SENSE rank is NOT a venue-type mismatch.
+        assertEquals(null, score.getScoringInfo().get("zeroReason"));
     }
 
     @Test
