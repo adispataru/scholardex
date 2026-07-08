@@ -73,6 +73,16 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         return isForumInWosEditionAsOfYear(forumId, "AHCI", year);
     }
 
+    @Override
+    public boolean isForumInScie(String forumId, int year) {
+        return isForumInWosEditionAsOfYear(forumId, "SCIE", year);
+    }
+
+    @Override
+    public boolean isForumInSsci(String forumId, int year) {
+        return isForumInWosEditionAsOfYear(forumId, "SSCI", year);
+    }
+
     /**
      * Year-true WoS-edition membership with carry-forward. The journal counts as in {@code edition} for the paper's
      * {@code year} if the year-keyed category view records it that year, OR — when {@code year} is more recent than

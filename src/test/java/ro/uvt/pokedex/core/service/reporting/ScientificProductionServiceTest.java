@@ -221,6 +221,67 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void docTypeAndCategoryVariablesSplitEligibilityFormulasByDocumentTypeAndClass() {
+        // PD 2026: the director standard counts article/review only; a journal proceedings paper ("cp")
+        // is a candidate that the formula excludes via docType. category carries the scorer's class label.
+        Indicator indicator = indicator("PUBLICATIONS",
+                "(docType == \"ar\" || docType == \"re\") && (category == \"A*\" || category == \"A\") ? 1 : 0");
+        ScoringPublication article = publication("p-ar", "f-1", "2023-01-01", "ar", "ar",
+                "Article In A-Class Venue", List.of("a1"));
+        ScoringPublication proceedings = publication("p-cp", "f-1", "2023-01-01", "cp", "cp",
+                "Proceedings Paper In A-Class Venue", List.of("a1"));
+        Score aClass = score(1.0);
+        aClass.setCoreRankingEquivalent("A");
+        Score aClass2 = score(1.0);
+        aClass2.setCoreRankingEquivalent("A");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(article, indicator)).thenReturn(aClass);
+        when(scoringService.getScore(proceedings, indicator)).thenReturn(aClass2);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
+                List.of(article, proceedings), indicator);
+
+        assertEquals(1.0, result.get("Article In A-Class Venue").getAuthorScore(), 1e-9);
+        assertEquals(0.0, result.get("Proceedings Paper In A-Class Venue").getAuthorScore(), 1e-9);
+        assertEquals(1.0, result.get("total").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void distinctForumsSelectorTotalsDistinctVenuesNotWorks() {
+        // PD 2026 mentor Q2-diversity: two qualifying works in the SAME journal count as ONE venue;
+        // the items keep their per-work scores in the map.
+        Indicator indicator = indicator("PUBLICATIONS", "Q == \"Q2\" ? 1 : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "DISTINCT_FORUMS");
+        ScoringPublication sameJournalA = publication("p1", "f-same", "2020-01-01", "ar", "ar",
+                "Q2 Paper One", List.of("a1"));
+        ScoringPublication sameJournalB = publication("p2", "f-same", "2021-01-01", "ar", "ar",
+                "Q2 Paper Two", List.of("a1"));
+        ScoringPublication otherJournal = publication("p3", "f-other", "2022-01-01", "ar", "ar",
+                "Q2 Paper Three", List.of("a1"));
+        ScoringPublication q1Paper = publication("p4", "f-q1", "2022-01-01", "ar", "ar",
+                "Q1 Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(sameJournalA, indicator)).thenReturn(quarterScore("Q2"));
+        when(scoringService.getScore(sameJournalB, indicator)).thenReturn(quarterScore("Q2"));
+        when(scoringService.getScore(otherJournal, indicator)).thenReturn(quarterScore("Q2"));
+        when(scoringService.getScore(q1Paper, indicator)).thenReturn(quarterScore("Q1"));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
+                List.of(sameJournalA, sameJournalB, otherJournal, q1Paper), indicator);
+
+        // 3 positive works across 2 distinct journals -> total 2; the Q1 paper scores 0 and adds no venue.
+        assertEquals(1.0, result.get("Q2 Paper One").getAuthorScore(), 1e-9);
+        assertEquals(1.0, result.get("Q2 Paper Two").getAuthorScore(), 1e-9);
+        assertEquals(2.0, result.get("total").getAuthorScore(), 1e-9);
+    }
+
+    private Score quarterScore(String quarter) {
+        Score s = score(1.0);
+        s.setQuarter(quarter);
+        return s;
+    }
+
+    @Test
     void physicsIndicatorDividesAisByNef() {
         // H65: I = ΣAISᵢ/Nefᵢ. 6 authors → Nef = (6+5)/2 = 5.5; AIS (=S) = 4.0 → 4/5.5.
         Indicator indicator = indicator("PUBLICATIONS", "S/Nef");

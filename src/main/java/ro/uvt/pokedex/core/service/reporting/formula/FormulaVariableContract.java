@@ -129,6 +129,11 @@ public final class FormulaVariableContract {
         // H79: topAB (boolean) — category-based eligibility for the 2026 "top A*/A/B" indicators. True when the scored
         // item's forum category is in {A*,A,B} (workshop-authoritative; S>=4 otherwise). Always allowed.
         allowed.add("topAB");
+        // PD 2026: docType (string) — the resolved subtype code ("ar"/"re"/"cp"/…), for eligibility formulas that
+        // split by WoS document type. category (string) — the scorer's class label ("A*"/"A"/"Q1"/…), for the CORE
+        // A/A* equivalence gate. Both bound on every publication/citation score; ignored by existing formulas.
+        allowed.add("docType");
+        allowed.add("category");
         if (kind.strategy() == ScoringStrategy.ECONOMICS_JOURNAL_AIS) {
             allowed.add("M");
         }

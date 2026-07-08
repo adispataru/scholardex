@@ -13,6 +13,14 @@ public enum ScoringStrategy {
     CS_JOURNAL,
     CS_SENSE,
     CS,
+    /**
+     * PN-IV PD/TE eligibility standard (Pachet de informații PD 2026, Anexa 2): WoS Core Collection
+     * membership restricted to SCIE/SSCI/AHCI (ESCI does NOT qualify), quartile strictly by AIS within
+     * a WoS category of the indicator's domain, ranking year = publication year capped at JCR-2024.
+     * No Scopus/index C-floors and no CNATDCU point translation — a member scores 1 venue point and
+     * exposes the AIS quartile as {@code Q} for the eligibility formulas.
+     */
+    PD_WOS,
     IMPACT_FACTOR,
     RIS,
     AIS,

@@ -127,4 +127,21 @@ public interface ReportingLookupPort {
     default boolean isForumInAhci(String forumId, int year) {
         return false;
     }
+
+    /**
+     * Whether the forum was indexed in WoS SCIE (Science Citation Index Expanded) as of the given publication
+     * year — year-true with carry-forward, as {@link #isForumInEsci}. Default false. Used by the PD/TE
+     * eligibility strategy, whose standard accepts SCIE/SSCI/AHCI membership only (ESCI excluded).
+     */
+    default boolean isForumInScie(String forumId, int year) {
+        return false;
+    }
+
+    /**
+     * Whether the forum was indexed in WoS SSCI (Social Sciences Citation Index) as of the given publication
+     * year — year-true with carry-forward, as {@link #isForumInEsci}. Default false.
+     */
+    default boolean isForumInSsci(String forumId, int year) {
+        return false;
+    }
 }

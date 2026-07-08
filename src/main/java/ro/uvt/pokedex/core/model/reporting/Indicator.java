@@ -254,6 +254,15 @@ public class Indicator {
         return 10;
     }
 
+    /**
+     * True iff the effective selector is {@link ro.uvt.pokedex.core.model.reporting.scoring.Selector.DistinctForums}:
+     * the indicator total counts distinct venues among positive items instead of summing them
+     * (PD 2026 mentor Q2-diversity rule).
+     */
+    public boolean isDistinctForumsSelector() {
+        return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.DistinctForums;
+    }
+
     public YearRangeSpec getEffectiveYearRange() {
         return yearRangeSpec != null ? yearRangeSpec : new YearRangeSpec.AllYears();
     }

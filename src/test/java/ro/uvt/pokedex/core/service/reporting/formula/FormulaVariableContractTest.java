@@ -50,6 +50,11 @@ class FormulaVariableContractTest {
                 {"GENERIC_COUNT", "S"},
                 {"CNCSIS", "S"},
                 {"AIS", "S/Nef"},  // H65: physics I = ΣAIS/Nef — Nef is bound on every publication/citation score.
+                // PD 2026 eligibility formulas: docType splits by WoS document type, category gates the
+                // CORE A/A* conference equivalence. Both bound on every publication/citation score.
+                {"PD_WOS", "(docType == \"ar\" || docType == \"re\") ? 1 : 0"},
+                {"PD_WOS", "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0"},
+                {"CS_CONFERENCE", "(category == \"A*\" || category == \"A\") ? 1 : 0"},
         };
         for (String[] row : ok) {
             Indicator ind = pub(ScoringStrategy.valueOf(row[0]), row[1]);

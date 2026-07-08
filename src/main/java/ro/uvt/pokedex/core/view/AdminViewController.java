@@ -321,7 +321,7 @@ public class AdminViewController {
     private static final List<String> LEGACY_STRATEGIES = java.util.Arrays.stream(
                     ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.values())
             .map(Enum::name).toList();
-    private static final List<String> LEGACY_SELECTORS = List.of("ALL", "TOP_10");
+    private static final List<String> LEGACY_SELECTORS = List.of("ALL", "TOP_10", "DISTINCT_FORUMS");
 
     @GetMapping("/indicators")
     public String getCriterion(Model model) {

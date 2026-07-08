@@ -10,7 +10,7 @@ package ro.uvt.pokedex.core.model.reporting.scoring;
  * The {@code n} parameter on {@link TopN} is parameterised in v1 so the future "TOP_5" or
  * "TOP_20" methodology change is a data update, not a code change.
  */
-public sealed interface Selector permits Selector.All, Selector.TopN {
+public sealed interface Selector permits Selector.All, Selector.TopN, Selector.DistinctForums {
 
     record All() implements Selector {}
 
@@ -22,15 +22,24 @@ public sealed interface Selector permits Selector.All, Selector.TopN {
     }
 
     /**
+     * PD 2026 (mentor Q2-diversity rule): every positively-scored item stays in the map, but the
+     * indicator TOTAL is the number of <em>distinct forums</em> among them rather than the sum —
+     * "minimum 2 dintre aceste articole trebuie să fie din reviste diferite" counts venues, not works.
+     */
+    record DistinctForums() implements Selector {}
+
+    /**
      * H52 slice 11d.5: name-based constructor matching the legacy enum names.
      * {@code null} / blank → {@link All}; {@code "TOP_10"} → {@link TopN}(10);
-     * {@code "ALL"} → {@link All}. Throws on anything else.
+     * {@code "ALL"} → {@link All}; {@code "DISTINCT_FORUMS"} → {@link DistinctForums}.
+     * Throws on anything else.
      */
     static Selector of(String legacyName) {
         if (legacyName == null || legacyName.isBlank()) return new All();
         return switch (legacyName) {
-            case "ALL"    -> new All();
-            case "TOP_10" -> new TopN(10);
+            case "ALL"             -> new All();
+            case "TOP_10"          -> new TopN(10);
+            case "DISTINCT_FORUMS" -> new DistinctForums();
             default -> throw new IllegalArgumentException("Unknown selector name: " + legacyName);
         };
     }
@@ -48,6 +57,7 @@ public sealed interface Selector permits Selector.All, Selector.TopN {
                 if (top.n() == 10) yield "TOP_10";
                 throw new IllegalStateException("TopN.n=" + top.n() + " has no legacy representation");
             }
+            case DistinctForums df -> "DISTINCT_FORUMS";
         };
     }
 }

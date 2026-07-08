@@ -133,6 +133,18 @@ public class ScientificProductionService {
                     }
                 }
             }
+        } else if (indicator.isDistinctForumsSelector()) {
+            // PD 2026 mentor Q2-diversity: items keep their per-work scores, but the TOTAL is the
+            // number of distinct venues among the positive ones — the rule counts journals, not works.
+            result = interResult;
+            java.util.Set<String> distinctForums = new java.util.HashSet<>();
+            for (ScoringPublicationReadModel publication : publications) {
+                Score score = interResult.get(publication.getTitle());
+                if (score != null && score.getAuthorScore() > 0 && publication.getForumId() != null) {
+                    distinctForums.add(publication.getForumId());
+                }
+            }
+            totalScore = distinctForums.size();
         }else{
             result = interResult;
         }
@@ -306,7 +318,15 @@ public class ScientificProductionService {
                     // S>=4 is a proxy for "category in {A*,A,B}" that holds for every item EXCEPT a workshop, whose
                     // 2026 category (id_parA82: A*/A/B parents -> C) diverges from its inherited 6/4 points. Only
                     // 2026 top indicators gate on this; pre-2026 formulas ignore it.
-                    .put("topAB", isTopAStarAB(result));
+                    .put("topAB", isTopAStarAB(result))
+                    // PD 2026: resolved (crosswalked) subtype code — "ar"/"re"/"cp"/… — so eligibility formulas
+                    // split by WoS document type per indicator (director: article/review only; mentor also accepts
+                    // journal proceedings papers). Empty string when unresolvable so string compares stay null-safe.
+                    .put("docType", citing != null && PublicationSubtypeSupport.resolveSubtype(citing) != null
+                            ? PublicationSubtypeSupport.resolveSubtype(citing) : "")
+                    // PD 2026: the scorer's category label ("A*"/"A"/… for CORE conferences) — lets the CORE A/A*
+                    // equivalence formula gate on the exact class instead of the topAB {A*,A,B} proxy.
+                    .put("category", result.getCoreRankingEquivalent() != null ? result.getCoreRankingEquivalent() : "");
             if (result.getMultiplier() != null) {
                 builder.put("M", result.getMultiplier());
             }
