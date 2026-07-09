@@ -58,27 +58,39 @@
                     Viewing <strong th:text="${delegatedSubjectName}">researcher</strong>'s report — read-only.
                 </div>
 
-                <!-- ── Summary band: report switcher + score summary + actions ── -->
+                <!-- ── Summary band: report + position controls, score summary, actions ── -->
                 <div class="app-eval-aggregate app-eval-summary mb-3">
-                    <!-- Delegated report switcher: plain links (no dashboard JS in read-only mode) -->
-                    <div class="app-eval-report-switcher" th:if="${#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
-                        <label class="app-eval-report-switcher__label">Report</label>
-                        <a th:each="r : ${allReports}"
-                           th:href="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${r.id})}"
-                           th:text="${r.title}"
-                           th:classappend="${r.id == report.id} ? ' active' : ''"
-                           class="btn btn-sm btn-outline-secondary mr-1"></a>
-                    </div>
-                    <!-- Report switcher -->
-                    <div class="app-eval-report-switcher" th:if="${!#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
-                        <label for="eval-report-select" class="app-eval-report-switcher__label">Report</label>
-                        <select id="eval-report-select" class="form-control form-control-sm app-eval-report-switcher__select"
-                                data-eval-report-switcher>
-                            <option th:each="r : ${allReports}"
-                                    th:value="${r.id}"
-                                    th:text="${r.title}"
-                                    th:selected="${r.id == report.id}"></option>
-                        </select>
+                    <div class="app-eval-summary__controls">
+                        <!-- Delegated report switcher: plain links (no dashboard JS in read-only mode) -->
+                        <div class="app-eval-report-switcher" th:if="${#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
+                            <label class="app-eval-report-switcher__label">Report</label>
+                            <a th:each="r : ${allReports}"
+                               th:href="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${r.id})}"
+                               th:text="${r.title}"
+                               th:classappend="${r.id == report.id} ? ' active' : ''"
+                               class="btn btn-sm btn-outline-secondary mr-1"></a>
+                        </div>
+                        <!-- Report switcher -->
+                        <div class="app-eval-report-switcher" th:if="${!#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
+                            <label for="eval-report-select" class="app-eval-report-switcher__label">Report</label>
+                            <select id="eval-report-select" class="form-control form-control-sm app-eval-report-switcher__select"
+                                    data-eval-report-switcher>
+                                <option th:each="r : ${allReports}"
+                                        th:value="${r.id}"
+                                        th:text="${r.title}"
+                                        th:selected="${r.id == report.id}"></option>
+                            </select>
+                        </div>
+                        <!-- Position selector: lives next to the report switcher (both pick "what am I looking at") -->
+                        <div class="app-eval-report-switcher" th:unless="${delegated}">
+                            <label for="eval-position-select" class="app-eval-report-switcher__label"
+                                   title="View criteria thresholds as this position">Position</label>
+                            <select id="eval-position-select"
+                                    class="form-control form-control-sm app-eval-position-select"
+                                    data-eval-position-selector>
+                                <!-- populated by individual-report-dashboard.js from the thresholds JSON -->
+                            </select>
+                        </div>
                     </div>
                     <!-- Total score (only shown when at least one criterion is flagged contributesToTotal) -->
                     <div class="app-eval-aggregate__cell" th:if="${totalScore != null}">
@@ -95,15 +107,6 @@
                             <div class="app-eval-aggregate__progress-fill" id="eval-criteria-met-bar"
                                  th:style="${criteriaTotal != null and criteriaTotal > 0 ? 'width:' + (criteriaMet * 100 / criteriaTotal) + '%' : 'width:0%'}"></div>
                         </div>
-                    </div>
-                    <!-- Position selector -->
-                    <div class="app-eval-aggregate__cell" th:unless="${delegated}">
-                        <label for="eval-position-select" class="app-eval-aggregate__label">View as Position</label>
-                        <select id="eval-position-select"
-                                class="form-control form-control-sm app-eval-position-select"
-                                data-eval-position-selector>
-                            <!-- populated by individual-report-dashboard.js from the thresholds JSON -->
-                        </select>
                     </div>
                     <div class="app-eval-aggregate__cell app-eval-aggregate__cell--meta">
                         <span class="app-eval-aggregate__label">Last Run</span>

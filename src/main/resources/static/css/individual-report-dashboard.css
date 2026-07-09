@@ -77,24 +77,23 @@
   max-width: 100%;
 }
 
-/* ── Position selector (inside aggregate panel) ────────────────────────── */
+/* ── Summary controls (report switcher + position selector) ────────────── */
 
-.individual-report-dashboard .app-eval-position-select {
-  max-width: 14rem;
-  font-size: 0.82rem;
-  margin-top: 0.2rem;
-  padding-top: 0.2rem;
-  padding-bottom: 0.2rem;
-  height: auto;
+/* Leading group of the summary band: holds both "what am I looking at" pickers
+   and absorbs the leftover width so the stat cells stay pushed right. */
+.individual-report-dashboard .app-eval-summary__controls {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
 }
-
-/* ── Report switcher ───────────────────────────────────────────────────── */
 
 .individual-report-dashboard .app-eval-report-switcher {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 auto;
 }
 
 .individual-report-dashboard .app-eval-report-switcher__label {
@@ -105,12 +104,42 @@
   margin-bottom: 0;
 }
 
-.individual-report-dashboard .app-eval-report-switcher__select {
-  max-width: 22rem;
-  font-size: 0.82rem;
-  padding-top: 0.2rem;
-  padding-bottom: 0.2rem;
+/* Both pickers: content-sized (no dead space after short titles), quiet border,
+   custom chevron replacing the roomy native control. */
+.individual-report-dashboard .app-eval-report-switcher__select,
+.individual-report-dashboard .app-eval-position-select {
+  width: auto;
+  max-width: 20rem;
   height: auto;
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--app-color-text);
+  padding: 0.4rem 2rem 0.4rem 0.8rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: 0.55rem;
+  background-color: var(--app-color-card-bg);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237d8aa5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.62rem;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.individual-report-dashboard .app-eval-report-switcher__select:hover,
+.individual-report-dashboard .app-eval-position-select:hover {
+  border-color: color-mix(in srgb, var(--app-color-primary) 45%, var(--app-color-border));
+}
+
+.individual-report-dashboard .app-eval-report-switcher__select:focus,
+.individual-report-dashboard .app-eval-position-select:focus {
+  outline: none;
+  border-color: var(--app-color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-primary) 18%, transparent);
 }
 
 /* ── Indicator block (row + detail panel) ──────────────────────────────── */
