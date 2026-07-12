@@ -693,12 +693,53 @@ function _saveAuthorshipDecision(pubId, action, detailTr) {
         .then(state => {
             if (!state) return;   // routed to onboarding
             _pendingRejectId = null;
-            _setReviewState(pubId, state);
-            window.appToast?.show({ message: action === 'confirm' ? 'Authorship confirmed.' : 'Authorship rejected.', tone: 'success' });
+            _setReviewState(pubId, state);   // recomputes _data.pendingReviewCount first
+            _showDecisionToast(action, pubId);
             _refreshAfterAuthorshipDecision(pubId);
         })
         .catch(() => {
             _showAuthorshipFeedback(feedback, 'Decision save failed — please try again.', true);
+        });
+}
+
+/**
+ * Confirm/reject acknowledgement: closes the feedback loop the silently-updating counters left open.
+ * Reports how many publications are still pending so a reviewer clearing the queue feels progress, and
+ * offers an Undo (the decision is reversible via the same clear-decision endpoint) — a mis-click during
+ * fast queue-clearing is easy because the row leaves the list and the panel auto-advances.
+ */
+function _showDecisionToast(action, pubId) {
+    const remaining = _data?.pendingReviewCount ?? 0;
+    const lead = action === 'confirm' ? 'Confirmed' : 'Removed from your list';
+    const tail = remaining > 0
+        ? ` — ${remaining} still pending.`
+        : ' — your review queue is clear.';
+    window.appToast?.show({
+        message: lead + tail,
+        tone: 'success',
+        duration: 7000,   // longer than the 4s default so the Undo is catchable
+        actionLabel: 'Undo',
+        onAction: () => _undoAuthorshipDecision(pubId),
+    });
+}
+
+/** Reverts a confirm/reject back to pending (the clear-decision endpoint) from the toast's Undo action. */
+function _undoAuthorshipDecision(pubId) {
+    fetch(`/user/workspace/publications/${encodeURIComponent(pubId)}/authorship`, {
+        method: 'DELETE',
+        headers: postJsonHeaders(),
+    })
+        .then(async res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(state => {
+            _setReviewState(pubId, state);
+            window.appToast?.show({ message: 'Decision undone — back to pending.', tone: 'info' });
+            _renderAll();
+        })
+        .catch(() => {
+            window.appToast?.show({ message: 'Undo failed — please try again.', tone: 'error' });
         });
 }
 
