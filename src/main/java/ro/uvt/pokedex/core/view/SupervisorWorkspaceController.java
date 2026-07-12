@@ -7,36 +7,29 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import ro.uvt.pokedex.core.service.application.SupervisorWorkspaceService;
+import org.springframework.web.bind.annotation.RequestParam;
+import ro.uvt.pokedex.core.service.application.SupervisorCockpitService;
 
 /**
- * Per-user landing page for the SUPERVISOR role: surfaces only the divisions, departments,
- * and groups where the authenticated principal is named as a head/supervisor.
- *
- * <p>Path is reachable by SUPERVISOR and PLATFORM_ADMIN. SUPERVISOR users without any
- * head/supervisor assignments see an empty-state explaining how the workspace gets populated.
+ * The SUPERVISOR cockpit at {@code /supervisor}: a health strip and an attention-ranked list of the
+ * units (divisions, departments, groups) where the authenticated principal is named as a head, for
+ * one chosen report. Reachable by SUPERVISOR and PLATFORM_ADMIN; heads with no assignments see an
+ * empty state.
  */
 @Controller
 @RequestMapping("/supervisor")
 @RequiredArgsConstructor
 public class SupervisorWorkspaceController {
 
-    private final SupervisorWorkspaceService supervisorWorkspaceService;
+    private final SupervisorCockpitService supervisorCockpitService;
 
     @GetMapping
     @PreAuthorize("hasAuthority('SUPERVISOR') or hasAuthority('PLATFORM_ADMIN')")
-    public String workspace(Authentication authentication, Model model) {
+    public String workspace(@RequestParam(value = "report", required = false) String reportId,
+                            Authentication authentication, Model model) {
         String userId = authentication == null ? null : authentication.getName();
-        SupervisorWorkspaceService.SupervisorWorkspaceView view =
-                supervisorWorkspaceService.buildView(userId);
         model.addAttribute("userId", userId);
-        model.addAttribute("divisions", view.divisions());
-        model.addAttribute("departments", view.departments());
-        model.addAttribute("groups", view.groups());
-        model.addAttribute("institutionNames", view.institutionNames());
-        model.addAttribute("divisionNames", view.divisionNames());
-        model.addAttribute("departmentNames", view.departmentNames());
-        model.addAttribute("isEmpty", view.isEmpty());
+        model.addAttribute("cockpit", supervisorCockpitService.buildView(userId, reportId));
         return "supervisor/workspace";
     }
 }

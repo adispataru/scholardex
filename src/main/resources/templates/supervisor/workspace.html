@@ -17,12 +17,12 @@
                 <div class="app-page-toolbar app-workflow">
                     <p class="app-workflow__intro">
                         Signed in as <strong th:text="${userId}">you</strong>.
-                        This workspace surfaces only the divisions, departments, and groups
-                        where your account is listed as a head or supervisor.
+                        The health of everyone you head, for one report — click a unit to drill in.
                     </p>
                 </div>
 
-                <div th:if="${isEmpty}" class="app-empty-state">
+                <!-- ── Empty state: heads nothing ──────────────────────────────── -->
+                <div th:if="${cockpit.isEmpty()}" class="app-empty-state">
                     <i class="fa-solid fa-binoculars fa-2x text-muted mb-3"></i>
                     <h5>Nothing assigned yet</h5>
                     <p class="text-muted">
@@ -33,98 +33,95 @@
                     </p>
                 </div>
 
-                <div th:unless="${isEmpty}">
+                <div th:unless="${cockpit.isEmpty()}">
 
-                    <!-- Divisions you head -->
-                    <div th:if="${!divisions.isEmpty()}" class="app-table-section mb-4">
-                        <div class="app-table-section__surface">
-                            <div class="app-table-section__header">
-                                <h6 class="app-table-section__title">Divisions you head</h6>
-                                <span class="app-table-section__hint">Heading a division gives you implicit supervision over every Department and Group beneath it.</span>
-                            </div>
-                            <div class="app-table-section__body">
-                                <table class="table app-table">
-                                    <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Type</th>
-                                        <th>Institution</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr th:each="d : ${divisions}">
-                                        <td th:text="${d.name}">Name</td>
-                                        <td th:text="${d.type}"></td>
-                                        <td th:text="${institutionNames.getOrDefault(d.institutionId, d.institutionId)}"></td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <!-- ── Report selector ─────────────────────────────────────── -->
+                    <form th:if="${!cockpit.reportOptions().isEmpty()}" method="get" action="/supervisor"
+                          class="app-eval-report-switcher mb-3">
+                        <label for="supervisor-report" class="app-eval-report-switcher__label">Report</label>
+                        <select id="supervisor-report" name="report"
+                                class="form-control form-control-sm app-eval-report-switcher__select"
+                                onchange="this.form.submit()">
+                            <option th:each="opt : ${cockpit.reportOptions()}"
+                                    th:value="${opt.id()}"
+                                    th:text="${opt.title()}"
+                                    th:selected="${opt.id() == cockpit.selectedReportId()}"></option>
+                        </select>
+                        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary ml-2">Go</button></noscript>
+                    </form>
+
+                    <p th:if="${cockpit.reportOptions().isEmpty()}" class="alert alert-info">
+                        No report is assigned to any unit you head yet — the directory below still lets
+                        you open each unit. Ask an admin to select a report for your division/department.
+                    </p>
+
+                    <!-- ── Health strip ────────────────────────────────────────── -->
+                    <div th:if="${cockpit.hasStrip()}" th:with="s=${cockpit.strip()}" class="app-summary-grid mb-4">
+                        <th:block th:replace="~{fragments :: stat-card('Researchers', ${s.researcherCount()},
+                            'neutral', ${s.researcherCount() + ' overseen'}, 'fa-solid fa-users')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card('Onboarded',
+                            ${s.onboardedPercent() != null ? s.onboardedPercent() + '%' : '—'},
+                            ${s.onboardedPercent() != null and s.onboardedPercent() >= 80 ? 'success' : 'warning'},
+                            ${s.withRunCount() + ' of ' + s.researcherCount() + ' have a run'},
+                            'fa-solid fa-user-check')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card('Meeting threshold',
+                            ${s.metPercent() != null ? s.metPercent() + '%' : 'n/a'},
+                            ${s.metPercent() == null ? 'neutral' : (s.metPercent() >= 50 ? 'success' : 'warning')},
+                            'across applicable criteria', 'fa-solid fa-gauge-high')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card('Near-miss', ${s.nearMissCount()},
+                            ${s.nearMissCount() > 0 ? 'warning' : 'neutral'},
+                            'one criterion short', 'fa-solid fa-arrows-to-circle')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card('Provisional', ${s.provisionalCount()},
+                            ${s.provisionalCount() > 0 ? 'info' : 'neutral'},
+                            'unlinked / unvalidated', 'fa-solid fa-wand-magic-sparkles')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card('Stale runs', ${s.staleCount()},
+                            ${s.staleCount() > 0 ? 'warning' : 'success'},
+                            'predate the last data refresh', 'fa-solid fa-clock-rotate-left')}"></th:block>
                     </div>
 
-                    <!-- Departments you head (direct or via division) -->
-                    <div th:if="${!departments.isEmpty()}" class="app-table-section mb-4">
+                    <!-- ── Units you head (attention-ranked) ───────────────────── -->
+                    <div class="app-table-section mb-4">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header">
-                                <h6 class="app-table-section__title">Departments you head</h6>
-                                <span class="app-table-section__hint">Includes direct assignments and departments inside divisions you head.</span>
+                                <h6 class="app-table-section__title">Units you head</h6>
+                                <span class="app-table-section__hint">Ordered by how many members need attention — no run yet, a stale run, or a provisional score. Click to open the unit's report dashboard.</span>
                             </div>
                             <div class="app-table-section__body">
-                                <table class="table app-table">
-                                    <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Division</th>
-                                        <th>Institution</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr th:each="dept : ${departments}">
-                                        <td th:text="${dept.name}">Name</td>
-                                        <td th:text="${divisionNames.getOrDefault(dept.divisionId, dept.divisionId)}"></td>
-                                        <td th:text="${institutionNames.getOrDefault(dept.institutionId, dept.institutionId)}"></td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Groups you supervise -->
-                    <div th:if="${!groups.isEmpty()}" class="app-table-section mb-4">
-                        <div class="app-table-section__surface">
-                            <div class="app-table-section__header">
-                                <h6 class="app-table-section__title">Groups you supervise</h6>
-                                <span class="app-table-section__hint">Explicit (named on the group) plus implicit (inside a department or division you head).</span>
-                            </div>
-                            <div class="app-table-section__body">
-                                <table class="table app-table">
-                                    <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Description</th>
-                                        <th>Departments</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr th:each="g : ${groups}">
-                                        <td th:text="${g.name}">Group name</td>
-                                        <td th:text="${g.description}"></td>
-                                        <td>
-                                            <ul class="list-unstyled mb-0">
-                                                <li th:each="deptId : ${g.departmentIds}"
-                                                    th:text="${departmentNames.getOrDefault(deptId, deptId)}"></li>
-                                            </ul>
-                                        </td>
-                                        <td>
-                                            <a th:href="@{/admin/groups/{id}(id=${g.id})}" class="btn btn-info btn-sm">Open workspace</a>
-                                            <a th:href="@{/admin/groups/edit/{id}(id=${g.id})}" class="btn btn-outline-secondary btn-sm">Edit</a>
-                                        </td>
-                                    </tr>
-                                    </tbody>
-                                </table>
+                                <div class="app-table-scroll">
+                                    <table class="table app-table">
+                                        <thead>
+                                        <tr>
+                                            <th scope="col">Unit</th>
+                                            <th scope="col">Type</th>
+                                            <th scope="col" class="text-right">Researchers</th>
+                                            <th scope="col" class="text-right">Needs attention</th>
+                                            <th scope="col"><span class="sr-only">Open</span></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="row : ${cockpit.unitRows()}">
+                                            <td th:text="${row.unitName()}">Unit name</td>
+                                            <td>
+                                                <span class="badge badge-light text-capitalize" th:text="${row.unitType()}">type</span>
+                                            </td>
+                                            <td class="text-right" th:text="${row.researcherCount()}">0</td>
+                                            <td class="text-right">
+                                                <span th:if="${row.attentionCount() > 0}"
+                                                      class="badge badge-warning"
+                                                      th:title="${row.membersWithoutRun() + ' without a run, ' + row.staleCount() + ' stale, ' + row.provisionalCount() + ' provisional'}"
+                                                      th:text="${row.attentionCount()}">0</span>
+                                                <span th:if="${row.attentionCount() == 0}"
+                                                      class="text-muted" title="Everyone has a fresh, validated run">clear</span>
+                                            </td>
+                                            <td class="text-right">
+                                                <a th:href="${row.dashboardHref()}" class="btn btn-sm btn-outline-primary">
+                                                    Open dashboard <i class="fa-solid fa-arrow-right fa-xs" aria-hidden="true"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
