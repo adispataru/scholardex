@@ -286,6 +286,28 @@ class ResearcherWorkspaceControllerContractTest {
     }
 
     @Test
+    void firstProfileSaveGrantsResearcherRoleWhenPrincipalHasImmutableRolesSet() throws Exception {
+        // Freshly-provisioned principals (Keycloak login, agent-dev) carry an immutable Set.of(...)
+        // roles set. The first onboarding save grants RESEARCHER; mutating the set in place threw
+        // UnsupportedOperationException → an opaque "Could not save" on the very first wizard step.
+        User user = new User();
+        user.setEmail("new@uvt.ro");
+        user.setRoles(java.util.Set.of(ro.uvt.pokedex.core.model.user.UserRole.RESEARCHER));
+        user.setResearcherProfile(null); // brand-new: no profile yet
+        when(userRepository.findById("new@uvt.ro")).thenReturn(Optional.of(user));
+
+        mockMvc.perform(post("/user/workspace/profile/save")
+                        .with(authenticatedUser("new@uvt.ro"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firstName\":\"Ada\",\"lastName\":\"Lovelace\",\"scopusId\":[\"12345\"]}"))
+                .andExpect(status().isOk());
+
+        org.mockito.ArgumentCaptor<User> saved = org.mockito.ArgumentCaptor.forClass(User.class);
+        org.mockito.Mockito.verify(userRepository).save(saved.capture());
+        assertTrue(saved.getValue().getRoles().contains(ro.uvt.pokedex.core.model.user.UserRole.RESEARCHER));
+    }
+
+    @Test
     void clearAuthorshipEndpointReturnsPendingState() throws Exception {
         when(publicationAuthorshipDecisionService.clearDecision("u@uvt.ro", "p1")).thenReturn(true);
 

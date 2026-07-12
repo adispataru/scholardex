@@ -422,11 +422,6 @@ function _toggleDetail(pub, tr) {
     _activeId = pub.id;
     tr.classList.add('app-ws-pubs__row--active');
     _insertDetailRow(pub, tr);
-    const btn = tr.querySelector('[data-detail-btn]');
-    if (btn) {
-        btn.querySelector('i').className = 'fa-solid fa-chevron-up';
-        btn.setAttribute('aria-expanded', 'true');
-    }
 }
 
 function _closeDetail() {
@@ -461,6 +456,16 @@ function _insertDetailRow(pub, tr) {
     td.innerHTML = _buildDetailPanel(pub);
     detailTr.appendChild(td);
     tr.insertAdjacentElement('afterend', detailTr);
+
+    // Sync the trigger button's open state HERE — this is the single path every open goes
+    // through (fresh click via _toggleDetail AND the re-open-after-rerender path in _appendRow).
+    // Doing it only in _toggleDetail left post-confirm/reject re-opens with a downward chevron and
+    // aria-expanded="false" while the panel was visibly open.
+    const triggerBtn = tr.querySelector('[data-detail-btn]');
+    if (triggerBtn) {
+        triggerBtn.querySelector('i').className = 'fa-solid fa-chevron-up';
+        triggerBtn.setAttribute('aria-expanded', 'true');
+    }
 
     // Close button
     detailTr.querySelector('.app-ws-pubs__detail-close')?.addEventListener('click', () => {
@@ -896,12 +901,13 @@ function _authorshipBodyText(pubId, state) {
 }
 
 function _rerenderActiveDetail(pubId) {
-    const tr = document.querySelector(`[data-pub-id="${CSS.escape(pubId)}"]`);
     const pub = _allPubs.find(p => p.id === pubId);
-    if (!tr || !pub) return;
-    _closeDetail();
+    if (!pub) return;
+    // _renderPage rebuilds every row and _appendRow re-opens the active row's detail with the
+    // current state (e.g. the two-step reject's "Confirm rejection"). The previous _closeDetail() +
+    // _toggleDetail() path was self-defeating: _toggleDetail saw _activeId === pub.id and immediately
+    // collapsed the panel, so clicking "Reject authorship" hid the detail instead of advancing the step.
     _activeId = pubId;
-    _toggleDetail(pub, tr);
     _renderPage();
 }
 

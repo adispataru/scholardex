@@ -502,8 +502,14 @@ public class ResearcherWorkspaceController {
         user.setResearcherProfile(profile);
         if (isNewProfile) {
             // Grant RESEARCHER role on first profile creation so the user gains
-            // researcher-level access without needing an admin to intervene.
-            user.getRoles().add(ro.uvt.pokedex.core.model.user.UserRole.RESEARCHER);
+            // researcher-level access without needing an admin to intervene. Copy before adding:
+            // freshly-provisioned principals carry an immutable Set.of(...) roles set
+            // (KeycloakOAuth2LoginSuccessHandler, agent-dev), and mutating it throws — which
+            // failed the very first onboarding save with an opaque "Could not save".
+            java.util.Set<ro.uvt.pokedex.core.model.user.UserRole> roles =
+                    new java.util.HashSet<>(user.getRoles() != null ? user.getRoles() : java.util.Set.of());
+            roles.add(ro.uvt.pokedex.core.model.user.UserRole.RESEARCHER);
+            user.setRoles(roles);
         }
         userRepository.save(user);
         return ResponseEntity.ok().build();
