@@ -114,6 +114,11 @@
                                                       class="text-muted" title="Everyone has a fresh, validated run">clear</span>
                                             </td>
                                             <td class="text-right">
+                                                <a th:if="${row.unitType() == 'department'}"
+                                                   th:href="@{/supervisor/departments/{id}/members(id=${row.unitId()})}"
+                                                   class="btn btn-sm btn-outline-secondary mr-1">
+                                                    <i class="fa-solid fa-user-gear fa-xs" aria-hidden="true"></i> Manage roster
+                                                </a>
                                                 <a th:href="${row.dashboardHref()}" class="btn btn-sm btn-outline-primary">
                                                     Open dashboard <i class="fa-solid fa-arrow-right fa-xs" aria-hidden="true"></i>
                                                 </a>

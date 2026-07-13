@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 import ro.uvt.pokedex.core.model.org.DepartmentAffiliation;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DepartmentAffiliationRepository extends MongoRepository<DepartmentAffiliation, String> {
@@ -15,4 +16,6 @@ public interface DepartmentAffiliationRepository extends MongoRepository<Departm
     List<DepartmentAffiliation> findByDepartmentIdInAndValidToIsNull(Iterable<String> departmentIds);
 
     List<DepartmentAffiliation> findByUserIdInAndValidToIsNull(Iterable<String> userIds);
+
+    Optional<DepartmentAffiliation> findByDepartmentIdAndUserIdAndValidToIsNull(String departmentId, String userId);
 }

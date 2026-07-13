@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Department roster</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('supervisor-workspace')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('Department roster')}"></div>
+            <div class="container-fluid app-page-content">
+
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        Roster for <strong th:text="${departmentName}">Department</strong>.
+                        Add or remove existing researchers. New accounts, head appointments, and
+                        bulk import stay with a platform admin.
+                    </p>
+                    <a href="/supervisor" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-arrow-left fa-xs" aria-hidden="true"></i> Back to cockpit
+                    </a>
+                </div>
+
+                <div th:if="${successMessage}" class="alert alert-success" role="status" th:text="${successMessage}"></div>
+                <div th:if="${infoMessage}" class="alert alert-info" role="status" th:text="${infoMessage}"></div>
+
+                <!-- ── Add a researcher ─────────────────────────────────────── -->
+                <div class="app-table-section mb-4">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__header">
+                            <h6 class="app-table-section__title">Add a researcher</h6>
+                            <span class="app-table-section__hint">Only researchers with an account appear here. Someone missing entirely needs an admin to create their account first.</span>
+                        </div>
+                        <div class="app-table-section__body">
+                            <form th:action="@{/supervisor/departments/{id}/members/add(id=${departmentId})}"
+                                  method="post" class="form-inline">
+                                <label for="roster-add-user" class="mr-2 mb-0">Researcher</label>
+                                <select id="roster-add-user" name="userId" class="form-control form-control-sm mr-2"
+                                        style="min-width: 20rem;" required>
+                                    <option value="" disabled selected>Select a researcher…</option>
+                                    <option th:each="u : ${candidates}"
+                                            th:value="${u.email}"
+                                            th:text="${u.researcherProfile != null and u.researcherProfile.name != null and !#strings.isEmpty(u.researcherProfile.name) ? u.researcherProfile.name + ' (' + u.email + ')' : u.email}">
+                                        Researcher</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="fa-solid fa-plus fa-xs mr-1" aria-hidden="true"></i>Add
+                                </button>
+                            </form>
+                            <p th:if="${#lists.isEmpty(candidates)}" class="app-eval-muted mt-2 mb-0">
+                                Every researcher with an account is already in this department.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Current members ──────────────────────────────────────── -->
+                <div class="app-table-section mb-4">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__header">
+                            <h6 class="app-table-section__title">Current members</h6>
+                            <span class="app-table-section__hint" th:text="${#lists.size(members)} + ' current affiliation(s). Removing ends the affiliation today — history is kept.'">count</span>
+                        </div>
+                        <div class="app-table-section__body">
+                            <div th:if="${#lists.isEmpty(members)}" class="app-empty-state">
+                                <p class="text-muted mb-0">No current members yet — add researchers above.</p>
+                            </div>
+                            <div th:unless="${#lists.isEmpty(members)}" class="app-table-scroll">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Researcher</th>
+                                        <th scope="col">Email</th>
+                                        <th scope="col"><span class="sr-only">Remove</span></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="u : ${members}">
+                                        <td th:text="${u.researcherProfile != null and u.researcherProfile.name != null and !#strings.isEmpty(u.researcherProfile.name) ? u.researcherProfile.name : '—'}">Name</td>
+                                        <td><span class="text-muted" th:text="${u.email}">email</span></td>
+                                        <td class="text-right">
+                                            <form th:action="@{/supervisor/departments/{id}/members/remove(id=${departmentId})}"
+                                                  method="post" class="d-inline">
+                                                <input type="hidden" name="userId" th:value="${u.email}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        th:attr="aria-label='Remove ' + ${u.email}">
+                                                    <i class="fa-solid fa-user-minus fa-xs mr-1" aria-hidden="true"></i>Remove
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>
