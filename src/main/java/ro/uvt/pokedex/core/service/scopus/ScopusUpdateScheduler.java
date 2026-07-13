@@ -70,8 +70,30 @@ public class ScopusUpdateScheduler {
 
 
 
+    /**
+     * Ensures the scheduled poll and an on-demand {@link #triggerImmediatePoll()} never run
+     * concurrently — two overlapping polls could both claim the same PENDING task before either
+     * flips it to IN_PROGRESS. The loser simply skips; the winner drains the whole queue anyway.
+     */
+    private final java.util.concurrent.atomic.AtomicBoolean polling =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /**
+     * Fired right after a user submits a sync so it starts within seconds instead of waiting up to a
+     * full poll interval. Async so the submit request returns immediately; a no-op if a poll is
+     * already in flight (that run picks up the freshly-queued task).
+     */
+    @org.springframework.scheduling.annotation.Async
+    public void triggerImmediatePoll() {
+        pollQueue();
+    }
+
     @Scheduled(fixedDelayString = "${scopus.update.poll-ms:60000}")
     public void pollQueue() {
+        if (!polling.compareAndSet(false, true)) {
+            log.debug("Scopus scheduler poll skipped — another poll is already running");
+            return;
+        }
         Timer.Sample pollTimer = Timer.start(meterRegistry);
         String batchTaskId = "batch-" + UUID.randomUUID();
         AutoCloseable batchContext = SchedulerCorrelationSupport.withSchedulerContext(
@@ -102,6 +124,7 @@ public class ScopusUpdateScheduler {
             throw e;
         } finally {
             closeContext(batchContext);
+            polling.set(false);
         }
     }
 

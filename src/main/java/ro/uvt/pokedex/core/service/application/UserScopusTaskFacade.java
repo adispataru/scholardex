@@ -20,6 +20,7 @@ public class UserScopusTaskFacade {
     private final UserService userService;
     private final ScopusPublicationUpdateRepository scopusPublicationUpdateRepository;
     private final ScopusCitationUpdateRepository scopusCitationUpdateRepository;
+    private final ro.uvt.pokedex.core.service.scopus.ScopusUpdateScheduler scopusUpdateScheduler;
 
     public UserScopusTasksViewModel buildTasksView(String userEmail, String researcherId) {
         // researcherId is kept for API compatibility; after migration the researcher
@@ -33,12 +34,17 @@ public class UserScopusTaskFacade {
 
     public ScopusPublicationUpdate createPublicationTask(String userEmail, ScopusPublicationUpdate draft) {
         initializeDraft(draft, userEmail);
-        return scopusPublicationUpdateRepository.save(draft);
+        ScopusPublicationUpdate saved = scopusPublicationUpdateRepository.save(draft);
+        // Kick the scheduler so this runs within seconds instead of waiting for the next poll.
+        scopusUpdateScheduler.triggerImmediatePoll();
+        return saved;
     }
 
     public ScopusCitationsUpdate createCitationTask(String userEmail, ScopusCitationsUpdate draft) {
         initializeDraft(draft, userEmail);
-        return scopusCitationUpdateRepository.save(draft);
+        ScopusCitationsUpdate saved = scopusCitationUpdateRepository.save(draft);
+        scopusUpdateScheduler.triggerImmediatePoll();
+        return saved;
     }
 
     private void initializeDraft(ScopusPublicationUpdate draft, String userEmail) {

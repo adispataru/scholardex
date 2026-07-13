@@ -415,6 +415,11 @@
   color: var(--app-color-danger);
 }
 
+.app-ws-prof__badge--progress {
+  background: color-mix(in srgb, var(--app-color-primary) 12%, transparent);
+  color: var(--app-color-primary);
+}
+
 .app-ws-prof__badge--muted {
   background: color-mix(in srgb, var(--app-color-text-muted) 12%, transparent);
   color: var(--app-color-text-muted);

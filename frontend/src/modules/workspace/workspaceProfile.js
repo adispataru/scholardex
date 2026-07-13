@@ -35,6 +35,7 @@ function _init(panel) {
         .then((data) => {
             _data = data;
             _renderAll();
+            _resumeWatchers(data);
         })
         .catch((err) => {
             console.error('workspace profile load failed', err);
@@ -402,7 +403,7 @@ function _buildTaskTable(tableId, tasks, cols) {
         return '<p class="app-ws-prof__task-empty">No sync history yet.</p>';
     }
 
-    const rows = sorted.map((task) => `<tr>
+    const rows = sorted.map((task) => `<tr data-task-id="${_esc(task?.id ?? '')}">
       <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? '—')}</span></td>
       <td style="font-size:.78rem;white-space:nowrap">${_esc(_modeLabel(task?.syncMode))}</td>
       <td>${_statusBadge(task?.status)}</td>
@@ -418,8 +419,67 @@ function _buildTaskTable(tableId, tasks, cols) {
 }
 
 function _statusBadge(status) {
-    const cls = { PENDING: 'pending', COMPLETED: 'completed', FAILED: 'failed' }[status] ?? 'muted';
-    return `<span class="app-ws-prof__badge app-ws-prof__badge--${cls}">${_esc(status ?? '—')}</span>`;
+    const map = {
+        PENDING:     { cls: 'pending',   label: 'Queued' },
+        IN_PROGRESS: { cls: 'progress',  label: 'Running', spin: true },
+        COMPLETED:   { cls: 'completed', label: 'Done' },
+        FAILED:      { cls: 'failed',    label: 'Failed' },
+    };
+    const s = map[status] ?? { cls: 'muted', label: status ?? '—' };
+    const icon = s.spin ? '<i class="fa-solid fa-spinner fa-spin fa-xs" aria-hidden="true"></i> ' : '';
+    return `<span class="app-ws-prof__badge app-ws-prof__badge--${s.cls}">${icon}${_esc(s.label)}</span>`;
+}
+
+// ── Live sync-task polling ─────────────────────────────────────────────────
+// The old flow fired the request and went deaf: the row showed PENDING and never moved. Now we poll
+// the lean status endpoint and animate the row Queued → Running → Done/Failed, with a completion toast.
+const _watchers = new Set();
+
+function _watchTask(type, taskId) {
+    if (!taskId || _watchers.has(taskId)) return;
+    _watchers.add(taskId);
+    const listKey = type === 'citations' ? 'citations' : 'publications';
+    const label = type === 'citations' ? 'Citation' : 'Publication';
+    let tries = 0;
+    const MAX_TRIES = 40; // ~2 min at 3s
+    const iv = setInterval(() => {
+        tries += 1;
+        fetch('/user/workspace/profile/sync/tasks')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((data) => {
+                const task = _asArray(data?.[listKey]).find((t) => t && t.id === taskId);
+                if (task) _updateTaskRow(taskId, task);
+                const status = task?.status;
+                if (status === 'COMPLETED' || status === 'FAILED' || tries >= MAX_TRIES) {
+                    clearInterval(iv);
+                    _watchers.delete(taskId);
+                    if (status === 'COMPLETED') {
+                        window.appToast?.show({ message: `${label} sync complete.`, tone: 'success' });
+                    } else if (status === 'FAILED') {
+                        const why = task?.message || task?.lastErrorMessage;
+                        window.appToast?.show({ message: `${label} sync failed${why ? ': ' + why : ''}.`, tone: 'error' });
+                    }
+                }
+            })
+            .catch(() => {
+                if (tries >= MAX_TRIES) { clearInterval(iv); _watchers.delete(taskId); }
+            });
+    }, 3000);
+}
+
+function _updateTaskRow(taskId, task) {
+    const row = _mount?.querySelector(`tr[data-task-id="${window.CSS && CSS.escape ? CSS.escape(taskId) : taskId}"]`);
+    if (!row) return;
+    if (row.cells[2]) row.cells[2].innerHTML = _statusBadge(task.status);
+    if (row.cells[4]) row.cells[4].textContent = task.executionDate ? _fmtDate(task.executionDate) : '—';
+    if (row.cells[5]) row.cells[5].textContent = task.message || task.lastErrorMessage || (task.status === 'COMPLETED' ? 'Done' : '—');
+}
+
+// Re-attach watchers to any task still running when the tab (re)loads.
+function _resumeWatchers(data) {
+    const nonTerminal = (t) => t && t.id && (t.status === 'PENDING' || t.status === 'IN_PROGRESS');
+    _asArray(data?.pubTasks).filter(nonTerminal).forEach((t) => _watchTask('publications', t.id));
+    _asArray(data?.citeTasks).filter(nonTerminal).forEach((t) => _watchTask('citations', t.id));
 }
 
 function _buildNoProfile() {
@@ -695,16 +755,20 @@ function _prependTaskRow(type, task, scopusId, syncMode) {
     if (!tbody) return;
 
     const tr = document.createElement('tr');
+    tr.dataset.taskId = task?.id ?? '';
     tr.innerHTML = `
       <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? scopusId ?? '—')}</span></td>
       <td style="font-size:.78rem;white-space:nowrap">${_esc(_modeLabel(task?.syncMode ?? syncMode))}</td>
       <td>${_statusBadge(task?.status)}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task?.initiatedDate))}</td>
       <td style="white-space:nowrap;font-size:.78rem">—</td>
-      <td style="color:var(--app-color-text-muted);font-size:.78rem">—</td>`;
+      <td style="color:var(--app-color-text-muted);font-size:.78rem">Starting shortly…</td>`;
     tbody.insertBefore(tr, tbody.firstChild);
 
     while (tbody.rows.length > 10) tbody.deleteRow(tbody.rows.length - 1);
+
+    // Watch it to its terminal state (Queued → Running → Done/Failed).
+    if (task?.id) _watchTask(type, task.id);
 }
 
 function _asArray(value) {

@@ -630,6 +630,18 @@ public class ResearcherWorkspaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
+    // ── JSON: lean Scopus task status (for the sync-history live poll) ────
+    @GetMapping("/profile/sync/tasks")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getSyncTasks(Authentication authentication) {
+        return currentUser(authentication).map(u -> {
+            var tasksVm = userScopusTaskFacade.buildTasksView(u.getEmail(), u.getEmail());
+            return ResponseEntity.ok(Map.<String, Object>of(
+                    "publications", tasksVm.tasks(),
+                    "citations", tasksVm.citationsTasks()));
+        }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
     // ── JSON: trigger OpenAlex author sync (H66B Phase 4a) ────────────────
     @PostMapping("/profile/sync/openalex-authors")
     @ResponseBody
