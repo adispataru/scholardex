@@ -28,6 +28,7 @@
 
                 <div th:if="${successMessage}" class="alert alert-success" role="status" th:text="${successMessage}"></div>
                 <div th:if="${infoMessage}" class="alert alert-info" role="status" th:text="${infoMessage}"></div>
+                <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
 
                 <!-- ── Add a researcher ─────────────────────────────────────── -->
                 <div class="app-table-section mb-4">
@@ -55,6 +56,21 @@
                             <p th:if="${#lists.isEmpty(candidates)}" class="app-eval-muted mt-2 mb-0">
                                 Every researcher with an account is already in this department.
                             </p>
+
+                            <hr class="my-3">
+                            <p class="mb-2"><strong>Someone with no account yet?</strong></p>
+                            <form th:action="@{/supervisor/departments/{id}/members/invite(id=${departmentId})}"
+                                  method="post" class="form-inline">
+                                <label for="roster-invite-email" class="mr-2 mb-0">Email</label>
+                                <input id="roster-invite-email" name="email" type="email" required
+                                       class="form-control form-control-sm mr-2" style="min-width: 20rem;"
+                                       placeholder="name@e-uvt.ro">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="fa-solid fa-user-plus fa-xs mr-1" aria-hidden="true"></i>Create &amp; add
+                                </button>
+                                <span class="app-eval-muted ml-2"
+                                      th:text="'Creates a researcher account (' + ${allowedDomains} + ' only); they finish setup on first sign-in.'">hint</span>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -84,6 +100,17 @@
                                         <td th:text="${u.researcherProfile != null and u.researcherProfile.name != null and !#strings.isEmpty(u.researcherProfile.name) ? u.researcherProfile.name : '—'}">Name</td>
                                         <td><span class="text-muted" th:text="${u.email}">email</span></td>
                                         <td class="text-right">
+                                            <form th:action="@{/supervisor/nudge}" method="post" class="d-inline mr-1">
+                                                <input type="hidden" name="recipientEmail" th:value="${u.email}">
+                                                <input type="hidden" name="kind" value="ONBOARD">
+                                                <input type="hidden" name="returnUrl"
+                                                       th:value="@{/supervisor/departments/{id}/members(id=${departmentId})}">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                        th:attr="aria-label='Nudge ' + ${u.email} + ' to finish onboarding'"
+                                                        title="Nudge to finish onboarding">
+                                                    <i class="fa-solid fa-bell fa-xs mr-1" aria-hidden="true"></i>Nudge
+                                                </button>
+                                            </form>
                                             <form th:action="@{/supervisor/departments/{id}/members/remove(id=${departmentId})}"
                                                   method="post" class="d-inline">
                                                 <input type="hidden" name="userId" th:value="${u.email}">

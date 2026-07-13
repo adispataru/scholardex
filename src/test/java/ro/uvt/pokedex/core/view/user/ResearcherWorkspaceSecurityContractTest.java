@@ -86,6 +86,8 @@ class ResearcherWorkspaceSecurityContractTest {
     private ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
 
     private User researcher;
 

@@ -44,6 +44,8 @@ class SupervisorRosterControllerContractTest {
     private DepartmentRepository departmentRepository;
     @MockitoBean
     private UserService userService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ResearcherShellService researcherShellService;
     @MockitoBean(name = "orgUnitAccess")
     private OrgUnitAccessService orgUnitAccess;
 
@@ -89,6 +91,33 @@ class SupervisorRosterControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/supervisor/departments/dept-cs/members"));
         verify(departmentAffiliationService).removeMember("dept-cs", "ana@uvt.ro");
+    }
+
+    @Test
+    void inviteCreatesAShellAndAffiliatesWhenTheEmailIsNew() throws Exception {
+        when(researcherShellService.createShell("new@e-uvt.ro"))
+                .thenReturn(ro.uvt.pokedex.core.service.application.ResearcherShellService.Result.CREATED);
+
+        mockMvc.perform(post("/supervisor/departments/dept-cs/members/invite")
+                        .param("email", "new@e-uvt.ro")
+                        .with(user("ana@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/supervisor/departments/dept-cs/members"));
+        verify(researcherShellService).createShell("new@e-uvt.ro");
+        verify(departmentAffiliationService).addMember("dept-cs", "new@e-uvt.ro");
+    }
+
+    @Test
+    void inviteDoesNotAffiliateWhenTheDomainIsRejected() throws Exception {
+        when(researcherShellService.createShell("x@gmail.com"))
+                .thenReturn(ro.uvt.pokedex.core.service.application.ResearcherShellService.Result.DOMAIN_NOT_ALLOWED);
+
+        mockMvc.perform(post("/supervisor/departments/dept-cs/members/invite")
+                        .param("email", "x@gmail.com")
+                        .with(user("ana@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().is3xxRedirection());
+        verify(departmentAffiliationService, org.mockito.Mockito.never())
+                .addMember(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     private ro.uvt.pokedex.core.model.org.DepartmentAffiliation affiliation(String userId) {

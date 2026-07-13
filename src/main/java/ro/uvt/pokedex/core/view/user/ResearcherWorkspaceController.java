@@ -71,6 +71,7 @@ public class ResearcherWorkspaceController {
     private final ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService researcherOnboardingService;
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
+    private final ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
@@ -1016,10 +1017,46 @@ public class ResearcherWorkspaceController {
             ));
         }
 
+        // Supervisor nudges (persisted, addressed to this researcher). Surfaced in the same bell;
+        // dismissal rides the shared dismissed-id filter below.
+        nudgeService.activeFor(email).forEach(n -> notifications.add(new WorkspaceNotification(
+                "nudge-" + n.getId(),
+                NotificationType.NUDGE,
+                nudgeTitle(n.getKind()),
+                nudgeBody(n),
+                n.getCreatedAt() != null ? n.getCreatedAt().toString() : null,
+                nudgeActionUrl(n.getKind())
+        )));
+
         if (!dismissed.isEmpty()) {
             notifications.removeIf(n -> dismissed.contains(n.id()));
         }
         return notifications;
+    }
+
+    private static String nudgeTitle(ro.uvt.pokedex.core.model.notification.DirectedNotification.NudgeKind kind) {
+        return switch (kind) {
+            case ONBOARD -> "Finish setting up your profile";
+            case CONFIRM_PUBLICATIONS -> "Confirm your publications";
+            case REFRESH_REPORT -> "Refresh your evaluation report";
+        };
+    }
+
+    private static String nudgeBody(ro.uvt.pokedex.core.model.notification.DirectedNotification n) {
+        String base = switch (n.getKind()) {
+            case ONBOARD -> "Your supervisor asks you to complete onboarding so your work can be scored.";
+            case CONFIRM_PUBLICATIONS -> "Your supervisor asks you to review and confirm your pending publications.";
+            case REFRESH_REPORT -> "Your supervisor asks you to refresh your report so the latest numbers show.";
+        };
+        return (n.getNote() != null && !n.getNote().isBlank()) ? base + " — “" + n.getNote() + "”" : base;
+    }
+
+    private static String nudgeActionUrl(ro.uvt.pokedex.core.model.notification.DirectedNotification.NudgeKind kind) {
+        return switch (kind) {
+            case ONBOARD -> "/user/workspace";
+            case CONFIRM_PUBLICATIONS -> "/user/workspace#publications";
+            case REFRESH_REPORT -> "/user/evaluation";
+        };
     }
 
     private WorkspacePreferences loadOrCreatePreferences(String userEmail) {

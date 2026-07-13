@@ -57,6 +57,8 @@
                     <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
                     Viewing <strong th:text="${delegatedSubjectName}">researcher</strong>'s report — read-only.
                 </div>
+                <div th:if="${#bools.isTrue(delegated) and successMessage != null}" class="alert alert-success mb-3" role="status"
+                     th:text="${successMessage}"></div>
 
                 <!-- ── Summary band: report + position controls, score summary, actions ── -->
                 <div class="app-eval-aggregate app-eval-summary mb-3">
@@ -131,6 +133,23 @@
                         <form th:action="@{/reports/researcher/{e}/report/{r}/refresh(e=${delegatedSubjectEmail},r=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
                                 <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh
+                            </button>
+                        </form>
+                        <!-- Nudge this researcher: preset reason + optional note → their workspace bell -->
+                        <form th:action="@{/supervisor/nudge}" method="post" class="app-eval-nudge-form">
+                            <input type="hidden" name="recipientEmail" th:value="${delegatedSubjectEmail}">
+                            <input type="hidden" name="returnUrl"
+                                   th:value="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${report.id})}">
+                            <label class="sr-only" th:for="'nudge-kind'">Nudge reason</label>
+                            <select id="nudge-kind" name="kind" class="form-control form-control-sm">
+                                <option value="ONBOARD">Finish onboarding</option>
+                                <option value="CONFIRM_PUBLICATIONS">Confirm publications</option>
+                                <option value="REFRESH_REPORT">Refresh report</option>
+                            </select>
+                            <input type="text" name="note" maxlength="200" class="form-control form-control-sm"
+                                   placeholder="Optional note…" aria-label="Optional note">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Send an in-app nudge">
+                                <i class="fa-solid fa-bell fa-sm" aria-hidden="true"></i> Nudge
                             </button>
                         </form>
                     </div>

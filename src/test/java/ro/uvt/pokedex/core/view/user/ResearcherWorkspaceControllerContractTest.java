@@ -87,6 +87,8 @@ class ResearcherWorkspaceControllerContractTest {
     private ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
 
     @Test
     void workspaceTemplateUsesSharedSearchInputFragment() throws Exception {

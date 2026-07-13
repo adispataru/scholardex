@@ -12,6 +12,8 @@ public record WorkspaceNotification(
         NEW_CITATION,
         SYNC_COMPLETED,
         REPORT_AVAILABLE,
-        PROFILE_INCOMPLETE
+        PROFILE_INCOMPLETE,
+        /** A supervisor's directed nudge (persisted, not derived from the researcher's own state). */
+        NUDGE
     }
 }

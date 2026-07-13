@@ -1349,3 +1349,17 @@
 .individual-report-dashboard .app-eval-evidence-table__forum {
   white-space: nowrap;
 }
+
+/* ── Delegated nudge form (report + note + send) ───────────────────────── */
+.individual-report-dashboard .app-eval-nudge-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.individual-report-dashboard .app-eval-nudge-form select,
+.individual-report-dashboard .app-eval-nudge-form input[type="text"] {
+  width: auto;
+  min-width: 8rem;
+}

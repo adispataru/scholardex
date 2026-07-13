@@ -15,6 +15,7 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.DepartmentAffiliationService;
+import ro.uvt.pokedex.core.service.application.ResearcherShellService;
 
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -38,6 +39,7 @@ public class SupervisorRosterController {
     private final DepartmentAffiliationService departmentAffiliationService;
     private final DepartmentRepository departmentRepository;
     private final UserService userService;
+    private final ResearcherShellService researcherShellService;
 
     @GetMapping
     @PreAuthorize("@orgUnitAccess.canManageDepartment(#departmentId, authentication)")
@@ -65,6 +67,7 @@ public class SupervisorRosterController {
         model.addAttribute("departmentName", department.getName());
         model.addAttribute("members", members);
         model.addAttribute("candidates", candidates);
+        model.addAttribute("allowedDomains", String.join(", ", researcherShellService.allowedDomains()));
         return "supervisor/department-roster";
     }
 
@@ -87,6 +90,35 @@ public class SupervisorRosterController {
         boolean removed = departmentAffiliationService.removeMember(departmentId, userId);
         redirectAttributes.addFlashAttribute(removed ? "successMessage" : "infoMessage",
                 removed ? "Removed " + userId + " from the department." : userId + " was not a current member.");
+        return "redirect:/supervisor/departments/" + departmentId + "/members";
+    }
+
+    /**
+     * Onboards someone with no account: creates a passwordless researcher shell for an institutional
+     * email, then affiliates it to the department. The person claims the shell on first SSO login.
+     */
+    @PostMapping("/invite")
+    @PreAuthorize("@orgUnitAccess.canManageDepartment(#departmentId, authentication)")
+    public String inviteNewResearcher(@PathVariable String departmentId,
+                                      @RequestParam("email") String email,
+                                      RedirectAttributes redirectAttributes) {
+        String normalized = email == null ? "" : email.strip().toLowerCase();
+        ResearcherShellService.Result result = researcherShellService.createShell(normalized);
+        switch (result) {
+            case CREATED -> {
+                departmentAffiliationService.addMember(departmentId, normalized);
+                redirectAttributes.addFlashAttribute("successMessage",
+                        "Created a researcher account for " + normalized
+                                + " and added them. They finish setup on first sign-in.");
+            }
+            case ALREADY_EXISTS -> redirectAttributes.addFlashAttribute("infoMessage",
+                    normalized + " already has an account — add them from the dropdown above.");
+            case DOMAIN_NOT_ALLOWED -> redirectAttributes.addFlashAttribute("errorMessage",
+                    "Only " + String.join(", ", researcherShellService.allowedDomains())
+                            + " addresses can be invited. Ask an admin for anyone else.");
+            case INVALID_EMAIL -> redirectAttributes.addFlashAttribute("errorMessage",
+                    "\"" + email + "\" is not a valid email address.");
+        }
         return "redirect:/supervisor/departments/" + departmentId + "/members";
     }
 
