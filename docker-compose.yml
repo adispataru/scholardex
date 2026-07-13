@@ -1,0 +1,61 @@
+# On-prem single-box deployment. Replaces the "laptop at a public IP" Scopus hack: the scopus-python
+# service now runs as an internal container reachable only over the compose network.
+#
+# VERIFIED locally: the scopus-python image builds, boots, and health-checks green (a real Scopus
+# call needs an entitled campus IP + key, which is inherently an on-prem check).
+# NOT verified locally: core + mongo + postgres wiring (needs the built jar and real data) — that is
+# the on-prem deploy surface. Build the jar first:  ./gradlew bootJar
+services:
+
+  scopus-python:
+    build: ./scopus-python
+    environment:
+      SCOPUS_API_KEY: ${SCOPUS_API_KEY:?set SCOPUS_API_KEY in .env}
+      SCOPUS_INST_TOKEN: ${SCOPUS_INST_TOKEN:-}
+      PORT: "65008"
+    # No published port — internal only. Uncomment to debug from the host.
+    # ports: ["65008:65008"]
+    restart: unless-stopped
+    networks: [internal]
+
+  mongo:
+    image: mongo:7.0
+    volumes: ["mongo-data:/data/db"]
+    restart: unless-stopped
+    networks: [internal]
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: core
+      POSTGRES_USER: ${POSTGRES_USER:-core}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    restart: unless-stopped
+    networks: [internal]
+
+  core:
+    build: .            # uses the existing Dockerfile; run `./gradlew bootJar` first
+    environment:
+      SCOPUS_PYTHON_BASE_URL: scopus-python:65008
+      SPRING_MONGODB_URI: mongodb://mongo:27017/scholardex
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/core
+      POSTGRES_USER: ${POSTGRES_USER:-core}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports: ["8080:8080"]
+    depends_on:
+      scopus-python:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      postgres:
+        condition: service_started
+    restart: unless-stopped
+    networks: [internal]
+
+networks:
+  internal:
+
+volumes:
+  mongo-data:
+  postgres-data:

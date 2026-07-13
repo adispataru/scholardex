@@ -1,0 +1,7 @@
+# Scopus wrapper service (pybib-wrapper-with-logs.py) runtime deps.
+# Versions are best-effort lower/upper bounds; the image build resolves the exact set.
+fastapi>=0.110,<0.116
+uvicorn[standard]>=0.29,<0.35
+pydantic>=2.5,<3
+# 4.x for the config-file init() API the wrapper imports (from pybliometrics.scopus import init).
+pybliometrics>=4.4,<5
