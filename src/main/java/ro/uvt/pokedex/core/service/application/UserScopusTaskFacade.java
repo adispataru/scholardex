@@ -20,7 +20,10 @@ public class UserScopusTaskFacade {
     private final UserService userService;
     private final ScopusPublicationUpdateRepository scopusPublicationUpdateRepository;
     private final ScopusCitationUpdateRepository scopusCitationUpdateRepository;
-    private final ro.uvt.pokedex.core.service.scopus.ScopusUpdateScheduler scopusUpdateScheduler;
+    // ObjectProvider because the scheduler bean is conditional on core.scopus.scheduler.enabled
+    // (disabled in test runs); the kick is best-effort — the scheduled poll picks the task up anyway.
+    private final org.springframework.beans.factory.ObjectProvider<ro.uvt.pokedex.core.service.scopus.ScopusUpdateScheduler>
+            scopusUpdateScheduler;
 
     public UserScopusTasksViewModel buildTasksView(String userEmail, String researcherId) {
         // researcherId is kept for API compatibility; after migration the researcher
@@ -36,14 +39,16 @@ public class UserScopusTaskFacade {
         initializeDraft(draft, userEmail);
         ScopusPublicationUpdate saved = scopusPublicationUpdateRepository.save(draft);
         // Kick the scheduler so this runs within seconds instead of waiting for the next poll.
-        scopusUpdateScheduler.triggerImmediatePoll();
+        scopusUpdateScheduler.ifAvailable(
+                ro.uvt.pokedex.core.service.scopus.ScopusUpdateScheduler::triggerImmediatePoll);
         return saved;
     }
 
     public ScopusCitationsUpdate createCitationTask(String userEmail, ScopusCitationsUpdate draft) {
         initializeDraft(draft, userEmail);
         ScopusCitationsUpdate saved = scopusCitationUpdateRepository.save(draft);
-        scopusUpdateScheduler.triggerImmediatePoll();
+        scopusUpdateScheduler.ifAvailable(
+                ro.uvt.pokedex.core.service.scopus.ScopusUpdateScheduler::triggerImmediatePoll);
         return saved;
     }
 

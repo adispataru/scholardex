@@ -30,6 +30,9 @@ class UserScopusTaskFacadeTest {
     private ScopusPublicationUpdateRepository scopusPublicationUpdateRepository;
     @Mock
     private ScopusCitationUpdateRepository scopusCitationUpdateRepository;
+    @Mock
+    private org.springframework.beans.factory.ObjectProvider<ro.uvt.pokedex.core.service.scopus.ScopusUpdateScheduler>
+            scopusUpdateScheduler;
 
     @InjectMocks
     private UserScopusTaskFacade facade;
@@ -46,6 +49,8 @@ class UserScopusTaskFacadeTest {
         assertNotNull(saved.getInitiatedDate());
         assertEquals(0, saved.getAttemptCount());
         assertEquals(3, saved.getMaxAttempts());
+        // Creating a task kicks the (optional) scheduler for an immediate poll.
+        org.mockito.Mockito.verify(scopusUpdateScheduler).ifAvailable(any());
     }
 
     @Test
