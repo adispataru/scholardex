@@ -38,6 +38,7 @@ services:
     build: .            # uses the existing Dockerfile; run `./gradlew bootJar` first
     environment:
       SCOPUS_PYTHON_BASE_URL: scopus-python:65008
+      OPENALEX_MAILTO: ${OPENALEX_MAILTO:-}
       SPRING_MONGODB_URI: mongodb://mongo:27017/scholardex
       POSTGRES_URL: jdbc:postgresql://postgres:5432/core
       POSTGRES_USER: ${POSTGRES_USER:-core}
