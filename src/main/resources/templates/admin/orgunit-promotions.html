@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${vm.unitName} + ' — Promotion readiness'">Promotion readiness</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <style>
+        .app-promo__band { margin-bottom: 1.5rem; }
+        .app-promo__band-title { display: flex; align-items: center; gap: .5rem; font-size: .95rem;
+            font-weight: 700; letter-spacing: .02em; text-transform: uppercase; margin-bottom: .5rem; }
+        .app-promo__count { font-weight: 600; opacity: .7; }
+        .app-promo__row summary { cursor: pointer; list-style: none; }
+        .app-promo__row summary::-webkit-details-marker { display: none; }
+        .app-promo__row { border: 1px solid var(--app-color-border, #e3e6f0); border-radius: .5rem;
+            padding: .5rem .75rem; margin-bottom: .5rem; background: var(--app-color-surface, #fff); }
+        .app-promo__row[open] { box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+        .app-promo__summary { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+        .app-promo__name { font-weight: 600; }
+        .app-promo__path { opacity: .75; font-size: .85rem; }
+        .app-promo__chips { margin-left: auto; display: flex; gap: .35rem; flex-wrap: wrap; }
+        .app-promo__chip { font-size: .75rem; border-radius: 999px; padding: .1rem .55rem; white-space: nowrap; }
+        .app-promo__chip--met, .app-promo__chip.is-met { background: rgba(28,200,138,.15); color: #1cc88a; }
+        .app-promo__chip--near, .app-promo__chip.is-near { background: rgba(246,194,62,.18); color: #b58b1f; }
+        .app-promo__chip--gap, .app-promo__chip.is-gap { background: rgba(231,74,59,.12); color: #e74a3b; }
+        .app-promo__chip--info { background: rgba(78,115,223,.12); color: #4e73df; }
+        .app-promo__detail { margin-top: .6rem; }
+        .app-promo__detail table { margin-bottom: .35rem; }
+        .app-promo__habil { font-size: .8rem; opacity: .85; }
+    </style>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('divisions')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(${vm.unitName} + ' — Promotion readiness')}"></div>
+            <div class="container-fluid app-page-content">
+
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        Who meets the <strong>scientific minimum standards of the next position</strong> under
+                        <strong th:text="${vm.report.title}">report</strong>. Each member's latest run is checked
+                        against the thresholds of the rung above their current one.
+                        <span class="text-muted">This covers the metric part of a promotion dossier only —
+                        seniority, teaching, and habilitation requirements are not tracked here.</span>
+                    </p>
+                    <div class="app-workflow__actions">
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Back to report</a>
+                    </div>
+                </div>
+
+                <!-- Band: meets -->
+                <div class="app-promo__band">
+                    <div class="app-promo__band-title text-success">
+                        <i class="fa-solid fa-circle-check"></i> Meets next-position standards
+                        <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.meets)} + ')'">(0)</span>
+                    </div>
+                    <p th:if="${vm.board.meets.isEmpty()}" class="text-muted mb-2">Nobody currently clears every threshold of their next position.</p>
+                    <th:block th:each="m : ${vm.board.meets}">
+                        <div th:replace="~{:: promo-row(${m})}"></div>
+                    </th:block>
+                </div>
+
+                <!-- Band: borderline -->
+                <div class="app-promo__band">
+                    <div class="app-promo__band-title text-warning">
+                        <i class="fa-solid fa-circle-half-stroke"></i> Borderline — within 10% on the missing criteria
+                        <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.borderline)} + ')'">(0)</span>
+                    </div>
+                    <p th:if="${vm.board.borderline.isEmpty()}" class="text-muted mb-2">No near-misses.</p>
+                    <th:block th:each="m : ${vm.board.borderline}">
+                        <div th:replace="~{:: promo-row(${m})}"></div>
+                    </th:block>
+                </div>
+
+                <!-- Band: building -->
+                <div class="app-promo__band">
+                    <div class="app-promo__band-title text-muted">
+                        <i class="fa-solid fa-seedling"></i> Building
+                        <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.building)} + ')'">(0)</span>
+                    </div>
+                    <th:block th:each="m : ${vm.board.building}">
+                        <div th:replace="~{:: promo-row(${m})}"></div>
+                    </th:block>
+                </div>
+
+                <!-- Band: not evaluable -->
+                <div class="app-promo__band" th:if="${!vm.board.notEvaluable.isEmpty()}">
+                    <div class="app-promo__band-title text-muted">
+                        <i class="fa-solid fa-circle-question"></i> Not evaluable
+                        <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.notEvaluable)} + ')'">(0)</span>
+                    </div>
+                    <div class="app-promo__row" th:each="m : ${vm.board.notEvaluable}">
+                        <div class="app-promo__summary">
+                            <span class="app-promo__name" th:text="${m.row.user.researcherProfile.name}">Name</span>
+                            <span class="app-promo__path" th:text="${m.row.departmentLabel}">dept</span>
+                            <span class="app-promo__chips">
+                                <span class="app-promo__chip app-promo__chip--info"
+                                      th:text="${m.band.name() == 'TOP_OF_LADDER'} ? 'Top of ladder (' + ${m.currentPosition} + ')'
+                                             : (${m.band.name() == 'NO_RUN'} ? 'No report run yet'
+                                             : (${m.band.name() == 'NO_STANDARD'} ? 'Report defines no thresholds for ' + ${m.targetPosition}
+                                             : 'No position set'))">why</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-muted small" th:if="${vm.board.provisionalCount > 0}">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    <span th:text="${vm.board.provisionalCount}">0</span> member(s) are scored from a
+                    <em>provisional</em> run (unvalidated authorship) — treat their verdicts as indicative.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fragment: one member row. th:if guards the standalone render of this in-file fragment
+     (Thymeleaf also emits it in document order at the bottom of the page, where m is undefined). -->
+<details th:fragment="promo-row(m)" th:if="${m != null}" class="app-promo__row">
+    <summary>
+        <span class="app-promo__summary">
+            <span class="app-promo__name" th:text="${m.row.user.researcherProfile.name}">Name</span>
+            <span class="app-promo__path">
+                <span th:text="${m.row.departmentLabel}">dept</span> ·
+                <span th:text="${m.currentPosition}">POS</span> → <strong th:text="${m.targetPosition}">NEXT</strong>
+            </span>
+            <span class="app-promo__chips">
+                <span class="app-promo__chip app-promo__chip--info" th:if="${m.row.current != null and m.row.current.provisional}">provisional</span>
+                <!-- NOTE: no literal '__' inside th:* expressions — Thymeleaf treats __…__ as preprocessing. -->
+                <span class="app-promo__chip"
+                      th:classappend="${m.metCount == m.applicableCount} ? 'is-met' : (${m.band.name() == 'BORDERLINE'} ? 'is-near' : 'is-gap')"
+                      th:text="${m.metCount} + '/' + ${m.applicableCount} + ' criteria'">0/0</span>
+                <span class="app-promo__chip app-promo__chip--met" th:if="${!m.habilChecks.isEmpty() and m.habilMet}">habil. standards ✓</span>
+                <span class="app-promo__chip app-promo__chip--near" th:if="${!m.habilChecks.isEmpty() and !m.habilMet}">habil. standards ✗</span>
+            </span>
+        </span>
+    </summary>
+    <div class="app-promo__detail">
+        <table class="table table-sm mb-1">
+            <thead>
+            <tr><th>Criterion</th><th class="text-right">Current</th><th class="text-right" th:text="'Required (' + ${m.targetPosition} + ')'">Required</th><th class="text-right">Gap</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${m.checks}">
+                <td th:text="${c.name}">C</td>
+                <td class="text-right" th:text="${#numbers.formatDecimal(c.score,1,2)}">0</td>
+                <td class="text-right" th:text="${#numbers.formatDecimal(c.threshold,1,2)}">0</td>
+                <td class="text-right"
+                    th:classappend="${c.met} ? 'text-success' : (${c.near} ? 'text-warning' : 'text-danger')"
+                    th:text="${c.met} ? '✓' : ('−' + ${#numbers.formatDecimal(c.gap,1,2)})">✓</td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="app-promo__habil" th:if="${!m.habilChecks.isEmpty()}">
+            Habilitation standards (gateway to PROF):
+            <th:block th:each="c,it : ${m.habilChecks}"><span
+                    th:classappend="${c.met} ? 'text-success' : 'text-danger'"
+                    th:text="${c.name} + ' ' + ${#numbers.formatDecimal(c.score,1,1)} + '/' + ${#numbers.formatDecimal(c.threshold,1,1)}">c</span><th:block
+                    th:if="${!it.last}"> · </th:block></th:block>
+        </p>
+        <a class="btn btn-outline-primary btn-sm"
+           th:href="@{'/reports/researcher/' + ${m.row.user.email}}">Open individual report</a>
+    </div>
+</details>
+
+</body>
+</html>

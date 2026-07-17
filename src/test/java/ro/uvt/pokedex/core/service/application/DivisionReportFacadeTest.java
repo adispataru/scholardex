@@ -60,7 +60,8 @@ class DivisionReportFacadeTest {
                 new com.fasterxml.jackson.databind.ObjectMapper());
         facade = new DivisionReportFacade(orgDivisionRepository, individualReportRepository,
                 rosterService, rollupService, assembler, orgUnitReportRefreshEventRepository,
-                reportVisibilityService);
+                reportVisibilityService,
+                new ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService());
         lenient().when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.empty());
         lenient().when(orgUnitReportRefreshEventRepository
                         .findTop20ByUnitTypeAndUnitIdAndReportDefinitionIdOrderByCreatedAtDesc(any(), any(), any()))

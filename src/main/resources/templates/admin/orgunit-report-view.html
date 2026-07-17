@@ -58,6 +58,11 @@
                                 <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Score provisional (unlinked)
                             </button>
                         </form>
+                        <a th:if="${promotionsHref != null}" th:href="${promotionsHref}"
+                           class="btn btn-outline-primary btn-sm"
+                           title="Who meets the scientific minimum standards of the next position">
+                            <i class="fa-solid fa-arrow-trend-up mr-1"></i>Promotion readiness
+                        </a>
                         <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← All reports</a>
                     </div>
                 </div>

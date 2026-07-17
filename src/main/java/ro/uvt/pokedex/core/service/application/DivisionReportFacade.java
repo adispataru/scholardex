@@ -34,6 +34,7 @@ public class DivisionReportFacade {
     private final OrgUnitReportViewAssembler orgUnitReportViewAssembler;
     private final OrgUnitReportRefreshEventRepository orgUnitReportRefreshEventRepository;
     private final ReportVisibilityService reportVisibilityService;
+    private final ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService promotionReadinessService;
 
     /**
      * @deprecated use {@link #listReportsVisibleForDivision(String)} so the listing respects
@@ -67,4 +68,19 @@ public class DivisionReportFacade {
         return Optional.of(orgUnitReportViewAssembler.toViewModel(
                 division.getId(), division.getName(), report, rollup, compareOptions));
     }
+
+    /** Promotion-readiness board for the division against the given report's next-rung thresholds. */
+    public Optional<PromotionBoardView> buildPromotionBoard(String divisionId, String reportId) {
+        Optional<OrgDivision> divOpt = orgDivisionRepository.findById(divisionId);
+        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
+        if (divOpt.isEmpty() || reportOpt.isEmpty()) return Optional.empty();
+        IndividualReport report = reportOpt.get();
+        List<OrgUnitRosterService.RosterMember> members = orgUnitRosterService.divisionRoster(divisionId);
+        OrgUnitRunRollupService.OrgUnitRunRollup rollup = orgUnitRunRollupService.rollup(members, report, null);
+        return Optional.of(new PromotionBoardView(divOpt.get().getName(), report,
+                promotionReadinessService.build(report, rollup)));
+    }
+
+    public record PromotionBoardView(String unitName, IndividualReport report,
+                                     ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService.PromotionBoard board) {}
 }

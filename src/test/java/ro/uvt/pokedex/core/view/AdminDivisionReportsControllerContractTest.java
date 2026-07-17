@@ -146,4 +146,64 @@ class AdminDivisionReportsControllerContractTest {
         assertFalse(vm.cellHeatClass().isEmpty());
         return vm;
     }
+
+    @Test
+    void promotionBoardRendersBandsGapsAndDisclaimer() throws Exception {
+        User lect = new User();
+        lect.setEmail("bob@uvt.ro");
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setFirstName("Bob");
+        profile.setLastName("Ionescu");
+        profile.setPosition(Position.LECT_UNIV);
+        lect.setResearcherProfile(profile);
+        OrgUnitRunRollupService.RunSummary run = new OrgUnitRunRollupService.RunSummary(
+                "run-1", Instant.parse("2026-07-01T10:00:00Z"), UserIndividualReportRun.Status.READY,
+                false, Map.of(0, 30.0), null, null, null, List.of());
+        OrgUnitRunRollupService.MemberRunRow row =
+                new OrgUnitRunRollupService.MemberRunRow(lect, "Computer Science", run, false, null);
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-1");
+        report.setTitle("FV Info 2026");
+        AbstractReport.Criterion criterion = new AbstractReport.Criterion();
+        criterion.setName("Perspectiva B");
+        report.setCriteria(List.of(criterion));
+
+        var readiness = new ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService()
+                .build(report, new OrgUnitRunRollupService.OrgUnitRunRollup(
+                        List.of(row), Map.of(0, Map.of("CONF_UNIV", 32.0)), 0, 0, 0, null, null, null, null));
+        when(divisionReportFacade.buildPromotionBoard(eq("div-1"), eq("rep-1")))
+                .thenReturn(Optional.of(new DivisionReportFacade.PromotionBoardView("FMI", report, readiness)));
+
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1/promotions"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Band headers + the honest-scope disclaimer
+        assertTrue(html.contains("Meets next-position standards"));
+        assertTrue(html.contains("Borderline"));
+        assertTrue(html.contains("scientific minimum standards"));
+        // 30 vs 32 → borderline row with the criterion gap and target position rendered
+        assertTrue(html.contains("Bob Ionescu"));
+        assertTrue(html.contains("LECT_UNIV"));
+        assertTrue(html.contains("CONF_UNIV"));
+        assertTrue(html.contains("Perspectiva B"));
+        assertTrue(html.contains("0/1 criteria"));
+        // Row links to the delegated individual report
+        assertTrue(html.contains("/reports/researcher/bob@uvt.ro"));
+    }
+
+    @Test
+    void promotionBoardLinkRendersOnDivisionReportView() throws Exception {
+        OrgUnitReportViewModel vm = sampleVm();
+        when(divisionReportFacade.buildView(eq("div-1"), eq("rep-1"), isNull()))
+                .thenReturn(Optional.of(vm));
+
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(html.contains("Promotion readiness"));
+        assertTrue(html.contains("/admin/divisions/div-1/reports/rep-1/promotions"));
+    }
 }

@@ -54,6 +54,21 @@ public class AdminDivisionReportsController {
         model.addAttribute("unitType", "division");
         model.addAttribute("vm", vm);
         model.addAttribute("backHref", "/admin/divisions/" + divisionId + "/reports");
+        model.addAttribute("promotionsHref",
+                "/admin/divisions/" + divisionId + "/reports/" + reportId + "/promotions");
         return "admin/orgunit-report-view";
+    }
+
+    @GetMapping("/{reportId}/promotions")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    public String promotionBoard(@PathVariable String divisionId,
+                                 @PathVariable String reportId,
+                                 Model model) {
+        Optional<DivisionReportFacade.PromotionBoardView> view =
+                divisionReportFacade.buildPromotionBoard(divisionId, reportId);
+        if (view.isEmpty()) return "redirect:/admin/divisions/" + divisionId + "/reports";
+        model.addAttribute("vm", view.get());
+        model.addAttribute("backHref", "/admin/divisions/" + divisionId + "/reports/" + reportId);
+        return "admin/orgunit-promotions";
     }
 }
