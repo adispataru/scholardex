@@ -365,6 +365,46 @@ class EvaluationWorkspaceControllerContractTest {
     }
 
     @Test
+    void importViewRendersImportableItemWhoseBlockHasNoActivityOptions() throws Exception {
+        // Regression: an old report can carry an activity block with importable rows but no bound
+        // platform activity type. The "Add to platform" toggle was guarded on empty activityOptions
+        // but the hidden form below it wasn't — its single-activity [0] access blew up the whole page
+        // (SpelEvaluationException EL1025E at individual-report-import line ~454).
+        User user = userPrincipal("u@uvt.ro");
+        var importable = new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison.ActivityItem(
+                "Comisie admitere 2014", "D.3", null, 2.0,
+                ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison.Status.ONLY_IN_FILE, null);
+        var block = new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison.ActivityBlockComparison(
+                "D.3 Comisii", 0.0, 2.0, 2.0,
+                ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison.Status.DIFFERS,
+                List.of(), List.of(importable), List.of(),
+                List.of()); // <- no bound activity options
+        when(reportImportVerificationFacade.verifyOutcome(
+                org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
+                org.mockito.ArgumentMatchers.eq("rep-1"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.success(
+                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationResult(
+                        new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison(
+                                List.of(), List.of(block), 0, 2.0, 0, 0, 1),
+                        null,
+                        null,
+                        null)));
+
+        String html = mockMvc.perform(multipart("/user/evaluation/import")
+                        .file("file", new byte[]{1, 2, 3})
+                        .param("report", "rep-1")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("no activity type bound"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Comisie admitere 2014"));
+    }
+
+    @Test
     void importEndpointMapsInvalidWorkbookToUnprocessableStatus() throws Exception {
         User user = userPrincipal("u@uvt.ro");
         when(reportImportVerificationFacade.verifyOutcome(

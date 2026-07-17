@@ -442,7 +442,10 @@
                                                             (no activity type bound — add via the workspace)
                                                         </span>
                                                     </div>
-                                                    <div class="imp-form" th:attr="id=${'imp-form-' + bi.index + '-' + ii.index}" hidden>
+                                                    <!-- Guarded like the toggle above: with no bound activity option there is no form
+                                                         (and the [0] single-activity access below would throw on an empty list). -->
+                                                    <div class="imp-form" th:if="${!block.activityOptions().isEmpty()}"
+                                                         th:attr="id=${'imp-form-' + bi.index + '-' + ii.index}" hidden>
                                                         <div th:if="${#lists.size(block.activityOptions()) > 1}" class="app-form-field mb-2">
                                                             <label>Activity type</label>
                                                             <select class="form-control form-control-sm imp-activity-select">
