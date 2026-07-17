@@ -85,11 +85,12 @@ public class TemplateXlsxScoreParser {
         // header text — tolerant of extra words (e.g. "CURS UNIVERSITAR IN FORMAT ELECTRONIC" still
         // resolves to "Curs in format electronic"). Falls back to a substring test when no marker set.
         String marker = normalizeLoose(role.getBlockHeaderMarker());
-        List<int[]> headers = new ArrayList<>(); // [rowIndex, blockIndex]
+        List<Object[]> headers = new ArrayList<>(); // [rowIndex, blockName]
         for (int r = 0; r <= sheet.getLastRowNum(); r++) {
             Row row = sheet.getRow(r);
             if (row == null) continue;
-            String c = normalizeLoose(stringValue(row.getCell(descCol)));
+            String raw = stringValue(row.getCell(descCol));
+            String c = normalizeLoose(raw);
             if (c == null || c.isBlank()) continue;
             boolean isHeader = marker != null && !marker.isBlank() ? c.contains(marker) : false;
 
@@ -102,14 +103,22 @@ public class TemplateXlsxScoreParser {
                         : (c.contains(name) ? 1.0 : 0.0); // legacy fallback
                 if (score >= bestScore) { bestScore = score; bestBlock = b; }
             }
-            if (bestBlock >= 0) headers.add(new int[]{r, bestBlock});
+            if (bestBlock >= 0) {
+                headers.add(new Object[]{r, role.getBlocks().get(bestBlock).getActivityName()});
+            } else if (isHeader) {
+                // Researchers add custom sections the official template doesn't have (e.g.
+                // "Profesor/cercetător asociat/visiting"). A marker row that matches no configured
+                // block still STARTS ITS OWN block, named from the header text — otherwise its data
+                // rows would silently attach to the previous section, mislabeling them.
+                headers.add(new Object[]{r, customBlockName(raw)});
+            }
         }
 
         List<SnapshotItem> out = new ArrayList<>();
         for (int h = 0; h < headers.size(); h++) {
-            int headerRow = headers.get(h)[0];
-            String blockName = role.getBlocks().get(headers.get(h)[1]).getActivityName();
-            int nextHeaderRow = (h + 1 < headers.size()) ? headers.get(h + 1)[0] : sheet.getLastRowNum() + 1;
+            int headerRow = (Integer) headers.get(h)[0];
+            String blockName = (String) headers.get(h)[1];
+            int nextHeaderRow = (h + 1 < headers.size()) ? (Integer) headers.get(h + 1)[0] : sheet.getLastRowNum() + 1;
 
             for (int r = headerRow + 1; r < nextHeaderRow; r++) {
                 Row row = sheet.getRow(r);
@@ -146,6 +155,22 @@ public class TemplateXlsxScoreParser {
             }
         }
         return -1;
+    }
+
+    /**
+     * Display name for a custom (unconfigured) section, from its raw header text: the part after
+     * "indicatorul", minus a trailing "(perspectiva …)" suffix — e.g. "C1. Justificări pentru
+     * indicatorul Profesor/cercetător asociat/visiting (perspectiva D)" → "Profesor/cercetător
+     * asociat/visiting". Falls back to the trimmed header when the pattern is absent.
+     */
+    private String customBlockName(String rawHeader) {
+        String s = rawHeader == null ? "" : rawHeader.trim();
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("indicatorul\\s+(.*)$", java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL)
+                .matcher(s);
+        String name = m.find() ? m.group(1) : s;
+        name = name.replaceAll("\\(\\s*perspectiv[^)]*\\)\\s*$", "").trim();
+        return name.isBlank() ? s : name;
     }
 
     /** Fraction of {@code blockNameNorm}'s tokens (≥3 chars) present in {@code headerNorm}. */
@@ -217,8 +242,13 @@ public class TemplateXlsxScoreParser {
 
     private List<SnapshotItem> parseTiledSheets(Workbook workbook, FormulaEvaluator evaluator, BindingRole role,
                                                 Set<String> ignored) {
+        // Two accepted namings: our export's "Citari-NN" (sheetNameTemplate) AND the official
+        // template's own tile-sheet name as a prefix ("C-Citari-TPL", "C-Citari-TPL1", …) — real
+        // researcher-filled FVs keep the official names, and their citations were silently
+        // unparsed before this. The summary sheet ("C-Citari-centralizare") shares no prefix.
         String sheetNamePrefix = sheetNamePrefix(role.getSheetNameTemplate());
-        if (sheetNamePrefix == null) return List.of();
+        String officialPrefix = role.getTemplateSheet();
+        if (sheetNamePrefix == null && (officialPrefix == null || officialPrefix.isBlank())) return List.of();
         CellReference titleRef = new CellReference(role.getPerTileTitleCell());
         int keyCol = titleRef.getCol();
         int titleRow0 = titleRef.getRow();
@@ -228,7 +258,11 @@ public class TemplateXlsxScoreParser {
         List<SnapshotItem> out = new ArrayList<>();
         for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
             Sheet sheet = workbook.getSheetAt(s);
-            if (!sheet.getSheetName().startsWith(sheetNamePrefix)) continue;
+            String name = sheet.getSheetName();
+            boolean exportNamed = sheetNamePrefix != null && name.startsWith(sheetNamePrefix);
+            boolean officialNamed = officialPrefix != null && !officialPrefix.isBlank()
+                    && name.startsWith(officialPrefix);
+            if (!exportNamed && !officialNamed) continue;
 
             Row titleRow = sheet.getRow(titleRow0);
             String rawTitle = titleRow != null ? stringValue(titleRow.getCell(keyCol)) : null;
@@ -256,6 +290,11 @@ public class TemplateXlsxScoreParser {
             // The tile's authoritative score is the grand-total row (author-divided), not the raw sum.
             Double total = findTileTotal(sheet, evaluator, keyCol, scoreCol, role.getTileTotalLabel(), r);
             double tileScore = total != null ? total : rawSum;
+
+            // An untouched master tile (the template ships C-Citari-TPL with a sample title and
+            // placeholder rows) parses to a zero tile with no citing rows — skip it, don't report
+            // a phantom publication.
+            if (citingRows.isEmpty() && tileScore == 0.0) continue;
 
             CitationSnapshotItem tile = new CitationSnapshotItem();
             tile.setRoleKey(role.getRoleKey());

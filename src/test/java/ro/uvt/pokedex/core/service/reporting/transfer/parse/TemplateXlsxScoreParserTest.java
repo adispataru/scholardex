@@ -152,6 +152,81 @@ class TemplateXlsxScoreParserTest {
         assertThat(parsedGrant.getActivityName()).isEqualTo("Granturi");
     }
 
+    @Test
+    void customSectionHeaderStartsItsOwnBlockInsteadOfBeingSwallowed() throws Exception {
+        // Researchers edit the official template and add sections the binding doesn't know (seen in a
+        // real CNFIS FV: "Profesor/cercetător asociat/visiting"). The marker row must start its OWN
+        // block named from the header — previously its rows silently attached to the previous section.
+        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+        ActivitySnapshotItem premiu = act("Premii", "Best paper award", "A", 8.0);
+        byte[] bytes = renderer.render(binding, Map.of(
+                "activities-perspectiva-d", List.of(premiu.toRowMap())));
+
+        // Append a custom section at the bottom of the activities sheet: header + one data row.
+        org.apache.poi.ss.usermodel.Workbook wb =
+                org.apache.poi.ss.usermodel.WorkbookFactory.create(new ByteArrayInputStream(bytes));
+        org.apache.poi.ss.usermodel.Sheet sheet = wb.getSheet("Indicatorul I");
+        int base = sheet.getLastRowNum() + 2;
+        sheet.createRow(base).createCell(2)
+                .setCellValue("C1. Justificări pentru indicatorul Profesor/cercetător asociat/visiting (perspectiva D)");
+        org.apache.poi.ss.usermodel.Row data = sheet.createRow(base + 1);
+        data.createCell(2).setCellValue("Universitatea din Viena, 4*74 = 296");
+        data.createCell(10).setCellValue(24.0);
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        wb.write(bos);
+        wb.close();
+
+        List<SnapshotItem> parsed = parser.parse(binding, new ByteArrayInputStream(bos.toByteArray()));
+        ActivitySnapshotItem custom = parsed.stream()
+                .filter(i -> i instanceof ActivitySnapshotItem a
+                        && a.getDescription() != null && a.getDescription().startsWith("Universitatea din Viena"))
+                .map(i -> (ActivitySnapshotItem) i)
+                .findFirst().orElseThrow();
+        assertThat(custom.getActivityName()).isEqualTo("Profesor/cercetător asociat/visiting");
+        assertThat(custom.getScore()).isEqualTo(24.0);
+        // The known block keeps its own rows.
+        assertThat(parsed).anyMatch(i -> i instanceof ActivitySnapshotItem a
+                && "Premii".equals(a.getActivityName()) && "Best paper award".equals(a.getDescription()));
+    }
+
+    @Test
+    void officiallyNamedCitationTileSheetsAreParsed() throws Exception {
+        // Real researcher-filled FVs keep the official tile-sheet names (C-Citari-TPL, C-Citari-TPL1,
+        // …) instead of our export's Citari-NN — those citations were silently unparsed before.
+        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+        CitationSnapshotItem tile = new CitationSnapshotItem();
+        tile.setPublicationTitle("Use of genetic algorithms in numerical weather prediction");
+        tile.setPublicationForumName("J Forecast");
+        tile.setPublicationYear(2020);
+        tile.setPublicationAuthorCount(3);
+        tile.getCitingPublications().add(citing("Citing paper one", "A", "NU"));
+        byte[] bytes = renderer.render(binding, Map.of(),
+                Map.of("citations-per-publication", List.of(
+                        new TileData(tile.toHeaderMap(), tile.toInnerRowMaps()))));
+
+        // Rename the export-named tiles to the official naming.
+        org.apache.poi.ss.usermodel.Workbook wb =
+                org.apache.poi.ss.usermodel.WorkbookFactory.create(new ByteArrayInputStream(bytes));
+        for (int s = 0; s < wb.getNumberOfSheets(); s++) {
+            String n = wb.getSheetName(s);
+            if (n.startsWith("Citari-")) {
+                wb.setSheetName(s, "C-Citari-TPL" + n.substring("Citari-".length()));
+            }
+        }
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        wb.write(bos);
+        wb.close();
+
+        List<SnapshotItem> parsed = parser.parse(binding, new ByteArrayInputStream(bos.toByteArray()));
+        CitationSnapshotItem parsedTile = parsed.stream()
+                .filter(i -> i instanceof CitationSnapshotItem)
+                .map(i -> (CitationSnapshotItem) i)
+                .findFirst().orElseThrow();
+        assertThat(parsedTile.getPublicationTitle())
+                .isEqualTo("Use of genetic algorithms in numerical weather prediction");
+        assertThat(parsedTile.getCitingPublications()).hasSize(1);
+    }
+
     private ActivitySnapshotItem act(String blockName, String description, String category, double score) {
         ActivitySnapshotItem a = new ActivitySnapshotItem();
         a.setActivityName(blockName);
