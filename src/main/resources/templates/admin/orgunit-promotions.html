@@ -11,18 +11,22 @@
         .app-promo__count { font-weight: 600; opacity: .7; }
         .app-promo__row summary { cursor: pointer; list-style: none; }
         .app-promo__row summary::-webkit-details-marker { display: none; }
-        .app-promo__row { border: 1px solid var(--app-color-border, #e3e6f0); border-radius: .5rem;
-            padding: .5rem .75rem; margin-bottom: .5rem; background: var(--app-color-surface, #fff); }
-        .app-promo__row[open] { box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+        .app-promo__row { border: 1px solid var(--app-color-border); border-radius: .5rem;
+            padding: .5rem .75rem; margin-bottom: .5rem; background: var(--app-color-card-bg);
+            color: var(--app-color-text); }
+        .app-promo__row[open] { box-shadow: 0 1px 4px rgba(0,0,0,.12); }
         .app-promo__summary { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-        .app-promo__name { font-weight: 600; }
-        .app-promo__path { opacity: .75; font-size: .85rem; }
+        .app-promo__name { font-weight: 600; color: var(--app-color-text-strong); }
+        .app-promo__path { color: var(--app-color-text-muted); font-size: .85rem; }
         .app-promo__chips { margin-left: auto; display: flex; gap: .35rem; flex-wrap: wrap; }
         .app-promo__chip { font-size: .75rem; border-radius: 999px; padding: .1rem .55rem; white-space: nowrap; }
-        .app-promo__chip--met, .app-promo__chip.is-met { background: rgba(28,200,138,.15); color: #1cc88a; }
-        .app-promo__chip--near, .app-promo__chip.is-near { background: rgba(246,194,62,.18); color: #b58b1f; }
-        .app-promo__chip--gap, .app-promo__chip.is-gap { background: rgba(231,74,59,.12); color: #e74a3b; }
-        .app-promo__chip--info { background: rgba(78,115,223,.12); color: #4e73df; }
+        .app-promo__chip--met, .app-promo__chip.is-met {
+            background: color-mix(in srgb, var(--app-color-success) 15%, transparent); color: var(--app-color-success); }
+        .app-promo__chip--near, .app-promo__chip.is-near {
+            background: color-mix(in srgb, var(--app-color-warning) 18%, transparent); color: var(--app-color-warning); }
+        .app-promo__chip--gap, .app-promo__chip.is-gap {
+            background: color-mix(in srgb, var(--app-color-danger) 12%, transparent); color: var(--app-color-danger); }
+        .app-promo__chip--info { background: var(--app-color-primary-soft); color: var(--app-color-primary); }
         .app-promo__detail { margin-top: .6rem; }
         .app-promo__detail table { margin-bottom: .35rem; }
         .app-promo__habil { font-size: .8rem; opacity: .85; }
@@ -115,9 +119,12 @@
                     <em>provisional</em> run (unvalidated authorship) — treat their verdicts as indicative.
                 </p>
             </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
         </div>
     </div>
 </div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
 <!-- Fragment: one member row. th:if guards the standalone render of this in-file fragment
      (Thymeleaf also emits it in document order at the bottom of the page, where m is undefined). -->
