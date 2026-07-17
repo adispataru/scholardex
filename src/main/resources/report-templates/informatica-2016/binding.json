@@ -106,7 +106,7 @@
         { "activityName": "Editor proceedings",         "headerRow": 13, "firstDataRow": 16, "totalRow": 17 },
         { "activityName": "Curs in format electronic",  "headerRow": 19, "firstDataRow": 22, "totalRow": 23 },
         { "activityName": "Director/editor revista",    "headerRow": 25, "firstDataRow": 28, "totalRow": 29 },
-        { "activityName": "Grant Cercetare",            "headerRow": 31, "firstDataRow": 34, "totalRow": 35 },
+        { "activityName": "Granturi",            "headerRow": 31, "firstDataRow": 34, "totalRow": 35 },
         { "activityName": "Membru comitet stiintific",  "headerRow": 37, "firstDataRow": 40, "totalRow": 41 },
         { "activityName": "Organizare evenimente",      "headerRow": 43, "firstDataRow": 46, "totalRow": 47 },
         { "activityName": "Keynote/invited speaker",    "headerRow": 49, "firstDataRow": 52, "totalRow": 53 },

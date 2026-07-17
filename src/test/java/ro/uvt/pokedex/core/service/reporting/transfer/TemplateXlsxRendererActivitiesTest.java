@@ -31,7 +31,7 @@ class TemplateXlsxRendererActivitiesTest {
         TemplateBinding binding = loader.load(BINDING_RESOURCE);
 
         ActivitySnapshotItem book = activity("Carti/Capitole", "Co-authored research monograph",  "AA", 12.0);
-        ActivitySnapshotItem grant = activity("Grant Cercetare", "PI on Horizon Europe project",  "A",   8.0);
+        ActivitySnapshotItem grant = activity("Granturi", "PI on Horizon Europe project",  "A",   8.0);
         ActivitySnapshotItem prizeLow  = activity("Premii",     "Faculty teaching award",         "C",   2.0);
         ActivitySnapshotItem prizeHigh = activity("Premii",     "Best paper award (top conf)",    "A",   8.0);
 

@@ -131,6 +131,27 @@ class TemplateXlsxScoreParserTest {
         assertThat(acts).noneMatch(a -> "Editor proceedings".equals(a.getActivityName()));
     }
 
+    @Test
+    void grantRowsParseIntoTheGrantsBlockNotThePrecedingRevistaBlock() {
+        // Regression (user import, cnfis2023 FV): the binding named the block "Grant Cercetare" while
+        // the template header reads "GRANTURI" and the report's block assignment says "Granturi" —
+        // token containment scored 0.0, the grants header went unrecognized, and every grant row was
+        // swallowed by the preceding recognized section ("Director/editor revista").
+        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+        ActivitySnapshotItem grant = act("Granturi", "SCAPE, www.scape-project.eu", "membru, grant FP7", 2.0);
+
+        byte[] bytes = renderer.render(binding, Map.of(
+                "activities-perspectiva-d", List.of(grant.toRowMap())));
+
+        List<SnapshotItem> parsed = parser.parse(binding, new ByteArrayInputStream(bytes));
+        ActivitySnapshotItem parsedGrant = parsed.stream()
+                .filter(i -> i instanceof ActivitySnapshotItem a
+                        && "SCAPE, www.scape-project.eu".equals(a.getDescription()))
+                .map(i -> (ActivitySnapshotItem) i)
+                .findFirst().orElseThrow();
+        assertThat(parsedGrant.getActivityName()).isEqualTo("Granturi");
+    }
+
     private ActivitySnapshotItem act(String blockName, String description, String category, double score) {
         ActivitySnapshotItem a = new ActivitySnapshotItem();
         a.setActivityName(blockName);

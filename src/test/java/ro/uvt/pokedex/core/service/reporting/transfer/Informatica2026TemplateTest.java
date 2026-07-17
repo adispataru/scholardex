@@ -53,7 +53,7 @@ class Informatica2026TemplateTest {
         TemplateBinding binding = loader.load(BINDING_RESOURCE);
 
         ActivitySnapshotItem grant = new ActivitySnapshotItem();
-        grant.setActivityName("Grant Cercetare");
+        grant.setActivityName("Granturi");
         grant.setDescription("Director proiect PN-III (225.000 EUR)");
         grant.setCategory("Director");
         grant.setScore(4.0);
