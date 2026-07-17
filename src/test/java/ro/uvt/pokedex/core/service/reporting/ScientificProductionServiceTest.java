@@ -24,6 +24,7 @@ import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -372,6 +373,95 @@ class ScientificProductionServiceTest {
                 );
         assertEquals(legacyExcludeSelf.get("total").getAuthorScore(), cachedExcludeSelf.get("total").getAuthorScore(), 0.0001);
         assertEquals(legacyExcludeSelf.get("total").getScore(), cachedExcludeSelf.get("total").getScore(), 0.0001);
+    }
+
+    // ---- INFO perspective-c out-of-list floor ("din afara listelor precizate ... va fi 1") ----
+
+    @Test
+    void outOfListCitingForumFloorsToOneCategoryDPoint() {
+        // A citing publication whose venue the CS scorers can't rank (clean zero, no zeroReason) confers
+        // 1 point — the standard's category-D / out-of-list rule for perspective c.
+        Indicator citations = indicator("CITATIONS", "S/max(N-2, 1)");
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "Cited", List.of("a1", "a2", "a3"));
+        ScoringPublication citing = publication("cp-1", "f-unlisted", null, "ar", "ar", "Citing", List.of("b1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(citing, citations)).thenReturn(score(0.0));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(
+                cited, List.of(citing), citations);
+
+        // S floored to 1, N=3 -> 1/max(3-2,1) = 1
+        assertEquals(1.0, result.get("Citing").getAuthorScore(), 0.0001);
+        assertEquals("D", result.get("Citing").getCoreRankingEquivalent());
+        assertEquals("OUT_OF_LIST_D", result.get("Citing").getScoringSource());
+        assertEquals(1.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void excludedVenueCitingForumStaysZeroDespiteTheFloor() {
+        // "inclusiv reducerile sau excluderile" — a rule-based exclusion (predatory/standard-excluded
+        // venue) is NOT an out-of-list venue and must not be floored.
+        Indicator citations = indicator("CITATIONS", "S/max(N-2, 1)");
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "Cited", List.of("a1"));
+        ScoringPublication citing = publication("cp-1", "f-predatory", null, "ar", "ar", "Citing", List.of("b1"));
+        Score excludedZero = score(0.0);
+        excludedZero.getScoringInfo().put("zeroReason", "EXCLUDED_VENUE");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(citing, citations)).thenReturn(excludedZero);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(
+                cited, List.of(citing), citations);
+
+        assertEquals(0.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void publicationsKindNeverGetsTheFloorInPerspectiveB() {
+        // Perspective b counts only A*..C forums — the same getScore funnel serves the production path
+        // (cited==citing), where the Publications kind must keep the clean zero.
+        Indicator publicationsIndicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
+        ScoringPublication pub = publication("p-1", "f-unlisted", null, "ar", "ar", "Own paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(pub, publicationsIndicator)).thenReturn(score(0.0));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
+                List.of(pub), publicationsIndicator);
+
+        assertEquals(0.0, result.get("total").getAuthorScore(), 0.0001);
+        assertNull(result.get("Own paper")); // stays excluded, not scored
+    }
+
+    @Test
+    void nonCsStrategyCitationsGetNoFloor() {
+        Indicator citations = indicator("CITATIONS", "S/max(N-2, 1)");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(citations, "AIS");
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "Cited", List.of("a1"));
+        ScoringPublication citing = publication("cp-1", "f-unlisted", null, "ar", "ar", "Citing", List.of("b1"));
+        when(scoringFactoryService.getScoringService("AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(citing, citations)).thenReturn(score(0.0));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(
+                cited, List.of(citing), citations);
+
+        assertEquals(0.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void flooredOutOfListCiterStillZeroedByTheFeeGate() {
+        // An unlisted APC journal citer: floored to S=1, then the 2026 formula's feeJournal gate zeroes
+        // it and the counterfactual probe stamps the reason.
+        Indicator citations = indicator("CITATIONS", "feeJournal ? 0 : (S/max(N-2, 1))");
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "Cited", List.of("a1"));
+        ScoringPublication citing = publication("cp-1", "f-apc-unlisted", null, "ar", "ar", "Citing", List.of("b1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(citing, citations)).thenReturn(score(0.0));
+        when(reportingLookupPort.isFeeJournal("f-apc-unlisted")).thenReturn(true);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(
+                cited, List.of(citing), citations);
+
+        assertEquals(0.0, result.get("total").getAuthorScore(), 0.0001);
+        assertEquals("FEE_JOURNAL", result.get("Citing").getScoringInfo().get("zeroReason"));
     }
 
     @Test

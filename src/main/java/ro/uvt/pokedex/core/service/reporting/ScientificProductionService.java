@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaContext;
@@ -296,6 +297,23 @@ public class ScientificProductionService {
             timing.addBaseScoreLookupNanos(baseScoreLookupNanos);
         }
         Score result = copyScore(baseScore);
+        // INFO standard, perspective c (2026 Anexa, Comisia 2): a citing publication in a category-D or
+        // out-of-list forum confers 1 point — "categoria D: 1 punct" and "pentru citări în ... publicații
+        // în forumuri din afara listelor precizate, (S^i)_j va fi 1". The CS base scorers return 0 for
+        // unranked journals because perspective b counts only A*..C forums; that zero is correct there but
+        // floors to 1 for citations. Gated on isCitationsOutput(): calculatePublicationScore (perspective
+        // b) funnels through this same method with cited==citing, and a Publications-kind indicator must
+        // NEVER receive the floor. Rule-based exclusions stay excluded ("inclusiv reducerile sau
+        // excluderile"): a zero carrying a zeroReason (EXCLUDED_VENUE, VENUE_TYPE_MISMATCH) is not an
+        // out-of-list venue. CS strategy only — other domains' standards define no such floor.
+        if (result.getScore() == 0
+                && indicator.isCitationsOutput()
+                && ScoringStrategy.CS.name().equals(indicator.getScoringStrategy())
+                && result.getScoringInfo().get("zeroReason") == null) {
+            result.setScore(1.0);
+            result.setCoreRankingEquivalent("D");
+            result.setScoringSource("OUT_OF_LIST_D");
+        }
         if(result.getScore() > 0) {
             int numberOfAuthors = cited.getAuthorCount();
 
