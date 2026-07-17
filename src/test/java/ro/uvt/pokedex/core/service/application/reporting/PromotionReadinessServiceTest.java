@@ -104,6 +104,34 @@ class PromotionReadinessServiceTest {
     }
 
     @Test
+    void habilitationCheckAppliesToEveryPositionWhenReportDefinesIt() {
+        // Habilitation is a qualification, not a rung — a LECT gets the HABIL check too.
+        OrgUnitRunRollup rollup = rollup(
+                List.of(row("lect@uvt.ro", Position.LECT_UNIV, Map.of(0, 50.0), false)),
+                Map.of(0, Map.of("CONF_UNIV", 32.0, "HABIL", 44.0)));
+
+        var board = service.build(report(1), rollup);
+
+        var m = board.meets().get(0);
+        assertEquals(1, m.habilChecks().size());
+        assertTrue(m.habilMet());
+    }
+
+    @Test
+    void topOfLadderMembersStillCarryTheHabilitationCheck() {
+        OrgUnitRunRollup rollup = rollup(
+                List.of(row("prof@uvt.ro", Position.PROF_UNIV, Map.of(0, 40.0), false)),
+                Map.of(0, Map.of("HABIL", 44.0)));
+
+        var board = service.build(report(1), rollup);
+
+        var m = board.notEvaluable().get(0);
+        assertEquals(PromotionReadinessService.Band.TOP_OF_LADDER, m.band());
+        assertEquals(1, m.habilChecks().size());
+        assertFalse(m.habilMet());
+    }
+
+    @Test
     void confMemberGetsHabilitationSecondaryCheck() {
         OrgUnitRunRollup rollup = rollup(
                 List.of(row("conf@uvt.ro", Position.CONF_UNIV, Map.of(0, 50.0), false)),

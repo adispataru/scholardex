@@ -102,6 +102,8 @@
                                              : (${m.band.name() == 'NO_RUN'} ? 'No report run yet'
                                              : (${m.band.name() == 'NO_STANDARD'} ? 'Report defines no thresholds for ' + ${m.targetPosition}
                                              : 'No position set'))">why</span>
+                                <span class="app-promo__chip app-promo__chip--met" th:if="${!m.habilChecks.isEmpty() and m.habilMet}">habil. standards ✓</span>
+                                <span class="app-promo__chip app-promo__chip--near" th:if="${!m.habilChecks.isEmpty() and !m.habilMet}">habil. standards ✗</span>
                             </span>
                         </div>
                     </div>
@@ -155,7 +157,7 @@
             </tbody>
         </table>
         <p class="app-promo__habil" th:if="${!m.habilChecks.isEmpty()}">
-            Habilitation standards (gateway to PROF):
+            Abilitare (habilitation) standards:
             <th:block th:each="c,it : ${m.habilChecks}"><span
                     th:classappend="${c.met} ? 'text-success' : 'text-danger'"
                     th:text="${c.name} + ' ' + ${#numbers.formatDecimal(c.score,1,1)} + '/' + ${#numbers.formatDecimal(c.threshold,1,1)}">c</span><th:block

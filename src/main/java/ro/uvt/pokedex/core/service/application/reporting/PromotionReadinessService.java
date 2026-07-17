@@ -19,8 +19,9 @@ import java.util.Map;
  *
  * <p>The verdict is deliberately phrased as "meets the scientific minimum standards" — the report
  * thresholds cover the metric part of a promotion dossier only (no seniority, habilitation, teaching
- * requirements). For CONF members the board additionally surfaces the HABIL threshold check when the
- * report defines one, since habilitation is the gateway to PROF.
+ * requirements). Habilitation (abilitare) is a qualification rather than a ladder rung, so whenever the
+ * report defines HABIL thresholds every member with a run gets the secondary habilitation check,
+ * regardless of their current position.
  */
 @Service
 public class PromotionReadinessService {
@@ -43,7 +44,7 @@ public class PromotionReadinessService {
 
     public record MemberReadiness(MemberRunRow row, Position currentPosition, Position targetPosition,
                                   Band band, List<CriterionCheck> checks, int metCount, int applicableCount,
-                                  /** HABIL-threshold checks for CONF members; empty when not applicable. */
+                                  /** HABIL-threshold checks; empty when the report defines none or the member has no run. */
                                   List<CriterionCheck> habilChecks, boolean habilMet) {}
 
     public record PromotionBoard(List<MemberReadiness> meets, List<MemberReadiness> borderline,
@@ -78,20 +79,22 @@ public class PromotionReadinessService {
     private MemberReadiness evaluate(IndividualReport report, OrgUnitRunRollup rollup, MemberRunRow row) {
         Position current = row.user().getResearcherProfile() == null
                 ? null : row.user().getResearcherProfile().getPosition();
+        // Habilitation is position-independent: computed for anyone with a run, whenever the report
+        // defines HABIL thresholds (checksAgainst returns empty otherwise).
+        List<CriterionCheck> habilChecks = row.current() == null
+                ? List.of() : checksAgainst(report, rollup, row, Position.HABIL.name());
+        boolean habilMet = !habilChecks.isEmpty() && habilChecks.stream().allMatch(CriterionCheck::met);
         if (current == null || current == Position.OTHER || current == Position.HABIL) {
-            return new MemberReadiness(row, current, null, Band.UNCLASSIFIED, List.of(), 0, 0, List.of(), false);
+            return new MemberReadiness(row, current, null, Band.UNCLASSIFIED, List.of(), 0, 0, habilChecks, habilMet);
         }
         Position target = NEXT_POSITION.get(current);
         if (target == null) {
-            return new MemberReadiness(row, current, null, Band.TOP_OF_LADDER, List.of(), 0, 0, List.of(), false);
+            return new MemberReadiness(row, current, null, Band.TOP_OF_LADDER, List.of(), 0, 0, habilChecks, habilMet);
         }
         if (row.current() == null) {
             return new MemberReadiness(row, current, target, Band.NO_RUN, List.of(), 0, 0, List.of(), false);
         }
         List<CriterionCheck> checks = checksAgainst(report, rollup, row, target.name());
-        List<CriterionCheck> habilChecks = current == Position.CONF_UNIV
-                ? checksAgainst(report, rollup, row, Position.HABIL.name()) : List.of();
-        boolean habilMet = !habilChecks.isEmpty() && habilChecks.stream().allMatch(CriterionCheck::met);
         if (checks.isEmpty()) {
             return new MemberReadiness(row, current, target, Band.NO_STANDARD, checks, 0, 0, habilChecks, habilMet);
         }
