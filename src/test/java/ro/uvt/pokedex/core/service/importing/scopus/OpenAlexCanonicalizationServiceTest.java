@@ -39,8 +39,17 @@ class OpenAlexCanonicalizationServiceTest {
     @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
     @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository scopusPublicationFactRepository;
     @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository scopusAuthorFactRepository;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository authorshipFactRepository;
 
     @InjectMocks private OpenAlexCanonicalizationService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void syncingResearcherPassThrough() {
+        // Default: a synced-researcher id resolves to itself (the doc exists). Ghost/stale scenarios re-stub.
+        org.mockito.Mockito.lenient()
+                .when(authorResolver.resolveSyncingResearcher(anyString(), any(), any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+    }
 
     @Test
     void doiMatchingExistingScopusPublicationLinksWithoutMintingOrClobbering() {
@@ -114,6 +123,7 @@ class OpenAlexCanonicalizationServiceTest {
         owned.setSource("OPENALEX"); // we minted it
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
 
         service.rebuildCanonicalFacts();
 
@@ -140,6 +150,7 @@ class OpenAlexCanonicalizationServiceTest {
         owned.setCoverDate("2019-06-01");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
 
         service.rebuildCanonicalFacts();
 
@@ -159,6 +170,7 @@ class OpenAlexCanonicalizationServiceTest {
         owned.setForumId("sforum_stale");
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
         ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact forum =
                 new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact();
         forum.setId("sforum_fresh");
@@ -169,6 +181,131 @@ class OpenAlexCanonicalizationServiceTest {
         verify(publicationWriter).upsertAndLinkSource(
                 argThat(fact -> "sforum_fresh".equals(fact.getForumId()) && "2020-01-01".equals(fact.getCoverDate())),
                 any(), any());
+    }
+
+    @Test
+    void ghostSyncingResearcherIsSkippedNotWrittenAsEdgeOrAuthorId() {
+        // A profile-held id with no author doc and no ORCID resolution must not fabricate edges/authorIds
+        // (the phantom-author incident: every re-sync re-created the ghost until removed manually).
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "T", "sauth_ghost");
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveSyncingResearcher(eq("sauth_ghost"), any(), any())).thenReturn(null);
+
+        service.rebuildCanonicalFacts();
+
+        verify(edgeWriterService, never()).batchUpsertAuthorshipEdges(
+                argThat(cmds -> cmds.stream().anyMatch(c -> "sauth_ghost".equals(c.rightId()))), any(), any(), eq(false));
+        verify(scholardexPublicationFactRepository, never())
+                .save(argThat(p -> p.getAuthorIds() != null && p.getAuthorIds().contains("sauth_ghost")));
+    }
+
+    @Test
+    void staleSyncingResearcherIdIsReplacedByItsOrcidResolution() {
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "T", "sauth_ghost");
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveSyncingResearcher(eq("sauth_ghost"), any(), any())).thenReturn("sauth_real");
+
+        service.rebuildCanonicalFacts();
+
+        verify(edgeWriterService).batchUpsertAuthorshipEdges(
+                argThat(cmds -> cmds.stream().anyMatch(c -> "sauth_real".equals(c.rightId()))
+                        && cmds.stream().noneMatch(c -> "sauth_ghost".equals(c.rightId()))), any(), any(), eq(false));
+        verify(scholardexPublicationFactRepository)
+                .save(argThat(p -> p.getAuthorIds() != null && p.getAuthorIds().contains("sauth_real")
+                        && !p.getAuthorIds().contains("sauth_ghost")));
+    }
+
+    @Test
+    void refreshRemovesStaleOpenAlexEdgesButNeverForeignOnes() {
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "T", "sauth_self");
+        OpenAlexPublicationFact.AuthorRef ref = new OpenAlexPublicationFact.AuthorRef();
+        ref.setDisplayName("Real Author");
+        ref.setOpenAlexAuthorId("A1");
+        source.setAuthorships(new java.util.ArrayList<>(List.of(ref)));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveOrMint(eq("Real Author"), any(), eq("A1"), any(), any(), any(), any()))
+                .thenReturn("sauth_real");
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact stale =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact();
+        stale.setPublicationId("spub_owned");
+        stale.setAuthorId("sauth_phantom");
+        stale.setSource("OPENALEX");
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact scopusEdge =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact();
+        scopusEdge.setPublicationId("spub_owned");
+        scopusEdge.setAuthorId("sauth_scopus_only");
+        scopusEdge.setSource("SCOPUS");
+        when(authorshipFactRepository.findByPublicationId("spub_owned")).thenReturn(List.of(stale, scopusEdge));
+
+        service.rebuildCanonicalFacts();
+
+        verify(edgeWriterService).removeAuthorshipEdge(stale);
+        verify(edgeWriterService, never()).removeAuthorshipEdge(scopusEdge);
+    }
+
+    @Test
+    void partialAuthorResolutionNeverReconcilesEdges() {
+        // One of two authors is name-only (unresolvable) — deleting edges on a partial view would destroy data.
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "T", "sauth_self");
+        OpenAlexPublicationFact.AuthorRef ok = new OpenAlexPublicationFact.AuthorRef();
+        ok.setDisplayName("Real Author");
+        ok.setOpenAlexAuthorId("A1");
+        OpenAlexPublicationFact.AuthorRef nameOnly = new OpenAlexPublicationFact.AuthorRef();
+        nameOnly.setDisplayName("Name Only");
+        source.setAuthorships(new java.util.ArrayList<>(List.of(ok, nameOnly)));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveOrMint(eq("Real Author"), any(), eq("A1"), any(), any(), any(), any()))
+                .thenReturn("sauth_real");
+        when(authorResolver.resolveOrMint(eq("Name Only"), any(), any(), any(), any(), any(), any()))
+                .thenReturn(null);
+
+        service.rebuildCanonicalFacts();
+
+        verify(edgeWriterService, never()).removeAuthorshipEdge(any());
+    }
+
+    @Test
+    void mintedAuthorsAreFlushedBeforeTheAuthorIdsDenormWrite() {
+        // Crash-safety ordering: the per-fact mint flush must land before the pub doc references the ids.
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "T", "sauth_self");
+        OpenAlexPublicationFact.AuthorRef ref = new OpenAlexPublicationFact.AuthorRef();
+        ref.setDisplayName("Real Author");
+        ref.setOpenAlexAuthorId("A1");
+        source.setAuthorships(new java.util.ArrayList<>(List.of(ref)));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+        when(authorResolver.resolveOrMint(any(), any(), eq("A1"), any(), any(), any(), any())).thenReturn("sauth_new");
+
+        service.rebuildCanonicalFacts();
+
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(authorResolver, scholardexPublicationFactRepository);
+        inOrder.verify(authorResolver).flushMints(any());
+        inOrder.verify(scholardexPublicationFactRepository)
+                .save(argThat(p -> p.getAuthorIds() != null && p.getAuthorIds().contains("sauth_new")));
     }
 
     @Test
@@ -256,7 +393,7 @@ class OpenAlexCanonicalizationServiceTest {
         service.rebuildCanonicalFacts();
 
         // ORCID seeded onto the researcher's author, and exactly one edge — flagged corresponding.
-        verify(authorResolver).attachOrcid(eq("sauth_self"), eq("0000-0002-0702-6276"), any());
+        verify(authorResolver).resolveSyncingResearcher(eq("sauth_self"), eq("0000-0002-0702-6276"), any());
         // One authorship edge, flagged corresponding via the keys set (batched in bulk mode).
         verify(edgeWriterService).batchUpsertAuthorshipEdges(
                 argThat(cmds -> cmds.size() == 1 && "sauth_self".equals(cmds.getFirst().rightId())),

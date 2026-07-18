@@ -39,6 +39,7 @@ import java.util.Set;
  * their workspace even if Scopus never attributed it (the edge is {@code (publicationId, authorId, source)}-keyed,
  * so it coexists with any Scopus edge). Co-author bridging against OpenAlex's fragmented author entities is deferred.
  */
+@lombok.extern.slf4j.Slf4j
 @Service
 @RequiredArgsConstructor
 public class OpenAlexCanonicalizationService {
@@ -66,6 +67,8 @@ public class OpenAlexCanonicalizationService {
     // H73 S2.2 (author inversion): Scopus publication + author source-facts feed the positional AU-ID bridge.
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository scopusPublicationFactRepository;
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository scopusAuthorFactRepository;
+    // Stale-edge reconciliation for OpenAlex-owned pubs (step 6 of writeAuthorshipEdges).
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository authorshipFactRepository;
 
     /**
      * Full-rebuild replay: canonicalize every OpenAlex source-fact. Runs in <b>bulk mode</b> (H73 slice 3):
@@ -371,15 +374,20 @@ public class OpenAlexCanonicalizationService {
         List<OpenAlexPublicationFact.AuthorRef> authorships =
                 source.getAuthorships() == null ? List.of() : source.getAuthorships();
 
-        // 1) Seed ORCIDs onto the syncing researchers' canonical authors.
+        // 1) Seed ORCIDs onto the syncing researchers' canonical authors. The stored id is profile-held and can
+        //    be stale (ghost) — resolve it to an EXISTING author (ORCID fallback) or skip; never take it on faith
+        //    (a ghost id here used to flow into edges + authorIds and 404 on the author page).
         List<String> syncingAuthorIds = new ArrayList<>();
         if (source.getSyncedResearchers() != null) {
             for (OpenAlexPublicationFact.SyncedResearcher researcher : source.getSyncedResearchers()) {
                 if (researcher == null || isBlank(researcher.getCanonicalAuthorId())) {
                     continue;
                 }
-                authorResolver.attachOrcid(researcher.getCanonicalAuthorId(), researcher.getOrcid(), authorCtx);
-                syncingAuthorIds.add(researcher.getCanonicalAuthorId());
+                String resolved = authorResolver.resolveSyncingResearcher(
+                        researcher.getCanonicalAuthorId(), researcher.getOrcid(), authorCtx);
+                if (!isBlank(resolved)) {
+                    syncingAuthorIds.add(resolved);
+                }
             }
         }
 
@@ -420,6 +428,11 @@ public class OpenAlexCanonicalizationService {
                 upsertAffiliationEdges(canonicalPublicationId, authorId, ref.getInstitutionRors(), source, state);
             }
         }
+        // Crash-safety: persist any authors minted above BEFORE the edge/authorIds writes below reference them
+        // (bulk mode defers author saves; a crash between the two left dangling ids on 2026-07-17). No-op when
+        // nothing was minted or in per-call mode (mints persist immediately there).
+        authorResolver.flushMints(authorCtx);
+
         // H73 S2.2: positionally bridge each Scopus AU-ID (from the same-DOI Scopus pub source-fact) onto the
         // OpenAlex author resolved above, writing a LINKED source-link the later Scopus canon resolves against.
         writeAuthorInversionLinks(source, doiNormalized, authorships, resolvedByPosition, state);
@@ -468,6 +481,23 @@ public class OpenAlexCanonicalizationService {
             if (!new ArrayList<>(desired).equals(current)) {
                 pub.setAuthorIds(new ArrayList<>(desired));
                 scholardexPublicationFactRepository.save(pub);
+            }
+
+            // 6) Reconcile: an OWNED pub's OPENALEX authorship edges must mirror the fresh resolution — stale
+            //    edges (a phantom author from a crashed run, a since-re-keyed id) used to survive every re-sync
+            //    because this path only ever upserted. Guarded: only when every listed author resolved (a partial
+            //    resolution must not delete good edges). Foreign-source (e.g. SCOPUS) edges are never touched.
+            boolean fullyResolved = !authorships.isEmpty()
+                    && resolvedByPosition.stream().filter(java.util.Objects::nonNull).count() == authorships.size();
+            if (openAlexOwned && fullyResolved) {
+                for (ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact edge
+                        : authorshipFactRepository.findByPublicationId(canonicalPublicationId)) {
+                    if (SOURCE_OPENALEX.equals(edge.getSource()) && !desired.contains(edge.getAuthorId())) {
+                        log.warn("OpenAlex sync: removing stale authorship edge {} -> {} (author not in fresh resolution)",
+                                canonicalPublicationId, edge.getAuthorId());
+                        edgeWriterService.removeAuthorshipEdge(edge);
+                    }
+                }
             }
         }
     }

@@ -47,6 +47,10 @@ public class OpenAlexAuthorResolver {
         private final Map<String, ScholardexAuthorFact> byOrcid = new HashMap<>();
         private final Map<String, ScholardexAuthorFact> byOpenAlex = new HashMap<>();
         private final Map<String, ScholardexAuthorFact> dirty = new LinkedHashMap<>();
+        // Crash-safety (2026-07-17 partial-write incident): mints awaiting their per-fact flush. A minted id is
+        // referenced by pub.authorIds/edges written incrementally during the run, so the doc must hit the
+        // collection BEFORE those references do — not at the end-of-run flush.
+        private final Map<String, ScholardexAuthorFact> pendingMints = new LinkedHashMap<>();
 
         void index(ScholardexAuthorFact a) {
             if (a == null || a.getId() == null) {
@@ -101,7 +105,49 @@ public class OpenAlexAuthorResolver {
         int n = ctx.dirty.size();
         authorRepository.saveAll(ctx.dirty.values());
         ctx.dirty.clear();
+        ctx.pendingMints.clear(); // everything (mints included) is on disk now
         log.info("OpenAlex author resolver: flushed {} dirty authors", n);
+    }
+
+    /**
+     * Persist the mints accumulated since the last flush. Called per source-fact BEFORE its pub/edge writes so
+     * a crash can never leave pub.authorIds or authorship edges referencing an author doc that was still queued
+     * for the end-of-run flush (the 2026-07-17 incident). Enrichments stay deferred — their docs already exist.
+     */
+    public void flushMints(BulkContext ctx) {
+        if (ctx == null || ctx.pendingMints.isEmpty()) {
+            return;
+        }
+        authorRepository.saveAll(new ArrayList<>(ctx.pendingMints.values()));
+        // Drop the flushed mints from the dirty set unless enriched again later (persist() re-adds them).
+        ctx.pendingMints.keySet().forEach(ctx.dirty::remove);
+        ctx.pendingMints.clear();
+    }
+
+    /**
+     * Resolve a synced-researcher reference to a canonical author that actually exists. Source-facts carry the
+     * profile-held {@code canonicalAuthorId} that drove each sync; those ids go stale (canonical re-keys, wiped
+     * rebuilds) and were historically used unconditionally — writing authorship edges and denormalized
+     * {@code authorIds} for ghost authors. Order: the stored id if its doc exists (ORCID attached as before);
+     * else the ORCID's current canonical author; else {@code null} (never mint from a ghost reference).
+     */
+    public String resolveSyncingResearcher(String canonicalAuthorId, String orcidRaw, BulkContext ctx) {
+        String orcid = blankToNull(orcidRaw);
+        if (!isBlank(canonicalAuthorId) && lookupById(canonicalAuthorId, ctx) != null) {
+            attachOrcid(canonicalAuthorId, orcid, ctx);
+            return canonicalAuthorId;
+        }
+        if (orcid != null) {
+            ScholardexAuthorFact byOrcid = lookupByOrcid(orcid, ctx);
+            if (byOrcid != null) {
+                log.warn("OpenAlex sync: stale synced-researcher author id {} — resolved via ORCID {} to {}",
+                        canonicalAuthorId, orcid, byOrcid.getId());
+                return byOrcid.getId();
+            }
+        }
+        log.warn("OpenAlex sync: synced-researcher author id {} has no author doc and ORCID {} resolves to "
+                + "nothing — skipping (no ghost edges)", canonicalAuthorId, orcid);
+        return null;
     }
 
     /** Back-compat overload: resolve-or-mint with no affiliation hints, repo-backed. */
@@ -307,6 +353,7 @@ public class OpenAlexAuthorResolver {
         if (ctx != null) {
             if (newlyIndexed) {
                 ctx.index(author);
+                ctx.pendingMints.put(author.getId(), author); // flushed per-fact, before any reference is written
             }
             ctx.markDirty(author);
         } else {

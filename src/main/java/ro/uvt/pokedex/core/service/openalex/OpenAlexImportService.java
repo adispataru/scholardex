@@ -165,16 +165,23 @@ public class OpenAlexImportService {
         }
         fact.setReferencedWorks(referenced);
 
-        // Append-only set of syncing researchers (a work can be synced by several co-authors on the platform),
-        // keyed by canonical author id and carrying the ORCID that drove the sync.
+        // Set of syncing researchers (a work can be synced by several co-authors on the platform), keyed by
+        // canonical author id and carrying the ORCID that drove the sync. One entry per ORCID: a re-sync whose
+        // profile now holds a DIFFERENT canonical id for the same ORCID REPLACES the old entry — accumulating
+        // both kept a since-re-keyed (ghost) id alive forever, and every sync re-wrote edges/authorIds for it.
         List<OpenAlexPublicationFact.SyncedResearcher> synced = new ArrayList<>(
                 fact.getSyncedResearchers() == null ? List.of() : fact.getSyncedResearchers());
-        if (researcherAuthorId != null && !researcherAuthorId.isBlank()
-                && synced.stream().noneMatch(s -> researcherAuthorId.equals(s.getCanonicalAuthorId()))) {
-            OpenAlexPublicationFact.SyncedResearcher sr = new OpenAlexPublicationFact.SyncedResearcher();
-            sr.setCanonicalAuthorId(researcherAuthorId);
-            sr.setOrcid(syncOrcid);
-            synced.add(sr);
+        if (researcherAuthorId != null && !researcherAuthorId.isBlank()) {
+            if (syncOrcid != null && !syncOrcid.isBlank()) {
+                synced.removeIf(s -> syncOrcid.equals(s.getOrcid())
+                        && !researcherAuthorId.equals(s.getCanonicalAuthorId()));
+            }
+            if (synced.stream().noneMatch(s -> researcherAuthorId.equals(s.getCanonicalAuthorId()))) {
+                OpenAlexPublicationFact.SyncedResearcher sr = new OpenAlexPublicationFact.SyncedResearcher();
+                sr.setCanonicalAuthorId(researcherAuthorId);
+                sr.setOrcid(syncOrcid);
+                synced.add(sr);
+            }
         }
         fact.setSyncedResearchers(synced);
 

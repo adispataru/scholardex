@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -159,6 +160,74 @@ class OpenAlexAuthorResolverTest {
         verify(authorRepository).save(argThat(a ->
                 "sauth_scopus".equals(a.getId())
                         && a.getOpenAlexAffiliationNames().contains("West University of Timișoara")));
+    }
+
+    @Test
+    void bulkMintIsPersistedByFlushMintsBeforeTheEndOfRunFlush() {
+        // Crash-safety (2026-07-17 incident): a mint must be saveable per-fact, not only at end-of-run.
+        when(authorRepository.findAll()).thenReturn(List.of());
+        OpenAlexAuthorResolver.BulkContext ctx = resolver.primeBulkContext();
+
+        String id = resolver.resolveOrMint("New Person", null, "A555", List.of(), "batch", "corr", ctx);
+        verify(authorRepository, never()).save(any());
+        verify(authorRepository, never()).saveAll(any());
+
+        resolver.flushMints(ctx);
+        verify(authorRepository).saveAll(argThat((Iterable<ScholardexAuthorFact> it) -> {
+            for (ScholardexAuthorFact a : it) {
+                if (id.equals(a.getId())) {
+                    return true;
+                }
+            }
+            return false;
+        }));
+
+        // Idempotent: nothing pending → no second write; the end-of-run flush has nothing left either.
+        resolver.flushMints(ctx);
+        resolver.flushBulkContext(ctx);
+        verify(authorRepository, times(1)).saveAll(any());
+    }
+
+    @Test
+    void enrichmentsStayDeferredToTheEndOfRunFlush() {
+        ScholardexAuthorFact existing = author("sauth_scopus", "0000-0002-0702-6276");
+        when(authorRepository.findAll()).thenReturn(List.of(existing));
+        OpenAlexAuthorResolver.BulkContext ctx = resolver.primeBulkContext();
+
+        resolver.resolveOrMint("Me", "0000-0002-0702-6276", "A123", List.of(), "batch", "corr", ctx);
+        resolver.flushMints(ctx); // enrichment of an existing doc — no dangling risk, nothing to flush
+        verify(authorRepository, never()).saveAll(any());
+
+        resolver.flushBulkContext(ctx);
+        verify(authorRepository, times(1)).saveAll(any());
+    }
+
+    @Test
+    void syncingResearcherWithExistingDocKeepsItsId() {
+        ScholardexAuthorFact existing = author("sauth_real", null);
+        when(authorRepository.findById("sauth_real")).thenReturn(Optional.of(existing));
+
+        assertEquals("sauth_real", resolver.resolveSyncingResearcher("sauth_real", "0000-0002-0702-6276", null));
+        // ORCID seeded as before.
+        verify(authorRepository).save(argThat(a -> a.getOrcidIds().contains("0000-0002-0702-6276")));
+    }
+
+    @Test
+    void staleSyncingResearcherIdFallsBackToTheOrcidsCurrentAuthor() {
+        when(authorRepository.findById("sauth_ghost")).thenReturn(Optional.empty());
+        ScholardexAuthorFact real = author("sauth_real", "0000-0002-0702-6276");
+        when(authorRepository.findByOrcidIdsContains("0000-0002-0702-6276")).thenReturn(List.of(real));
+
+        assertEquals("sauth_real", resolver.resolveSyncingResearcher("sauth_ghost", "0000-0002-0702-6276", null));
+    }
+
+    @Test
+    void ghostSyncingResearcherWithNoResolvableIdentityIsSkippedNotMinted() {
+        when(authorRepository.findById("sauth_ghost")).thenReturn(Optional.empty());
+        when(authorRepository.findByOrcidIdsContains(any())).thenReturn(List.of());
+
+        assertNull(resolver.resolveSyncingResearcher("sauth_ghost", "0000-0000-0000-0000", null));
+        verify(authorRepository, never()).save(any());
     }
 
     private ScholardexAuthorFact author(String id, String orcid) {
