@@ -56,7 +56,7 @@ class GroupServiceTest {
         groupService = new GroupService(
                 groupRepository, institutionRepository, departmentRepository,
                 departmentAffiliationRepository, groupMembershipService,
-                passwordEncoder, userService, "2025", 6
+                passwordEncoder, userService, 6
         );
         uvt = new Institution();
         uvt.setName("UVT");
@@ -138,7 +138,8 @@ class GroupServiceTest {
 
     @Test
     void newUserCreatedWithEncodedPasswordAndResearcherRole() throws Exception {
-        when(passwordEncoder.encode("2025")).thenReturn("hashed");
+        // OIDC-only: provisioned accounts get a scrambled random password (never a shared default).
+        when(passwordEncoder.encode(org.mockito.ArgumentMatchers.anyString())).thenReturn("hashed");
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.empty());
 
         groupService.importGroupsFromCsv(

@@ -20,8 +20,8 @@ class AdminUserServiceTest {
     @Mock UserRepository userRepository;
     @Mock PasswordEncoder passwordEncoder;
 
-    private AdminUserService service(String email, String password) {
-        return new AdminUserService(userRepository, passwordEncoder, email, password);
+    private AdminUserService service(String email, String ignoredPassword) {
+        return new AdminUserService(userRepository, passwordEncoder, email);
     }
 
     @Test
@@ -34,7 +34,8 @@ class AdminUserServiceTest {
     @Test
     void createDefaultAdminUser_repoEmpty_savesAdminWithCorrectEmail() {
         when(userRepository.count()).thenReturn(0L);
-        when(passwordEncoder.encode("secret")).thenReturn("hashed");
+        // OIDC-only: the seeded password is a scrambled random — assert it is encoded, not a known value.
+        when(passwordEncoder.encode(org.mockito.ArgumentMatchers.anyString())).thenReturn("hashed");
 
         service("admin@test.com", "secret").createDefaultAdminUser();
 

@@ -80,7 +80,6 @@ public class StaffImportService {
     private final DepartmentAffiliationRepository departmentAffiliationRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserService userService;
-    private final String defaultPassword;
     private final int requiredColumnCount;
 
     public StaffImportService(
@@ -90,7 +89,6 @@ public class StaffImportService {
             DepartmentAffiliationRepository departmentAffiliationRepository,
             PasswordEncoder passwordEncoder,
             UserService userService,
-            @Value("${user.default.password}") String defaultPassword,
             @Value("${h07.staff.import.required-column-count:6}") int requiredColumnCount
     ) {
         this.institutionRepository = institutionRepository;
@@ -99,7 +97,6 @@ public class StaffImportService {
         this.departmentAffiliationRepository = departmentAffiliationRepository;
         this.passwordEncoder = passwordEncoder;
         this.userService = userService;
-        this.defaultPassword = defaultPassword;
         this.requiredColumnCount = requiredColumnCount;
     }
 
@@ -142,7 +139,9 @@ public class StaffImportService {
             if (existing.isEmpty()) {
                 User user = new User();
                 user.setEmail(row.email());
-                user.setPassword(passwordEncoder.encode(defaultPassword));
+                // OIDC-only auth (H84): provisioned accounts get an unusable scrambled password —
+                // researchers sign in through Keycloak with their e-uvt.ro identity.
+                user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
                 user.getRoles().add(UserRole.RESEARCHER);
                 user.setResearcherProfile(mergeProfile(new User.ResearcherProfile(), row));
                 userService.createUser(user);

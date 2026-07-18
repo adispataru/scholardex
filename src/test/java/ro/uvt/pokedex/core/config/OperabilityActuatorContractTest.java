@@ -114,9 +114,16 @@ class OperabilityActuatorContractTest {
 
     @Test
     void metricsEndpointRequiresAuthentication() throws Exception {
+        // OIDC-only auth: the entry point is the Keycloak authorization URL when the OAuth2 client
+        // is configured, /login otherwise. The contract here is "not publicly accessible".
         mockMvc.perform(get("/actuator/metrics"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login"));
+                .andExpect(result -> {
+                    String target = result.getResponse().getRedirectedUrl();
+                    org.junit.jupiter.api.Assertions.assertTrue(target != null
+                                    && (target.endsWith("/login") || target.endsWith("/oauth2/authorization/keycloak")),
+                            "expected redirect into the login entry point, got: " + target);
+                });
     }
 
     @TestConfiguration

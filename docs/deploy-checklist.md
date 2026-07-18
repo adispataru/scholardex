@@ -37,8 +37,7 @@ every container, including one-shot Jobs. Suggested app pod: requests 1 CPU / 5G
 | `SPRING_MONGODB_URI` | `mongodb://scholardex:$(MONGO_PASSWORD)@scholardex-mongo.scholardex.svc:27017/scholardex?authSource=admin` | secret `scholardex-db` (verify authSource against how the user was created) |
 | `POSTGRES_URL` | `jdbc:postgresql://scholardex-postgres.scholardex.svc:5432/scholardex` | ConfigMap |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` | `scholardex` / — | secret `scholardex-db` |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | bootstrap admin (seeds only an EMPTY user collection) | secret (deliver via §12 channel) |
-| `USER_DEFAULT_PASSWORD` | initial password for staff-import accounts | secret |
+| `ADMIN_EMAIL` | bootstrap admin IDENTITY (email+roles; seeds only an EMPTY user collection) | ConfigMap — no password exists |
 | `KEYCLOAK_ISSUER_URI` | `https://aai.rdi.info.uvt.ro/realms/scholardex` | configmap `scholardex-oidc-config` (exists) |
 | `KEYCLOAK_CLIENT_ID` | `scholardex` | configmap (exists) |
 | `KEYCLOAK_CLIENT_SECRET` | — | secret `scholardex-oidc` (exists) |
@@ -53,6 +52,21 @@ predatory lists, WoS JSON years, OpenAlex bulk, DBLP dump).
 scopus-python container env: `SCOPUS_API_KEY` (secret — the rotated key, never the one in git
 history), optional `SCOPUS_INST_TOKEN` (fallback if the egress IP `194.102.63.25` isn't in
 Elsevier's entitlement — decided by the staging smoke test).
+
+## Authentication (OIDC-only, H84 purist model)
+
+The app has **no local password login** — every sign-in flows through the `scholardex` Keycloak
+realm. The default flow appends `kc_idp_hint=google` (configurable:
+`scholardex.oauth2.keycloak.idp-hint`) so users land straight on the Google Workspace broker with
+no interstitial. On first boot a one-time migration scrambles every stored password hash
+(`local-password-scramble-v1` marker in `scholardex.app_migrations`) — this neutralizes the
+dump's default-password accounts. `ADMIN_PASSWORD`/`USER_DEFAULT_PASSWORD` no longer exist.
+
+**Break-glass** (aai admin job): a realm-local Keycloak user (TOTP enforced, no email needed —
+the app resolves `preferred_username` against an existing account, never auto-provisions) plus a
+matching app user doc with `PLATFORM_ADMIN`. Entry URL, deliberately unlinked:
+`https://scholardex.rdi.info.uvt.ro/oauth2/authorization/keycloak?direct` — the `?direct`
+suppresses the IdP hint so Keycloak shows the realm's own login form.
 
 ## Health & monitoring wiring
 

@@ -8,7 +8,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.web.savedrequest.SimpleSavedRequest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import ro.uvt.pokedex.core.config.WebSecurityConfig;
@@ -20,7 +21,6 @@ import java.util.Set;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -32,6 +32,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+/**
+ * OIDC-only authentication contract (H84 purist model): there is NO local password login — every
+ * browser flow enters the Keycloak handshake, and the login page exists only for error/logout
+ * display plus a manual entry link. The mocked {@link ClientRegistrationRepository} makes the
+ * OAuth2 client "configured", so the entry point behaves as in production.
+ */
 @WebMvcTest(AuthViewController.class)
 @AutoConfigureMockMvc
 @Import(WebSecurityConfig.class)
@@ -40,8 +46,13 @@ class AuthViewControllerSecurityContractTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /** Suppresses Boot's auto-configured in-memory default user in the slice. */
     @MockitoBean
     private CustomUserDetailsService userDetailsService;
+
+    /** Presence switches the entry point to the OIDC authorization URL (the production shape). */
+    @MockitoBean
+    private ClientRegistrationRepository clientRegistrationRepository;
 
     @Test
     void loginPageIsAccessibleWithoutAuthentication() throws Exception {
@@ -52,13 +63,12 @@ class AuthViewControllerSecurityContractTest {
     }
 
     @Test
-    void loginPageContainsStandardAutocompleteContract() throws Exception {
+    void loginPageHasNoLocalPasswordForm() throws Exception {
+        // OIDC-only: a password field on this page would advertise an auth path that no longer exists.
         mockMvc.perform(get("/login"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("name=\"username\"")))
-                .andExpect(content().string(containsString("autocomplete=\"username\"")))
-                .andExpect(content().string(containsString("name=\"password\"")))
-                .andExpect(content().string(containsString("autocomplete=\"current-password\"")));
+                .andExpect(content().string(not(containsString("name=\"password\""))))
+                .andExpect(content().string(not(containsString("name=\"username\""))));
     }
 
     @Test
@@ -79,29 +89,48 @@ class AuthViewControllerSecurityContractTest {
     }
 
     @Test
-    void validCredentialsAuthenticateAndRedirect() throws Exception {
-        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
-                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
-
+    void postLoginIsNotAnAuthenticationEndpointAnymore() throws Exception {
+        // Regression guard for the purist cutover: credentials POSTed to /login must never
+        // authenticate anyone. With form login disabled there is no handler behind it.
         mockMvc.perform(post("/login")
                         .with(csrf())
                         .param("username", "admin@uvt.ro")
-                        .param("password", "secret"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"));
+                        .param("password", "s3cr3t"))
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
-    void invalidCredentialsRedirectToLoginError() throws Exception {
-        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
-                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
-
-        mockMvc.perform(post("/login")
-                        .with(csrf())
-                        .param("username", "admin@uvt.ro")
-                        .param("password", "wrong"))
+    void protectedPageRedirectsIntoTheOidcHandshake() throws Exception {
+        // No interstitial: unauthenticated browser requests go straight to the authorization endpoint.
+        mockMvc.perform(get("/user/workspace"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?error"));
+                .andExpect(redirectedUrl("/oauth2/authorization/keycloak"));
+    }
+
+    @Test
+    void gateCtaRedirectIsStoredAsTheSavedRequestForTheOidcSuccessHandler() throws Exception {
+        // Public-page sign-in CTAs pass ?redirect=<target>; the login page stores it as the Spring
+        // Security saved request, which the Keycloak success handler (SavedRequestAware) honors.
+        MvcResult page = mockMvc.perform(get("/login").param("redirect", "/forums/sfor_abc123"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) page.getRequest().getSession(false);
+        Object saved = session.getAttribute("SPRING_SECURITY_SAVED_REQUEST");
+        org.junit.jupiter.api.Assertions.assertInstanceOf(SimpleSavedRequest.class, saved);
+        org.junit.jupiter.api.Assertions.assertEquals("/forums/sfor_abc123",
+                ((SimpleSavedRequest) saved).getRedirectUrl());
+    }
+
+    @Test
+    void unsafeRedirectTargetsAreNeverStored() throws Exception {
+        for (String unsafe : new String[] {"https://evil.example", "//evil.example", "/ok\\evil", "javascript:alert(1)"}) {
+            MvcResult page = mockMvc.perform(get("/login").param("redirect", unsafe))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            MockHttpSession session = (MockHttpSession) page.getRequest().getSession(false);
+            Object saved = session == null ? null : session.getAttribute("SPRING_SECURITY_SAVED_REQUEST");
+            org.junit.jupiter.api.Assertions.assertNull(saved, "unsafe target must not be stored: " + unsafe);
+        }
     }
 
     @Test
@@ -112,32 +141,13 @@ class AuthViewControllerSecurityContractTest {
     }
 
     @Test
-    void logoutInvalidatesLocalFormLoginSession() throws Exception {
-        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
-                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
-
-        MvcResult login = mockMvc.perform(post("/login")
-                        .with(csrf())
-                        .param("username", "admin@uvt.ro")
-                        .param("password", "secret"))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
-
-        mockMvc.perform(post("/logout")
-                        .session((MockHttpSession) login.getRequest().getSession(false))
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?logout"));
-    }
-
-    @Test
     void logoutWorksForBridgedKeycloakLocalUserPrincipal() throws Exception {
-        User bridgedUser = validPlatformAdmin("keycloak.admin@uvt.ro", "unused");
-        UsernamePasswordAuthenticationToken authentication =
+        User bridgedUser = platformAdmin("keycloak.admin@uvt.ro");
+        UsernamePasswordAuthenticationToken auth =
                 UsernamePasswordAuthenticationToken.authenticated(bridgedUser, null, bridgedUser.getAuthorities());
 
         mockMvc.perform(post("/logout")
-                        .with(authentication(authentication))
+                        .with(authentication(auth))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login?logout"));
@@ -150,97 +160,10 @@ class AuthViewControllerSecurityContractTest {
                 .andExpect(status().isNotFound());
     }
 
-    @Test
-    void signInFromGatedPageReturnsThereAfterLogin() throws Exception {
-        // the sign-in gate CTA carries redirect=<gated page>; the form login must land back there
-        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
-                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
-
-        MvcResult loginPage = mockMvc.perform(get("/login").param("redirect", "/forums/sfor_abc123"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        mockMvc.perform(post("/login")
-                        .session((MockHttpSession) loginPage.getRequest().getSession(false))
-                        .with(csrf())
-                        .param("username", "admin@uvt.ro")
-                        .param("password", "secret"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums/sfor_abc123"));
-    }
-
-    @Test
-    void unsafeRedirectTargetsAreIgnoredAndFallBackToDefault() throws Exception {
-        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
-                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
-
-        for (String unsafe : new String[] {"https://evil.example", "//evil.example", "/ok\\evil", "javascript:alert(1)"}) {
-            MvcResult loginPage = mockMvc.perform(get("/login").param("redirect", unsafe))
-                    .andExpect(status().isOk())
-                    .andReturn();
-
-            mockMvc.perform(post("/login")
-                            .session((MockHttpSession) loginPage.getRequest().getSession(false))
-                            .with(csrf())
-                            .param("username", "admin@uvt.ro")
-                            .param("password", "secret"))
-                    .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/"));
-        }
-    }
-
-    @Test
-    void plainLoginVisitPreservesAPendingRedirectTarget() throws Exception {
-        // an interrupted request (or a gate CTA) already stored the destination; rendering the login page
-        // without a redirect param must NOT forget it — that is the app-restart → refresh → sign-in flow
-        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
-                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
-
-        MvcResult withTarget = mockMvc.perform(get("/login").param("redirect", "/forums/sfor_abc123"))
-                .andExpect(status().isOk())
-                .andReturn();
-        MockHttpSession session = (MockHttpSession) withTarget.getRequest().getSession(false);
-
-        mockMvc.perform(get("/login").session(session)).andExpect(status().isOk());
-
-        mockMvc.perform(post("/login")
-                        .session(session)
-                        .with(csrf())
-                        .param("username", "admin@uvt.ro")
-                        .param("password", "secret"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums/sfor_abc123"));
-    }
-
-    @Test
-    void interruptedRequestToProtectedPageResumesThereAfterLogin() throws Exception {
-        // fresh session (e.g. after an app restart) hits a protected URL → login → back to that URL
-        when(userDetailsService.loadUserByUsername("admin@uvt.ro"))
-                .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
-
-        MvcResult intercepted = mockMvc.perform(get("/user/workspace"))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
-        MockHttpSession session = (MockHttpSession) intercepted.getRequest().getSession(false);
-
-        mockMvc.perform(get("/login").session(session)).andExpect(status().isOk());
-
-        MvcResult login = mockMvc.perform(post("/login")
-                        .session(session)
-                        .with(csrf())
-                        .param("username", "admin@uvt.ro")
-                        .param("password", "secret"))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
-        String target = login.getResponse().getRedirectedUrl();
-        org.junit.jupiter.api.Assertions.assertTrue(target != null && target.contains("/user/workspace"),
-                "expected redirect back to the interrupted page, got: " + target);
-    }
-
-    private User validPlatformAdmin(String email, String rawPassword) {
+    private User platformAdmin(String email) {
         User user = new User();
         user.setEmail(email);
-        user.setPassword(new BCryptPasswordEncoder().encode(rawPassword));
+        user.setPassword("{noop}unused");
         user.setRoles(Set.of(UserRole.PLATFORM_ADMIN));
         return user;
     }

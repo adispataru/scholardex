@@ -153,6 +153,50 @@ class KeycloakOAuth2LoginSuccessHandlerTest {
         assertThat(response.getRedirectedUrl()).isEqualTo("/login?error");
     }
 
+    @Test
+    void emaillessRealmLocalUserFallsBackToPreferredUsernameForExistingAccounts() {
+        // Break-glass path: the realm-local Keycloak user may carry no email — preferred_username
+        // resolves it, but ONLY against an existing local account.
+        User breakGlass = localUser("breakglass", Set.of(UserRole.PLATFORM_ADMIN), false);
+        when(userRepository.findById("breakglass")).thenReturn(Optional.of(breakGlass));
+
+        User resolved = handler.resolveLocalUser(usernameOnlyAuthentication("breakglass"));
+
+        assertThat(resolved).isSameAs(breakGlass);
+    }
+
+    @Test
+    void preferredUsernameNeverAutoProvisionsAnAccount() {
+        // A username claim without an email must not mint accounts — provisioning stays
+        // strictly verified-email.
+        when(userRepository.findById("stranger")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> handler.resolveLocalUser(usernameOnlyAuthentication("stranger")))
+                .isInstanceOf(BadCredentialsException.class);
+        verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
+    }
+
+    @Test
+    void lockedRealmLocalFallbackAccountFails() {
+        User locked = localUser("breakglass", Set.of(UserRole.PLATFORM_ADMIN), true);
+        when(userRepository.findById("breakglass")).thenReturn(Optional.of(locked));
+
+        assertThatThrownBy(() -> handler.resolveLocalUser(usernameOnlyAuthentication("breakglass")))
+                .isInstanceOf(LockedException.class);
+    }
+
+    private Authentication usernameOnlyAuthentication(String preferredUsername) {
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("sub", "subject-123");
+        attributes.put("preferred_username", preferredUsername);
+        OAuth2User principal = new DefaultOAuth2User(
+                List.of(new SimpleGrantedAuthority("OIDC_USER")),
+                attributes,
+                "sub"
+        );
+        return new OAuth2AuthenticationToken(principal, principal.getAuthorities(), "keycloak");
+    }
+
     private Authentication oauth2Authentication(String email, Object emailVerified) {
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("sub", "subject-123");

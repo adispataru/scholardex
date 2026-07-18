@@ -73,6 +73,20 @@ public class KeycloakOAuth2LoginSuccessHandler implements AuthenticationSuccessH
         String email = normalizeEmail(oauth2User.getAttribute("email"));
         Object emailVerified = oauth2User.getAttribute("email_verified");
         if (email.isBlank()) {
+            // Break-glass path: a realm-local Keycloak user may carry no email at all — fall back
+            // to preferred_username, but ONLY against an EXISTING local account (auto-provisioning
+            // stays strictly verified-email, so a username claim can never mint an account).
+            String username = normalizeEmail(oauth2User.getAttribute("preferred_username"));
+            if (!username.isBlank()) {
+                User existing = userRepository.findById(username).orElse(null);
+                if (existing != null) {
+                    if (existing.isLocked()) {
+                        throw new LockedException("User account is locked");
+                    }
+                    log.info("OAuth2 login via preferred_username fallback (realm-local user): {}", username);
+                    return existing;
+                }
+            }
             log.warn("Keycloak OAuth2 principal did not include a usable email claim. Available claim keys: {}",
                     oauth2User.getAttributes().keySet());
             throw new BadCredentialsException("Verified email is required");

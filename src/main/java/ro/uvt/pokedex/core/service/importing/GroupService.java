@@ -56,7 +56,6 @@ public class GroupService {
     private final GroupMembershipService groupMembershipService;
     private final PasswordEncoder passwordEncoder;
     private final UserService userService;
-    private final String defaultPassword;
     private final int requiredColumnCount;
 
     public GroupService(
@@ -67,7 +66,6 @@ public class GroupService {
             GroupMembershipService groupMembershipService,
             PasswordEncoder passwordEncoder,
             UserService userService,
-            @Value("${user.default.password}") String defaultPassword,
             @Value("${h07.groups.import.required-column-count:6}") int requiredColumnCount
     ) {
         this.groupRepository = groupRepository;
@@ -77,7 +75,6 @@ public class GroupService {
         this.groupMembershipService = groupMembershipService;
         this.passwordEncoder = passwordEncoder;
         this.userService = userService;
-        this.defaultPassword = defaultPassword;
         this.requiredColumnCount = requiredColumnCount;
     }
 
@@ -136,7 +133,9 @@ public class GroupService {
             if (existing.isEmpty()) {
                 user = new User();
                 user.setEmail(row.email());
-                user.setPassword(passwordEncoder.encode(defaultPassword));
+                // OIDC-only auth (H84): provisioned accounts get an unusable scrambled password —
+                // researchers sign in through Keycloak with their e-uvt.ro identity.
+                user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
                 user.getRoles().add(UserRole.RESEARCHER);
                 user.setResearcherProfile(buildProfile(row));
                 userService.createUser(user);

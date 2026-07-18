@@ -53,7 +53,7 @@ class StaffImportServiceTest {
     void setUp() {
         service = new StaffImportService(
                 institutionRepository, orgDivisionRepository, departmentRepository,
-                departmentAffiliationRepository, passwordEncoder, userService, "2025", 6);
+                departmentAffiliationRepository, passwordEncoder, userService, 6);
         lenient().when(institutionRepository.findById(INST)).thenReturn(Optional.of(new Institution()));
         lenient().when(orgDivisionRepository.findByInstitutionId(INST)).thenReturn(List.of());
         lenient().when(departmentRepository.findByInstitutionId(INST)).thenReturn(List.of());
@@ -144,7 +144,8 @@ class StaffImportServiceTest {
 
     @Test
     void newUserCreatedWithEncodedPasswordRoleAndProfile() throws Exception {
-        when(passwordEncoder.encode("2025")).thenReturn("hashed");
+        // OIDC-only: provisioned accounts get a scrambled random password (never a shared default).
+        when(passwordEncoder.encode(org.mockito.ArgumentMatchers.anyString())).thenReturn("hashed");
         service.importStaffFromCsv(csv(HEADER
                 + "Fac,Dept,jane@uvt.ro,Smith,Jane,Conf. Dr.,11111;22222\n"), INST);
 
