@@ -1,0 +1,113 @@
+name: Build & Push Images (GHCR)
+
+# Builds the two deployable images and pushes them to GHCR:
+#   ghcr.io/<owner>/<repo>                  — the Spring Boot app (tag convention consumed by
+#                                             deploy-helm.yml: commit SHA; plus latest / semver)
+#   ghcr.io/<owner>/<repo>-scopus-python    — the Elsevier bridge sidecar
+#
+# Tests are NOT duplicated here — quality-gates.yml runs the suite on every push/PR to main.
+# bootJar (compilation) is the only gate this workflow adds before an image exists.
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  core-image:
+    name: core app image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Build boot jar
+        run: |
+          chmod +x ./gradlew
+          ./gradlew bootJar --no-daemon
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # lowercased automatically; matches deploy-helm.yml's ghcr.io/<owner>/<repo>
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=core
+          cache-to: type=gha,scope=core,mode=max
+
+  scopus-python-image:
+    name: scopus-python image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-scopus-python
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: scopus-python
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=scopus-python
+          cache-to: type=gha,scope=scopus-python,mode=max

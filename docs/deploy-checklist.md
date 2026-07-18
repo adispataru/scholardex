@@ -11,10 +11,18 @@ Public URL: **https://scholardex.rdi.info.uvt.ro** (Traefik TLS, Let's Encrypt, 
 
 | Image | Source | Notes |
 |---|---|---|
-| `ghcr.io/adispataru/scholardex-core` | repo root `Dockerfile` | run `./gradlew bootJar` first; `WORKDIR /app` |
+| `ghcr.io/adispataru/scholardex` | repo root `Dockerfile` (CI runs `bootJar` first) | temurin 25 JRE, non-root, `WORKDIR /app` |
 | `ghcr.io/adispataru/scholardex-scopus-python` | `scopus-python/Dockerfile` | port 65008, Scopus-free healthcheck |
 
-Deploys run via the in-cluster GitHub Actions runner (ns `scholardex-ci`); no on-host builds.
+Built and pushed by `.github/workflows/ghcr.yml` on every push to main (tags: commit SHA — the
+tag `deploy-helm.yml` consumes — plus `latest` on main and semver on `v*` tags). Tests are gated
+by `quality-gates.yml`, not duplicated in the image build. Deploys run via the in-cluster GitHub
+Actions runner (ns `scholardex-ci`); no on-host builds.
+
+⚠️ `deploy-helm.yml` predates the cluster decisions: it references a `charts/core` directory that
+does not exist yet and `core-staging`/`core-production` namespaces instead of `scholardex`, and
+assumes kubeconfig secrets while the platform uses the in-cluster runner. Reconcile it together
+with the Helm chart when the chart is written.
 
 ## Environment contract (core app)
 

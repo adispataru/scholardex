@@ -196,3 +196,9 @@ pitest {
     // Keep PIT off the standard `check` lifecycle so CI isn't slowed down.
     // Run on demand via: ./gradlew pitest
 }
+
+// The Docker image COPYs build/libs/*-SNAPSHOT.jar — keep exactly one artifact there
+// (the executable boot jar), not the '-plain' library jar too.
+tasks.named('jar') {
+    enabled = false
+}
