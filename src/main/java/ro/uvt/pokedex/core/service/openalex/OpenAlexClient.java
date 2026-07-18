@@ -21,19 +21,76 @@ public class OpenAlexClient {
     private static final Logger log = LoggerFactory.getLogger(OpenAlexClient.class);
 
     private final WebClient openAlexWebClient;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final String mailto;
     private final int perPage;
     private final int maxPages;
 
     public OpenAlexClient(
             @Qualifier("openAlexWebClient") WebClient openAlexWebClient,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper,
             @Value("${openalex.api.mailto:}") String mailto,
             @Value("${openalex.api.per-page:200}") int perPage,
             @Value("${openalex.api.max-pages:200}") int maxPages) {
         this.openAlexWebClient = openAlexWebClient;
+        this.objectMapper = objectMapper;
         this.mailto = mailto;
         this.perPage = Math.max(1, Math.min(200, perPage));
         this.maxPages = Math.max(1, maxPages);
+    }
+
+    /**
+     * Lenient decode of an OpenAlex /works response. OpenAlex occasionally serves works whose
+     * titles/abstracts carry broken surrogate characters (e.g. mathematical alphanumerics like
+     * U+1D435 with a lost low half) — the strict WebClient Jackson decoder rejected the WHOLE page
+     * ("Invalid UTF-8: Illegal surrogate character 0xd835"), failing the entire author sync for one
+     * bad character. Decode the bytes with a replacing UTF-8 decoder (malformed byte sequences →
+     * U+FFFD), then neutralize lone {@code \\uD8xx} escape sequences in the JSON text the same way,
+     * so a broken character degrades one string field instead of killing the sync.
+     */
+    OpenAlexWorksResponse parseWorksResponse(byte[] body) {
+        if (body == null || body.length == 0) return null;
+        java.nio.charset.CharsetDecoder decoder = java.nio.charset.StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPLACE);
+        String json;
+        try {
+            json = decoder.decode(java.nio.ByteBuffer.wrap(body)).toString();
+        } catch (java.nio.charset.CharacterCodingException e) {
+            throw new IllegalStateException("OpenAlex response could not be decoded as UTF-8", e);
+        }
+        json = neutralizeLoneSurrogates(json);
+        try {
+            return objectMapper.readValue(json, OpenAlexWorksResponse.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("OpenAlex response JSON parse failed: " + e.getOriginalMessage(), e);
+        }
+    }
+
+    /**
+     * Replaces unpaired surrogates with U+FFFD in both forms they can reach us: as raw chars (a
+     * replacing byte decoder never produces these, but belt-and-braces) and as JSON {@code \\uD8xx}
+     * escape sequences, which pass byte decoding untouched and would otherwise materialize as lone
+     * surrogate chars after Jackson parses the string — breaking BSON encoding later.
+     */
+    private static String neutralizeLoneSurrogates(String json) {
+        // Escape-sequence form: a high-surrogate escape not followed by a low one, or a low not preceded by a high.
+        String cleaned = json.replaceAll("(?i)\\\\u(d[89ab][0-9a-f]{2})(?!\\\\ud[c-f][0-9a-f]{2})", "\\\\uFFFD");
+        cleaned = cleaned.replaceAll("(?i)(?<!\\\\ud[89ab][0-9a-f]{2})\\\\u(d[c-f][0-9a-f]{2})", "\\\\uFFFD");
+        // Raw char form.
+        StringBuilder sb = null;
+        for (int i = 0; i < cleaned.length(); i++) {
+            char c = cleaned.charAt(i);
+            boolean lone = (Character.isHighSurrogate(c)
+                        && (i + 1 >= cleaned.length() || !Character.isLowSurrogate(cleaned.charAt(i + 1))))
+                    || (Character.isLowSurrogate(c)
+                        && (i == 0 || !Character.isHighSurrogate(cleaned.charAt(i - 1))));
+            if (lone) {
+                if (sb == null) sb = new StringBuilder(cleaned);
+                sb.setCharAt(i, '�');
+            }
+        }
+        return sb != null ? sb.toString() : cleaned;
     }
 
     /**
@@ -62,7 +119,8 @@ public class OpenAlexClient {
                         return builder.build();
                     })
                     .retrieve()
-                    .bodyToMono(OpenAlexWorksResponse.class)
+                    .bodyToMono(byte[].class)
+                    .map(this::parseWorksResponse)
                     .block();
             if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
                 break;
@@ -95,7 +153,8 @@ public class OpenAlexClient {
                         return builder.build();
                     })
                     .retrieve()
-                    .bodyToMono(OpenAlexWorksResponse.class)
+                    .bodyToMono(byte[].class)
+                    .map(this::parseWorksResponse)
                     .block();
             if (response != null && response.getResults() != null) {
                 works.addAll(response.getResults());
@@ -130,7 +189,8 @@ public class OpenAlexClient {
                             return builder.build();
                         })
                         .retrieve()
-                        .bodyToMono(OpenAlexWorksResponse.class)
+                        .bodyToMono(byte[].class)
+                        .map(this::parseWorksResponse)
                         .block();
                 if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
                     break;
