@@ -289,8 +289,18 @@ public class OpenAlexCanonicalizationService {
         fact.setAuthorCount(source.getAuthorCount());
         // Corresponding authors are no longer denormalized as name strings here — they are modeled id-based as
         // `corresponding=true` authorship edges to canonical authors (writeAuthorshipEdges).
-        fact.setCoverDate(source.getCoverDate());
-        fact.setForumId(resolveForumId(source.getHostVenueOpenAlexId())); // Stage 3: ISSN-resolved venue, else null
+        // REFRESH must never null-out previously-resolved enrichment: the forum is often set AFTER
+        // the initial mint (ISSN venue onboarding, the Phase-4b DBLP conference resolver, manual
+        // curation) and a later re-sync whose own resolution comes up empty used to clobber it back
+        // to null — wiping conference scoring for the whole synced corpus (bit florin's re-sync,
+        // 486 pubs de-forumed). Same guard for coverDate (its loss nulls the projected year).
+        if (source.getCoverDate() != null) {
+            fact.setCoverDate(source.getCoverDate());
+        }
+        String resolvedForumId = resolveForumId(source.getHostVenueOpenAlexId()); // Stage 3: ISSN-resolved venue, else null
+        if (resolvedForumId != null) {
+            fact.setForumId(resolvedForumId);
+        }
         fact.setCitedByCount(source.getCitedByCount());
         fact.setOpenAccess(source.getOpenAccess());
         fact.setSubtype(source.getType());

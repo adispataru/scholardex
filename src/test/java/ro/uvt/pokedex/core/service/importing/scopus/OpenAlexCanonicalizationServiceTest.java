@@ -127,6 +127,51 @@ class OpenAlexCanonicalizationServiceTest {
     }
 
     @Test
+    void refreshNeverClobbersPreviouslyResolvedForumOrCoverDate() {
+        // The forum is often set AFTER the mint (DBLP conference resolver, venue onboarding); a
+        // re-sync whose own venue resolution comes up empty must keep it — not null it back out.
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "Updated title", "sauth_self");
+        source.setHostVenueOpenAlexId(null); // venue not resolvable this sync
+        source.setCoverDate(null); // and no date in this payload
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        owned.setForumId("sforum_dblp_resolved");
+        owned.setCoverDate("2019-06-01");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+
+        service.rebuildCanonicalFacts();
+
+        verify(publicationWriter).upsertAndLinkSource(
+                argThat(fact -> "sforum_dblp_resolved".equals(fact.getForumId())
+                        && "2019-06-01".equals(fact.getCoverDate())),
+                any(), any());
+    }
+
+    @Test
+    void refreshWithAResolvableVenueStillOverwritesTheForum() {
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "Updated title", "sauth_self");
+        source.setHostVenueOpenAlexId("S777");
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        owned.setForumId("sforum_stale");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact forum =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact();
+        forum.setId("sforum_fresh");
+        when(forumFactRepository.findByOpenAlexIdsContaining("S777")).thenReturn(java.util.Optional.of(forum));
+
+        service.rebuildCanonicalFacts();
+
+        verify(publicationWriter).upsertAndLinkSource(
+                argThat(fact -> "sforum_fresh".equals(fact.getForumId()) && "2020-01-01".equals(fact.getCoverDate())),
+                any(), any());
+    }
+
+    @Test
     void mintResolvesHostVenueForumByOpenAlexId() {
         OpenAlexPublicationFact source = source("W3", "10.1/venue", "Venue paper", "sauth_self");
         source.setHostVenueOpenAlexId("S123");
