@@ -197,6 +197,10 @@ public class OpenAlexCitationCanonicalizationService {
             result.markSkipped("citation-edge-already-known");
             return;
         }
+        // The unique index guards the (cited, citing) PAIR, but other import paths mint edge ids
+        // with different schemes — the same pair can already exist under another id, which the
+        // findById fast-path can't see. Checked at save time below (DuplicateKeyException → skip)
+        // so one known edge doesn't fail the whole author sync.
         Instant now = Instant.now();
         ScholardexCitationFact fact = new ScholardexCitationFact();
         fact.setId(edgeId);
@@ -209,7 +213,12 @@ public class OpenAlexCitationCanonicalizationService {
         fact.setSourceBatchId(provenance.getSourceBatchId());
         fact.setSourceCorrelationId(provenance.getSourceCorrelationId());
         fact.setUpdatedAt(now);
-        citationFactRepository.save(fact);
+        try {
+            citationFactRepository.save(fact);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            result.markSkipped("citation-edge-already-known");
+            return;
+        }
         result.markImported();
     }
 
