@@ -71,6 +71,18 @@ jobs:
   java-smoke:
     name: java-smoke
     runs-on: ubuntu-latest
+    # The context-load smoke executes CommandLineRunners (seeds/migrations), which legitimately
+    # need a database — same service the quality-full job uses.
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval \"db.adminCommand({ ping: 1 })\" --quiet"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4

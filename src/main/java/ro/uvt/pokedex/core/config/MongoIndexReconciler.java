@@ -90,6 +90,15 @@ public class MongoIndexReconciler implements SmartInitializingSingleton {
                     ops.createIndex(def);
                     created++;
                 } catch (RuntimeException ex) {
+                    if (isConnectivityFailure(ex)) {
+                        // No database, no reconciliation: context-load smoke tests run without
+                        // Mongo, and on the cluster the app pod can start before Mongo is ready.
+                        // Failing the whole context here helps nobody — indexes are re-ensured on
+                        // the next boot with a reachable database.
+                        LOG.warn("Mongo unreachable during index reconciliation ({}); skipping — "
+                                + "indexes will be ensured on the next start.", ex.getMessage());
+                        return;
+                    }
                     int code = mongoErrorCode(ex);
                     if (code == CODE_INDEX_KEY_SPECS_CONFLICT) {
                         // Declared index evolved: drop the stale same-named index and rebuild.
@@ -129,6 +138,18 @@ public class MongoIndexReconciler implements SmartInitializingSingleton {
         }
         LOG.info("Mongo index reconciliation complete: {} index(es) ensured, {} evolved (dropped & rebuilt).",
                 created, evolved);
+    }
+
+    /** Connection-level failure (server unreachable), as opposed to a server-reported index error. */
+    private static boolean isConnectivityFailure(Throwable t) {
+        for (Throwable cur = t; cur != null; cur = cur.getCause()) {
+            if (cur instanceof com.mongodb.MongoTimeoutException
+                    || cur instanceof com.mongodb.MongoSocketException
+                    || cur instanceof java.net.ConnectException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Walk the cause chain for a MongoDB server error code, or -1 if none. */

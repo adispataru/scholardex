@@ -41,19 +41,45 @@ public class FeaaAnexa1PublisherService {
 
     private final FeaaAnexa1PublisherRepository repository;
     private final AtomicReference<Set<String>> normalizedNames = new AtomicReference<>(Set.of());
+    private final java.util.concurrent.atomic.AtomicBoolean loaded = new java.util.concurrent.atomic.AtomicBoolean(false);
 
+    /**
+     * Best-effort load at startup. Mongo may not be reachable yet (context-load smoke tests run
+     * without a database; on the cluster the app pod can start before Mongo) — a hard failure here
+     * took the whole context down (Quality Gates red since 2026-05-06). Unavailable → warn and
+     * retry lazily on first lookup instead.
+     */
     @PostConstruct
     void init() {
-        if (repository.count() == 0) {
-            seedFromFixture();
-        }
-        reloadCache();
+        tryLoad();
     }
 
     /** True when the publisher is in the Anexa 1 prestige list (∈ → international tier). */
     public boolean isPrestigePublisher(String publisherName) {
         String normalized = normalize(publisherName);
-        return !normalized.isEmpty() && normalizedNames.get().contains(normalized);
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        if (!loaded.get()) {
+            tryLoad(); // self-heals once the database is reachable
+        }
+        return normalizedNames.get().contains(normalized);
+    }
+
+    private synchronized void tryLoad() {
+        if (loaded.get()) {
+            return;
+        }
+        try {
+            if (repository.count() == 0) {
+                seedFromFixture();
+            }
+            reloadCache();
+            loaded.set(true);
+        } catch (org.springframework.dao.DataAccessException e) {
+            log.warn("FEAA Anexa 1 publisher list not loadable (database unreachable): {} — will retry on first use",
+                    e.getMessage());
+        }
     }
 
     private void reloadCache() {
