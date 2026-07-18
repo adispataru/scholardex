@@ -264,58 +264,86 @@ public class TemplateXlsxScoreParser {
                     && name.startsWith(officialPrefix);
             if (!exportNamed && !officialNamed) continue;
 
-            Row titleRow = sheet.getRow(titleRow0);
-            String rawTitle = titleRow != null ? stringValue(titleRow.getCell(keyCol)) : null;
-            String title = extractTitle(rawTitle, role.getPerTileTitleTemplate());
-            if (title == null || title.isBlank()) continue;
-
-            double rawSum = 0.0;
-            List<CitationSnapshotItem.CitingPublication> citingRows = new ArrayList<>();
-            int r = firstDataRow0;
-            for (; r <= sheet.getLastRowNum(); r++) {
-                Row row = sheet.getRow(r);
-                String innerTitle = row != null ? stringValue(row.getCell(keyCol)) : null;
-                if (innerTitle == null || innerTitle.isBlank()) continue;   // skip blank/gap rows
-                if (isAggregationLabel(innerTitle)) break;                  // "Total ..." block → done
-                double rowScore = numericValue(row.getCell(scoreCol), evaluator);
-                // Skip unfilled template rows: placeholder titles ("Titlu articol care citeaza") or 0 points.
-                if (isIgnored(innerTitle, ignored) || rowScore == 0.0) continue;
-                rawSum += rowScore;
-                CitationSnapshotItem.CitingPublication cp = new CitationSnapshotItem.CitingPublication();
-                cp.setTitle(innerTitle);
-                cp.setScore(rowScore); // raw per-citation points for the breakdown
-                citingRows.add(cp);
+            // Real files come in two shapes: one tile per sheet (our exports, per-publication sheet
+            // copies) and MANY tiles stacked vertically in a single sheet — sometimes with the first
+            // title shifted off the configured cell. Locate every title row by the title template's
+            // literal prefix ("B2. CITĂRI PENTRU LUCRAREA:") and parse each tile segment; fall back
+            // to the configured cell when the template has no literal prefix.
+            String titlePrefix = titleTemplatePrefix(role.getPerTileTitleTemplate());
+            List<Integer> titleRows = new ArrayList<>();
+            if (titlePrefix != null) {
+                for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+                    Row row = sheet.getRow(r);
+                    String v = row != null ? stringValue(row.getCell(keyCol)) : null;
+                    if (v != null && v.trim().startsWith(titlePrefix)) titleRows.add(r);
+                }
             }
+            if (titleRows.isEmpty()) titleRows.add(titleRow0);
+            int dataOffset = firstDataRow0 - titleRow0; // template geometry: rows from title to first data row
 
-            // The tile's authoritative score is the grand-total row (author-divided), not the raw sum.
-            Double total = findTileTotal(sheet, evaluator, keyCol, scoreCol, role.getTileTotalLabel(), r);
-            double tileScore = total != null ? total : rawSum;
+            for (int t = 0; t < titleRows.size(); t++) {
+                int titleAt = titleRows.get(t);
+                int segmentEnd = (t + 1 < titleRows.size()) ? titleRows.get(t + 1) - 1 : sheet.getLastRowNum();
+                Row titleRow = sheet.getRow(titleAt);
+                String rawTitle = titleRow != null ? stringValue(titleRow.getCell(keyCol)) : null;
+                String title = extractTitle(rawTitle, role.getPerTileTitleTemplate());
+                if (title == null || title.isBlank()) continue;
 
-            // An untouched master tile (the template ships C-Citari-TPL with a sample title and
-            // placeholder rows) parses to a zero tile with no citing rows — skip it, don't report
-            // a phantom publication.
-            if (citingRows.isEmpty() && tileScore == 0.0) continue;
+                double rawSum = 0.0;
+                List<CitationSnapshotItem.CitingPublication> citingRows = new ArrayList<>();
+                int r = titleAt + dataOffset;
+                for (; r <= segmentEnd; r++) {
+                    Row row = sheet.getRow(r);
+                    String innerTitle = row != null ? stringValue(row.getCell(keyCol)) : null;
+                    if (innerTitle == null || innerTitle.isBlank()) continue;   // skip blank/gap rows
+                    if (isAggregationLabel(innerTitle)) break;                  // "Total ..." block → done
+                    double rowScore = numericValue(row.getCell(scoreCol), evaluator);
+                    // Skip unfilled template rows: placeholder titles ("Titlu articol care citeaza") or 0 points.
+                    if (isIgnored(innerTitle, ignored) || rowScore == 0.0) continue;
+                    rawSum += rowScore;
+                    CitationSnapshotItem.CitingPublication cp = new CitationSnapshotItem.CitingPublication();
+                    cp.setTitle(innerTitle);
+                    cp.setScore(rowScore); // raw per-citation points for the breakdown
+                    citingRows.add(cp);
+                }
 
-            CitationSnapshotItem tile = new CitationSnapshotItem();
-            tile.setRoleKey(role.getRoleKey());
-            tile.setItemKey(title);
-            tile.setPublicationTitle(title);
-            tile.setScore(tileScore);
-            tile.setCitingPublications(citingRows);
-            out.add(tile);
+                // The tile's authoritative score is the grand-total row (author-divided), not the raw
+                // sum. Bounded to this tile's segment — a stacked sheet where THIS tile has no TOTAL
+                // must not pick up the next tile's.
+                Double total = findTileTotal(sheet, evaluator, keyCol, scoreCol, role.getTileTotalLabel(), r, segmentEnd);
+                double tileScore = total != null ? total : rawSum;
+
+                // An untouched master tile (the template ships C-Citari-TPL with a sample title and
+                // placeholder rows) parses to a zero tile with no citing rows — skip it, don't report
+                // a phantom publication.
+                if (citingRows.isEmpty() && tileScore == 0.0) continue;
+
+                out.add(buildCitationTile(role, title, tileScore, citingRows));
+            }
         }
         return out;
     }
 
+    private CitationSnapshotItem buildCitationTile(BindingRole role, String title, double tileScore,
+                                                   List<CitationSnapshotItem.CitingPublication> citingRows) {
+        CitationSnapshotItem tile = new CitationSnapshotItem();
+        tile.setRoleKey(role.getRoleKey());
+        tile.setItemKey(title);
+        tile.setPublicationTitle(title);
+        tile.setScore(tileScore);
+        tile.setCitingPublications(citingRows);
+        return tile;
+    }
+
     /**
-     * Scan from {@code fromRow} downward for the row whose key cell equals {@code totalLabel}
-     * (the tile's grand total, e.g. "TOTAL") and return its evaluated score-column value. Null if
-     * no label configured or not found — caller falls back to the raw row sum.
+     * Scan {@code fromRow..toRow} for the row whose key cell equals {@code totalLabel} (the tile's
+     * grand total, e.g. "TOTAL") and return its evaluated score-column value. Null if no label
+     * configured or not found — caller falls back to the raw row sum.
      */
     private Double findTileTotal(Sheet sheet, FormulaEvaluator evaluator, int keyCol, int scoreCol,
-                                 String totalLabel, int fromRow) {
+                                 String totalLabel, int fromRow, int toRow) {
         if (totalLabel == null || totalLabel.isBlank()) return null;
-        for (int r = fromRow; r <= sheet.getLastRowNum(); r++) {
+        for (int r = fromRow; r <= Math.min(toRow, sheet.getLastRowNum()); r++) {
             Row row = sheet.getRow(r);
             if (row == null) continue;
             String label = stringValue(row.getCell(keyCol));
@@ -324,6 +352,14 @@ public class TemplateXlsxScoreParser {
             }
         }
         return null;
+    }
+
+    /** "Prefix: {publication.title} (…)" → "Prefix:". Null when the template has no literal prefix. */
+    private String titleTemplatePrefix(String template) {
+        if (template == null) return null;
+        int brace = template.indexOf('{');
+        String prefix = (brace >= 0 ? template.substring(0, brace) : template).trim();
+        return prefix.isEmpty() ? null : prefix;
     }
 
     /** "Citari-{index:02d}" → "Citari-". Null if the template has no literal prefix. */

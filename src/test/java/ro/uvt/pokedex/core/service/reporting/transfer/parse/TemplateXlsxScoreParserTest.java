@@ -227,6 +227,52 @@ class TemplateXlsxScoreParserTest {
         assertThat(parsedTile.getCitingPublications()).hasSize(1);
     }
 
+    @Test
+    void stackedCitationTilesInOneSheetAreEachParsedWithBoundedTotals() throws Exception {
+        // Real files stack many tiles in a single C-Citari-TPL sheet, often shifting the first title
+        // off the configured cell and omitting some per-tile TOTAL rows (seen in CNFIS-2025 files:
+        // 17-24 tiles per sheet). Each title row starts a tile; a tile without its own TOTAL must
+        // fall back to its raw sum, NOT pick up the next tile's TOTAL.
+        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+        org.apache.poi.ss.usermodel.Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        org.apache.poi.ss.usermodel.Sheet sheet = wb.createSheet("C-Citari-TPL");
+        // Tile 1: title shifted to row 7 (0-based 6) — data offset keeps template geometry (+3).
+        sheet.createRow(6).createCell(2)
+                .setCellValue("B2. CITĂRI PENTRU LUCRAREA: First cited paper (Journal A, 2019)");
+        org.apache.poi.ss.usermodel.Row d1 = sheet.createRow(9);
+        d1.createCell(2).setCellValue("Citer one");
+        d1.createCell(9).setCellValue(8.0);   // J
+        // NO TOTAL row for tile 1.
+        // Tile 2: title at row 15 (0-based 14), one citer, its own TOTAL.
+        sheet.createRow(14).createCell(2)
+                .setCellValue("B2. CITĂRI PENTRU LUCRAREA: Second cited paper (Journal B, 2021)");
+        org.apache.poi.ss.usermodel.Row d2 = sheet.createRow(17);
+        d2.createCell(2).setCellValue("Citer two");
+        d2.createCell(9).setCellValue(4.0);
+        org.apache.poi.ss.usermodel.Row tot2 = sheet.createRow(19);
+        tot2.createCell(2).setCellValue("TOTAL");
+        tot2.createCell(9).setCellValue(2.0); // author-divided grand total
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        wb.write(bos);
+        wb.close();
+
+        List<SnapshotItem> parsed = parser.parse(binding, new ByteArrayInputStream(bos.toByteArray()));
+        List<CitationSnapshotItem> tiles = parsed.stream()
+                .filter(i -> i instanceof CitationSnapshotItem)
+                .map(i -> (CitationSnapshotItem) i)
+                .toList();
+
+        assertThat(tiles).hasSize(2);
+        CitationSnapshotItem first = tiles.stream()
+                .filter(t -> t.getPublicationTitle().startsWith("First")).findFirst().orElseThrow();
+        CitationSnapshotItem second = tiles.stream()
+                .filter(t -> t.getPublicationTitle().startsWith("Second")).findFirst().orElseThrow();
+        assertThat(first.getScore()).isEqualTo(8.0);  // raw sum fallback — NOT tile 2's TOTAL (2.0)
+        assertThat(second.getScore()).isEqualTo(2.0); // its own bounded TOTAL
+        assertThat(first.getCitingPublications()).hasSize(1);
+        assertThat(second.getCitingPublications()).hasSize(1);
+    }
+
     private ActivitySnapshotItem act(String blockName, String description, String category, double score) {
         ActivitySnapshotItem a = new ActivitySnapshotItem();
         a.setActivityName(blockName);
