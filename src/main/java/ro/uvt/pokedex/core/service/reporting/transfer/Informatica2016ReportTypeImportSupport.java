@@ -110,4 +110,12 @@ public class Informatica2016ReportTypeImportSupport implements ReportTypeImportS
         }
         return scoreParser.parse(binding, input);
     }
+
+    @Override
+    public List<SnapshotItem> parse(InputStream input, ReportFormat format, List<String> layoutWarnings) {
+        if (format != ReportFormat.XLSX) {
+            throw new IllegalArgumentException("Unsupported import format: " + format);
+        }
+        return scoreParser.parse(binding, input, layoutWarnings);
+    }
 }

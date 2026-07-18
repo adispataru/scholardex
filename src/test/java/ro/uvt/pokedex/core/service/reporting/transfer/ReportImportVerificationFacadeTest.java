@@ -60,7 +60,7 @@ class ReportImportVerificationFacadeTest {
         when(readinessValidator.isReady(report, ReportFormat.XLSX)).thenReturn(true);
         when(registry.find("informatica-2016")).thenReturn(Optional.of(support));
         when(support.supportedImportFormats()).thenReturn(Set.of(ReportFormat.XLSX));
-        when(support.parse(any(), eq(ReportFormat.XLSX))).thenReturn(List.of());
+        when(support.parse(any(), eq(ReportFormat.XLSX), any())).thenReturn(List.of());
         when(userIndividualReportRunRepository.findById("run-selected")).thenReturn(Optional.of(selectedRun));
         when(userIndividualReportRunRepository.findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "report-1"))
                 .thenReturn(Optional.of(selectedRun));
@@ -94,7 +94,7 @@ class ReportImportVerificationFacadeTest {
         when(readinessValidator.isReady(report, ReportFormat.XLSX)).thenReturn(true);
         when(registry.find("informatica-2016")).thenReturn(Optional.of(support));
         when(support.supportedImportFormats()).thenReturn(Set.of(ReportFormat.XLSX));
-        when(support.parse(any(), eq(ReportFormat.XLSX))).thenReturn(List.of());
+        when(support.parse(any(), eq(ReportFormat.XLSX), any())).thenReturn(List.of());
         when(userIndividualReportRunRepository.findById("run-old")).thenReturn(Optional.of(displayedRun));
         when(userIndividualReportRunRepository.findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "report-1"))
                 .thenReturn(Optional.of(latestRun));
@@ -126,7 +126,7 @@ class ReportImportVerificationFacadeTest {
         when(readinessValidator.isReady(report, ReportFormat.XLSX)).thenReturn(true);
         when(registry.find("informatica-2016")).thenReturn(Optional.of(support));
         when(support.supportedImportFormats()).thenReturn(Set.of(ReportFormat.XLSX));
-        when(support.parse(any(), eq(ReportFormat.XLSX))).thenReturn(List.of());
+        when(support.parse(any(), eq(ReportFormat.XLSX), any())).thenReturn(List.of());
         when(userIndividualReportRunRepository.findById("run-selected")).thenReturn(Optional.of(otherUsersRun));
 
         ReportImportVerificationFacade.VerificationOutcome outcome = facade.verifyOutcome(
@@ -147,7 +147,7 @@ class ReportImportVerificationFacadeTest {
         when(readinessValidator.isReady(report, ReportFormat.XLSX)).thenReturn(true);
         when(registry.find("informatica-2016")).thenReturn(Optional.of(support));
         when(support.supportedImportFormats()).thenReturn(Set.of(ReportFormat.XLSX));
-        when(support.parse(any(), eq(ReportFormat.XLSX))).thenThrow(new IllegalArgumentException("bad workbook"));
+        when(support.parse(any(), eq(ReportFormat.XLSX), any())).thenThrow(new IllegalArgumentException("bad workbook"));
 
         ReportImportVerificationFacade.VerificationOutcome outcome = facade.verifyOutcome(
                 "u@uvt.ro",

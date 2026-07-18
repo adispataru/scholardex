@@ -273,6 +273,47 @@ class TemplateXlsxScoreParserTest {
         assertThat(second.getCitingPublications()).hasSize(1);
     }
 
+    @Test
+    void columnShiftedLayoutsProduceWarningsInsteadOfSilentEmptyParse() throws Exception {
+        // Personal template remixes (seen in real CNFIS files: ERASCU/MARIN/Dramnesc) shift whole
+        // tables a column left. We don't guess columns — we tell the user to use the official
+        // template, one warning per deviated sheet.
+        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+        org.apache.poi.ss.usermodel.Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        // B-Reviste with "Titlu" in column B (binding expects C).
+        org.apache.poi.ss.usermodel.Sheet rev = wb.createSheet("B-Reviste");
+        org.apache.poi.ss.usermodel.Row hdr = rev.createRow(5);
+        hdr.createCell(1).setCellValue("Titlu");
+        hdr.createCell(8).setCellValue("Punctaj P");
+        // Citation tiles with the title prefix in column B (binding expects C) — Dramnesc-style
+        // label-less prefix.
+        org.apache.poi.ss.usermodel.Sheet cit = wb.createSheet("C-Citari-TPL");
+        cit.createRow(6).createCell(1)
+                .setCellValue("CITĂRI PENTRU LUCRAREA: Some cited paper (Journal, 2020)");
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        wb.write(bos);
+        wb.close();
+
+        List<String> warnings = new java.util.ArrayList<>();
+        List<SnapshotItem> parsed = parser.parse(binding, new ByteArrayInputStream(bos.toByteArray()), warnings);
+
+        assertThat(parsed).isEmpty();
+        assertThat(warnings).hasSize(2);
+        assertThat(warnings).anyMatch(w -> w.contains("B-Reviste") && w.contains("column B") && w.contains("expected C"));
+        assertThat(warnings).anyMatch(w -> w.contains("C-Citari-TPL") && w.contains("column B") && w.contains("expected C"));
+        assertThat(warnings).allMatch(w -> w.contains("official template"));
+    }
+
+    @Test
+    void conformingFilesProduceNoLayoutWarnings() {
+        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+        byte[] bytes = renderer.render(binding, Map.of(
+                "activities-perspectiva-d", List.of(act("Premii", "Best paper award", "A", 8.0).toRowMap())));
+        List<String> warnings = new java.util.ArrayList<>();
+        parser.parse(binding, new ByteArrayInputStream(bytes), warnings);
+        assertThat(warnings).isEmpty();
+    }
+
     private ActivitySnapshotItem act(String blockName, String description, String category, double score) {
         ActivitySnapshotItem a = new ActivitySnapshotItem();
         a.setActivityName(blockName);

@@ -190,6 +190,7 @@ public class EvaluationWorkspaceController {
                 model.addAttribute("displayedRunId", result.displayedRunId());
                 model.addAttribute("currentRunId", result.currentRunId());
                 model.addAttribute("currentRunComparison", result.currentRunComparison());
+                model.addAttribute("layoutWarnings", result.layoutWarnings());
                 model.addAttribute("activityDefs", loadActivityDefs(result.displayedRunComparison()));
             } else {
                 response.setStatus(statusFor(outcome.failureReason()).value());

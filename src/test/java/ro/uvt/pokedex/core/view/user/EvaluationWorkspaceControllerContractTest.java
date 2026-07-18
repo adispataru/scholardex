@@ -345,7 +345,8 @@ class EvaluationWorkspaceControllerContractTest {
                         new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison(List.of(), List.of(), 0, 0, 0, 0, 0),
                         null,
                         "run-42",
-                        null)));
+                        null,
+                        List.of())));
 
         mockMvc.perform(multipart("/user/evaluation/import")
                         .file("file", new byte[]{1, 2, 3})
@@ -391,7 +392,8 @@ class EvaluationWorkspaceControllerContractTest {
                                 List.of(), List.of(block), 0, 2.0, 0, 0, 1),
                         null,
                         null,
-                        null)));
+                        null,
+                        List.of())));
 
         String html = mockMvc.perform(multipart("/user/evaluation/import")
                         .file("file", new byte[]{1, 2, 3})
@@ -402,6 +404,35 @@ class EvaluationWorkspaceControllerContractTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("no activity type bound"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Comisie admitere 2014"));
+    }
+
+    @Test
+    void importViewRendersLayoutWarningsCallout() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportImportVerificationFacade.verifyOutcome(
+                org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
+                org.mockito.ArgumentMatchers.eq("rep-1"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.success(
+                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationResult(
+                        new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison(List.of(), List.of(), 0, 0, 0, 0, 0),
+                        null,
+                        null,
+                        null,
+                        List.of("Sheet 'B-Reviste': the layout differs from the official template (found 'Titlu' column in column B, expected C). Its rows were NOT compared — please fill in the official template."))));
+
+        String html = mockMvc.perform(multipart("/user/evaluation/import")
+                        .file("file", new byte[]{1, 2, 3})
+                        .param("report", "rep-1")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("layout differs from the official template"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("B-Reviste"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("responsibility"));
     }
 
     @Test

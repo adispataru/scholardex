@@ -111,6 +111,17 @@
                         </div>
                     </div>
 
+                    <!-- Layout deviations: restructured template sheets that could not be compared -->
+                    <div th:if="${layoutWarnings != null and !layoutWarnings.isEmpty()}" class="alert alert-warning" role="alert">
+                        <p class="mb-1"><i class="fa-solid fa-table-columns mr-1" aria-hidden="true"></i>
+                            <strong>This file's layout differs from the official template.</strong></p>
+                        <ul class="mb-1">
+                            <li th:each="w : ${layoutWarnings}" th:text="${w}">warning</li>
+                        </ul>
+                        <p class="mb-0">Restructured sheets are not compared — it is the researcher's responsibility to
+                            fill in the <strong>official template</strong> (use the report's Export to get a pre-filled copy).</p>
+                    </div>
+
                     <!-- Empty state -->
                     <div th:if="${comparison.rows().isEmpty()}" class="app-empty-state">
                         <i class="fa-solid fa-scale-balanced fa-2x app-empty-state__icon" aria-hidden="true"></i>

@@ -43,6 +43,16 @@ public class TemplateXlsxScoreParser {
     private static final Logger LOG = LoggerFactory.getLogger(TemplateXlsxScoreParser.class);
 
     public List<SnapshotItem> parse(TemplateBinding binding, InputStream input) {
+        return parse(binding, input, new ArrayList<>());
+    }
+
+    /**
+     * Parse the uploaded workbook against the binding. Researchers sometimes restructure the official
+     * template (columns shifted whole letters, tables moved) — those sheets cannot be compared
+     * honestly, so instead of guessing we append a human-readable note per deviated sheet to
+     * {@code layoutWarnings}: the user is responsible for filling the official template.
+     */
+    public List<SnapshotItem> parse(TemplateBinding binding, InputStream input, List<String> layoutWarnings) {
         try (Workbook workbook = WorkbookFactory.create(input)) {
             FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
             Set<String> ignored = new HashSet<>();
@@ -53,18 +63,75 @@ public class TemplateXlsxScoreParser {
             for (BindingRole role : binding.getRoles()) {
                 if (role.getKind() == BindingKind.FIXED_TABLE
                         && !isBlank(role.getKeyColumn()) && !isBlank(role.getScoreColumn())) {
-                    out.addAll(parseFixedTable(workbook, evaluator, role, ignored));
+                    List<SnapshotItem> items = parseFixedTable(workbook, evaluator, role, ignored);
+                    if (items.isEmpty()) detectFixedTableShift(workbook, role, layoutWarnings);
+                    out.addAll(items);
                 } else if (role.getKind() == BindingKind.TILED_SHEETS
                         && !isBlank(role.getInnerScoreColumn())) {
-                    out.addAll(parseTiledSheets(workbook, evaluator, role, ignored));
+                    out.addAll(parseTiledSheets(workbook, evaluator, role, ignored, layoutWarnings));
                 } else if (role.getKind() == BindingKind.STACKED_BLOCKS) {
-                    out.addAll(parseStackedBlocks(workbook, evaluator, role, ignored));
+                    List<SnapshotItem> items = parseStackedBlocks(workbook, evaluator, role, ignored);
+                    if (items.isEmpty()) detectStackedBlocksShift(workbook, role, layoutWarnings);
+                    out.addAll(items);
                 }
             }
             return out;
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read uploaded workbook", e);
         }
+    }
+
+    /**
+     * A FIXED_TABLE role that parsed nothing: check whether the sheet's "Titlu" header sits in a
+     * different column than the binding's key column — the researcher restructured the template.
+     */
+    private void detectFixedTableShift(Workbook workbook, BindingRole role, List<String> warnings) {
+        Sheet sheet = workbook.getSheet(role.getSheet());
+        if (sheet == null) return;
+        int expectedCol = CellReference.convertColStringToIndex(role.getKeyColumn());
+        for (int r = 0; r <= Math.min(9, sheet.getLastRowNum()); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) continue;
+            for (Cell cell : row) {
+                String v = normalizeLoose(stringValue(cell));
+                if ("titlu".equals(v) && cell.getColumnIndex() != expectedCol) {
+                    warnings.add(columnShiftWarning(role.getSheet(), "'Titlu' column",
+                            cell.getColumnIndex(), expectedCol));
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * A STACKED_BLOCKS role that parsed nothing: check whether the marker headers live in a
+     * different column than the binding's description column.
+     */
+    private void detectStackedBlocksShift(Workbook workbook, BindingRole role, List<String> warnings) {
+        Sheet sheet = workbook.getSheet(role.getSheet());
+        if (sheet == null) return;
+        String marker = normalizeLoose(role.getBlockHeaderMarker());
+        if (marker == null || marker.isBlank()) return;
+        int expectedCol = columnFor(role.getBlockColumns(), "activity.description");
+        for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) continue;
+            for (Cell cell : row) {
+                String v = normalizeLoose(stringValue(cell));
+                if (v != null && v.contains(marker) && cell.getColumnIndex() != expectedCol) {
+                    warnings.add(columnShiftWarning(role.getSheet(), "section headers",
+                            cell.getColumnIndex(), expectedCol));
+                    return;
+                }
+            }
+        }
+    }
+
+    private String columnShiftWarning(String sheetName, String what, int foundCol, int expectedCol) {
+        return "Sheet '" + sheetName + "': the layout differs from the official template (found " + what
+                + " in column " + CellReference.convertNumToColString(foundCol)
+                + ", expected " + CellReference.convertNumToColString(expectedCol)
+                + "). Its rows were NOT compared — please fill in the official template.";
     }
 
     private boolean isIgnored(String title, Set<String> ignored) {
@@ -241,7 +308,7 @@ public class TemplateXlsxScoreParser {
     }
 
     private List<SnapshotItem> parseTiledSheets(Workbook workbook, FormulaEvaluator evaluator, BindingRole role,
-                                                Set<String> ignored) {
+                                                Set<String> ignored, List<String> layoutWarnings) {
         // Two accepted namings: our export's "Citari-NN" (sheetNameTemplate) AND the official
         // template's own tile-sheet name as a prefix ("C-Citari-TPL", "C-Citari-TPL1", …) — real
         // researcher-filled FVs keep the official names, and their citations were silently
@@ -276,6 +343,9 @@ public class TemplateXlsxScoreParser {
                     Row row = sheet.getRow(r);
                     String v = row != null ? stringValue(row.getCell(keyCol)) : null;
                     if (v != null && v.trim().startsWith(titlePrefix)) titleRows.add(r);
+                }
+                if (titleRows.isEmpty() && detectTiledTitleShift(sheet, titlePrefix, keyCol, layoutWarnings)) {
+                    continue; // restructured layout — columns unknown, comparing would produce garbage
                 }
             }
             if (titleRows.isEmpty()) titleRows.add(titleRow0);
@@ -352,6 +422,28 @@ public class TemplateXlsxScoreParser {
             }
         }
         return null;
+    }
+
+    /**
+     * A tile sheet where the title prefix is absent from the expected column: look for it anywhere
+     * (tolerating a missing "B2. "-style label prefix, seen in restructured files) and warn when the
+     * researcher moved the tiles to another column. Returns true when a shift warning was recorded.
+     */
+    private boolean detectTiledTitleShift(Sheet sheet, String titlePrefix, int expectedCol, List<String> warnings) {
+        String needle = normalizeLoose(titlePrefix.replaceFirst("^\\s*B\\d+\\.\\s*", ""));
+        for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) continue;
+            for (Cell cell : row) {
+                String v = normalizeLoose(stringValue(cell));
+                if (v != null && v.contains(needle) && cell.getColumnIndex() != expectedCol) {
+                    warnings.add(columnShiftWarning(sheet.getSheetName(), "the citation tile titles",
+                            cell.getColumnIndex(), expectedCol));
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** "Prefix: {publication.title} (…)" → "Prefix:". Null when the template has no literal prefix. */

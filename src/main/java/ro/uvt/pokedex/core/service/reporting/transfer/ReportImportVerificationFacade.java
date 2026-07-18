@@ -99,10 +99,13 @@ public class ReportImportVerificationFacade {
         }
         ReportTypeImportSupport support = supportOpt.get();
 
-        // Parse the uploaded file first (consumes the stream).
+        // Parse the uploaded file first (consumes the stream). Layout deviations (researcher-
+        // restructured templates with shifted columns) are collected as warnings for the UI —
+        // the user is responsible for filling the official template.
         List<SnapshotItem> fileItems;
+        List<String> layoutWarnings = new java.util.ArrayList<>();
         try {
-            fileItems = support.parse(uploaded, format);
+            fileItems = support.parse(uploaded, format, layoutWarnings);
         } catch (RuntimeException ex) {
             return VerificationOutcome.failure(VerificationFailureReason.INVALID_WORKBOOK, "Could not read the uploaded workbook: " + ex.getMessage());
         }
@@ -129,7 +132,8 @@ public class ReportImportVerificationFacade {
                 displayedComparison,
                 currentComparison,
                 displayedRun.getId(),
-                currentRun != null ? currentRun.getId() : null));
+                currentRun != null ? currentRun.getId() : null,
+                List.copyOf(layoutWarnings)));
     }
 
     private RunResolution resolveRun(String userEmail, String reportId, String runId) {
@@ -157,7 +161,12 @@ public class ReportImportVerificationFacade {
             ReportScoreComparison displayedRunComparison,
             ReportScoreComparison currentRunComparison,
             String displayedRunId,
-            String currentRunId) {
+            String currentRunId,
+            /** Layout-deviation notes (restructured template sheets that were not compared); never null. */
+            List<String> layoutWarnings) {
+        public VerificationResult {
+            layoutWarnings = layoutWarnings == null ? List.of() : layoutWarnings;
+        }
     }
 
     public enum VerificationFailureReason {

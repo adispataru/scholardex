@@ -42,6 +42,16 @@ public interface ReportTypeImportSupport {
     List<SnapshotItem> parse(InputStream input, ReportFormat format);
 
     /**
+     * Parse variant that also reports layout deviations (e.g. a researcher-restructured template
+     * whose columns are shifted): one human-readable note per deviated sheet is appended to
+     * {@code layoutWarnings}. Default delegates to {@link #parse(InputStream, ReportFormat)} and
+     * reports nothing; supports backed by the template parser override it.
+     */
+    default List<SnapshotItem> parse(InputStream input, ReportFormat format, List<String> layoutWarnings) {
+        return parse(input, format);
+    }
+
+    /**
      * Formats the one-line description for a publication-fed STACKED_BLOCKS item (e.g. the C4_UVT
      * "Publicaţii" rows). The default order is {@code Title — Authors — Forum, vol (year)}; report
      * types whose template fixes a different order (e.g. FV Matematică's "Autori, titlu, revistă,
