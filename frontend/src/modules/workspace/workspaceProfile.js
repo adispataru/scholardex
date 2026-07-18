@@ -357,6 +357,7 @@ function _buildSyncSection(data) {
     const citeTable = _buildTaskTable('citation-tasks', data?.citeTasks, ['Scopus ID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
 
     const orcid = (data?.researcher?.orcid ?? '').trim();
+    const openAlexTable = _buildTaskTable('openalex-tasks', data?.openAlexTasks, ['ORCID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
     const openAlexSection = `<div class="app-ws-prof__section">
       <div class="app-ws-prof__section-header">
         <i class="fa-solid fa-arrows-rotate" style="color:var(--app-color-text-muted);font-size:.85rem"></i>
@@ -370,6 +371,10 @@ function _buildSyncSection(data) {
             <i class="fa-solid fa-arrows-rotate"></i> Update from OpenAlex
           </button>
           <span class="app-ws-prof__openalex-feedback" role="status" aria-live="polite"></span>
+        </div>
+        <div class="app-ws-prof__task-subsection" style="padding:0;margin-top:.75rem">
+          <p class="app-ws-prof__task-subsection-title">OpenAlex sync history</p>
+          ${openAlexTable}
         </div>
       </div>
     </div>`;
@@ -404,8 +409,8 @@ function _buildTaskTable(tableId, tasks, cols) {
     }
 
     const rows = sorted.map((task) => `<tr data-task-id="${_esc(task?.id ?? '')}">
-      <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? '—')}</span></td>
-      <td style="font-size:.78rem;white-space:nowrap">${_esc(_modeLabel(task?.syncMode))}</td>
+      <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? task?.orcid ?? '—')}</span></td>
+      <td style="font-size:.78rem;white-space:nowrap">${_esc(task?.orcid && !task?.syncMode ? 'Author works' : _modeLabel(task?.syncMode))}</td>
       <td>${_statusBadge(task?.status)}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task?.initiatedDate))}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task?.executionDate))}</td>
@@ -438,8 +443,8 @@ const _watchers = new Set();
 function _watchTask(type, taskId) {
     if (!taskId || _watchers.has(taskId)) return;
     _watchers.add(taskId);
-    const listKey = type === 'citations' ? 'citations' : 'publications';
-    const label = type === 'citations' ? 'Citation' : 'Publication';
+    const listKey = type === 'citations' ? 'citations' : (type === 'openalex' ? 'openalex' : 'publications');
+    const label = type === 'citations' ? 'Citation' : (type === 'openalex' ? 'OpenAlex' : 'Publication');
     let tries = 0;
     const MAX_TRIES = 40; // ~2 min at 3s
     const iv = setInterval(() => {
@@ -480,6 +485,7 @@ function _resumeWatchers(data) {
     const nonTerminal = (t) => t && t.id && (t.status === 'PENDING' || t.status === 'IN_PROGRESS');
     _asArray(data?.pubTasks).filter(nonTerminal).forEach((t) => _watchTask('publications', t.id));
     _asArray(data?.citeTasks).filter(nonTerminal).forEach((t) => _watchTask('citations', t.id));
+    _asArray(data?.openAlexTasks).filter(nonTerminal).forEach((t) => _watchTask('openalex', t.id));
 }
 
 function _buildNoProfile() {
@@ -720,9 +726,11 @@ function _triggerOpenAlexSync(btn) {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.json().catch(() => ({}));
         })
-        .then(() => {
+        .then((task) => {
             if (btn) btn.disabled = false;
-            setFeedback('Update started — your works will appear after it runs.', 'var(--app-color-success)');
+            setFeedback('Update started.', 'var(--app-color-success)');
+            // Live row: Queued → Running → Done/Failed, same loop as the Scopus sync history.
+            _prependTaskRow('openalex', task, task?.orcid, null);
         })
         .catch((err) => {
             if (btn) btn.disabled = false;
@@ -743,7 +751,8 @@ function _showSyncError(btn, msg) {
 }
 
 function _prependTaskRow(type, task, scopusId, syncMode) {
-    const tableId = type === 'publications' ? 'publication-tasks' : 'citation-tasks';
+    const tableId = type === 'publications' ? 'publication-tasks'
+        : (type === 'openalex' ? 'openalex-tasks' : 'citation-tasks');
     const table = _mount.querySelector(`#${tableId}`);
 
     if (!table) {
@@ -757,8 +766,8 @@ function _prependTaskRow(type, task, scopusId, syncMode) {
     const tr = document.createElement('tr');
     tr.dataset.taskId = task?.id ?? '';
     tr.innerHTML = `
-      <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? scopusId ?? '—')}</span></td>
-      <td style="font-size:.78rem;white-space:nowrap">${_esc(_modeLabel(task?.syncMode ?? syncMode))}</td>
+      <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? task?.orcid ?? scopusId ?? '—')}</span></td>
+      <td style="font-size:.78rem;white-space:nowrap">${_esc(type === 'openalex' ? 'Author works' : _modeLabel(task?.syncMode ?? syncMode))}</td>
       <td>${_statusBadge(task?.status)}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task?.initiatedDate))}</td>
       <td style="white-space:nowrap;font-size:.78rem">—</td>

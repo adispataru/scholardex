@@ -17,6 +17,12 @@ import java.util.List;
 public class UserOpenAlexTaskFacade {
 
     private final OpenAlexAuthorUpdateRepository openAlexAuthorUpdateRepository;
+    /**
+     * ObjectProvider because the scheduler is {@code @ConditionalOnProperty} — a hard constructor
+     * dependency would fail every context that disables it (same lesson as the Scopus facade).
+     */
+    private final org.springframework.beans.factory.ObjectProvider<ro.uvt.pokedex.core.service.openalex.OpenAlexUpdateScheduler>
+            openAlexUpdateScheduler;
 
     public OpenAlexAuthorUpdate createAuthorTask(String userEmail, OpenAlexAuthorUpdate draft) {
         draft.setInitiator(userEmail);
@@ -29,7 +35,11 @@ public class UserOpenAlexTaskFacade {
         draft.setNextAttemptAt(null);
         draft.setLastErrorCode(null);
         draft.setLastErrorMessage(null);
-        return openAlexAuthorUpdateRepository.save(draft);
+        OpenAlexAuthorUpdate saved = openAlexAuthorUpdateRepository.save(draft);
+        // Best-effort immediate kick: the sync starts within seconds instead of the next poll tick.
+        openAlexUpdateScheduler.ifAvailable(
+                ro.uvt.pokedex.core.service.openalex.OpenAlexUpdateScheduler::triggerImmediatePoll);
+        return saved;
     }
 
     public List<OpenAlexAuthorUpdate> findTasksForUser(String userEmail) {

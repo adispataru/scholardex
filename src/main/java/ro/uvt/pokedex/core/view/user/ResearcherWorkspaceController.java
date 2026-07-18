@@ -457,6 +457,7 @@ public class ResearcherWorkspaceController {
             return ResponseEntity.ok(new WorkspaceProfileViewModel(
                     profile, completeness,
                     tasksVm.tasks(), tasksVm.citationsTasks(),
+                    userOpenAlexTaskFacade.findTasksForUser(freshUser.getEmail()),
                     observedAffiliations,
                     requiresAffiliationConfirmation(profile),
                     researcherOnboardingService.evaluate(profile)   // H70: drives the onboarding wizard
@@ -638,7 +639,8 @@ public class ResearcherWorkspaceController {
             var tasksVm = userScopusTaskFacade.buildTasksView(u.getEmail(), u.getEmail());
             return ResponseEntity.ok(Map.<String, Object>of(
                     "publications", tasksVm.tasks(),
-                    "citations", tasksVm.citationsTasks()));
+                    "citations", tasksVm.citationsTasks(),
+                    "openalex", userOpenAlexTaskFacade.findTasksForUser(u.getEmail())));
         }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
@@ -1142,6 +1144,7 @@ public class ResearcherWorkspaceController {
             int completeness,
             List<ScopusPublicationUpdate> pubTasks,
             List<ScopusCitationsUpdate> citeTasks,
+            List<ro.uvt.pokedex.core.model.tasks.OpenAlexAuthorUpdate> openAlexTasks,
             List<ScholardexAffiliationView> observedAffiliations,
             boolean affiliationConfirmationRequired,
             ro.uvt.pokedex.core.service.application.onboarding.ResearcherOnboardingService.OnboardingStatus onboarding) {}

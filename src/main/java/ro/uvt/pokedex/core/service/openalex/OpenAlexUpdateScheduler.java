@@ -44,27 +44,48 @@ public class OpenAlexUpdateScheduler {
     @Value("${openalex.update.retry.max-backoff-seconds:3600}")
     private long maxBackoffSeconds;
 
+    private final java.util.concurrent.atomic.AtomicBoolean polling =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /**
+     * On-demand kick right after a task is created, so the sync starts within seconds instead of
+     * waiting for the next scheduled tick. Async so the creating HTTP request doesn't block; the
+     * {@code polling} guard makes an overlap with the scheduled poll a cheap no-op.
+     */
+    @org.springframework.scheduling.annotation.Async
+    public void triggerImmediatePoll() {
+        pollQueue();
+    }
+
     @Scheduled(fixedDelayString = "${openalex.update.poll-ms:60000}")
     public void pollQueue() {
-        List<OpenAlexAuthorUpdate> tasks = taskRepo.findByStatusOrderByInitiatedDate(Status.PENDING);
-        if (tasks.isEmpty()) {
+        if (!polling.compareAndSet(false, true)) {
+            log.debug("OpenAlex scheduler poll skipped — another poll is already running");
             return;
         }
-        int processed = 0;
-        Instant now = Instant.now();
-        for (OpenAlexAuthorUpdate task : tasks) {
-            if (!isReadyForAttempt(task.getNextAttemptAt(), now)) {
-                continue;
+        try {
+            List<OpenAlexAuthorUpdate> tasks = taskRepo.findByStatusOrderByInitiatedDate(Status.PENDING);
+            if (tasks.isEmpty()) {
+                return;
             }
-            try {
-                runOne(task);
-                processed++;
-            } catch (Exception e) {
-                handleFailure(task, e);
+            int processed = 0;
+            Instant now = Instant.now();
+            for (OpenAlexAuthorUpdate task : tasks) {
+                if (!isReadyForAttempt(task.getNextAttemptAt(), now)) {
+                    continue;
+                }
+                try {
+                    runOne(task);
+                    processed++;
+                } catch (Exception e) {
+                    handleFailure(task, e);
+                }
             }
-        }
-        if (processed > 0) {
-            log.info("OpenAlex scheduler poll completed: tasksProcessed={}", processed);
+            if (processed > 0) {
+                log.info("OpenAlex scheduler poll completed: tasksProcessed={}", processed);
+            }
+        } finally {
+            polling.set(false);
         }
     }
 
