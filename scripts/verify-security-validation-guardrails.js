@@ -136,17 +136,16 @@ if (fs.existsSync(exportControllerPath)) {
 
 const loginTemplatePath = 'src/main/resources/templates/login.html';
 const loginTemplate = fs.readFileSync(loginTemplatePath, 'utf8');
-if (!/name="username"/.test(loginTemplate)) {
-  errors.push(`${loginTemplatePath}: login form must keep name=\"username\" for Spring form-login compatibility.`);
+// OIDC-only auth (H84 purist model): the login page must NOT advertise a password path —
+// there is no form login in the app. The only sign-in action is the Keycloak authorization URL.
+if (/name="password"/.test(loginTemplate)) {
+  errors.push(`${loginTemplatePath}: OIDC-only auth — the login page must not contain a password field.`);
 }
-if (!/autocomplete="username"/.test(loginTemplate)) {
-  errors.push(`${loginTemplatePath}: login username/email input must declare autocomplete=\"username\".`);
+if (/name="username"/.test(loginTemplate)) {
+  errors.push(`${loginTemplatePath}: OIDC-only auth — the login page must not contain a username field.`);
 }
-if (!/name="password"/.test(loginTemplate)) {
-  errors.push(`${loginTemplatePath}: login form must keep name=\"password\" for Spring form-login compatibility.`);
-}
-if (!/autocomplete="current-password"/.test(loginTemplate)) {
-  errors.push(`${loginTemplatePath}: login password input must declare autocomplete=\"current-password\".`);
+if (!/\/oauth2\/authorization\/keycloak/.test(loginTemplate)) {
+  errors.push(`${loginTemplatePath}: login page must link the Keycloak authorization endpoint.`);
 }
 
 const securityConfigPath = 'src/main/java/ro/uvt/pokedex/core/config/WebSecurityConfig.java';

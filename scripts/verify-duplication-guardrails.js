@@ -53,7 +53,7 @@ if (!exists(csScoringPath)) {
   const csContent = read(csScoringPath);
   requirePattern(
     csContent,
-    /case\s+"ar"\s*,\s*"re"\s*->\s*journalScoringService\.getScore\(publication,\s*indicator\)/,
+    /case\s+"ar"\s*,\s*"re"(?:\s*,\s*"[a-z]+")*\s*->\s*journalScoringService\.getScore\(publication,\s*indicator\)/,
     `${csScoringPath}: publication dispatch must route ar/re to ComputerScienceJournalScoringService`
   );
   requirePattern(
