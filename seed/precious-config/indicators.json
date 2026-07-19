@@ -1,6 +1,8 @@
 [
 {
-  "_id": "ObjectId('683618f381a0fe77d6a1c04c')",
+  "_id": {
+   "$oid": "683618f381a0fe77d6a1c04c"
+  },
   "name": "FEEA_P",
   "formula": "M * (1 - (N-1) * 0.1) * S",
   "version": 1,
