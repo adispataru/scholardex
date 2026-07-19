@@ -47,6 +47,7 @@ public class ResearcherReportController {
     private final ResearcherAccessService researcherAccess;
     private final UserService userService;
     private final UserReportFacade userReportFacade;
+    private final ro.uvt.pokedex.core.service.application.UserIndicatorResultService userIndicatorResultService;
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
     private final ReportTransferFacade reportTransferFacade;
@@ -144,10 +145,11 @@ public class ResearcherReportController {
     }
 
     /**
-     * Delegated indicator drilldown (read-only). Always report-scoped — uses
-     * {@code buildReportScopedIndicatorDetail} (pure compute, no persistence) and 404s when the
-     * indicator yields nothing, never falling back to the cache-writing {@code getOrCreateLatest}
-     * path the researcher's own endpoint uses. The JSON is built by the shared
+     * Delegated indicator drilldown (read-only). Always report-scoped — served from the last run
+     * refresh's fingerprint-fresh indicator snapshot when available, else a live compute; NEITHER
+     * path persists anything ({@code getReportScopedDetail} never writes), and it never falls back
+     * to the cache-writing {@code getOrCreateLatest} path the researcher's own endpoint uses. 404s
+     * when the indicator yields nothing. The JSON is built by the shared
      * {@link IndicatorDetailResponseAssembler}, so it is identical to the researcher's own drilldown.
      */
     @GetMapping("/{email}/indicator/{indicatorId}/detail")
@@ -157,7 +159,7 @@ public class ResearcherReportController {
                                                                              @PathVariable String indicatorId,
                                                                              @RequestParam("report") String reportId) {
         Optional<IndicatorApplyResultDto> result =
-                userReportFacade.buildReportScopedIndicatorDetail(email, reportId, indicatorId);
+                userIndicatorResultService.getReportScopedDetail(email, reportId, indicatorId);
         return result.map(r -> ResponseEntity.ok(
                         IndicatorDetailResponseAssembler.buildDetail(r, userReportFacade::resolveForumName)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -171,7 +173,7 @@ public class ResearcherReportController {
                                                                            @RequestParam("pub") String pubTitle,
                                                                            @RequestParam("report") String reportId) {
         Optional<IndicatorApplyResultDto> result =
-                userReportFacade.buildReportScopedIndicatorDetail(email, reportId, indicatorId);
+                userIndicatorResultService.getReportScopedDetail(email, reportId, indicatorId);
         return result.map(r -> ResponseEntity.ok(IndicatorDetailResponseAssembler.buildCitations(r, pubTitle)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

@@ -82,6 +82,38 @@ public class UserIndicatorResultService {
         return userIndicatorResultRepository.save(snapshot);
     }
 
+    /**
+     * Read-through for the workbench indicator drilldown: serve the report-scoped SNAPSHOT the last
+     * run refresh persisted — the run refresh computes the same rich detail through the same path,
+     * so a fingerprint-fresh snapshot (same indicator config + reporting data epoch) is byte-for-byte
+     * what a live compute would produce, without the ~500–1,600 lookup queries. Falls back to the
+     * live compute when the snapshot is missing, belongs to another report (the SNAPSHOT slot is one
+     * per user+indicator), or its fingerprint is stale (config/epoch changed since the last refresh).
+     *
+     * <p>NEVER writes: refresh is the only snapshot writer, so delegated (admin/supervisor) viewing
+     * stays read-only and the drilldown stays consistent with the run totals the page header shows.
+     */
+    public Optional<IndicatorApplyResultDto> getReportScopedDetail(
+            String userEmail, String reportId, String indicatorId) {
+        Optional<IndicatorApplyResultDto> fresh = findFreshReportScopedSnapshot(userEmail, reportId, indicatorId);
+        if (fresh.isPresent()) {
+            return fresh;
+        }
+        return userReportFacade.buildReportScopedIndicatorDetail(userEmail, reportId, indicatorId);
+    }
+
+    private Optional<IndicatorApplyResultDto> findFreshReportScopedSnapshot(
+            String userEmail, String reportId, String indicatorId) {
+        if (reportId == null || reportId.isBlank()) {
+            return Optional.empty();
+        }
+        return userIndicatorResultRepository
+                .findByUserEmailAndIndicatorIdAndMode(userEmail, indicatorId, UserIndicatorResult.Mode.SNAPSHOT)
+                .filter(snapshot -> reportId.equals(snapshot.getSourceReportId()))
+                .filter(snapshot -> buildFingerprint(indicatorId).equals(snapshot.getFingerprint()))
+                .map(snapshot -> toDto(snapshot, IndicatorApplyResultDto.Source.PERSISTED));
+    }
+
     public int getLatestRefreshVersion(String userEmail, String indicatorId) {
         return userIndicatorResultRepository
                 .findByUserEmailAndIndicatorIdAndMode(userEmail, indicatorId, UserIndicatorResult.Mode.LATEST)

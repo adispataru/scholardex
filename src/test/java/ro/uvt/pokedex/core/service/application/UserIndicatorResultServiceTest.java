@@ -91,6 +91,79 @@ class UserIndicatorResultServiceTest {
         verify(userReportFacade, times(0)).buildIndicatorApplyView(any(), any());
     }
 
+    private UserIndicatorResult reportScopedSnapshot(String reportId, String fingerprint) {
+        UserIndicatorResult snapshot = new UserIndicatorResult();
+        snapshot.setId("snap-1");
+        snapshot.setIndicatorId("ind-1");
+        snapshot.setMode(UserIndicatorResult.Mode.SNAPSHOT);
+        snapshot.setSourceType(UserIndicatorResult.SourceType.REPORT_RUN);
+        snapshot.setSourceReportId(reportId);
+        snapshot.setFingerprint(fingerprint);
+        snapshot.setViewName("user/indicators-apply-publications");
+        snapshot.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(Map.of("total", "8.00")));
+        snapshot.setCreatedAt(Instant.now());
+        snapshot.setUpdatedAt(Instant.now());
+        return snapshot;
+    }
+
+    private Indicator publicationsIndicator() {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
+        indicator.setFormula("S");
+        return indicator;
+    }
+
+    @Test
+    void getReportScopedDetailServesFreshSnapshotWithoutComputingOrWriting() {
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(publicationsIndicator()));
+        UserIndicatorResult snapshot = reportScopedSnapshot("rep-1",
+                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode(
+                "u@uvt.ro", "ind-1", UserIndicatorResult.Mode.SNAPSHOT)).thenReturn(Optional.of(snapshot));
+
+        Optional<IndicatorApplyResultDto> dto = service.getReportScopedDetail("u@uvt.ro", "rep-1", "ind-1");
+
+        assertEquals(IndicatorApplyResultDto.Source.PERSISTED, dto.orElseThrow().source());
+        assertEquals("snap-1", dto.orElseThrow().resultId());
+        verify(userReportFacade, times(0)).buildReportScopedIndicatorDetail(any(), any(), any());
+        verify(userIndicatorResultRepository, times(0)).save(any());
+    }
+
+    @Test
+    void getReportScopedDetailFallsBackToLiveComputeWhenFingerprintStale() {
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(publicationsIndicator()));
+        // Snapshot fingerprinted at an older reporting data epoch — a projection rebuild happened since.
+        UserIndicatorResult stale = reportScopedSnapshot("rep-1",
+                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-OLD");
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode(
+                "u@uvt.ro", "ind-1", UserIndicatorResult.Mode.SNAPSHOT)).thenReturn(Optional.of(stale));
+        when(userReportFacade.buildReportScopedIndicatorDetail("u@uvt.ro", "rep-1", "ind-1"))
+                .thenReturn(Optional.empty());
+
+        service.getReportScopedDetail("u@uvt.ro", "rep-1", "ind-1");
+
+        verify(userReportFacade).buildReportScopedIndicatorDetail("u@uvt.ro", "rep-1", "ind-1");
+        // Read path never writes — refresh is the only snapshot writer.
+        verify(userIndicatorResultRepository, times(0)).save(any());
+    }
+
+    @Test
+    void getReportScopedDetailFallsBackWhenSnapshotBelongsToAnotherReport() {
+        // No indicatorRepository stub: the report-id filter short-circuits before fingerprinting.
+        UserIndicatorResult otherReport = reportScopedSnapshot("rep-OTHER",
+                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode(
+                "u@uvt.ro", "ind-1", UserIndicatorResult.Mode.SNAPSHOT)).thenReturn(Optional.of(otherReport));
+        when(userReportFacade.buildReportScopedIndicatorDetail("u@uvt.ro", "rep-1", "ind-1"))
+                .thenReturn(Optional.empty());
+
+        service.getReportScopedDetail("u@uvt.ro", "rep-1", "ind-1");
+
+        verify(userReportFacade).buildReportScopedIndicatorDetail("u@uvt.ro", "rep-1", "ind-1");
+    }
+
     @Test
     void getOrCreateLatestRecomputesWhenDataEpochAdvances() {
         Indicator indicator = new Indicator();

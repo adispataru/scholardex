@@ -354,22 +354,28 @@ public final class IndicatorDetailResponseAssembler {
     }
 
     private static String indicatorNameFrom(Map<String, Object> graph) {
-        Object ind = graph.get("indicator");
-        if (ind == null) return null;
-        try {
-            Object name = ind.getClass().getMethod("getName").invoke(ind);
-            return name != null ? name.toString() : null;
-        } catch (Exception e) {
-            return null;
-        }
+        return indicatorPropertyFrom(graph, "getName", "name");
     }
 
     private static String outputTypeFrom(Map<String, Object> graph) {
+        return indicatorPropertyFrom(graph, "getOutputType", "outputType");
+    }
+
+    /**
+     * The graph's indicator is a live {@code Indicator} bean on the compute path but a plain map after a
+     * persisted-snapshot round-trip (the payload serializer stores it as JSON) — read both forms, like
+     * the Score handling elsewhere in this assembler.
+     */
+    private static String indicatorPropertyFrom(Map<String, Object> graph, String getter, String mapKey) {
         Object ind = graph.get("indicator");
         if (ind == null) return null;
+        if (ind instanceof Map<?, ?> map) {
+            Object value = map.get(mapKey);
+            return value != null ? value.toString() : null;
+        }
         try {
-            Object ot = ind.getClass().getMethod("getOutputType").invoke(ind);
-            return ot != null ? ot.toString() : null;
+            Object value = ind.getClass().getMethod(getter).invoke(ind);
+            return value != null ? value.toString() : null;
         } catch (Exception e) {
             return null;
         }

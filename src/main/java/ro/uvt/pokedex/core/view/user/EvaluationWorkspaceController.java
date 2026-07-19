@@ -236,7 +236,7 @@ public class EvaluationWorkspaceController {
             Authentication authentication) {
         return currentUser(authentication).map(user -> {
             IndicatorApplyResultDto result = (reportId != null && !reportId.isBlank())
-                    ? userReportFacade.buildReportScopedIndicatorDetail(user.getEmail(), reportId, indicatorId)
+                    ? userIndicatorResultService.getReportScopedDetail(user.getEmail(), reportId, indicatorId)
                             .orElseGet(() -> userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId))
                     : userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId);
             return ResponseEntity.ok(IndicatorDetailResponseAssembler.buildDetail(result, userReportFacade::resolveForumName));
@@ -254,7 +254,7 @@ public class EvaluationWorkspaceController {
             Authentication authentication) {
         return currentUser(authentication).map(user -> {
             IndicatorApplyResultDto result = (reportId != null && !reportId.isBlank())
-                    ? userReportFacade.buildReportScopedIndicatorDetail(user.getEmail(), reportId, indicatorId)
+                    ? userIndicatorResultService.getReportScopedDetail(user.getEmail(), reportId, indicatorId)
                             .orElseGet(() -> userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId))
                     : userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId);
             return ResponseEntity.ok(IndicatorDetailResponseAssembler.buildCitations(result, pubTitle));

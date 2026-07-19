@@ -530,8 +530,13 @@ public class UserReportFacade {
     public Optional<IndicatorApplyResultDto> buildReportScopedIndicatorDetail(
             String userEmail, String reportId, String indicatorId) {
         // H60: resolve relative year specs against a referenceYear (current year on this live-detail path).
+        // Memoization refresh-scope: without it every getOrCompute in the reporting lookups is a raw
+        // pass-through, so one interactive detail click re-queried the same forum's rankings dozens of
+        // times (~1.6k Postgres round-trips for a citations indicator). The run-refresh path already
+        // opens an outer scope; withRefreshScope nests as a no-op there (owner-checked).
         return ScoringReferenceYearContext.with(effectiveReferenceYear(),
-                () -> buildReportScopedIndicatorDetailInternal(userEmail, reportId, indicatorId));
+                () -> reportingLookupMemoization.withRefreshScope(
+                        () -> buildReportScopedIndicatorDetailInternal(userEmail, reportId, indicatorId)));
     }
 
     private Optional<IndicatorApplyResultDto> buildReportScopedIndicatorDetailInternal(

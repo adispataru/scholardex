@@ -60,6 +60,8 @@ class ResearcherReportControllerContractTest {
     @MockitoBean
     private UserReportFacade userReportFacade;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.UserIndicatorResultService userIndicatorResultService;
+    @MockitoBean
     private UserIndividualReportRunService userIndividualReportRunService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.ReportTransferFacade reportTransferFacade; // export + assembler dep
@@ -213,7 +215,7 @@ class ResearcherReportControllerContractTest {
                 "r", "ind-1", "view", graph,
                 new IndicatorApplyResultDto.Summary(7.0, null, List.of(), List.of()),
                 IndicatorApplyResultDto.Source.COMPUTED, null, java.time.Instant.now(), 0);
-        when(userReportFacade.buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-1"))
+        when(userIndicatorResultService.getReportScopedDetail(EMAIL, "rep-1", "ind-1"))
                 .thenReturn(Optional.of(dto));
 
         mockMvc.perform(get("/reports/researcher/{email}/indicator/{id}/detail", EMAIL, "ind-1")
@@ -223,12 +225,12 @@ class ResearcherReportControllerContractTest {
                 .andExpect(content().string(containsString("Paper A")));
 
         // Read-only: report-scoped compute only (no cache-writing getOrCreateLatest path exists here).
-        verify(userReportFacade).buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-1");
+        verify(userIndicatorResultService).getReportScopedDetail(EMAIL, "rep-1", "ind-1");
     }
 
     @Test
     void indicatorDetailNotFoundWhenComputeEmpty() throws Exception {
-        when(userReportFacade.buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-x"))
+        when(userIndicatorResultService.getReportScopedDetail(EMAIL, "rep-1", "ind-x"))
                 .thenReturn(Optional.empty());
 
         mockMvc.perform(get("/reports/researcher/{email}/indicator/{id}/detail", EMAIL, "ind-x")
@@ -251,7 +253,7 @@ class ResearcherReportControllerContractTest {
                 "r", "ind-1", "view", graph,
                 new IndicatorApplyResultDto.Summary(4.0, null, List.of(), List.of()),
                 IndicatorApplyResultDto.Source.COMPUTED, null, java.time.Instant.now(), 0);
-        when(userReportFacade.buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-1"))
+        when(userIndicatorResultService.getReportScopedDetail(EMAIL, "rep-1", "ind-1"))
                 .thenReturn(Optional.of(dto));
 
         mockMvc.perform(get("/reports/researcher/{email}/indicator/{id}/citations", EMAIL, "ind-1")

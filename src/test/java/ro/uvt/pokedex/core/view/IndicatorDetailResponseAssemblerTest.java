@@ -36,6 +36,27 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void indicatorNameAndOutputTypeReadBothBeanAndSnapshotMapForms() {
+        // Live compute puts the Indicator bean in the graph; a persisted-snapshot round-trip stores it
+        // as a plain map. Both must surface indicatorName/outputType (the snapshot read-through serves
+        // the map form on every fingerprint-fresh drilldown).
+        ro.uvt.pokedex.core.model.reporting.Indicator bean = new ro.uvt.pokedex.core.model.reporting.Indicator();
+        bean.setName("Info_B_Conferințe 2026");
+        Map<String, Object> beanGraph = new LinkedHashMap<>();
+        beanGraph.put("indicator", bean);
+        beanGraph.put("scores", new LinkedHashMap<>());
+        var beanDetail = IndicatorDetailResponseAssembler.buildDetail(dto(beanGraph, 0.0), id -> null);
+        org.junit.jupiter.api.Assertions.assertEquals("Info_B_Conferințe 2026", beanDetail.indicatorName());
+
+        Map<String, Object> mapGraph = new LinkedHashMap<>();
+        mapGraph.put("indicator", Map.of("name", "Info_B_Conferințe 2026", "outputType", "PUBLICATIONS"));
+        mapGraph.put("scores", new LinkedHashMap<>());
+        var mapDetail = IndicatorDetailResponseAssembler.buildDetail(dto(mapGraph, 0.0), id -> null);
+        org.junit.jupiter.api.Assertions.assertEquals("Info_B_Conferințe 2026", mapDetail.indicatorName());
+        org.junit.jupiter.api.Assertions.assertEquals("PUBLICATIONS", mapDetail.outputType());
+    }
+
+    @Test
     void buildDetailShowsCategorizedItemsIncludingFormulaZeroedAndSkipsTotal() {
         Map<String, Object> scores = new LinkedHashMap<>();
         scores.put("Paper A", score(5.0, 3.0, 2022, "Q1"));   // author > 0 → shown
