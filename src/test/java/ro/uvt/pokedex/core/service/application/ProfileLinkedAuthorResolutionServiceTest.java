@@ -99,4 +99,19 @@ class ProfileLinkedAuthorResolutionServiceTest {
         fact.setId(id);
         return fact;
     }
+
+    @org.junit.jupiter.api.Test
+    void firstOpenAlexIdMapSkipsAuthorsWithoutOpenAlexKeysAndBatchesOneRead() {
+        ScholardexAuthorFact withKey = fact("sauth_1");
+        withKey.setOpenAlexAuthorIds(new java.util.ArrayList<>(java.util.List.of("A111", "A222")));
+        ScholardexAuthorFact withoutKey = fact("sauth_2");
+        when(scholardexAuthorFactRepository.findByIdIn(any()))
+                .thenReturn(java.util.List.of(withKey, withoutKey));
+
+        var map = service.firstOpenAlexAuthorIdByCanonicalIds(java.util.List.of("sauth_1", "sauth_2"));
+
+        assertEquals(java.util.Map.of("sauth_1", "A111"), map);
+        assertTrue(service.firstOpenAlexAuthorIdByCanonicalIds(java.util.List.of()).isEmpty());
+        verify(scholardexAuthorFactRepository, org.mockito.Mockito.times(1)).findByIdIn(any());
+    }
 }

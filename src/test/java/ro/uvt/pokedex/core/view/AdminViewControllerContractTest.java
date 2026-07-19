@@ -93,7 +93,7 @@ class AdminViewControllerContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.importing.StaffImportService staffImportService;
     @MockitoBean
-    private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository authorFactRepository;
+    private ro.uvt.pokedex.core.service.application.ProfileLinkedAuthorResolutionService profileLinkedAuthorResolutionService;
 
     @Test
     void sharedNavbarRendersPostLogoutControl() throws Exception {

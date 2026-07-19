@@ -65,7 +65,7 @@ public class AdminViewController {
     private final AdminDashboardService adminDashboardService;
     private final GroupManagementFacade groupManagementFacade;
     private final StaffImportService staffImportService;
-    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository authorFactRepository;
+    private final ro.uvt.pokedex.core.service.application.ProfileLinkedAuthorResolutionService profileLinkedAuthorResolutionService;
     private final String Country = "Romania";
 
     @Value("${h07.staff.import.max-bytes:2097152}")
@@ -109,12 +109,8 @@ public class AdminViewController {
             }
         }
         if (primaryByEmail.isEmpty()) return Map.of();
-        Map<String, String> openAlexByAuthorId = new HashMap<>();
-        for (var author : authorFactRepository.findByIdIn(new HashSet<>(primaryByEmail.values()))) {
-            if (author.getOpenAlexAuthorIds() != null && !author.getOpenAlexAuthorIds().isEmpty()) {
-                openAlexByAuthorId.put(author.getId(), author.getOpenAlexAuthorIds().get(0));
-            }
-        }
+        Map<String, String> openAlexByAuthorId =
+                profileLinkedAuthorResolutionService.firstOpenAlexAuthorIdByCanonicalIds(primaryByEmail.values());
         Map<String, String> result = new HashMap<>();
         primaryByEmail.forEach((email, authorId) -> {
             String openAlex = openAlexByAuthorId.get(authorId);
@@ -129,11 +125,9 @@ public class AdminViewController {
                 || profile.getPrimaryScholardexAuthorId().isBlank()) {
             return null;
         }
-        return authorFactRepository.findById(profile.getPrimaryScholardexAuthorId())
-                .map(a -> a.getOpenAlexAuthorIds())
-                .filter(ids -> ids != null && !ids.isEmpty())
-                .map(ids -> ids.get(0))
-                .orElse(null);
+        return profileLinkedAuthorResolutionService
+                .firstOpenAlexAuthorIdByCanonicalIds(java.util.List.of(profile.getPrimaryScholardexAuthorId()))
+                .get(profile.getPrimaryScholardexAuthorId());
     }
 
     private List<StatCardDef> buildUserStatCards(List<User> users) {

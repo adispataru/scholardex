@@ -111,6 +111,31 @@ if (reportingImportsInControllers.length > 0) {
   );
 }
 
+// Body-level lock (2026-07-18): import-only checks were evaded by fully-qualified references
+// (e.g. `private final ro.uvt.pokedex.core.service.reporting.transfer.X x;`). Any occurrence of a
+// gated package name anywhere in a controller/view file now trips the rule — imports included.
+// The reporting rule is fully clean, so there is NO allowlist; the repository rule reuses the
+// import allowlist above (an allowed import legitimately mentions the package in its import line).
+const reportingBodyRefs = runRg(
+  'ro\\.uvt\\.pokedex\\.core\\.service\\.reporting\\.',
+  controllerRoots
+);
+if (reportingBodyRefs.length > 0) {
+  reportingBodyRefs.forEach((line) =>
+    errors.push(`${line}: Z1 -> Z3 reporting reference (fully-qualified or import) is forbidden — go through a service/application facade.`)
+  );
+}
+
+const repositoryBodyRefs = runRg(
+  'ro\\.uvt\\.pokedex\\.core\\.repository\\.',
+  controllerRoots
+).filter((line) => !allowedControllerRepositoryImports.has(pathFromRgLine(line)));
+if (repositoryBodyRefs.length > 0) {
+  repositoryBodyRefs.forEach((line) =>
+    errors.push(`${line}: Z1 -> Z4 repository reference (fully-qualified or import) is forbidden — go through a service/application facade.`)
+  );
+}
+
 const cacheServiceInReporting = runRg(
   'CacheService',
   reportingRoot

@@ -97,7 +97,7 @@ class RankingViewSecurityContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.importing.StaffImportService staffImportService;
     @MockitoBean
-    private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository scholardexAuthorFactRepository;
+    private ro.uvt.pokedex.core.service.application.ProfileLinkedAuthorResolutionService profileLinkedAuthorResolutionService;
 
     @BeforeEach
     void setupDefaults() {

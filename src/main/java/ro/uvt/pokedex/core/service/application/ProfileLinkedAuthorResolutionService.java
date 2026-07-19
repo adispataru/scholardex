@@ -52,4 +52,22 @@ public class ProfileLinkedAuthorResolutionService {
         }
         return new ArrayList<>(canonicalIds);
     }
+
+    /**
+     * First OpenAlex author id per canonical author id (the admin users table's "OpenAlex" column);
+     * ids whose author fact carries no OpenAlex key are absent from the map. One batched read.
+     */
+    public java.util.Map<String, String> firstOpenAlexAuthorIdByCanonicalIds(
+            java.util.Collection<String> canonicalAuthorIds) {
+        if (canonicalAuthorIds == null || canonicalAuthorIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, String> result = new java.util.HashMap<>();
+        for (ScholardexAuthorFact author : scholardexAuthorFactRepository.findByIdIn(new LinkedHashSet<>(canonicalAuthorIds))) {
+            if (author.getId() != null && author.getOpenAlexAuthorIds() != null && !author.getOpenAlexAuthorIds().isEmpty()) {
+                result.put(author.getId(), author.getOpenAlexAuthorIds().get(0));
+            }
+        }
+        return result;
+    }
 }
