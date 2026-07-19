@@ -75,6 +75,21 @@ class ResearcherShellServiceTest {
     }
 
     @Test
+    void rejectsOverlongAndRedosProbeInputsQuickly() {
+        // RFC 5321 cap: anything over 254 chars is invalid before the regex even runs.
+        assertEquals(ResearcherShellService.Result.INVALID_EMAIL,
+                service.createShell("a".repeat(250) + "@e-uvt.ro"));
+        // The CodeQL polynomial-redos probe shape ('!@!.' + many '!.') — must return, and reject, fast.
+        long start = System.nanoTime();
+        assertEquals(ResearcherShellService.Result.INVALID_EMAIL,
+                service.createShell("!@!." + "!.".repeat(120)));
+        org.junit.jupiter.api.Assertions.assertTrue((System.nanoTime() - start) < 1_000_000_000L);
+        // Consecutive-dot domains are malformed and now rejected by the unambiguous pattern.
+        assertEquals(ResearcherShellService.Result.INVALID_EMAIL, service.createShell("x@a..b"));
+        verify(userService, never()).createUser(any(User.class));
+    }
+
+    @Test
     void reportsAlreadyExistsWhenTheAccountIsPresent() {
         // createUser returns empty when the email already exists — never overwrites.
         when(userService.createUser(any(User.class))).thenReturn(Optional.empty());

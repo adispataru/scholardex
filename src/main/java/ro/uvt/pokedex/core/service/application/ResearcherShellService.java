@@ -27,7 +27,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ResearcherShellService {
 
-    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    /**
+     * Linear-time email shape check: dot-separated domain labels may not contain dots, so the regex
+     * has no ambiguous backtracking (the old {@code [^@\s]+\.[^@\s]+} form was polynomial on inputs
+     * like {@code a@a.a.a...} — CodeQL java/polynomial-redos #31). Paired with the RFC 5321 length
+     * cap below so even the linear scan is bounded.
+     */
+    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$");
+
+    /** RFC 5321 maximum total length of an address. */
+    private static final int MAX_EMAIL_LENGTH = 254;
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
@@ -40,7 +49,7 @@ public class ResearcherShellService {
 
     public Result createShell(String rawEmail) {
         String email = rawEmail == null ? "" : rawEmail.strip().toLowerCase();
-        if (!EMAIL.matcher(email).matches()) {
+        if (email.length() > MAX_EMAIL_LENGTH || !EMAIL.matcher(email).matches()) {
             return Result.INVALID_EMAIL;
         }
         if (!isAllowedDomain(email)) {

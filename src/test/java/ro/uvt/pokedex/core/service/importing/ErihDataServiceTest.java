@@ -42,7 +42,7 @@ class ErihDataServiceTest {
         Files.writeString(path, jsonl);
         when(erihJournalFactRepository.findByIdIn(anyCollection())).thenReturn(List.of());
 
-        ErihDataService service = new ErihDataService(erihJournalFactRepository);
+        ErihDataService service = new ErihDataService(new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"), erihJournalFactRepository);
         ImportProcessingResult result = service.importErihJsonlFromPath(path.toString(), "b1", "2026");
 
         assertEquals(3, result.getProcessedCount());

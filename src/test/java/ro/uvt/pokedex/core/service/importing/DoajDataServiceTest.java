@@ -47,7 +47,7 @@ class DoajDataServiceTest {
                 """;
         Path path = writeCsv(dir, csv);
         when(doajJournalFactRepository.findByIdIn(anyCollection())).thenReturn(List.of());
-        DoajDataService service = new DoajDataService(doajJournalFactRepository);
+        DoajDataService service = new DoajDataService(new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"), doajJournalFactRepository);
         service.importDoajCsvFromPath(path.toString(), "b1", "2026");
 
         ArgumentCaptor<List<DoajJournalFact>> captor = ArgumentCaptor.forClass(List.class);
@@ -71,7 +71,7 @@ class DoajDataServiceTest {
         Path path = writeCsv(dir, csv);
         when(doajJournalFactRepository.findByIdIn(anyCollection())).thenReturn(List.of());
 
-        DoajDataService service = new DoajDataService(doajJournalFactRepository);
+        DoajDataService service = new DoajDataService(new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"), doajJournalFactRepository);
         ImportProcessingResult result = service.importDoajCsvFromPath(path.toString(), "b1", "2026");
 
         assertEquals(3, result.getProcessedCount());
@@ -110,7 +110,7 @@ class DoajDataServiceTest {
         existing.setCreatedAt(java.time.Instant.parse("2020-01-01T00:00:00Z"));
         when(doajJournalFactRepository.findByIdIn(anyCollection())).thenReturn(List.of(existing));
 
-        DoajDataService service = new DoajDataService(doajJournalFactRepository);
+        DoajDataService service = new DoajDataService(new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"), doajJournalFactRepository);
         ImportProcessingResult result = service.importDoajCsvFromPath(path.toString(), "b2", "2026");
 
         assertEquals(1, result.getProcessedCount());

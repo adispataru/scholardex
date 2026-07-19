@@ -44,6 +44,7 @@ public class DoajDataService {
     private static final String COL_EISSN = "Journal EISSN (online version)";
     private static final String COL_APC = "APC"; // H79 — Yes/No: does the OA journal charge an APC?
 
+    private final ImportPathGuard importPathGuard;
     private final DoajJournalFactRepository doajJournalFactRepository;
 
     /**
@@ -52,9 +53,10 @@ public class DoajDataService {
      * @param asOf snapshot stamp surfaced as {@code membership_view.as_of} (e.g. the dump year); may be null.
      */
     public ImportProcessingResult importDoajCsvFromPath(String absolutePath, String batchId, String asOf) {
+        java.io.File source = importPathGuard.resolveWithinAllowedRoots(absolutePath);
         ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         Instant now = Instant.now();
-        try (CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(absolutePath), StandardCharsets.UTF_8))) {
+        try (CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(source), StandardCharsets.UTF_8))) {
             List<String[]> rows = reader.readAll();
             if (rows.isEmpty()) {
                 logger.warn("DOAJ CSV is empty: path={}", absolutePath);

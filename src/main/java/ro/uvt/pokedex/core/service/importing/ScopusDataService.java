@@ -61,6 +61,7 @@ public class ScopusDataService {
     private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
             new CanonicalBuildOptions(null, null, true, null, null, false, false);
 
+    private final ImportPathGuard importPathGuard;
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
@@ -253,9 +254,10 @@ public class ScopusDataService {
      * {@code FORUM} event per source, carrying forumType + asjc through the standard FORUM ingestion path.
      */
     public ImportProcessingResult importCiteScoreCsvFromPath(String absolutePath, String batchId) {
+        java.io.File source = importPathGuard.resolveWithinAllowedRoots(absolutePath);
         ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         long startedAtNanos = System.nanoTime();
-        try (CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(absolutePath), StandardCharsets.UTF_8))) {
+        try (CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(source), StandardCharsets.UTF_8))) {
             List<String[]> rows = reader.readAll();
             if (rows.isEmpty()) {
                 logger.warn("CiteScore CSV is empty: path={}", absolutePath);

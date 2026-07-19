@@ -331,7 +331,13 @@ public class AdminInitializationController {
         String effectiveBatchId = (batchId == null || batchId.isBlank())
                 ? "citescore-" + java.time.Instant.now().toEpochMilli()
                 : batchId;
-        var result = scopusDataService.importCiteScoreCsvFromPath(path, effectiveBatchId);
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result;
+        try {
+            result = scopusDataService.importCiteScoreCsvFromPath(path, effectiveBatchId);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/admin/initialization";
+        }
         redirectAttributes.addFlashAttribute("successMessage",
                 "CiteScore import complete (batchId=" + effectiveBatchId + "). processed=" + result.getProcessedCount()
                         + ", imported=" + result.getImportedCount()
@@ -354,7 +360,13 @@ public class AdminInitializationController {
         String effectiveBatchId = (batchId == null || batchId.isBlank())
                 ? "doaj-" + java.time.Instant.now().toEpochMilli()
                 : batchId;
-        var result = doajDataService.importDoajCsvFromPath(path, effectiveBatchId, asOf);
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result;
+        try {
+            result = doajDataService.importDoajCsvFromPath(path, effectiveBatchId, asOf);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/admin/initialization";
+        }
         redirectAttributes.addFlashAttribute("successMessage",
                 "DOAJ import complete (batchId=" + effectiveBatchId + ", asOf=" + asOf + "). processed=" + result.getProcessedCount()
                         + ", imported=" + result.getImportedCount()
@@ -377,7 +389,13 @@ public class AdminInitializationController {
         String effectiveBatchId = (batchId == null || batchId.isBlank())
                 ? "erih-" + java.time.Instant.now().toEpochMilli()
                 : batchId;
-        var result = erihDataService.importErihJsonlFromPath(path, effectiveBatchId, asOf);
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result;
+        try {
+            result = erihDataService.importErihJsonlFromPath(path, effectiveBatchId, asOf);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/admin/initialization";
+        }
         redirectAttributes.addFlashAttribute("successMessage",
                 "ERIH import complete (batchId=" + effectiveBatchId + ", asOf=" + asOf + "). processed=" + result.getProcessedCount()
                         + ", imported=" + result.getImportedCount()

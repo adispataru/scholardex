@@ -39,6 +39,7 @@ class ScopusDataServiceTest {
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository =
             mock(ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository.class);
     private final ScopusDataService service = new ScopusDataService(
+            new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"),
             mock(ScopusImportEventRepository.class),
             importEventIngestionService,
             materializationService,
@@ -53,7 +54,7 @@ class ScopusDataServiceTest {
     void loadScopusDataIfEmptySync_repoHasData_returnsFalse() {
         ScopusImportEventRepository repo = mock(ScopusImportEventRepository.class);
         when(repo.count()).thenReturn(5L);
-        ScopusDataService svc = new ScopusDataService(repo, importEventIngestionService, materializationService, bookFactRepository);
+        ScopusDataService svc = new ScopusDataService(new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"), repo, importEventIngestionService, materializationService, bookFactRepository);
 
         assertFalse(svc.loadScopusDataIfEmptySync("/irrelevant"));
         verify(importEventIngestionService, never()).ingest(any(), any(), any(), any(), any(), any(), any());
@@ -65,7 +66,7 @@ class ScopusDataServiceTest {
         when(repo.count()).thenReturn(0L);
         ScopusImportEventIngestionService ingestion = mock(ScopusImportEventIngestionService.class);
         ScopusCanonicalMaterializationService materialization = mock(ScopusCanonicalMaterializationService.class);
-        ScopusDataService svc = new ScopusDataService(repo, ingestion, materialization,
+        ScopusDataService svc = new ScopusDataService(new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"), repo, ingestion, materialization,
                 mock(ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository.class));
 
         Path file = tempDir.resolve("scopus.json");
@@ -441,6 +442,7 @@ class ScopusDataServiceTest {
 
     private ScopusDataService serviceWithRealIngestion(ScopusImportEventRepository repository) {
         return new ScopusDataService(
+                new ro.uvt.pokedex.core.service.importing.ImportPathGuard("/"),
                 repository,
                 new ScopusImportEventIngestionService(repository, objectMapper, null),
                 mock(ScopusCanonicalMaterializationService.class),

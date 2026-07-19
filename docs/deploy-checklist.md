@@ -44,6 +44,7 @@ every container, including one-shot Jobs. Suggested app pod: requests 1 CPU / 5G
 | `SCOPUS_PYTHON_BASE_URL` | `scholardex-scopus-python.scholardex.svc:65008` | ConfigMap |
 | `OPENALEX_MAILTO` | institutional service mailbox | ConfigMap |
 | `DBLP_DUMP_FILE` | `/app/data/dblp-2026-03-01.xml.gz` | ConfigMap (env overrides the committed dev path — Spring gives env vars precedence over application.properties) |
+| `CORE_IMPORTING_ALLOWED_IMPORT_ROOTS` | optional; default `data,/app/data` | Directories the admin path-based reference imports (CiteScore/DOAJ/ERIH) may read from — paths outside are rejected (path-injection guard). The default already covers the PVC mount. |
 
 Data PVC `scholardex-data` (20Gi, harvester-retain) mounts read-only at **`/app/data`** so the
 relative `data/…` paths in application.properties resolve unchanged (standards HTML, CORE/SENSE/

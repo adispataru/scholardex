@@ -36,6 +36,7 @@ public class ErihDataService {
     private static final String SOURCE_ERIH = "ERIH";
     private static final Pattern ISSN_NON_ALNUM = Pattern.compile("[^0-9Xx]");
 
+    private final ImportPathGuard importPathGuard;
     private final ErihJournalFactRepository erihJournalFactRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -46,10 +47,11 @@ public class ErihDataService {
      * @param asOf snapshot stamp surfaced as {@code membership_view.as_of}; may be null.
      */
     public ImportProcessingResult importErihJsonlFromPath(String absolutePath, String batchId, String asOf) {
+        java.io.File source = importPathGuard.resolveWithinAllowedRoots(absolutePath);
         ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         Instant now = Instant.now();
         Map<String, ErihJournalFact> byId = new LinkedHashMap<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(absolutePath))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(source))) {
             String line;
             long lineNo = 0;
             while ((line = reader.readLine()) != null) {
