@@ -73,7 +73,12 @@ for (const coll of CONFIG_GIT) {
   }
   const docs = db.getCollection(coll).find({}).toArray();
   docs.sort((a, b) => (idKey(a) < idKey(b) ? -1 : idKey(a) > idKey(b) ? 1 : 0));
-  const body = "[\n" + docs.map(d => "  " + EJSON.stringify(d)).join(",\n") + "\n]\n";
+  // Pretty, 1-space-indented extended JSON (one field per line), matching the committed snapshot
+  // style so diffs stay reviewable. Each doc's pretty EJSON is prefixed one extra space to sit
+  // inside the array.
+  const body = "[\n" + docs.map(d =>
+    EJSON.stringify(d, null, 1).split("\n").map(l => " " + l).join("\n")
+  ).join(",\n") + "\n]\n";
   fs.writeFileSync(path, docs.length ? body : "[]\n");
   configTotal += docs.length;
   configSummary.push(coll + ": " + docs.length);
