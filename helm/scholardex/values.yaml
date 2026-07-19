@@ -1,0 +1,52 @@
+# Default values — see values-stage.yaml / values-prod.yaml for environment overlays.
+# The chart deploys APP components only (core, scopus-python, ingress, app config).
+# Platform-owned and NOT in this chart: Mongo/Postgres + PVCs, ResourceQuota, NetworkPolicies,
+# and ALL secrets (scholardex-db / scholardex-oidc / scholardex-app / scholardex-scopus) —
+# hand-created per namespace, never in git.
+
+image:
+  repository: ghcr.io/adispataru/scholardex
+  # Set by CI: --set image.tag=<commit sha>
+  tag: latest
+  pullPolicy: IfNotPresent
+
+scopusPython:
+  image:
+    repository: ghcr.io/adispataru/scholardex-scopus-python
+    tag: latest
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+core:
+  replicas: 1
+  # RollingUpdate surge would need 2× the CPU limit against the tenant quota.
+  strategy: Recreate
+  resources:
+    requests: { cpu: "1", memory: 5Gi }
+    limits: { cpu: "4", memory: 6Gi }
+  javaToolOptions: "-Xmx4g"
+
+config:
+  springProfiles: postgres
+  postgresUrl: jdbc:postgresql://scholardex-postgres.scholardex.svc:5432/scholardex
+  postgresUser: scholardex
+  mongoHost: scholardex-mongo.scholardex.svc
+  mongoDb: scholardex
+  dblpDumpFile: /app/data/dblp-2026-03-01.xml.gz
+
+ingress:
+  host: scholardex.rdi.info.uvt.ro
+  # Empty = no cert-manager annotation + certificate-less TLS block (controller default cert;
+  # used on stage where HTTP-01 cannot complete). Prod sets letsencrypt-prod + a secretName.
+  clusterIssuer: ""
+  tlsSecretName: ""
+
+# Hand-created resources referenced by the chart (names, not contents):
+existing:
+  dbSecret: scholardex-db          # MONGO_PASSWORD, POSTGRES_PASSWORD
+  oidcSecret: scholardex-oidc      # KEYCLOAK_CLIENT_SECRET
+  oidcConfigMap: scholardex-oidc-config
+  appSecret: scholardex-app        # ADMIN_*, USER_DEFAULT_PASSWORD
+  scopusSecret: scholardex-scopus  # SCOPUS_API_KEY (+SCOPUS_INST_TOKEN)
+  dataPvc: scholardex-data         # read-only reference data incl. DBLP dump

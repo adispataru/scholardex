@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: scholardex-scopus-python
+  labels:
+    {{- include "scholardex.labels" . | nindent 4 }}
+spec:
+  selector: { app: scholardex-scopus-python }
+  ports: [{ port: 65008 }]

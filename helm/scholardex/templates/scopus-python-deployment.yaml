@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scholardex-scopus-python
+  labels:
+    {{- include "scholardex.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: scholardex-scopus-python } }
+  template:
+    metadata:
+      labels: { app: scholardex-scopus-python }
+      annotations:
+        rdi.uvt.ro/source-commit: {{ .Values.scopusPython.image.tag | quote }}
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001 }
+      containers:
+        - name: scopus-python
+          image: "{{ .Values.scopusPython.image.repository }}:{{ .Values.scopusPython.image.tag }}"
+          envFrom:
+            - secretRef: { name: {{ .Values.existing.scopusSecret }} }
+          ports: [{ containerPort: 65008 }]
+          readinessProbe:
+            httpGet: { path: /v1/health, port: 65008 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /v1/health, port: 65008 }
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.scopusPython.resources | nindent 12 }}
+          # pybliometrics writes ~/.config + ~/.cache at startup → rootfs stays writable

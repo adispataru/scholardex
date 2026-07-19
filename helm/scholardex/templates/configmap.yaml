@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scholardex-app-config
+  labels:
+    {{- include "scholardex.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: {{ .Values.config.springProfiles | quote }}
+  SERVER_FORWARD_HEADERS_STRATEGY: "framework"
+  POSTGRES_URL: {{ .Values.config.postgresUrl | quote }}
+  POSTGRES_USER: {{ .Values.config.postgresUser | quote }}
+  # host:port only — the Java client prepends http://
+  SCOPUS_PYTHON_BASE_URL: "scholardex-scopus-python.{{ .Release.Namespace }}.svc:65008"
+  DBLP_DUMP_FILE: {{ .Values.config.dblpDumpFile | quote }}
+  JAVA_TOOL_OPTIONS: {{ .Values.core.javaToolOptions | quote }}

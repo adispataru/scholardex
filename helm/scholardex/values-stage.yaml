@@ -1,0 +1,5 @@
+# STAGING (rdi-stage): stage VIP serves the public hostname over the VPN; no cert-manager
+# (HTTP-01 cannot reach stage) → controller default self-signed cert; browser warning expected.
+ingress:
+  clusterIssuer: ""
+  tlsSecretName: ""

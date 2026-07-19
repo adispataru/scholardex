@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scholardex-core
+  labels:
+    {{- include "scholardex.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.core.replicas }}
+  strategy: { type: {{ .Values.core.strategy }} }
+  selector: { matchLabels: { app: scholardex-core } }
+  template:
+    metadata:
+      labels: { app: scholardex-core }
+      annotations:
+        rdi.uvt.ro/source-commit: {{ .Values.image.tag | quote }}
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001 }
+      containers:
+        - name: core
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: MONGO_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.existing.dbSecret }}, key: MONGO_PASSWORD } }
+            # spring.mongodb.uri — the legacy spring.data.* env name silently hits db `test`
+            - name: SPRING_MONGODB_URI
+              value: "mongodb://scholardex:$(MONGO_PASSWORD)@{{ .Values.config.mongoHost }}:27017/{{ .Values.config.mongoDb }}?authSource=admin"
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.existing.dbSecret }}, key: POSTGRES_PASSWORD } }
+          envFrom:
+            - configMapRef: { name: scholardex-app-config }
+            - configMapRef: { name: {{ .Values.existing.oidcConfigMap }} }
+            - secretRef: { name: {{ .Values.existing.oidcSecret }} }
+            - secretRef: { name: {{ .Values.existing.appSecret }} }
+          ports: [{ containerPort: 8080 }]
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+            failureThreshold: 30 # Flyway + Mongo index reconciler run at boot
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.core.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /app/data, readOnly: true }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: {{ .Values.existing.dataPvc }} }

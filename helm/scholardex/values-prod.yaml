@@ -1,0 +1,4 @@
+# PRODUCTION (rdi-prod): real Let's Encrypt certificate via the platform issuer.
+ingress:
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: scholardex-tls

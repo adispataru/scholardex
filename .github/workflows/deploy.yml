@@ -1,0 +1,96 @@
+name: Deploy
+
+# STAGE: automatic — fires when "Build & Push Images (GHCR)" succeeds on main, then waits for
+# Quality Gates on the same commit before deploying (images exist + tests green = deployable).
+# PROD: manual — workflow_dispatch, protected by the `production` GitHub environment.
+# Runners: self-hosted in-cluster (rdi-stage / rdi-prod, ns scholardex-ci), job pods run as the
+# namespace-scoped deploy ServiceAccount → helm uses in-cluster auth, no kubeconfig secrets.
+# Image tags are FULL commit SHAs (ghcr.yml: type=sha,format=long,prefix=).
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Images (GHCR)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Full commit SHA to deploy to PRODUCTION (must exist on GHCR)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy-stage:
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: [self-hosted, rdi-stage, scholardex]
+    concurrency: { group: deploy-stage, cancel-in-progress: false }
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Checkout (at built commit)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Wait for Quality Gates on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 40); do
+            CONCLUSION=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/workflows/quality-gates.yml/runs?head_sha=$SHA&per_page=1" \
+              | python3 -c "import json,sys; rs=json.load(sys.stdin)['workflow_runs']; print(rs[0]['conclusion'] or rs[0]['status'] if rs else 'missing')")
+            echo "quality-gates: $CONCLUSION"
+            case "$CONCLUSION" in
+              success) exit 0 ;;
+              failure|cancelled|timed_out) echo "Quality Gates did not pass"; exit 1 ;;
+              *) sleep 15 ;;
+            esac
+          done
+          echo "Timed out waiting for Quality Gates"; exit 1
+
+      - name: Install helm
+        run: |
+          curl -sfL https://get.helm.sh/helm-v3.16.4-linux-amd64.tar.gz | tar xz
+          mkdir -p "$HOME/.local/bin" && mv linux-amd64/helm "$HOME/.local/bin/helm"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy to STAGE
+        run: |
+          helm upgrade --install scholardex ./helm/scholardex \
+            -f helm/scholardex/values-stage.yaml \
+            --set image.tag="$SHA" --set scopusPython.image.tag="$SHA" \
+            -n scholardex --wait --timeout 12m
+          helm -n scholardex list
+
+  deploy-prod:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, rdi-prod, scholardex]
+    environment: production
+    concurrency: { group: deploy-prod, cancel-in-progress: false }
+    steps:
+      - name: Checkout (at deployed commit)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.image_tag }}
+
+      - name: Install helm
+        run: |
+          curl -sfL https://get.helm.sh/helm-v3.16.4-linux-amd64.tar.gz | tar xz
+          mkdir -p "$HOME/.local/bin" && mv linux-amd64/helm "$HOME/.local/bin/helm"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy to PRODUCTION
+        run: |
+          helm upgrade --install scholardex ./helm/scholardex \
+            -f helm/scholardex/values-prod.yaml \
+            --set image.tag="${{ inputs.image_tag }}" \
+            --set scopusPython.image.tag="${{ inputs.image_tag }}" \
+            -n scholardex --wait --timeout 12m
+          helm -n scholardex list
