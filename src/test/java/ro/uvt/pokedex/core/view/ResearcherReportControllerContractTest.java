@@ -14,7 +14,6 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
@@ -63,11 +62,15 @@ class ResearcherReportControllerContractTest {
     @MockitoBean
     private UserIndividualReportRunService userIndividualReportRunService;
     @MockitoBean
-    private UserIndividualReportRunRepository userIndividualReportRunRepository; // assembler dependency
-    @MockitoBean
-    private ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade reportExportFacade;
-    @MockitoBean
-    private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry reportImportRegistry; // assembler dep
+    private ro.uvt.pokedex.core.service.application.ReportTransferFacade reportTransferFacade; // export + assembler dep
+
+    @org.junit.jupiter.api.BeforeEach
+    void assemblerDefaults() {
+        // The assembler resolves the export format through the facade; a null enum would NPE the view render.
+        org.mockito.Mockito.lenient()
+                .when(reportTransferFacade.preferredExportFormat(any()))
+                .thenReturn(ReportFormat.XLSX);
+    }
 
     private IndividualReport report() {
         Indicator ind = new Indicator();
@@ -171,26 +174,26 @@ class ResearcherReportControllerContractTest {
 
     @Test
     void exportReturnsAttachmentAndIsReadOnly() throws Exception {
-        var exported = new ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportedReport(
+        var exported = new ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportedReport(
                 "xlsx-bytes".getBytes(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "FV Test.xlsx");
-        when(reportExportFacade.exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.success(exported));
+        when(reportTransferFacade.exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false))
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportOutcome.success(exported));
 
         mockMvc.perform(get("/reports/researcher/{email}/report/{reportId}/export", EMAIL, "rep-1"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", containsString("FV Test.xlsx")));
 
         // Read-only: export must never force a refresh (no mutation of the researcher's data).
-        verify(reportExportFacade).exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false);
+        verify(reportTransferFacade).exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false);
     }
 
     @Test
     void exportFailureMapsToHttpStatus() throws Exception {
-        when(reportExportFacade.exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
-                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.NOT_READY,
+        when(reportTransferFacade.exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false))
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportFailureReason.NOT_READY,
                         "Report export configuration is incomplete."));
 
         mockMvc.perform(get("/reports/researcher/{email}/report/{reportId}/export", EMAIL, "rep-1"))

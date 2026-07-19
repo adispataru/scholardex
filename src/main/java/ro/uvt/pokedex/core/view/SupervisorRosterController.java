@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.DepartmentAffiliationService;
+import ro.uvt.pokedex.core.service.application.DepartmentReportFacade;
 import ro.uvt.pokedex.core.service.application.ResearcherShellService;
 
 import java.util.Comparator;
@@ -37,14 +37,14 @@ import java.util.Set;
 public class SupervisorRosterController {
 
     private final DepartmentAffiliationService departmentAffiliationService;
-    private final DepartmentRepository departmentRepository;
+    private final DepartmentReportFacade departmentReportFacade;
     private final UserService userService;
     private final ResearcherShellService researcherShellService;
 
     @GetMapping
     @PreAuthorize("@orgUnitAccess.canManageDepartment(#departmentId, authentication)")
     public String roster(@PathVariable String departmentId, Model model) {
-        Department department = departmentRepository.findById(departmentId).orElse(null);
+        Department department = departmentReportFacade.findDepartment(departmentId).orElse(null);
         if (department == null) {
             return "redirect:/supervisor";
         }

@@ -11,9 +11,7 @@ import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.service.application.IndividualReportsManagementFacade;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
-import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportReadinessValidator;
-import ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry;
-import ro.uvt.pokedex.core.service.reporting.transfer.ReportTypeImportSupport;
+import ro.uvt.pokedex.core.service.application.ReportTransferFacade;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,8 +22,7 @@ import java.util.Optional;
 public class AdminIndividualReportsController {
 
     private final IndividualReportsManagementFacade individualReportsManagementFacade;
-    private final ReportImportRegistry reportImportRegistry;
-    private final ReportExportReadinessValidator reportExportReadinessValidator;
+    private final ReportTransferFacade reportTransferFacade;
 
     @GetMapping
     public String listIndividualReports(Model model) {
@@ -63,13 +60,11 @@ public class AdminIndividualReportsController {
         model.addAttribute("reportIndicators", new java.util.ArrayList<>(uniqueIndicators.values()));
         model.addAttribute("allAffiliations", individualReportsManagementFacade.listInstitutions());
         model.addAttribute("allPositions", Position.values());
-        model.addAttribute("registeredReportTypeKeys", reportImportRegistry.registeredKeys());
-        Optional<ReportTypeImportSupport> supportOpt = reportImportRegistry.find(individualReport.getReportTypeKey());
-        List<String> declaredRoles = supportOpt.map(ReportTypeImportSupport::declaredRoles).orElse(List.of());
+        model.addAttribute("registeredReportTypeKeys", reportTransferFacade.registeredReportTypeKeys());
+        List<String> declaredRoles = reportTransferFacade.declaredRoles(individualReport.getReportTypeKey());
         model.addAttribute("declaredRoles", declaredRoles);
-        java.util.Map<String, List<String>> declaredBlocksByRole = supportOpt
-                .map(ReportTypeImportSupport::declaredBlocksByRole)
-                .orElse(java.util.Map.of());
+        java.util.Map<String, List<String>> declaredBlocksByRole =
+                reportTransferFacade.declaredBlocksByRole(individualReport.getReportTypeKey());
         // Flatten to a single list — for informatica-2016 there's only one STACKED_BLOCKS role, so
         // the UI can render one section regardless of which roles exist.
         List<String> allBlockNames = declaredBlocksByRole.values().stream()
@@ -80,9 +75,9 @@ public class AdminIndividualReportsController {
         // inner `not_exported` and collapses the literal to ""), so th:selected never matched the
         // saved value and the dropdown showed "— none —" on reload. A model variable has no __ to
         // preprocess.
-        model.addAttribute("excludedFromTemplateValue", ReportExportReadinessValidator.EXCLUDED_FROM_TEMPLATE);
+        model.addAttribute("excludedFromTemplateValue", reportTransferFacade.excludedFromTemplateValue());
         model.addAttribute("exportReadinessProblems",
-                reportExportReadinessValidator.validate(individualReport, ReportFormat.XLSX));
+                reportTransferFacade.validateExportReadiness(individualReport, ReportFormat.XLSX));
         return "admin/edit-individualReport";
     }
 

@@ -11,7 +11,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.DepartmentAffiliationService;
 import ro.uvt.pokedex.core.service.security.OrgUnitAccessService;
@@ -41,7 +40,7 @@ class SupervisorRosterControllerContractTest {
     @MockitoBean
     private DepartmentAffiliationService departmentAffiliationService;
     @MockitoBean
-    private DepartmentRepository departmentRepository;
+    private ro.uvt.pokedex.core.service.application.DepartmentReportFacade departmentReportFacade;
     @MockitoBean
     private UserService userService;
     @MockitoBean
@@ -54,7 +53,7 @@ class SupervisorRosterControllerContractTest {
         Department dept = new Department();
         dept.setId("dept-cs");
         dept.setName("Computer Science");
-        when(departmentRepository.findById("dept-cs")).thenReturn(Optional.of(dept));
+        when(departmentReportFacade.findDepartment("dept-cs")).thenReturn(Optional.of(dept));
         when(departmentAffiliationService.listCurrentAffiliations("dept-cs"))
                 .thenReturn(List.of(affiliation("ana@uvt.ro")));
         when(userService.findUsersWithResearcherProfile())

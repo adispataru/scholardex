@@ -8,9 +8,9 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
+import ro.uvt.pokedex.core.service.application.ReportTransferFacade;
+import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
-import ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry;
 
 import java.util.HashMap;
 import java.util.List;
@@ -35,8 +35,8 @@ public class IndividualReportViewModelAssembler {
     private static final com.fasterxml.jackson.databind.ObjectMapper JSON =
             new com.fasterxml.jackson.databind.ObjectMapper();
 
-    private final UserIndividualReportRunRepository userIndividualReportRunRepository;
-    private final ReportImportRegistry reportImportRegistry;
+    private final UserIndividualReportRunService userIndividualReportRunService;
+    private final ReportTransferFacade reportTransferFacade;
 
     public void populate(Model model,
                          User researcher,
@@ -60,8 +60,8 @@ public class IndividualReportViewModelAssembler {
                 .map(Enum::name)
                 .orElse("");
 
-        List<PriorRunView> priorRuns = userIndividualReportRunRepository
-                .findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(researcher.getEmail(), report.getId())
+        List<PriorRunView> priorRuns = userIndividualReportRunService
+                .listRuns(researcher.getEmail(), report.getId())
                 .stream()
                 .map(r -> new PriorRunView(r.getId(),
                         r.getCreatedAt() != null ? r.getCreatedAt().toString() : null,
@@ -167,11 +167,6 @@ public class IndividualReportViewModelAssembler {
     }
 
     private ReportFormat resolveExportFormat(IndividualReport report) {
-        return reportImportRegistry.find(report.getReportTypeKey())
-                .map(s -> s.supportedExportFormats())
-                .filter(formats -> !formats.isEmpty())
-                // Prefer XLSX when a type supports both; otherwise the single declared format.
-                .map(formats -> formats.contains(ReportFormat.XLSX) ? ReportFormat.XLSX : formats.iterator().next())
-                .orElse(ReportFormat.XLSX);
+        return reportTransferFacade.preferredExportFormat(report.getReportTypeKey());
     }
 }

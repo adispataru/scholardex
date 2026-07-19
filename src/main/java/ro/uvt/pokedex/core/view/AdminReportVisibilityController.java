@@ -11,8 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
-import ro.uvt.pokedex.core.repository.org.OrgDivisionRepository;
+import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.ReportVisibilityService;
 
 import java.util.Optional;
@@ -32,13 +31,12 @@ import java.util.Optional;
 public class AdminReportVisibilityController {
 
     private final ReportVisibilityService reportVisibilityService;
-    private final OrgDivisionRepository orgDivisionRepository;
-    private final DepartmentRepository departmentRepository;
+    private final AdminCatalogFacade adminCatalogFacade;
 
     @GetMapping("/admin/divisions/{divisionId}/reports/select")
     @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
     public String selectForDivision(@PathVariable String divisionId, Authentication auth, Model model) {
-        var division = orgDivisionRepository.findById(divisionId);
+        var division = adminCatalogFacade.findOrgDivisionById(divisionId);
         if (division.isEmpty()) return "redirect:/admin/divisions";
         // 403 if the principal isn't allowed to manage selection here.
         if (!reportVisibilityService.canManageDivisionSelection(division.get(), auth)) {
@@ -74,7 +72,7 @@ public class AdminReportVisibilityController {
     @GetMapping("/admin/departments/{departmentId}/reports/visibility")
     @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
     public String visibilityForDepartment(@PathVariable String departmentId, Authentication auth, Model model) {
-        Optional<ro.uvt.pokedex.core.model.org.Department> deptOpt = departmentRepository.findById(departmentId);
+        Optional<ro.uvt.pokedex.core.model.org.Department> deptOpt = adminCatalogFacade.findDepartmentById(departmentId);
         if (deptOpt.isEmpty()) return "redirect:/admin/departments";
         if (!reportVisibilityService.canManageDepartmentHide(deptOpt.get(), auth)) {
             throw new AccessDeniedException("Only the department head, parent division head, or platform admin can hide reports here.");

@@ -22,7 +22,7 @@ import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
-import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade;
+import ro.uvt.pokedex.core.service.application.ReportTransferFacade;
 import ro.uvt.pokedex.core.service.security.ResearcherAccessService;
 import ro.uvt.pokedex.core.view.IndicatorDetailResponseAssembler.CitationDetailResponse;
 import ro.uvt.pokedex.core.view.IndicatorDetailResponseAssembler.IndicatorDetailResponse;
@@ -49,7 +49,7 @@ public class ResearcherReportController {
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
-    private final ReportExportFacade reportExportFacade;
+    private final ReportTransferFacade reportTransferFacade;
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('PLATFORM_ADMIN','SUPERVISOR')")
@@ -131,12 +131,12 @@ public class ResearcherReportController {
                                                     @PathVariable String reportId,
                                                     @RequestParam(name = "run", required = false) String runId,
                                                     @RequestParam(name = "format", defaultValue = "XLSX") ReportFormat format) {
-        ReportExportFacade.ExportOutcome outcome =
-                reportExportFacade.exportRunOutcome(email, reportId, runId, format, false);
+        ReportTransferFacade.ExportOutcome outcome =
+                reportTransferFacade.exportRunOutcome(email, reportId, runId, format, false);
         if (!outcome.isSuccess()) {
             return ResponseEntity.status(ReportExportHttpStatus.of(outcome.failureReason())).body(outcome.message());
         }
-        ReportExportFacade.ExportedReport exported = outcome.exportedReport();
+        ReportTransferFacade.ExportedReport exported = outcome.exportedReport();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(exported.contentType()))
                 .header("Content-Disposition", "attachment; filename=\"" + exported.filename() + "\"")

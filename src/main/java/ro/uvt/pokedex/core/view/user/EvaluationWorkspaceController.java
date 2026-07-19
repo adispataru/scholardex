@@ -25,7 +25,7 @@ import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.view.IndicatorDetailResponseAssembler;
 import ro.uvt.pokedex.core.view.IndicatorDetailResponseAssembler.CitationDetailResponse;
 import ro.uvt.pokedex.core.view.IndicatorDetailResponseAssembler.IndicatorDetailResponse;
-import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade;
+import ro.uvt.pokedex.core.service.application.ReportTransferFacade;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import org.springframework.http.MediaType;
 import org.springframework.core.io.ByteArrayResource;
@@ -47,7 +47,7 @@ public class EvaluationWorkspaceController {
     private final UserIndicatorResultService userIndicatorResultService;
     private final UserIndividualReportRunRepository userIndividualReportRunRepository;
     private final EvaluationSnapshotRepository evaluationSnapshotRepository;
-    private final ReportExportFacade reportExportFacade;
+    private final ReportTransferFacade reportTransferFacade;
     private final ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
     private final ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
     private final ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
@@ -135,7 +135,7 @@ public class EvaluationWorkspaceController {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        var outcome = reportExportFacade.exportRunOutcome(currentUser.getEmail(), reportId, runId, format, refresh);
+        var outcome = reportTransferFacade.exportRunOutcome(currentUser.getEmail(), reportId, runId, format, refresh);
         if (!outcome.isSuccess()) {
             return ResponseEntity.status(statusFor(outcome.failureReason())).body(outcome.message());
         }
@@ -219,7 +219,7 @@ public class EvaluationWorkspaceController {
         return defs;
     }
 
-    private HttpStatus statusFor(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason reason) {
+    private HttpStatus statusFor(ReportTransferFacade.ExportFailureReason reason) {
         return ro.uvt.pokedex.core.view.ReportExportHttpStatus.of(reason);
     }
 

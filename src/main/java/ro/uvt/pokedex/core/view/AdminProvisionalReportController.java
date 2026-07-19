@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
-import ro.uvt.pokedex.core.repository.org.DepartmentRepository;
-import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
+import ro.uvt.pokedex.core.service.application.IndividualReportsManagementFacade;
 import ro.uvt.pokedex.core.service.application.ProvisionalDepartmentReportService;
 
 import java.util.ArrayList;
@@ -32,8 +32,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminProvisionalReportController {
 
-    private final DepartmentRepository departmentRepository;
-    private final IndividualReportRepository individualReportRepository;
+    private final AdminCatalogFacade adminCatalogFacade;
+    private final IndividualReportsManagementFacade individualReportsManagementFacade;
     private final ProvisionalDepartmentReportService provisionalDepartmentReportService;
 
     @GetMapping
@@ -55,19 +55,19 @@ public class AdminProvisionalReportController {
         model.addAttribute("result", result);
         model.addAttribute("selectedDepartmentId", departmentId);
         model.addAttribute("selectedReportId", reportDefinitionId);
-        departmentRepository.findById(departmentId)
+        adminCatalogFacade.findDepartmentById(departmentId)
                 .ifPresent(d -> model.addAttribute("selectedDepartmentName", d.getName()));
-        individualReportRepository.findById(reportDefinitionId)
+        individualReportsManagementFacade.findIndividualReport(reportDefinitionId)
                 .ifPresent(r -> model.addAttribute("selectedReportTitle", r.getTitle()));
         return "admin/provisional-report";
     }
 
     private void populateOptions(Model model) {
-        List<Department> departments = new ArrayList<>(departmentRepository.findAll());
+        List<Department> departments = new ArrayList<>(adminCatalogFacade.listDepartments());
         departments.sort(Comparator.comparing(d -> d.getName() == null ? "" : d.getName(), String.CASE_INSENSITIVE_ORDER));
         model.addAttribute("departments", departments);
 
-        List<IndividualReport> reports = new ArrayList<>(individualReportRepository.findAll());
+        List<IndividualReport> reports = new ArrayList<>(individualReportsManagementFacade.listIndividualReports());
         reports.sort(Comparator.comparing(r -> r.getTitle() == null ? "" : r.getTitle(), String.CASE_INSENSITIVE_ORDER));
         model.addAttribute("reports", reports);
     }

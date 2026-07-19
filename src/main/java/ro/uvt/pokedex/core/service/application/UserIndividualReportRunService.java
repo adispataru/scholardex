@@ -53,6 +53,15 @@ public class UserIndividualReportRunService {
                 .map(run -> toDto(run, IndividualReportRunDto.Source.PERSISTED));
     }
 
+    /**
+     * All persisted runs for a user's report, newest first — the run-history rail on the individual
+     * report view. Read-only.
+     */
+    public List<UserIndividualReportRun> listRuns(String userEmail, String reportDefinitionId) {
+        return userIndividualReportRunRepository
+                .findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(userEmail, reportDefinitionId);
+    }
+
     public Optional<IndividualReportRunDto> refreshRun(String userEmail, String reportDefinitionId) {
         // One memoization scope for the whole refresh: the ranking/forum/input lookups repeat heavily
         // across the report's indicators (and across the recompute passes), so scope-cache them like

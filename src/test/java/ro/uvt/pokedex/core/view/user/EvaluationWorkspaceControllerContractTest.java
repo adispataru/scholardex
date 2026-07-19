@@ -60,15 +60,21 @@ class EvaluationWorkspaceControllerContractTest {
     @MockitoBean
     private EvaluationSnapshotRepository evaluationSnapshotRepository;
     @MockitoBean
-    private ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade reportExportFacade;
+    private ro.uvt.pokedex.core.service.application.ReportTransferFacade reportTransferFacade;
     @MockitoBean
     private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
-    @MockitoBean
-    private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry reportImportRegistry; // assembler dep
+
+    @org.junit.jupiter.api.BeforeEach
+    void assemblerDefaults() {
+        // The assembler resolves the export format through the facade; a null enum would NPE the view render.
+        org.mockito.Mockito.lenient()
+                .when(reportTransferFacade.preferredExportFormat(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX);
+    }
 
     @Test
     void evaluationTemplateExposesSnapshotRegionAndModalDescriptions() throws Exception {
@@ -128,7 +134,7 @@ class EvaluationWorkspaceControllerContractTest {
         when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
         when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(runDto("run-1")));
-        when(userIndividualReportRunRepository.findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "rep-1"))
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-1"))
                 .thenReturn(List.of());
 
         String thresholdsJson = (String) mockMvc.perform(
@@ -153,7 +159,7 @@ class EvaluationWorkspaceControllerContractTest {
         when(userReportFacade.hasConfirmedPublicationsForScoring("u@uvt.ro")).thenReturn(false);
         when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(runDto("run-1")));
-        when(userIndividualReportRunRepository.findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "rep-1"))
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-1"))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/user/evaluation").param("report", "rep-1").with(authenticatedUser(user)))
@@ -178,7 +184,7 @@ class EvaluationWorkspaceControllerContractTest {
         priorRun.setCreatedAt(java.time.Instant.parse("2026-06-01T10:00:00Z"));
         priorRun.setStatus(ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun.Status.READY);
         priorRun.setCriteriaScores(new java.util.HashMap<>(Map.of(0, 4.5)));
-        when(userIndividualReportRunRepository.findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "rep-1"))
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-1"))
                 .thenReturn(List.of(priorRun));
         when(userPublicationFacade.countPendingAuthorshipReviews("u@uvt.ro")).thenReturn(3);
 
@@ -207,7 +213,7 @@ class EvaluationWorkspaceControllerContractTest {
         when(userReportFacade.reportUsesPublicationScoring("rep-1")).thenReturn(false);
         when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(runDto("run-1")));
-        when(userIndividualReportRunRepository.findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("u@uvt.ro", "rep-1"))
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-1"))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/user/evaluation").param("report", "rep-1").with(authenticatedUser(user)))
@@ -219,14 +225,14 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void exportEndpointPassesSelectedRunToFacade() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportExportFacade.exportRunOutcome(
+        when(reportTransferFacade.exportRunOutcome(
                 "u@uvt.ro",
                 "rep-1",
                 "run-42",
                 ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX,
                 false))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.success(
-                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportedReport(
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportOutcome.success(
+                        new ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportedReport(
                                 new byte[]{1, 2, 3},
                                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                 "Report.xlsx")));
@@ -238,7 +244,7 @@ class EvaluationWorkspaceControllerContractTest {
                         .with(authenticatedUser(user)))
                 .andExpect(status().isOk());
 
-        verify(reportExportFacade).exportRunOutcome(
+        verify(reportTransferFacade).exportRunOutcome(
                 "u@uvt.ro",
                 "rep-1",
                 "run-42",
@@ -249,14 +255,14 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void exportEndpointMapsForbiddenRunToForbiddenStatus() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportExportFacade.exportRunOutcome(
+        when(reportTransferFacade.exportRunOutcome(
                 "u@uvt.ro",
                 "rep-1",
                 "run-42",
                 ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX,
                 false))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
-                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.FORBIDDEN_RUN,
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportFailureReason.FORBIDDEN_RUN,
                         "Report run belongs to another user."));
 
         mockMvc.perform(get("/user/evaluation/export")
@@ -270,14 +276,14 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void exportEndpointMapsInvalidConfigToUnprocessableStatus() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportExportFacade.exportRunOutcome(
+        when(reportTransferFacade.exportRunOutcome(
                 "u@uvt.ro",
                 "rep-1",
                 "run-42",
                 ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX,
                 false))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
-                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.NOT_READY,
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportFailureReason.NOT_READY,
                         "Report export configuration is incomplete."));
 
         mockMvc.perform(get("/user/evaluation/export")
@@ -291,14 +297,14 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void exportEndpointMapsMissingRendererToNotImplementedStatus() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportExportFacade.exportRunOutcome(
+        when(reportTransferFacade.exportRunOutcome(
                 "u@uvt.ro",
                 "rep-1",
                 "run-42",
                 ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.DOCX,
                 false))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
-                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.RENDERER_NOT_AVAILABLE,
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportFailureReason.RENDERER_NOT_AVAILABLE,
                         "Report type is registered, but no DOCX renderer is available."));
 
         mockMvc.perform(get("/user/evaluation/export")

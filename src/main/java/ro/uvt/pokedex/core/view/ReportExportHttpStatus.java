@@ -1,7 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import org.springframework.http.HttpStatus;
-import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason;
+import ro.uvt.pokedex.core.service.application.ReportTransferFacade.ExportFailureReason;
 
 /**
  * Maps a {@link ExportFailureReason} to the HTTP status an export endpoint should return. Shared by
