@@ -142,6 +142,86 @@ class ScopusFactBuilderServiceTest {
     }
 
     @Test
+    void misalignedAfidsCatalogStillBuildsAuthorsWithoutAffiliations() throws Exception {
+        // 2026-07-13 author-works incident: Scopus search rows sometimes emit within-author ';' separators in
+        // author_afids, so its group count disagrees with author_ids/author_names. The old guard skipped the
+        // WHOLE author catalog — canonical pubs then referenced fallback author ids with no author docs (404s).
+        // Ids+names still align, so authors must be built — just without affiliation hints.
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setId("ev-misaligned");
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        event.setSourceRecordId("2-s2.0-mis1");
+        event.setBatchId("b-mis");
+        event.setCorrelationId("c-mis");
+        event.setPayloadHash("payload-hash-mis");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-mis1"),
+                java.util.Map.entry("title", "Misaligned afids paper"),
+                java.util.Map.entry("author_ids", "a1;a2"),
+                java.util.Map.entry("author_names", "Alice;Bob"),
+                java.util.Map.entry("author_afids", "af1;af2;af3"), // 3 groups for 2 authors — unusable grouping
+                java.util.Map.entry("source_id", "f1"),
+                java.util.Map.entry("publicationName", "Forum 1"),
+                java.util.Map.entry("aggregationType", "Journal"),
+                java.util.Map.entry("author_count", "2")
+        )));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor =
+                ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(authorFactRepository, atLeastOnce()).saveAll(authorCaptor.capture());
+        java.util.List<ScopusAuthorFact> savedAuthors = new java.util.ArrayList<>(authorCaptor.getValue());
+        assertEquals(2, savedAuthors.size());
+        assertEquals("a1", savedAuthors.get(0).getAuthorId());
+        assertEquals("Alice", savedAuthors.get(0).getName());
+        assertTrue(savedAuthors.get(0).getAffiliationIds() == null || savedAuthors.get(0).getAffiliationIds().isEmpty());
+        assertEquals("a2", savedAuthors.get(1).getAuthorId());
+        assertEquals("Bob", savedAuthors.get(1).getName());
+    }
+
+    @Test
+    void idsVsNamesMismatchStillSkipsTheAuthorCatalog() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setId("ev-ambiguous");
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        event.setSourceRecordId("2-s2.0-amb1");
+        event.setBatchId("b-amb");
+        event.setCorrelationId("c-amb");
+        event.setPayloadHash("payload-hash-amb");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-amb1"),
+                java.util.Map.entry("title", "Ambiguous authors paper"),
+                java.util.Map.entry("author_ids", "a1;a2"),
+                java.util.Map.entry("author_names", "OnlyOne"), // genuinely ambiguous — names can't be attributed
+                java.util.Map.entry("author_afids", "af1;af2"),
+                java.util.Map.entry("source_id", "f1"),
+                java.util.Map.entry("aggregationType", "Journal")
+        )));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        verify(authorFactRepository, never()).saveAll(
+                org.mockito.ArgumentMatchers.argThat(c -> !((java.util.Collection<?>) c).isEmpty()));
+    }
+
+    @Test
     void buildFactsFromImportEventsBuildsPublicationAndCitationFacts() throws Exception {
         ScopusImportEvent publicationEvent = new ScopusImportEvent();
         publicationEvent.setId("ev1");

@@ -866,15 +866,31 @@ public class ScopusFactBuilderService {
             authorAfids = new ArrayList<>(java.util.Collections.nCopies(authorIds.size(), ""));
         }
         if (!isAuthorCatalogAligned(authorIds, authorNames, authorAfids)) {
-            log.warn("Scopus fact-builder skipped ambiguous author update: source={}, sourceRecordId={}, eid={}, authorIdsCount={}, authorNamesCount={}, authorAfidsCount={}",
-                    event.getSource(),
-                    event.getSourceRecordId(),
-                    text(payload, "eid"),
-                    authorIds.size(),
-                    authorNames.size(),
-                    authorAfids.size());
-            result.markSkipped(sample(event, "author catalog length mismatch"));
-            return;
+            if (authorIds.size() == authorNames.size()) {
+                // Only the afids catalog is unusable (Scopus search rows sometimes emit within-author ';'
+                // separators, so per-author grouping is lost). Ids+names still align — build the author
+                // facts WITHOUT affiliation hints rather than dropping the whole catalog: the old full-skip
+                // left the canonical pubs pointing at fallback author ids whose author docs never existed
+                // (author profile 404s, the 2026-07-13 author-works incident).
+                log.warn("Scopus fact-builder: author_afids catalog misaligned — building authors without "
+                                + "affiliations: source={}, sourceRecordId={}, eid={}, authors={}, afidGroups={}",
+                        event.getSource(),
+                        event.getSourceRecordId(),
+                        text(payload, "eid"),
+                        authorIds.size(),
+                        authorAfids.size());
+                authorAfids = new ArrayList<>(java.util.Collections.nCopies(authorIds.size(), ""));
+            } else {
+                log.warn("Scopus fact-builder skipped ambiguous author update: source={}, sourceRecordId={}, eid={}, authorIdsCount={}, authorNamesCount={}, authorAfidsCount={}",
+                        event.getSource(),
+                        event.getSourceRecordId(),
+                        text(payload, "eid"),
+                        authorIds.size(),
+                        authorNames.size(),
+                        authorAfids.size());
+                result.markSkipped(sample(event, "author catalog length mismatch"));
+                return;
+            }
         }
 
         int n = authorIds.size();

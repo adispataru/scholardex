@@ -46,6 +46,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexBulkImportService openAlexBulkImportService;
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexSourceApcImportService openAlexSourceApcImportService;
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
+    private final ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService scopusCanonicalMaterializationService;
     private final ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
 
@@ -515,6 +516,25 @@ public class AdminInitializationController {
                         + ", updated=" + result.getUpdatedCount()
                         + ", skipped=" + result.getSkippedCount()
                         + ", errors=" + result.getErrorCount() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * Ops repair: replay an ingested batch through the incremental canon pipeline (fact build → affiliation/
+     * author/publication/citation canon → link + edge reconcile → batch projection). Import events are durable,
+     * so this heals canon-side defects fixed after the original run — e.g. the 2026-07-13 author-works batch
+     * whose misaligned author_afids catalog skipped every author fact, leaving pubs on fallback author ids.
+     */
+    @PostMapping("/scopus/replayBatch")
+    public String replayScopusBatch(@org.springframework.web.bind.annotation.RequestParam("batchId") String batchId,
+                                    RedirectAttributes redirectAttributes) {
+        if (batchId == null || batchId.isBlank()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "batchId is required.");
+            return "redirect:/admin/initialization";
+        }
+        scopusCanonicalMaterializationService.rebuildFactsAndViews("admin-batch-replay", batchId);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Batch replay complete for " + batchId + " (facts + canon + reconcile + batch projection).");
         return "redirect:/admin/initialization";
     }
 

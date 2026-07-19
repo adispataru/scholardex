@@ -82,6 +82,9 @@ class AdminInitializationSecurityContractTest {
     private ro.uvt.pokedex.core.service.openalex.OpenAlexSourceApcImportService openAlexSourceApcImportService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
+
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService scopusCanonicalMaterializationService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
     @MockitoBean
