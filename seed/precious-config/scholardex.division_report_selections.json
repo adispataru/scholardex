@@ -1,5 +1,13 @@
 [
- {
+{
+  "_id": "h79-info2026-sel",
+  "divisionId": "6a35b09424405fbe1e01d8af",
+  "reportId": "6a47f44686ec3f1107f927bb",
+  "selectedBy": "agent@dev.local",
+  "selectedAt": "2026-07-03T00:00:00.000Z",
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+{
   "_id": {
    "$oid": "6a1afd10dc9cebb4272ab84e"
   },
@@ -11,7 +19,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
  },
- {
+{
   "_id": {
    "$oid": "6a2142c28576022a391ccdcb"
   },
@@ -23,12 +31,16 @@
   },
   "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
  },
- {
-  "_id": "h79-info2026-sel",
+{
+  "_id": {
+   "$oid": "6a5d0858c4aec775c522da09"
+  },
   "divisionId": "6a35b09424405fbe1e01d8af",
-  "reportId": "6a47f44686ec3f1107f927bb",
+  "reportId": "6a5d075cc4aec775c522d9eb",
   "selectedBy": "agent@dev.local",
-  "selectedAt": "2026-07-03T00:00:00.000Z",
+  "selectedAt": {
+   "$date": "2026-07-19T17:24:40.926Z"
+  },
   "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
  }
 ]

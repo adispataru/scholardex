@@ -1,5 +1,5 @@
 [
- {
+{
   "_id": "ObjectId('683618f381a0fe77d6a1c04c')",
   "name": "FEEA_P",
   "formula": "M * (1 - (N-1) * 0.1) * S",
@@ -22,7 +22,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6654dce7068d032b7e119593"
   },
@@ -50,7 +50,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "66564362f349c0670bb68b25"
   },
@@ -78,7 +78,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6656440ef349c0670bb68b26"
   },
@@ -106,7 +106,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "665a40689073a275ec9abba1"
   },
@@ -134,7 +134,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "665ce9102dbfdf2e0b3caa33"
   },
@@ -162,7 +162,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "680f69396f664731f88f814a"
   },
@@ -192,7 +192,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "680fa64de3d12644e3045404"
   },
@@ -222,7 +222,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6816987607ff6c4e2956d5c4"
   },
@@ -256,7 +256,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "68191a2f526ce829aca68b34"
   },
@@ -290,7 +290,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820cafbfe404029dad193d1"
   },
@@ -322,7 +322,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820d3a18a61794835d91b24"
   },
@@ -356,7 +356,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820d9bcd7ca817372b6d6f3"
   },
@@ -388,7 +388,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820e0f6b20a79244588e87d"
   },
@@ -422,7 +422,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820e4952654f8388e8d3649"
   },
@@ -454,7 +454,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820e5552654f8388e8d364c"
   },
@@ -488,7 +488,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820eec804e38843635e0ca8"
   },
@@ -520,7 +520,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820eff604e38843635e0cab"
   },
@@ -554,7 +554,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820fbd904e38843635e0cae"
   },
@@ -586,7 +586,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820fe4104e38843635e0cb2"
   },
@@ -618,7 +618,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6820ffde04e38843635e0cb5"
   },
@@ -650,7 +650,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "682100ba04e38843635e0cb8"
   },
@@ -682,7 +682,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "68220d212a04a41f93fc7dba"
   },
@@ -714,7 +714,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "68230b164652ac0103a9eebd"
   },
@@ -742,7 +742,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6823194ccf66a42617d2b6c6"
   },
@@ -776,7 +776,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "682340fe7123387ec34394ae"
   },
@@ -810,7 +810,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "682342d67123387ec34394b0"
   },
@@ -842,7 +842,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "68234a6c7e443769580e906d"
   },
@@ -870,7 +870,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6823535fbb926870c1f86fbd"
   },
@@ -905,23 +905,23 @@
   "maxPoints": 24,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6823a9e6d6df306cd304ded9"
   },
-  "name": "Psiho_I1_I2",
-  "formula": "S > 1 ? (3 + 3 * S) : (3 + S)",
+  "name": "Psiho_I1",
+  "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + 3 * S) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "role": "MAIN",
    "strategy": "IMPACT_FACTOR",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "877f61555584a36fe9eb6bdbc27af6c82297b84be07c1135a1d855ba87f8b04f",
+  "formulaHash": "0296f4efa740eeecafe27dd0d97f5919df39f37947cc7c6db7b624f514229267",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -933,23 +933,23 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6823add4dc170c4fea2c3b3c"
   },
-  "name": "Psiho_I5_I6",
-  "formula": "S > 1 ? (3 + (3 * S)/N) : (3 + S)/N",
+  "name": "Psiho_I5",
+  "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + (3 * S)/N) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "role": "CO",
    "strategy": "IMPACT_FACTOR",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "45c63a75e4dffb38edf992c989d9d5af057688da6dded1a20dd7ecb5316c7d35",
+  "formulaHash": "40a0f5d26c20730cd13c789b07c27f234049949e5d5b649bc6bb26848d23c2a0",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -961,23 +961,23 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6823b61df1cde62b43289faf"
   },
-  "name": "Psiho_I16_I17a",
-  "formula": "S > 0 ? 0.5 : 0.1",
+  "name": "Psiho_I16",
+  "formula": "S > 0 ? 0.5 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
-   "excludeSelf": true,
+   "policy": "CANDIDATE_ONLY",
    "strategy": "IMPACT_FACTOR",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
-  "formulaHash": "d17ed75edf78db84d8b96da79384e35bc5e2fc98796dbec5b2820716546b0c81",
+  "formulaHash": "fa93ebb782396daadec17f4c886b52b9628825571fbadee5dc8058d49c90d925",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -989,7 +989,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "683618f381a0fe77d6a1c04c"
   },
@@ -1014,7 +1014,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "683624c863193d59c7eb2b31"
   },
@@ -1043,7 +1043,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "698b523ed6449873efdaa9c5"
   },
@@ -1073,7 +1073,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "698b557dd6449873efdaa9c6"
   },
@@ -1103,7 +1103,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "69b0256ad85c553474735e69"
   },
@@ -1131,7 +1131,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "69b0257cd85c553474735e6a"
   },
@@ -1159,7 +1159,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "69b02d61d85c553474735e71"
   },
@@ -1189,7 +1189,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "69b02d7ad85c553474735e72"
   },
@@ -1219,7 +1219,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6a049c242e64c65c14f9e01a"
   },
@@ -1247,36 +1247,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
-  "_id": {
-   "$oid": "6a481bc682ebdb034bfc8e10"
-  },
-  "name": "Info_B_Conferințe 2026",
-  "formula": "S > 1 ? S/max(N-2, 1) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "workshopCategory2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
+{
   "_id": {
    "$oid": "6a049c682e64c65c14f9e01b"
   },
@@ -1304,7 +1275,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6a30667f5ae41a6b1b60c6ce"
   },
@@ -1333,37 +1304,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
-  "_id": {
-   "$oid": "6a47f72a8982d45e2bf2f735"
-  },
-  "name": "Info_D_i_2026",
-  "formula": "(S >= 16) ? (12/max(N-2, 1)) : (S/max(N-2, 1))",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "2"
-  },
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_SENSE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "afd70cd4796c378fb42d5c41a771f01e0823a47b2152b86428891996e830e0b2",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
+{
   "_id": {
    "$oid": "6a47f17bcb06b11f3b6121f0"
   },
@@ -1394,7 +1335,7 @@
   "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6a47f2d27be56ad867b997c2"
   },
@@ -1425,7 +1366,7 @@
   "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6a47f57bf5f5a3371821fd41"
   },
@@ -1456,7 +1397,37 @@
   "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
+  "_id": {
+   "$oid": "6a47f72a8982d45e2bf2f735"
+  },
+  "name": "Info_D_i_2026",
+  "formula": "(S >= 16) ? (12/max(N-2, 1)) : (S/max(N-2, 1))",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": {
+   "$numberLong": "2"
+  },
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS_SENSE",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "afd70cd4796c378fb42d5c41a771f01e0823a47b2152b86428891996e830e0b2",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
   "_id": {
    "$oid": "6a480678cefa56310d7f8023"
   },
@@ -1487,7 +1458,7 @@
   "workshopCategory2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
   "_id": {
    "$oid": "6a480678cefa56310d7f8024"
   },
@@ -1517,7 +1488,36 @@
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
- {
+{
+  "_id": {
+   "$oid": "6a481bc682ebdb034bfc8e10"
+  },
+  "name": "Info_B_Conferințe 2026",
+  "formula": "S > 1 ? S/max(N-2, 1) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS_CONFERENCE",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "workshopCategory2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
   "_id": {
    "$oid": "6a493be99fe41c33d2883e87"
   },
@@ -1538,6 +1538,316 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
   "formulaHash": "94ad3a09d7fc9cea92d5a564d88f72804cdb68ebd05cd5d68873ac8814a45551",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d063ec4aec775c522d9e0"
+  },
+  "name": "Psiho_I3",
+  "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "MAIN",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "b22c48c3545fc790295993e6b09284b16d33d5e8ab9cb3a3d3437369ecfe0efd",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d066bc4aec775c522d9e1"
+  },
+  "name": "Psiho_I4",
+  "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "MAIN",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "d3814678cfe398f42987748538af2c91c6b16a87c2490e2f33223a496d583cf2",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d066bc4aec775c522d9e2"
+  },
+  "name": "Psiho_I7",
+  "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S/N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "CO",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "de6464d3174104bfaac70bbb0b0ea722c69542b0fb26c2b797d4984e402e2cf9",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d066bc4aec775c522d9e3"
+  },
+  "name": "Psiho_I8",
+  "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S/N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "CO",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "932fc41b83ad6c4eb103fea47fb08de636cda248720ca10bec92000a537e55cb",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d066bc4aec775c522d9e4"
+  },
+  "name": "Psiho_I9",
+  "formula": "S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "MAIN",
+   "strategy": "INDEXED_PROCEEDINGS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "n": 2,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d066bc4aec775c522d9e5"
+  },
+  "name": "Psiho_I10",
+  "formula": "S/N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "CO",
+   "strategy": "INDEXED_PROCEEDINGS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "n": 2,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d066bc4aec775c522d9e6"
+  },
+  "name": "Psiho_I12",
+  "formula": "category=='B' && docType=='bk' ? 12*S/N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "ffe3f09d8f1c2b49843b724492798668c8affa1a3d4d07670a6e1674cf72bf1e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d066bc4aec775c522d9e7"
+  },
+  "name": "Psiho_I13",
+  "formula": "category=='B' && docType=='ch' ? 3*S/N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "d7f9e1bca18bd06f7107a1dd3baf0909acbecdeeac80f9a59748a414037a3099",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d06c2c4aec775c522d9e8"
+  },
+  "name": "Psiho_I17",
+  "formula": "S > 0 ? 0 : 0.1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "policy": "CANDIDATE_ONLY",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "038e7b7a27e5a11ed4fce98a8156b8b7d3537e8c26d3aa1232a91cb74f66de6d",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d0724c4aec775c522d9e9"
+  },
+  "name": "Psiho_I2",
+  "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? 0 : (3 + S)",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "MAIN",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "0452c4f973c0c6b873e9c320a7292b6ddfe8ec3c7a1dd560d21ff45d9e23adf4",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a5d0724c4aec775c522d9ea"
+  },
+  "name": "Psiho_I6",
+  "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? 0 : (3 + S)/N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Psychology"
+  },
+  "version": 0,
+  "kind": {
+   "role": "CO",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "43a79bd79fe5dab0781f2af36fe34c84804d7594f542e3e768d336dfb1902b62",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },

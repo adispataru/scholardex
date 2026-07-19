@@ -1,5 +1,5 @@
 [
- {
+{
   "_id": {
    "$oid": "68234d659ab8db33ac93b78c"
   },
@@ -170,7 +170,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
- {
+{
   "_id": {
    "$oid": "6849fb3d97a94f22948f9430"
   },
@@ -280,7 +280,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
- {
+{
   "_id": {
    "$oid": "698b51a2d6449873efdaa9c4"
   },
@@ -332,7 +332,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
- {
+{
   "_id": {
    "$oid": "69b025ccd85c553474735e6b"
   },
@@ -444,7 +444,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
- {
+{
   "_id": {
    "$oid": "6a049bf02e64c65c14f9e019"
   },
@@ -804,7 +804,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
- {
+{
   "_id": {
    "$oid": "6a47f44686ec3f1107f927bb"
   },
@@ -1341,6 +1341,281 @@
       "value": {
        "$numberInt": "12"
       }
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+ },
+{
+  "_id": {
+   "$oid": "6a5d075cc4aec775c522d9eb"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "FV Psihologie 2016",
+  "description": "Standarde minimale FSP (Anexa 28), domeniul Psihologie. Publicatii (I1-I13) + citari (I16-I17); activitate (I14/I15/I18-I35, I27) urmeaza.",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6823a9e6d6df306cd304ded9"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d0724c4aec775c522d9e9"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d063ec4aec775c522d9e0"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d066bc4aec775c522d9e1"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6823add4dc170c4fea2c3b3c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d0724c4aec775c522d9ea"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d066bc4aec775c522d9e2"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d066bc4aec775c522d9e3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d066bc4aec775c522d9e4"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d066bc4aec775c522d9e5"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d066bc4aec775c522d9e6"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d066bc4aec775c522d9e7"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6823b61df1cde62b43289faf"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a5d06c2c4aec775c522d9e8"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "C1: I1 (autor principal)",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 6
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 8
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 10
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 25
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C2: I3+I4 (carti/capitole A1/A2)",
+    "indicatorIndices": [
+     2,
+     3
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 0
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 3
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 6
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 12
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C3: Total A1 (I1-I15)",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 20
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 35
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 60
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 100
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C4: I16 (citari WoS)",
+    "indicatorIndices": [
+     12
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 1
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 3
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 6
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 15
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C6: Total A2 (I16-I35)",
+    "indicatorIndices": [
+     12,
+     13
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 5
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 10
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 20
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 60
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C7: Total general",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 25
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 45
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 80
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 160
      }
     ],
     "contributesToTotal": false

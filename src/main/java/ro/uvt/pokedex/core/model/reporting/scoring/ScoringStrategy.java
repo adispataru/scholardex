@@ -30,6 +30,21 @@ public enum ScoringStrategy {
     ART_EVENT,
     FEAA_BOOK,
     /**
+     * FSP (Psihologie, Anexa 28) book/chapter scoring by a 3-tier prestige-publisher list (A1/A2/B).
+     * Returns the tier multiplier {@code m} as the base score {@code S} (A1→3, A2→1, B→0.5); the
+     * indicator formula turns it into Pi (e.g. {@code 12*S/N} for books, {@code 3*S/N} for chapters).
+     * Books/chapters not on any tier score 0 (per fișă: "publicaţiile care nu îndeplinesc criteriile
+     * minime … nu se punctează"). Backed by {@code report-data/psihologie-publishers.csv}.
+     */
+    PSYCH_BOOK,
+    /**
+     * FSP (Psihologie, Anexa 28) indicators I9/I10: an in-extenso proceedings paper indexed in WoS or
+     * another recognised BDI scores a flat 1.0 (co-author variant does {@code 1/N} in the formula).
+     * Reuses the CS conference detection/DBLP plumbing but ignores the CORE rank ladder. Pair with a
+     * {@code PerForumCap(2)} selector for the "cel mult două contribuţii/ediţie conferinţă" cap.
+     */
+    INDEXED_PROCEEDINGS,
+    /**
      * H67 S4a: the Hirsch (h-index) aggregate. Unlike the others this is NOT a per-item {@code ScoringService} —
      * h-index is non-additive, so it is handled inline at the combine step (like {@link #GENERIC_COUNT}); no
      * {@code ScoringService} bean claims it. Carried as a strategy only so {@code IndicatorKind.HIndex} round-trips.

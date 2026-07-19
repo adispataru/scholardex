@@ -263,6 +263,23 @@ public class Indicator {
         return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.DistinctForums;
     }
 
+    /**
+     * True iff the effective selector is a {@link ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerForumCap}:
+     * at most {@code n} positive items are kept per forum (FSP I9/I10 "cel mult două contribuţii/ediţie conferinţă").
+     */
+    public boolean isPerForumCapSelector() {
+        return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerForumCap;
+    }
+
+    /** The per-forum cap {@code n} for a {@code PerForumCap} selector; {@code Integer.MAX_VALUE} otherwise (no cap). */
+    public int perForumCapLimit() {
+        ro.uvt.pokedex.core.model.reporting.scoring.Selector s = getEffectiveSelector();
+        if (s instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerForumCap cap) {
+            return cap.n();
+        }
+        return Integer.MAX_VALUE;
+    }
+
     public YearRangeSpec getEffectiveYearRange() {
         return yearRangeSpec != null ? yearRangeSpec : new YearRangeSpec.AllYears();
     }

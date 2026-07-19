@@ -283,6 +283,58 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void perForumCapSelectorKeepsAtMostTwoHighestScoringItemsPerForum() {
+        // FSP I9/I10: "se pot puncta cumulat cel mult două contribuţii/ediţie conferinţă". Three positive
+        // papers in the SAME proceedings forum are capped at the two highest; a paper in a different
+        // edition is unaffected. The dropped item leaves the scores map and carries OVER_PER_FORUM_CAP.
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "PER_FORUM_CAP_2");
+        ScoringPublication sameEditionLow = publication("p1", "f-edition", "2020-01-01", "cp", "cp",
+                "Edition Paper Low", List.of("a1"));
+        ScoringPublication sameEditionHigh = publication("p2", "f-edition", "2021-01-01", "cp", "cp",
+                "Edition Paper High", List.of("a1"));
+        ScoringPublication sameEditionMid = publication("p3", "f-edition", "2021-01-01", "cp", "cp",
+                "Edition Paper Mid", List.of("a1"));
+        ScoringPublication otherEdition = publication("p4", "f-other", "2022-01-01", "cp", "cp",
+                "Other Edition Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(sameEditionLow, indicator)).thenReturn(score(1.0));
+        when(scoringService.getScore(sameEditionHigh, indicator)).thenReturn(score(3.0));
+        when(scoringService.getScore(sameEditionMid, indicator)).thenReturn(score(2.0));
+        when(scoringService.getScore(otherEdition, indicator)).thenReturn(score(4.0));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
+                List.of(sameEditionLow, sameEditionHigh, sameEditionMid, otherEdition), indicator);
+
+        // Same edition keeps the two highest (3 + 2); the lowest (1) is dropped. Other edition adds 4.
+        assertEquals(3.0, result.get("Edition Paper High").getAuthorScore(), 1e-9);
+        assertEquals(2.0, result.get("Edition Paper Mid").getAuthorScore(), 1e-9);
+        assertEquals(4.0, result.get("Other Edition Paper").getAuthorScore(), 1e-9);
+        assertNull(result.get("Edition Paper Low"));
+        assertEquals(3.0 + 2.0 + 4.0, result.get("total").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void perForumCapSelectorReportsDroppedItemWithReasonInDetailedResult() {
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "PER_FORUM_CAP_2");
+        ScoringPublication a = publication("p1", "f-edition", "2020-01-01", "cp", "cp", "A", List.of("a1"));
+        ScoringPublication b = publication("p2", "f-edition", "2021-01-01", "cp", "cp", "B", List.of("a1"));
+        ScoringPublication c = publication("p3", "f-edition", "2021-01-01", "cp", "cp", "C", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(a, indicator)).thenReturn(score(1.0));
+        when(scoringService.getScore(b, indicator)).thenReturn(score(3.0));
+        when(scoringService.getScore(c, indicator)).thenReturn(score(2.0));
+
+        ScientificProductionService.ScoredProductionResult result =
+                scientificProductionService.calculateScientificProductionScoreDetailed(List.of(a, b, c), indicator);
+
+        assertEquals("OVER_PER_FORUM_CAP", result.excluded().get("A").getScoringInfo().get("zeroReason"));
+        assertFalse(result.scores().containsKey("A"));
+        assertEquals(5.0, result.scores().get("total").getAuthorScore(), 1e-9);
+    }
+
+    @Test
     void physicsIndicatorDividesAisByNef() {
         // H65: I = ΣAISᵢ/Nefᵢ. 6 authors → Nef = (6+5)/2 = 5.5; AIS (=S) = 4.0 → 4/5.5.
         Indicator indicator = indicator("PUBLICATIONS", "S/Nef");

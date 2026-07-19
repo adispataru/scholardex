@@ -146,6 +146,39 @@ public class ScientificProductionService {
                 }
             }
             totalScore = distinctForums.size();
+        } else if (indicator.isPerForumCapSelector()) {
+            // FSP I9/I10: keep at most n positive items per forum (each conference edition = its
+            // proceedings forum), taking the highest-scoring; the total sums only the kept items.
+            int cap = indicator.perForumCapLimit();
+            totalScore = 0.0;
+            Map<String, Integer> keptPerForum = new HashMap<>();
+            List<ScoringPublicationReadModel> positives = new ArrayList<>();
+            for (ScoringPublicationReadModel publication : publications) {
+                Score score = interResult.get(publication.getTitle());
+                if (score != null && score.getAuthorScore() > 0) {
+                    positives.add(publication);
+                }
+            }
+            // Highest author score first so the cap keeps the best contributions per edition.
+            positives.sort((p1, p2) -> Double.compare(
+                    interResult.get(p2.getTitle()).getAuthorScore(),
+                    interResult.get(p1.getTitle()).getAuthorScore()));
+            for (ScoringPublicationReadModel publication : positives) {
+                Score score = interResult.get(publication.getTitle());
+                // A missing forumId can't be grouped into an edition — treat each as its own bucket.
+                String forumKey = publication.getForumId() != null
+                        ? publication.getForumId()
+                        : "__no_forum__" + publication.getTitle();
+                int kept = keptPerForum.getOrDefault(forumKey, 0);
+                if (kept < cap) {
+                    result.put(publication.getTitle(), score);
+                    totalScore += score.getAuthorScore();
+                    keptPerForum.put(forumKey, kept + 1);
+                } else {
+                    score.getScoringInfo().put("zeroReason", "OVER_PER_FORUM_CAP");
+                    excluded.put(publication.getTitle(), score);
+                }
+            }
         }else{
             result = interResult;
         }

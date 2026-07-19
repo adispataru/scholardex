@@ -1,11 +1,29 @@
 [
-  {"_id":"ALL","description":"Special domain to consider all WoS domains","wosCategories":["*"],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"ALL"},
-  {"_id":"Arhitectura","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Arhitectura"},
-  {"_id":"Arte vizuale","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Arte vizuale"},
-  {"_id":"Cinematografie şi Media","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Cinematografie şi Media"},
-  {"_id":"Computer Science","description":"All WoS categories for Computer Science","wosCategories":["COMPUTER SCIENCE, ARTIFICIAL INTELLIGENCE - SCIE","COMPUTER SCIENCE, CYBERNETICS - SCIE","COMPUTER SCIENCE, HARDWARE & ARCHITECTURE - SCIE","COMPUTER SCIENCE, INFORMATION SYSTEMS - SCIE","COMPUTER SCIENCE, INTERDISCIPLINARY APPLICATIONS - SCIE","COMPUTER SCIENCE, SOFTWARE ENGINEERING - SCIE","COMPUTER SCIENCE, THEORY & METHODS - SCIE","TELECOMMUNICATIONS - SCIE","ENGINEERING, ELECTRICAL & ELECTRONIC - SCIE","COMPUTER APPLICATIONS & CYBERNETICS - SCIE","MULTIDISCIPLINARY SCIENCES - SCIE"],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Computer Science"},
-  {"_id":"Economie","description":"All WoS relevant categories","wosCategories":["ECONOMICS - -SCIE","BUSINESS, FINANCE - -SCIE","BUSINESS - -SCIE","MANAGEMENT - -SCIE","COMPUTER SCIENCE, ARTIFICIAL INTELLIGENCE","COMPUTER SCIENCE, CYBERNETICS - SCIE","COMPUTER SCIENCE, INTERDISCIPLINARY APPLICATIONS - SCIE","COMPUTER SCIENCE, SOFTWARE ENGINEERING - SCIE"],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Economie"},
-  {"_id":"Muzică","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Muzică"},
-  {"_id":"Psychology","description":"test","wosCategories":["PSYCHOLOGY - SCIE","PSYCHOLOGY, APPLIED - SSCI","PSYCHOLOGY, CLINICAL - SSCI","PSYCHOLOGY, DEVELOPMENTAL - SSCI","PSYCHOLOGY, BIOLOGICAL - SSCI","PSYCHOLOGY, EXPERIMENTAL - SSCI","PSYCHOLOGY, MATHEMATICAL - SSCI","PSYCHOLOGY, MULTIDISCIPLINARY - SSCI","PSYCHOLOGY, PSYCHOANALYSIS - SSCI","PSYCHOLOGY, SOCIAL - SSCI","PSYCHOLOGY, EDUCATIONAL - SSCI"],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Psychology"},
-  {"_id":"Teatru şi artele spectacolului","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Teatru şi artele spectacolului"}
+{"_id":"ALL","description":"Special domain to consider all WoS domains","wosCategories":["*"],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"ALL"},
+{"_id":"Arhitectura","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Arhitectura"},
+{"_id":"Arte vizuale","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Arte vizuale"},
+{"_id":"Cinematografie şi Media","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Cinematografie şi Media"},
+{"_id":"Computer Science","description":"All WoS categories for Computer Science","wosCategories":["COMPUTER SCIENCE, ARTIFICIAL INTELLIGENCE - SCIE","COMPUTER SCIENCE, CYBERNETICS - SCIE","COMPUTER SCIENCE, HARDWARE & ARCHITECTURE - SCIE","COMPUTER SCIENCE, INFORMATION SYSTEMS - SCIE","COMPUTER SCIENCE, INTERDISCIPLINARY APPLICATIONS - SCIE","COMPUTER SCIENCE, SOFTWARE ENGINEERING - SCIE","COMPUTER SCIENCE, THEORY & METHODS - SCIE","TELECOMMUNICATIONS - SCIE","ENGINEERING, ELECTRICAL & ELECTRONIC - SCIE","COMPUTER APPLICATIONS & CYBERNETICS - SCIE","MULTIDISCIPLINARY SCIENCES - SCIE"],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Computer Science"},
+{"_id":"Economie","description":"All WoS relevant categories","wosCategories":["ECONOMICS - -SCIE","BUSINESS, FINANCE - -SCIE","BUSINESS - -SCIE","MANAGEMENT - -SCIE","COMPUTER SCIENCE, ARTIFICIAL INTELLIGENCE","COMPUTER SCIENCE, CYBERNETICS - SCIE","COMPUTER SCIENCE, INTERDISCIPLINARY APPLICATIONS - SCIE","COMPUTER SCIENCE, SOFTWARE ENGINEERING - SCIE"],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Economie"},
+{"_id":"Muzică","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Muzică"},
+{
+  "_id": "Psychology",
+  "name": "Psychology",
+  "description": "Domeniul Psihologie (FSP, Anexa 28): categoriile WoS PSYCHOLOGY (SCIE/SSCI).",
+  "wosCategories": [
+   "PSYCHOLOGY - SCIE",
+   "PSYCHOLOGY, APPLIED - SSCI",
+   "PSYCHOLOGY, CLINICAL - SSCI",
+   "PSYCHOLOGY, DEVELOPMENTAL - SSCI",
+   "PSYCHOLOGY, BIOLOGICAL - SSCI",
+   "PSYCHOLOGY, EXPERIMENTAL - SSCI",
+   "PSYCHOLOGY, MATHEMATICAL - SSCI",
+   "PSYCHOLOGY, MULTIDISCIPLINARY - SSCI",
+   "PSYCHOLOGY, PSYCHOANALYSIS - SSCI",
+   "PSYCHOLOGY, SOCIAL - SSCI",
+   "PSYCHOLOGY, EDUCATIONAL - SSCI"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.Domain"
+ },
+{"_id":"Teatru şi artele spectacolului","description":"Imported from JSON","wosCategories":[],"_class":"ro.uvt.pokedex.core.model.reporting.Domain","name":"Teatru şi artele spectacolului"}
 ]
