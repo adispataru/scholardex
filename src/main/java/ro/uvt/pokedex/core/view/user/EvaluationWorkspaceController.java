@@ -48,7 +48,6 @@ public class EvaluationWorkspaceController {
     private final UserIndividualReportRunRepository userIndividualReportRunRepository;
     private final EvaluationSnapshotRepository evaluationSnapshotRepository;
     private final ReportTransferFacade reportTransferFacade;
-    private final ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
     private final ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
     private final ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
@@ -92,7 +91,7 @@ public class EvaluationWorkspaceController {
         IndividualReportRunDto run = runOpt.get();
 
         individualReportViewModelAssembler.populate(model, currentUser, report, run, reports);
-        model.addAttribute("importAvailable", reportImportVerificationFacade.isImportAvailable(resolvedReportId));
+        model.addAttribute("importAvailable", reportTransferFacade.isImportAvailable(resolvedReportId));
         model.addAttribute("pendingReviewCount",
                 userPublicationFacade.countPendingAuthorshipReviews(currentUser.getEmail()));
         return "user/individual-report-view";
@@ -156,7 +155,7 @@ public class EvaluationWorkspaceController {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
-        if (!reportImportVerificationFacade.isImportAvailable(reportId)) {
+        if (!reportTransferFacade.isImportAvailable(reportId)) {
             return "redirect:/user/evaluation?report=" + reportId;
         }
         model.addAttribute("user", currentUser);
@@ -183,15 +182,15 @@ public class EvaluationWorkspaceController {
             return "user/individual-report-import";
         }
         try {
-            var outcome = reportImportVerificationFacade.verifyOutcome(currentUser.getEmail(), reportId, runId, ReportFormat.XLSX, file.getInputStream());
+            var outcome = reportTransferFacade.verifyRun(currentUser.getEmail(), reportId, runId, ReportFormat.XLSX, file.getInputStream());
             if (outcome.isSuccess()) {
-                var result = outcome.result();
-                model.addAttribute("comparison", result.displayedRunComparison());
-                model.addAttribute("displayedRunId", result.displayedRunId());
-                model.addAttribute("currentRunId", result.currentRunId());
-                model.addAttribute("currentRunComparison", result.currentRunComparison());
-                model.addAttribute("layoutWarnings", result.layoutWarnings());
-                model.addAttribute("activityDefs", loadActivityDefs(result.displayedRunComparison()));
+                var view = outcome.view();
+                model.addAttribute("comparison", view.displayedRunComparison());
+                model.addAttribute("displayedRunId", view.displayedRunId());
+                model.addAttribute("currentRunId", view.currentRunId());
+                model.addAttribute("currentRunComparison", view.currentRunComparison());
+                model.addAttribute("layoutWarnings", view.layoutWarnings());
+                model.addAttribute("activityDefs", loadActivityDefs(view.referencedActivityIds()));
             } else {
                 response.setStatus(statusFor(outcome.failureReason()).value());
                 model.addAttribute("errorMessage", outcome.message());
@@ -205,17 +204,11 @@ public class EvaluationWorkspaceController {
 
     /** Activity definitions (with their field schema) keyed by id, for rendering the inline add-form. */
     private Map<String, ro.uvt.pokedex.core.model.activities.Activity> loadActivityDefs(
-            ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison comparison) {
+            java.util.List<String> referencedActivityIds) {
         Map<String, ro.uvt.pokedex.core.model.activities.Activity> defs = new HashMap<>();
-        if (comparison.activityBlocks() == null) return defs;
-        comparison.activityBlocks().forEach(block -> {
-            if (block.activityOptions() == null) return;
-            block.activityOptions().forEach(opt -> {
-                if (opt.activityId() != null && !defs.containsKey(opt.activityId())) {
-                    userActivityInstanceFacade.findActivity(opt.activityId()).ifPresent(a -> defs.put(opt.activityId(), a));
-                }
-            });
-        });
+        if (referencedActivityIds == null) return defs;
+        referencedActivityIds.forEach(activityId ->
+                userActivityInstanceFacade.findActivity(activityId).ifPresent(a -> defs.put(activityId, a)));
         return defs;
     }
 
@@ -223,7 +216,7 @@ public class EvaluationWorkspaceController {
         return ro.uvt.pokedex.core.view.ReportExportHttpStatus.of(reason);
     }
 
-    private HttpStatus statusFor(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationFailureReason reason) {
+    private HttpStatus statusFor(ReportTransferFacade.VerificationFailureReason reason) {
         return switch (reason) {
             case REPORT_NOT_FOUND, RUN_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case FORBIDDEN_RUN -> HttpStatus.FORBIDDEN;

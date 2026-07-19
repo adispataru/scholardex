@@ -62,8 +62,6 @@ class EvaluationWorkspaceControllerContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.ReportTransferFacade reportTransferFacade;
     @MockitoBean
-    private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
-    @MockitoBean
     private ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
@@ -340,18 +338,19 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void importEndpointPassesSelectedRunToFacade() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportImportVerificationFacade.verifyOutcome(
+        when(reportTransferFacade.verifyRun(
                 org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
                 org.mockito.ArgumentMatchers.eq("rep-1"),
                 org.mockito.ArgumentMatchers.eq("run-42"),
                 org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.success(
-                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationResult(
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationOutcome.success(
+                        new ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationView(
                         new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison(List.of(), List.of(), 0, 0, 0, 0, 0),
                         null,
                         "run-42",
                         null,
+                        List.of(),
                         List.of())));
 
         mockMvc.perform(multipart("/user/evaluation/import")
@@ -363,7 +362,7 @@ class EvaluationWorkspaceControllerContractTest {
                 .andExpect(model().attributeExists("comparison"))
                 .andExpect(model().attribute("runId", "run-42"));
 
-        verify(reportImportVerificationFacade).verifyOutcome(
+        verify(reportTransferFacade).verifyRun(
                 org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
                 org.mockito.ArgumentMatchers.eq("rep-1"),
                 org.mockito.ArgumentMatchers.eq("run-42"),
@@ -386,19 +385,20 @@ class EvaluationWorkspaceControllerContractTest {
                 ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison.Status.DIFFERS,
                 List.of(), List.of(importable), List.of(),
                 List.of()); // <- no bound activity options
-        when(reportImportVerificationFacade.verifyOutcome(
+        when(reportTransferFacade.verifyRun(
                 org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
                 org.mockito.ArgumentMatchers.eq("rep-1"),
                 org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.success(
-                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationResult(
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationOutcome.success(
+                        new ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationView(
                         new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison(
                                 List.of(), List.of(block), 0, 2.0, 0, 0, 1),
                         null,
                         null,
                         null,
+                        List.of(),
                         List.of())));
 
         String html = mockMvc.perform(multipart("/user/evaluation/import")
@@ -415,19 +415,20 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void importViewRendersLayoutWarningsCallout() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportImportVerificationFacade.verifyOutcome(
+        when(reportTransferFacade.verifyRun(
                 org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
                 org.mockito.ArgumentMatchers.eq("rep-1"),
                 org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.success(
-                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationResult(
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationOutcome.success(
+                        new ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationView(
                         new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison(List.of(), List.of(), 0, 0, 0, 0, 0),
                         null,
                         null,
                         null,
-                        List.of("Sheet 'B-Reviste': the layout differs from the official template (found 'Titlu' column in column B, expected C). Its rows were NOT compared — please fill in the official template."))));
+                        List.of("Sheet 'B-Reviste': the layout differs from the official template (found 'Titlu' column in column B, expected C). Its rows were NOT compared — please fill in the official template."),
+                        List.of())));
 
         String html = mockMvc.perform(multipart("/user/evaluation/import")
                         .file("file", new byte[]{1, 2, 3})
@@ -444,14 +445,14 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void importEndpointMapsInvalidWorkbookToUnprocessableStatus() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportImportVerificationFacade.verifyOutcome(
+        when(reportTransferFacade.verifyRun(
                 org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
                 org.mockito.ArgumentMatchers.eq("rep-1"),
                 org.mockito.ArgumentMatchers.eq("run-42"),
                 org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.failure(
-                        ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationFailureReason.INVALID_WORKBOOK,
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationOutcome.failure(
+                        ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationFailureReason.INVALID_WORKBOOK,
                         "Could not read the uploaded workbook: bad workbook"));
 
         mockMvc.perform(multipart("/user/evaluation/import")
@@ -466,14 +467,14 @@ class EvaluationWorkspaceControllerContractTest {
     @Test
     void importEndpointMapsMissingParserToNotImplementedStatus() throws Exception {
         User user = userPrincipal("u@uvt.ro");
-        when(reportImportVerificationFacade.verifyOutcome(
+        when(reportTransferFacade.verifyRun(
                 org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
                 org.mockito.ArgumentMatchers.eq("rep-1"),
                 org.mockito.ArgumentMatchers.eq("run-42"),
                 org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.failure(
-                        ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationFailureReason.PARSER_NOT_AVAILABLE,
+                .thenReturn(ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationOutcome.failure(
+                        ro.uvt.pokedex.core.service.application.ReportTransferFacade.VerificationFailureReason.PARSER_NOT_AVAILABLE,
                         "Report type is registered, but no XLSX parser is available."));
 
         mockMvc.perform(multipart("/user/evaluation/import")
