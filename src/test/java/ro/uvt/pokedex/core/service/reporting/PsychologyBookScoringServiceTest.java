@@ -74,7 +74,9 @@ class PsychologyBookScoringServiceTest {
     @Test
     void journalArticleGetsNoBookScore() {
         // 'ar' is scored by IMPACT_FACTOR, not here; the publisher list is never consulted.
-        assertEquals(0.0, service.getScore(pub("ar", "Editura Polirom", "A2"), indicator).getScore());
+        Score s = service.getScore(pub("ar", "Editura Polirom", "A2"), indicator);
+        assertEquals(0.0, s.getScore());
+        assertEquals("VENUE_TYPE_MISMATCH", s.getScoringInfo().get("zeroReason"));
     }
 
     @Test

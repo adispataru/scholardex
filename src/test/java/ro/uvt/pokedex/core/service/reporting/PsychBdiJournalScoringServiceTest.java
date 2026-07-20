@@ -160,5 +160,6 @@ class PsychBdiJournalScoringServiceTest {
 
         Score proceedings = service.getScore(publication("cp", "2024"), psychologyIndicator());
         assertEquals(0.0, proceedings.getScore());
+        assertEquals("VENUE_TYPE_MISMATCH", proceedings.getScoringInfo().get("zeroReason"));
     }
 }

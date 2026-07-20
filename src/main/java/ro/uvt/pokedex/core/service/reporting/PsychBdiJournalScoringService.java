@@ -55,7 +55,12 @@ public class PsychBdiJournalScoringService extends AbstractWoSForumScoringServic
     @Override
     public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Score score = new Score();
-        if (publication == null || !isArticleOrReview(publication)) {
+        if (publication == null) {
+            return score;
+        }
+        if (!isArticleOrReview(publication)) {
+            // Not a journal article/review — books/proceedings are counted by their own indicators.
+            score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
             return score;
         }
         ScholardexForumView forum = lookupPort.getForum(publication.getForumId());

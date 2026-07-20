@@ -36,7 +36,9 @@ public class IndexedProceedingsScoringService extends AbstractForumScoringServic
             return score;
         }
         if (!"cp".equals(PublicationSubtypeSupport.resolveSubtype(publication))) {
-            return score; // only conference-proceedings papers
+            // Not a proceedings paper — journals/books are counted by their own indicators.
+            score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
+            return score;
         }
         score.setScore(1.0);
         score.setScoringSource(strategy().name());

@@ -34,8 +34,10 @@ class IndexedProceedingsScoringServiceTest {
     }
 
     @Test
-    void journalArticleScoresZero() {
-        assertEquals(0.0, service.getScore(pub("ar"), indicator).getScore());
+    void journalArticleScoresZeroWithVenueTypeMarker() {
+        Score s = service.getScore(pub("ar"), indicator);
+        assertEquals(0.0, s.getScore());
+        assertEquals("VENUE_TYPE_MISMATCH", s.getScoringInfo().get("zeroReason"));
     }
 
     @Test
