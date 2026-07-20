@@ -149,7 +149,8 @@ function _renderBarChart(canvas, labels, values, label, colors) {
     });
 }
 
-// Citations per year (by citing-paper year), two grouped series: including vs excluding self-citations.
+// Citations per year (by citing-paper year), stacked: blue base = citations excluding
+// self-citations, amber cap = the self-citations delta. Total bar height = all citations.
 function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
     if (!canvas) return;
     if (!labels || !labels.length) {
@@ -157,21 +158,22 @@ function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
         return;
     }
     const amber = '#f59e0b';
+    const selfDelta = inclSelf.map((v, i) => v - (exclSelf[i] || 0));
     new window.Chart(canvas, {
         type: 'bar',
         data: {
             labels,
             datasets: [
                 {
-                    label: 'Incl. self-citations',
-                    data: inclSelf,
+                    label: 'Citations',
+                    data: exclSelf,
                     backgroundColor: colors.primary,
                     borderWidth: 0,
                     borderRadius: 3,
                 },
                 {
-                    label: 'Excl. self-citations',
-                    data: exclSelf,
+                    label: 'Self-citations',
+                    data: selfDelta,
                     backgroundColor: amber,
                     borderWidth: 0,
                     borderRadius: 3,
@@ -182,10 +184,12 @@ function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
             maintainAspectRatio: false,
             scales: {
                 xAxes: [{
+                    stacked: true,
                     gridLines: { display: false },
                     ticks: { fontColor: colors.muted, maxTicksLimit: 8 }
                 }],
                 yAxes: [{
+                    stacked: true,
                     ticks: { beginAtZero: true, stepSize: 1, fontColor: colors.muted },
                     gridLines: { color: colors.border, zeroLineColor: colors.border }
                 }]
@@ -206,10 +210,17 @@ function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
                 callbacks: {
                     title: (items) => items[0].xLabel,
                     label: (item) => {
-                        const kind = item.datasetIndex === 0 ? 'incl. self' : 'excl. self';
-                        return `${item.yLabel} citation${item.yLabel !== 1 ? 's' : ''} (${kind})`;
+                        if (item.datasetIndex === 1) {
+                            return `${item.yLabel} self-citation${item.yLabel !== 1 ? 's' : ''}`;
+                        }
+                        return `${item.yLabel} citation${item.yLabel !== 1 ? 's' : ''} (excl. self)`;
+                    },
+                    footer: (items) => {
+                        const total = items.reduce((sum, it) => sum + it.yLabel, 0);
+                        return `Total: ${total}`;
                     }
-                }
+                },
+                footerFontColor: colors.muted
             }
         }
     });
