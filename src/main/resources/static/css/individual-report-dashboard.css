@@ -218,6 +218,9 @@
   background: var(--app-color-card-bg, #fff);
   border-radius: 0 0.4rem 0.4rem 0;
   animation: eval-detail-in 0.15s ease;
+  /* The evidence table keeps its natural width and scrolls INSIDE the panel on narrow
+     viewports/panes — without this the columns crush to one word per line at phone widths. */
+  overflow-x: auto;
 }
 
 /* Links inside the detail panel (publication/forum evidence rows) follow the house
@@ -1132,6 +1135,11 @@
 
 .individual-report-dashboard .app-eval-evidence-table {
   width: 100%;
+  /* Floor keeps the columns readable; below it the panel scrolls horizontally instead of the
+     title column collapsing. The fixed metadata columns sum to ~31rem (year 3.9 + rank 7.5 +
+     forum 7 + points 8 + actions 4.5), and fixed table layout gives the title the remainder —
+     46rem leaves it ~15rem. */
+  min-width: 46rem;
   margin-top: 0.5rem;
   border-collapse: collapse;
   /* Close to the workbench body copy (1rem base) — the previous 0.85rem read as a different, denser

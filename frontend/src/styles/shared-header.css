@@ -293,6 +293,12 @@
     flex-wrap: nowrap;
   }
 
+  /* The browse links collapse into the hamburger's sidebar overlay ("Browse" section) — as a
+     right-aligned stacked column next to the icon buttons they were unusable at phone widths. */
+  .app-shell-topbar__nav {
+    display: none;
+  }
+
   .app-shell-page-header {
     padding: 0 1rem 0.9rem;
   }

@@ -216,6 +216,41 @@
                 <th:block th:replace="~{fragments :: user-sidebar(${activeSection})}"></th:block>
             </div>
 
+            <!-- Mobile-only: the topbar browse links collapse into the hamburger's sidebar overlay on phones. -->
+            <div class="app-shell-sidebar__nav-wrap d-md-none">
+                <nav class="app-shell-sidebar__nav" aria-label="Browse research surfaces">
+                    <section class="app-shell-sidebar__section">
+                        <p class="app-shell-sidebar__section-label">Browse</p>
+                        <ul class="app-shell-sidebar__section-list">
+                            <li class="app-shell-sidebar__item">
+                                <a class="app-shell-sidebar__link" href="/publications">
+                                    <i class="fa-solid fa-fw fa-file-lines"></i>
+                                    <span>Publications</span>
+                                </a>
+                            </li>
+                            <li class="app-shell-sidebar__item">
+                                <a class="app-shell-sidebar__link" href="/forums">
+                                    <i class="fa-solid fa-fw fa-book"></i>
+                                    <span>Forums</span>
+                                </a>
+                            </li>
+                            <li class="app-shell-sidebar__item">
+                                <a class="app-shell-sidebar__link" href="/authors">
+                                    <i class="fa-solid fa-fw fa-users"></i>
+                                    <span>Authors</span>
+                                </a>
+                            </li>
+                            <li class="app-shell-sidebar__item">
+                                <a class="app-shell-sidebar__link" href="/rankings">
+                                    <i class="fa-solid fa-fw fa-ranking-star"></i>
+                                    <span>Rankings</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </section>
+                </nav>
+            </div>
+
             <div class="app-shell-sidebar__footer d-none d-md-flex">
                 <button
                     type="button"
