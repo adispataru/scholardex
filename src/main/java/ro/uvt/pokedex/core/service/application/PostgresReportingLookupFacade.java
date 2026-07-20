@@ -133,6 +133,19 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public java.util.Set<String> getForumIndexingDatabases(String forumId) {
+        if (forumId == null || forumId.isBlank()) {
+            return java.util.Set.of();
+        }
+        java.util.List<String> databases = namedParameterJdbcTemplate.queryForList(
+                "SELECT database FROM reporting_read.scholardex_forum_membership_view "
+                        + "WHERE forum_id = :forumId AND member IS TRUE",
+                new MapSqlParameterSource("forumId", forumId),
+                String.class);
+        return new java.util.LinkedHashSet<>(databases);
+    }
+
+    @Override
     public List<WoSRanking> getRankingsByForum(ScholardexForumView forum) {
         if (forum == null) {
             return List.of();

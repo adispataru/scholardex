@@ -112,6 +112,17 @@ public interface ReportingLookupPort {
     }
 
     /**
+     * The indexing databases the forum has an active {@code member=true} row for in the forum membership
+     * view (e.g. SCOPUS, DOAJ, ERIH, SCIE/SSCI/AHCI/ESCI, OPENALEX). Used by the FSP Psihologie I2/I6
+     * "indexed in at least two recognized BDI" fallback. Default empty; the Postgres facade overrides
+     * with the real membership query — and the @Primary {@code ReportingLookupFacade} must delegate
+     * explicitly (a missing delegation silently serves this empty default).
+     */
+    default java.util.Set<String> getForumIndexingDatabases(String forumId) {
+        return java.util.Set.of();
+    }
+
+    /**
      * Whether the forum was indexed in WoS ESCI (Emerging Sources Citation Index, no JIF quartile) as of the given
      * publication year. Year-true with carry-forward: the latest recorded year is used when {@code year} is more
      * recent than the data. Default false; the Postgres facade overrides with the real membership query.

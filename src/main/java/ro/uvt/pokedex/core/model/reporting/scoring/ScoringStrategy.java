@@ -38,6 +38,20 @@ public enum ScoringStrategy {
      */
     PSYCH_BOOK,
     /**
+     * FSP (Psihologie, Anexa 28) I2/I6 fallback ladder for journal articles that do NOT qualify under
+     * the strict I1/I5 path (psychology-category WoS journal with IF≥p or above-median Q1/Q2):
+     * <ul>
+     *   <li>WoS-ranked in ANY category (borderline-domain journals — "domenii de graniţă"): S = that IF,
+     *       {@code category="WOS"};</li>
+     *   <li>else indexed in ≥2 recognized non-WoS BDIs (SCOPUS/DOAJ/ERIH memberships): S = 0,
+     *       {@code category="BDI2"};</li>
+     *   <li>exactly 1 BDI → {@code category="BDI1"} (S=0; reserved for the I11-style indicators).</li>
+     * </ul>
+     * A paper that qualifies for the strict path returns 0 here with zeroReason SCORED_BY_STRICTER —
+     * the fișă counts each publication under a single (most favorable) indicator.
+     */
+    PSYCH_BDI_JOURNAL,
+    /**
      * FSP (Psihologie, Anexa 28) indicators I9/I10: an in-extenso proceedings paper indexed in WoS or
      * another recognised BDI scores a flat 1.0 (co-author variant does {@code 1/N} in the formula).
      * Reuses the CS conference detection/DBLP plumbing but ignores the CORE rank ladder. Pair with a

@@ -38,6 +38,11 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public java.util.Set<String> getForumIndexingDatabases(String forumId) {
+        return postgresFacade.getForumIndexingDatabases(forumId);
+    }
+
+    @Override
     public boolean isForumInEsci(String forumId, int year) {
         return postgresFacade.isForumInEsci(forumId, year);
     }

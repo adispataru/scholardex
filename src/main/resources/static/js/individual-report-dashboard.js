@@ -341,7 +341,7 @@
 
       // Score on the right
       if (isZeroScored) {
-        html += '<span class="eval-scored-item__zero-flag" title="Categorized for this indicator, but the scoring formula produced 0">below threshold</span>';
+        html += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span>';
       }
       html += '<span class="eval-scored-item__score">' + toNumber(item.authorScore).toFixed(2) + '</span>';
       html += '</div>'; // item
@@ -354,11 +354,13 @@
   // Human copy for the backend's zeroReason gate markers.
   var ZERO_REASON_COPY = {
     'EXCLUDED_VENUE':       'Venue is on the standards exclusion list — scores 0 by rule.',
-    'NON_RESEARCH_SUBTYPE': 'Not an original research contribution (editorial, note, letter, erratum, …).',
+    'NON_RESEARCH_SUBTYPE': 'Not an original research contribution (editorial, note, letter, erratum, preprint, …).',
     'ROLE_FILTERED':        'Your authorship role on this publication does not match this indicator.',
     'NOT_IN_TOP_N':         'Outside the top-N selection this indicator counts.',
     'VENUE_TYPE_MISMATCH':  'Different venue type — this publication is counted by the indicator matching its venue type (journal/conference/book), not this one.',
-    'FEE_JOURNAL':          'Published in an APC/fee (gold open access) journal — excluded by the 2026 standard.'
+    'FEE_JOURNAL':          'Published in an APC/fee (gold open access) journal — excluded by the 2026 standard.',
+    'OVER_PER_FORUM_CAP':   'Above the per-conference-edition cap — only the highest-scoring contributions per edition count.',
+    'SCORED_BY_STRICTER':   'Qualifies under the stricter indicator (I1/I5) — each publication counts once, under its most favorable indicator.'
   };
 
   // Short label for the forum link: first 10 chars + ellipsis; the full name lives in the tooltip.
@@ -435,11 +437,16 @@
       if (item.zeroReason) {
         var reason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
         var label = item.zeroReason === 'VENUE_TYPE_MISMATCH' ? 'other venue type'
-          : item.zeroReason === 'FEE_JOURNAL' ? 'APC journal' : 'why?';
+          : item.zeroReason === 'FEE_JOURNAL' ? 'APC journal'
+          : item.zeroReason === 'SCORED_BY_STRICTER' ? 'counted under I1/I5'
+          : item.zeroReason === 'OVER_PER_FORUM_CAP' ? 'over edition cap'
+          : item.zeroReason === 'NON_RESEARCH_SUBTYPE' ? 'not original research'
+          : item.zeroReason === 'ROLE_FILTERED' ? 'other author role'
+          : 'why?';
         row += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">' + label + ' ' +
           '<i class="fa-solid fa-circle-info fa-xs" aria-hidden="true"></i></span> ';
       } else if (isZeroScored) {
-        row += '<span class="eval-scored-item__zero-flag" title="Categorized for this indicator, but the scoring formula produced 0">below threshold</span> ';
+        row += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span> ';
       }
       row += '<strong>' + toNumber(item.authorScore).toFixed(2) + '</strong></td>';
 
