@@ -213,9 +213,29 @@
   margin: 0.5rem 0 0.25rem 0;
   border-left: 3px solid var(--app-color-primary, #4e73df);
   padding: 0.75rem 0.75rem 0.5rem 0.85rem;
-  background: color-mix(in srgb, var(--app-color-primary, #4e73df) 5%, var(--app-color-card-bg-muted, #f6f8fd));
+  /* No primary tint — the left accent border alone marks the panel; the tinted
+     mix read as a blueish slab in both themes. */
+  background: var(--app-color-card-bg, #fff);
   border-radius: 0 0.4rem 0.4rem 0;
   animation: eval-detail-in 0.15s ease;
+}
+
+/* Links inside the detail panel (publication/forum evidence rows) follow the house
+   .app-table treatment — theme primary, no UA blue/visited-purple, no underline. */
+.individual-report-dashboard .indicator-detail-panel a:not(.btn) {
+  color: var(--app-color-primary, #4e73df);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.individual-report-dashboard .indicator-detail-panel a:not(.btn):visited {
+  color: var(--app-color-primary, #4e73df);
+}
+
+.individual-report-dashboard .indicator-detail-panel a:not(.btn):hover,
+.individual-report-dashboard .indicator-detail-panel a:not(.btn):focus {
+  color: var(--app-color-primary-strong, #2e59d9);
+  text-decoration: underline;
 }
 
 @keyframes eval-detail-in {
