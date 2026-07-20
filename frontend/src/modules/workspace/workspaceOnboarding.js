@@ -454,7 +454,13 @@ function _save(confirmAffiliationScope) {
             pastAffiliationIds: _profile.pastAffiliationIds,
             confirmAffiliationScope: !!confirmAffiliationScope
         })
-    }).then((r) => (r.ok ? r : Promise.reject(new Error(`HTTP ${r.status}`))));
+    }).then((r) => {
+        if (r.ok) return r;
+        // Surface the server's message (e.g. invalid-ORCID 422) instead of a bare HTTP status.
+        return r.json()
+            .catch(() => null)
+            .then((j) => Promise.reject(new Error(j?.error ?? `HTTP ${r.status}`)));
+    });
 }
 
 function _refreshStatus() {

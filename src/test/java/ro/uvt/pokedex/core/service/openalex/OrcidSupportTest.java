@@ -11,6 +11,9 @@ class OrcidSupportTest {
     void normalizesBareUrlAndDigitsForms() {
         assertEquals("0000-0002-1825-0097", OrcidSupport.normalize("0000-0002-1825-0097"));
         assertEquals("0000-0002-1825-0097", OrcidSupport.normalize("https://orcid.org/0000-0002-1825-0097"));
+        assertEquals("0000-0002-1825-0097", OrcidSupport.normalize("orcid.org/0000-0002-1825-0097"));
+        assertEquals("0000-0002-1825-0097", OrcidSupport.normalize("www.orcid.org/0000-0002-1825-0097"));
+        assertEquals("0000-0002-1825-0097", OrcidSupport.normalize("http://www.orcid.org/0000-0002-1825-0097"));
         assertEquals("0000-0002-1825-0097", OrcidSupport.normalize("0000000218250097"));
         assertEquals("0000-0002-1825-0097", OrcidSupport.normalize("  0000-0002-1825-0097  "));
     }

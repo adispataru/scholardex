@@ -10,7 +10,9 @@ import java.util.regex.Pattern;
  */
 public final class OrcidSupport {
 
-    private static final Pattern URL_PREFIX = Pattern.compile("^https?://orcid\\.org/", Pattern.CASE_INSENSITIVE);
+    // Scheme and www. are optional — users paste "orcid.org/0000-…" as often as the full URL.
+    private static final Pattern URL_PREFIX =
+            Pattern.compile("^(?:https?://)?(?:www\\.)?orcid\\.org/", Pattern.CASE_INSENSITIVE);
     private static final Pattern BARE = Pattern.compile("^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$");
     private static final Pattern DIGITS16 = Pattern.compile("^\\d{15}[\\dX]$");
 

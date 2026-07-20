@@ -23,14 +23,15 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ProfileLinkedAuthorResolutionServiceTest {
 
-    private final ResearcherAuthorLookupService lookupService = new ResearcherAuthorLookupService();
     @Mock private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock private ScholardexAuthorFactRepository scholardexAuthorFactRepository;
 
+    private ResearcherAuthorLookupService lookupService;
     private ProfileLinkedAuthorResolutionService service;
 
     @org.junit.jupiter.api.BeforeEach
     void wire() {
+        lookupService = new ResearcherAuthorLookupService(scholardexAuthorFactRepository);
         service = new ProfileLinkedAuthorResolutionService(
                 lookupService, scholardexProjectionReadService, scholardexAuthorFactRepository);
     }
@@ -52,10 +53,12 @@ class ProfileLinkedAuthorResolutionServiceTest {
         profile.setOrcid("https://orcid.org/0000-0002-1825-0097");
         when(scholardexAuthorFactRepository.findByOrcidIdsContains("0000-0002-1825-0097"))
                 .thenReturn(List.of(fact("sauth_orcid")));
+        // The lookup service now resolves the ORCID into a key itself, so the projection read IS
+        // queried with the resolved canonical id (and the local ORCID pass dedupes on top).
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("sauth_orcid")))
+                .thenReturn(List.of(author("sauth_orcid")));
 
         assertEquals(List.of("sauth_orcid"), service.resolveCanonicalAuthorIds(profile));
-        // No lookup keys → the projection read service is never queried.
-        verify(scholardexProjectionReadService, never()).findAuthorsByIdIn(any());
     }
 
     @Test
@@ -63,11 +66,12 @@ class ProfileLinkedAuthorResolutionServiceTest {
         User.ResearcherProfile profile = new User.ResearcherProfile();
         profile.setScopusId(new java.util.ArrayList<>(List.of("55555")));
         profile.setOrcid("0000-0002-1825-0097");
-        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("55555")))
-                .thenReturn(List.of(author("sauth_1"), author("sauth_2")));
         // ORCID transiently on two facts, one overlapping the key resolution.
         when(scholardexAuthorFactRepository.findByOrcidIdsContains("0000-0002-1825-0097"))
                 .thenReturn(List.of(fact("sauth_2"), fact("sauth_3")));
+        // Lookup keys now carry the scopus id plus the ORCID-resolved canonical ids.
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("55555", "sauth_2", "sauth_3")))
+                .thenReturn(List.of(author("sauth_1"), author("sauth_2"), author("sauth_3")));
 
         assertEquals(List.of("sauth_1", "sauth_2", "sauth_3"), service.resolveCanonicalAuthorIds(profile));
     }

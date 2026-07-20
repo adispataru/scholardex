@@ -492,7 +492,16 @@ public class ResearcherWorkspaceController {
                 ? new ArrayList<>(request.scopusId()) : new ArrayList<>());
         profile.setWosId(request.wosId() != null
                 ? new ArrayList<>(request.wosId()) : new ArrayList<>());
-        profile.setOrcid(ro.uvt.pokedex.core.service.openalex.OrcidSupport.normalize(request.orcid()));
+        // Reject rather than silently null an unparseable ORCID — a 200-with-dropped-value reads as
+        // "my ORCID won't save" to the user (it showed "Not set" after an apparently successful save).
+        String rawOrcid = request.orcid();
+        String normalizedOrcid = ro.uvt.pokedex.core.service.openalex.OrcidSupport.normalize(rawOrcid);
+        if (rawOrcid != null && !rawOrcid.isBlank() && normalizedOrcid == null) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "error", "Invalid ORCID \"" + rawOrcid.trim()
+                            + "\" — use the 0000-0002-1825-0097 form or your orcid.org profile URL."));
+        }
+        profile.setOrcid(normalizedOrcid);
         List<String> currentAffiliationIds = normalizeAffiliationIds(request.currentAffiliationIds());
         List<String> pastAffiliationIds = normalizeAffiliationIds(request.pastAffiliationIds());
         pastAffiliationIds.removeIf(currentAffiliationIds::contains);
