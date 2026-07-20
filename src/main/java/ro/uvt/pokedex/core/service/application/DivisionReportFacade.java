@@ -70,23 +70,5 @@ public class DivisionReportFacade {
     }
 
     /** Promotion-readiness board for the division against the given report's next-rung thresholds. */
-    public Optional<PromotionBoardView> buildPromotionBoard(String divisionId, String reportId) {
-        return buildPromotionBoard(divisionId, reportId, java.util.Set.of());
-    }
 
-    /** @param excludedCriteria criterion indices toggled off for this view — see PromotionReadinessService. */
-    public Optional<PromotionBoardView> buildPromotionBoard(String divisionId, String reportId,
-                                                            java.util.Set<Integer> excludedCriteria) {
-        Optional<OrgDivision> divOpt = orgDivisionRepository.findById(divisionId);
-        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
-        if (divOpt.isEmpty() || reportOpt.isEmpty()) return Optional.empty();
-        IndividualReport report = reportOpt.get();
-        List<OrgUnitRosterService.RosterMember> members = orgUnitRosterService.divisionRoster(divisionId);
-        OrgUnitRunRollupService.OrgUnitRunRollup rollup = orgUnitRunRollupService.rollup(members, report, null);
-        return Optional.of(new PromotionBoardView(divOpt.get().getName(), report,
-                promotionReadinessService.build(report, rollup, excludedCriteria)));
-    }
-
-    public record PromotionBoardView(String unitName, IndividualReport report,
-                                     ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService.PromotionBoard board) {}
 }

@@ -60,6 +60,7 @@ public class AdminGroupController {
     // Remaining H02 debt is cross-layer coupling (V02+).
     private final GroupManagementFacade groupManagementFacade;
     private final GroupReportFacade groupReportFacade;
+    private final ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
     private final OrgUnitReportRefreshService orgUnitReportRefreshService;
     private final GroupExportFacade groupExportFacade;
     private final GroupCnfisExportFacade groupCnfisExportFacade;
@@ -156,7 +157,30 @@ public class AdminGroupController {
         model.addAttribute("unitType", "group");
         model.addAttribute("vm", view.get());
         model.addAttribute("backHref", "/admin/groups/" + gid);
+        model.addAttribute("promotionsHref", "/admin/groups/" + gid + "/reports/view/" + id + "/promotions");
         return "admin/orgunit-report-view";
+    }
+
+    @GetMapping("{gid}/reports/view/{id}/promotions")
+    @PreAuthorize("@groupAccess.canView(#gid, authentication)")
+    public String promotionBoard(@PathVariable String gid,
+                                 @PathVariable String id,
+                                 @RequestParam(name = "exclude", required = false) String exclude,
+                                 Model model) {
+        java.util.Set<Integer> excluded =
+                ro.uvt.pokedex.core.view.support.PromotionBoardWebSupport.parseExcludedCriteria(exclude);
+        var view = orgUnitPromotionBoardService.build(
+                ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.GROUP,
+                gid, id, excluded);
+        if (view.isEmpty()) return "redirect:/admin/groups/" + gid;
+        String baseHref = "/admin/groups/" + gid + "/reports/view/" + id + "/promotions";
+        model.addAttribute("vm", view.get());
+        model.addAttribute("criterionToggles",
+                ro.uvt.pokedex.core.view.support.PromotionBoardWebSupport.buildToggles(view.get().report(), excluded, baseHref));
+        model.addAttribute("excludedCount", excluded.size());
+        model.addAttribute("resetHref", baseHref);
+        model.addAttribute("backHref", "/admin/groups/" + gid + "/reports/view/" + id);
+        return "admin/orgunit-promotions";
     }
 
     @PostMapping("{gid}/reports/view/{id}/refresh")

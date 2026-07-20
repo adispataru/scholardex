@@ -25,6 +25,7 @@ import java.util.Optional;
 public class AdminDepartmentReportsController {
 
     private final DepartmentReportFacade departmentReportFacade;
+    private final ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
 
     @GetMapping
     @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
@@ -53,6 +54,30 @@ public class AdminDepartmentReportsController {
         model.addAttribute("unitType", "department");
         model.addAttribute("vm", vm);
         model.addAttribute("backHref", "/admin/departments/" + departmentId + "/reports");
+        model.addAttribute("promotionsHref",
+                "/admin/departments/" + departmentId + "/reports/" + reportId + "/promotions");
         return "admin/orgunit-report-view";
+    }
+
+    @GetMapping("/{reportId}/promotions")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    public String promotionBoard(@PathVariable String departmentId,
+                                 @PathVariable String reportId,
+                                 @RequestParam(name = "exclude", required = false) String exclude,
+                                 Model model) {
+        java.util.Set<Integer> excluded =
+                ro.uvt.pokedex.core.view.support.PromotionBoardWebSupport.parseExcludedCriteria(exclude);
+        var view = orgUnitPromotionBoardService.build(
+                ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DEPARTMENT,
+                departmentId, reportId, excluded);
+        if (view.isEmpty()) return "redirect:/admin/departments/" + departmentId + "/reports";
+        String baseHref = "/admin/departments/" + departmentId + "/reports/" + reportId + "/promotions";
+        model.addAttribute("vm", view.get());
+        model.addAttribute("criterionToggles",
+                ro.uvt.pokedex.core.view.support.PromotionBoardWebSupport.buildToggles(view.get().report(), excluded, baseHref));
+        model.addAttribute("excludedCount", excluded.size());
+        model.addAttribute("resetHref", baseHref);
+        model.addAttribute("backHref", "/admin/departments/" + departmentId + "/reports/" + reportId);
+        return "admin/orgunit-promotions";
     }
 }

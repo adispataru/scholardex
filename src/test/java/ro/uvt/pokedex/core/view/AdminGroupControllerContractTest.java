@@ -62,6 +62,9 @@ class AdminGroupControllerContractTest {
 
     @MockitoBean
     private GroupManagementFacade groupManagementFacade;
+
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
     @MockitoBean
     private GroupReportFacade groupReportFacade;
     @MockitoBean

@@ -46,6 +46,9 @@ class AdminDivisionReportsControllerContractTest {
     @MockitoBean
     private DivisionReportFacade divisionReportFacade;
 
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
+
     @Test
     void reportViewRendersDashboardCardsHeatClassesAndJsonPayload() throws Exception {
         // Built before stubbing — sampleVm() stubs its own helper mocks.
@@ -172,8 +175,10 @@ class AdminDivisionReportsControllerContractTest {
         var readiness = new ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService()
                 .build(report, new OrgUnitRunRollupService.OrgUnitRunRollup(
                         List.of(row), Map.of(0, Map.of("CONF_UNIV", 32.0)), 0, 0, 0, null, null, null, null));
-        when(divisionReportFacade.buildPromotionBoard(eq("div-1"), eq("rep-1"), org.mockito.ArgumentMatchers.anySet()))
-                .thenReturn(Optional.of(new DivisionReportFacade.PromotionBoardView("FMI", report, readiness)));
+        when(orgUnitPromotionBoardService.build(
+                        org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DIVISION),
+                        eq("div-1"), eq("rep-1"), org.mockito.ArgumentMatchers.anySet()))
+                .thenReturn(Optional.of(new ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.PromotionBoardView("FMI", report, readiness)));
 
         String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1/promotions"))
                 .andExpect(status().isOk())
@@ -206,8 +211,10 @@ class AdminDivisionReportsControllerContractTest {
         var emptyBoard = new ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService()
                 .build(report, new OrgUnitRunRollupService.OrgUnitRunRollup(
                         List.of(), Map.of(), 0, 0, 0, null, null, null, null));
-        when(divisionReportFacade.buildPromotionBoard(eq("div-1"), eq("rep-1"), org.mockito.ArgumentMatchers.anySet()))
-                .thenReturn(Optional.of(new DivisionReportFacade.PromotionBoardView("FMI", report, emptyBoard)));
+        when(orgUnitPromotionBoardService.build(
+                        org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DIVISION),
+                        eq("div-1"), eq("rep-1"), org.mockito.ArgumentMatchers.anySet()))
+                .thenReturn(Optional.of(new ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.PromotionBoardView("FMI", report, emptyBoard)));
 
         String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1/promotions")
                         .param("exclude", "1"))

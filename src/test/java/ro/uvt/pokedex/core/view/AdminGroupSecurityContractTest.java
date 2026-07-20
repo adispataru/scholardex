@@ -32,6 +32,9 @@ class AdminGroupSecurityContractTest {
 
     @MockitoBean
     private CustomUserDetailsService userDetailsService;
+
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
     @MockitoBean
     private GroupManagementFacade groupManagementFacade;
     @MockitoBean

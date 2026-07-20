@@ -26,6 +26,7 @@ import java.util.Optional;
 public class AdminDivisionReportsController {
 
     private final DivisionReportFacade divisionReportFacade;
+    private final ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
 
     @GetMapping
     @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
@@ -65,63 +66,19 @@ public class AdminDivisionReportsController {
                                  @PathVariable String reportId,
                                  @RequestParam(name = "exclude", required = false) String exclude,
                                  Model model) {
-        java.util.Set<Integer> excluded = parseExcludedCriteria(exclude);
-        Optional<DivisionReportFacade.PromotionBoardView> view =
-                divisionReportFacade.buildPromotionBoard(divisionId, reportId, excluded);
+        java.util.Set<Integer> excluded =
+                ro.uvt.pokedex.core.view.support.PromotionBoardWebSupport.parseExcludedCriteria(exclude);
+        var view = orgUnitPromotionBoardService.build(
+                ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DIVISION,
+                divisionId, reportId, excluded);
         if (view.isEmpty()) return "redirect:/admin/divisions/" + divisionId + "/reports";
         String baseHref = "/admin/divisions/" + divisionId + "/reports/" + reportId + "/promotions";
-        // Only indices the report actually defines are toggleable; stray URL values are dropped.
-        int criteriaCount = view.get().report().getCriteria() == null
-                ? 0 : view.get().report().getCriteria().size();
-        excluded.removeIf(i -> i < 0 || i >= criteriaCount);
-        java.util.List<CriterionToggle> toggles = new java.util.ArrayList<>();
-        for (int i = 0; i < criteriaCount; i++) {
-            String name = view.get().report().getCriteria().get(i).getName();
-            toggles.add(new CriterionToggle(
-                    i,
-                    name == null || name.isBlank() ? "C" + (i + 1) : name,
-                    excluded.contains(i),
-                    toggleHref(baseHref, excluded, i)));
-        }
         model.addAttribute("vm", view.get());
-        model.addAttribute("criterionToggles", toggles);
+        model.addAttribute("criterionToggles",
+                ro.uvt.pokedex.core.view.support.PromotionBoardWebSupport.buildToggles(view.get().report(), excluded, baseHref));
         model.addAttribute("excludedCount", excluded.size());
         model.addAttribute("resetHref", baseHref);
         model.addAttribute("backHref", "/admin/divisions/" + divisionId + "/reports/" + reportId);
         return "admin/orgunit-promotions";
-    }
-
-    /** One chip on the promotions board: click toggles the criterion in/out of the computed buckets. */
-    public record CriterionToggle(int index, String name, boolean excluded, String toggleHref) {}
-
-    private static java.util.Set<Integer> parseExcludedCriteria(String exclude) {
-        java.util.Set<Integer> excluded = new java.util.TreeSet<>();
-        if (exclude == null || exclude.isBlank()) {
-            return excluded;
-        }
-        for (String part : exclude.split(",")) {
-            try {
-                excluded.add(Integer.parseInt(part.trim()));
-            } catch (NumberFormatException ignored) {
-                // stray token in a hand-edited URL — skip it
-            }
-        }
-        return excluded;
-    }
-
-    private static String toggleHref(String baseHref, java.util.Set<Integer> excluded, int index) {
-        java.util.Set<Integer> toggled = new java.util.TreeSet<>(excluded);
-        if (!toggled.remove(index)) {
-            toggled.add(index);
-        }
-        if (toggled.isEmpty()) {
-            return baseHref;
-        }
-        StringBuilder sb = new StringBuilder();
-        for (Integer i : toggled) {
-            if (sb.length() > 0) sb.append(',');
-            sb.append(i);
-        }
-        return baseHref + "?exclude=" + sb;
     }
 }
