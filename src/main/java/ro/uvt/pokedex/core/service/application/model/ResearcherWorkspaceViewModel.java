@@ -30,7 +30,11 @@ public record ResearcherWorkspaceViewModel(
     public record OverviewCharts(
             List<String> years,
             List<Integer> pubsPerYear,
-            List<Integer> citesPerYear,
+            // Citations bucketed by the CITING paper's year (Google-Scholar semantics), on their own
+            // continuous axis. Two series: including and excluding the researcher's self-citations.
+            List<String> citeYears,
+            List<Integer> citesInclSelf,
+            List<Integer> citesExclSelf,
             List<String> activityLabels,
             List<Integer> activityCounts
     ) {}

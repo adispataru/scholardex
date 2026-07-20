@@ -93,11 +93,11 @@ function _initCharts() {
         colors
     );
 
-    _renderBarChart(
+    _renderCitationsChart(
         document.getElementById('ws-chart-cites'),
-        data.years,
-        data.citesPerYear,
-        'Citations',
+        data.citeYears,
+        data.citesInclSelf,
+        data.citesExclSelf,
         colors
     );
 }
@@ -143,6 +143,72 @@ function _renderBarChart(canvas, labels, values, label, colors) {
                 callbacks: {
                     title: (items) => items[0].xLabel,
                     label: (item) => `${item.yLabel} publication${item.yLabel !== 1 ? 's' : ''}`
+                }
+            }
+        }
+    });
+}
+
+// Citations per year (by citing-paper year), two grouped series: including vs excluding self-citations.
+function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
+    if (!canvas) return;
+    if (!labels || !labels.length) {
+        _showChartEmpty(canvas, 'No citation data yet.');
+        return;
+    }
+    const amber = '#f59e0b';
+    new window.Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Incl. self-citations',
+                    data: inclSelf,
+                    backgroundColor: colors.primary,
+                    borderWidth: 0,
+                    borderRadius: 3,
+                },
+                {
+                    label: 'Excl. self-citations',
+                    data: exclSelf,
+                    backgroundColor: amber,
+                    borderWidth: 0,
+                    borderRadius: 3,
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{
+                    gridLines: { display: false },
+                    ticks: { fontColor: colors.muted, maxTicksLimit: 8 }
+                }],
+                yAxes: [{
+                    ticks: { beginAtZero: true, stepSize: 1, fontColor: colors.muted },
+                    gridLines: { color: colors.border, zeroLineColor: colors.border }
+                }]
+            },
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: { fontColor: colors.muted, boxWidth: 10, fontSize: 10 }
+            },
+            tooltips: {
+                mode: 'index',
+                backgroundColor: colors.cardBg,
+                bodyFontColor: colors.muted,
+                titleFontColor: colors.muted,
+                borderColor: colors.border,
+                borderWidth: 1,
+                displayColors: true,
+                callbacks: {
+                    title: (items) => items[0].xLabel,
+                    label: (item) => {
+                        const kind = item.datasetIndex === 0 ? 'incl. self' : 'excl. self';
+                        return `${item.yLabel} citation${item.yLabel !== 1 ? 's' : ''} (${kind})`;
+                    }
                 }
             }
         }

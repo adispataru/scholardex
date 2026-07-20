@@ -776,28 +776,40 @@ public class ResearcherWorkspaceController {
 
         WorkspaceState state = determineWorkspaceState(profile, email, availableReportCount);
 
-        // ── Chart data: publications and citations per year ──────────────
+        // ── Chart data ───────────────────────────────────────────────────
+        // Publications per year: keyed by the researcher's own publication year.
         List<String> chartYears = new ArrayList<>();
         List<Integer> chartPubs = new ArrayList<>();
-        List<Integer> chartCites = new ArrayList<>();
         if (pubsOpt.isPresent()) {
-            var byYear = new TreeMap<String, int[]>();
+            var pubsByYear = new TreeMap<String, Integer>();
             for (var p : pubsOpt.get().publications()) {
                 String date = p.getCoverDate();
                 if (date == null || date.length() < 4) continue;
-                String year = date.substring(0, 4);
-                byYear.computeIfAbsent(year, k -> new int[]{0, 0});
-                byYear.get(year)[0]++;
-                byYear.get(year)[1] += p.getCitedbyCount();
+                pubsByYear.merge(date.substring(0, 4), 1, Integer::sum);
             }
-            for (var entry : byYear.entrySet()) {
-                chartYears.add(entry.getKey());
-                chartPubs.add(entry.getValue()[0]);
-                chartCites.add(entry.getValue()[1]);
+            pubsByYear.forEach((year, count) -> { chartYears.add(year); chartPubs.add(count); });
+        }
+        // Citations per year: bucketed by the CITING paper's year (Google-Scholar semantics),
+        // as two series — including and excluding the researcher's self-citations.
+        Set<String> researcherAuthorIds = new HashSet<>();
+        if (profile != null) {
+            if (profile.getConfirmedScholardexAuthorIds() != null) {
+                researcherAuthorIds.addAll(profile.getConfirmedScholardexAuthorIds());
+            }
+            if (profile.getPrimaryScholardexAuthorId() != null) {
+                researcherAuthorIds.add(profile.getPrimaryScholardexAuthorId());
             }
         }
+        UserPublicationFacade.CitationTimeline citeTimeline = pubsOpt
+                .map(vm -> userPublicationFacade.buildCitationsPerYear(vm.publications(), researcherAuthorIds))
+                .orElseGet(UserPublicationFacade.CitationTimeline::empty);
+        // Headline citation count uses the same edge-based total as the chart (incl. self-citations),
+        // so the stat tile and the per-year chart agree.
+        totalCitations = citeTimeline.total();
+
         var overviewCharts = new ResearcherWorkspaceViewModel.OverviewCharts(
-                chartYears, chartPubs, chartCites,
+                chartYears, chartPubs,
+                citeTimeline.years(), citeTimeline.inclSelf(), citeTimeline.exclSelf(),
                 activitiesVm.activityLabels(), activitiesVm.activityData());
 
         List<WorkspaceNotification> notifications =

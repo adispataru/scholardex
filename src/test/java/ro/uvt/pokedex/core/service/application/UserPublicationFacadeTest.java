@@ -362,4 +362,51 @@ class UserPublicationFacadeTest {
         decision.setReason(reason);
         return decision;
     }
+
+    @Test
+    void buildCitationsPerYearBucketsByCitingYearSplitsSelfCitationsAndFillsContinuousAxis() {
+        // researcher's own publications carry the ids of the papers that cite them
+        ScholardexPublicationView p1 = new ScholardexPublicationView();
+        p1.setId("p1");
+        p1.setCitedBy(new java.util.LinkedHashSet<>(List.of("c1", "c2")));
+        ScholardexPublicationView p2 = new ScholardexPublicationView();
+        p2.setId("p2");
+        p2.setCitedBy(new java.util.LinkedHashSet<>(List.of("c3")));
+        ScholardexPublicationView p3 = new ScholardexPublicationView();
+        p3.setId("p3");
+        p3.setCitedBy(new java.util.LinkedHashSet<>(List.of("c4", "c5")));
+
+        // citing papers, dated by their own cover year; c2 is authored by the researcher (self-citation)
+        var c1 = citing("c1", "2020-05-01", List.of("x"));
+        var c2 = citing("c2", "2021-01-01", List.of("me", "y"));
+        var c3 = citing("c3", "2021-06-01", List.of("z"));
+        var c4 = citing("c4", "2023-01-01", List.of("w"));
+        // c5 is intentionally NOT resolvable (outside our corpus) -> must be dropped
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(anyCollection()))
+                .thenReturn(List.of(c1, c2, c3, c4));
+
+        var t = facade.buildCitationsPerYear(List.of(p1, p2, p3), java.util.Set.of("me"));
+
+        assertEquals(List.of("2020", "2021", "2022", "2023"), t.years()); // continuous; 2022 filled with 0
+        assertEquals(List.of(1, 2, 0, 1), t.inclSelf());
+        assertEquals(List.of(1, 1, 0, 1), t.exclSelf());                  // the 2021 self-citation drops from excl
+        assertEquals(4, t.total());                                        // c5 (unresolvable) not counted
+    }
+
+    @Test
+    void buildCitationsPerYearIsEmptyWhenThereAreNoIncomingCitations() {
+        ScholardexPublicationView p = new ScholardexPublicationView();
+        p.setId("p1");
+        var t = facade.buildCitationsPerYear(List.of(p), java.util.Set.of("me"));
+        assertEquals(0, t.total());
+        assertEquals(List.of(), t.years());
+    }
+
+    private static ScholardexPublicationView citing(String id, String coverDate, List<String> authorIds) {
+        ScholardexPublicationView v = new ScholardexPublicationView();
+        v.setId(id);
+        v.setCoverDate(coverDate);
+        v.setAuthorIds(new java.util.ArrayList<>(authorIds));
+        return v;
+    }
 }

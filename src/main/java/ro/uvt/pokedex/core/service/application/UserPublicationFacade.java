@@ -339,6 +339,93 @@ public class UserPublicationFacade {
         };
     }
 
+    /**
+     * Citations-per-year for the researcher's publications, bucketed by the <b>citing</b> paper's
+     * cover year (Google-Scholar semantics), on a continuous year axis. Each incoming citation edge
+     * (one per cited-publication ↔ citing-publication link) is counted once; {@code inclSelf} counts
+     * all of them, {@code exclSelf} drops self-citations — a citation whose citing paper is authored
+     * by the researcher (any of their confirmed author ids).
+     */
+    public record CitationTimeline(
+            List<String> years,
+            List<Integer> inclSelf,
+            List<Integer> exclSelf,
+            int total
+    ) {
+        public static CitationTimeline empty() {
+            return new CitationTimeline(List.of(), List.of(), List.of(), 0);
+        }
+    }
+
+    public CitationTimeline buildCitationsPerYear(
+            List<ScholardexPublicationView> publications,
+            Set<String> researcherAuthorIds
+    ) {
+        if (publications == null || publications.isEmpty()) {
+            return CitationTimeline.empty();
+        }
+        Set<String> citingIds = new HashSet<>();
+        for (ScholardexPublicationView p : publications) {
+            citingIds.addAll(p.getCitingPublicationIds());
+        }
+        if (citingIds.isEmpty()) {
+            return CitationTimeline.empty();
+        }
+        Map<String, ScholardexPublicationView> citingById = new HashMap<>();
+        for (ScholardexPublicationView cp : scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds)) {
+            citingById.put(cp.getId(), cp);
+        }
+        Set<String> selfAuthorIds = researcherAuthorIds == null ? Set.of() : researcherAuthorIds;
+
+        TreeMap<Integer, int[]> byYear = new TreeMap<>(); // year -> [inclSelf, exclSelf]
+        int total = 0;
+        for (ScholardexPublicationView p : publications) {
+            for (String citingId : p.getCitingPublicationIds()) {
+                ScholardexPublicationView citing = citingById.get(citingId);
+                if (citing == null) {
+                    continue; // citing publication not in our corpus — cannot date it
+                }
+                Integer year = parseYear(citing.getCoverDate());
+                if (year == null) {
+                    continue; // no usable cover date on the citing paper
+                }
+                boolean self = !selfAuthorIds.isEmpty()
+                        && citing.getAuthorIds() != null
+                        && !Collections.disjoint(citing.getAuthorIds(), selfAuthorIds);
+                int[] bucket = byYear.computeIfAbsent(year, k -> new int[2]);
+                bucket[0]++;
+                if (!self) {
+                    bucket[1]++;
+                }
+                total++;
+            }
+        }
+        if (byYear.isEmpty()) {
+            return CitationTimeline.empty();
+        }
+        List<String> years = new ArrayList<>();
+        List<Integer> inclSelf = new ArrayList<>();
+        List<Integer> exclSelf = new ArrayList<>();
+        for (int y = byYear.firstKey(); y <= byYear.lastKey(); y++) { // continuous axis, zeros filled
+            int[] bucket = byYear.getOrDefault(y, new int[2]);
+            years.add(String.valueOf(y));
+            inclSelf.add(bucket[0]);
+            exclSelf.add(bucket[1]);
+        }
+        return new CitationTimeline(years, inclSelf, exclSelf, total);
+    }
+
+    private static Integer parseYear(String coverDate) {
+        if (coverDate == null || coverDate.length() < 4) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(coverDate.substring(0, 4));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private long nanosToMillis(long nanos) {
         return nanos / 1_000_000L;
     }
