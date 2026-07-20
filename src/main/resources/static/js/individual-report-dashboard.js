@@ -376,11 +376,18 @@
    * click-to-drill behavior of the modal. Activities keep the compact list renderer — they
    * have no links or forum columns.
    */
-  function renderEvidenceTable(items, outputMode, indicatorId) {
+  function renderEvidenceTable(items, outputMode, indicatorId, totalScore) {
     if (outputMode === 'activities') {
       return renderDetailList(items, outputMode, indicatorId);
     }
     if (!items || items.length === 0) {
+      if (toNumber(totalScore) > 0) {
+        // Provisional (identity-scored) runs persist correct totals but no per-item breakdown —
+        // saying "no items" under a non-zero total reads as a contradiction.
+        return '<p class="app-eval-muted mt-2">Totals-only result (provisional, identity-scored run) — ' +
+          'the per-publication breakdown is not materialized. The itemized view appears once the ' +
+          'researcher completes onboarding and confirms their publications.</p>';
+      }
       return '<p class="app-eval-muted mt-2">No scored items found.</p>';
     }
     var isCitations = outputMode === 'citations';
@@ -728,7 +735,7 @@
             '<span class="indicator-detail-total">Total score: <strong>' + toNumber(data.totalScore).toFixed(2) + '</strong>' + indicatorDeltaHtml + '</span>' +
             '<span class="indicator-detail-updated">Updated: ' + esc(data.updatedAt ? data.updatedAt.substring(0, 10) : '—') + '</span>' +
             '</div>';
-          content.innerHTML = headerHtml + renderEvidenceTable(data.items, data.outputMode, data.indicatorId);
+          content.innerHTML = headerHtml + renderEvidenceTable(data.items, data.outputMode, data.indicatorId, data.totalScore);
         }
       })
       .catch(function (err) {
