@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Full commit SHA to deploy to PRODUCTION (must exist on GHCR)
-        required: true
+        description: Commit SHA to deploy to PRODUCTION. Leave blank to deploy the HEAD of the branch selected above (its image must already be built on GHCR).
+        required: false
         type: string
 
 permissions:
@@ -75,10 +75,18 @@ jobs:
     environment: production
     concurrency: { group: deploy-prod, cancel-in-progress: false }
     steps:
+      - name: Resolve image tag
+        id: resolve
+        run: |
+          TAG="${{ inputs.image_tag }}"
+          if [ -z "$TAG" ]; then TAG="${{ github.sha }}"; fi   # blank input -> HEAD of the selected branch
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying PRODUCTION at image tag: $TAG"
+
       - name: Checkout (at deployed commit)
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.image_tag }}
+          ref: ${{ steps.resolve.outputs.tag }}
 
       - name: Install helm
         run: |
@@ -90,7 +98,7 @@ jobs:
         run: |
           helm upgrade --install scholardex ./helm/scholardex \
             -f helm/scholardex/values-prod.yaml \
-            --set image.tag="${{ inputs.image_tag }}" \
-            --set scopusPython.image.tag="${{ inputs.image_tag }}" \
+            --set image.tag="${{ steps.resolve.outputs.tag }}" \
+            --set scopusPython.image.tag="${{ steps.resolve.outputs.tag }}" \
             -n scholardex --wait --timeout 12m
           helm -n scholardex list
