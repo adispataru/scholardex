@@ -561,6 +561,29 @@ body.app-modal-open {
   display: none !important;
 }
 
+/* Small screens: app modals become a full-screen sheet — a centered 500px dialog is
+   unusable on a phone (multi-step wizards like onboarding especially). */
+@media (max-width: 575.98px) {
+  .app-modal .modal-dialog {
+    margin: 0;
+    max-width: 100vw;
+    width: 100vw;
+    min-height: 100%;
+    align-items: stretch;
+  }
+
+  .app-modal .modal-content {
+    min-height: 100vh;
+    min-height: 100dvh; /* mobile browsers with dynamic toolbars */
+    border: 0;
+    border-radius: 0;
+  }
+
+  .app-modal .modal-body {
+    overflow-y: auto;
+  }
+}
+
 .scroll-to-top {
   position: fixed;
   right: 1.25rem;
