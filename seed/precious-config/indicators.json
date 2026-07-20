@@ -36,7 +36,7 @@
   },
   "version": 11,
   "kind": {
-   "excludeSelf": true,
+   "policy": "CANDIDATE_ONLY",
    "strategy": "CS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
@@ -92,7 +92,7 @@
   },
   "version": 1,
   "kind": {
-   "excludeSelf": true,
+   "policy": "CANDIDATE_ONLY",
    "strategy": "CS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
@@ -176,7 +176,7 @@
   },
   "version": 1,
   "kind": {
-   "excludeSelf": true,
+   "policy": "CANDIDATE_ONLY",
    "strategy": "RIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
@@ -1028,7 +1028,7 @@
   },
   "version": 1,
   "kind": {
-   "excludeSelf": true,
+   "policy": "CANDIDATE_ONLY",
    "strategy": "AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
