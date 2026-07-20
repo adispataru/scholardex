@@ -799,16 +799,11 @@ public class ResearcherWorkspaceController {
             pubsByYear.forEach((year, count) -> { chartYears.add(year); chartPubs.add(count); });
         }
         // Citations per year: bucketed by the CITING paper's year (Google-Scholar semantics),
-        // as two series — including and excluding the researcher's self-citations.
-        Set<String> researcherAuthorIds = new HashSet<>();
-        if (profile != null) {
-            if (profile.getConfirmedScholardexAuthorIds() != null) {
-                researcherAuthorIds.addAll(profile.getConfirmedScholardexAuthorIds());
-            }
-            if (profile.getPrimaryScholardexAuthorId() != null) {
-                researcherAuthorIds.add(profile.getPrimaryScholardexAuthorId());
-            }
-        }
+        // as two series — including and excluding the researcher's self-citations. Self-detection
+        // uses the full lookup keys (confirmed + source ids + ORCID-resolved canonical ids) so an
+        // ORCID-only profile still flags its own citing papers; non-sauth keys simply never match.
+        Set<String> researcherAuthorIds =
+                new HashSet<>(researcherAuthorLookupService.resolveAuthorLookupKeys(profile));
         UserPublicationFacade.CitationTimeline citeTimeline = pubsOpt
                 .map(vm -> userPublicationFacade.buildCitationsPerYear(vm.publications(), researcherAuthorIds))
                 .orElseGet(UserPublicationFacade.CitationTimeline::empty);
