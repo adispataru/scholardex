@@ -49,6 +49,7 @@ window.jQuery = $;
 import 'datatables.net-bs5';
 import Chart from 'chart.js';
 import { initSharedDomBehaviors } from './modules/shared/domBehaviors';
+import { initSubmitLock } from './modules/shared/submitLock';
 import { initSharedHeaderShell } from './modules/shared/headerShell';
 import { initLegacyInteractions } from './modules/shared/legacyInteractions';
 import { initPublicationSubtypeSync } from './modules/shared/publicationSubtypeSync';
@@ -75,6 +76,7 @@ window.appChartTheme = {
 };
 
 initSharedDomBehaviors();
+initSubmitLock();
 initThemeShell();
 initSharedHeaderShell();
 initSharedSidebarShell();
