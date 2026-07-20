@@ -158,6 +158,64 @@ class PromotionReadinessServiceTest {
         assertEquals(1, board.meets().size());
     }
 
+    // ------------------------------------------------------ criterion exclusion (head's view filter)
+
+    @Test
+    void excludingAFailingCriterionMovesTheMemberUpABand() {
+        // Perspectiva-D situation: criterion 1 has no data yet (score 0, far below) → BUILDING.
+        // Excluding it recomputes the buckets over the rest → MEETS, with shrunk denominators.
+        OrgUnitRunRollup rollup = rollup(
+                List.of(row("ana@uvt.ro", Position.LECT_UNIV, Map.of(0, 40.0, 1, 0.0), false)),
+                Map.of(0, Map.of("CONF_UNIV", 32.0), 1, Map.of("CONF_UNIV", 48.0)));
+
+        var withAll = service.build(report(2), rollup);
+        assertEquals(1, withAll.building().size());
+
+        var board = service.build(report(2), rollup, java.util.Set.of(1));
+        assertEquals(1, board.meets().size());
+        assertEquals(1, board.meets().get(0).metCount());
+        assertEquals(1, board.meets().get(0).applicableCount());
+        // The excluded criterion leaves the check list entirely — no ghost rows.
+        assertTrue(board.meets().get(0).checks().stream().noneMatch(c -> c.index() == 1));
+    }
+
+    @Test
+    void excludingTheFarMissLeavesANearMissBorderline() {
+        // near on criterion 0 (30 vs 32), far on criterion 1 → BUILDING; without criterion 1 → BORDERLINE.
+        OrgUnitRunRollup rollup = rollup(
+                List.of(row("bob@uvt.ro", Position.LECT_UNIV, Map.of(0, 30.0, 1, 1.0), false)),
+                Map.of(0, Map.of("CONF_UNIV", 32.0), 1, Map.of("CONF_UNIV", 48.0)));
+
+        assertEquals(1, service.build(report(2), rollup).building().size());
+        var board = service.build(report(2), rollup, java.util.Set.of(1));
+        assertEquals(1, board.borderline().size());
+    }
+
+    @Test
+    void excludingEveryApplicableCriterionLandsInNoStandard() {
+        OrgUnitRunRollup rollup = rollup(
+                List.of(row("carol@uvt.ro", Position.LECT_UNIV, Map.of(0, 40.0), false)),
+                Map.of(0, Map.of("CONF_UNIV", 32.0)));
+
+        var board = service.build(report(1), rollup, java.util.Set.of(0));
+        assertEquals(1, board.notEvaluable().size());
+        assertEquals(PromotionReadinessService.Band.NO_STANDARD, board.notEvaluable().get(0).band());
+    }
+
+    @Test
+    void exclusionAppliesToTheHabilitationCheckToo() {
+        // HABIL thresholds on both criteria; the member fails criterion 1 → habilMet only once excluded.
+        OrgUnitRunRollup rollup = rollup(
+                List.of(row("dan@uvt.ro", Position.LECT_UNIV, Map.of(0, 40.0, 1, 0.0), false)),
+                Map.of(0, Map.of("CONF_UNIV", 32.0, "HABIL", 35.0),
+                       1, Map.of("HABIL", 60.0)));
+
+        assertFalse(service.build(report(2), rollup).meets().get(0).habilMet());
+        var board = service.build(report(2), rollup, java.util.Set.of(1));
+        assertTrue(board.meets().get(0).habilMet());
+        assertEquals(1, board.meets().get(0).habilChecks().size());
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static User user(String email, Position position) {

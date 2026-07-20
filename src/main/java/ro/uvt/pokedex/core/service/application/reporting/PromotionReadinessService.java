@@ -52,13 +52,23 @@ public class PromotionReadinessService {
                                  int provisionalCount) {}
 
     public PromotionBoard build(IndividualReport report, OrgUnitRunRollup rollup) {
+        return build(report, rollup, java.util.Set.of());
+    }
+
+    /**
+     * @param excludedCriteria criterion indices the head has toggled OFF for this view — skipped in every
+     *   check (target-position and HABIL alike), so bands, met/applicable counts, and near-miss sorting
+     *   recompute over the remaining criteria. A member whose target position keeps no applicable
+     *   criteria lands in NO_STANDARD, same as a report that defines none.
+     */
+    public PromotionBoard build(IndividualReport report, OrgUnitRunRollup rollup, java.util.Set<Integer> excludedCriteria) {
         List<MemberReadiness> meets = new ArrayList<>();
         List<MemberReadiness> borderline = new ArrayList<>();
         List<MemberReadiness> building = new ArrayList<>();
         List<MemberReadiness> notEvaluable = new ArrayList<>();
         int provisional = 0;
         for (MemberRunRow row : rollup.rows()) {
-            MemberReadiness readiness = evaluate(report, rollup, row);
+            MemberReadiness readiness = evaluate(report, rollup, row, excludedCriteria);
             if (readiness.row().current() != null && readiness.row().current().provisional()) provisional++;
             switch (readiness.band()) {
                 case MEETS -> meets.add(readiness);
@@ -76,13 +86,14 @@ public class PromotionReadinessService {
         return new PromotionBoard(meets, borderline, building, notEvaluable, provisional);
     }
 
-    private MemberReadiness evaluate(IndividualReport report, OrgUnitRunRollup rollup, MemberRunRow row) {
+    private MemberReadiness evaluate(IndividualReport report, OrgUnitRunRollup rollup, MemberRunRow row,
+                                     java.util.Set<Integer> excludedCriteria) {
         Position current = row.user().getResearcherProfile() == null
                 ? null : row.user().getResearcherProfile().getPosition();
         // Habilitation is position-independent: computed for anyone with a run, whenever the report
         // defines HABIL thresholds (checksAgainst returns empty otherwise).
         List<CriterionCheck> habilChecks = row.current() == null
-                ? List.of() : checksAgainst(report, rollup, row, Position.HABIL.name());
+                ? List.of() : checksAgainst(report, rollup, row, Position.HABIL.name(), excludedCriteria);
         boolean habilMet = !habilChecks.isEmpty() && habilChecks.stream().allMatch(CriterionCheck::met);
         if (current == null || current == Position.OTHER || current == Position.HABIL) {
             return new MemberReadiness(row, current, null, Band.UNCLASSIFIED, List.of(), 0, 0, habilChecks, habilMet);
@@ -94,7 +105,7 @@ public class PromotionReadinessService {
         if (row.current() == null) {
             return new MemberReadiness(row, current, target, Band.NO_RUN, List.of(), 0, 0, List.of(), false);
         }
-        List<CriterionCheck> checks = checksAgainst(report, rollup, row, target.name());
+        List<CriterionCheck> checks = checksAgainst(report, rollup, row, target.name(), excludedCriteria);
         if (checks.isEmpty()) {
             return new MemberReadiness(row, current, target, Band.NO_STANDARD, checks, 0, 0, habilChecks, habilMet);
         }
@@ -111,10 +122,14 @@ public class PromotionReadinessService {
     }
 
     private List<CriterionCheck> checksAgainst(IndividualReport report, OrgUnitRunRollup rollup,
-                                               MemberRunRow row, String positionKey) {
+                                               MemberRunRow row, String positionKey,
+                                               java.util.Set<Integer> excludedCriteria) {
         List<CriterionCheck> checks = new ArrayList<>();
         int criteriaCount = report.getCriteria() == null ? 0 : report.getCriteria().size();
         for (int i = 0; i < criteriaCount; i++) {
+            if (excludedCriteria.contains(i)) {
+                continue;
+            }
             Double threshold = rollup.criteriaThresholds().getOrDefault(i, Map.of()).get(positionKey);
             if (threshold == null) {
                 continue;

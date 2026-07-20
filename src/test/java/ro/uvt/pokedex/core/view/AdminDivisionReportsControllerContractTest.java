@@ -172,7 +172,7 @@ class AdminDivisionReportsControllerContractTest {
         var readiness = new ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService()
                 .build(report, new OrgUnitRunRollupService.OrgUnitRunRollup(
                         List.of(row), Map.of(0, Map.of("CONF_UNIV", 32.0)), 0, 0, 0, null, null, null, null));
-        when(divisionReportFacade.buildPromotionBoard(eq("div-1"), eq("rep-1")))
+        when(divisionReportFacade.buildPromotionBoard(eq("div-1"), eq("rep-1"), org.mockito.ArgumentMatchers.anySet()))
                 .thenReturn(Optional.of(new DivisionReportFacade.PromotionBoardView("FMI", report, readiness)));
 
         String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1/promotions"))
@@ -191,6 +191,38 @@ class AdminDivisionReportsControllerContractTest {
         assertTrue(html.contains("0/1 criteria"));
         // Row links to the delegated individual report
         assertTrue(html.contains("/reports/researcher/bob@uvt.ro"));
+    }
+
+    @Test
+    void promotionBoardRendersCriterionToggleChipsAndExclusionBanner() throws Exception {
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-1");
+        report.setTitle("FV Info 2026");
+        AbstractReport.Criterion b = new AbstractReport.Criterion();
+        b.setName("Perspectiva B");
+        AbstractReport.Criterion d = new AbstractReport.Criterion();
+        d.setName("Perspectiva D");
+        report.setCriteria(List.of(b, d));
+        var emptyBoard = new ro.uvt.pokedex.core.service.application.reporting.PromotionReadinessService()
+                .build(report, new OrgUnitRunRollupService.OrgUnitRunRollup(
+                        List.of(), Map.of(), 0, 0, 0, null, null, null, null));
+        when(divisionReportFacade.buildPromotionBoard(eq("div-1"), eq("rep-1"), org.mockito.ArgumentMatchers.anySet()))
+                .thenReturn(Optional.of(new DivisionReportFacade.PromotionBoardView("FMI", report, emptyBoard)));
+
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1/promotions")
+                        .param("exclude", "1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Chip bar: both criteria render; the excluded one carries the struck-through modifier and its
+        // toggle href re-includes it (back to the bare URL); the banner + reset link are present.
+        assertTrue(html.contains("Perspectiva B"));
+        assertTrue(html.contains("Perspectiva D"));
+        assertTrue(html.contains("is-off"));
+        assertTrue(html.contains("Buckets computed without 1 excluded criterion"));
+        assertTrue(html.contains("?exclude=0,1") || html.contains("?exclude=0&#44;1")); // toggling B adds it to the set
+        assertTrue(html.contains("/admin/divisions/div-1/reports/rep-1/promotions\">reset</a>")
+                || html.contains(">reset<"));
     }
 
     @Test

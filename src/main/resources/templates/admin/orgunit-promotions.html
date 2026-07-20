@@ -30,6 +30,22 @@
         .app-promo__detail { margin-top: .6rem; }
         .app-promo__detail table { margin-bottom: .35rem; }
         .app-promo__habil { font-size: .8rem; opacity: .85; }
+        .app-promo__filter { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+            margin: 0 0 1rem; padding: .6rem .75rem; border: 1px dashed var(--app-color-border);
+            border-radius: .5rem; }
+        .app-promo__filter-label { font-size: .8rem; font-weight: 700; letter-spacing: .04em;
+            text-transform: uppercase; color: var(--app-color-text-muted); margin-right: .25rem; }
+        .app-promo__toggle { font-size: .78rem; border-radius: 999px; padding: .15rem .6rem;
+            white-space: nowrap; text-decoration: none; border: 1px solid var(--app-color-border);
+            color: var(--app-color-text-strong);
+            background: color-mix(in srgb, var(--app-color-primary) 8%, transparent); }
+        .app-promo__toggle:hover, .app-promo__toggle:focus { text-decoration: none;
+            border-color: var(--app-color-primary); color: var(--app-color-text-strong); }
+        .app-promo__toggle.is-off { text-decoration: line-through; opacity: .55;
+            background: transparent; color: var(--app-color-text-muted); }
+        .app-promo__toggle.is-off:hover, .app-promo__toggle.is-off:focus { opacity: .8; }
+        .app-promo__filter-note { font-size: .8rem; color: var(--app-color-warning); font-weight: 600; }
+        .app-promo__filter-reset { font-size: .8rem; margin-left: .25rem; }
     </style>
 </head>
 <body id="page-top">
@@ -53,6 +69,23 @@
                     <div class="app-workflow__actions">
                         <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Back to report</a>
                     </div>
+                </div>
+
+                <!-- Criterion filter: click a chip to exclude that criterion from every check; the
+                     buckets, met counts, and near-miss sorting recompute over the remaining ones. -->
+                <div class="app-promo__filter" th:if="${not #lists.isEmpty(criterionToggles)}">
+                    <span class="app-promo__filter-label">Criteria</span>
+                    <a th:each="c : ${criterionToggles}"
+                       class="app-promo__toggle"
+                       th:classappend="${c.excluded()} ? ' is-off' : ''"
+                       th:href="${c.toggleHref()}"
+                       th:text="${c.name()}"
+                       th:title="${c.excluded()} ? 'Excluded from the buckets — click to include again' : 'Click to exclude this criterion from the buckets'">C1</a>
+                    <th:block th:if="${excludedCount > 0}">
+                        <span class="app-promo__filter-note"
+                              th:text="'Buckets computed without ' + ${excludedCount} + ' excluded ' + (${excludedCount} == 1 ? 'criterion' : 'criteria')">note</span>
+                        <a class="app-promo__filter-reset" th:href="${resetHref}">reset</a>
+                    </th:block>
                 </div>
 
                 <!-- Band: meets -->
