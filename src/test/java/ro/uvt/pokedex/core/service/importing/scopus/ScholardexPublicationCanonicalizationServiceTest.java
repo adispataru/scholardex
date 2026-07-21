@@ -70,6 +70,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
     private ScholardexEdgeWriterService edgeWriterService;
     @Mock
     private ScholardexCanonicalBuildCheckpointService checkpointService;
+    @Mock
+    private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository scholardexForumFactRepository;
 
     private ScholardexPublicationCanonicalizationService service;
 
@@ -83,7 +85,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                scholardexForumFactRepository
         );
         // H56: findSourceLink now normalizes the probe source via the link service; give the mock the
         // real normalization shape (SCOPUS-family -> SCOPUS, otherwise trimmed upper-case).
@@ -672,6 +675,38 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 service, "applyCanonicalPublicationFields", fact, scopusFact, bridgeResult, Instant.now(), context);
 
         assertEquals("sforum_abc123", fact.getForumId());
+    }
+
+    @Test
+    void applyCanonicalPublicationFieldsNeverReplacesDblpStampedForum() {
+        // Mirror of the OpenAlex guard: a pub whose forumId was re-stamped from DBLP evidence onto a
+        // conf/X stream forum keeps it across a Scopus refresh — the incremental task path never runs
+        // rebuildFromEvidence, so re-pointing here would silently revert to the Scopus host venue.
+        ScholardexPublicationFact fact = new ScholardexPublicationFact();
+        fact.setSource("SCOPUS_JSON_BOOTSTRAP"); // NOT OpenAlex-owned: the full Scopus field set applies
+        fact.setForumId("sforum_dblpsynasc");
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-dblp-guard");
+        scopusFact.setTitle("DBLP Guard");
+        scopusFact.setSource("SCOPUS");
+        scopusFact.setSourceRecordId("2-s2.0-dblp-guard");
+        scopusFact.setForumId("1000147102"); // the Scopus host venue the merge would otherwise re-point to
+
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact dblpForum =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact();
+        dblpForum.setId("sforum_dblpsynasc");
+        dblpForum.setDblpIds(new java.util.ArrayList<>(List.of("conf/synasc")));
+        when(scholardexForumFactRepository.findByDblpIdsNotNull()).thenReturn(List.of(dblpForum));
+
+        ScholardexPublicationCanonicalizationService.AuthorBridgeResult bridgeResult =
+                new ScholardexPublicationCanonicalizationService.AuthorBridgeResult(List.of(), List.of(), List.of());
+        ScholardexPublicationCanonicalizationService.ChunkContext context =
+                ReflectionTestUtils.invokeMethod(service, "createChunkContext");
+
+        ReflectionTestUtils.invokeMethod(
+                service, "applyCanonicalPublicationFields", fact, scopusFact, bridgeResult, Instant.now(), context);
+
+        assertEquals("sforum_dblpsynasc", fact.getForumId());
     }
 
     @Test

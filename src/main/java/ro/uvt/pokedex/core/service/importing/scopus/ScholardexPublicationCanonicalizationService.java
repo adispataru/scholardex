@@ -78,6 +78,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     private final ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
     private final ScholardexPublicationAuthorAffiliationFactRepository scholardexPublicationAuthorAffiliationFactRepository;
     private final ScholardexEdgeWriterService edgeWriterService;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository scholardexForumFactRepository;
 
     // H66B Decision 0: build-scoped set of normalized DOIs that must NOT be used as publication
     // identity (container/shared DOIs). Recomputed at the start of every source load (loadSourceFacts)
@@ -102,7 +103,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             ScholardexEdgeWriterService edgeWriterService,
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
-            ScholardexCanonicalBuildCheckpointService checkpointService
+            ScholardexCanonicalBuildCheckpointService checkpointService,
+            ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository scholardexForumFactRepository
     ) {
         super(sourceLinkService, identityConflictRepository, checkpointService);
         this.scopusPublicationFactRepository = scopusPublicationFactRepository;
@@ -110,6 +112,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         this.scholardexAuthorshipFactRepository = scholardexAuthorshipFactRepository;
         this.scholardexPublicationAuthorAffiliationFactRepository = scholardexPublicationAuthorAffiliationFactRepository;
         this.edgeWriterService = edgeWriterService;
+        this.scholardexForumFactRepository = scholardexForumFactRepository;
     }
 
     // ── Public API (unchanged) ──────────────────────────────────────────────
@@ -730,7 +733,13 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             fact.setAuthorIds(authorBridgeResult.canonicalAuthorIds());
             fact.setPendingAuthorSourceIds(authorBridgeResult.pendingSourceIds());
             fact.setCorrespondingAuthors(scopusFact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(scopusFact.getCorrespondingAuthors()));
-            fact.setForumId(resolveCanonicalForumId(scopusFact.getSource(), scopusFact.getForumId(), context));
+            // DBLP-evidence-stamped conference forums are authoritative — the mirror of the guard in
+            // OpenAlexCanonicalizationService.applyOpenAlexFields. An incremental Scopus author refresh
+            // never runs rebuildFromEvidence, so re-pointing here would silently revert an evidence-resolved
+            // pub to the Scopus host venue (e.g. SYNASC -> "Lecture Notes in …") until the next full rebuild.
+            if (!isDblpStampedForum(fact.getForumId(), context)) {
+                fact.setForumId(resolveCanonicalForumId(scopusFact.getSource(), scopusFact.getForumId(), context));
+            }
             fact.setCoverDate(scopusFact.getCoverDate());
             fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
             fact.setCitedByCount(scopusFact.getCitedByCount());
@@ -929,6 +938,24 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
      * raw id is kept (never silently nulled) and logged — H55.1 guarantees coverage, so this is a
      * defensive fallback that H55.4 verification must confirm stays at zero.
      */
+    /** True when the pub's current forum is a DBLP conf/X stream forum (dblpIds non-empty) — never replaced. */
+    private boolean isDblpStampedForum(String forumId, ChunkContext context) {
+        if (isBlank(forumId)) {
+            return false;
+        }
+        return context.dblpStampedForumIds(this::loadDblpStampedForumIds).contains(forumId);
+    }
+
+    private Set<String> loadDblpStampedForumIds() {
+        Set<String> ids = new LinkedHashSet<>();
+        for (ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact forum : scholardexForumFactRepository.findByDblpIdsNotNull()) {
+            if (forum.getDblpIds() != null && !forum.getDblpIds().isEmpty() && !isBlank(forum.getId())) {
+                ids.add(forum.getId());
+            }
+        }
+        return ids;
+    }
+
     private String resolveCanonicalForumId(String source, String scopusForumId, ChunkContext context) {
         String normalized = normalizeBlank(scopusForumId, context);
         if (normalized == null) {
@@ -1558,5 +1585,14 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         private long authorshipEdgeUpsertMs = 0L;
         private long publicationAuthorAffiliationEdgeUpsertMs = 0L;
         private long conflictSaveMs = 0L;
+        // Lazily-loaded once per chunk: ids of DBLP-stamped stream forums (the Scopus merge never re-points these).
+        private Set<String> dblpStampedForumIds;
+
+        Set<String> dblpStampedForumIds(java.util.function.Supplier<Set<String>> loader) {
+            if (dblpStampedForumIds == null) {
+                dblpStampedForumIds = loader.get();
+            }
+            return dblpStampedForumIds;
+        }
     }
 }
