@@ -57,7 +57,7 @@ Noise-reduction rules:
 
 When you need to start the application to inspect it at runtime (verify UI, test endpoints, etc.), use the `agent-dev` Spring profile. This profile:
 - Bypasses all Spring Security authentication checks
-- Injects a synthetic `RESEARCHER` principal (`agent@dev.local`, no linked researcher profile) so workspace controllers receive a valid user object
+- Injects an `agent@dev.local` principal (RESEARCHER + PLATFORM_ADMIN + SUPERVISOR) so workspace controllers receive a valid user object; it is loaded from the DB `users` doc when one exists (wizard-saved profile state behaves as for a real user), falling back to a synthetic profile-less user on an empty database
 - Runs on port **8181** to avoid colliding with any other running instance on the default port
 
 ```bash
