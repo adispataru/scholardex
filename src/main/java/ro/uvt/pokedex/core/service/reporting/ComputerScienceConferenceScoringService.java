@@ -276,6 +276,28 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private ConferenceScoreResolution resolveConferenceScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year, ConferenceScoreTrace trace, boolean workshop2026, boolean posterOrDemo) {
+        // A DBLP-evidenced paper is matched — and workshop-detected — from its OWN booktitle-derived title
+        // before the shared stream-forum name is even consulted. The forum name is whichever volume title the
+        // stream forum was minted from, and since ~2021 several conferences (e.g. AINA) publish workshop and
+        // main-track papers in one merged proceedings, so a stream-level name cannot classify a single paper:
+        // absent per-paper proof of workshop status, the paper's own record ("AINA (5)") is the default truth.
+        if (shouldConsultDblp(publication, forum)) {
+            Optional<ScholardexPublicationDblpEvidence> evidence = findDblpEvidence(publication);
+            if (evidence.isPresent()) {
+                String dblpConferenceTitle = resolveDblpConferenceTitle(evidence.get());
+                trace = trace.withDblpConsulted(true).withDblpEvidenceFound(true).withDblpConferenceTitle(dblpConferenceTitle);
+                if (dblpConferenceTitle != null && !dblpConferenceTitle.isBlank()) {
+                    ConferenceMatch dblpMatch = resolveConferenceMatch(dblpConferenceTitle, trace);
+                    trace = dblpMatch.trace();
+                    ConferenceScoreResolution dblpResolution = scoreResolvedConference(dblpMatch, year, trace, ResolutionSource.DBLP, workshop2026, posterOrDemo);
+                    if (dblpResolution.score().isPresent()) {
+                        return dblpResolution;
+                    }
+                    trace = dblpResolution.trace();
+                }
+            }
+        }
+
         ConferenceMatch match = resolveConferenceMatch(forum == null ? null : forum.getPublicationName(), trace);
         trace = match.trace();
         ConferenceScoreResolution scopusResolution = scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS, workshop2026, posterOrDemo);
@@ -286,26 +308,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (!shouldConsultDblp(publication, forum)) {
             return new ConferenceScoreResolution(Optional.empty(), trace);
         }
-
-        trace = trace.withDblpConsulted(true);
-        Optional<ScholardexPublicationDblpEvidence> evidence = findDblpEvidence(publication);
-        if (evidence.isEmpty()) {
-            return new ConferenceScoreResolution(Optional.empty(), trace.withDblpEvidenceFound(false));
+        if (!trace.dblpConsulted()) {
+            trace = trace.withDblpConsulted(true).withDblpEvidenceFound(false);
         }
-
-        String dblpConferenceTitle = resolveDblpConferenceTitle(evidence.get());
-        trace = trace.withDblpEvidenceFound(true).withDblpConferenceTitle(dblpConferenceTitle);
-        if (dblpConferenceTitle == null || dblpConferenceTitle.isBlank()) {
-            return new ConferenceScoreResolution(Optional.empty(), trace);
-        }
-
-        ConferenceMatch dblpMatch = resolveConferenceMatch(dblpConferenceTitle, trace);
-        trace = dblpMatch.trace();
-        ConferenceScoreResolution dblpResolution = scoreResolvedConference(dblpMatch, year, trace, ResolutionSource.DBLP, workshop2026, posterOrDemo);
-        if (dblpResolution.score().isPresent()) {
-            return dblpResolution;
-        }
-        return new ConferenceScoreResolution(Optional.empty(), dblpResolution.trace());
+        return new ConferenceScoreResolution(Optional.empty(), trace);
     }
 
     private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource, boolean workshop2026) {

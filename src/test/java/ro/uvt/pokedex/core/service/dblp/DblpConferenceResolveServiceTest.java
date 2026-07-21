@@ -78,6 +78,27 @@ class DblpConferenceResolveServiceTest {
     }
 
     @Test
+    void mintedForumIsNamedAfterTheStreamAcronymNotTheFirstVolumeTitle() {
+        // Regression: conf/aina's forum was minted as "AINA Workshops" because a WAINA-era paper arrived
+        // first, which made the scorer workshop-reduce every main-track AINA paper on the stream. The
+        // stream-level forum must carry the stream acronym, never a volume-level title.
+        ScholardexPublicationFact pub = pub("p4", "10.1007/978-3-031-57931-8_19");
+        when(candidateDetector.detect(any())).thenReturn(List.of(pub));
+        when(dblpClient.search("10.1007/978-3-031-57931-8_19")).thenReturn(List.of(
+                hit("conf/aina/MunteanuPI24", "AINA Workshops", "10.1007/978-3-031-57931-8_19", "2024")));
+        when(forumFactRepository.findByDblpIdsContaining("conf/aina")).thenReturn(Optional.empty());
+        when(evidenceRepository.findByPublicationId("p4")).thenReturn(Optional.empty());
+
+        service.resolve(List.of(pub));
+
+        // evidence keeps the per-paper volume title (the scorer's per-paper truth)…
+        verify(evidenceRepository).save(argThat(e -> "AINA Workshops".equals(e.getConferenceName())));
+        // …but the shared stream forum is named from the stream key.
+        verify(forumFactRepository).save(argThat(f ->
+                f.getDblpIds().contains("conf/aina") && "AINA".equals(f.getName())));
+    }
+
+    @Test
     void skipsWhenDblpHasNoConferenceMatch() {
         ScholardexPublicationFact pub = pub("p3", "10.1/unknown");
         when(candidateDetector.detect(any())).thenReturn(List.of(pub));

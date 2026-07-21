@@ -186,18 +186,22 @@ public class DblpConferenceResolveService {
     }
 
     private String findOrMintConferenceForum(String streamKey, String venueName, Instant now) {
+        // The stream forum is named after DBLP's stream acronym (conf/aina -> "AINA"), NEVER after an
+        // evidence conferenceName: that is whichever VOLUME title happened to arrive first ("AINA Workshops",
+        // "AINA (5)"), and a volume-level name on the stream-level forum mislabels every other edition's
+        // papers (a "… Workshops" name even triggers the scorer's workshop reduction for main-track papers).
+        String name = streamForumName(streamKey, venueName);
         var existing = forumFactRepository.findByDblpIdsContaining(streamKey);
         if (existing.isPresent()) {
             ScholardexForumFact forum = existing.get();
-            if ((forum.getName() == null || forum.getName().isBlank()) && venueName != null && !venueName.isBlank()) {
-                forum.setName(venueName);
-                forum.setNameNormalized(ForumIdentityNormalization.normalizeName(venueName));
+            if ((forum.getName() == null || forum.getName().isBlank()) && name != null && !name.isBlank()) {
+                forum.setName(name);
+                forum.setNameNormalized(ForumIdentityNormalization.normalizeName(name));
                 forum.setUpdatedAt(now);
                 forumFactRepository.save(forum);
             }
             return forum.getId();
         }
-        String name = (venueName != null && !venueName.isBlank()) ? venueName : streamKey;
         ScholardexForumFact forum = new ScholardexForumFact();
         forum.setId("sforum_" + CanonicalizationSupport.shortHash("dblp|" + streamKey));
         forum.setName(name);
@@ -210,6 +214,17 @@ public class DblpConferenceResolveService {
         forum.setUpdatedAt(now);
         forumFactRepository.save(forum);
         return forum.getId();
+    }
+
+    /** {@code conf/aina} -> {@code AINA}; falls back to the evidence venue name, then the raw stream key. */
+    private static String streamForumName(String streamKey, String venueName) {
+        if (streamKey != null && streamKey.startsWith("conf/")) {
+            String acronym = streamKey.substring("conf/".length()).trim();
+            if (!acronym.isEmpty()) {
+                return acronym.toUpperCase(java.util.Locale.ROOT);
+            }
+        }
+        return (venueName != null && !venueName.isBlank()) ? venueName : streamKey;
     }
 
     private void writeEvidence(String publicationId, String dblpKey, String streamKey, String conferenceName,

@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
@@ -949,6 +950,84 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void dblpEvidenceOverridesWorkshopNamedForumForMainTrackPaper() {
+        // AINA 2021+ publishes workshop and main-track papers in ONE merged proceedings; our conf/aina stream
+        // forum was accidentally named "AINA Workshops" after the first swept volume. The paper's OWN DBLP
+        // booktitle ("AINA (5)") is the per-paper truth and must win: main conference, CORE B, NO reduction.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication("pub-aina-main", null, "forum-1", "2024-04-01", null, "cp", List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("AINA Workshops");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setAcronym("AINA");
+        ranking.setName("International Conference on Advanced Information Networking and Applications (was ICOIN)");
+        CoreConferenceRanking.YearlyRanking rank2024 = new CoreConferenceRanking.YearlyRanking();
+        rank2024.setRank(CoreConferenceRanking.Rank.B);
+        ranking.setYearlyRankings(Map.of(2024, rank2024));
+        when(cacheService.getConferenceRankings("AINA")).thenReturn(List.of(ranking));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-aina-main");
+        evidence.setConferenceName("AINA (5)");
+        evidence.setSeries("conf/aina");
+        when(dblpEvidenceRepository.findByPublicationId("pub-aina-main")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(4.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE", score.getScoringSource());
+        ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
+        assertEquals("AINA (5)", trace.dblpConferenceTitle());
+        assertEquals(false, trace.workshopAdjusted());
+        assertEquals(ComputerScienceConferenceScoringService.ResolutionSource.DBLP, trace.resolvedSource());
+    }
+
+    @Test
+    void dblpEvidenceKeepsWorkshopReductionWhenPaperOwnBooktitleSaysWorkshops() {
+        // The flip side of per-paper truth: a WAINA-era paper whose OWN DBLP booktitle is "AINA Workshops"
+        // stays workshop-reduced even though it shares the stream forum with main-track papers.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication("pub-waina", null, "forum-1", "2019-03-01", null, "cp", List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("AINA");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setAcronym("AINA");
+        ranking.setName("International Conference on Advanced Information Networking and Applications (was ICOIN)");
+        CoreConferenceRanking.YearlyRanking rank2019 = new CoreConferenceRanking.YearlyRanking();
+        rank2019.setRank(CoreConferenceRanking.Rank.B);
+        ranking.setYearlyRankings(Map.of(2019, rank2019));
+        when(cacheService.getConferenceRankings("AINA")).thenReturn(List.of(ranking));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-waina");
+        evidence.setConferenceName("AINA Workshops");
+        evidence.setSeries("conf/aina");
+        when(dblpEvidenceRepository.findByPublicationId("pub-waina")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(2.0, score.getScore());
+        // 2016 workshop downgrade: parent B → reported category C, workshop point ladder B→2.
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE(WS)", score.getScoringSource());
+        ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
+        assertEquals("AINA Workshops", trace.dblpConferenceTitle());
+        assertEquals(true, trace.workshopAdjusted());
+        assertEquals(ComputerScienceConferenceScoringService.ResolutionSource.DBLP, trace.resolvedSource());
+    }
+
+    @Test
     void lncsConferencePaperUsesHyphenatedDblpWorkshopTitleToResolveParentConference() {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
@@ -1068,7 +1147,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
-    void lncsChapterDoesNotUseDblpWhenScopusVenueAlreadyResolves() {
+    void lncsChapterWithoutDblpEvidenceStillResolvesFromScopusVenueName() {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
@@ -1080,6 +1159,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
                 ranking("ICSE", "International Conference on Software Engineering", CoreConferenceRanking.Rank.A_STAR)
         ));
+        when(dblpEvidenceRepository.findByPublicationId("pub-3")).thenReturn(Optional.empty());
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(12.0, score.getScore());
@@ -1087,9 +1167,11 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace =
                 service.getLastTraceForTests();
+        // per-paper truth: the evidence lookup ALWAYS runs first for conference candidates; with no
+        // evidence the paper falls back to (and resolves from) the forum name exactly as before
         assertTrue(!trace.dblpConsulted());
         assertEquals(ComputerScienceConferenceScoringService.ResolutionSource.SCOPUS, trace.resolvedSource());
-        verifyNoInteractions(dblpEvidenceRepository);
+        verify(dblpEvidenceRepository).findByPublicationId("pub-3");
     }
 
     @Test
