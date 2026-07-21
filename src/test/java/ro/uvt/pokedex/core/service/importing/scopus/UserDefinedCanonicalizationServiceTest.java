@@ -351,6 +351,46 @@ class UserDefinedCanonicalizationServiceTest {
     }
 
     @Test
+    void rebuildCanonicalFactsNeverReplacesDblpStampedForum() {
+        // Mirror of the OpenAlex/Scopus merge guards: a manually-added paper whose DOI/source id
+        // matches an existing DBLP-resolved conference pub must not re-point that pub from its
+        // conf/X stream forum (dblpIds non-empty) to the user-entered venue.
+        UserDefinedPublicationFact publicationFact = new UserDefinedPublicationFact();
+        publicationFact.setSourceRecordId("USER_DEFINED:PUBLICATION:dblp");
+        publicationFact.setForumSourceRecordId("sforum_uservenue"); // non-wizard id resolves as-is
+        publicationFact.setEid("eid-dblp");
+        publicationFact.setDoi("10.1007/978-3-031-57931-8_19");
+        publicationFact.setTitle("Manually Re-Added Conference Paper");
+        publicationFact.setCoverDate("2024-04-01");
+        publicationFact.setCreator("Creator");
+        publicationFact.setAuthorIds(List.of());
+
+        ScholardexPublicationFact existingPublication = new ScholardexPublicationFact();
+        existingPublication.setId("spub_dblp");
+        existingPublication.setUserSourceId("USER_DEFINED:PUBLICATION:dblp");
+        existingPublication.setForumId("sforum_dblpaina");
+        existingPublication.setCreatedAt(Instant.parse("2025-01-01T00:00:00Z"));
+
+        ScholardexForumFact dblpForum = new ScholardexForumFact();
+        dblpForum.setId("sforum_dblpaina");
+        dblpForum.setDblpIds(new java.util.ArrayList<>(List.of("conf/aina")));
+
+        when(userDefinedForumFactRepository.findAll()).thenReturn(List.of());
+        when(userDefinedPublicationFactRepository.findAll()).thenReturn(List.of(publicationFact));
+        when(scholardexPublicationFactRepository.findByUserSourceId("USER_DEFINED:PUBLICATION:dblp"))
+                .thenReturn(Optional.of(existingPublication));
+        when(publicationCanonicalizationService.buildCanonicalPublicationId(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn("spub_dblp");
+        when(scholardexForumFactRepository.findById("sforum_dblpaina")).thenReturn(Optional.of(dblpForum));
+
+        service.rebuildCanonicalFacts();
+
+        ArgumentCaptor<ScholardexPublicationFact> publicationCaptor = ArgumentCaptor.forClass(ScholardexPublicationFact.class);
+        verify(scholardexPublicationFactRepository).save(publicationCaptor.capture());
+        assertEquals("sforum_dblpaina", publicationCaptor.getValue().getForumId());
+    }
+
+    @Test
     void rebuildCanonicalFactsPublicationEdgesHandlePendingUnresolvedDedupAndShortAffiliationList() {
         UserDefinedPublicationFact publicationFact = new UserDefinedPublicationFact();
         publicationFact.setSourceRecordId("USER_DEFINED:PUBLICATION:edge");

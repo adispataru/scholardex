@@ -215,7 +215,13 @@ public class UserDefinedCanonicalizationService {
             target.setAuthorCount(sourcePublication.getAuthorCount());
             target.setCorrespondingAuthors(new ArrayList<>(safeList(sourcePublication.getCorrespondingAuthors())));
             target.setAffiliationIds(new ArrayList<>(safeList(sourcePublication.getAffiliationIds())));
-            target.setForumId(forumId);
+            // DBLP-evidence-stamped conference forums are authoritative — mirror of the guards in the
+            // OpenAlex (applyOpenAlexFields) and Scopus (applyCanonicalPublicationFields) merges: a
+            // manually-added paper whose DOI matches an existing DBLP-resolved conference pub must not
+            // re-point that pub to the user-entered venue.
+            if (!isDblpStampedForum(target.getForumId())) {
+                target.setForumId(forumId);
+            }
             target.setVolume(sourcePublication.getVolume());
             target.setIssueIdentifier(sourcePublication.getIssueIdentifier());
             target.setCoverDate(sourcePublication.getCoverDate());
@@ -302,6 +308,16 @@ public class UserDefinedCanonicalizationService {
             }
         }
         return new ScholardexPublicationFact();
+    }
+
+    /** True when the pub's current forum is a DBLP conf/X stream forum (dblpIds non-empty) — never replaced. */
+    private boolean isDblpStampedForum(String forumId) {
+        if (isBlank(forumId)) {
+            return false;
+        }
+        return scholardexForumFactRepository.findById(forumId)
+                .map(f -> f.getDblpIds() != null && !f.getDblpIds().isEmpty())
+                .orElse(false);
     }
 
     private String resolveCanonicalForumId(String forumSourceRecordId, Map<String, String> forumCanonicalBySourceRecordId) {
