@@ -184,6 +184,39 @@ class OpenAlexCanonicalizationServiceTest {
     }
 
     @Test
+    void refreshNeverReplacesADblpStampedConferenceForumWithTheHostVenue() {
+        // Munteanu's AINA/STAC regression: for proceedings papers OpenAlex reports the BOOK SERIES as
+        // host venue (LNDECT); a re-sync re-pointed the DBLP-stamped "AINA Workshops" conf forum to the
+        // series, silently dropping the workshop classification. A dblpIds-bearing forum is authoritative
+        // conference identity — the resolvable OpenAlex venue must NOT replace it.
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "Updated title", "sauth_self");
+        source.setHostVenueOpenAlexId("S777"); // resolvable series venue this sync
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        owned.setForumId("sforum_aina_workshops");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact seriesForum =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact();
+        seriesForum.setId("sforum_lndect_series");
+        org.mockito.Mockito.lenient().when(forumFactRepository.findByOpenAlexIdsContaining("S777"))
+                .thenReturn(java.util.Optional.of(seriesForum));
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact dblpForum =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact();
+        dblpForum.setId("sforum_aina_workshops");
+        dblpForum.setDblpIds(new java.util.ArrayList<>(List.of("conf/aina")));
+        when(forumFactRepository.findById("sforum_aina_workshops")).thenReturn(java.util.Optional.of(dblpForum));
+
+        service.rebuildCanonicalFacts();
+
+        verify(publicationWriter).upsertAndLinkSource(
+                argThat(fact -> "sforum_aina_workshops".equals(fact.getForumId())),
+                any(), any());
+    }
+
+    @Test
     void ghostSyncingResearcherIsSkippedNotWrittenAsEdgeOrAuthorId() {
         // A profile-held id with no author doc and no ORCID resolution must not fabricate edges/authorIds
         // (the phantom-author incident: every re-sync re-created the ghost until removed manually).

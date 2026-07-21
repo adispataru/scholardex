@@ -191,6 +191,16 @@ public class OpenAlexCanonicalizationService {
                 .map(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact::getId).orElse(null);
     }
 
+    /** True when the pub's current forum is a DBLP conf/X forum (dblpIds non-empty) — authoritative, never replaced. */
+    private boolean isDblpStampedForum(String forumId) {
+        if (forumId == null || forumId.isBlank()) {
+            return false;
+        }
+        return forumFactRepository.findById(forumId)
+                .map(f -> f.getDblpIds() != null && !f.getDblpIds().isEmpty())
+                .orElse(false);
+    }
+
     private void canonicalizeOne(OpenAlexPublicationFact source, ImportProcessingResult result, BulkCanonState state) {
         result.markProcessed();
         String workId = source.getSourceRecordId();
@@ -301,7 +311,13 @@ public class OpenAlexCanonicalizationService {
             fact.setCoverDate(source.getCoverDate());
         }
         String resolvedForumId = resolveForumId(source.getHostVenueOpenAlexId()); // Stage 3: ISSN-resolved venue, else null
-        if (resolvedForumId != null) {
+        // Forum priority: a DBLP-stamped conf/X forum (dblpIds non-empty) is authoritative conference
+        // identity and must not be replaced by the OpenAlex HOST venue — for proceedings papers OpenAlex
+        // reports the book series (e.g. LNDECT), and a re-sync used to re-point AINA papers from their
+        // "AINA Workshops" conference forum to the series, silently dropping the workshop classification.
+        // (The full rebuild is covered separately: materialization chains rebuildFromEvidence after the
+        // OpenAlex replay, so evidence-stamped forums win last there.)
+        if (resolvedForumId != null && !isDblpStampedForum(fact.getForumId())) {
             fact.setForumId(resolvedForumId);
         }
         fact.setCitedByCount(source.getCitedByCount());
