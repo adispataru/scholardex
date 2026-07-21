@@ -560,7 +560,20 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (acronym == null) {
             return title;
         }
-        return title == null ? acronym : acronym + " " + title;
+        if (title == null) {
+            return acronym;
+        }
+        // DBLP conferenceNames usually ALREADY lead with the acronym ("AINA (6)") — prepending again
+        // produces "AINA AINA (6)", which defeats the decorated-acronym-only confidence check and
+        // demoted real CORE conferences to the LNCS fallback. Only seed the acronym when absent.
+        String normalizedTitle = title.toLowerCase(Locale.ROOT);
+        String normalizedAcronym = acronym.toLowerCase(Locale.ROOT);
+        if (normalizedTitle.equals(normalizedAcronym)
+                || normalizedTitle.startsWith(normalizedAcronym + " ")
+                || normalizedTitle.startsWith(normalizedAcronym + "(")) {
+            return title;
+        }
+        return acronym + " " + title;
     }
 
     /** The DBLP conference-series acronym from the stream key: {@code conf/iccs} -> {@code ICCS}; null if not conf/X. */

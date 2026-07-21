@@ -878,6 +878,54 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void dblpEvidenceWithSeriesDoesNotDoubleTheAcronymAndStillResolvesCore() {
+        // Regression (Munteanu STAC/AINA): sweep-written evidence carries series="conf/aina" AND a
+        // conferenceName that already leads with the acronym ("AINA (6)"). The old composition produced
+        // "AINA AINA (6)", which failed every confidence rung and demoted the paper to the LNCS C
+        // fallback. It must resolve DBLP+CORE at the real AINA rank.
+        ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+        ComputerScienceConferenceScoringService conferenceScoringService =
+                new ComputerScienceConferenceScoringService(lookupPort, dblpEvidenceRepository);
+
+        ScoringPublication publication = publication(
+                "pub-aina-series", "forum-1", "2025-01-01", "ch", "ch",
+                "Benchmarking STAC Ecosystem Server Backends", List.of("a1"));
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Lecture Notes on Data Engineering and Communications Technologies");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setAcronym("AINA");
+        ranking.setName("International Conference on Advanced Information Networking and Applications (was ICOIN)");
+        CoreConferenceRanking.YearlyRanking rank2023 = new CoreConferenceRanking.YearlyRanking();
+        rank2023.setRank(CoreConferenceRanking.Rank.B);
+        ranking.setYearlyRankings(Map.of(2023, rank2023));
+        when(lookupPort.getConferenceRankings("AINA")).thenReturn(List.of(ranking));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-aina-series");
+        evidence.setConferenceName("AINA (6)");
+        evidence.setSeries("conf/aina");
+        when(dblpEvidenceRepository.findByPublicationId("pub-aina-series")).thenReturn(Optional.of(evidence));
+        when(scoringFactoryService.getScoringService("CS_CONFERENCE")).thenReturn(conferenceScoringService);
+
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS_CONFERENCE");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
+
+        assertEquals(4.0, result.get(publication.getTitle()).getScore(), 0.0001);
+        assertEquals("B", result.get(publication.getTitle()).getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE", result.get(publication.getTitle()).getScoringSource());
+        ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = conferenceScoringService.getLastTraceForTests();
+        assertEquals("AINA (6)", trace.dblpConferenceTitle()); // acronym NOT doubled
+    }
+
+    @Test
     void productionScoreTop10SelectorSortsAndLimitsByAuthorScore() {
         Indicator indicator = indicator("PUBLICATIONS", "S");
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "TOP_10");
