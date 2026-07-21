@@ -94,6 +94,10 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  /* Wrap instead of overflowing: with 4+ report pills the unwrapped row pushed
+     the whole page into horizontal scroll on phones, clipping the last pill. */
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .individual-report-dashboard .app-eval-report-switcher__label {

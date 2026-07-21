@@ -880,15 +880,23 @@
 
 /* ── Mini-chart row ────────────────────────────────────────────────────── */
 
+/* minmax(0, …) — a bare 1fr floors at the canvas's min-content width, which
+   let the Chart.js canvases push the page into horizontal scroll on narrow
+   phones (≤320px). */
 .app-charts-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.25rem;
 }
 
 .app-mini-chart {
   position: relative;
   height: 160px;
+  min-width: 0;
+}
+
+.app-mini-chart canvas {
+  max-width: 100%;
 }
 
 .app-mini-chart__label {
@@ -912,7 +920,7 @@
 
 @media (max-width: 767.98px) {
   .app-charts-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

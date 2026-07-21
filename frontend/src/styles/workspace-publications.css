@@ -204,9 +204,60 @@
   overflow: hidden;
 }
 
-@media (max-width: 576px) {
-  .app-ws-pubs__table-wrap {
-    overflow-x: auto;
+/* ── Mobile: card layout ──────────────────────────────────────────────────
+   On phones the 6-column table turns into stacked cards: line 1 is
+   select + title + expand action, line 2 wraps year / type / venue / cites.
+   Every cell stays on-canvas — nothing to discover behind a hidden
+   horizontal scroll. The title's flex-basis deliberately consumes line 1
+   (minus the select box and action button) so the meta cells wrap below. */
+@media (max-width: 575.98px) {
+  .app-ws-pubs__table,
+  .app-ws-pubs__table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .app-ws-pubs__table colgroup,
+  .app-ws-pubs__table thead {
+    display: none;
+  }
+
+  .app-ws-pubs__table tbody tr.app-ws-pubs__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.6rem;
+    row-gap: 0.3rem;
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid var(--app-color-border);
+  }
+
+  .app-ws-pubs__table tbody tr.app-ws-pubs__row td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .app-ws-pubs__row .app-ws-pubs__col-select   { order: 1; flex: 0 0 auto; width: auto; }
+  .app-ws-pubs__row .app-ws-pubs__col-title    { order: 2; flex: 1 1 calc(100% - 6.5rem); min-width: 0; }
+  .app-ws-pubs__row .app-ws-pubs__col-actions  { order: 3; flex: 0 0 auto; width: auto; }
+  .app-ws-pubs__row .app-ws-pubs__col-year     { order: 4; flex: 0 0 auto; width: auto; }
+  .app-ws-pubs__row .app-ws-pubs__col-type     { order: 5; flex: 0 0 auto; width: auto; }
+  .app-ws-pubs__row .app-ws-pubs__col-venue    { order: 6; flex: 1 1 auto; min-width: 0; width: auto; }
+  .app-ws-pubs__row .app-ws-pubs__col-cites    { order: 7; flex: 0 0 auto; width: auto; text-align: right; }
+
+  /* The venue keeps its ellipsis but now shares the meta line; the full name
+     lives in the expanded detail. The bare citation number gets its unit back. */
+  .app-ws-pubs__row .app-ws-pubs__venue { max-width: 100%; }
+  .app-ws-pubs__row .app-ws-pubs__cites::after { content: '\00a0 cites'; font-size: 0.72rem; color: var(--app-color-text-muted); }
+
+  .app-ws-pubs__table tbody tr.app-ws-pubs__row:last-child { border-bottom: 0; }
+
+  /* Inline detail expansion row stacks full-width below its card. */
+  .app-ws-pubs__table tbody tr.app-ws-pubs__detail-row,
+  .app-ws-pubs__table tbody tr.app-ws-pubs__detail-row td {
+    display: block;
+    width: 100%;
   }
 }
 
