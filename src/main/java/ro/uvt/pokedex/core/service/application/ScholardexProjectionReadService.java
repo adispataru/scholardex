@@ -162,6 +162,9 @@ public class ScholardexProjectionReadService {
     }
 
     public Optional<ScholardexForumView> findForumById(String id) {
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
         List<String> resolvedForumIds = resolveCanonicalIds(ScholardexEntityType.FORUM, List.of(id));
         return postgresProjectionReadPort.findForumsByIdIn(resolvedForumIds).stream().findFirst();
     }

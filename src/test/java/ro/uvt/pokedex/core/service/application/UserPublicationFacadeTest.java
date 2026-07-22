@@ -293,6 +293,20 @@ class UserPublicationFacadeTest {
     }
 
     @Test
+    void buildCitationsViewReturnsEmptyInsteadOfThrowingWhenPublicationHasNoForum() {
+        // Reproduces prod NPE (publication spub_d8a54153be25ce599bd87183 has a null/blank forumId):
+        // findForumById(null) used to construct List.of(null) and blow up with NPE before this fix.
+        ScholardexPublicationView publication = publication("p1", "Main", "2023-01-01", 0, null, List.of("a1"));
+        when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(effectiveAuthorshipReadService.userEffectivelyOwnsPublication("user@uvt.ro", "p1")).thenReturn(true);
+        when(scholardexProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of());
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of())).thenReturn(List.of());
+        when(scholardexProjectionReadService.findForumById(null)).thenReturn(Optional.empty());
+
+        assertTrue(facade.buildCitationsView("user@uvt.ro", "p1").isEmpty());
+    }
+
+    @Test
     void findPublicationForEditUsesCanonicalIdLookup() {
         ScholardexPublicationView publication = publication("p1", "P", "2023-01-01", 0, "f1", List.of("a1"));
         when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));

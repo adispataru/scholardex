@@ -365,6 +365,14 @@ class ScholardexProjectionReadServiceEdgeTraversalTest {
     }
 
     @Test
+    void findForumByIdReturnsEmptyForNullOrBlankIdInsteadOfThrowing() {
+        ScholardexProjectionReadService service = buildService();
+        assertTrue(service.findForumById(null).isEmpty());
+        assertTrue(service.findForumById(" ").isEmpty());
+        verify(postgresProjectionReadPort, never()).findForumsByIdIn(anyCollection());
+    }
+
+    @Test
     void findAllForumsAndFindForumsByIdInDelegate() {
         ScholardexProjectionReadService service = buildService();
         ScholardexForumView forum = new ScholardexForumView();
