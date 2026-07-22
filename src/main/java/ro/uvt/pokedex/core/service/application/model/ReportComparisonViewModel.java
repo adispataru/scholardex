@@ -17,7 +17,10 @@ public record ReportComparisonViewModel(
         List<CriterionComparisonRow> rows,
         Double olderTotalScore,
         Double newerTotalScore,
-        Double totalScoreDelta
+        Double totalScoreDelta,
+        /** True when that side's latest run is an admin-provisional (declared-authorship) run. */
+        boolean olderRunProvisional,
+        boolean newerRunProvisional
 ) {
 
     /**

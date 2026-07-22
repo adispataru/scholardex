@@ -48,6 +48,10 @@ class AdminDivisionReportsControllerContractTest {
 
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService orgUnitReportComparisonService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ReportComparisonFacade reportComparisonFacade;
 
     @Test
     void reportViewRendersDashboardCardsHeatClassesAndJsonPayload() throws Exception {
@@ -244,5 +248,95 @@ class AdminDivisionReportsControllerContractTest {
 
         assertTrue(html.contains("Promotion readiness"));
         assertTrue(html.contains("/admin/divisions/div-1/reports/rep-1/promotions"));
+    }
+
+    @Test
+    void compareLinkRendersOnDivisionReportViewOnlyWhenACompatibleReportExists() throws Exception {
+        OrgUnitReportViewModel vm = sampleVm();
+        when(divisionReportFacade.buildView(eq("div-1"), eq("rep-1"), isNull()))
+                .thenReturn(Optional.of(vm));
+
+        IndividualReport compatible = new IndividualReport();
+        compatible.setId("rep-0");
+        compatible.setTitle("CS 2016");
+        when(reportComparisonFacade.findCompatibleReport(vm.report())).thenReturn(Optional.of(compatible));
+
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(html.contains("Compare with"));
+        assertTrue(html.contains("CS 2016"));
+        assertTrue(html.contains("/admin/divisions/div-1/reports/rep-1/compare"));
+    }
+
+    @Test
+    void compareLinkAbsentWhenNoCompatibleReportExists() throws Exception {
+        OrgUnitReportViewModel vm = sampleVm();
+        when(divisionReportFacade.buildView(eq("div-1"), eq("rep-1"), isNull()))
+                .thenReturn(Optional.of(vm));
+        when(reportComparisonFacade.findCompatibleReport(vm.report())).thenReturn(Optional.empty());
+
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertFalse(html.contains("/admin/divisions/div-1/reports/rep-1/compare"));
+    }
+
+    @Test
+    void compareRendersRosterWideTableWhenCompatibleReportExists() throws Exception {
+        IndividualReport olderReport = new IndividualReport();
+        olderReport.setId("rep-0");
+        olderReport.setTitle("CS 2016");
+        IndividualReport newerReport = new IndividualReport();
+        newerReport.setId("rep-1");
+        newerReport.setTitle("CS 2026");
+
+        User ana = new User();
+        ana.setEmail("ana@uvt.ro");
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setFirstName("Ana");
+        profile.setLastName("Pop");
+        profile.setPosition(Position.PROF_UNIV);
+        ana.setResearcherProfile(profile);
+
+        var row = new ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService.MemberComparisonRow(
+                ana, "Computer Science", true, true, false, true,
+                Map.of("Articles", 30.0), Map.of("Articles", 40.0), Map.of("Articles", 10.0),
+                30.0, 40.0, 10.0);
+        var comparisonView = new ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService.OrgUnitReportComparisonView(
+                "FMI", olderReport, newerReport,
+                List.of(new ro.uvt.pokedex.core.service.application.ReportComparisonFacade.CriterionColumn("Articles", 0, 0)),
+                List.of(row), 0, 0);
+
+        when(orgUnitReportComparisonService.build(
+                        ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DIVISION,
+                        "div-1", "rep-1"))
+                .thenReturn(Optional.of(comparisonView));
+
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1/compare"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(html.contains("CS 2016"));
+        assertTrue(html.contains("CS 2026"));
+        assertTrue(html.contains("Ana Pop"));
+        assertTrue(html.contains("Articles"));
+        assertTrue(html.contains("+10.00") || html.contains("+10,00"));
+        assertTrue(html.contains("badge badge-info")); // provisional badge on the newer total
+    }
+
+    @Test
+    void compareRedirectsBackToReportWhenNoCompatibleReport() throws Exception {
+        when(orgUnitReportComparisonService.build(
+                        ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DIVISION,
+                        "div-1", "rep-1"))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/admin/divisions/div-1/reports/rep-1/compare"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl(
+                        "/admin/divisions/div-1/reports/rep-1"));
     }
 }

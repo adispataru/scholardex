@@ -34,6 +34,10 @@ class AdminDepartmentReportsControllerContractTest {
 
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService orgUnitReportComparisonService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ReportComparisonFacade reportComparisonFacade;
 
     @Test
     void departmentReportViewRendersWithoutTheDepartmentColumn() throws Exception {

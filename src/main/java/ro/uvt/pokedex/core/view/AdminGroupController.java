@@ -25,6 +25,7 @@ import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.OrgUnitReportRefreshService;
+import ro.uvt.pokedex.core.service.application.ReportComparisonFacade;
 import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
@@ -61,6 +62,8 @@ public class AdminGroupController {
     private final GroupManagementFacade groupManagementFacade;
     private final GroupReportFacade groupReportFacade;
     private final ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
+    private final ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService orgUnitReportComparisonService;
+    private final ReportComparisonFacade reportComparisonFacade;
     private final OrgUnitReportRefreshService orgUnitReportRefreshService;
     private final GroupExportFacade groupExportFacade;
     private final GroupCnfisExportFacade groupCnfisExportFacade;
@@ -158,7 +161,24 @@ public class AdminGroupController {
         model.addAttribute("vm", view.get());
         model.addAttribute("backHref", "/admin/groups/" + gid);
         model.addAttribute("promotionsHref", "/admin/groups/" + gid + "/reports/view/" + id + "/promotions");
+        reportComparisonFacade.findCompatibleReport(view.get().report()).ifPresent(compatible -> {
+            model.addAttribute("compareHref", "/admin/groups/" + gid + "/reports/view/" + id + "/compare");
+            model.addAttribute("compatibleReportTitle", compatible.getTitle());
+        });
         return "admin/orgunit-report-view";
+    }
+
+    @GetMapping("{gid}/reports/view/{id}/compare")
+    @PreAuthorize("@groupAccess.canView(#gid, authentication)")
+    public String compareIndividualReport(@PathVariable String gid, @PathVariable String id, Model model) {
+        var view = orgUnitReportComparisonService.build(
+                ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.GROUP,
+                gid, id);
+        if (view.isEmpty()) return "redirect:/admin/groups/" + gid + "/reports/view/" + id;
+        model.addAttribute("unitType", "group");
+        model.addAttribute("vm", view.get());
+        model.addAttribute("backHref", "/admin/groups/" + gid + "/reports/view/" + id);
+        return "admin/orgunit-report-compare";
     }
 
     @GetMapping("{gid}/reports/view/{id}/promotions")

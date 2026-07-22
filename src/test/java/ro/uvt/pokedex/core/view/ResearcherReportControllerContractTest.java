@@ -282,7 +282,7 @@ class ResearcherReportControllerContractTest {
                 olderReport, report, true, true,
                 List.of(new ro.uvt.pokedex.core.service.application.model.ReportComparisonViewModel.CriterionComparisonRow(
                         "C1", 10.0, 15.0, 5.0, true, true, true, true)),
-                10.0, 15.0, 5.0);
+                10.0, 15.0, 5.0, false, false);
         when(reportComparisonFacade.buildComparison(any(), eq(report), eq(olderReport))).thenReturn(comparison);
 
         mockMvc.perform(get("/reports/researcher/{email}/report/{reportId}/compare", EMAIL, "rep-1"))

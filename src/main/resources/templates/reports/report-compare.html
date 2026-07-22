@@ -52,11 +52,15 @@
                             <span class="app-eval-aggregate__label" th:text="${comparison.olderReport.title}">Older</span>
                             <span class="app-eval-aggregate__value"
                                   th:text="${#numbers.formatDecimal(comparison.olderTotalScore, 1, 2)}">0.00</span>
+                            <span th:if="${comparison.olderRunProvisional}" class="badge badge-info ml-1"
+                                  title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">provisional</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
                             <span class="app-eval-aggregate__label" th:text="${comparison.newerReport.title}">Newer</span>
                             <span class="app-eval-aggregate__value"
                                   th:text="${#numbers.formatDecimal(comparison.newerTotalScore, 1, 2)}">0.00</span>
+                            <span th:if="${comparison.newerRunProvisional}" class="badge badge-info ml-1"
+                                  title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">provisional</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
                             <span class="app-eval-aggregate__label">Δ Total</span>

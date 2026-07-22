@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ro.uvt.pokedex.core.service.application.DepartmentReportFacade;
+import ro.uvt.pokedex.core.service.application.ReportComparisonFacade;
 import ro.uvt.pokedex.core.service.application.model.OrgUnitReportViewModel;
 
 import java.time.Instant;
@@ -26,6 +27,8 @@ public class AdminDepartmentReportsController {
 
     private final DepartmentReportFacade departmentReportFacade;
     private final ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService orgUnitPromotionBoardService;
+    private final ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService orgUnitReportComparisonService;
+    private final ReportComparisonFacade reportComparisonFacade;
 
     @GetMapping
     @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
@@ -56,7 +59,25 @@ public class AdminDepartmentReportsController {
         model.addAttribute("backHref", "/admin/departments/" + departmentId + "/reports");
         model.addAttribute("promotionsHref",
                 "/admin/departments/" + departmentId + "/reports/" + reportId + "/promotions");
+        reportComparisonFacade.findCompatibleReport(vm.report()).ifPresent(compatible -> {
+            model.addAttribute("compareHref",
+                    "/admin/departments/" + departmentId + "/reports/" + reportId + "/compare");
+            model.addAttribute("compatibleReportTitle", compatible.getTitle());
+        });
         return "admin/orgunit-report-view";
+    }
+
+    @GetMapping("/{reportId}/compare")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    public String compareReports(@PathVariable String departmentId, @PathVariable String reportId, Model model) {
+        var view = orgUnitReportComparisonService.build(
+                ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DEPARTMENT,
+                departmentId, reportId);
+        if (view.isEmpty()) return "redirect:/admin/departments/" + departmentId + "/reports/" + reportId;
+        model.addAttribute("unitType", "department");
+        model.addAttribute("vm", view.get());
+        model.addAttribute("backHref", "/admin/departments/" + departmentId + "/reports/" + reportId);
+        return "admin/orgunit-report-compare";
     }
 
     @GetMapping("/{reportId}/promotions")

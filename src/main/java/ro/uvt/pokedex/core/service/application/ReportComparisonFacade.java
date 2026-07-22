@@ -38,11 +38,39 @@ public class ReportComparisonFacade {
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
 
+    /** A criterion pairing between two compatible reports, structural only — no scores. */
+    public record CriterionColumn(String name, Integer olderIndex, Integer newerIndex) {
+    }
+
     /**
      * The other report in {@code report}'s compatible pair, if one is configured AND assigned to
      * this researcher (both conditions must hold — there's nothing to compare against otherwise).
      */
     public Optional<IndividualReport> findCompatibleReport(String researcherEmail, IndividualReport report) {
+        return resolveOtherTypeKey(report).flatMap(targetTypeKey ->
+                userReportFacade.buildIndividualReportsListView(researcherEmail).individualReports().stream()
+                        .filter(r -> targetTypeKey.equals(r.getReportTypeKey()))
+                        .findFirst());
+    }
+
+    /**
+     * The other report in {@code report}'s compatible pair, system-wide — no per-researcher
+     * assignment/visibility check. For roster-wide (org-unit) views, where "is this report visible
+     * to researcher X" doesn't apply; the org-unit roster itself gates who can be scored.
+     */
+    public Optional<IndividualReport> findCompatibleReport(IndividualReport report) {
+        return resolveOtherTypeKey(report).flatMap(targetTypeKey ->
+                userReportFacade.buildIndividualReportsListView(null).individualReports().stream()
+                        .filter(r -> targetTypeKey.equals(r.getReportTypeKey()))
+                        .findFirst());
+    }
+
+    /** True when {@code report}'s reportTypeKey is the OLDER side of a registered pair. */
+    public boolean isOlder(IndividualReport report) {
+        return OLDER_TYPE_KEY_BY_NEWER.containsValue(report.getReportTypeKey());
+    }
+
+    private Optional<String> resolveOtherTypeKey(IndividualReport report) {
         String typeKey = report.getReportTypeKey();
         if (typeKey == null || typeKey.isBlank()) {
             return Optional.empty();
@@ -55,13 +83,7 @@ public class ReportComparisonFacade {
                     .findFirst()
                     .orElse(null);
         }
-        if (otherTypeKey == null) {
-            return Optional.empty();
-        }
-        String targetTypeKey = otherTypeKey;
-        return userReportFacade.buildIndividualReportsListView(researcherEmail).individualReports().stream()
-                .filter(r -> targetTypeKey.equals(r.getReportTypeKey()))
-                .findFirst();
+        return Optional.ofNullable(otherTypeKey);
     }
 
     /**
@@ -69,7 +91,7 @@ public class ReportComparisonFacade {
      * one is "older" is resolved from {@link #OLDER_TYPE_KEY_BY_NEWER}, not argument position.
      */
     public ReportComparisonViewModel buildComparison(User researcher, IndividualReport reportA, IndividualReport reportB) {
-        boolean aIsOlder = OLDER_TYPE_KEY_BY_NEWER.containsValue(reportA.getReportTypeKey());
+        boolean aIsOlder = isOlder(reportA);
         IndividualReport olderReport = aIsOlder ? reportA : reportB;
         IndividualReport newerReport = aIsOlder ? reportB : reportA;
 
@@ -80,7 +102,8 @@ public class ReportComparisonFacade {
 
         if (olderRun.isEmpty() || newerRun.isEmpty()) {
             return new ReportComparisonViewModel(
-                    olderReport, newerReport, olderRun.isPresent(), newerRun.isPresent(), List.of(), null, null, null);
+                    olderReport, newerReport, olderRun.isPresent(), newerRun.isPresent(), List.of(),
+                    null, null, null, false, false);
         }
 
         String position = Optional.ofNullable(researcher.getResearcherProfile())
@@ -97,8 +120,53 @@ public class ReportComparisonFacade {
         Double newerTotal = computeContributingTotal(newerReport, newerScores);
         Double totalDelta = (olderTotal != null && newerTotal != null) ? newerTotal - olderTotal : null;
 
+        boolean olderProvisional = olderRun.get().source() == IndividualReportRunDto.Source.ADMIN_PROVISIONAL;
+        boolean newerProvisional = newerRun.get().source() == IndividualReportRunDto.Source.ADMIN_PROVISIONAL;
+
         return new ReportComparisonViewModel(
-                olderReport, newerReport, true, true, rows, olderTotal, newerTotal, totalDelta);
+                olderReport, newerReport, true, true, rows, olderTotal, newerTotal, totalDelta,
+                olderProvisional, newerProvisional);
+    }
+
+    /**
+     * The criterion pairing between two compatible reports, by name — structural only (no scores),
+     * so it's the single source of truth shared by both the single-researcher comparison
+     * ({@link #buildRows}) and the org-unit roster-wide comparison
+     * ({@code OrgUnitReportComparisonService}). Order: the newer report's own criterion order, then
+     * any older-only criteria appended.
+     */
+    public List<CriterionColumn> matchCriteriaColumns(IndividualReport olderReport, IndividualReport newerReport) {
+        List<AbstractReport.Criterion> olderCriteria = olderReport.getCriteria() == null ? List.of() : olderReport.getCriteria();
+        List<AbstractReport.Criterion> newerCriteria = newerReport.getCriteria() == null ? List.of() : newerReport.getCriteria();
+
+        Map<String, Integer> olderIndexByName = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < olderCriteria.size(); i++) {
+            olderIndexByName.put(normalize(displayName(olderCriteria.get(i), i)), i);
+        }
+
+        List<CriterionColumn> columns = new ArrayList<>();
+        Set<String> matchedOlderNames = new HashSet<>();
+
+        for (int i = 0; i < newerCriteria.size(); i++) {
+            String name = displayName(newerCriteria.get(i), i);
+            Integer olderIdx = olderIndexByName.get(normalize(name));
+            if (olderIdx != null) {
+                matchedOlderNames.add(normalize(name));
+            }
+            columns.add(new CriterionColumn(name, olderIdx, i));
+        }
+
+        // Criteria that exist only in the older report (none for the Info pair today, but a future
+        // pair might drop one) — appended after the newer report's own order.
+        for (int i = 0; i < olderCriteria.size(); i++) {
+            String name = displayName(olderCriteria.get(i), i);
+            if (matchedOlderNames.contains(normalize(name))) {
+                continue;
+            }
+            columns.add(new CriterionColumn(name, i, null));
+        }
+
+        return columns;
     }
 
     private List<CriterionComparisonRow> buildRows(
@@ -111,46 +179,29 @@ public class ReportComparisonFacade {
         List<AbstractReport.Criterion> olderCriteria = olderReport.getCriteria() == null ? List.of() : olderReport.getCriteria();
         List<AbstractReport.Criterion> newerCriteria = newerReport.getCriteria() == null ? List.of() : newerReport.getCriteria();
 
-        Map<String, Integer> olderIndexByName = new java.util.LinkedHashMap<>();
-        for (int i = 0; i < olderCriteria.size(); i++) {
-            olderIndexByName.put(normalize(displayName(olderCriteria.get(i), i)), i);
-        }
-
         List<CriterionComparisonRow> rows = new ArrayList<>();
-        Set<String> matchedOlderNames = new HashSet<>();
-
-        for (int i = 0; i < newerCriteria.size(); i++) {
-            AbstractReport.Criterion nc = newerCriteria.get(i);
-            String name = displayName(nc, i);
-            double newerScore = newerScores.getOrDefault(i, 0.0);
-            Boolean newerMet = isMet(nc, newerScore, position);
-
-            Integer olderIdx = olderIndexByName.get(normalize(name));
-            if (olderIdx != null) {
-                matchedOlderNames.add(normalize(name));
-                AbstractReport.Criterion oc = olderCriteria.get(olderIdx);
-                double olderScore = olderScores.getOrDefault(olderIdx, 0.0);
+        for (CriterionColumn column : matchCriteriaColumns(olderReport, newerReport)) {
+            if (column.olderIndex() != null && column.newerIndex() != null) {
+                AbstractReport.Criterion oc = olderCriteria.get(column.olderIndex());
+                AbstractReport.Criterion nc = newerCriteria.get(column.newerIndex());
+                double olderScore = olderScores.getOrDefault(column.olderIndex(), 0.0);
+                double newerScore = newerScores.getOrDefault(column.newerIndex(), 0.0);
                 Boolean olderMet = isMet(oc, olderScore, position);
+                Boolean newerMet = isMet(nc, newerScore, position);
                 rows.add(new CriterionComparisonRow(
-                        name, olderScore, newerScore, newerScore - olderScore, olderMet, newerMet, true, true));
+                        column.name(), olderScore, newerScore, newerScore - olderScore, olderMet, newerMet, true, true));
+            } else if (column.newerIndex() != null) {
+                AbstractReport.Criterion nc = newerCriteria.get(column.newerIndex());
+                double newerScore = newerScores.getOrDefault(column.newerIndex(), 0.0);
+                Boolean newerMet = isMet(nc, newerScore, position);
+                rows.add(new CriterionComparisonRow(column.name(), null, newerScore, null, null, newerMet, false, true));
             } else {
-                rows.add(new CriterionComparisonRow(name, null, newerScore, null, null, newerMet, false, true));
+                AbstractReport.Criterion oc = olderCriteria.get(column.olderIndex());
+                double olderScore = olderScores.getOrDefault(column.olderIndex(), 0.0);
+                Boolean olderMet = isMet(oc, olderScore, position);
+                rows.add(new CriterionComparisonRow(column.name(), olderScore, null, null, olderMet, null, true, false));
             }
         }
-
-        // Criteria that exist only in the older report (none for the Info pair today, but a future
-        // pair might drop one) — appended after the newer report's own order.
-        for (int i = 0; i < olderCriteria.size(); i++) {
-            String name = displayName(olderCriteria.get(i), i);
-            if (matchedOlderNames.contains(normalize(name))) {
-                continue;
-            }
-            AbstractReport.Criterion oc = olderCriteria.get(i);
-            double olderScore = olderScores.getOrDefault(i, 0.0);
-            Boolean olderMet = isMet(oc, olderScore, position);
-            rows.add(new CriterionComparisonRow(name, olderScore, null, null, olderMet, null, true, false));
-        }
-
         return rows;
     }
 

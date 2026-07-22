@@ -63,6 +63,12 @@
                            title="Who meets the scientific minimum standards of the next position">
                             <i class="fa-solid fa-arrow-trend-up mr-1"></i>Promotion readiness
                         </a>
+                        <a th:if="${compareHref != null}" th:href="${compareHref}"
+                           class="btn btn-outline-secondary btn-sm"
+                           th:title="'Compare the whole roster against ' + ${compatibleReportTitle}">
+                            <i class="fa-solid fa-code-compare mr-1"></i>
+                            Compare with <span th:text="${compatibleReportTitle}">report</span>
+                        </a>
                         <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← All reports</a>
                     </div>
                 </div>
