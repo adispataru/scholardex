@@ -72,9 +72,11 @@ public class ActivityBlockProjector {
     /**
      * Inverts {@code report.blockByIndicatorId} into a block→indicators view so multiple indicators
      * can feed the same block. Also folds in the legacy auto-match by {@code Indicator.activity.name}
-     * for indicators that have no explicit block assignment.
+     * for indicators that have no explicit block assignment. Public: also the source of "every Activity
+     * type a block accepts", independent of whether the researcher has scored anything yet — see
+     * {@code ReportImportVerificationFacade}'s importable-activity-options wiring.
      */
-    private Map<String, List<Indicator>> buildIndicatorsByBlock(IndividualReport report) {
+    public Map<String, List<Indicator>> buildIndicatorsByBlock(IndividualReport report) {
         Map<String, List<Indicator>> out = new java.util.LinkedHashMap<>();
         if (report.getIndicators() == null) return out;
         Map<String, String> assigned = report.getBlockByIndicatorId() != null

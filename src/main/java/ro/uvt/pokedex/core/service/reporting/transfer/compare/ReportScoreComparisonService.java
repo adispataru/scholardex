@@ -26,6 +26,19 @@ public class ReportScoreComparisonService {
     private static final String CITATION_ROLE = "citations-per-publication";
 
     public ReportScoreComparison compare(List<SnapshotItem> platformItems, List<SnapshotItem> fileItems) {
+        return compare(platformItems, fileItems, Map.of());
+    }
+
+    /**
+     * @param boundOptionsByBlock block name → every Activity type the report definition binds to that
+     *   block (via {@code IndividualReport.blockByIndicatorId}), regardless of whether the researcher
+     *   has any scored instances yet. Widens the "Add to platform" inline form's candidate list beyond
+     *   only-what-the-researcher-already-has — without it, a researcher with zero existing entries for
+     *   a block (e.g. their first grant) sees no candidate Activity type at all and the importable rows
+     *   fall back to a dead-end "add via the workspace" message.
+     */
+    public ReportScoreComparison compare(List<SnapshotItem> platformItems, List<SnapshotItem> fileItems,
+                                         Map<String, List<ReportScoreComparison.ActivityOption>> boundOptionsByBlock) {
         Map<String, Dim> platformPub = new LinkedHashMap<>();
         Map<String, Dim> platformCit = new LinkedHashMap<>();
         Map<String, Dim> filePub = new LinkedHashMap<>();
@@ -98,7 +111,7 @@ public class ReportScoreComparisonService {
         }
 
         // ── Activities (Perspectiva D blocks) ────────────────────────────────
-        ActivityTally activities = compareActivities(platformItems, fileItems);
+        ActivityTally activities = compareActivities(platformItems, fileItems, boundOptionsByBlock);
         platformTotal += activities.platformTotal;
         fileTotal += activities.fileTotal;
         correctPoints += activities.correctPoints;
@@ -171,7 +184,8 @@ public class ReportScoreComparisonService {
         int matching, differing;
     }
 
-    private ActivityTally compareActivities(List<SnapshotItem> platformItems, List<SnapshotItem> fileItems) {
+    private ActivityTally compareActivities(List<SnapshotItem> platformItems, List<SnapshotItem> fileItems,
+                                            Map<String, List<ReportScoreComparison.ActivityOption>> boundOptionsByBlock) {
         Map<String, List<ActivitySnapshotItem>> platformByBlock = activitiesByBlock(platformItems);
         Map<String, List<ActivitySnapshotItem>> fileByBlock = activitiesByBlock(fileItems);
 
@@ -244,8 +258,11 @@ public class ReportScoreComparisonService {
             ReportScoreComparison.Status blockStatus = Math.abs(pTotal - fTotal) <= EPSILON
                     ? ReportScoreComparison.Status.MATCH : ReportScoreComparison.Status.DIFFERS;
 
-            // Candidate Activity types for the inline add-form (distinct activityIds on the platform side).
-            List<ReportScoreComparison.ActivityOption> options = activityOptions(platform);
+            // Candidate Activity types for the inline add-form: every activityId the platform already
+            // has for this block, plus every activityId the report definition binds to this block (so
+            // a researcher with zero existing entries still gets a real candidate, not a dead end).
+            List<ReportScoreComparison.ActivityOption> options =
+                    activityOptions(platform, boundOptionsByBlock.getOrDefault(block, List.of()));
 
             tally.blocks.add(new ReportScoreComparison.ActivityBlockComparison(
                     block, round(pTotal), round(fTotal), round(pTotal - fTotal), blockStatus,
@@ -269,11 +286,20 @@ public class ReportScoreComparisonService {
         return out;
     }
 
-    private List<ReportScoreComparison.ActivityOption> activityOptions(List<ActivitySnapshotItem> platform) {
+    private List<ReportScoreComparison.ActivityOption> activityOptions(
+            List<ActivitySnapshotItem> platform, List<ReportScoreComparison.ActivityOption> bound) {
         Map<String, ReportScoreComparison.ActivityOption> byId = new LinkedHashMap<>();
+        // Bound options carry the true Activity type name (e.g. "Grant Cercetare"); platform items'
+        // activityName is actually the BLOCK name (e.g. "Granturi", see ActivityBlockProjector), so a
+        // bound option — when one exists for this id — is always the more useful label. Bound first.
+        for (ReportScoreComparison.ActivityOption option : bound) {
+            if (option.activityId() != null) {
+                byId.put(option.activityId(), option);
+            }
+        }
         for (ActivitySnapshotItem a : platform) {
-            if (a.getActivityId() != null && !byId.containsKey(a.getActivityId())) {
-                byId.put(a.getActivityId(), new ReportScoreComparison.ActivityOption(a.getActivityId(), a.getActivityName()));
+            if (a.getActivityId() != null) {
+                byId.putIfAbsent(a.getActivityId(), new ReportScoreComparison.ActivityOption(a.getActivityId(), a.getActivityName()));
             }
         }
         return new ArrayList<>(byId.values());

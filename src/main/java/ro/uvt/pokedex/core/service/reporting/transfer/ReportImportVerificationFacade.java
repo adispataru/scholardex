@@ -1,7 +1,9 @@
 package ro.uvt.pokedex.core.service.reporting.transfer;
 
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportInstanceSnapshot;
@@ -10,10 +12,16 @@ import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison;
 import ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparisonService;
+import ro.uvt.pokedex.core.service.reporting.transfer.projection.ActivityBlockProjector;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Read-only score verification for the H50.3 import flow: parse an uploaded report file, compare
@@ -28,19 +36,46 @@ public class ReportImportVerificationFacade {
     private final ReportImportRegistry registry;
     private final ReportScoreComparisonService comparisonService;
     private final ReportExportReadinessValidator readinessValidator;
+    private final ActivityBlockProjector activityBlockProjector;
 
     public ReportImportVerificationFacade(IndividualReportRepository individualReportRepository,
                                           UserIndividualReportRunRepository userIndividualReportRunRepository,
                                           ReportInstanceSnapshotBuilder snapshotBuilder,
                                           ReportImportRegistry registry,
                                           ReportScoreComparisonService comparisonService,
-                                          ReportExportReadinessValidator readinessValidator) {
+                                          ReportExportReadinessValidator readinessValidator,
+                                          ActivityBlockProjector activityBlockProjector) {
         this.individualReportRepository = individualReportRepository;
         this.userIndividualReportRunRepository = userIndividualReportRunRepository;
         this.snapshotBuilder = snapshotBuilder;
         this.registry = registry;
         this.comparisonService = comparisonService;
         this.readinessValidator = readinessValidator;
+        this.activityBlockProjector = activityBlockProjector;
+    }
+
+    /**
+     * Block name → every Activity type the report definition binds to that block, regardless of
+     * whether this researcher has any scored instances yet — widens the "Add to platform" inline
+     * form's candidate list beyond only-what-the-researcher-already-has (see
+     * {@link ReportScoreComparisonService#compare(List, List, Map)}).
+     */
+    private Map<String, List<ReportScoreComparison.ActivityOption>> boundActivityOptionsByBlock(IndividualReport report) {
+        Map<String, List<ReportScoreComparison.ActivityOption>> out = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Indicator>> entry : activityBlockProjector.buildIndicatorsByBlock(report).entrySet()) {
+            List<ReportScoreComparison.ActivityOption> options = new ArrayList<>();
+            Set<String> seenIds = new LinkedHashSet<>();
+            for (Indicator indicator : entry.getValue()) {
+                Activity activity = indicator.getActivity();
+                if (activity != null && activity.getId() != null && seenIds.add(activity.getId())) {
+                    options.add(new ReportScoreComparison.ActivityOption(activity.getId(), activity.getName()));
+                }
+            }
+            if (!options.isEmpty()) {
+                out.put(entry.getKey(), options);
+            }
+        }
+        return out;
     }
 
     public boolean isImportAvailable(String reportId) {
@@ -114,9 +149,12 @@ public class ReportImportVerificationFacade {
         if (!displayedRunResolution.isSuccess()) {
             return VerificationOutcome.failure(displayedRunResolution.failureReason(), displayedRunResolution.message());
         }
+        Map<String, List<ReportScoreComparison.ActivityOption>> boundOptionsByBlock = boundActivityOptionsByBlock(report);
+
         UserIndividualReportRun displayedRun = displayedRunResolution.run();
         ReportInstanceSnapshot displayedSnapshot = snapshotBuilder.build(displayedRun, report, userEmail);
-        ReportScoreComparison displayedComparison = comparisonService.compare(displayedSnapshot.getItems(), fileItems);
+        ReportScoreComparison displayedComparison =
+                comparisonService.compare(displayedSnapshot.getItems(), fileItems, boundOptionsByBlock);
 
         UserIndividualReportRun currentRun = userIndividualReportRunRepository
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(userEmail, reportId)
@@ -125,7 +163,7 @@ public class ReportImportVerificationFacade {
         ReportScoreComparison currentComparison = null;
         if (currentRun != null) {
             ReportInstanceSnapshot currentSnapshot = snapshotBuilder.build(currentRun, report, userEmail);
-            currentComparison = comparisonService.compare(currentSnapshot.getItems(), fileItems);
+            currentComparison = comparisonService.compare(currentSnapshot.getItems(), fileItems, boundOptionsByBlock);
         }
 
         return VerificationOutcome.success(new VerificationResult(

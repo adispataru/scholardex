@@ -7,6 +7,7 @@ import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.SnapshotItem;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -225,6 +226,53 @@ class ReportScoreComparisonServiceTest {
         // Activity option resolved from the platform side for the add-form.
         assertThat(block.activityOptions()).extracting(ReportScoreComparison.ActivityOption::activityId)
                 .containsExactly("a-grant");
+    }
+
+    @Test
+    void activityOptionsAreEmptyForABlockTheResearcherHasNeverUsedWithoutBoundOptions() {
+        // A researcher with ZERO existing "Granturi" entries gets no activityId from platform items —
+        // this is the gap the report-bound-options parameter exists to close.
+        ActivitySnapshotItem fNew = activity("Granturi", null, "First grant ever, e.g. SCAPE FP7", "C", 2.0);
+
+        ReportScoreComparison cmp = service.compare(List.of(), List.of(fNew));
+
+        ReportScoreComparison.ActivityBlockComparison block = cmp.activityBlocks().get(0);
+        assertThat(block.hasImportable()).isTrue();
+        assertThat(block.activityOptions()).isEmpty();
+    }
+
+    @Test
+    void activityOptionsFallBackToReportBoundActivitiesWhenPlatformHasNone() {
+        // Same zero-existing-entries scenario, but the report definition's own block binding is passed
+        // through — the researcher now gets a real candidate Activity type for the "Add to platform" form.
+        ActivitySnapshotItem fNew = activity("Granturi", null, "First grant ever, e.g. SCAPE FP7", "C", 2.0);
+        ReportScoreComparison.ActivityOption grantCercetare =
+                new ReportScoreComparison.ActivityOption("act-grant-cercetare", "Grant Cercetare");
+
+        ReportScoreComparison cmp = service.compare(
+                List.of(), List.of(fNew), Map.of("Granturi", List.of(grantCercetare)));
+
+        ReportScoreComparison.ActivityBlockComparison block = cmp.activityBlocks().get(0);
+        assertThat(block.activityOptions()).containsExactly(grantCercetare);
+    }
+
+    @Test
+    void activityOptionsUnionPlatformAndReportBoundWithoutDuplicates() {
+        // The platform already has one grant activityId; the report also binds that SAME activityId
+        // plus a second one the researcher hasn't used yet — union, deduped by activityId.
+        ActivitySnapshotItem pGrant = activity("Granturi", "act-grant-cercetare", "Existing grant", "A", 4.0);
+        ActivitySnapshotItem fNew = activity("Granturi", null, "Brand new second grant", "C", 1.0);
+        ReportScoreComparison.ActivityOption grantCercetare =
+                new ReportScoreComparison.ActivityOption("act-grant-cercetare", "Grant Cercetare");
+        ReportScoreComparison.ActivityOption grantMobilitate =
+                new ReportScoreComparison.ActivityOption("act-grant-mobilitate", "Grant Mobilitate");
+
+        ReportScoreComparison cmp = service.compare(
+                List.of(pGrant), List.of(fNew),
+                Map.of("Granturi", List.of(grantCercetare, grantMobilitate)));
+
+        ReportScoreComparison.ActivityBlockComparison block = cmp.activityBlocks().get(0);
+        assertThat(block.activityOptions()).containsExactlyInAnyOrder(grantCercetare, grantMobilitate);
     }
 
     @Test
