@@ -7,6 +7,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import ro.uvt.pokedex.core.model.org.OrgDivision;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.Position;
@@ -339,5 +340,26 @@ class AdminDivisionReportsControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl(
                         "/admin/divisions/div-1/reports/rep-1"));
+    }
+
+    @Test
+    void listReportsRendersEmptyStateInsteadOf500WhenDivisionHasNoReports() throws Exception {
+        // Regression: this call site passed a leading icon-class argument (5 args) to the
+        // 4-parameter admin-empty-state(title, body, actionLabel, actionHref) fragment — Thymeleaf
+        // resolves fragments by name against the FIRST same-named declaration in fragments.html
+        // regardless of a second, differently-signed one further down, so the arg-count mismatch threw
+        // TemplateProcessingException and 500'd this page whenever the division had zero visible
+        // reports. Confirmed in prod (2026-07-22) and fixed by dropping the icon argument.
+        OrgDivision division = new OrgDivision();
+        division.setName("FMI");
+        when(divisionReportFacade.findDivision("div-1")).thenReturn(Optional.of(division));
+        when(divisionReportFacade.listReportsVisibleForDivision("div-1")).thenReturn(List.of());
+
+        String html = mockMvc.perform(get("/admin/divisions/div-1/reports"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(html.contains("No reports defined"));
+        assertTrue(html.contains("Create an Individual Report definition first"));
     }
 }
