@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${comparison.olderReport.title} + ' vs ' + ${comparison.newerReport.title}">Compare reports</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <link href="/css/individual-report-dashboard.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('researcher-reports')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('Compare reports')}"></div>
+
+            <div class="container-fluid app-page-content app-dashboard individual-report-dashboard">
+                <div class="alert alert-info mb-3" role="status">
+                    <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+                    Viewing <strong th:text="${delegatedSubjectName}">researcher</strong>'s report comparison — read-only.
+                </div>
+
+                <div class="app-page-toolbar app-workflow mb-3">
+                    <p class="app-workflow__intro">
+                        Criterion-level comparison between
+                        <strong th:text="${comparison.olderReport.title}">older</strong> and
+                        <strong th:text="${comparison.newerReport.title}">newer</strong> — matched by
+                        criterion name; a criterion shown on only one side has no counterpart in the
+                        other report.
+                    </p>
+                    <a class="btn btn-sm btn-outline-secondary"
+                       th:href="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${comparison.newerReport.id})}">
+                        <i class="fa-solid fa-arrow-left fa-xs" aria-hidden="true"></i> Back to report
+                    </a>
+                </div>
+
+                <!-- ── Missing-run state: one or both sides have never been run ─────────── -->
+                <th:block th:if="${!comparison.olderRunAvailable or !comparison.newerRunAvailable}">
+                    <th:block th:replace="~{fragments :: admin-empty-state(
+                        'Nothing to compare yet',
+                        (${!comparison.olderRunAvailable} ? ${comparison.olderReport.title} : ${comparison.newerReport.title})
+                            + ' has no run yet for this researcher — generate it from that report''s page first.',
+                        null, null)}"></th:block>
+                </th:block>
+
+                <!-- ── Comparison ────────────────────────────────────────────────────────── -->
+                <th:block th:if="${comparison.olderRunAvailable and comparison.newerRunAvailable}">
+
+                    <div class="app-eval-aggregate app-eval-summary mb-3" th:if="${comparison.totalScoreDelta != null}">
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label" th:text="${comparison.olderReport.title}">Older</span>
+                            <span class="app-eval-aggregate__value"
+                                  th:text="${#numbers.formatDecimal(comparison.olderTotalScore, 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label" th:text="${comparison.newerReport.title}">Newer</span>
+                            <span class="app-eval-aggregate__value"
+                                  th:text="${#numbers.formatDecimal(comparison.newerTotalScore, 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">Δ Total</span>
+                            <span class="app-eval-aggregate__value eval-delta"
+                                  th:classappend="${comparison.totalScoreDelta > 0.005 ? 'eval-delta--positive' : (comparison.totalScoreDelta lt -0.005 ? 'eval-delta--negative' : 'eval-delta--neutral')}"
+                                  th:text="${(comparison.totalScoreDelta > 0.005 ? '+' : '') + #numbers.formatDecimal(comparison.totalScoreDelta, 1, 2)}">+0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">Criteria</h6>
+                            </div>
+                            <div class="app-table-section__body">
+                                <div class="app-table-scroll">
+                                    <table class="table app-table" width="100%" cellspacing="0">
+                                        <thead>
+                                        <tr>
+                                            <th scope="col">Criterion</th>
+                                            <th scope="col" class="text-right" th:text="${comparison.olderReport.title}">Older</th>
+                                            <th scope="col" class="text-right" th:text="${comparison.newerReport.title}">Newer</th>
+                                            <th scope="col" class="text-right">Δ</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="row : ${comparison.rows}">
+                                            <td th:text="${row.name}">Criterion</td>
+                                            <td class="text-right">
+                                                <span th:if="${row.presentInOlder}"
+                                                      th:text="${#numbers.formatDecimal(row.olderScore, 1, 2)}">0.00</span>
+                                                <i th:if="${row.olderMet != null and row.olderMet}"
+                                                   class="fa-solid fa-circle-check text-success fa-xs ml-1"
+                                                   title="Meets threshold"></i>
+                                                <span th:unless="${row.presentInOlder}" class="text-muted">—</span>
+                                            </td>
+                                            <td class="text-right">
+                                                <span th:if="${row.presentInNewer}"
+                                                      th:text="${#numbers.formatDecimal(row.newerScore, 1, 2)}">0.00</span>
+                                                <i th:if="${row.newerMet != null and row.newerMet}"
+                                                   class="fa-solid fa-circle-check text-success fa-xs ml-1"
+                                                   title="Meets threshold"></i>
+                                                <span th:unless="${row.presentInNewer}" class="text-muted">—</span>
+                                            </td>
+                                            <td class="text-right">
+                                                <span th:if="${row.delta != null}"
+                                                      class="eval-delta"
+                                                      th:classappend="${row.delta > 0.005 ? 'eval-delta--positive' : (row.delta lt -0.005 ? 'eval-delta--negative' : 'eval-delta--neutral')}"
+                                                      th:text="${(row.delta > 0.005 ? '+' : '') + #numbers.formatDecimal(row.delta, 1, 2)}">+0.00</span>
+                                                <span th:unless="${row.delta != null}" class="text-muted"
+                                                      th:text="${row.presentInNewer and !row.presentInOlder} ? 'new' : (${row.presentInOlder and !row.presentInNewer} ? 'dropped' : '—')">—</span>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </th:block>
+            </div>
+
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

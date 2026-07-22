@@ -18,9 +18,11 @@ import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.UserService;
+import ro.uvt.pokedex.core.service.application.ReportComparisonFacade;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.application.model.ReportComparisonViewModel;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.ReportTransferFacade;
 import ro.uvt.pokedex.core.service.security.ResearcherAccessService;
@@ -51,6 +53,7 @@ public class ResearcherReportController {
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
     private final ReportTransferFacade reportTransferFacade;
+    private final ReportComparisonFacade reportComparisonFacade;
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('PLATFORM_ADMIN','SUPERVISOR')")
@@ -100,7 +103,45 @@ public class ResearcherReportController {
         }
 
         individualReportViewModelAssembler.populate(model, researcher, report, runOpt.get(), reports);
+        model.addAttribute("compatibleReport",
+                reportComparisonFacade.findCompatibleReport(email, report).orElse(null));
         return "user/individual-report-view";
+    }
+
+    /**
+     * Criterion-level comparison of this report's latest run against its compatible counterpart's
+     * latest run (today: FV Info 2016 ↔ FV Info 2026 only — {@link ReportComparisonFacade}).
+     * Read-only, delegated-only (supervisor/admin); redirects back to the single-report view when no
+     * compatible report is configured or assigned to this researcher.
+     */
+    @GetMapping("/{email}/report/{reportId}/compare")
+    @PreAuthorize("@researcherAccess.canView(#email, authentication)")
+    public String compareReports(@PathVariable String email, @PathVariable String reportId, Model model) {
+        Optional<User> researcherOpt = userService.getUserByEmail(email);
+        if (researcherOpt.isEmpty()) {
+            return "redirect:/reports/researcher";
+        }
+        User researcher = researcherOpt.get();
+
+        Optional<IndividualReport> reportOpt = userReportFacade.findIndividualReportById(reportId);
+        if (reportOpt.isEmpty()) {
+            return "redirect:/reports/researcher/" + email;
+        }
+        IndividualReport report = reportOpt.get();
+
+        Optional<IndividualReport> compatibleOpt = reportComparisonFacade.findCompatibleReport(email, report);
+        if (compatibleOpt.isEmpty()) {
+            return "redirect:/reports/researcher/" + email + "?report=" + reportId;
+        }
+
+        ReportComparisonViewModel comparison =
+                reportComparisonFacade.buildComparison(researcher, report, compatibleOpt.get());
+
+        model.addAttribute("delegatedSubjectEmail", email);
+        model.addAttribute("delegatedSubjectName",
+                userService.findDisplayLabels(List.of(email)).getOrDefault(email, email));
+        model.addAttribute("comparison", comparison);
+        return "reports/report-compare";
     }
 
     /**

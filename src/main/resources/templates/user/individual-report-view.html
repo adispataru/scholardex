@@ -124,6 +124,13 @@
                     </div>
                     <!-- Delegated actions: export (read-only) + refresh (attributed recompute) -->
                     <div class="app-eval-summary__actions" th:if="${delegated}">
+                        <a th:if="${compatibleReport != null}"
+                           th:href="@{/reports/researcher/{e}/report/{r}/compare(e=${delegatedSubjectEmail},r=${report.id})}"
+                           class="btn btn-sm btn-outline-secondary"
+                           th:title="'Compare criterion scores against ' + ${compatibleReport.title}">
+                            <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i>
+                            <span th:text="'Compare with ' + ${compatibleReport.title}">Compare</span>
+                        </a>
                         <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
                            th:href="@{/reports/researcher/{e}/report/{r}/export(e=${delegatedSubjectEmail},r=${report.id},format=${exportFormat},run=${runMetaId})}"
                            class="btn btn-sm btn-outline-secondary"

@@ -31,6 +31,7 @@ import java.util.Optional;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -65,6 +66,8 @@ class ResearcherReportControllerContractTest {
     private UserIndividualReportRunService userIndividualReportRunService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.ReportTransferFacade reportTransferFacade; // export + assembler dep
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.ReportComparisonFacade reportComparisonFacade;
 
     @org.junit.jupiter.api.BeforeEach
     void assemblerDefaults() {
@@ -261,5 +264,45 @@ class ResearcherReportControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("\"pubTitle\":\"Cited Pub\"")))
                 .andExpect(content().string(containsString("Citing 1")));
+    }
+
+    @Test
+    void compareRendersComparisonWhenCompatibleReportExists() throws Exception {
+        IndividualReport report = report();
+        IndividualReport olderReport = report();
+        olderReport.setId("rep-0");
+        olderReport.setTitle("FV Test 2016");
+
+        when(userService.getUserByEmail(EMAIL)).thenReturn(Optional.of(researcher()));
+        when(userService.findDisplayLabels(List.of(EMAIL))).thenReturn(Map.of(EMAIL, "Florin S"));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(reportComparisonFacade.findCompatibleReport(EMAIL, report)).thenReturn(Optional.of(olderReport));
+
+        var comparison = new ro.uvt.pokedex.core.service.application.model.ReportComparisonViewModel(
+                olderReport, report, true, true,
+                List.of(new ro.uvt.pokedex.core.service.application.model.ReportComparisonViewModel.CriterionComparisonRow(
+                        "C1", 10.0, 15.0, 5.0, true, true, true, true)),
+                10.0, 15.0, 5.0);
+        when(reportComparisonFacade.buildComparison(any(), eq(report), eq(olderReport))).thenReturn(comparison);
+
+        mockMvc.perform(get("/reports/researcher/{email}/report/{reportId}/compare", EMAIL, "rep-1"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("reports/report-compare"))
+                .andExpect(model().attribute("delegatedSubjectEmail", EMAIL))
+                .andExpect(model().attribute("comparison", comparison));
+    }
+
+    @Test
+    void compareRedirectsBackToReportWhenNoCompatibleReportIsAssigned() throws Exception {
+        IndividualReport report = report();
+        when(userService.getUserByEmail(EMAIL)).thenReturn(Optional.of(researcher()));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(reportComparisonFacade.findCompatibleReport(EMAIL, report)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/reports/researcher/{email}/report/{reportId}/compare", EMAIL, "rep-1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/reports/researcher/" + EMAIL + "?report=rep-1"));
+
+        verify(reportComparisonFacade, never()).buildComparison(any(), any(), any());
     }
 }
