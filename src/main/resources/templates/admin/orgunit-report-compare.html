@@ -75,10 +75,11 @@
                                                 <span th:unless="${row.newerScoresByCriterion[col.name] != null}" class="text-muted">—</span>
                                             </td>
                                             <td class="text-right">
-                                                <th:block th:with="d=${row.deltaByCriterion[col.name]}">
+                                                <th:block th:with="d=${row.deltaByCriterion[col.name]},p=${row.deltaPercentByCriterion[col.name]}">
                                                     <span th:if="${d != null}"
                                                           th:class="${d > 0.005 ? 'badge badge-success' : (d lt -0.005 ? 'badge badge-danger' : 'badge badge-secondary')}"
-                                                          th:text="${(d > 0.005 ? '+' : '') + #numbers.formatDecimal(d, 1, 2)}">+0.00</span>
+                                                          th:text="${(d > 0.005 ? '+' : '') + #numbers.formatDecimal(d, 1, 2)
+                                                                    + (p != null ? ' (' + #numbers.formatDecimal(p > 0 ? p : -p, 1, 2) + '%)' : '')}">+0.00 (0.00%)</span>
                                                     <span th:unless="${d != null}" class="text-muted">—</span>
                                                 </th:block>
                                             </td>
@@ -100,7 +101,8 @@
                                         <td class="text-right">
                                             <span th:if="${row.totalDelta != null}"
                                                   th:class="${row.totalDelta > 0.005 ? 'badge badge-success' : (row.totalDelta lt -0.005 ? 'badge badge-danger' : 'badge badge-secondary')}"
-                                                  th:text="${(row.totalDelta > 0.005 ? '+' : '') + #numbers.formatDecimal(row.totalDelta, 1, 2)}">+0.00</span>
+                                                  th:text="${(row.totalDelta > 0.005 ? '+' : '') + #numbers.formatDecimal(row.totalDelta, 1, 2)
+                                                            + (row.totalDeltaPercent != null ? ' (' + #numbers.formatDecimal(row.totalDeltaPercent > 0 ? row.totalDeltaPercent : -row.totalDeltaPercent, 1, 2) + '%)' : '')}">+0.00 (0.00%)</span>
                                             <span th:unless="${row.totalDelta != null}" class="text-muted">—</span>
                                         </td>
                                     </tr>

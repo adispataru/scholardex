@@ -45,7 +45,9 @@ public class OrgUnitReportComparisonService {
                                       Map<String, Double> newerScoresByCriterion,
                                       /** criterion name → delta; only present when BOTH sides have that criterion + a run. */
                                       Map<String, Double> deltaByCriterion,
-                                      Double olderTotal, Double newerTotal, Double totalDelta) {
+                                      /** criterion name → percent change vs the older score; null entries omitted (see {@link ReportComparisonFacade#percentDelta}). */
+                                      Map<String, Double> deltaPercentByCriterion,
+                                      Double olderTotal, Double newerTotal, Double totalDelta, Double totalDeltaPercent) {
     }
 
     public record OrgUnitReportComparisonView(String unitName, IndividualReport olderReport, IndividualReport newerReport,
@@ -99,6 +101,7 @@ public class OrgUnitReportComparisonService {
             Map<String, Double> olderScores = new LinkedHashMap<>();
             Map<String, Double> newerScores = new LinkedHashMap<>();
             Map<String, Double> deltas = new LinkedHashMap<>();
+            Map<String, Double> deltaPercents = new LinkedHashMap<>();
             for (ReportComparisonFacade.CriterionColumn col : columns) {
                 Double os = (olderRun != null && col.olderIndex() != null)
                         ? olderRun.criteriaScores().getOrDefault(col.olderIndex(), 0.0) : null;
@@ -106,17 +109,25 @@ public class OrgUnitReportComparisonService {
                         ? newerRun.criteriaScores().getOrDefault(col.newerIndex(), 0.0) : null;
                 if (os != null) olderScores.put(col.name(), os);
                 if (ns != null) newerScores.put(col.name(), ns);
-                if (os != null && ns != null) deltas.put(col.name(), ns - os);
+                if (os != null && ns != null) {
+                    double delta = ns - os;
+                    deltas.put(col.name(), delta);
+                    Double deltaPercent = ReportComparisonFacade.percentDelta(delta, os);
+                    if (deltaPercent != null) {
+                        deltaPercents.put(col.name(), deltaPercent);
+                    }
+                }
             }
 
             Double olderTotal = olderRun != null ? olderRun.total() : null;
             Double newerTotal = newerRun != null ? newerRun.total() : null;
             Double totalDelta = (olderTotal != null && newerTotal != null) ? newerTotal - olderTotal : null;
+            Double totalDeltaPercent = totalDelta != null ? ReportComparisonFacade.percentDelta(totalDelta, olderTotal) : null;
 
             rows.add(new MemberComparisonRow(member.user(), member.departmentLabel(),
                     olderRun != null, newerRun != null,
                     olderRun != null && olderRun.provisional(), newerRun != null && newerRun.provisional(),
-                    olderScores, newerScores, deltas, olderTotal, newerTotal, totalDelta));
+                    olderScores, newerScores, deltas, deltaPercents, olderTotal, newerTotal, totalDelta, totalDeltaPercent));
         }
 
         return Optional.of(new OrgUnitReportComparisonView(unitName.get(), olderReport, newerReport, columns, rows,

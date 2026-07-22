@@ -147,11 +147,13 @@ class ReportComparisonFacadeTest {
         assertEquals(30.0, perspectivaB.olderScore());
         assertEquals(40.0, perspectivaB.newerScore());
         assertEquals(10.0, perspectivaB.delta());
+        assertEquals(100.0 / 3.0, perspectivaB.deltaPercent(), 0.0001); // 10/30 * 100
         assertFalse(perspectivaB.olderMet()); // 30 < 32
         assertTrue(perspectivaB.newerMet());  // 40 >= 32
 
         CriterionComparisonRow perspectivaC = comparison.rows().get(1);
         assertEquals(-5.0, perspectivaC.delta()); // 45 - 50
+        assertEquals(-10.0, perspectivaC.deltaPercent(), 0.0001); // -5/50 * 100
 
         CriterionComparisonRow newOnly = comparison.rows().get(3);
         assertEquals("Publicații A*+A", newOnly.name());
@@ -159,11 +161,25 @@ class ReportComparisonFacadeTest {
         assertTrue(newOnly.presentInNewer());
         assertNull(newOnly.olderScore());
         assertNull(newOnly.delta());
+        assertNull(newOnly.deltaPercent());
 
         // Total: sum of contributesToTotal criteria (B+C+D) on each side.
         assertEquals(30.0 + 50.0 + 36.0, comparison.olderTotalScore());
         assertEquals(40.0 + 45.0 + 36.0, comparison.newerTotalScore());
         assertEquals((40.0 + 45.0 + 36.0) - (30.0 + 50.0 + 36.0), comparison.totalScoreDelta());
+        assertEquals(5.0 / 116.0 * 100.0, comparison.totalScoreDeltaPercent(), 0.0001);
+    }
+
+    @Test
+    void percentDeltaIsNullWhenOlderScoreIsZero() {
+        assertNull(ReportComparisonFacade.percentDelta(5.0, 0.0));
+    }
+
+    @Test
+    void percentDeltaUsesAbsoluteOlderScoreAsDenominator() {
+        // A hypothetical negative-older-score guard: percent stays finite/signed correctly even if
+        // olderScore were negative (defensive — scores in this domain are never negative in practice).
+        assertEquals(-50.0, ReportComparisonFacade.percentDelta(-5.0, 10.0), 0.0001);
     }
 
     @Test

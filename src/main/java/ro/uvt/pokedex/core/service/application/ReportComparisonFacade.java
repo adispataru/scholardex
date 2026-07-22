@@ -43,6 +43,19 @@ public class ReportComparisonFacade {
     }
 
     /**
+     * Percent change of {@code delta} relative to {@code olderScore}'s magnitude; null when
+     * {@code olderScore} is zero (percent change from zero is undefined, not infinite/NaN). The
+     * single formula shared by the single-researcher rows ({@link #buildRows}) and the org-unit
+     * roster-wide comparison ({@code OrgUnitReportComparisonService}).
+     */
+    public static Double percentDelta(double delta, double olderScore) {
+        if (olderScore == 0.0) {
+            return null;
+        }
+        return (delta / Math.abs(olderScore)) * 100.0;
+    }
+
+    /**
      * The other report in {@code report}'s compatible pair, if one is configured AND assigned to
      * this researcher (both conditions must hold — there's nothing to compare against otherwise).
      */
@@ -103,7 +116,7 @@ public class ReportComparisonFacade {
         if (olderRun.isEmpty() || newerRun.isEmpty()) {
             return new ReportComparisonViewModel(
                     olderReport, newerReport, olderRun.isPresent(), newerRun.isPresent(), List.of(),
-                    null, null, null, false, false);
+                    null, null, null, null, false, false);
         }
 
         String position = Optional.ofNullable(researcher.getResearcherProfile())
@@ -119,12 +132,13 @@ public class ReportComparisonFacade {
         Double olderTotal = computeContributingTotal(olderReport, olderScores);
         Double newerTotal = computeContributingTotal(newerReport, newerScores);
         Double totalDelta = (olderTotal != null && newerTotal != null) ? newerTotal - olderTotal : null;
+        Double totalDeltaPercent = totalDelta != null ? percentDelta(totalDelta, olderTotal) : null;
 
         boolean olderProvisional = olderRun.get().source() == IndividualReportRunDto.Source.ADMIN_PROVISIONAL;
         boolean newerProvisional = newerRun.get().source() == IndividualReportRunDto.Source.ADMIN_PROVISIONAL;
 
         return new ReportComparisonViewModel(
-                olderReport, newerReport, true, true, rows, olderTotal, newerTotal, totalDelta,
+                olderReport, newerReport, true, true, rows, olderTotal, newerTotal, totalDelta, totalDeltaPercent,
                 olderProvisional, newerProvisional);
     }
 
@@ -186,20 +200,22 @@ public class ReportComparisonFacade {
                 AbstractReport.Criterion nc = newerCriteria.get(column.newerIndex());
                 double olderScore = olderScores.getOrDefault(column.olderIndex(), 0.0);
                 double newerScore = newerScores.getOrDefault(column.newerIndex(), 0.0);
+                double delta = newerScore - olderScore;
                 Boolean olderMet = isMet(oc, olderScore, position);
                 Boolean newerMet = isMet(nc, newerScore, position);
                 rows.add(new CriterionComparisonRow(
-                        column.name(), olderScore, newerScore, newerScore - olderScore, olderMet, newerMet, true, true));
+                        column.name(), olderScore, newerScore, delta, percentDelta(delta, olderScore),
+                        olderMet, newerMet, true, true));
             } else if (column.newerIndex() != null) {
                 AbstractReport.Criterion nc = newerCriteria.get(column.newerIndex());
                 double newerScore = newerScores.getOrDefault(column.newerIndex(), 0.0);
                 Boolean newerMet = isMet(nc, newerScore, position);
-                rows.add(new CriterionComparisonRow(column.name(), null, newerScore, null, null, newerMet, false, true));
+                rows.add(new CriterionComparisonRow(column.name(), null, newerScore, null, null, null, newerMet, false, true));
             } else {
                 AbstractReport.Criterion oc = olderCriteria.get(column.olderIndex());
                 double olderScore = olderScores.getOrDefault(column.olderIndex(), 0.0);
                 Boolean olderMet = isMet(oc, olderScore, position);
-                rows.add(new CriterionComparisonRow(column.name(), olderScore, null, null, olderMet, null, true, false));
+                rows.add(new CriterionComparisonRow(column.name(), olderScore, null, null, null, olderMet, null, true, false));
             }
         }
         return rows;

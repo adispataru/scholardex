@@ -303,8 +303,8 @@ class AdminDivisionReportsControllerContractTest {
 
         var row = new ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService.MemberComparisonRow(
                 ana, "Computer Science", true, true, false, true,
-                Map.of("Articles", 30.0), Map.of("Articles", 40.0), Map.of("Articles", 10.0),
-                30.0, 40.0, 10.0);
+                Map.of("Articles", 30.0), Map.of("Articles", 40.0), Map.of("Articles", 10.0), Map.of("Articles", 33.33),
+                30.0, 40.0, 10.0, 33.33);
         var comparisonView = new ro.uvt.pokedex.core.service.application.reporting.OrgUnitReportComparisonService.OrgUnitReportComparisonView(
                 "FMI", olderReport, newerReport,
                 List.of(new ro.uvt.pokedex.core.service.application.ReportComparisonFacade.CriterionColumn("Articles", 0, 0)),
@@ -324,6 +324,7 @@ class AdminDivisionReportsControllerContractTest {
         assertTrue(html.contains("Ana Pop"));
         assertTrue(html.contains("Articles"));
         assertTrue(html.contains("+10.00") || html.contains("+10,00"));
+        assertTrue(html.contains("(33.33%)") || html.contains("(33,33%)"));
         assertTrue(html.contains("badge badge-info")); // provisional badge on the newer total
     }
 

@@ -18,6 +18,8 @@ public record ReportComparisonViewModel(
         Double olderTotalScore,
         Double newerTotalScore,
         Double totalScoreDelta,
+        /** Percent change vs olderTotalScore; null when olderTotalScore is zero (undefined) or totalScoreDelta is null. */
+        Double totalScoreDeltaPercent,
         /** True when that side's latest run is an admin-provisional (declared-authorship) run. */
         boolean olderRunProvisional,
         boolean newerRunProvisional
@@ -26,13 +28,15 @@ public record ReportComparisonViewModel(
     /**
      * One comparison row, matched by criterion name across the two reports. Either score is null
      * when the criterion has no counterpart in that report (e.g. a 2026-only criterion); {@code delta}
-     * is null unless both sides are present.
+     * (and {@code deltaPercent}) is null unless both sides are present.
      */
     public record CriterionComparisonRow(
             String name,
             Double olderScore,
             Double newerScore,
             Double delta,
+            /** Percent change vs olderScore; null when olderScore is zero (undefined) or delta is null. */
+            Double deltaPercent,
             Boolean olderMet,
             Boolean newerMet,
             boolean presentInOlder,

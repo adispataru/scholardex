@@ -137,13 +137,16 @@ class OrgUnitReportComparisonServiceTest {
         assertEquals(30.0, aliceRow.olderScoresByCriterion().get("Perspectiva B"));
         assertEquals(40.0, aliceRow.newerScoresByCriterion().get("Perspectiva B"));
         assertEquals(10.0, aliceRow.deltaByCriterion().get("Perspectiva B"));
-        // one-sided column: no delta, no older score
+        assertEquals(100.0 / 3.0, aliceRow.deltaPercentByCriterion().get("Perspectiva B"), 0.0001); // 10/30 * 100
+        // one-sided column: no delta, no older score, no percent
         assertNull(aliceRow.olderScoresByCriterion().get("Publicații A*+A"));
         assertEquals(12.0, aliceRow.newerScoresByCriterion().get("Publicații A*+A"));
         assertNull(aliceRow.deltaByCriterion().get("Publicații A*+A"));
+        assertNull(aliceRow.deltaPercentByCriterion().get("Publicații A*+A"));
         assertEquals(30.0, aliceRow.olderTotal());
         assertEquals(40.0, aliceRow.newerTotal());
         assertEquals(10.0, aliceRow.totalDelta());
+        assertEquals(100.0 / 3.0, aliceRow.totalDeltaPercent(), 0.0001);
         assertTrue(aliceRow.newerProvisional());
 
         var bobRow = vm.rows().get(1);
@@ -152,6 +155,7 @@ class OrgUnitReportComparisonServiceTest {
         assertNull(bobRow.olderTotal());
         assertEquals(20.0, bobRow.newerTotal());
         assertNull(bobRow.totalDelta());
+        assertNull(bobRow.totalDeltaPercent());
     }
 
     @Test

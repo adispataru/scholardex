@@ -66,7 +66,8 @@
                             <span class="app-eval-aggregate__label">Δ Total</span>
                             <span class="app-eval-aggregate__value eval-delta"
                                   th:classappend="${comparison.totalScoreDelta > 0.005 ? 'eval-delta--positive' : (comparison.totalScoreDelta lt -0.005 ? 'eval-delta--negative' : 'eval-delta--neutral')}"
-                                  th:text="${(comparison.totalScoreDelta > 0.005 ? '+' : '') + #numbers.formatDecimal(comparison.totalScoreDelta, 1, 2)}">+0.00</span>
+                                  th:text="${(comparison.totalScoreDelta > 0.005 ? '+' : '') + #numbers.formatDecimal(comparison.totalScoreDelta, 1, 2)
+                                            + (comparison.totalScoreDeltaPercent != null ? ' (' + #numbers.formatDecimal(comparison.totalScoreDeltaPercent > 0 ? comparison.totalScoreDeltaPercent : -comparison.totalScoreDeltaPercent, 1, 2) + '%)' : '')}">+0.00 (0.00%)</span>
                         </div>
                     </div>
 
@@ -109,7 +110,8 @@
                                                 <span th:if="${row.delta != null}"
                                                       class="eval-delta"
                                                       th:classappend="${row.delta > 0.005 ? 'eval-delta--positive' : (row.delta lt -0.005 ? 'eval-delta--negative' : 'eval-delta--neutral')}"
-                                                      th:text="${(row.delta > 0.005 ? '+' : '') + #numbers.formatDecimal(row.delta, 1, 2)}">+0.00</span>
+                                                      th:text="${(row.delta > 0.005 ? '+' : '') + #numbers.formatDecimal(row.delta, 1, 2)
+                                                                + (row.deltaPercent != null ? ' (' + #numbers.formatDecimal(row.deltaPercent > 0 ? row.deltaPercent : -row.deltaPercent, 1, 2) + '%)' : '')}">+0.00 (0.00%)</span>
                                                 <span th:unless="${row.delta != null}" class="text-muted"
                                                       th:text="${row.presentInNewer and !row.presentInOlder} ? 'new' : (${row.presentInOlder and !row.presentInNewer} ? 'dropped' : '—')">—</span>
                                             </td>
