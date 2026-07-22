@@ -111,8 +111,9 @@ public final class ReportScopedIndicatorScoringSupport {
             if (pub.getForum() != null) {
                 forumIds.add(pub.getForum());
             }
-            List<ScholardexPublicationView> citations = citationContext.citingPublicationsByCitedPublicationId()
+            List<ScholardexPublicationView> allCitations = citationContext.citingPublicationsByCitedPublicationId()
                     .getOrDefault(pub.getId(), List.of());
+            List<ScholardexPublicationView> citations = allCitations;
             Set<String> exclusionAuthorIds = citationExclusionAuthorIds(citationPolicy, pub, researcherAuthorIds);
             if (!exclusionAuthorIds.isEmpty()) {
                 citations = citations.stream()
@@ -129,12 +130,26 @@ public final class ReportScopedIndicatorScoringSupport {
                 }
             }
 
-            Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(
+            Map<String, Score> citScores = new LinkedHashMap<>(scientificProductionService.calculateScientificImpactScore(
                     pub.toScoringPublication(),
                     citations.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
                     indicator,
                     cachedCitationBaseScoresByCitingPublicationId
-            );
+            ));
+            // H61 drilldown parity: a citing paper the self-citation policy filtered out never reaches the
+            // scoring call above, so it would otherwise vanish from the map with no trace — mirror it back
+            // in with a zero Score carrying SELF_CITATION so the drilldown can explain the exclusion instead
+            // of the citation looking like it never existed. Never overwrites a real (scored) entry.
+            if (citations.size() != allCitations.size()) {
+                for (ScholardexPublicationView citing : allCitations) {
+                    if (citing.getTitle() == null || citScores.containsKey(citing.getTitle())) {
+                        continue;
+                    }
+                    Score excluded = new Score();
+                    excluded.getScoringInfo().put("zeroReason", "SELF_CITATION");
+                    citScores.put(citing.getTitle(), excluded);
+                }
+            }
             String publicationTitle = pub.getTitle();
             if (!rawScores.containsKey(publicationTitle)) {
                 rawScores.put(publicationTitle, new LinkedHashMap<>(citScores));

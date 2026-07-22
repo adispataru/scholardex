@@ -108,6 +108,50 @@ class ReportScopedIndicatorScoringSupportTest {
     }
 
     @Test
+    void computeCitationViewMirrorsSelfCitationExclusionsIntoDisplayScoresWithAReason() {
+        // H61 drilldown parity: a citer the self-citation policy drops from scoring must still show up in
+        // displayScores() (the map the JSON drilldown reads) with a zero Score carrying SELF_CITATION —
+        // otherwise it looks like it never cited at all, instead of "excluded, here's why".
+        ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
+        Indicator indicator = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "CITATIONS_EXCLUDE_SELF");
+
+        ScholardexPublicationView cited = publication("cited-a", "paper-a", List.of("ra"), "forum-a");
+        ScholardexPublicationView selfCitation = publication("cit-self", "self", List.of("ra"), "forum-self");
+        ScholardexPublicationView externalCitation = publication("cit-ext", "ext", List.of("other"), "forum-ext");
+
+        ReportScopedIndicatorScoringSupport.CitationContext context =
+                new ReportScopedIndicatorScoringSupport.CitationContext(
+                        Map.of("cit-self", selfCitation, "cit-ext", externalCitation),
+                        Map.of("cited-a", List.of(selfCitation, externalCitation)),
+                        2
+                );
+
+        // Only the (already filtered) external citer is ever passed to the scoring call.
+        when(scientificProductionService.calculateScientificImpactScore(any(), anyList(), any(), anyMap()))
+                .thenReturn(Map.of("ext", score(3.0, 3.0, "Q1"), "total", score(3.0, 3.0, null)));
+
+        ReportScopedIndicatorScoringSupport.CitationViewComputation computation =
+                ReportScopedIndicatorScoringSupport.computeCitationView(
+                        indicator,
+                        List.of(cited),
+                        Set.of("ra"),
+                        context,
+                        Map.of(),
+                        scientificProductionService
+                );
+
+        Map<String, Score> pubScores = computation.displayScores().get("paper-a");
+        Score selfEntry = pubScores.get("self");
+        assertEquals("SELF_CITATION", selfEntry.getScoringInfo().get("zeroReason"));
+        assertEquals(0.0, selfEntry.getAuthorScore(), 0.0001);
+        assertEquals(0.0, selfEntry.getScore(), 0.0001);
+        // The real citer is untouched, and the injected zero doesn't leak into the total.
+        assertEquals(3.0, pubScores.get("ext").getAuthorScore(), 0.0001);
+        assertEquals(3.0, computation.totalScore(), 0.0001);
+    }
+
+    @Test
     void computeCitationViewExcludeSelfWithEmptyResearcherSetDoesNotFilterAnything() {
         ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
         Indicator indicator = new Indicator();

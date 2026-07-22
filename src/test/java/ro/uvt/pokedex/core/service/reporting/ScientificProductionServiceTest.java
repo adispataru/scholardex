@@ -517,6 +517,47 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void belowTopRankCiterIsExplainedByTheTopABCounterfactualProbe() {
+        // A category-C citer (below the 2026 top A*/A/B cut, S<4) with feeJournal=false: the topAB probe
+        // (force topAB=true, keep feeJournal at its real value) turns positive, proving the rank cut alone
+        // caused the zero -> NOT_TOP_RANKED stamp, mirroring the FEE_JOURNAL probe above.
+        Indicator citations = indicator("CITATIONS", "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0");
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "Cited", List.of("a1"));
+        ScoringPublication citing = publication("cp-1", "f-noapc", null, "ar", "ar", "Citing", List.of("b1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        Score cScore = score(3.0);
+        cScore.setCoreRankingEquivalent("C");
+        when(scoringService.getScore(citing, citations)).thenReturn(cScore);
+        when(reportingLookupPort.isFeeJournal("f-noapc")).thenReturn(false);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(
+                cited, List.of(citing), citations);
+
+        assertEquals(0.0, result.get("total").getAuthorScore(), 0.0001);
+        assertEquals("NOT_TOP_RANKED", result.get("Citing").getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void notTopRankedZeroIsNotStampedWhenFeeJournalGateAlsoFails() {
+        // Two-gate honesty for the topAB probe too: a category-C, fee-gated citer fails both conditions, so
+        // flipping topAB alone (with feeJournal held at its real, failing value) does NOT clear the zero.
+        Indicator citations = indicator("CITATIONS", "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0");
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "Cited", List.of("a1"));
+        ScoringPublication citing = publication("cp-1", "f-apc-c", null, "ar", "ar", "Citing", List.of("b1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        Score cScore = score(3.0);
+        cScore.setCoreRankingEquivalent("C");
+        when(scoringService.getScore(citing, citations)).thenReturn(cScore);
+        when(reportingLookupPort.isFeeJournal("f-apc-c")).thenReturn(true);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(
+                cited, List.of(citing), citations);
+
+        assertEquals(0.0, result.get("total").getAuthorScore(), 0.0001);
+        assertNull(result.get("Citing").getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
     void universalSubtypeGateExcludesNonResearchPublicationsForAnyStrategy() {
         // Strategy intentionally non-CS ("AIS") to prove the gate lives in the shared
         // orchestrator and applies to every domain's scoring service, not just CS.

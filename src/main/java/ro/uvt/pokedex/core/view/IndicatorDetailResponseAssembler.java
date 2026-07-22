@@ -111,7 +111,14 @@ public final class IndicatorDetailResponseAssembler {
                     if ("total".equals(entry.getKey().toString())) continue;
                     double authorScore = extractAuthorScore(entry.getValue());
                     double forumScore = extractForumScore(entry.getValue());
-                    if (authorScore > 0) {
+                    String zeroReason = extractZeroReason(entry.getValue());
+                    // Show every citing paper that was correctly categorized (positive venue score),
+                    // even when a 2026 formula gate (FEE_JOURNAL, NOT_TOP_RANKED, …) zeroed the author
+                    // score — mirrors the publications table's authorScore>0||forumScore>0 rule so a
+                    // gated citation is muted with its reason instead of silently vanishing. A citing
+                    // paper the self-citation policy excluded upstream (SELF_CITATION) never gets a
+                    // venue score at all — the zeroReason clause is what surfaces it here.
+                    if (authorScore > 0 || forumScore > 0 || zeroReason != null) {
                         // Citing papers are third-party publications — no ids in the graph to link.
                         citations.add(new ScoredItem(
                                 entry.getKey().toString(),
@@ -120,7 +127,8 @@ public final class IndicatorDetailResponseAssembler {
                                 extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()),
-                                "publication", null, null, null, null, null));
+                                "publication", null, null, null,
+                                zeroReason, null));
                         total += authorScore;
                     }
                 }
@@ -146,7 +154,11 @@ public final class IndicatorDetailResponseAssembler {
                         Object totalObj = citScores.get("total");
                         double authorScore = extractAuthorScore(totalObj);
                         double forumScore = extractForumScore(totalObj);
-                        if (authorScore > 0) {
+                        // A cited publication whose citations were ALL gated to zero (e.g. every citer was
+                        // fee-journal/below the top rank) still has a positive aggregate forum score — keep
+                        // showing the row (0 total) instead of vanishing it, so the drilldown modal (which
+                        // now surfaces each citer's mute reason) is reachable at all.
+                        if (authorScore > 0 || forumScore > 0) {
                             PubLink link = linkFor(pubsByTitle, pubTitle);
                             items.add(new ScoredItem(pubTitle, extractYear(totalObj), authorScore, forumScore,
                                     extractQuarter(totalObj), extractCoreRankingEquivalent(totalObj),

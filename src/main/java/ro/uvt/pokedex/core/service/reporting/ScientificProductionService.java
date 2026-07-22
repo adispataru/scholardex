@@ -351,6 +351,7 @@ public class ScientificProductionService {
             int numberOfAuthors = cited.getAuthorCount();
 
             boolean feeJournal = citing != null && reportingLookupPort.isFeeJournal(citing.getForumId());
+            boolean topAB = isTopAStarAB(result);
             // H52 slice 11c: typed-only path. M comes from the typed multiplier slot
             // (populated by EconomicsJournalScoringService); the legacy
             // {@code extra["M"]} bag is gone.
@@ -369,7 +370,7 @@ public class ScientificProductionService {
                     // S>=4 is a proxy for "category in {A*,A,B}" that holds for every item EXCEPT a workshop, whose
                     // 2026 category (id_parA82: A*/A/B parents -> C) diverges from its inherited 6/4 points. Only
                     // 2026 top indicators gate on this; pre-2026 formulas ignore it.
-                    .put("topAB", isTopAStarAB(result))
+                    .put("topAB", topAB)
                     // PD 2026: resolved (crosswalked) subtype code — "ar"/"re"/"cp"/… — so eligibility formulas
                     // split by WoS document type per indicator (director: article/review only; mentor also accepts
                     // journal proceedings papers). Empty string when unresolvable so string compares stay null-safe.
@@ -406,6 +407,21 @@ public class ScientificProductionService {
                 double probe = formulaEvaluator.eval(indicator.getFormula(), probeBuilder.build());
                 if (Double.isFinite(probe) && probe > 0.0) {
                     result.getScoringInfo().put("zeroReason", "FEE_JOURNAL");
+                }
+            }
+
+            // Same counterfactual technique for the second 2026 gate: a zero left unexplained by the APC
+            // probe above (either feeJournal was already false, or another gate is also failing) gets a
+            // second, independent probe with topAB forced true. Turning positive proves the top-rank cut
+            // alone caused the zero — record NOT_TOP_RANKED so the drilldown can explain it instead of
+            // silently dropping the item. As with FEE_JOURNAL, a still-zero probe (both gates failing at
+            // once) is left unstamped — the honest outcome.
+            if (!topAB && result.getAuthorScore() == 0.0 && result.getScoringInfo().get("zeroReason") == null) {
+                FormulaContext.Builder probeBuilder = FormulaContext.builder();
+                ctx.variables().forEach((k, v) -> probeBuilder.put(k, "topAB".equals(k) ? Boolean.TRUE : v));
+                double probe = formulaEvaluator.eval(indicator.getFormula(), probeBuilder.build());
+                if (Double.isFinite(probe) && probe > 0.0) {
+                    result.getScoringInfo().put("zeroReason", "NOT_TOP_RANKED");
                 }
             }
         }

@@ -341,7 +341,13 @@
 
       // Score on the right
       if (isZeroScored) {
-        html += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span>';
+        if (item.zeroReason) {
+          var itemReason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
+          html += '<span class="eval-scored-item__zero-flag" title="' + esc(itemReason) + '">' +
+            (ZERO_REASON_LABEL[item.zeroReason] || 'why?') + '</span>';
+        } else {
+          html += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span>';
+        }
       }
       html += '<span class="eval-scored-item__score">' + toNumber(item.authorScore).toFixed(2) + '</span>';
       html += '</div>'; // item
@@ -360,7 +366,21 @@
     'VENUE_TYPE_MISMATCH':  'Different venue type — this publication is counted by the indicator matching its venue type (journal/conference/book), not this one.',
     'FEE_JOURNAL':          'Published in an APC/fee (gold open access) journal — excluded by the 2026 standard.',
     'OVER_PER_FORUM_CAP':   'Above the per-conference-edition cap — only the highest-scoring contributions per edition count.',
-    'SCORED_BY_STRICTER':   'Qualifies under the stricter indicator (I1/I5) — each publication counts once, under its most favorable indicator.'
+    'SCORED_BY_STRICTER':   'Qualifies under the stricter indicator (I1/I5) — each publication counts once, under its most favorable indicator.',
+    'NOT_TOP_RANKED':       'Below the top A*/A/B rank this indicator counts — excluded by the 2026 standard.',
+    'SELF_CITATION':        'Shares an author with the cited publication — excluded by the self-citation policy.'
+  };
+
+  // Short pill label per zeroReason — the full sentence above lives in the tooltip.
+  var ZERO_REASON_LABEL = {
+    'VENUE_TYPE_MISMATCH':  'other venue type',
+    'FEE_JOURNAL':          'APC journal',
+    'NOT_TOP_RANKED':       'below top rank',
+    'SCORED_BY_STRICTER':   'counted under I1/I5',
+    'OVER_PER_FORUM_CAP':   'over edition cap',
+    'NON_RESEARCH_SUBTYPE': 'not original research',
+    'ROLE_FILTERED':        'other author role',
+    'SELF_CITATION':        'self-citation'
   };
 
   // Short label for the forum link: first 10 chars + ellipsis; the full name lives in the tooltip.
@@ -443,13 +463,7 @@
       row += '<td class="app-eval-evidence-table__num">';
       if (item.zeroReason) {
         var reason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
-        var label = item.zeroReason === 'VENUE_TYPE_MISMATCH' ? 'other venue type'
-          : item.zeroReason === 'FEE_JOURNAL' ? 'APC journal'
-          : item.zeroReason === 'SCORED_BY_STRICTER' ? 'counted under I1/I5'
-          : item.zeroReason === 'OVER_PER_FORUM_CAP' ? 'over edition cap'
-          : item.zeroReason === 'NON_RESEARCH_SUBTYPE' ? 'not original research'
-          : item.zeroReason === 'ROLE_FILTERED' ? 'other author role'
-          : 'why?';
+        var label = ZERO_REASON_LABEL[item.zeroReason] || 'why?';
         row += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">' + label + ' ' +
           '<i class="fa-solid fa-circle-info fa-xs" aria-hidden="true"></i></span> ';
       } else if (isZeroScored) {

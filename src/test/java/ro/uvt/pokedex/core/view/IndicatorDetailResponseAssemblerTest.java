@@ -163,6 +163,59 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void citationsOutputModeShowsFormulaZeroedCitingPapersMutedWithTheirGateReason() {
+        // A citing paper the 2026 FEE_JOURNAL/NOT_TOP_RANKED gates zeroed keeps a positive forum score
+        // (it was correctly categorized) — the drilldown modal must show it muted with the reason instead
+        // of silently dropping it, mirroring the publications table's excludedItems treatment.
+        Score feeGated = score(0.0, 3.0, 2024, "Q2");
+        feeGated.getScoringInfo().put("zeroReason", "FEE_JOURNAL");
+        Score notCategorized = score(0.0, 0.0, 2023, null); // never categorized at all — stays dropped
+        Score counted = score(2.0, 3.0, 2025, "Q1");
+        Map<String, Object> citing = new LinkedHashMap<>();
+        citing.put("Gated Citer", feeGated);
+        citing.put("Uncategorized Citer", notCategorized);
+        citing.put("Counted Citer", counted);
+        citing.put("total", score(2.0, 6.0, 2025, null));
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Cited Pub", citing);
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "citations");
+        graph.put("scores", scores);
+
+        CitationDetailResponse resp = IndicatorDetailResponseAssembler.buildCitations(dto(graph, 2.0), "Cited Pub");
+
+        assertEquals(2, resp.citations().size()); // gated + counted shown; fully-uncategorized stays dropped
+        IndicatorDetailResponseAssembler.ScoredItem gated = resp.citations().stream()
+                .filter(i -> i.key().equals("Gated Citer")).findFirst().orElseThrow();
+        assertEquals(0.0, gated.authorScore());
+        assertEquals(3.0, gated.forumScore());
+        assertEquals("FEE_JOURNAL", gated.zeroReason());
+        assertEquals(0, resp.citations().stream().filter(i -> i.key().equals("Uncategorized Citer")).count());
+        // total only sums the counted citer's author score, unaffected by the muted rows now being listed.
+        assertEquals(2.0, resp.totalScore());
+    }
+
+    @Test
+    void citationsOutputModeKeepsACitedPublicationRowWhenAllItsCitersWereGatedToZero() {
+        // Every citer for this publication got zeroed by a 2026 gate, but the aggregate 'total' still
+        // carries a positive forum score (they were all correctly categorized) — the row must stay in the
+        // top-level indicator table (0.00) so the drilldown modal explaining why is still reachable.
+        Map<String, Object> citing = new LinkedHashMap<>();
+        citing.put("total", score(0.0, 3.0, 2024, null));
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("All-Gated Pub", citing);
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "citations");
+        graph.put("scores", scores);
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 0.0));
+
+        assertEquals(1, resp.items().size());
+        assertEquals(0.0, resp.items().getFirst().authorScore());
+        assertEquals(3.0, resp.items().getFirst().forumScore());
+    }
+
+    @Test
     void excludedItemsAreAppendedWithTheirZeroReasonFromBeanAndMapForms() {
         Map<String, Object> scores = new LinkedHashMap<>();
         scores.put("Scored Paper", score(5.0, 3.0, 2022, "Q1"));
