@@ -308,7 +308,15 @@ public class ReportScoreComparisonService {
     /**
      * Title-tolerant similarity: overlap coefficient (shared tokens ÷ the smaller token set) rather
      * than Jaccard, so a match isn't penalised when one side carries extra noise (full author lists,
-     * book-series text, etc.). Requires a minimum number of shared tokens to avoid trivial matches.
+     * book-series text, etc.). Requires a minimum number of shared tokens to avoid trivial matches —
+     * EXCEPT when the smaller side is itself short (≤2 tokens): that's exactly the shape of a grant
+     * row entered as "ACRONYM, https://project-url.eu" (tokens: the acronym + a URL-domain fragment).
+     * The platform's own built description (Activity name + fields + resolved project label) has no
+     * reason to also contain that URL fragment, so requiring 2 shared tokens there would reject a
+     * correct acronym-only match; the ratio floor below already guards it (1 shared token out of a
+     * ≤2-token side is ≥50% overlap, well past SIMILARITY_THRESHOLD). NOISE_TOKENS strips the generic
+     * filler words ("proiect"/"project") that would otherwise turn this relaxation into false matches
+     * across unrelated grants sharing only that word.
      */
     private double similarity(String a, String b) {
         Set<String> ta = tokens(a);
@@ -316,11 +324,14 @@ public class ReportScoreComparisonService {
         if (ta.isEmpty() || tb.isEmpty()) return 0.0;
         Set<String> inter = new java.util.HashSet<>(ta);
         inter.retainAll(tb);
-        if (inter.size() < MIN_SHARED_TOKENS) return 0.0;
-        return (double) inter.size() / Math.min(ta.size(), tb.size());
+        int minSize = Math.min(ta.size(), tb.size());
+        int requiredShared = minSize <= 2 ? 1 : MIN_SHARED_TOKENS;
+        if (inter.size() < requiredShared) return 0.0;
+        return (double) inter.size() / minSize;
     }
 
-    private static final Set<String> NOISE_TOKENS = Set.of("https", "http", "www", "org", "com");
+    private static final Set<String> NOISE_TOKENS =
+            Set.of("https", "http", "www", "org", "com", "proiect", "project");
 
     private Set<String> tokens(String s) {
         if (s == null) return Set.of();

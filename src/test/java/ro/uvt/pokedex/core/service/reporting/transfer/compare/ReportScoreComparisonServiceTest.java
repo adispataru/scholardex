@@ -212,7 +212,8 @@ class ReportScoreComparisonServiceTest {
         assertThat(block.platformTotal()).isEqualTo(8.0);
         assertThat(block.fileTotal()).isEqualTo(10.0);
 
-        // CloudLightning grant fuzzy-matched (shared tokens "horizon","europe","cloudlightning","project").
+        // CloudLightning grant fuzzy-matched (shared tokens "horizon","europe","cloudlightning";
+        // "project" is filtered as domain noise — see activityMatchesAcronymOnlyDescriptionAgainstLongPlatformDescription).
         assertThat(block.matched()).hasSize(1);
         assertThat(block.matched().get(0).status()).isEqualTo(ReportScoreComparison.Status.MATCH);
 
@@ -226,6 +227,47 @@ class ReportScoreComparisonServiceTest {
         // Activity option resolved from the platform side for the add-form.
         assertThat(block.activityOptions()).extracting(ReportScoreComparison.ActivityOption::activityId)
                 .containsExactly("a-grant");
+    }
+
+    @Test
+    void activityMatchesAcronymOnlyDescriptionAgainstLongPlatformDescriptionSharingOnlyTheAcronym() {
+        // Regression: a grant row entered in the FV template as "ACRONYM, https://project-url.eu"
+        // tokenizes to just {acronym, url-domain-fragment} (URL scheme/eu are noise/too-short). The
+        // platform's own built description (ActivityInstance name + fields + resolved project label)
+        // has no reason to also contain that URL fragment, so the OLD flat "≥2 shared tokens" floor
+        // rejected this clean match — every grant with a distinctive one-word acronym name showed as
+        // "not found in the platform" even though it plainly existed (reported live: SERRANO).
+        ActivitySnapshotItem platform = activity("Granturi", "a-serrano",
+                "SERRANO — Rol: Membru — Nume Proiect: TRANSPARENT APPLICATION DEPLOYMENT IN A SECURE, "
+                        + "ACCELERATED AND COGNITIVE CLOUD CONTINUUM — (2024-09-01)", "A", 4.0);
+        ActivitySnapshotItem file = activity("Granturi", null, "SERRANO, https://ict-serrano.eu", "A", 4.0);
+
+        ReportScoreComparison cmp = service.compare(List.of(platform), List.of(file));
+
+        ReportScoreComparison.ActivityBlockComparison block = cmp.activityBlocks().get(0);
+        assertThat(block.matched()).hasSize(1);
+        assertThat(block.matched().get(0).status()).isEqualTo(ReportScoreComparison.Status.MATCH);
+        assertThat(block.importable()).isEmpty();
+    }
+
+    @Test
+    void activityDoesNotFalseMatchOnTheGenericProiectFillerWordAlone() {
+        // The relaxed short-description floor above must NOT turn a bare generic word into a match:
+        // "Nume Proiect" ("Project Name") appears in nearly every platform grant description, so a
+        // file row that (poorly) just says "Proiect TE 73" must not spuriously pair with an unrelated
+        // grant merely because both mention "proiect". NOISE_TOKENS filters it, leaving an empty file
+        // token set — no candidate pairing is even attempted, exactly as before this fix (still
+        // "importable", not a wrong match).
+        ActivitySnapshotItem unrelatedPlatform = activity("Granturi", "a-other",
+                "CloudLightning — Rol: Membru — Nume Proiect: Cloud Continuum Orchestration", "A", 4.0);
+        ActivitySnapshotItem file = activity("Granturi", null, "Proiect TE 73", "A", 1.0);
+
+        ReportScoreComparison cmp = service.compare(List.of(unrelatedPlatform), List.of(file));
+
+        ReportScoreComparison.ActivityBlockComparison block = cmp.activityBlocks().get(0);
+        assertThat(block.matched()).isEmpty();
+        assertThat(block.importable()).hasSize(1);
+        assertThat(block.onlyInPlatform()).hasSize(1);
     }
 
     @Test
