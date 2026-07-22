@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.view;
 
+import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 
 import java.time.Instant;
@@ -7,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Builds the JSON responses for the indicator-detail and citation-drilldown endpoints from a
@@ -57,7 +59,7 @@ public final class IndicatorDetailResponseAssembler {
     public record CitationDetailResponse(String pubTitle, double totalScore, List<ScoredItem> citations) {}
 
     public static IndicatorDetailResponse buildDetail(IndicatorApplyResultDto result) {
-        return buildDetail(result, id -> null);
+        return buildDetail(result, id -> null, Function.identity());
     }
 
     /**
@@ -66,10 +68,22 @@ public final class IndicatorDetailResponseAssembler {
      *   so the assembler stays a pure function of the DTO (no Spring beans).
      */
     public static IndicatorDetailResponse buildDetail(
-            IndicatorApplyResultDto result, java.util.function.Function<String, String> forumNameResolver) {
+            IndicatorApplyResultDto result, Function<String, String> forumNameResolver) {
+        return buildDetail(result, forumNameResolver, Function.identity());
+    }
+
+    /**
+     * @param projectLabelResolver PROJECT_GRANT_ID reference (a {@code sproj_…} canonical id) → trusted
+     *   display label (mirrors {@code ActivityBlockProjector.resolveProjectLabel}, the export/import
+     *   flow's resolution, so the evidence panel and an exported FV describe the same activity
+     *   identically). Returning the input unchanged leaves the raw reference id in the description.
+     */
+    public static IndicatorDetailResponse buildDetail(
+            IndicatorApplyResultDto result, Function<String, String> forumNameResolver,
+            Function<String, String> projectLabelResolver) {
         Map<String, Object> graph = result.rawGraph();
         String outputMode = graph.getOrDefault("outputMode", "publications").toString();
-        List<ScoredItem> items = extractScoredItems(graph, outputMode, forumNameResolver);
+        List<ScoredItem> items = extractScoredItems(graph, outputMode, forumNameResolver, projectLabelResolver);
         return new IndicatorDetailResponse(
                 result.indicatorId(),
                 indicatorNameFrom(graph),
@@ -118,7 +132,7 @@ public final class IndicatorDetailResponseAssembler {
 
     private static List<ScoredItem> extractScoredItems(
             Map<String, Object> graph, String outputMode,
-            java.util.function.Function<String, String> forumNameResolver) {
+            Function<String, String> forumNameResolver, Function<String, String> projectLabelResolver) {
         Object scoresObj = graph.get("scores");
         if (scoresObj == null) return List.of();
 
@@ -151,8 +165,9 @@ public final class IndicatorDetailResponseAssembler {
                     double authorScore = extractAuthorScore(entry.getValue());
                     double forumScore = extractForumScore(entry.getValue());
                     if (authorScore > 0) {
-                        String label = resolveActivityLabel(activitiesObj, key);
-                        items.add(new ScoredItem(label != null ? label : key, extractYear(entry.getValue()),
+                        String description = resolveActivityDescription(
+                                activitiesObj, key, entry.getValue(), projectLabelResolver);
+                        items.add(new ScoredItem(description, extractYear(entry.getValue()),
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
@@ -337,7 +352,85 @@ public final class IndicatorDetailResponseAssembler {
         }
     }
 
+    private static final String PROJECT_GRANT_REF = Activity.ReferenceField.PROJECT_GRANT_ID.name();
+
+    /**
+     * Describes an evidence row for an activity-output indicator. Mirrors
+     * {@code ActivityBlockProjector.resolveDescription}'s tiered fallback (rich description → bare
+     * name → Score.details → raw id) so the evidence panel reads the same as an exported FV, instead
+     * of falling straight to the raw ActivityInstance id — the {@code activities} raw-graph list is a
+     * plain {@code Map} on every path except the very first, not-yet-persisted compute (still handled
+     * via reflection as the bare-name tier), so a Map-only rich builder covers the practical case.
+     */
+    private static String resolveActivityDescription(
+            Object activitiesObj, String activityId, Object scoreObj, Function<String, String> projectLabelResolver) {
+        String built = buildActivityInstanceDescription(activitiesObj, activityId, projectLabelResolver);
+        if (built != null && !built.isBlank()) return built;
+        String label = resolveActivityLabel(activitiesObj, activityId);
+        if (label != null && !label.isBlank() && !label.equals(activityId)) return label;
+        String details = extractDetails(scoreObj);
+        return details != null && !details.isBlank() ? details : activityId;
+    }
+
     @SuppressWarnings("unchecked")
+    private static String buildActivityInstanceDescription(
+            Object activitiesObj, String activityId, Function<String, String> projectLabelResolver) {
+        Map<String, Object> attrs = findActivityInstanceMap(activitiesObj, activityId);
+        if (attrs == null) return null;
+
+        List<String> parts = new ArrayList<>();
+        Object name = attrs.get("name");
+        if (name != null && !name.toString().isBlank()) parts.add(name.toString());
+
+        Object fields = attrs.get("fields");
+        if (fields instanceof Map<?, ?> m) {
+            for (Map.Entry<?, ?> e : m.entrySet()) {
+                Object v = e.getValue();
+                if (v != null && !v.toString().isBlank()) {
+                    parts.add(e.getKey() + ": " + v);
+                }
+            }
+        }
+
+        Object refFields = attrs.get("referenceFields");
+        if (refFields instanceof Map<?, ?> rm) {
+            for (Map.Entry<?, ?> e : rm.entrySet()) {
+                Object v = e.getValue();
+                if (v == null || v.toString().isBlank()) {
+                    continue;
+                }
+                if (PROJECT_GRANT_REF.equals(String.valueOf(e.getKey()))) {
+                    parts.add(projectLabelResolver.apply(v.toString()));
+                } else {
+                    parts.add(v.toString());
+                }
+            }
+        }
+
+        Object date = attrs.get("date");
+        if (date != null && !date.toString().isBlank()) parts.add("(" + date + ")");
+
+        return parts.isEmpty() ? null : String.join(" — ", parts);
+    }
+
+    /** The activity instance's own map, matched by id — the shape {@code activities} carries once
+     *  a report run has been persisted and read back (every practical case; see resolveActivityDescription). */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> findActivityInstanceMap(Object activitiesObj, String activityId) {
+        if (activitiesObj instanceof List<?> activities) {
+            for (Object act : activities) {
+                if (act instanceof Map<?, ?> attrs) {
+                    Object id = attrs.get("id");
+                    if (id != null && activityId.equals(id.toString())) {
+                        return (Map<String, Object>) attrs;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Bare-name fallback for the rare case {@code activities} is still a live bean list (fresh, not-yet-persisted compute). */
     private static String resolveActivityLabel(Object activitiesObj, String activityId) {
         if (activitiesObj instanceof List<?> activities) {
             for (Object act : activities) {

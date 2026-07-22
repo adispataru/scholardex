@@ -40,6 +40,7 @@ import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 import ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext;
+import ro.uvt.pokedex.core.service.reporting.transfer.projection.ProjectLabelResolver;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
@@ -80,6 +81,7 @@ public class UserReportFacade {
     private final ReportingLookupPort reportingLookupPort;
     private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
     private final ReportingLookupMemoization reportingLookupMemoization;
+    private final ScholardexProjectReadPort scholardexProjectReadPort;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
         // userEmail kept in signature to lock facade contract for later permission-aware extensions.
@@ -519,6 +521,21 @@ public class UserReportFacade {
         }
         ScholardexForumView forum = cacheService.getCachedForums(forumId);
         return forum != null ? forum.getPublicationName() : null;
+    }
+
+    /**
+     * PROJECT_GRANT_ID reference (a {@code sproj_…} id) → trusted display label for the evidence
+     * drilldown's activity descriptions (IndicatorDetailResponseAssembler). Delegates to the same
+     * {@link ProjectLabelResolver} helper {@code ActivityBlockProjector} uses for FV export/import,
+     * so both surfaces describe an activity identically — injected directly here (not via
+     * ActivityBlockProjector) since that projector depends on UserIndicatorResultService, which
+     * depends back on this facade.
+     */
+    public String resolveProjectLabel(String reference) {
+        if (reference == null || reference.isBlank()) {
+            return reference;
+        }
+        return ProjectLabelResolver.resolve(scholardexProjectReadPort, reference);
     }
 
     /**

@@ -137,7 +137,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 publicationEnrichmentLinkerService,
                 reportingLookupPort,
                 effectiveAuthorshipReadService,
-                new ReportingLookupMemoization()
+                new ReportingLookupMemoization(),
+                org.mockito.Mockito.mock(ScholardexProjectReadPort.class)
         );
 
         IndicatorPayloadSerializer payloadSerializer = new IndicatorPayloadSerializer(new ObjectMapper());

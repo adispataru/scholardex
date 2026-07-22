@@ -239,7 +239,8 @@ public class EvaluationWorkspaceController {
                     ? userIndicatorResultService.getReportScopedDetail(user.getEmail(), reportId, indicatorId)
                             .orElseGet(() -> userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId))
                     : userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId);
-            return ResponseEntity.ok(IndicatorDetailResponseAssembler.buildDetail(result, userReportFacade::resolveForumName));
+            return ResponseEntity.ok(IndicatorDetailResponseAssembler.buildDetail(
+                    result, userReportFacade::resolveForumName, userReportFacade::resolveProjectLabel));
         }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 

@@ -261,4 +261,87 @@ class IndicatorDetailResponseAssemblerTest {
         // sorted by authorScore desc
         assertEquals("Citing 2", resp.citations().getFirst().key());
     }
+
+    @Test
+    void activitiesOutputModeBuildsRichDescriptionFromCachedMapFormIncludingProjectLabelResolution() {
+        // The activities raw-graph list round-trips as plain property maps after a persisted-snapshot
+        // read (the practical case on every path but the very first compute) — the evidence panel must
+        // describe the activity, not fall back to the bare id (the reported bug).
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("act_1", score(4.0, 4.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "activities");
+        graph.put("scores", scores);
+        graph.put("activities", List.of(Map.of(
+                "id", "act_1",
+                "name", "SERRANO",
+                "fields", Map.of("Rol", "membru"),
+                "referenceFields", Map.of("PROJECT_GRANT_ID", "sproj_42"),
+                "date", "2022")));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(
+                dto(graph, 4.0), id -> null,
+                ref -> "sproj_42".equals(ref) ? "H2020-SERRANO — Cloud-Edge (EU) — Director: A. Popescu" : ref);
+
+        IndicatorDetailResponseAssembler.ScoredItem item = resp.items().getFirst();
+        assertEquals("SERRANO — Rol: membru — H2020-SERRANO — Cloud-Edge (EU) — Director: A. Popescu — (2022)",
+                item.key());
+    }
+
+    @Test
+    void activitiesOutputModeLeavesReferenceRawWhenProjectLabelResolverReturnsInputUnchanged() {
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("act_1", score(4.0, 4.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "activities");
+        graph.put("scores", scores);
+        graph.put("activities", List.of(Map.of(
+                "id", "act_1",
+                "name", "SCAPE",
+                "referenceFields", Map.of("PROJECT_GRANT_ID", "sproj_99"))));
+
+        // No resolver supplied (2-arg overload) — the reference passes through unresolved rather than
+        // vanishing, since the default projectLabelResolver is the identity id -> null replaced with id.
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 4.0), id -> null);
+
+        assertEquals("SCAPE — sproj_99", resp.items().getFirst().key());
+    }
+
+    @Test
+    void activitiesOutputModeFallsBackToRawIdWhenNoActivitiesListIsPresent() {
+        // No 'activities' list in the graph at all (e.g. a stale snapshot predating the activities
+        // feature) — every tier of the description resolver fails, so the item must degrade to the raw
+        // id rather than throw.
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("act_bare", score(2.0, 2.0, 2021, "Q2"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "activities");
+        graph.put("scores", scores);
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 2.0));
+
+        assertEquals("act_bare", resp.items().getFirst().key());
+        assertEquals(2.0, resp.items().getFirst().authorScore());
+    }
+
+    @Test
+    void activitiesOutputModeFallsBackToBareBeanNameWhenActivitiesIsALiveBeanList() {
+        // The 'activities' raw-graph list is a live bean list only on the very first, not-yet-persisted
+        // compute (before any snapshot round-trip) — the Map-based rich description tier can't apply, so
+        // the resolver must fall back to the bean's own getName(), not the raw id.
+        ro.uvt.pokedex.core.model.activities.ActivityInstance bean =
+                new ro.uvt.pokedex.core.model.activities.ActivityInstance();
+        bean.setId("act_1");
+        bean.setName("SERRANO");
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("act_1", score(4.0, 4.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "activities");
+        graph.put("scores", scores);
+        graph.put("activities", List.of(bean));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 4.0));
+
+        assertEquals("SERRANO", resp.items().getFirst().key());
+    }
 }
