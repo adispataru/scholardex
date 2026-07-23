@@ -178,7 +178,7 @@
    "$ref": "institutions",
    "$id": "ANY"
   },
-  "title": "FEEA_partial",
+  "title": "FEAA 2016",
   "description": "top",
   "reportTypeKey": "feaa-2024",
   "indicatorRolesByIndicatorId": {
