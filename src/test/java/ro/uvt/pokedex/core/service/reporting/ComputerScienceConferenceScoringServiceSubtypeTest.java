@@ -226,6 +226,97 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void dblpAtSignWorkshopVolumeScoresAsWorkshopOfTheStreamParent2016() {
+        // The ARMS-CC@PODC case: DBLP names co-located workshop volumes "X@Y" under the parent's conf/X
+        // stream. The workshop's own name shares no words with the parent's CORE entry, so the generic
+        // title match can never resolve it (it used to fall through to LNCS-C/2p) — the @-marker must
+        // resolve the PARENT by stream acronym and force the workshop reduction: 2016 → category A, 6p.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication("pub-armscc", null, "forum-armscc", "2023-01-01", null, "cp",
+                List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("ARMS-CC@PODC");
+        forum.setAggregationTypes(List.of("Conference Proceeding"));
+        when(cacheService.getForum("forum-armscc")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("PODC")).thenReturn(List.of(
+                ranking("PODC", "ACM Symposium on Principles of Distributed Computing", CoreConferenceRanking.Rank.A_STAR)));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-armscc");
+        evidence.setSeries("conf/podc");
+        evidence.setConferenceName("ARMS-CC@PODC");
+        when(dblpEvidenceRepository.findByPublicationId("pub-armscc")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(6.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE(WS)", score.getScoringSource());
+        assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
+    }
+
+    @Test
+    void dblpAtSignWorkshopVolumeScoresAsWorkshopOfTheStreamParent2026() {
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication("pub-armscc", null, "forum-armscc", "2023-01-01", null, "cp",
+                List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("ARMS-CC@PODC");
+        forum.setAggregationTypes(List.of("Conference Proceeding"));
+        when(cacheService.getForum("forum-armscc")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("PODC")).thenReturn(List.of(
+                ranking("PODC", "ACM Symposium on Principles of Distributed Computing", CoreConferenceRanking.Rank.A_STAR)));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-armscc");
+        evidence.setSeries("conf/podc");
+        evidence.setConferenceName("ARMS-CC@PODC");
+        when(dblpEvidenceRepository.findByPublicationId("pub-armscc")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        // 2026 (id_parA82): A* workshop → category C, points stay 6.
+        assertEquals(6.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE(WS)", score.getScoringSource());
+    }
+
+    @Test
+    void dblpMainTrackVolumeWithoutAtSignIsNotWorkshopReduced() {
+        // Counter-case: a plain main-track DBLP record ("PODC") must keep full parent points.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication("pub-podc", null, "forum-podc", "2023-01-01", null, "cp",
+                List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("PODC");
+        forum.setAggregationTypes(List.of("Conference Proceeding"));
+        when(cacheService.getForum("forum-podc")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("PODC")).thenReturn(List.of(
+                ranking("PODC", "ACM Symposium on Principles of Distributed Computing", CoreConferenceRanking.Rank.A_STAR)));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-podc");
+        evidence.setSeries("conf/podc");
+        evidence.setConferenceName("PODC");
+        when(dblpEvidenceRepository.findByPublicationId("pub-podc")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(12.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE", score.getScoringSource());
+    }
+
+    @Test
     void resolvesConferenceWhenNormalizedNameMatches() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 

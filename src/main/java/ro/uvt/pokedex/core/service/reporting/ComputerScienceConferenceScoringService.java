@@ -286,6 +286,25 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             if (evidence.isPresent()) {
                 String dblpConferenceTitle = resolveDblpConferenceTitle(evidence.get());
                 trace = trace.withDblpConsulted(true).withDblpEvidenceFound(true).withDblpConferenceTitle(dblpConferenceTitle);
+                // DBLP's "X@Y" volume-naming convention is its explicit workshop marker (ARMS-CC@PODC =
+                // the ARMS-CC workshop co-located with PODC). The workshop's own name shares no words
+                // with the parent's CORE entry, so the generic title match below can never resolve it —
+                // instead resolve the PARENT by its authoritative conf/X stream acronym and force the
+                // workshop reduction (the @-sign IS the per-paper proof of workshop status the
+                // conference-by-default policy asks for).
+                if (isDblpWorkshopVolume(evidence.get())) {
+                    String parentAcronym = dblpStreamAcronym(evidence.get().getSeries());
+                    if (parentAcronym != null) {
+                        ConferenceMatch parentMatch = resolveConferenceMatch(parentAcronym, trace);
+                        trace = parentMatch.trace();
+                        ConferenceScoreResolution workshopResolution = scoreResolvedConference(
+                                parentMatch, year, trace, ResolutionSource.DBLP, workshop2026, posterOrDemo, true);
+                        if (workshopResolution.score().isPresent()) {
+                            return workshopResolution;
+                        }
+                        trace = workshopResolution.trace();
+                    }
+                }
                 if (dblpConferenceTitle != null && !dblpConferenceTitle.isBlank()) {
                     ConferenceMatch dblpMatch = resolveConferenceMatch(dblpConferenceTitle, trace);
                     trace = dblpMatch.trace();
@@ -319,6 +338,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource, boolean workshop2026, boolean posterOrDemo) {
+        return scoreResolvedConference(match, year, trace, resolutionSource, workshop2026, posterOrDemo, false);
+    }
+
+    private ConferenceScoreResolution scoreResolvedConference(ConferenceMatch match, int year, ConferenceScoreTrace trace, ResolutionSource resolutionSource, boolean workshop2026, boolean posterOrDemo, boolean forceWorkshop) {
         if (!match.resolved()) {
             return new ConferenceScoreResolution(Optional.empty(), trace);
         }
@@ -334,7 +357,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (parentRank == CoreConferenceRanking.Rank.National || parentRank == CoreConferenceRanking.Rank.National_Regional) {
             parentRank = workshop2026 ? CoreConferenceRanking.Rank.C : CoreConferenceRanking.Rank.D;
         }
-        boolean workshopAdjusted = isWorkshopVariant(match.sourceTitle(), match.ranking());
+        boolean workshopAdjusted = forceWorkshop || isWorkshopVariant(match.sourceTitle(), match.ranking());
         // H80/C1: posters + system demos of a conference get the SAME reduction as workshops (id_parA82), but that clause
         // is a 2026 rule with no 2016 counterpart we can verify — so posters reduce ONLY under 2026 indicators, keeping
         // FV Info 2016 frozen. Workshops reduce under both (their one-lower vs flat-C mapping is the only 2016↔2026 diff).
@@ -580,6 +603,19 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             return title;
         }
         return acronym + " " + title;
+    }
+
+    /**
+     * DBLP names co-located workshop volumes with the {@code X@Y} convention (e.g. {@code ARMS-CC@PODC}
+     * = the ARMS-CC workshop at PODC) — the {@code @} is DBLP's explicit workshop marker, present in the
+     * evidence's conferenceName/booktitle. The parent conference is the {@code conf/X} stream the record
+     * lives under, so a workshop-volume paper scores as a workshop of that parent.
+     */
+    private static boolean isDblpWorkshopVolume(ScholardexPublicationDblpEvidence evidence) {
+        String name = evidence.getConferenceName() != null && !evidence.getConferenceName().isBlank()
+                ? evidence.getConferenceName()
+                : evidence.getBooktitle();
+        return name != null && name.contains("@");
     }
 
     /** The DBLP conference-series acronym from the stream key: {@code conf/iccs} -> {@code ICCS}; null if not conf/X. */
