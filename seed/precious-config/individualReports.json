@@ -276,6 +276,14 @@
       "value": 4
      }
     ]
+   },
+   {
+    "name": "Cărți/Capitole",
+    "indicatorIndices": [
+     2
+    ],
+    "thresholds": [],
+    "contributesToTotal": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
