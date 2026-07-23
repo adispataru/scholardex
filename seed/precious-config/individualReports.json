@@ -950,7 +950,8 @@
      15,
      16,
      17,
-     18
+     18,
+     21
     ],
     "thresholds": [
      {
@@ -989,7 +990,7 @@
    "6820cafbfe404029dad193d1": "activities-perspectiva-d",
    "6820e4952654f8388e8d3649": "activities-perspectiva-d",
    "6816987607ff6c4e2956d5c4": "activities-perspectiva-d",
-   "6820fbd904e38843635e0cae": "activities-perspectiva-d",
+   "6a629148d8ddfc14de2b6a1c": "activities-perspectiva-d",
    "6820d9bcd7ca817372b6d6f3": "activities-perspectiva-d",
    "6823535fbb926870c1f86fbd": "activities-perspectiva-d",
    "665ce9102dbfdf2e0b3caa33": "__not_exported__",
@@ -1015,7 +1016,7 @@
    "6820cafbfe404029dad193d1": "Curs in format electronic",
    "6820e4952654f8388e8d3649": "Organizare evenimente",
    "6816987607ff6c4e2956d5c4": "Director/editor revista",
-   "6820fbd904e38843635e0cae": "Comisii doctorat",
+   "6a629148d8ddfc14de2b6a1c": "Comisii doctorat",
    "6820d9bcd7ca817372b6d6f3": "Granturi",
    "6823535fbb926870c1f86fbd": "Keynote/invited speaker",
    "665ce9102dbfdf2e0b3caa33": "__not_exported__",
@@ -1128,7 +1129,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6820fbd904e38843635e0cae"
+     "$oid": "6a629148d8ddfc14de2b6a1c"
     }
    },
    {
@@ -1463,8 +1464,11 @@
      },
      {
       "$numberInt": "18"
-     }
-    ],
+     },
+   {
+    "$numberInt": "21"
+   }
+  ],
     "thresholds": [
      {
       "position": "ASIST_UNIV",

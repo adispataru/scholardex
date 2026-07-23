@@ -238,7 +238,7 @@
    "$oid": "68191a2f526ce829aca68b34"
   },
   "name": "Info_D_viii-a",
-  "formula": "S == 0 ? 0 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1",
+  "formula": "S == 0 ? 1 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1",
   "domain": {
    "$ref": "domains",
    "$id": "Computer Science"
@@ -255,7 +255,7 @@
    "strategy": "UNI_RANKING",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
   },
-  "formulaHash": "655c90bf8468cc9755d4e2427d4f73919f4694d8eb7a3aa69b7de90ba5d3b6d5",
+  "formulaHash": "4e5266a4b637caa7044fc91a76c52776358aa2c206371bbfe43a9fb6d14df362",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -852,7 +852,7 @@
    "$oid": "6823535fbb926870c1f86fbd"
   },
   "name": "Info_D_ix",
-  "formula": "X = S == 0 ? 0 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1;\r\nX*N_luni",
+  "formula": "X = S == 0 ? 1 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1;\nX*N_luni",
   "domain": {
    "$ref": "domains",
    "$id": "Computer Science"
@@ -869,7 +869,7 @@
    "strategy": "UNI_RANKING",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
   },
-  "formulaHash": "2d5c8204431dd59cf8da610e74e95d22719263a6bc503db5bb069aeb0272fb91",
+  "formulaHash": "faa404ecfa09aee7d621a8542b8f93b8e85d37dcb69add759fc80271dce02ae1",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2029,6 +2029,38 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
   "formulaHash": "b849093e542257222dcbc130c0c906091e1f828a2b4f2e45c413e589296c992c",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a629148d8ddfc14de2b6a1c"
+  },
+  "name": "Info_D_xii_2026",
+  "formula": "Rol == 'Conducător' ? 3 : 1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Computer Science"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6820fbb704e38843635e0cad"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "92f37034c1652cd7e138785dad39fae90cf5b27875c89da52448601dba924c7b",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
