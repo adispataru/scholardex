@@ -1835,5 +1835,209 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a626d02a4be38276d5a28d0"
+  },
+  "name": "FEEA_Q4_Article_AIS015",
+  "formula": "M > 0 && S > 0.15 ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Economie"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "ECONOMICS_JOURNAL_AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "b9d55e5a19e45e39ce8e902b20b77751463d7a8256cfcc2d3b5e61d792b43832",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a626d02a4be38276d5a28d1"
+  },
+  "name": "FEEA_Q4_Article_AIS0075",
+  "formula": "M > 0 && S > 0.075 ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Economie"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "ECONOMICS_JOURNAL_AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "298a577d6c6f369f54cb0f7231dbce94c9ee6aebe36e0ac2893b330a59a73cf8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a626d02a4be38276d5a28d2"
+  },
+  "name": "FEEA_Q4_Article_AISNonzero",
+  "formula": "M > 0 && S > 0 ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Economie"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "ECONOMICS_JOURNAL_AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a626d02a4be38276d5a28d3"
+  },
+  "name": "FEEA_Q5_CoreInfo_Nonzero",
+  "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Economie"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "ECONOMICS_JOURNAL_AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a626d02a4be38276d5a28d4"
+  },
+  "name": "FEEA_Q5_CoreInfo_0075",
+  "formula": "(M == 10 || M == 8) && S > 0.075 ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Economie"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "ECONOMICS_JOURNAL_AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "fd3656ecc9e9a46c442f74d99f69c4185ee5ccc2d74ac35ff18445f35b418b89",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a626d02a4be38276d5a28d5"
+  },
+  "name": "FEEA_Grant_Any",
+  "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); excluded ? 0 : 1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Economie"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "dc73f249b0190c385e67c8fe8f9e655da690e8cafc0a82e80e2e534d96023cfe",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
+   "$oid": "6a626d02a4be38276d5a28d6"
+  },
+  "name": "FEEA_Grant_Director",
+  "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); (!excluded && Rol != \"Membru\") ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Economie"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "b849093e542257222dcbc130c0c906091e1f828a2b4f2e45c413e589296c992c",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

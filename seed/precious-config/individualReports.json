@@ -204,6 +204,48 @@
     "$id": {
      "$oid": "6a30667f5ae41a6b1b60c6ce"
     }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d0"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d1"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d2"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d4"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d5"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d6"
+    }
    }
   ],
   "criteria": [
@@ -283,6 +325,127 @@
      2
     ],
     "thresholds": [],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 4 (Conf/Prof): articol AIS>0,15 sau grant conducător",
+    "indicatorIndices": [
+     3,
+     9
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 4 (Lector): articol AIS>0,075",
+    "indicatorIndices": [
+     4
+    ],
+    "thresholds": [
+     {
+      "position": "LECT_UNIV",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 4 (Asistent): articol AIS nenul",
+    "indicatorIndices": [
+     5
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 4b — granturi totale (Prof, informativ)",
+    "indicatorIndices": [
+     8
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 4b — din care ca și conducător (Prof, informativ)",
+    "indicatorIndices": [
+     9
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 5: total articole AIS nenul",
+    "indicatorIndices": [
+     5
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 4
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 5: din care Core Economics/Infoeconomics",
+    "indicatorIndices": [
+     6
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 1
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctul 5 (Lector): articol Core/Info AIS>0,075",
+    "indicatorIndices": [
+     7
+    ],
+    "thresholds": [
+     {
+      "position": "LECT_UNIV",
+      "value": 1
+     }
+    ],
     "contributesToTotal": false
    }
   ],
