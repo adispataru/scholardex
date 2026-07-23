@@ -287,8 +287,7 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
     protected CanonicalBuildChunkTimings flushPendingWrites(long chunkStartedAtNanos, long preloadFinishedAtNanos, long resolveFinishedAtNanos, ChunkContext context) {
         if (!context.pendingCitationFacts.isEmpty()) {
             context.pendingCitationFacts.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCHOLARDEX_CITATION));
-            scholardexCitationFactRepository.saveAll(context.pendingCitationFacts.values());
-            context.lastCitationFactWrites = context.pendingCitationFacts.size();
+            context.lastCitationFactWrites = savePendingCitationFactsTolerantly(context.pendingCitationFacts.values());
         }
         if (!context.pendingSourceLinkCommands.isEmpty()) {
             ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
@@ -337,6 +336,35 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
     }
 
     // ── Private helpers ─────────────────────────────────────────────────────
+
+    /**
+     * The preload's already-known check reads a snapshot; a concurrent writer (an OpenAlex author
+     * sync, or another Scopus run touching the same pair) can insert the same (cited, citing) edge
+     * — possibly under a differently-minted id — between that read and this save, so the unique
+     * pair index can still fire. Mirrors {@code OpenAlexCitationCanonicalizationService.writeCitation}'s
+     * DuplicateKeyException→skip guard: the edge existing is the DESIRED end state, not an error, and
+     * without this the whole citations-update task hard-fails (non-retryably) on one known edge.
+     * Bulk saveAll stays the fast path; only a collision downgrades to per-document saves so the
+     * one duplicate is skipped without dropping its siblings.
+     */
+    private int savePendingCitationFactsTolerantly(java.util.Collection<ScholardexCitationFact> facts) {
+        try {
+            scholardexCitationFactRepository.saveAll(facts);
+            return facts.size();
+        } catch (org.springframework.dao.DuplicateKeyException bulkCollision) {
+            int written = 0;
+            for (ScholardexCitationFact fact : facts) {
+                try {
+                    scholardexCitationFactRepository.save(fact);
+                    written++;
+                } catch (org.springframework.dao.DuplicateKeyException e) {
+                    log.info("Scholardex citation canonicalization: edge already present (cited={}, citing={}) — skipping",
+                            fact.getCitedPublicationId(), fact.getCitingPublicationId());
+                }
+            }
+            return written;
+        }
+    }
 
     private String buildCanonicalCitationId(String citedPublicationId, String citingPublicationId) {
         return "scit_" + shortHash(

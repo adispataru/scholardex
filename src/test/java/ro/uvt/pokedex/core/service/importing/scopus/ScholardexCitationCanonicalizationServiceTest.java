@@ -138,6 +138,87 @@ class ScholardexCitationCanonicalizationServiceTest {
     }
 
     @Test
+    void concurrentlyInsertedDuplicateEdgeIsSkippedInsteadOfFailingTheRebuild() {
+        // The prod failure this guards against: another writer (an OpenAlex author sync) inserts the
+        // same (cited, citing) pair between this run's preload snapshot and its flush, so the bulk
+        // saveAll trips the unique pair index. The rebuild must skip the known edge (desired end
+        // state, not an error) rather than propagate and hard-fail the whole citations-update task.
+        ScholardexCitationCanonicalizationService service = new ScholardexCitationCanonicalizationService(
+                scopusCitationFactRepository,
+                scholardexPublicationFactRepository,
+                scholardexCitationFactRepository,
+                sourceLinkService,
+                scholardexIdentityConflictRepository,
+                checkpointService
+        );
+
+        ScholardexPublicationFact cited = new ScholardexPublicationFact();
+        cited.setId("spub_1");
+        cited.setEid("2-s2.0-cited");
+        ScholardexPublicationFact citing = new ScholardexPublicationFact();
+        citing.setId("spub_2");
+        citing.setEid("2-s2.0-citing");
+        when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of(cited, citing));
+        when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+
+        ScopusCitationFact sourceFact = new ScopusCitationFact();
+        sourceFact.setSource("SCOPUS_JSON_BOOTSTRAP");
+        sourceFact.setSourceRecordId("2-s2.0-cited->2-s2.0-citing");
+        sourceFact.setCitedEid("2-s2.0-cited");
+        sourceFact.setCitingEid("2-s2.0-citing");
+        when(scopusCitationFactRepository.count()).thenReturn(1L);
+        when(scopusCitationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(sourceFact)));
+        when(sourceLinkService.batchUpsertWithState(any(), any(), eq(false)))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
+
+        when(scholardexCitationFactRepository.saveAll(any()))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("E11000 duplicate key: uniq_scholardex_citation_edge"));
+        when(scholardexCitationFactRepository.save(any(ScholardexCitationFact.class)))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("E11000 duplicate key: uniq_scholardex_citation_edge"));
+
+        // Must complete without throwing — the duplicate edge is a skip, not a task failure.
+        var result = service.rebuildCanonicalCitationFactsFromScopusFacts(fullRescanOptions());
+
+        assertNotNull(result);
+        verify(scholardexCitationFactRepository).save(any(ScholardexCitationFact.class));
+    }
+
+    @Test
+    void bulkCollisionFallsBackToPerDocumentSavesAndKeepsNonCollidingEdges() {
+        // Bulk saveAll can't say WHICH document collided, so a collision downgrades to per-document
+        // saves: the duplicate is skipped, its siblings still get written.
+        ScholardexCitationCanonicalizationService service = new ScholardexCitationCanonicalizationService(
+                scopusCitationFactRepository,
+                scholardexPublicationFactRepository,
+                scholardexCitationFactRepository,
+                sourceLinkService,
+                scholardexIdentityConflictRepository,
+                checkpointService
+        );
+
+        ScholardexCitationFact edgeA = new ScholardexCitationFact();
+        edgeA.setId("scit_a");
+        edgeA.setCitedPublicationId("spub_1");
+        edgeA.setCitingPublicationId("spub_2");
+        ScholardexCitationFact edgeB = new ScholardexCitationFact();
+        edgeB.setId("scit_b");
+        edgeB.setCitedPublicationId("spub_1");
+        edgeB.setCitingPublicationId("spub_3");
+
+        when(scholardexCitationFactRepository.saveAll(any()))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("E11000"));
+        when(scholardexCitationFactRepository.save(edgeA))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("E11000"));
+        when(scholardexCitationFactRepository.save(edgeB)).thenReturn(edgeB);
+
+        int written = ReflectionTestUtils.invokeMethod(service, "savePendingCitationFactsTolerantly", List.of(edgeA, edgeB));
+
+        assertEquals(1, written);
+        verify(scholardexCitationFactRepository).save(edgeA);
+        verify(scholardexCitationFactRepository).save(edgeB);
+    }
+
+    @Test
     void rebuildCanonicalCitationFactsQuarantinesUnresolvedCitedPublication() {
         ScholardexCitationCanonicalizationService service = new ScholardexCitationCanonicalizationService(
                 scopusCitationFactRepository,
