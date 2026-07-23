@@ -757,6 +757,14 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             if (scopusCount != null && scopusCount > current) {
                 fact.setCitedByCount(scopusCount);
             }
+            // coverDate: Scopus wins even on an OpenAlex-owned pub. OpenAlex's publication_date is often
+            // the first-online date (Sept-2008 online for an April-2009 issue — bit FGCS, scored a year
+            // early in the wrong quartile); Scopus carries the issue date the standards score by. Mirrors
+            // the same rule in CanonicalGraphBuilder.buildPublicationFact for the full-rebuild path.
+            if (scopusFact.getCoverDate() != null) {
+                fact.setCoverDate(scopusFact.getCoverDate());
+                fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
+            }
         }
         fact.setUpdatedAt(now);
     }

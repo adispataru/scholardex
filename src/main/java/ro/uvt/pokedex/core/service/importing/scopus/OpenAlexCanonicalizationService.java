@@ -306,8 +306,12 @@ public class OpenAlexCanonicalizationService {
         // the initial mint (ISSN venue onboarding, the Phase-4b DBLP conference resolver, manual
         // curation) and a later re-sync whose own resolution comes up empty used to clobber it back
         // to null — wiping conference scoring for the whole synced corpus (bit florin's re-sync,
-        // 486 pubs de-forumed). Same guard for coverDate (its loss nulls the projected year).
-        if (source.getCoverDate() != null) {
+        // 486 pubs de-forumed). Same guard for coverDate (its loss nulls the projected year) — plus a
+        // Scopus-lineage guard: an eid on the fact proves Scopus enriched this pub, and Scopus's issue
+        // date beats OpenAlex's often-first-online publication_date (the FGCS 2008-vs-2009 bug), so a
+        // refresh must not re-clobber it. Mirrors the Scopus-first coverDate rule in
+        // CanonicalGraphBuilder.buildPublicationFact / ScholardexPublicationCanonicalizationService.
+        if (source.getCoverDate() != null && fact.getEid() == null) {
             fact.setCoverDate(source.getCoverDate());
         }
         String resolvedForumId = resolveForumId(source.getHostVenueOpenAlexId()); // Stage 3: ISSN-resolved venue, else null

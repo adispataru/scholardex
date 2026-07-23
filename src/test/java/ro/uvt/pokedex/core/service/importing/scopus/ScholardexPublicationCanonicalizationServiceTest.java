@@ -363,6 +363,43 @@ class ScholardexPublicationCanonicalizationServiceTest {
     }
 
     @Test
+    void scopusCoverDateClaimsOpenAlexOwnedPubOnEnrichment() {
+        // The FGCS case: an OpenAlex-minted pub carries the first-online year (2008) while Scopus has the
+        // issue date (2009) the standards score by. Scopus enrichment must overwrite coverDate even on an
+        // OpenAlex-owned pub — the one OpenAlex-authoritative field the Scopus-first biblio rule claims back.
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-fgcs");
+        scopusFact.setDoi("10.1/fgcs");
+        scopusFact.setTitle("Scopus title");
+        scopusFact.setCoverDate("2009-01-01");
+        scopusFact.setCoverDisplayDate("January 2009");
+        scopusFact.setSource("SCOPUS");
+        scopusFact.setSourceRecordId("2-s2.0-fgcs");
+        scopusFact.setAuthors(List.of());
+
+        ScholardexPublicationFact openAlexPub = new ScholardexPublicationFact();
+        openAlexPub.setId("spub_fgcs");
+        openAlexPub.setDoiNormalized("10.1/fgcs");
+        openAlexPub.setSource("OPENALEX");
+        openAlexPub.setTitle("OpenAlex title");
+        openAlexPub.setCoverDate("2008-01-01");
+
+        when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(scopusFact)));
+        when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of());
+        when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of(openAlexPub));
+        when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+
+        service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
+
+        assertEquals("2009-01-01", openAlexPub.getCoverDate());
+        assertEquals("January 2009", openAlexPub.getCoverDisplayDate());
+        // Other OpenAlex-authoritative content still untouched.
+        assertEquals("OpenAlex title", openAlexPub.getTitle());
+        assertEquals("OPENALEX", openAlexPub.getSource());
+    }
+
+    @Test
     void normalizeDoi_nullReturnsNull() {
         assertNull(ScholardexPublicationCanonicalizationService.normalizeDoi(null));
     }

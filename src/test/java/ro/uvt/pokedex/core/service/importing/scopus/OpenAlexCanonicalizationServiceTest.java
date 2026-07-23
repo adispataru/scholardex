@@ -161,6 +161,29 @@ class OpenAlexCanonicalizationServiceTest {
     }
 
     @Test
+    void refreshNeverClobbersScopusIssueDateOnAScopusEnrichedPub() {
+        // The FGCS 2008-vs-2009 case: OpenAlex's publication_date is the first-online date while Scopus
+        // carries the issue date the standards score by. An eid on the fact proves Scopus enriched this
+        // pub — the OpenAlex refresh must keep the Scopus-set coverDate, not re-clobber it.
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "Updated title", "sauth_self");
+        source.setCoverDate("2008-01-01"); // first-online year
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX");
+        owned.setEid("2-s2.0-fgcs"); // Scopus lineage
+        owned.setCoverDate("2009-01-01"); // Scopus issue date, previously claimed
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+        when(scholardexPublicationFactRepository.findById("spub_owned")).thenReturn(java.util.Optional.of(owned));
+
+        service.rebuildCanonicalFacts();
+
+        verify(publicationWriter).upsertAndLinkSource(
+                argThat(fact -> "2009-01-01".equals(fact.getCoverDate())),
+                any(), any());
+    }
+
+    @Test
     void refreshWithAResolvableVenueStillOverwritesTheForum() {
         OpenAlexPublicationFact source = source("W9", "10.1/owned", "Updated title", "sauth_self");
         source.setHostVenueOpenAlexId("S777");

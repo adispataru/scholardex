@@ -73,13 +73,14 @@ public class Indicator {
     }
 
     /**
-     * 2026 Informatică journal rule: the journal's category is the BEST of its AIS and JIF quartile
-     * placements for the resolved year (the 2016 standard classifies by AIS alone). Nullable-only: legacy
-     * documents deserialize as {@code null} (2016 behaviour); the 2026 indicators set it true.
+     * RETIRED (2026-07-24): best-of-AIS/JIF journal classification is now universal in
+     * {@code ComputerScienceJournalScoringService} — the 2016 standard's AIS-only regime applied to too
+     * few years to be worth keeping distinguishable. The field stays only so persisted documents that
+     * carry it keep deserializing; nothing reads it anymore.
      */
     private Boolean journalBestQuartile2026;
 
-    /** True when this indicator classifies journals by the better of AIS and JIF quartiles (2026 standard). */
+    /** RETIRED — best-of-AIS/JIF is universal now; no scorer consults this. Kept for form/doc round-trips. */
     public boolean usesJournalBestQuartile2026() {
         return Boolean.TRUE.equals(journalBestQuartile2026);
     }

@@ -54,13 +54,12 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             // ItemYear indicators score in the paper's own year, but JCR rankings lag — carry the journal's last
             // known quartile forward so current-year papers still score.
             boolean carryForward = indicator.getEffectiveScoreYearRange() instanceof ScoreYearRangeSpec.ItemYear;
-            boolean bestOfAisIf = indicator.usesJournalBestQuartile2026();
             computeScores(
                     domain,
                     forum,
                     allowedYears,
                     scoreResult,
-                    (ranking, year, category, rank) -> computeCSScore(ranking, year, category, rank, bestOfAisIf),
+                    this::computeCSScore,
                     this::compareScoresByPoints,
                     carryForward
             );
@@ -164,13 +163,12 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
                 indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
         boolean carryForward = indicator.getEffectiveScoreYearRange() instanceof ScoreYearRangeSpec.ItemYear;
-        boolean bestOfAisIf = indicator.usesJournalBestQuartile2026();
         computeScores(
                 domain,
                 forum,
                 allowedYears,
                 scoreResult,
-                (ranking, year, category, rank) -> computeCSScore(ranking, year, category, rank, bestOfAisIf),
+                this::computeCSScore,
                 this::compareScoresByPoints,
                 carryForward
         );
@@ -197,7 +195,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     /* ------------------------------------------------------------------ */
 
     private Optional<Score> computeCSScore(
-            WoSRanking ranking, int year, String category, WoSRanking.Rank rank, boolean bestOfAisIf) {
+            WoSRanking ranking, int year, String category, WoSRanking.Rank rank) {
         // SCIE/SSCI placements always count as quartile categories for Informatică. ESCI placements count
         // only from the unified-ranking era (2023 metrics year): from then on the ESCI quartile/rank is
         // computed against the SAME per-category list as SCIE/SSCI, so it is a real category placement.
@@ -206,17 +204,16 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         if (!isQuartileEditionForYear(category, year)) {
             return Optional.empty();
         }
-        // 2016 standard: classification by AIS quartile alone. 2026 standard: the journal takes the BEST of
-        // its AIS and JIF placements for the resolved year (each metric ranked against its own cohort). The
-        // comparison is per-year, so years without JIF data (our JCR IF ends 2019 for now) fall back to AIS.
+        // The journal takes the BEST of its AIS and JIF placements for the resolved year (each metric
+        // ranked against its own cohort); years missing one metric fall back to the other. Universal since
+        // 2026-07-24 — the 2016 standard's AIS-only classification applied to so few years that keeping
+        // the two regimes distinguishable wasn't worth it (user decision), and the retired
+        // Indicator.journalBestQuartile2026 opt-in flag is now ignored.
         WoSRanking.Quarter aisQuarter = rank.getQAis().get(year);
         Optional<Score> aisScore = aisQuarter == null
                 ? Optional.empty()
                 : scoreQuartilePlacement(year, category, aisQuarter, rank.getRankAis().get(year),
                         "AIS", lookupPort.getTopRankings(category, year));
-        if (!bestOfAisIf) {
-            return aisScore;
-        }
         WoSRanking.Quarter ifQuarter = rank.getQIF().get(year);
         Optional<Score> ifScore = ifQuarter == null
                 ? Optional.empty()
@@ -306,7 +303,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     public String getDescription() {
         return """
                 Scoring strategy for CNATDCU's Computer Science domain.(Category translation from WoS quarters;
-                2026 indicators take the journal's BEST placement of AIS and JIF quartiles per year)
+                the journal takes its BEST placement of AIS and JIF quartiles per year)
                 x = 20% * num(Q1) in the same WoS category
                 A* = 12p (first x in Q1)
                 A = 8p (rest of Q1 + first x in Q2)

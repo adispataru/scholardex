@@ -661,10 +661,12 @@ class ComputerScienceJournalScoringServiceTest {
     }
 
     @Test
-    void legacyIndicatorsClassifyByAisAloneEvenWhenIfIsBetter() {
+    void bestOfAisIfIsUniversalTheRetired2026OptInFlagIsIgnored() {
+        // The AIS-only 2016 regime is retired (2026-07-24): even an indicator that never opted into the
+        // 2026 flag takes the better IF placement — the flag no longer changes behavior.
         Score score = scoreWithQuartiles(WoSRanking.Quarter.Q3, WoSRanking.Quarter.Q1, false);
-        assertEquals(2.0, score.getScore());
-        assertEquals("Q3", score.getQuarter());
+        assertEquals(8.0, score.getScore());
+        assertEquals("Q1", score.getQuarter());
     }
 
     private ScoringPublication publication(String forumId, String coverDate, String subtype, String scopusSubtype) {

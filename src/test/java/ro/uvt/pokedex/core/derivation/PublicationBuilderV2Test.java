@@ -70,6 +70,36 @@ class PublicationBuilderV2Test {
     }
 
     @Test
+    void scopusCoverDateWinsOverOpenAlexFirstOnlineDateOnSharedPub() {
+        // The FGCS case: OpenAlex publication_date is the first-online date (Sept 2008) while Scopus
+        // carries the issue date (2009) the standards score by — the shared pub must keep Scopus's date,
+        // same Scopus-first rule volume/issue already follow.
+        ScopusPublicationFact scopus = scopusPub("2-s2.0-F", "10.1/fgcs", "Webservices Oriented Data Mining", 10);
+        scopus.setCoverDate("2009-01-01");
+        OpenAlexPublicationFact openAlex = openAlexPub("W2", "10.1/fgcs", "Webservices Oriented Data Mining", 12);
+        openAlex.setCoverDate("2008-01-01");
+
+        CanonicalGraphBuilder.PublicationBuildResult result =
+                builder.buildPublications(List.of(scopus), List.of(openAlex), CanonicalGraphBuilder.PubResolvers.empty());
+
+        assertThat(result.facts()).hasSize(1);
+        assertThat(result.facts().getFirst().getCoverDate()).isEqualTo("2009-01-01");
+    }
+
+    @Test
+    void openAlexCoverDateStillUsedWhenScopusHasNone() {
+        ScopusPublicationFact scopus = scopusPub("2-s2.0-G", "10.1/nodate", "No Scopus Date", 1);
+        OpenAlexPublicationFact openAlex = openAlexPub("W3", "10.1/nodate", "No Scopus Date", 2);
+        openAlex.setCoverDate("2015-06-01");
+
+        CanonicalGraphBuilder.PublicationBuildResult result =
+                builder.buildPublications(List.of(scopus), List.of(openAlex), CanonicalGraphBuilder.PubResolvers.empty());
+
+        assertThat(result.facts()).hasSize(1);
+        assertThat(result.facts().getFirst().getCoverDate()).isEqualTo("2015-06-01");
+    }
+
+    @Test
     void carriesOpenAlexEnrichmentOntoCanonicalFact() {
         OpenAlexPublicationFact o = openAlexPub("W9", "10.1/enriched", "Enriched", 3);
         o.setRetracted(true);

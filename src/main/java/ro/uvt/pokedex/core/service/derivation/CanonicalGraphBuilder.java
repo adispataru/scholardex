@@ -1024,7 +1024,11 @@ public class CanonicalGraphBuilder {
         fact.setTitleNormalized(authoritative.titleNorm());
         fact.setCreator(authoritative.creator());
         fact.setAuthorCount(authoritative.authorCount());
-        fact.setCoverDate(authoritative.coverDate());
+        // coverDate: Scopus wins on a shared pub. OpenAlex's publication_date is frequently the
+        // first-online date (e.g. Sept-2008 online for an April-2009 issue — bit FGCS, scored a year
+        // early in the wrong quartile), while Scopus carries the issue date the standards score by.
+        // Same Scopus-first-biblio rule volume/issueIdentifier already follow below.
+        fact.setCoverDate(scopus != null && scopus.coverDate() != null ? scopus.coverDate() : authoritative.coverDate());
         fact.setOpenAccess(authoritative.openAccess());
         fact.setSubtype(authoritative.subtype());
         fact.setSubtypeDescription(authoritative.subtypeDescription());
