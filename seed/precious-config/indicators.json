@@ -1286,7 +1286,7 @@
    "$oid": "6a47f17bcb06b11f3b6121f0"
   },
   "name": "Info_C_2026",
-  "formula": "feeJournal ? 0 : (S/max(N-2, 1))",
+  "formula": "S/max(N-2, 1)",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -1299,7 +1299,7 @@
    "strategy": "CS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
-  "formulaHash": "c967a44d3340d7b19c25a9b19bd44428443280e67c02ed3b3e73e5b490f0e7c7",
+  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -1440,7 +1440,7 @@
    "$oid": "6a480678cefa56310d7f8024"
   },
   "name": "Info_B_Jurnale 2026",
-  "formula": "feeJournal ? 0 : (S/max(N-2, 1))",
+  "formula": "S/max(N-2, 1)",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -1453,7 +1453,7 @@
    "strategy": "CS_JOURNAL",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "c967a44d3340d7b19c25a9b19bd44428443280e67c02ed3b3e73e5b490f0e7c7",
+  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
