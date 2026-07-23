@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipReviewState;
-import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.application.model.SuspiciousAuthorshipState;
 
 import java.util.List;
@@ -304,35 +303,6 @@ class UserPublicationFacadeTest {
         when(scholardexProjectionReadService.findForumById(null)).thenReturn(Optional.empty());
 
         assertTrue(facade.buildCitationsView("user@uvt.ro", "p1").isEmpty());
-    }
-
-    @Test
-    void findPublicationForEditUsesCanonicalIdLookup() {
-        ScholardexPublicationView publication = publication("p1", "P", "2023-01-01", 0, "f1", List.of("a1"));
-        when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
-
-        var result = facade.findPublicationForEdit("p1");
-
-        assertTrue(result.isPresent());
-        verify(scholardexProjectionReadService).findPublicationByAnyId("p1");
-    }
-
-    @Test
-    void updatePublicationMetadataUsesCanonicalIdLookupAndSave() {
-        ScholardexPublicationView existing = new ScholardexPublicationView();
-        existing.setId("p1");
-        existing.setSubtype("old");
-        existing.setSubtypeDescription("Old");
-        PublicationMetadataPatch patch = new PublicationMetadataPatch();
-        patch.setSubtype("cp");
-        patch.setSubtypeDescription("Proceedings");
-        when(scholardexProjectionReadService.findPublicationViewById("p1")).thenReturn(Optional.of(existing));
-
-        facade.updatePublicationMetadata("p1", patch);
-
-        assertEquals("cp", existing.getSubtype());
-        assertEquals("Proceedings", existing.getSubtypeDescription());
-        verify(scholardexProjectionReadService).savePublicationView(existing);
     }
 
     private static ScholardexPublicationView publication(String id, String title, String coverDate, int citedByCount, String forumId, List<String> authors) {

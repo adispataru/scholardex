@@ -472,10 +472,6 @@ function _insertDetailRow(pub, tr) {
         _closeDetail();
     });
 
-    // Save button
-    detailTr.querySelector('[data-save-pub]')?.addEventListener('click', () => {
-        _savePub(pub.id, detailTr);
-    });
     detailTr.querySelector('[data-confirm-authorship]')?.addEventListener('click', () => {
         _saveAuthorshipDecision(pub.id, 'confirm', detailTr);
     });
@@ -515,10 +511,6 @@ function _buildDetailPanel(pub) {
             `</button>`;
     }
 
-    const currentSubtype = pub.subtype ?? '';
-    const optionsHtml    = SUBTYPE_OPTIONS.map(o =>
-        `<option value="${_esc(o.value)}" ${o.value === currentSubtype ? 'selected' : ''}>${_esc(o.label)}</option>`
-    ).join('');
     const reviewState = _reviewState(pub.id);
     const reviewBadge = _buildReviewBadge(reviewState);
     const reviewMeta = _buildReviewMeta(pub, reviewState);
@@ -535,35 +527,6 @@ function _buildDetailPanel(pub) {
             <div>
               <p class="app-ws-pubs__detail-section-title">Citations</p>
               ${citationsHtml}
-            </div>
-
-            <div>
-              <p class="app-ws-pubs__detail-section-title">Edit</p>
-              <div class="app-ws-pubs__edit-form">
-                <div class="app-ws-pubs__edit-field">
-                  <label class="app-ws-pubs__edit-label" for="ws-pubs-subtype-${_esc(pub.id)}">Publication type</label>
-                  <select class="app-ws-pubs__edit-select"
-                          id="ws-pubs-subtype-${_esc(pub.id)}"
-                          data-field="subtype">
-                    ${optionsHtml}
-                  </select>
-                </div>
-                <div class="app-ws-pubs__edit-field">
-                  <label class="app-ws-pubs__edit-label" for="ws-pubs-subtype-desc-${_esc(pub.id)}">Type description</label>
-                  <input class="app-ws-pubs__edit-input"
-                         id="ws-pubs-subtype-desc-${_esc(pub.id)}"
-                         type="text"
-                         data-field="subtypeDescription"
-                         value="${_esc(pub.subtypeDescription ?? '')}"
-                         placeholder="e.g. Journal Article"/>
-                </div>
-                <div class="app-ws-pubs__edit-actions">
-                  <button class="btn btn-sm btn-primary" type="button" data-save-pub="${_esc(pub.id)}">
-                    Save
-                  </button>
-                  <span class="app-ws-pubs__edit-feedback" role="status" aria-live="polite"></span>
-                </div>
-              </div>
             </div>
 
             <div>
@@ -605,55 +568,6 @@ function _buildDetailPanel(pub) {
 
           </div>
         </div>`;
-}
-
-// ── Save ─────────────────────────────────────────────────────────────────────
-
-function _savePub(pubId, detailTr) {
-    const subtype            = detailTr.querySelector('[data-field="subtype"]')?.value ?? '';
-    const subtypeDescription = detailTr.querySelector('[data-field="subtypeDescription"]')?.value ?? '';
-    const feedback = detailTr.querySelector('.app-ws-pubs__edit-feedback');
-    const saveBtn  = detailTr.querySelector('[data-save-pub]');
-
-    if (saveBtn) saveBtn.disabled = true;
-
-    fetch(`/user/workspace/publications/save/${encodeURIComponent(pubId)}`, {
-        method: 'POST',
-        headers: postJsonHeaders(),
-        body: JSON.stringify({ subtype, subtypeDescription }),
-    })
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const pub = _allPubs.find(p => p.id === pubId);
-            if (pub) {
-                pub.subtype            = subtype;
-                pub.subtypeDescription = subtypeDescription;
-            }
-            if (feedback) {
-                feedback.textContent = 'Saved.';
-                feedback.classList.remove('app-ws-pubs__edit-feedback--error');
-                feedback.classList.add('app-ws-pubs__edit-feedback--visible');
-                setTimeout(() => feedback.classList.remove('app-ws-pubs__edit-feedback--visible'), 2500);
-            }
-            const tr = document.querySelector(`[data-pub-id="${CSS.escape(pubId)}"]`);
-            if (tr) {
-                const badgeEl = tr.querySelector('.app-ws-pubs__type-badge');
-                if (badgeEl) {
-                    const newCls = SUBTYPE_BADGE_CLASS[(subtype ?? '').toLowerCase()] ?? '';
-                    badgeEl.className   = `app-ws-pubs__type-badge ${newCls}`;
-                    badgeEl.textContent = subtypeDescription || subtype || '—';
-                }
-            }
-        })
-        .catch(() => {
-            if (feedback) {
-                feedback.textContent = 'Save failed — please try again.';
-                feedback.classList.add('app-ws-pubs__edit-feedback--error', 'app-ws-pubs__edit-feedback--visible');
-            }
-        })
-        .finally(() => {
-            if (saveBtn) saveBtn.disabled = false;
-        });
 }
 
 /**

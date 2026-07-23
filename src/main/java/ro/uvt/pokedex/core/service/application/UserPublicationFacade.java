@@ -13,7 +13,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipReviewState;
-import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.application.model.SuspiciousAuthorshipState;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
@@ -165,24 +164,6 @@ public class UserPublicationFacade {
                 authorMap,
                 forumMap
         ));
-    }
-
-    // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
-    public Optional<ScholardexPublicationView> findPublicationForEdit(String publicationId) {
-        return scholardexProjectionReadService.findPublicationByAnyId(publicationId);
-    }
-
-    // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
-    public void updatePublicationMetadata(String publicationId, PublicationMetadataPatch patch) {
-        Optional<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView> byId =
-                scholardexProjectionReadService.findPublicationViewById(publicationId)
-                        .or(() -> scholardexProjectionReadService.findPublicationByAnyId(publicationId)
-                                .flatMap(p -> scholardexProjectionReadService.findPublicationViewById(p.getId())));
-        byId.ifPresent(pub -> {
-            pub.setSubtypeDescription(patch.getSubtypeDescription());
-            pub.setSubtype(patch.getSubtype());
-            scholardexProjectionReadService.savePublicationView(pub);
-        });
     }
 
     private void aliasAuthorsBySourceIds(Map<String, ScholardexAuthorView> authorMap, Collection<String> referencedIds) {

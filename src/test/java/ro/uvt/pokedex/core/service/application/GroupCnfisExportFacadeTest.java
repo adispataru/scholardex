@@ -330,7 +330,6 @@ class GroupCnfisExportFacadeTest {
         assertEquals(1, result.get().publications().size());
         assertEquals("pValid", result.get().publications().getFirst().getId());
         verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pValid"), any(), any(), any(), any(), any(), any());
-        verify(scholardexProjectionReadService, never()).savePublicationView(any());
     }
 
     private static User memberUser(String email, String firstName, String lastName, List<String> scopusIds) {

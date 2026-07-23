@@ -298,7 +298,6 @@ class UserReportFacadeTest {
         verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pStart"), any(), any(), any(), any(), any(), any());
         verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pIn"), any(), any(), any(), any(), any(), any());
         verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pEnd"), any(), any(), any(), any(), any(), any());
-        verify(scholardexProjectionReadService, never()).savePublicationView(any());
     }
 
     @Test
@@ -555,7 +554,6 @@ class UserReportFacadeTest {
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
         verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("p-valid"), any(), any(), any(), any(), any(), any());
-        verify(scholardexProjectionReadService, never()).savePublicationView(any());
 
         ArgumentCaptor<List<ScoringPublicationReadModel>> publicationCaptor = ArgumentCaptor.forClass(List.class);
         verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), anyList(), anyMap(), eq(List.of("a1")), eq(false));

@@ -33,7 +33,6 @@ import ro.uvt.pokedex.core.service.application.model.ResearcherWorkspaceViewMode
 import ro.uvt.pokedex.core.service.application.model.TabDef;
 import ro.uvt.pokedex.core.service.application.model.UserActivityInstancesViewModel;
 import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipReviewState;
-import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.WorkspaceNotification;
 import ro.uvt.pokedex.core.service.application.model.WorkspaceNotification.NotificationType;
@@ -283,20 +282,6 @@ public class ResearcherWorkspaceController {
             Authentication authentication) {
         if (currentUser(authentication).isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         userActivityInstanceFacade.deleteActivityInstance(id);
-        return ResponseEntity.ok().build();
-    }
-
-    // ── JSON: publication save (inline edit) ─────────────────────────────
-    @PostMapping("/publications/save/{id}")
-    @ResponseBody
-    public ResponseEntity<Void> savePublication(
-            @PathVariable String id,
-            @RequestBody PublicationMetadataPatch patch,
-            Authentication authentication) {
-        if (currentUser(authentication).isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        userPublicationFacade.updatePublicationMetadata(id, patch);
         return ResponseEntity.ok().build();
     }
 

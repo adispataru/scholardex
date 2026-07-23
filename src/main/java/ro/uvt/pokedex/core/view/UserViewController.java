@@ -18,7 +18,6 @@ import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
-import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
