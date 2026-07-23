@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.model.org.Department;
+import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.DepartmentAffiliationService;
@@ -90,6 +91,29 @@ public class SupervisorRosterController {
         boolean removed = departmentAffiliationService.removeMember(departmentId, userId);
         redirectAttributes.addFlashAttribute(removed ? "successMessage" : "infoMessage",
                 removed ? "Removed " + userId + " from the department." : userId + " was not a current member.");
+        return "redirect:/supervisor/departments/" + departmentId + "/members";
+    }
+
+    /**
+     * Sets a current member's academic position. Scoped to members of this department only — the path's
+     * {@code departmentId} authorizes the caller, but {@code userId} is caller-supplied, so membership is
+     * re-checked here to stop a department head from repositioning a researcher outside their roster.
+     */
+    @PostMapping("/position")
+    @PreAuthorize("@orgUnitAccess.canManageDepartment(#departmentId, authentication)")
+    public String setPosition(@PathVariable String departmentId,
+                              @RequestParam("userId") String userId,
+                              @RequestParam("position") Position position,
+                              RedirectAttributes redirectAttributes) {
+        boolean isCurrentMember = departmentAffiliationService.listCurrentAffiliations(departmentId).stream()
+                .anyMatch(a -> a.getUserId().equals(userId));
+        if (!isCurrentMember) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    userId + " is not a current member of this department.");
+            return "redirect:/supervisor/departments/" + departmentId + "/members";
+        }
+        userService.updateResearcherPosition(userId, position);
+        redirectAttributes.addFlashAttribute("successMessage", "Updated position for " + userId + ".");
         return "redirect:/supervisor/departments/" + departmentId + "/members";
     }
 

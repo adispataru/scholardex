@@ -92,6 +92,7 @@
                                     <tr>
                                         <th scope="col">Researcher</th>
                                         <th scope="col">Email</th>
+                                        <th scope="col">Position</th>
                                         <th scope="col"><span class="sr-only">Remove</span></th>
                                     </tr>
                                     </thead>
@@ -99,6 +100,27 @@
                                     <tr th:each="u : ${members}">
                                         <td th:text="${u.researcherProfile != null and u.researcherProfile.name != null and !#strings.isEmpty(u.researcherProfile.name) ? u.researcherProfile.name : '—'}">Name</td>
                                         <td><span class="text-muted" th:text="${u.email}">email</span></td>
+                                        <td>
+                                            <form th:action="@{/supervisor/departments/{id}/members/position(id=${departmentId})}"
+                                                  method="post" class="form-inline">
+                                                <input type="hidden" name="userId" th:value="${u.email}">
+                                                <select name="position" class="form-control form-control-sm mr-1"
+                                                        style="width: auto;" required
+                                                        th:attr="aria-label='Position for ' + ${u.email}">
+                                                    <option value="" disabled
+                                                            th:selected="${u.researcherProfile == null or u.researcherProfile.position == null}">
+                                                        Select…</option>
+                                                    <option th:each="pos : ${T(ro.uvt.pokedex.core.model.reporting.Position).values()}"
+                                                            th:value="${pos}" th:text="${pos}"
+                                                            th:selected="${u.researcherProfile != null and pos == u.researcherProfile.position}"></option>
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-outline-primary"
+                                                        th:attr="aria-label='Update position for ' + ${u.email}"
+                                                        title="Update position">
+                                                    <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        </td>
                                         <td class="text-right">
                                             <form th:action="@{/supervisor/nudge}" method="post" class="d-inline mr-1">
                                                 <input type="hidden" name="recipientEmail" th:value="${u.email}">

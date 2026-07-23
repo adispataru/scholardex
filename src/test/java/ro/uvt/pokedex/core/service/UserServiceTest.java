@@ -268,6 +268,49 @@ class UserServiceTest {
     }
 
     @Test
+    void updateResearcherPositionChangesOnlyPositionAndLeavesOtherFieldsAlone() {
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
+        User user = user("researcher@uvt.ro");
+        User.ResearcherProfile existing = profile("Ada", "Lovelace");
+        existing.setPosition(Position.ASIST_UNIV);
+        existing.setOrcid("0000-0002-1825-0097");
+        user.setResearcherProfile(existing);
+        when(userRepository.findById("researcher@uvt.ro")).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+
+        User updated = service.updateResearcherPosition("researcher@uvt.ro", Position.CONF_UNIV);
+
+        assertSame(user, updated);
+        assertEquals(Position.CONF_UNIV, user.getResearcherProfile().getPosition());
+        assertEquals("Ada", user.getResearcherProfile().getFirstName());
+        assertEquals("0000-0002-1825-0097", user.getResearcherProfile().getOrcid());
+    }
+
+    @Test
+    void updateResearcherPositionThrowsWhenUserIsMissing() {
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
+        when(userRepository.findById("missing@uvt.ro")).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.updateResearcherPosition("missing@uvt.ro", Position.PROF_UNIV)
+        );
+
+        assertTrue(exception.getMessage().contains("missing@uvt.ro"));
+    }
+
+    @Test
+    void updateResearcherPositionThrowsWhenUserHasNoResearcherProfile() {
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
+        User user = user("noprofile@uvt.ro");
+        when(userRepository.findById("noprofile@uvt.ro")).thenReturn(Optional.of(user));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateResearcherPosition("noprofile@uvt.ro", Position.PROF_UNIV));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void findAndMatchResearchersUseNormalizedFirstAndLastName() {
         UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User matching = user("ada@uvt.ro");

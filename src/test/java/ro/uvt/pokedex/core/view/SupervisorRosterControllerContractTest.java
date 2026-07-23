@@ -93,6 +93,35 @@ class SupervisorRosterControllerContractTest {
     }
 
     @Test
+    void setPositionUpdatesAndRedirectsBackWhenUserIsACurrentMember() throws Exception {
+        when(departmentAffiliationService.listCurrentAffiliations("dept-cs"))
+                .thenReturn(List.of(affiliation("ana@uvt.ro")));
+
+        mockMvc.perform(post("/supervisor/departments/dept-cs/members/position")
+                        .param("userId", "ana@uvt.ro")
+                        .param("position", "CONF_UNIV")
+                        .with(user("head@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/supervisor/departments/dept-cs/members"));
+        verify(userService).updateResearcherPosition("ana@uvt.ro", ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
+    }
+
+    @Test
+    void setPositionRejectsAUserWhoIsNotACurrentMember() throws Exception {
+        when(departmentAffiliationService.listCurrentAffiliations("dept-cs"))
+                .thenReturn(List.of(affiliation("ana@uvt.ro")));
+
+        mockMvc.perform(post("/supervisor/departments/dept-cs/members/position")
+                        .param("userId", "outsider@uvt.ro")
+                        .param("position", "CONF_UNIV")
+                        .with(user("head@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/supervisor/departments/dept-cs/members"));
+        verify(userService, org.mockito.Mockito.never())
+                .updateResearcherPosition(any(), any());
+    }
+
+    @Test
     void inviteCreatesAShellAndAffiliatesWhenTheEmailIsNew() throws Exception {
         when(researcherShellService.createShell("new@e-uvt.ro"))
                 .thenReturn(ro.uvt.pokedex.core.service.application.ResearcherShellService.Result.CREATED);

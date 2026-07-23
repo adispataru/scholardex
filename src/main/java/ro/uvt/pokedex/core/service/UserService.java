@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.repository.UserRepository;
@@ -159,6 +160,21 @@ public class UserService {
      */
     public User updateResearcherProfile(String email, User.ResearcherProfile profile) {
         return saveResearcherProfile(email, profile);
+    }
+
+    /**
+     * Updates just the position on an existing researcher's profile, leaving every other field
+     * untouched (unlike {@link #saveResearcherProfile}, which overwrites the whole profile).
+     */
+    public User updateResearcherPosition(String email, Position position) {
+        User user = userRepository.findById(email)
+                .orElseThrow(() -> new IllegalArgumentException("No user found with email: " + email));
+        User.ResearcherProfile profile = user.getResearcherProfile();
+        if (profile == null) {
+            throw new IllegalArgumentException("User has no researcher profile: " + email);
+        }
+        profile.setPosition(position);
+        return userRepository.save(user);
     }
 
     /** Removes the researcher profile from the user (account is kept). */
