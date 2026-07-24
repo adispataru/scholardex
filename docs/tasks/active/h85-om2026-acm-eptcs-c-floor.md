@@ -60,16 +60,26 @@ activity path (Editor Proceedings at ACM venue → C); workshop reduction on the
 script AFTER deploy (new field is read only by new code). Optional dry-run: count CORE-unranked pubs on
 ACM-named forums before/after for the changelog.
 
-## Slice B — UCC Companion investigation (prod, read-only first)
+## Slice B — UCC Companion investigation — DONE (2026-07-24, prod read-only)
 
-Florin's UCC entries display as "UCC Companion" though published in the MAIN volume. Local canonical data
-lacks his UCC records; on prod:
-1. Find his UCC pubs → their canonical forum + the scopus/openalex source facts' venue strings.
-2. Determine cause: Scopus's own venue assignment (Companion ISBN swallowing main-track papers — known
-   upstream pattern) vs our forum merge collapsing main+Companion under one name.
-3. Scoring stakes: "Companion" is workshop-shaped — check whether the workshop reduction fires on these.
-4. Remedy: near-term via the existing admin **bulk reassign-forum** action (move the papers to the main
-   proceedings forum); systemic only if OUR merge is at fault (then fix the merge naming, not the data).
+**Verdict: the mislabel does NOT exist in current prod data for Florin's publications.** Findings:
+1. His three UCC papers (2012, 2014×2 — Event-Driven Multi-agent, Prometheus/IoT, Cloud Incident
+   Management) all sit on the DBLP `conf/ucc` stream forum, displayed as "UCC", with per-paper DBLP
+   evidence `conferenceName: "UCC"` (main volumes). No Companion anywhere on his records.
+2. The only "UCC Companion" artifacts in prod: two Scopus VENUE records for the 2019 Companion volume
+   (both genuinely named that at the source; correctly merged into one canonical forum) carrying ZERO
+   papers, and three DBLP booktitles ("UCC Companion") on OTHER researchers' 2019/2021 papers that ARE
+   genuinely Companion-volume papers per DBLP. No UCC 2016–2018 venues exist in our corpus at all.
+3. Most likely explanations for what Florin saw: (a) dblp.org's own TOC (DBLP files some UCC main-track
+   papers under Companion volumes — upstream quirk, outside our data), or (b) a PRE-SWEEP state of our
+   UI — the June DBLP dump sweep re-stamped conference papers from raw proceedings names onto conf/X
+   streams, which would have replaced any Companion-ish label he saw earlier.
+4. Scoring nuance verified benign: "UCC Companion" booktitles carry no "@" workshop marker, so per the
+   DBLP-first policy those (other researchers') papers score as UCC-main — candidate-favorable, no
+   workshop reduction misfire.
+**Action:** none in data. Reply to Florin asking WHERE he currently sees "UCC Companion" (screenshot/
+link) — if it reproduces post-sweep we reopen; the admin bulk reassign-forum remains the remedy of
+record if a concrete mislabeled paper surfaces.
 
 ## Out of scope
 
