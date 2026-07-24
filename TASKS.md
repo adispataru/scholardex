@@ -47,7 +47,7 @@ Done history moved to `TASKS-done.md`.
   **Remaining — all DEFERRED to first consumer** (ambiguous semantics until a real report needs them): post-PhD
   temporal anchor (field exists, no scoring use yet), Da/Nu qualitative gates, best-of single-indicator assignment,
   cross-criterion compensation. No active consumer — revisit when FSGC/drept/FLIT/FAD/FSP/sport/fizica needs one.
-  **Slice 3 SCOPED (2026-07-24): percent-of-criterion caps.** OM 3019/2025 Informatică D caps D(x)/D(xiv)
+  **Slice 3 DONE (2026-07-24, `4c86671b`): percent-of-criterion caps.** OM 3019/2025 Informatică D caps D(x)/D(xiv)
   (+D(xvii) later) at 10% of the perspective total; the 2016 standard has the same caps — both FV Info
   reports get flagged. Semantics pinned (user decision): **fixed point** — `capped_i = min(c_i, p_i·T)`
   with T the final total, water-filling closed form; candidate-favorable and the only reading satisfying
