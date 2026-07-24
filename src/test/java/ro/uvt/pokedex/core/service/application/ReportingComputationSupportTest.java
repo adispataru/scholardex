@@ -332,6 +332,124 @@ class ReportingComputationSupportTest {
         assertEquals(70.0, out.get(1), 0.0001); // no cap → full sum
     }
 
+    // ── H68 slice 3: percent-of-criterion caps (fixed-point semantics, pinned 2026-07-24) ──
+
+    private static List<Indicator> percentCapIndicators() {
+        Indicator rest = new Indicator();
+        rest.setId("rest");
+        Indicator f1 = new Indicator();
+        f1.setId("f1");
+        Indicator f2 = new Indicator();
+        f2.setId("f2");
+        return List.of(rest, f1, f2);
+    }
+
+    private static AbstractReport.Criterion percentCapCriterion(java.util.Map<Integer, Double> percents) {
+        AbstractReport.Criterion c = new AbstractReport.Criterion();
+        c.setIndicatorIndices(new ArrayList<>(java.util.List.of(0, 1, 2)));
+        c.setMaxPercentOfTotal(percents);
+        return c;
+    }
+
+    @Test
+    void percentCapFixedPointBindsAtExactlyTenPercentOfFinalTotal() {
+        // The scope's numeric pin: rest=90, flagged raw=30, p=10% → T = 90/0.9 = 100, cap = 10.
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(percentCapCriterion(java.util.Map.of(1, 10.0))),
+                percentCapIndicators(),
+                Map.of("rest", 90.0, "f1", 30.0, "f2", 0.0));
+        assertEquals(100.0, out.get(0), 0.0001);
+    }
+
+    @Test
+    void percentCapLeavesNonBindingContributionUntouched() {
+        // rest=90, flagged raw=5 → 5 < 10% of 95, cap does not bind, plain sum.
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(percentCapCriterion(java.util.Map.of(1, 10.0))),
+                percentCapIndicators(),
+                Map.of("rest", 90.0, "f1", 5.0, "f2", 0.0));
+        assertEquals(95.0, out.get(0), 0.0001);
+    }
+
+    @Test
+    void percentCapTwoFlaggedBothBinding() {
+        // rest=80, raws 30+40, p=10% each → T = 80/0.8 = 100, caps 10+10, total 100.
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(percentCapCriterion(java.util.Map.of(1, 10.0, 2, 10.0))),
+                percentCapIndicators(),
+                Map.of("rest", 80.0, "f1", 30.0, "f2", 40.0));
+        assertEquals(100.0, out.get(0), 0.0001);
+    }
+
+    @Test
+    void percentCapReleasesFlaggedIndicatorThatFitsUnderTheFixedPoint() {
+        // rest=90, f1 raw=30 (binds), f2 raw=2 (fits): assume both bind → T=90/0.8=112.5, but 2 ≤ 11.25 so
+        // f2 releases; recompute with f1 only → T=(90+2)/0.9=102.222…, cap f1=10.2222, total 102.2222.
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(percentCapCriterion(java.util.Map.of(1, 10.0, 2, 10.0))),
+                percentCapIndicators(),
+                Map.of("rest", 90.0, "f1", 30.0, "f2", 2.0));
+        assertEquals(92.0 / 0.9, out.get(0), 0.0001);
+    }
+
+    @Test
+    void percentCapZeroRestWithAllPointsFlaggedYieldsZero() {
+        // Documented faithful edge: every point is percent-capped and rest=0 → T=0.
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(percentCapCriterion(java.util.Map.of(1, 10.0, 2, 10.0))),
+                percentCapIndicators(),
+                Map.of("rest", 0.0, "f1", 30.0, "f2", 40.0));
+        assertEquals(0.0, out.get(0), 0.0001);
+    }
+
+    @Test
+    void percentCapDegenerateSumFallsBackToPercentOfRest() {
+        // Binding percents sum to 120% — the fixed point diverges; fall back to percent-of-rest:
+        // caps = 60%·90 + 60%·90 = 54+54, total = 90+108 = 198 (and defined, not infinite).
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(percentCapCriterion(java.util.Map.of(1, 60.0, 2, 60.0))),
+                percentCapIndicators(),
+                Map.of("rest", 90.0, "f1", 500.0, "f2", 500.0));
+        assertEquals(198.0, out.get(0), 0.0001);
+    }
+
+    @Test
+    void percentCapComposesWithWeightsAndMaxTotal() {
+        // Weight halves the flagged raw 60 → contribution 30; fixed point on rest=90 → cap 10, T=100;
+        // then maxTotal=95 clamps last.
+        AbstractReport.Criterion c = percentCapCriterion(java.util.Map.of(1, 10.0));
+        c.setWeights(java.util.Map.of(1, 0.5));
+        c.setMaxTotal(95.0);
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(c), percentCapIndicators(), Map.of("rest", 90.0, "f1", 60.0, "f2", 0.0));
+        assertEquals(95.0, out.get(0), 0.0001);
+    }
+
+    @Test
+    void percentCapFeedsTheEffectiveScoreIntoOtherCriteria() {
+        // The Informatică "Total" shape: criterion 0 declares the cap (rest=90, raw=30 → effective 10, T=100);
+        // criterion 1 (Total) references the same flagged indicator WITHOUT declaring a cap — it must count
+        // the capped 10, not the raw 30 (the OM caps the item's points, not just one criterion's sum).
+        AbstractReport.Criterion perspective = percentCapCriterion(java.util.Map.of(1, 10.0));
+        AbstractReport.Criterion total = new AbstractReport.Criterion();
+        total.setIndicatorIndices(new ArrayList<>(java.util.List.of(0, 1, 2)));
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(perspective, total),
+                percentCapIndicators(),
+                Map.of("rest", 90.0, "f1", 30.0, "f2", 0.0));
+        assertEquals(100.0, out.get(0), 0.0001);
+        assertEquals(100.0, out.get(1), 0.0001);
+    }
+
+    @Test
+    void criterionWithoutPercentCapsIsUnchanged() {
+        // Legacy criterion docs deserialize with a null map — behavior identical to before slice 3.
+        AbstractReport.Criterion c = percentCapCriterion(null);
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(c), percentCapIndicators(), Map.of("rest", 90.0, "f1", 30.0, "f2", 40.0));
+        assertEquals(160.0, out.get(0), 0.0001);
+    }
+
     @Test
     void byIndicatorOverloadAppliesWeightsAndCapAndReportsInvalidIndices() {
         // H68 slice 1: the group paths (IndividualReportComputer / GroupReportRunner) delegate here with scores keyed

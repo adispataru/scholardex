@@ -893,6 +893,10 @@
    },
    {
     "name": "Perspectiva D",
+    "maxPercentOfTotal": {
+     "13": 10,
+     "17": 10
+    },
     "indicatorIndices": [
      4,
      5,
@@ -1327,6 +1331,10 @@
    },
    {
     "name": "Perspectiva D",
+    "maxPercentOfTotal": {
+     "13": 10,
+     "17": 10
+    },
     "indicatorIndices": [
      {
       "$numberInt": "4"

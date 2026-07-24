@@ -351,6 +351,8 @@ public class UserReportFacade {
         ReportScopedIndividualReportComputation computation = computationOpt.get();
         attrs.put("indicatorScores", computation.indicatorScores());
         attrs.put("criterionScores", computation.criterionScores());
+        attrs.put("percentCapNotes", ReportingComputationSupport.buildPercentCapNotes(
+                report.getCriteria(), report.getIndicators(), computation.indicatorScoresByIndicatorId()));
 
         return new UserIndividualReportViewModel(null, attrs);
     }

@@ -1076,6 +1076,13 @@
   margin-bottom: 0.5rem;
 }
 
+/* H68 slice 3: percent-cap annotation under the criterion header */
+.individual-report-dashboard .app-eval-evidence__cap-note {
+  margin: -0.25rem 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--app-color-text-muted);
+}
+
 .individual-report-dashboard .app-eval-evidence__title {
   font-size: 1.05rem;
   font-weight: 700;

@@ -35,6 +35,14 @@ public abstract class AbstractReport {
          * so it composes with {@link #weights}. Per-indicator caps are separate ({@code Indicator.maxPoints}).
          */
         private Double maxTotal;
+        /**
+         * H68 slice 3: optional per-indicator percent-of-criterion caps (indicatorIndex → percent, 0–100), for
+         * standards rules like OM 3019/2025 Informatică D(x)/D(xiv) "maximum 10% din punctajul total al perspectivei d".
+         * Fixed-point semantics (pinned 2026-07-24): the capped contribution is {@code min(c_i, p_i·T)} where T is the
+         * FINAL criterion total — the only reading whose result satisfies the rule against the shipped total, and the
+         * candidate-favorable one. Applied after {@link #weights}, before {@link #maxTotal}. Null/missing = no cap.
+         */
+        private java.util.Map<Integer, Double> maxPercentOfTotal;
     }
 
     @Data

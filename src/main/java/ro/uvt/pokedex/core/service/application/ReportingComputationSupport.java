@@ -196,6 +196,13 @@ public final class ReportingComputationSupport {
             List<AbstractReport.Criterion> criteria,
             List<Indicator> indicators,
             java.util.function.ToDoubleFunction<Indicator> scoreLookup) {
+        // H68 slice 3 pre-pass: a percent cap defines the flagged indicator's EFFECTIVE score (the OM text
+        // caps the item's points), so the capped value must feed EVERY criterion that references the
+        // indicator — most importantly the "Total" criterion, which would otherwise count the raw score.
+        // The declaring criterion (the one carrying maxPercentOfTotal) determines the effective value.
+        Map<Integer, Double> effectiveScoreOverrides =
+                computeEffectiveScoreOverrides(criteria, indicators, scoreLookup);
+
         Map<Integer, Double> criterionScores = new HashMap<>();
         for (int i = 0; i < criteria.size(); i++) {
             AbstractReport.Criterion criterion = criteria.get(i);
@@ -210,7 +217,10 @@ public final class ReportingComputationSupport {
                         double weight = criterion.getWeights() == null
                                 ? 1.0
                                 : criterion.getWeights().getOrDefault(indicatorIndex, 1.0);
-                        criterionScore += weight * scoreLookup.applyAsDouble(indicator);
+                        double score = effectiveScoreOverrides.containsKey(indicatorIndex)
+                                ? effectiveScoreOverrides.get(indicatorIndex)
+                                : scoreLookup.applyAsDouble(indicator);
+                        criterionScore += weight * score;
                     }
                 }
             }
@@ -221,6 +231,156 @@ public final class ReportingComputationSupport {
             criterionScores.put(i, criterionScore);
         }
         return criterionScores;
+    }
+
+    /**
+     * H68 slice 3 — effective (percent-capped) scores per indicator index, determined by each cap's
+     * declaring criterion. An indicator flagged in more than one criterion keeps the first declaration
+     * (report-config smell; not a real standards shape).
+     */
+    private static Map<Integer, Double> computeEffectiveScoreOverrides(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            java.util.function.ToDoubleFunction<Indicator> scoreLookup) {
+        Map<Integer, Double> overrides = new HashMap<>();
+        for (AbstractReport.Criterion criterion : criteria) {
+            if (criterion.getMaxPercentOfTotal() == null || criterion.getMaxPercentOfTotal().isEmpty()
+                    || criterion.getIndicatorIndices() == null) {
+                continue;
+            }
+            Map<Integer, Double> contributions = new HashMap<>();
+            for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
+                if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()
+                        || indicators.get(indicatorIndex) == null) {
+                    continue;
+                }
+                double weight = criterion.getWeights() == null
+                        ? 1.0
+                        : criterion.getWeights().getOrDefault(indicatorIndex, 1.0);
+                contributions.merge(indicatorIndex,
+                        weight * scoreLookup.applyAsDouble(indicators.get(indicatorIndex)), Double::sum);
+            }
+            Map<Integer, Double> effective = applyPercentCaps(criterion, contributions);
+            for (Integer idx : criterion.getMaxPercentOfTotal().keySet()) {
+                if (idx == null || !contributions.containsKey(idx) || overrides.containsKey(idx)) {
+                    continue;
+                }
+                double weight = criterion.getWeights() == null
+                        ? 1.0
+                        : criterion.getWeights().getOrDefault(idx, 1.0);
+                if (weight != 0.0 && effective.get(idx) < contributions.get(idx)) {
+                    // Contribution back to score units so other criteria (with their own weights) compose.
+                    overrides.put(idx, effective.get(idx) / weight);
+                }
+            }
+        }
+        return overrides;
+    }
+
+    /**
+     * H68 slice 3 — per-criterion notes for percent-capped indicators ("counts as X" annotations). Keyed
+     * by criterion index; only caps that actually bind produce entries, so legacy reports contribute
+     * nothing and templates can render conditionally. Shared by the live-attrs path (UserReportFacade)
+     * and the run-sourced evaluation page (IndividualReportViewModelAssembler).
+     */
+    public static Map<Integer, List<String>> buildPercentCapNotes(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            Map<String, Double> indicatorScoresByIndicatorId) {
+        Map<Integer, List<String>> notes = new HashMap<>();
+        List<AbstractReport.Criterion> safeCriteria = criteria == null ? List.of() : criteria;
+        List<Indicator> safeIndicators = indicators == null ? List.of() : indicators;
+        for (int c = 0; c < safeCriteria.size(); c++) {
+            AbstractReport.Criterion criterion = safeCriteria.get(c);
+            if (criterion.getMaxPercentOfTotal() == null || criterion.getMaxPercentOfTotal().isEmpty()
+                    || criterion.getIndicatorIndices() == null) {
+                continue;
+            }
+            Map<Integer, Double> contributions = new HashMap<>();
+            for (Integer idx : criterion.getIndicatorIndices()) {
+                if (idx == null || idx < 0 || idx >= safeIndicators.size() || safeIndicators.get(idx) == null) {
+                    continue;
+                }
+                double weight = criterion.getWeights() == null ? 1.0 : criterion.getWeights().getOrDefault(idx, 1.0);
+                double score = indicatorScoresByIndicatorId.getOrDefault(safeIndicators.get(idx).getId(), 0.0);
+                contributions.merge(idx, weight * score, Double::sum);
+            }
+            Map<Integer, Double> effective = applyPercentCaps(criterion, contributions);
+            for (Map.Entry<Integer, Double> entry : criterion.getMaxPercentOfTotal().entrySet()) {
+                Integer idx = entry.getKey();
+                if (idx == null || !contributions.containsKey(idx)) {
+                    continue;
+                }
+                double raw = contributions.get(idx);
+                double capped = effective.getOrDefault(idx, raw);
+                if (raw - capped > 0.005) {
+                    notes.computeIfAbsent(c, k -> new java.util.ArrayList<>()).add(String.format(java.util.Locale.ROOT,
+                            "%s: %.2f \u2192 %.2f (max %.0f%% of the criterion total)",
+                            safeIndicators.get(idx).getName(), raw, capped, entry.getValue()));
+                }
+            }
+        }
+        return notes;
+    }
+
+    /**
+     * H68 slice 3 — percent-of-criterion caps (plafon procentual), fixed-point semantics: a flagged
+     * indicator's contribution is clamped to {@code p_i · T} where {@code T} is the FINAL criterion total
+     * (OM 3019/2025 "maximum 10% din punctajul total al perspectivei"). Solved by water-filling: assume
+     * every flagged cap binds, {@code T = (rest + Σ non-binding c_i) / (1 − Σ binding p_i)}, release any
+     * cap whose raw contribution already fits, repeat (≤ |flagged| passes). Degenerate configs where the
+     * binding percents sum to ≥ 100% fall back to percent-of-rest so the division stays defined.
+     *
+     * <p>Returns the effective (possibly capped) contribution per indicator index — the criterion total is
+     * their sum, and callers that annotate per-indicator "counts as" values read the same map.</p>
+     */
+    public static Map<Integer, Double> applyPercentCaps(
+            AbstractReport.Criterion criterion, Map<Integer, Double> contributions) {
+        Map<Integer, Double> percents = criterion.getMaxPercentOfTotal();
+        if (percents == null || percents.isEmpty()) {
+            return contributions;
+        }
+        Map<Integer, Double> flaggedFractions = new HashMap<>();
+        for (Map.Entry<Integer, Double> e : percents.entrySet()) {
+            if (e.getKey() != null && e.getValue() != null && e.getValue() > 0 && contributions.containsKey(e.getKey())) {
+                flaggedFractions.put(e.getKey(), e.getValue() / 100.0);
+            }
+        }
+        if (flaggedFractions.isEmpty()) {
+            return contributions;
+        }
+        double rest = contributions.entrySet().stream()
+                .filter(e -> !flaggedFractions.containsKey(e.getKey()))
+                .mapToDouble(Map.Entry::getValue).sum();
+
+        java.util.Set<Integer> binding = new java.util.HashSet<>(flaggedFractions.keySet());
+        double capBase = 0.0; // the T that flagged contributions are limited to p_i · T of
+        for (int pass = 0; pass <= flaggedFractions.size(); pass++) {
+            double bindingFractionSum = binding.stream().mapToDouble(flaggedFractions::get).sum();
+            double nonBindingSum = flaggedFractions.keySet().stream()
+                    .filter(k -> !binding.contains(k)).mapToDouble(contributions::get).sum();
+            if (1.0 - bindingFractionSum <= 0.0) {
+                // Degenerate config (binding percents ≥ 100%): the fixed point diverges, so fall back to
+                // percent-of-rest — caps are taken from the unflagged base, 0 when that base is 0.
+                capBase = rest + nonBindingSum;
+                break;
+            }
+            capBase = (rest + nonBindingSum) / (1.0 - bindingFractionSum);
+            // Release caps that don't actually bind at this total; converged when none release.
+            final double t = capBase;
+            java.util.List<Integer> released = binding.stream()
+                    .filter(k -> contributions.get(k) <= flaggedFractions.get(k) * t).toList();
+            if (released.isEmpty()) {
+                break;
+            }
+            released.forEach(binding::remove);
+        }
+        final double finalCapBase = capBase;
+        Map<Integer, Double> effective = new HashMap<>(contributions);
+        for (Integer k : flaggedFractions.keySet()) {
+            effective.put(k, Math.min(contributions.get(k), flaggedFractions.get(k) * finalCapBase));
+        }
+        return effective;
     }
 
     private static String firstAuthorId(ScholardexPublicationView publication) {

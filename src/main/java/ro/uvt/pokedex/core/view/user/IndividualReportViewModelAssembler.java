@@ -110,6 +110,11 @@ public class IndividualReportViewModelAssembler {
         model.addAttribute("allReports", allReports);
         model.addAttribute("indicatorScores", indicatorScores);
         model.addAttribute("criterionScores", criterionScores);
+        // H68 slice 3: "counts as" annotations for percent-capped indicators, recomputed from the run's
+        // raw indicator scores (the run stores raw values; caps apply at criterion aggregation).
+        model.addAttribute("percentCapNotes",
+                ro.uvt.pokedex.core.service.application.ReportingComputationSupport.buildPercentCapNotes(
+                        report.getCriteria(), report.getIndicators(), indicatorScores));
         model.addAttribute("criteriaMet", criteriaMet);
         model.addAttribute("criteriaTotal", criteriaTotal);
         model.addAttribute("totalScore", anyContributesToTotal ? totalScore : null);

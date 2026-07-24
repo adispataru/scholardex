@@ -278,6 +278,13 @@
                                 <span class="app-eval-evidence__chip" hidden></span>
                                 <span class="eval-trend" th:attr="data-criterion-index=${critIndex.index}"></span>
                             </header>
+                            <!-- H68 slice 3: percent-cap annotations — only rendered when a cap actually binds.
+                                 th:block guard first: th:each (prec. 200) would run BEFORE th:if (300) on one tag. -->
+                            <th:block th:if="${percentCapNotes != null && percentCapNotes[critIndex.index] != null}">
+                                <p class="app-eval-evidence__cap-note"
+                                   th:each="capNote : ${percentCapNotes[critIndex.index]}"
+                                   th:text="${capNote}"></p>
+                            </th:block>
 
                             <th:block th:each="indicatorIndex : ${criterion.indicatorIndices}">
                                 <!-- valid indicator ref -->
