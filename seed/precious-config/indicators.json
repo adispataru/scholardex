@@ -204,7 +204,7 @@
    "$oid": "6816987607ff6c4e2956d5c4"
   },
   "name": "Info_D_iv",
-  "formula": "S*3",
+  "formula": "Rol == 'Editor invitat' ? (S == 12 ? 9 : S == 8 ? 6 : S == 4 ? 3 : S == 2 ? 2 : 1) : S * 3",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -221,7 +221,7 @@
    "strategy": "CS_JOURNAL",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
   },
-  "formulaHash": "0a68a0747fc96dcde082af7a68505d9b80cbc075ff7964d2e3c9c00ba63334b7",
+  "formulaHash": "7a1491a17cfa029ab08d6a71bc977ffadc37e972efe77b8fbd250b169f4bf676",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -470,7 +470,7 @@
    "$oid": "6820eec804e38843635e0ca8"
   },
   "name": "Info_D_x",
-  "formula": "X = Nivel == 'International' ? 4 : Nivel == 'National' ? 2 : 1; X * N_ani",
+  "formula": "X = Nivel == 'International' ? 4 : Nivel == 'National' ? 2 : 1;\n(Rol == 'Lider' && N_membri >= 5) ? X * N_ani : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Computer Science"
@@ -485,7 +485,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "622935a0e386f49197e1ead476be8bcde6bf2d39459303426a837b0b822fdf38",
+  "formulaHash": "a8ade0a1b9b659acf1c8ffe0f6eafbb8d4ec60ec4067a0071c5357bd46a436ba",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
