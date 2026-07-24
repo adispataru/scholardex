@@ -1,6 +1,6 @@
 # H83 University rankings — QS + ARWU ingestion, best-of resolution, URAP back-catalog
 
-**Status:** Scoped 2026-07-24. Consumer: OM 3019/2025 Informatică footnote *3 — "Cele mai bune poziții
+**Status:** S1–S4 DONE locally 2026-07-24; S1 live in prod; S2/S3/S4 prod rollout pending (deploy + deploy_arwu_qs_prod.sh + init buttons). Consumer: OM 3019/2025 Informatică footnote *3 — "Cele mai bune poziții
 conform clasamentelor: topuniversities.com (QS), urapcenter.org, shanghairanking.com (ARWU)" — governing
 D(viii) keynote/invited, D(ix) visiting positions, D(xi) thesis committees. The 2016 standard has the same
 footnote. Today only URAP exists, so a university strong in QS/ARWU but weaker in URAP under-scores.
@@ -82,7 +82,11 @@ closest-year rank, returns the MINIMUM (best position) + provenance {source, dat
 `UniversityRankScoringService` consumes it; provenance goes into `scoringInfo` so the drilldown can show
 e.g. "ARWU 2015 · #151". Candidate-favorable per the OM's own footnote. Bracket formulas untouched.
 
-**S4 (optional, cheap) — UNIVERSITY_NAME picker.** Autocomplete over the union of ranking names, mirroring
+**S4 — UNIVERSITY_NAME picker — DONE locally (2026-07-24, `9f9f8ec4`).** `GET /api/entities/universities`
+(`UniversityLookupFacade`): one suggestion per exact name VARIANT with "SOURCE band (year)" summaries —
+variants stay separate on purpose (scoring resolves exact-per-source; the picker makes coverage visible:
+"Aix-Marseille University" lists all three sources). Picker + persistent rankings note in
+workspaceActivities.js for all UNIVERSITY_NAME activities. Original scope line: Autocomplete over the union of ranking names, mirroring
 the CORE conference picker (`/api/entities/universities?q=`, suggestion shows best current rank per
 source). Kills the exact-name-resolution misses at the root and matches the picker UX Florin already has
 for conferences.
