@@ -1118,6 +1118,16 @@
   color: var(--app-color-text-muted);
 }
 
+/* Live SENSE publisher classification hint under the wizard's Publisher input */
+.app-ws-pubs__wiz-sense-badge {
+  font-size: 0.75rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-pubs__wiz-sense-badge strong {
+  color: var(--app-color-text-strong);
+}
+
 .app-ws-pubs__wiz-label--required::after {
   content: ' *';
   color: var(--app-color-danger);

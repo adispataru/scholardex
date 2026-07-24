@@ -539,6 +539,16 @@
   color: var(--app-color-text-muted, #667085);
 }
 
+/* Informational CORE-classification note under the conference picker */
+.app-ws-acts__picker-note {
+  font-size: 0.75rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__picker-note strong {
+  color: var(--app-color-text-strong);
+}
+
 /* H78 — "My projects" (director-attributed canonical projects), read-only card */
 .app-ws-acts__myproj {
   margin: 0.75rem 0 0.5rem;

@@ -525,27 +525,73 @@ function _conferencePickerFieldHtml(label, dataAttr, currentValue) {
                  placeholder="Search by acronym (e.g. SYNASC) or name — free text also accepted"/>
           <ul class="app-ws-acts__picker-results js-conf-picker-results" hidden></ul>
         </div>
+        <div class="app-ws-acts__picker-note js-conf-picker-note" hidden></div>
     </div>`;
+}
+
+/**
+ * The badge is informational: it shows the CORE match by acronym (latest classified year).
+ * The authoritative rank is resolved at report time by the conference scorer for the entry's
+ * own year — hence the "(latest year)" hedge rather than promising the scored value.
+ */
+function _renderConferenceBadge(note, item) {
+    if (!note) return;
+    if (item) {
+        const year = item.latestYear ? ` · ${item.latestYear} (latest year)` : '';
+        note.innerHTML = `CORE classification: <strong>${_esc(item.latestRank ?? 'unranked')}</strong>${_esc(year)}`;
+        note.hidden = false;
+    } else {
+        note.textContent = 'Not matched in the CORE ranking — the score is resolved at report time '
+            + '(category D if no conference is identified).';
+        note.hidden = false;
+    }
+}
+
+/** Resolve an existing "ACRONYM — Full Name" (or free-text) value to a CORE row for the badge. */
+function _resolveConferenceBadge(value, note) {
+    const v = (value || '').trim();
+    if (!note) return;
+    if (v.length < 2) { note.hidden = true; note.textContent = ''; return; }
+    const acronym = v.includes(' — ') ? v.split(' — ')[0].trim() : v;
+    fetch(`/api/entities/core-conferences?q=${encodeURIComponent(acronym)}`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(items => {
+            const hit = (items || []).find(c => c.acronym?.toLowerCase() === acronym.toLowerCase());
+            _renderConferenceBadge(note, hit ?? null);
+        })
+        .catch(() => { note.hidden = true; });
 }
 
 function _wireConferencePickers(root) {
     root.querySelectorAll('.js-conf-picker').forEach(wrap => {
         const input   = wrap.querySelector('.js-conf-picker-input');
         const results = wrap.querySelector('.js-conf-picker-results');
+        const note    = wrap.querySelector('.js-conf-picker-note');
         if (!input || !results) return;
 
         let timer = null;
         input.addEventListener('input', () => {
             const q = input.value.trim();
             clearTimeout(timer);
+            if (note) { note.hidden = true; note.textContent = ''; }
             if (q.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
-            timer = setTimeout(() => _searchCoreConferences(q, results, input), 250);
+            timer = setTimeout(() => _searchCoreConferences(q, results, input, note), 250);
+        });
+        // Free text that never matched a suggestion gets the honest "resolved at report time"
+        // note on blur; a picked suggestion has already rendered its badge by then.
+        input.addEventListener('blur', () => {
+            if (note && note.hidden && input.value.trim().length >= 2) {
+                _resolveConferenceBadge(input.value, note);
+            }
         });
         document.addEventListener('click', e => { if (!wrap.contains(e.target)) results.hidden = true; });
+
+        // Existing entries re-open with their stored "ACRONYM — Full Name" text: resolve it once.
+        if (input.value.trim().length >= 2) _resolveConferenceBadge(input.value, note);
     });
 }
 
-function _searchCoreConferences(q, results, input) {
+function _searchCoreConferences(q, results, input, note) {
     fetch(`/api/entities/core-conferences?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
         .then(r => (r.ok ? r.json() : null))
         .then(items => {
@@ -555,11 +601,11 @@ function _searchCoreConferences(q, results, input) {
                 results.hidden = false;
                 return;
             }
-            results.innerHTML = items.map(c => {
+            results.innerHTML = items.map((c, idx) => {
                 const value = `${c.acronym} — ${c.name}`;
                 const meta = [c.latestRank ? `CORE ${c.latestRank}` : null, c.latestYear ?? null]
                     .filter(Boolean).join(' · ');
-                return `<li class="app-ws-acts__picker-item" data-value="${_esc(value)}">`
+                return `<li class="app-ws-acts__picker-item" data-value="${_esc(value)}" data-idx="${idx}">`
                     + `${_esc(value)}${meta ? ` <span style="color:var(--app-color-text-muted)">(${_esc(meta)})</span>` : ''}</li>`;
             }).join('');
             results.hidden = false;
@@ -567,6 +613,7 @@ function _searchCoreConferences(q, results, input) {
                 li.addEventListener('click', () => {
                     input.value = li.dataset.value;
                     results.hidden = true;
+                    _renderConferenceBadge(note, items[Number(li.dataset.idx)]);
                 });
             });
         })

@@ -1361,6 +1361,7 @@ function _renderStep1() {
               <label class="app-ws-pubs__wiz-label" for="ws-wiz-forum-publisher">Publisher</label>
               <input class="app-ws-pubs__wiz-input" id="ws-wiz-forum-publisher" type="text"
                      value="${_esc(nf.publisher ?? '')}" placeholder="e.g. Springer"/>
+              <div class="app-ws-pubs__wiz-sense-badge" id="ws-wiz-sense-badge" hidden></div>
             </div>
           </div>
         </details>`;
@@ -1489,6 +1490,23 @@ function _renderStep3() {
 
 // ── Wizard event wiring ───────────────────────────────────────────────────────
 
+function _updateSenseBadge(rawValue) {
+    const badge = document.getElementById('ws-wiz-sense-badge');
+    if (!badge) return;
+    const q = (rawValue || '').trim();
+    if (q.length < 2) { badge.hidden = true; badge.innerHTML = ''; return; }
+    fetch(`/api/entities/sense-publishers?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(m => {
+            if (!m) { badge.hidden = true; return; }
+            badge.innerHTML = m.matched
+                ? `Detected SENSE publisher category: <strong>${_esc(m.rank)}</strong> (${_esc(m.matchedPublisher)})`
+                : 'Publisher not in the SENSE ranking — books/chapters here score as D/E/unlisted.';
+            badge.hidden = false;
+        })
+        .catch(() => { badge.hidden = true; });
+}
+
 function _wireWizardEvents() {
     // Close button
     document.getElementById('ws-pubs-wiz-close')?.addEventListener('click', () => _closeWizard(false));
@@ -1510,6 +1528,18 @@ function _wireWizardEvents() {
             _wForumFilter = searchInput.value;
             _reRenderStepBody();
         });
+
+        // Live SENSE publisher badge: same cached resolution the book scorer uses, so the
+        // hint always matches what scoring will decide for a book/chapter at this publisher.
+        const publisherInput = document.getElementById('ws-wiz-forum-publisher');
+        if (publisherInput) {
+            let senseTimer = null;
+            publisherInput.addEventListener('input', () => {
+                clearTimeout(senseTimer);
+                senseTimer = setTimeout(() => _updateSenseBadge(publisherInput.value), 250);
+            });
+            if (publisherInput.value.trim()) _updateSenseBadge(publisherInput.value);
+        }
 
         // Forum list click
         document.getElementById('ws-pubs-wiz-forum-list')?.addEventListener('click', e => {
