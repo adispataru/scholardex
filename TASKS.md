@@ -47,12 +47,13 @@ Done history moved to `TASKS-done.md`.
   **Remaining — all DEFERRED to first consumer** (ambiguous semantics until a real report needs them): post-PhD
   temporal anchor (field exists, no scoring use yet), Da/Nu qualitative gates, best-of single-indicator assignment,
   cross-criterion compensation. No active consumer — revisit when FSGC/drept/FLIT/FAD/FSP/sport/fizica needs one.
-  **NEW consumer found (2026-07-24): percent-of-criterion caps.** OM 3019/2025 Informatică Perspectiva D caps
-  three subpoints at "maximum 10% din punctajul total al perspectivei d": D(x) Consolidare echipe, D(xiv) pachete
-  software, D(xvii) Premii (not yet modeled). The existing caps are absolute (`applyPointsCap` per indicator,
-  `maxTotal` per criterion); a percent cap is relative to the criterion's own computed total, so it must be applied
-  at criterion aggregation (iteratively or on the uncapped base — semantics to pin down first). Applies to ALL
-  reports for consistency, one mechanism (e.g. `maxPercentOfCriterion` on the indicator or criterion entry).
+  **Slice 3 SCOPED (2026-07-24): percent-of-criterion caps.** OM 3019/2025 Informatică D caps D(x)/D(xiv)
+  (+D(xvii) later) at 10% of the perspective total; the 2016 standard has the same caps — both FV Info
+  reports get flagged. Semantics pinned (user decision): **fixed point** — `capped_i = min(c_i, p_i·T)`
+  with T the final total, water-filling closed form; candidate-favorable and the only reading satisfying
+  the OM constraint against the final total. `Criterion.maxPercentOfTotal` map, second phase in the single
+  `computeCriterionScores` core, order weights → percent caps → maxTotal. Full scope + numeric pins:
+  `docs/tasks/active/h68-criteria-extensions.md` (Slice 3). Data change deploys AFTER code.
 
 - [ ] `H81` Informatică 2026 Fișă (xlsx export/import). **SCOPED 2026-07-04**
   (`docs/tasks/active/h81-informatica-2026-fisa-xlsx.md`). A 2026 version of the `informatica-2016` xlsx Fișă, adapted
