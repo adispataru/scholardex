@@ -48,11 +48,17 @@ the CORE conference picker (`/api/entities/universities?q=`, suggestion shows be
 source). Kills the exact-name-resolution misses at the root and matches the picker UX Florin already has
 for conferences.
 
-## Open decisions (take at implementation)
+## Decisions (pinned 2026-07-24)
 
-- Banded-rank mapping for ARWU/QS ("151-200"): lower bound (favorable) vs midpoint. Lean lower bound —
-  consistent with candidate-favorability and how the brackets read.
-- Whether S1 scraping happens in-repo (scripts/ py) or one-off with artifacts committed as xlsx only.
+- **Banded-rank mapping** ("151-200"): lower bound of the band — candidate-favorable, consistent with how
+  the top-N brackets read.
+- **Scraping is one-off**, not committed to the repo; only the produced xlsx/csv artifacts matter.
+- **Durable artifact store = the `scholardex-data` PVC** (20Gi, `harvester-retain`, mounted read-only at
+  `/app/data` in the core deployment — verified). `data/` stays gitignored; new files (URAP back-catalog,
+  `data/arwu/`, `data/qs/`) are added incrementally: local `data/` first, then copied onto the PVC. Note
+  the core pod's mount is **read-only**, so the copy goes through a short-lived helper pod mounting the
+  PVC writable (RWO — schedule alongside/after scaling considerations), same route the initial transfer
+  used.
 
 ## Verification targets
 
