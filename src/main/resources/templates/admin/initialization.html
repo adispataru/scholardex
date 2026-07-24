@@ -44,6 +44,25 @@
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Full derived-data rebuild (WoS + Scopus)</p>
+                                            <p class="app-ops-action-meta">Wipes all derived collections and re-derives the canonical layer + projections from source facts.
+                                                Skip-smart: with source facts present this is derive-only (~5 min); tick re-ingest only when a source file changed (~35 min).
+                                                Synchronous — do not deploy/restart during the run.</p>
+                                        </div>
+                                        <form th:action="@{/admin/initialization/rebuildAllDerived}" method="post" class="app-ops-inline-form">
+                                            <div class="app-ops-inline-form__field app-ops-inline-form__field--medium">
+                                                <label for="rebuild-all-derived-confirmation">Confirmation</label>
+                                                <input id="rebuild-all-derived-confirmation" type="text" name="confirmation" class="form-control" placeholder="Type RESET">
+                                            </div>
+                                            <div class="app-ops-inline-form__field">
+                                                <label for="rebuild-all-derived-reingest">Re-ingest sources</label>
+                                                <input id="rebuild-all-derived-reingest" type="checkbox" name="reingest" value="true">
+                                            </div>
+                                            <button type="submit" class="btn btn-danger btn-sm">Rebuild all derived</button>
+                                        </form>
+                                    </div>
+                                    <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy"><p class="app-ops-action-title">Bootstrap default admin user</p></div>
                                         <form th:action="@{/admin/initialization/general/adminUser}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
