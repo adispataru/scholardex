@@ -71,6 +71,7 @@ public class ResearcherWorkspaceController {
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingAuthorCandidateService onboardingAuthorCandidateService;
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
     private final ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
+    private final ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade publicationMergeWorkspaceFacade;
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
@@ -91,6 +92,39 @@ public class ResearcherWorkspaceController {
                         .map(ResponseEntity::ok)
                         .orElseGet(() -> ResponseEntity.ok(emptyPublicationsViewModel()))
         ).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    // ── JSON: publication merge suggestions / flags (H84 S3) ─────────────
+    @GetMapping("/publications/merge-state")
+    @ResponseBody
+    public ResponseEntity<ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade.MergeWorkspaceView>
+            getPublicationMergeState(Authentication authentication) {
+        return currentUser(authentication)
+                .map(u -> ResponseEntity.ok(publicationMergeWorkspaceFacade.mergeState(u.getEmail())))
+                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    @PostMapping("/publications/merge-requests")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, String>> flagPublicationMerge(
+            @RequestBody MergeFlagRequest request,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            var decision = publicationMergeWorkspaceFacade.flag(
+                    userOpt.get().getEmail(), null,
+                    request.publicationIdA(), request.publicationIdB(), request.note());
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", decision.getStatus().name(),
+                    "survivorId", decision.getSurvivor().getCanonicalId(),
+                    "duplicateId", decision.getDuplicate().getCanonicalId()
+            ));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", ex.getMessage()));
+        }
     }
 
     // ── JSON: activities ──────────────────────────────────────────────────
@@ -1097,6 +1131,7 @@ public class ResearcherWorkspaceController {
 
     record WorkspacePreferencesRequest(List<String> cardOrder) {}
     record AuthorshipDecisionRequest(String reason) {}
+    record MergeFlagRequest(String publicationIdA, String publicationIdB, String note) {}
     record BulkAuthorshipDecisionRequest(List<String> publicationIds,
                                          BulkAuthorshipAction action,
                                          String reason) {}

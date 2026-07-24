@@ -33,6 +33,11 @@ Done history moved to `TASKS-done.md`.
   compare from live facts, approve/reject/direct-merge forms, applied-vs-awaiting-re-apply state,
   sidebar "Merges" entry); verified live on agent-dev with a synthetic duplicate. With the UI in place,
   the prod merges can be done from the page instead of curls.
+  **S3 DONE locally 2026-07-25**: researcher flow — `PublicationMergeWorkspaceFacade` (same-title ±1yr
+  suggestions among OWN pubs, ownership-enforced flagging, richness-picked survivor), workspace
+  endpoints merge-state/merge-requests, publications-tab banner + "merge requested" badges +
+  detail-panel "Duplicate?" picker; requests land PENDING in the S2 admin queue. Bundle rebuilt.
+  Remaining: S4 optional corpus-wide sweep; prod rollout of the two known pairs after deploy.
 
 - [ ] `H85` OM 2026 conference-list amendments: ACM/EPTCS → C; UCC Companion mislabeling.
   **SCOPED 2026-07-24** (`docs/tasks/active/h85-om2026-acm-eptcs-c-floor.md`).

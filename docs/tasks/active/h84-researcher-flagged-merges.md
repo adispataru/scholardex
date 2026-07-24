@@ -115,8 +115,19 @@ deleted, decision APPROVED + lastAppliedAt. Gotcha for local demos: the app's Mo
 (`spring.mongodb.uri` default), NOT `test` — seeding `test` makes every merge a "not found" no-op.
 Contract-tested (@WebMvcTest render + action wiring, 5 tests).
 
-**S3 — researcher flow (workspace publications screen).** Two entry points in
-`workspacePublications.js`:
+**S3 — researcher flow (workspace publications screen). — DONE locally (2026-07-25).**
+Implementation notes: `PublicationMergeWorkspaceFacade` (suggestions = exact normalized title + year ±1
+among the researcher's OWN effective publications, standing decisions of any status suppress; survivor
+pre-picked by richness EID > DOI > citations; `flag` enforces ownership of BOTH ids and re-orders sides by
+the same richness rule regardless of click order). Endpoints on `ResearcherWorkspaceController`:
+`GET /user/workspace/publications/merge-state`, `POST …/merge-requests` (400 + error body on ownership
+violations). Frontend: lazy merge-state fetch after the list (progressive enhancement — list unaffected if
+it fails), "Possible duplicates (N)" banner with per-pair Request-merge, "merge requested" row badges,
+detail-panel "Duplicate?" picker over the researcher's other publications (switches to "awaiting admin"
+once pending). Verified in the real compiled bundle via in-page endpoint stubs (banner → request → toast →
+badges → suggestion consumed → detail shows awaiting-admin) + the real endpoint's empty state; backend
+pinned by facade unit tests (6) and controller contract tests. Original scope:
+Two entry points in `workspacePublications.js`:
 - **Auto-suggest**: among the researcher's own effective publications, group by exact `titleNormalized`
   (coverYear ±1 tolerance) → pairs not covered by an existing decision → banner "possible duplicates (N)"
   + panel with per-pair "Request merge" (fuzzy title matching deliberately OUT of scope — exact-normalized

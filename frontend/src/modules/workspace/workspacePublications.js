@@ -83,6 +83,9 @@ let _pendingRejectId = null;
 let _publicationFilter = 'all';
 let _searchQuery = '';
 let _selectedPendingIds = new Set();
+// H84 S3: duplicate-merge state — { suggestions: [{survivor, duplicate}], mergeStateByPublicationId: {id: 'PENDING'} }.
+// Loaded lazily after the list; null until fetched (badges/banner simply don't render).
+let _mergeState = null;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -130,9 +133,106 @@ function _init(panel) {
             _data    = data;
             _allPubs = Array.isArray(data.publications) ? data.publications : [];
             _renderAll();
+            _fetchMergeState();
         })
         .catch(() => {
             _mount.innerHTML = _buildError();
+        });
+}
+
+// ── H84 S3: duplicate-merge suggestions + flags ──────────────────────────────
+
+function _fetchMergeState() {
+    _mergeState = null;
+    fetch('/user/workspace/publications/merge-state', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => (res.ok ? res.json() : null))
+        .then(state => {
+            if (!state) return;
+            _mergeState = state;
+            _renderMergeSuggestions();
+            _renderPage(); // repaint rows so "merge requested" badges appear
+        })
+        .catch(() => { /* merge hints are progressive enhancement — the list works without them */ });
+}
+
+function _mergeRequestState(pubId) {
+    return _mergeState?.mergeStateByPublicationId?.[pubId] ?? null;
+}
+
+function _buildMergeBadge(pubId) {
+    if (_mergeRequestState(pubId) !== 'PENDING') return '';
+    return `<span class="app-ws-pubs__review-badge app-ws-pubs__review-badge--pending"
+                  title="A duplicate-merge request for this publication is awaiting admin approval.">merge requested</span>`;
+}
+
+function _renderMergeSuggestions() {
+    const host = document.getElementById('ws-pubs-merge-suggestions');
+    if (!host) return;
+    const suggestions = _mergeState?.suggestions ?? [];
+    if (!suggestions.length) { host.innerHTML = ''; return; }
+
+    const items = suggestions.map((s, i) => {
+        const line = side =>
+            `<div style="font-size:0.8rem;">` +
+                `<strong>${_esc(side.title ?? side.id)}</strong>` +
+                `<span class="text-muted"> — ${_esc(side.coverDate ?? 'no date')}` +
+                ` · ${side.eid ? 'Scopus' : (side.doi ? 'DOI' : 'no identifier')}` +
+                ` · ${side.citedByCount ?? 0} cites</span>` +
+            `</div>`;
+        return `<div class="app-ws-pubs__merge-suggestion" style="display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0; border-top:1px solid var(--app-color-border, #eee);">
+                  <div style="flex:1; min-width:0;">${line(s.survivor)}${line(s.duplicate)}</div>
+                  <button type="button" class="btn btn-sm btn-outline-primary"
+                          data-merge-flag-a="${_esc(s.survivor.id)}" data-merge-flag-b="${_esc(s.duplicate.id)}"
+                          data-merge-flag-index="${i}">
+                    Request merge
+                  </button>
+                </div>`;
+    }).join('');
+
+    host.innerHTML = `
+        <div class="app-ws-pubs__review-summary" role="region" aria-label="Possible duplicate publications" style="margin-bottom:0.75rem;">
+          <div style="padding:0.6rem 0.9rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <i class="fa-solid fa-code-merge" aria-hidden="true"></i>
+              <strong>Possible duplicates (${suggestions.length})</strong>
+              <span class="text-muted" style="font-size:0.8rem;">same title arriving via two sources — request a merge and an admin will review it</span>
+            </div>
+            ${items}
+          </div>
+        </div>`;
+
+    host.querySelectorAll('[data-merge-flag-a]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.disabled = true;
+            _submitMergeFlag(btn.dataset.mergeFlagA, btn.dataset.mergeFlagB, () => { btn.disabled = false; });
+        });
+    });
+}
+
+function _submitMergeFlag(idA, idB, onError) {
+    fetch('/user/workspace/publications/merge-requests', {
+        method: 'POST',
+        headers: postJsonHeaders(),
+        body: JSON.stringify({ publicationIdA: idA, publicationIdB: idB, note: null }),
+    })
+        .then(async res => {
+            if (!res.ok) {
+                let body = null;
+                try { body = await res.json(); } catch (_) { /* ignore */ }
+                throw new Error(body?.error ?? `HTTP ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(() => {
+            window.appToast?.show({
+                message: 'Merge requested — an admin will review and combine the two records.',
+                tone: 'success',
+            });
+            _fetchMergeState(); // server state is the truth: refresh badges + drop the covered suggestion
+        })
+        .catch(err => {
+            window.appToast?.show({ message: `Merge request failed: ${err.message}`, tone: 'error' });
+            onError?.();
         });
 }
 
@@ -171,6 +271,9 @@ function _renderAll() {
 
     // Review summary
     container.insertAdjacentHTML('beforeend', _buildReviewSummary());
+
+    // H84 S3: duplicate-merge suggestions banner (filled after the lazy merge-state fetch)
+    container.insertAdjacentHTML('beforeend', '<div id="ws-pubs-merge-suggestions"></div>');
 
     // Wizard placeholder — always present so wizard can open even when list is empty
     const wizPlaceholder = document.createElement('div');
@@ -370,6 +473,7 @@ function _appendRow(tbody, pub) {
             reviewBadge +
             suspiciousBadge +
             recommendationBadge +
+            _buildMergeBadge(pub.id) +
         `</td>` +
         `<td class="app-ws-pubs__col-venue">` +
             `<span class="app-ws-pubs__venue" title="${_esc(venueTitle)}">${_esc(venueTitle)}</span>` +
@@ -481,6 +585,17 @@ function _insertDetailRow(pub, tr) {
     detailTr.querySelector('[data-clear-authorship]')?.addEventListener('click', () => {
         _clearAuthorshipDecision(pub.id, detailTr);
     });
+
+    // H84 S3: manual duplicate flag
+    detailTr.querySelector('[data-flag-merge]')?.addEventListener('click', e => {
+        const otherId = detailTr.querySelector('[data-merge-other-select]')?.value;
+        if (!otherId) {
+            window.appToast?.show({ message: 'Pick the publication this one duplicates first.', tone: 'info' });
+            return;
+        }
+        e.target.disabled = true;
+        _submitMergeFlag(pub.id, otherId, () => { e.target.disabled = false; });
+    });
 }
 
 function _buildDetailPanel(pub) {
@@ -564,10 +679,43 @@ function _buildDetailPanel(pub) {
                 </div>
                 <span class="app-ws-pubs__authorship-feedback" role="status" aria-live="polite"></span>
               </div>
+              ${_buildMergeFlagSection(pub)}
             </div>
 
           </div>
         </div>`;
+}
+
+/** H84 S3: manual "flag as duplicate of…" — a picker over the researcher's OWN other publications.
+ *  The auto-suggest banner covers exact-title pairs; this catches the ones it can't see. */
+function _buildMergeFlagSection(pub) {
+    if (_mergeRequestState(pub.id) === 'PENDING') {
+        return `<p class="app-ws-pubs__detail-section-title" style="margin-top:0.75rem;">Duplicate</p>
+                <p style="font-size:0.8rem;" class="text-muted">Merge requested — awaiting admin approval.</p>`;
+    }
+    const others = _allPubs
+        .filter(p => p.id !== pub.id)
+        .slice()
+        .sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
+    if (!others.length) return '';
+    const options = others.map(p => {
+        const year = p.coverDate ? ` (${p.coverDate.substring(0, 4)})` : '';
+        return `<option value="${_esc(p.id)}">${_esc((p.title ?? p.id) + year)}</option>`;
+    }).join('');
+    return `
+        <p class="app-ws-pubs__detail-section-title" style="margin-top:0.75rem;">Duplicate?</p>
+        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+          <select class="form-control form-control-sm" data-merge-other-select style="max-width:20rem;">
+            <option value="">Same paper as…</option>
+            ${options}
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-flag-merge="${_esc(pub.id)}">
+            Flag as duplicate
+          </button>
+        </div>
+        <p class="text-muted" style="font-size:0.75rem; margin:0.25rem 0 0;">
+          An admin reviews the request and combines the two records (citations are merged, nothing is lost).
+        </p>`;
 }
 
 /**

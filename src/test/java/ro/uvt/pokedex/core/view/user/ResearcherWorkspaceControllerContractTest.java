@@ -89,6 +89,8 @@ class ResearcherWorkspaceControllerContractTest {
     private ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade publicationMergeWorkspaceFacade;
 
     @Test
     void workspaceTemplateUsesSharedSearchInputFragment() throws Exception {
@@ -333,6 +335,54 @@ class ResearcherWorkspaceControllerContractTest {
 
         mockMvc.perform(delete("/user/workspace/publications/p1/authorship"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void mergeStateJsonReturnsSuggestionsAndPendingBadgeState() throws Exception {
+        when(publicationMergeWorkspaceFacade.mergeState("u@uvt.ro")).thenReturn(
+                new ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade.MergeWorkspaceView(
+                        List.of(new ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade.Suggestion(
+                                new ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade.SideRef(
+                                        "spub_a", "Paper", "SCOPUS", "2011-12-14", null, "2-s2.0-1", 163),
+                                new ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade.SideRef(
+                                        "spub_b", "Paper", "OTHER", "2011-01-01", null, null, 161))),
+                        Map.of("spub_c", "PENDING")));
+
+        mockMvc.perform(get("/user/workspace/publications/merge-state").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.suggestions[0].survivor.id").value("spub_a"))
+                .andExpect(jsonPath("$.suggestions[0].duplicate.id").value("spub_b"))
+                .andExpect(jsonPath("$.mergeStateByPublicationId.spub_c").value("PENDING"));
+    }
+
+    @Test
+    void mergeFlagEndpointDelegatesAndSurfacesOwnershipErrors() throws Exception {
+        ro.uvt.pokedex.core.model.scopus.canonical.PublicationMergeDecision decision =
+                new ro.uvt.pokedex.core.model.scopus.canonical.PublicationMergeDecision();
+        decision.setStatus(ro.uvt.pokedex.core.model.scopus.canonical.PublicationMergeDecision.Status.PENDING);
+        decision.getSurvivor().setCanonicalId("spub_a");
+        decision.getDuplicate().setCanonicalId("spub_b");
+        when(publicationMergeWorkspaceFacade.flag("u@uvt.ro", null, "spub_a", "spub_b", null))
+                .thenReturn(decision);
+
+        mockMvc.perform(post("/user/workspace/publications/merge-requests")
+                        .with(authenticatedUser("u@uvt.ro"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"publicationIdA\":\"spub_a\",\"publicationIdB\":\"spub_b\",\"note\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.survivorId").value("spub_a"))
+                .andExpect(jsonPath("$.duplicateId").value("spub_b"));
+
+        when(publicationMergeWorkspaceFacade.flag("u@uvt.ro", null, "spub_a", "spub_x", null))
+                .thenThrow(new IllegalArgumentException("both publications must be on your own publication list"));
+
+        mockMvc.perform(post("/user/workspace/publications/merge-requests")
+                        .with(authenticatedUser("u@uvt.ro"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"publicationIdA\":\"spub_a\",\"publicationIdB\":\"spub_x\",\"note\":null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("both publications must be on your own publication list"));
     }
 
     private RequestPostProcessor authenticatedUser(String email) {

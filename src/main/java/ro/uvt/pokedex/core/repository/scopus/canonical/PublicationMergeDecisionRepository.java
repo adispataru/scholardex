@@ -11,4 +11,9 @@ public interface PublicationMergeDecisionRepository extends MongoRepository<Publ
     List<PublicationMergeDecision> findByStatus(PublicationMergeDecision.Status status);
     List<PublicationMergeDecision> findByStatusOrderByUpdatedAtDesc(PublicationMergeDecision.Status status);
     List<PublicationMergeDecision> findAllByOrderByUpdatedAtDesc();
+    /** Decisions touching any of the given canonical ids on either side (workspace badge/suggestion state). */
+    List<PublicationMergeDecision> findBySurvivorCanonicalIdInOrDuplicateCanonicalIdIn(
+            java.util.Collection<String> survivorIds,
+            java.util.Collection<String> duplicateIds
+    );
 }
