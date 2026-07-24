@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -396,36 +397,69 @@ public class ScientificProductionService {
             // forum metric projected as Infinity made whole-department reports show ∞).
             result.setAuthorScore(Double.isFinite(finalScore) ? finalScore : 0.0);
 
-            // Counterfactual APC diagnosis: a fee-journal item zeroed by the formula re-evaluates with
-            // feeJournal=false; turning positive proves the APC gate alone caused the zero — record the
-            // cause so the drilldown can explain it. If a second gate also fails (e.g. below the rank
-            // cut) the probe stays 0 and no reason is stamped, which is the honest outcome. The eval is
-            // cheap: the compiled-formula cache makes the second pass a map lookup + MVEL run.
-            if (feeJournal && result.getAuthorScore() == 0.0) {
-                FormulaContext.Builder probeBuilder = FormulaContext.builder();
-                ctx.variables().forEach((k, v) -> probeBuilder.put(k, "feeJournal".equals(k) ? Boolean.FALSE : v));
-                double probe = formulaEvaluator.eval(indicator.getFormula(), probeBuilder.build());
-                if (Double.isFinite(probe) && probe > 0.0) {
-                    result.getScoringInfo().put("zeroReason", "FEE_JOURNAL");
-                }
-            }
-
-            // Same counterfactual technique for the second 2026 gate: a zero left unexplained by the APC
-            // probe above (either feeJournal was already false, or another gate is also failing) gets a
-            // second, independent probe with topAB forced true. Turning positive proves the top-rank cut
-            // alone caused the zero — record NOT_TOP_RANKED so the drilldown can explain it instead of
-            // silently dropping the item. As with FEE_JOURNAL, a still-zero probe (both gates failing at
-            // once) is left unstamped — the honest outcome.
-            if (!topAB && result.getAuthorScore() == 0.0 && result.getScoringInfo().get("zeroReason") == null) {
-                FormulaContext.Builder probeBuilder = FormulaContext.builder();
-                ctx.variables().forEach((k, v) -> probeBuilder.put(k, "topAB".equals(k) ? Boolean.TRUE : v));
-                double probe = formulaEvaluator.eval(indicator.getFormula(), probeBuilder.build());
-                if (Double.isFinite(probe) && probe > 0.0) {
-                    result.getScoringInfo().put("zeroReason", "NOT_TOP_RANKED");
-                }
+            // Counterfactual gate diagnosis: a categorized item (positive venue score) the formula
+            // zeroed gets probed against the gate table so the drilldown can explain WHY instead of
+            // showing a bare "formula cutoff". Each probe re-evaluates the formula with one gate
+            // variable forced to its favorable value; the first probe that alone turns the score
+            // positive proves that gate caused the zero. Probes are cheap: the compiled-formula
+            // cache makes each re-eval a map lookup + MVEL run.
+            if (result.getAuthorScore() == 0.0) {
+                stampFormulaGateReason(indicator, ctx, result);
             }
         }
         return result;
+    }
+
+    /** One counterfactual gate probe: re-evaluate with {@code variable} forced to {@code favorableValue}. */
+    private record GateProbe(String variable, Object favorableValue, String reason) {}
+
+    /**
+     * Ordered gate probes — specific gates first so their precise reason wins; the {@code S}
+     * threshold probe last, as the generic catch-all for any {@code S > k ? … : 0}-shaped formula
+     * (the 2016 conference D-gate {@code S > 1}, the praguri {@code S >= 4}, …). The sentinel is far
+     * above any category ladder value, so it clears every expressible threshold.
+     */
+    private static final List<GateProbe> GATE_PROBES = List.of(
+            new GateProbe("feeJournal", Boolean.FALSE, "FEE_JOURNAL"),
+            new GateProbe("topAB", Boolean.TRUE, "NOT_TOP_RANKED"),
+            new GateProbe("S", 1_000_000.0, "SCORE_BELOW_FORMULA_THRESHOLD")
+    );
+
+    /**
+     * Stamps {@code scoringInfo.zeroReason} for a formula-zeroed item by counterfactual probing.
+     * Single-gate probes run in table order; when none alone explains the zero, one combined probe
+     * (every gate favorable at once) distinguishes "several gates failed together" (MULTIPLE_GATES)
+     * from a zero the gate table cannot model at all, which stays honestly unstamped.
+     */
+    private void stampFormulaGateReason(Indicator indicator, FormulaContext ctx, Score result) {
+        Map<String, Object> vars = ctx.variables();
+        for (GateProbe gate : GATE_PROBES) {
+            Object current = vars.get(gate.variable());
+            if (current == null || gate.favorableValue().equals(current)) {
+                continue; // gate variable unbound or already favorable — cannot be the cause
+            }
+            if (probeTurnsPositive(indicator, vars, Map.of(gate.variable(), gate.favorableValue()))) {
+                result.getScoringInfo().put("zeroReason", gate.reason());
+                return;
+            }
+        }
+        Map<String, Object> allFavorable = new LinkedHashMap<>();
+        for (GateProbe gate : GATE_PROBES) {
+            Object current = vars.get(gate.variable());
+            if (current != null && !gate.favorableValue().equals(current)) {
+                allFavorable.put(gate.variable(), gate.favorableValue());
+            }
+        }
+        if (allFavorable.size() > 1 && probeTurnsPositive(indicator, vars, allFavorable)) {
+            result.getScoringInfo().put("zeroReason", "MULTIPLE_GATES");
+        }
+    }
+
+    private boolean probeTurnsPositive(Indicator indicator, Map<String, Object> vars, Map<String, Object> overrides) {
+        FormulaContext.Builder probeBuilder = FormulaContext.builder();
+        vars.forEach((k, v) -> probeBuilder.put(k, overrides.getOrDefault(k, v)));
+        double probe = formulaEvaluator.eval(indicator.getFormula(), probeBuilder.build());
+        return Double.isFinite(probe) && probe > 0.0;
     }
 
     public Map<String, Score> precomputeCitationBaseScores(List<? extends ScoringPublicationReadModel> citingPublications, Indicator indicator) {

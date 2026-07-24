@@ -441,6 +441,15 @@ public class AdminViewController {
         // back to "ALL" purely for display so the <select> renders with an option
         // marked selected.
         private String selector = "ALL";
+        /** Optional indicator-total cap ({@link Indicator#applyPointsCap}); blank = no cap. */
+        private Integer maxPoints;
+        /**
+         * 2026 workshop-category flag, round-tripped via a hidden input. Persisted-only fields MUST be
+         * carried through the form or every admin edit silently wipes them — maxPoints was lost this
+         * way on Info_D_ix (caught 2026-07-24) and this flag was one save away from the same fate on
+         * the 2026 conference indicators.
+         */
+        private Boolean workshopCategory2026;
 
         static IndicatorForm fromIndicator(Indicator indicator) {
             IndicatorForm form = new IndicatorForm();
@@ -457,6 +466,8 @@ public class AdminViewController {
             // null (the "All" selector) renders as "ALL" in the dropdown; round-trips
             // back through Selector.of("ALL") == All on save.
             form.selector = indicator.getSelector() == null ? "ALL" : indicator.getSelector();
+            form.maxPoints = indicator.getMaxPoints();
+            form.workshopCategory2026 = indicator.getWorkshopCategory2026();
             return form;
         }
 
@@ -472,6 +483,8 @@ public class AdminViewController {
             indicator.setYearRangeSpec(YearRangeSpec.parse(yearRange));
             indicator.setScoreYearRangeSpec(ScoreYearRangeSpec.parse(scoreYearRange));
             indicator.setSelectorSpec(Selector.of(selector));
+            indicator.setMaxPoints(maxPoints);
+            indicator.setWorkshopCategory2026(workshopCategory2026);
             return indicator;
         }
     }

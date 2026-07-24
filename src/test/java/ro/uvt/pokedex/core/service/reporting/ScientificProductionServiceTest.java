@@ -202,9 +202,10 @@ class ScientificProductionServiceTest {
     }
 
     @Test
-    void feeJournalZeroIsNotStampedWhenAnotherGateAlsoFails() {
-        // Two-gate honesty: category C fails topAB, so flipping feeJournal alone does NOT clear the zero.
-        // The probe stays 0 and no FEE_JOURNAL reason is stamped — the generic fallback copy is correct here.
+    void twoGatesFailingTogetherStampMultipleGatesNotASingleReason() {
+        // Category C fails topAB AND the venue is fee-gated: no single probe explains the zero, but
+        // the combined all-favorable probe does — MULTIPLE_GATES replaces the old honest-but-opaque
+        // unstamped state so the drilldown says "several conditions" instead of a bare formula cutoff.
         Indicator indicator = indicator("PUBLICATIONS", "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0");
         ScoringPublication pub = publication("p-apc-c", "f-apc-c", "2026-01-01", "ar", "ar",
                 "Gold OA Category C Paper", List.of("a1"));
@@ -217,8 +218,30 @@ class ScientificProductionServiceTest {
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(pub), indicator);
 
         assertEquals(0.0, result.get("Gold OA Category C Paper").getAuthorScore(), 1e-9);
-        org.junit.jupiter.api.Assertions.assertNull(
+        assertEquals("MULTIPLE_GATES",
                 result.get("Gold OA Category C Paper").getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void categoryDConferenceZeroedByTheThresholdGateStampsScoreBelowFormulaThreshold() {
+        // The Info_B_Conferințe D-gate (S > 1 ? … : 0): a category-D conference paper carries 1 venue
+        // point but is excluded from the total per the standard/FV template. The generic S probe must
+        // stamp SCORE_BELOW_FORMULA_THRESHOLD so the drilldown explains the exclusion.
+        Indicator indicator = indicator("PUBLICATIONS", "S > 1 ? S/max(N-2, 1) : 0");
+        ScoringPublication pub = publication("p-d-conf", "f-d-conf", "2019-01-01", "cp", "cp",
+                "Category D Conference Paper", List.of("a1"));
+        Score dScore = score(1.0);
+        dScore.setCoreRankingEquivalent("D");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(pub, indicator)).thenReturn(dScore);
+        when(reportingLookupPort.isFeeJournal("f-d-conf")).thenReturn(false);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(pub), indicator);
+
+        assertEquals(0.0, result.get("Category D Conference Paper").getAuthorScore(), 1e-9);
+        assertEquals(1.0, result.get("Category D Conference Paper").getScore(), 1e-9);
+        assertEquals("SCORE_BELOW_FORMULA_THRESHOLD",
+                result.get("Category D Conference Paper").getScoringInfo().get("zeroReason"));
     }
 
     @Test
@@ -538,9 +561,10 @@ class ScientificProductionServiceTest {
     }
 
     @Test
-    void notTopRankedZeroIsNotStampedWhenFeeJournalGateAlsoFails() {
-        // Two-gate honesty for the topAB probe too: a category-C, fee-gated citer fails both conditions, so
-        // flipping topAB alone (with feeJournal held at its real, failing value) does NOT clear the zero.
+    void citingPaperFailingBothGatesStampsMultipleGates() {
+        // A category-C, fee-gated citer fails both conditions: no single probe clears the zero, the
+        // combined probe does — MULTIPLE_GATES tells the drilldown "several conditions", replacing
+        // the old unstamped (bare formula-cutoff) outcome.
         Indicator citations = indicator("CITATIONS", "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0");
         ScoringPublication cited = publication("cited-1", null, null, null, null, "Cited", List.of("a1"));
         ScoringPublication citing = publication("cp-1", "f-apc-c", null, "ar", "ar", "Citing", List.of("b1"));
@@ -554,7 +578,7 @@ class ScientificProductionServiceTest {
                 cited, List.of(citing), citations);
 
         assertEquals(0.0, result.get("total").getAuthorScore(), 0.0001);
-        assertNull(result.get("Citing").getScoringInfo().get("zeroReason"));
+        assertEquals("MULTIPLE_GATES", result.get("Citing").getScoringInfo().get("zeroReason"));
     }
 
     @Test

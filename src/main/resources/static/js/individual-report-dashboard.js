@@ -344,7 +344,7 @@
         if (item.zeroReason) {
           var itemReason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
           html += '<span class="eval-scored-item__zero-flag" title="' + esc(itemReason) + '">' +
-            (ZERO_REASON_LABEL[item.zeroReason] || 'why?') + '</span>';
+            esc(zeroReasonLabel(item)) + '</span>';
         } else {
           html += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span>';
         }
@@ -368,7 +368,10 @@
     'OVER_PER_FORUM_CAP':   'Above the per-conference-edition cap — only the highest-scoring contributions per edition count.',
     'SCORED_BY_STRICTER':   'Qualifies under the stricter indicator (I1/I5) — each publication counts once, under its most favorable indicator.',
     'NOT_TOP_RANKED':       'Below the top A*/A/B rank this indicator counts — excluded by the 2026 standard.',
-    'SELF_CITATION':        'Shares an author with the cited publication — excluded by the self-citation policy.'
+    'SELF_CITATION':        'Shares an author with the cited publication — excluded by the self-citation policy.',
+    'SCORE_BELOW_FORMULA_THRESHOLD':
+                            'The venue category’s points are below this indicator’s threshold (e.g. category D where the total counts only A*–C) — listed, but not counted.',
+    'MULTIPLE_GATES':       'Excluded by more than one of the indicator’s conditions at once (e.g. below the top rank AND an APC journal).'
   };
 
   // Short pill label per zeroReason — the full sentence above lives in the tooltip.
@@ -380,8 +383,21 @@
     'OVER_PER_FORUM_CAP':   'over edition cap',
     'NON_RESEARCH_SUBTYPE': 'not original research',
     'ROLE_FILTERED':        'other author role',
-    'SELF_CITATION':        'self-citation'
+    'SELF_CITATION':        'self-citation',
+    'SCORE_BELOW_FORMULA_THRESHOLD': 'below threshold',
+    'MULTIPLE_GATES':       'multiple conditions'
   };
+
+  // Pill label for a zeroed item; the threshold reason composes the row's own category
+  // ("category D — below threshold") so the generic reason code still reads specifically.
+  function zeroReasonLabel(item) {
+    var label = ZERO_REASON_LABEL[item.zeroReason] || 'why?';
+    if (item.zeroReason === 'SCORE_BELOW_FORMULA_THRESHOLD') {
+      var cat = item.coreRankingEquivalent || item.quarter;
+      if (cat) return 'category ' + (cat === 'A_STAR' ? 'A*' : cat) + ' — ' + label;
+    }
+    return label;
+  }
 
   // Short label for the forum link: first 10 chars + ellipsis; the full name lives in the tooltip.
   function forumExcerpt(name) {
@@ -463,8 +479,7 @@
       row += '<td class="app-eval-evidence-table__num">';
       if (item.zeroReason) {
         var reason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
-        var label = ZERO_REASON_LABEL[item.zeroReason] || 'why?';
-        row += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">' + label + ' ' +
+        row += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">' + esc(zeroReasonLabel(item)) + ' ' +
           '<i class="fa-solid fa-circle-info fa-xs" aria-hidden="true"></i></span> ';
       } else if (isZeroScored) {
         row += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span> ';
@@ -490,6 +505,26 @@
       else if (!isCitations && toNumber(item.authorScore) <= 0) zeros.push(item);
       else counted.push(item);
     });
+
+    // Default order: category descending (A*, A, B, C, D, unclassified), points descending within a
+    // category — the standard's own reading order, and it makes the intermediate thresholds (A*+A+B
+    // subtotals) legible at a glance. Clicking a sort header still re-sorts by year/points.
+    function categoryOrder(item) {
+      switch (item.coreRankingEquivalent) {
+        case 'A_STAR': return 0;
+        case 'A': return 1;
+        case 'B': return 2;
+        case 'C': return 3;
+        case 'D': return 4;
+        default: return 5;
+      }
+    }
+    function byCategoryThenPoints(a, b) {
+      return categoryOrder(a) - categoryOrder(b)
+          || toNumber(b.authorScore) - toNumber(a.authorScore);
+    }
+    counted.sort(byCategoryThenPoints);
+    zeros.sort(byCategoryThenPoints);
 
     var html = '';
     if (!isCitations && (zeros.length > 0 || mismatched.length > 0)) {

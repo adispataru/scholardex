@@ -38,6 +38,9 @@
                              from the loaded entity; concurrent edits get an OptimisticLockingFailureException
                              instead of silently last-write-wins. -->
                         <input type="hidden" name="version" th:value="${indicator.version}">
+                        <!-- Persisted-only flag carried through the round-trip so a save never wipes it
+                             (the maxPoints/workshopCategory2026 wipe bug, 2026-07-24). -->
+                        <input type="hidden" th:field="*{workshopCategory2026}">
                         <th:block th:replace="~{fragments :: admin-form-section(
                             title='Indicator identity',
                             helperText='Review the indicator identity and activity mapping so scoring rules stay connected to the right source data.',
@@ -122,6 +125,13 @@
                                     <select class="form-control" id="selector" th:field="*{selector}" required>
                                         <option th:each="selector : ${selectors}" th:value="${selector}" th:text="${selector}"></option>
                                     </select>
+                                </div>
+                                <div class="form-group app-form-field">
+                                    <label for="maxPoints">Max points cap</label>
+                                    <input type="number" class="form-control" id="maxPoints" th:field="*{maxPoints}" min="0">
+                                    <ul class="app-form-help-list">
+                                        <li>Optional. Caps the indicator's computed total (e.g. the standard's "maximum 24 puncte" on D_ix). Leave blank for no cap.</li>
+                                    </ul>
                                 </div>
                             </div>
                         </th:block>
