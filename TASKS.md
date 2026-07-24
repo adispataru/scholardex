@@ -9,6 +9,15 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H82` Scopus re-sync must re-enrich EXISTING publications (heal-path gap).
+  The coverDate precedence fix (`069153f3`) promised "existing wrong dates heal on the next Scopus author
+  sync" — false in practice: a FULL publication sync reports "Imported 0 items" because already-imported pubs
+  are skipped before `ScholardexPublicationCanonicalizationService` runs, so the enrichment that would claim
+  Scopus's coverDate/coverDisplayDate never touches them (verified in prod 2026-07-24 on the FGCS 2008→2009
+  case; healed surgically + dirty-marker). Fix: FULL mode should re-run canonicalization/enrichment over the
+  author's existing pubs (or a dedicated re-enrich pass), then mark projections dirty. Without this, every
+  source-precedence improvement strands already-imported data until a ~90-min full rebuild.
+
 - [ ] `H76` WoS CPCI onboarding — **MVP done + live; only blocked/attributed remainders open.**
   Plan: `docs/tasks/active/h76-wos-cpci-onboarding.md`. Background: `wosForumIds` come only from the WoS **journal**
   MJL/JCR, so WoS-indexed *conferences* were misclassified as non-WoS (1,014 Scopus-only conference forums),
