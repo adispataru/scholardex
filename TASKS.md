@@ -9,6 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H84` Researcher-flagged publication merges (durable across rebuilds).
+  Consumer: Florin's FedCSIS duplicate — no DOI (FedCSIS never assigned), arrived via Scopus + a second
+  route; canonical identity is titleNormalized+coverDate+creator and the two routes carry DIFFERENT
+  coverDates (2011-12-14 vs 2011-01-01) → distinct identities, near-identical citation lists split.
+  Confirmed locally + found a SECOND latent pair the same way ("Enabling model driven engineering…",
+  2012-08-14 vs 2011-01-01). Design (user direction 2026-07-24): researcher flags a merge candidate from
+  the publications screen (+ auto-SUGGEST same-normalized-title pairs there); admin approves; the approved
+  decision persists in a durable side-table (pattern: publication_authorship_decisions / DBLP evidence)
+  consulted during canonicalization — so full rebuilds RE-APPLY merges and the decision acts as an
+  identity hint (title+creator match with coverDate tolerance), enriching rather than fighting rebuilds.
+
+- [ ] `H85` OM 2026 conference-list amendments: ACM/EPTCS → C; UCC Companion mislabeling.
+  The 2026 OM amends the CORE list: "categoria C va include și lucrările publicate în ACM, EPTCS și LNCS
+  care nu sunt în categoriile A*, A și B" — we implement only the LNCS→C floor (correct for 2016, whose
+  amendment is LNCS-only). UCC is CORE-Unranked (2021/2023/2026), so the amendment decides: ACM-published
+  from 2013+ (IEEE/ACM co-sponsorship; NOTE the DOI stays IEEE-branded, so detect via proceedings-name
+  tokens/publisher, not DOI prefix) → C in the 2026 fișă, D in 2016. Implement as a 2026-scoped floor next
+  to the LNCS special case (per-standard gating precedent: workshopCategory2026). Second facet: Florin's
+  UCC entries display as "UCC Companion" though published in the MAIN volume — investigate on prod (Scopus
+  venue assignment vs our forum merge); near-term remedy exists via admin bulk reassign-forum.
+
 - [ ] `H83` University rankings — QS + ARWU ingestion, best-of resolution, URAP back-catalog.
   **SCOPED 2026-07-24** (`docs/tasks/active/h83-university-rankings-best-of.md`). OM 3019/2025 footnote *3
   (same in 2016): D(viii)/D(ix)/D(xi) score by the BEST position across QS/URAP/ARWU — we only have URAP
