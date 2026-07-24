@@ -21,6 +21,7 @@ Done history moved to `TASKS-done.md`.
   identity hint (title+creator match with coverDate tolerance), enriching rather than fighting rebuilds.
 
 - [ ] `H85` OM 2026 conference-list amendments: ACM/EPTCS → C; UCC Companion mislabeling.
+  **SCOPED 2026-07-24** (`docs/tasks/active/h85-om2026-acm-eptcs-c-floor.md`).
   The 2026 OM amends the CORE list: "categoria C va include și lucrările publicate în ACM, EPTCS și LNCS
   care nu sunt în categoriile A*, A și B" — we implement only the LNCS→C floor (correct for 2016, whose
   amendment is LNCS-only). UCC is CORE-Unranked (2021/2023/2026), so the amendment decides: ACM-published
