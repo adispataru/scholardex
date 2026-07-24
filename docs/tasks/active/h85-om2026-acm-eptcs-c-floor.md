@@ -81,8 +81,44 @@ ACM-named forums before/after for the changelog.
 link) — if it reproduces post-sweep we reopen; the admin bulk reassign-forum remains the remedy of
 record if a concrete mislabeled paper surfaces.
 
+## Slice C — durable detection via preserved originalForumId — DONE locally (2026-07-24)
+
+**The false negative Slice A left open:** the June DBLP dump sweep re-stamps conference papers onto
+`conf/X` stream forums (name = bare acronym "UCC", publisher EMPTY) — so `isAcmOrEptcsVenue` had nothing
+to match for exactly the papers Florin flagged (his 2012/2014 UCC papers scored D with
+`fallbackReason: NO_CLOSEST_YEAR` even after the Slice A deploy). A curated {stream → ACM-era start year}
+registry was considered and rejected: the raw Scopus proceedings name ("Proceedings - 2013 **IEEE/ACM**
+6th … UCC 2013") already carries the signal per-year — the re-stamp was simply destroying the link to it.
+
+**Implementation (store both venues, consult either):**
+- `ScholardexPublicationFact.originalForumId` — the forum id displaced by a DBLP-evidence re-stamp; set in
+  `DblpConferenceResolveService.stampConferenceForum` (shared by `applyMatch` = API/dump path and
+  `rebuildFromEvidence` = full-rebuild path — the only two `setForumId` re-stamp sites). Repeat stamp with
+  the same stream forum is a no-op, so the capture survives idempotent re-runs; incremental refreshes never
+  touch it (`isDblpStampedForum` guard keeps forumId on the stream, field not in the copy list).
+- Projected: `ScholardexPublicationView.originalForumId` → Postgres `original_forum_id`
+  (V25 migration, additive) → both mappers in `PostgresScholardexProjectionReadPort`
+  (`mapPublicationView` + `mapScoringPublication`) → `ScoringPublication` record (new component; the old
+  19-arg signature kept as a delegating constructor so existing call sites compile) →
+  `ScoringPublicationReadModel.getOriginalForumId()` (defaulted null).
+- Scorer: publication-path floor consults `resolveAcmEptcsSignalForum` — assigned forum first, then
+  `lookupPort.getForum(originalForumId)`. Per-year originals make the era split exact (UCC 2011 IEEE-only
+  stays D; 2012+ IEEE/ACM floors to C). When the signal came from the original venue, the drilldown gets
+  `scoringInfo.acmEvidenceVenue` = the raw proceedings name. Activity path unchanged (no publication).
+- No new `ReportingLookupPort` method (getForum already exists) — the dual-impl trap does not apply.
+
+**Rollout:** deploy (V25 runs at boot) → admin "Full derived-data rebuild" (derive-only) — the canonical
+replay resets forumId to the raw source venue, `rebuildFromEvidence` re-stamps and now captures
+`originalForumId` corpus-wide, projections rebuild. No mongosh script. Verify: Florin's 2026 refresh shows
+the 2012/2014 UCC papers as C / quarter ACM / acmEvidenceVenue "Proceedings - … IEEE/ACM …"; the 2011
+Frîncu UCC paper stays D; the 2016 fișă unchanged.
+
+**Caveat:** pubs whose only venue ever was the stream forum (no source-derived forum at re-stamp time)
+keep `originalForumId = null` and today's behavior. The preserved link also serves future needs:
+Companion-volume detection, SENSE publisher checks on re-stamped items, honest drilldown provenance.
+
 ## Out of scope
 
-- A general IEEE/ACM dual-sponsorship registry — the name/publisher detection covers the family without
-  curation; revisit only if false negatives surface.
+- A general IEEE/ACM dual-sponsorship registry — superseded by Slice C's preserved original venue (the
+  data answers the era question per-year without curation).
 - Retroactive re-ranking of the 2016 fișă (standard says D there; nothing to change).

@@ -93,6 +93,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         );
 
         boolean lncsBookSeriesCandidate = isLncsBookSeriesCandidate(publication, forum);
+        ScholardexForumView acmSignalForum = null;
         // A paper published in a conference-proceeding forum is a conference contribution even when its
         // subtype is the generic "ar" (OpenAlex labels many proceedings papers as plain articles).
         boolean conferenceCandidate = PublicationSubtypeSupport.isSubtype(publication, "cp")
@@ -134,8 +135,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             // H85 — 2026 OM amendment: CORE-unranked ACM/EPTCS venues floor to C (the 2016 standard's
             // amendment is LNCS-only, so the flag lives on 2026 indicators exclusively). Mirrors the LNCS
             // special case; the predatory gate has already zeroed excluded venues before this point.
-            if (scoreResult.bestPoints.get() == 0 && indicator != null && indicator.usesAcmEptcsCFloor2026()
-                    && isAcmOrEptcsVenue(forum)) {
+            if (scoreResult.bestPoints.get() == 0 && indicator != null && indicator.usesAcmEptcsCFloor2026()) {
+                acmSignalForum = resolveAcmEptcsSignalForum(publication, forum);
+            }
+            if (acmSignalForum != null) {
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.ACM);
@@ -163,6 +166,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
         logTrace(trace, scoreResult.bestPoints.get(), scoreResult.bestYear.get(), scoreResult.bestCategory.get(), scoreResult.bestQuarter.get());
         Score score = createScore(scoreResult);
+        if (acmSignalForum != null && acmSignalForum != forum) {
+            // The ACM/EPTCS signal came from the preserved pre-restamp venue, not the assigned stream
+            // forum — surface it so the drilldown shows why a "UCC"-named forum floored to C.
+            score.getScoringInfo().put("acmEvidenceVenue", acmSignalForum.getPublicationName());
+        }
         if (!conferenceCandidate) {
             // Not a conference contribution at all (journal article, book chapter, …): this indicator
             // does not cover it — the matching journal/book indicator does. Candidate zeros (a real
@@ -1393,6 +1401,27 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                     || lower.contains("association for computing machinery");
         }
         return false;
+    }
+
+    /**
+     * H85 durable detection: the DBLP sweep re-stamps papers onto conf/X stream forums whose name carries
+     * no publisher token ("UCC", empty publisher) — for those, the ACM/EPTCS signal lives only on the
+     * preserved pre-restamp venue ({@code originalForumId}, the raw per-year proceedings such as
+     * "Proceedings - 2013 IEEE/ACM … UCC 2013"). Checking the per-year original keeps the era split exact:
+     * UCC 2011 ("IEEE International Conference …") stays D while 2012+ ("IEEE/ACM …") floors to C.
+     * Returns the forum that carries the signal, or null when neither does.
+     */
+    private ScholardexForumView resolveAcmEptcsSignalForum(ScoringPublicationReadModel publication,
+                                                           ScholardexForumView forum) {
+        if (isAcmOrEptcsVenue(forum)) {
+            return forum;
+        }
+        String originalForumId = publication == null ? null : publication.getOriginalForumId();
+        if (originalForumId == null || originalForumId.isBlank()) {
+            return null;
+        }
+        ScholardexForumView original = lookupPort.getForum(originalForumId);
+        return isAcmOrEptcsVenue(original) ? original : null;
     }
 
     enum FallbackReason {

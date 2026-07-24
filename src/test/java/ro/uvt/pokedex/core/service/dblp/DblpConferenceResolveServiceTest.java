@@ -129,6 +129,52 @@ class DblpConferenceResolveServiceTest {
         verifyNoInteractions(dblpClient); // durability path is API-free
     }
 
+    @Test
+    void restampPreservesTheDisplacedSourceForumAsOriginalForumId() {
+        // H85: the pub arrives with its source-derived per-year proceedings forum; the re-stamp onto the
+        // conf/X stream must preserve it so scoring can still read publisher signals ("IEEE/ACM …").
+        ScholardexPublicationFact pub = pub("p10", "10.1109/ucc.2013.12");
+        pub.setForumId("sforum_raw_ucc2013");
+        when(candidateDetector.detect(any())).thenReturn(List.of(pub));
+        when(dblpClient.search("10.1109/ucc.2013.12")).thenReturn(List.of(
+                hit("conf/ucc/Author13", "UCC", "10.1109/UCC.2013.12", "2013")));
+        when(forumFactRepository.findByDblpIdsContaining("conf/ucc")).thenReturn(Optional.empty());
+        when(evidenceRepository.findByPublicationId("p10")).thenReturn(Optional.empty());
+
+        service.resolve(List.of(pub));
+
+        verify(publicationFactRepository).save(argThat(p ->
+                p.getForumId() != null && p.getForumId().startsWith("sforum_")
+                        && "sforum_raw_ucc2013".equals(p.getOriginalForumId())));
+    }
+
+    @Test
+    void repeatRestampWithTheSameStreamForumKeepsTheEarlierCapture() {
+        // Idempotency: a second rebuildFromEvidence pass sees forumId already on the stream forum —
+        // originalForumId must keep the raw venue, not get clobbered with the stream id.
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence ev =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence();
+        ev.setPublicationId("p11");
+        ev.setSeries("conf/ucc");
+        ev.setConferenceName("UCC");
+        ScholardexForumFact stream = new ScholardexForumFact();
+        stream.setId("sforum_stream_ucc");
+        stream.setName("UCC");
+        stream.setDblpIds(new java.util.ArrayList<>(List.of("conf/ucc")));
+        ScholardexPublicationFact pub = pub("p11", null);
+        pub.setForumId("sforum_stream_ucc");
+        pub.setOriginalForumId("sforum_raw_ucc2013");
+        when(evidenceRepository.findAll()).thenReturn(List.of(ev));
+        when(forumFactRepository.findByDblpIdsContaining("conf/ucc")).thenReturn(Optional.of(stream));
+        when(publicationFactRepository.findById("p11")).thenReturn(Optional.of(pub));
+
+        service.rebuildFromEvidence();
+
+        verify(publicationFactRepository).save(argThat(p ->
+                "sforum_stream_ucc".equals(p.getForumId())
+                        && "sforum_raw_ucc2013".equals(p.getOriginalForumId())));
+    }
+
     private ScholardexPublicationFact pub(String id, String doi) {
         ScholardexPublicationFact p = new ScholardexPublicationFact();
         p.setId(id);

@@ -2718,6 +2718,65 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
     }
 
+    /** H85 durable detection: a DBLP-sweep-stamped pub — assigned to the conf/X stream forum, with the
+     *  displaced raw per-year proceedings forum preserved as originalForumId. */
+    private ScoringPublication streamStampedPublication(String forumId, String originalForumId, String coverDate) {
+        return new ScoringPublication(null, null, forumId, null, originalForumId, coverDate, null, "cp",
+                List.of(), 0, null, null, null, 0, Set.of(), 0, 0, 0, List.of(), null);
+    }
+
+    @Test
+    void streamStampedPaperFloorsToCViaThePreservedOriginalForum() {
+        // The post-sweep UCC shape: the assigned stream forum is named "UCC" with no publisher — the
+        // ACM signal lives only on the preserved pre-restamp per-year proceedings forum.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = streamStampedPublication("forum-ucc-stream", "forum-ucc13-raw", "2013-12-09");
+        when(cacheService.getForum("forum-ucc-stream")).thenReturn(conferenceForum("UCC"));
+        when(cacheService.getForum("forum-ucc13-raw")).thenReturn(conferenceForum(
+                "Proceedings - 2013 IEEE/ACM 6th International Conference on Utility and Cloud Computing, UCC 2013"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(2.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals(WoSRanking.Quarter.ACM.toString(), score.getQuarter());
+        assertEquals("Proceedings - 2013 IEEE/ACM 6th International Conference on Utility and Cloud Computing, UCC 2013",
+                score.getScoringInfo().get("acmEvidenceVenue"));
+    }
+
+    @Test
+    void streamStampedPaperFromTheIeeeOnlyEraStaysD() {
+        // Same stream forum, but the preserved 2011 volume is IEEE-only — the era split stays exact.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = streamStampedPublication("forum-ucc-stream", "forum-ucc11-raw", "2011-12-05");
+        when(cacheService.getForum("forum-ucc-stream")).thenReturn(conferenceForum("UCC"));
+        when(cacheService.getForum("forum-ucc11-raw")).thenReturn(conferenceForum(
+                "Proceedings - 2011 4th IEEE International Conference on Utility and Cloud Computing, UCC 2011"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+        assertEquals(null, score.getScoringInfo().get("acmEvidenceVenue"));
+    }
+
+    @Test
+    void streamStampedPaperWithoutTheFlagIgnoresTheOriginalForum() {
+        // 2016 report shape: even with an ACM-signal original forum preserved, the 2016 indicator
+        // (no acmEptcsCFloor2026) must never consult it.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = streamStampedPublication("forum-ucc-stream", "forum-ucc13-raw", "2013-12-09");
+        when(cacheService.getForum("forum-ucc-stream")).thenReturn(conferenceForum("UCC"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+    }
+
     private Indicator indicator(String scoreYearRange) {
         Indicator indicator = new Indicator();
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, scoreYearRange);

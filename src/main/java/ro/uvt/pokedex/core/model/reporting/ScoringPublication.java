@@ -8,6 +8,7 @@ public record ScoringPublication(
         String eid,
         String forumId,
         String bookId,
+        String originalForumId,
         String coverDate,
         String subtype,
         String scopusSubtype,
@@ -34,6 +35,18 @@ public record ScoringPublication(
                 title, citedByCount, citingPublicationIds, 0, 0, 0, List.of(), null);
     }
 
+    /** H85: pre-originalForumId signature kept so existing full-arity call sites compile — originalForumId
+     *  defaults to null (publication never re-stamped by DBLP evidence). */
+    public ScoringPublication(String id, String eid, String forumId, String bookId, String coverDate,
+            String subtype, String scopusSubtype, List<String> authorIds, int authorCount, String doi,
+            String wosId, String title, int citedByCount, Set<String> citingPublicationIds,
+            int scopusCitationCount, int wosCitationCount, int graphCitationCount,
+            List<String> affiliationIds, Boolean openAccess) {
+        this(id, eid, forumId, bookId, null, coverDate, subtype, scopusSubtype, authorIds, authorCount, doi,
+                wosId, title, citedByCount, citingPublicationIds, scopusCitationCount, wosCitationCount,
+                graphCitationCount, affiliationIds, openAccess);
+    }
+
     @Override
     public String getId() { return id; }
 
@@ -45,6 +58,9 @@ public record ScoringPublication(
 
     @Override
     public String getBookId() { return bookId; }
+
+    @Override
+    public String getOriginalForumId() { return originalForumId; }
 
     @Override
     public String getCoverDate() { return coverDate; }

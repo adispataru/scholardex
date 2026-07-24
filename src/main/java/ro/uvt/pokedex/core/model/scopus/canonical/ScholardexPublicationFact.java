@@ -41,6 +41,13 @@ public class ScholardexPublicationFact {
     private List<String> correspondingAuthors = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private String forumId;
+    /**
+     * H85: the source-derived venue forum this publication carried BEFORE a DBLP evidence re-stamp moved
+     * {@code forumId} onto the conf/X stream forum. Preserves the raw per-year proceedings identity (e.g.
+     * "Proceedings - 2013 IEEE/ACM … UCC 2013") so scoring can consult publisher/name signals the
+     * stream-level forum no longer carries. Null when the forum was never re-stamped.
+     */
+    private String originalForumId;
     /** H66B M7: book venue Scopus Source ID (aggregationType=Book); mutually exclusive with forumId. */
     private String bookId;
     private String volume;

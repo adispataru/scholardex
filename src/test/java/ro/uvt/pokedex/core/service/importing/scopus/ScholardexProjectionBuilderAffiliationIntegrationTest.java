@@ -18,6 +18,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
@@ -60,6 +61,7 @@ class ScholardexProjectionBuilderAffiliationIntegrationTest {
     private ScholardexAuthorFactRepository authorFactRepository;
     private ScholardexAffiliationFactRepository affiliationFactRepository;
     private ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository;
+    private ScholardexPublicationFactRepository publicationFactRepository;
 
     @BeforeEach
     void setup() {
@@ -89,12 +91,13 @@ class ScholardexProjectionBuilderAffiliationIntegrationTest {
         authorFactRepository = factory.getRepository(ScholardexAuthorFactRepository.class);
         affiliationFactRepository = factory.getRepository(ScholardexAffiliationFactRepository.class);
         authorAffiliationFactRepository = factory.getRepository(ScholardexAuthorAffiliationFactRepository.class);
+        publicationFactRepository = factory.getRepository(ScholardexPublicationFactRepository.class);
 
         service = new ScholardexProjectionBuilderService(
                 factory.getRepository(ScholardexForumFactRepository.class),
                 authorFactRepository,
                 affiliationFactRepository,
-                factory.getRepository(ScholardexPublicationFactRepository.class),
+                publicationFactRepository,
                 factory.getRepository(ScholardexCitationFactRepository.class),
                 factory.getRepository(ScholardexAuthorshipFactRepository.class),
                 authorAffiliationFactRepository,
@@ -135,6 +138,25 @@ class ScholardexProjectionBuilderAffiliationIntegrationTest {
 
         assertTrue(affiliationIdsOf("sauth_without").isEmpty(),
                 "an author with no edges is written with an empty affiliation list, not the stale fact value");
+    }
+
+    @Test
+    void rebuildProjectsThePreservedOriginalForumId() {
+        // H85: the pre-DBLP-restamp venue must survive the fact -> publication_view -> Postgres round-trip
+        // (real migration + real insert SQL), or the ACM/EPTCS floor never sees it at scoring time.
+        ScholardexPublicationFact pub = new ScholardexPublicationFact();
+        pub.setId("spub_h85");
+        pub.setTitle("Stream-stamped UCC paper");
+        pub.setForumId("sforum_stream_ucc");
+        pub.setOriginalForumId("sforum_raw_ucc2013");
+        publicationFactRepository.save(pub);
+
+        service.rebuildViews();
+
+        String original = jdbcTemplate.queryForObject(
+                "SELECT original_forum_id FROM reporting_read.scholardex_publication_view WHERE id = ?",
+                String.class, "spub_h85");
+        assertEquals("sforum_raw_ucc2013", original);
     }
 
     private List<String> affiliationIdsOf(String authorId) {

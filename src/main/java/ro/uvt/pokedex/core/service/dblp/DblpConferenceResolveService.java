@@ -74,7 +74,7 @@ public class DblpConferenceResolveService {
             result.markProcessed();
             String forumId = findOrMintConferenceForum(streamKey, ev.getConferenceName(), now);
             publicationFactRepository.findById(ev.getPublicationId()).ifPresent(pub -> {
-                pub.setForumId(forumId);
+                stampConferenceForum(pub, forumId);
                 publicationFactRepository.save(pub);
                 result.markImported();
             });
@@ -143,9 +143,23 @@ public class DblpConferenceResolveService {
         Instant now = Instant.now();
         writeEvidence(pub.getId(), dblpKey, streamKey, conferenceName, doi, title, year, matchMethod, dumpVersion, now);
         String forumId = findOrMintConferenceForum(streamKey, conferenceName, now);
-        pub.setForumId(forumId);
+        stampConferenceForum(pub, forumId);
         publicationFactRepository.save(pub);
         return true;
+    }
+
+    /**
+     * H85: re-stamping {@code forumId} onto the conf/X stream forum destroys the raw per-year proceedings
+     * identity (publisher/name signals like "IEEE/ACM"). Preserve the displaced forum id as
+     * {@code originalForumId} so scoring can still consult the source venue (e.g. the 2026 ACM/EPTCS C
+     * floor). A repeat stamp with the same forum is a no-op, keeping the earlier capture intact.
+     */
+    private static void stampConferenceForum(ScholardexPublicationFact pub, String forumId) {
+        String previous = pub.getForumId();
+        if (previous != null && !previous.equals(forumId)) {
+            pub.setOriginalForumId(previous);
+        }
+        pub.setForumId(forumId);
     }
 
     /** Confident DOI match: search by the pub's DOI and accept a conference hit whose DOI equals it. */

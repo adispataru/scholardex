@@ -48,6 +48,8 @@ public class ScholardexPublicationView {
     private List<String> correspondingAuthorIds = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private String forumId;
+    /** H85: pre-DBLP-restamp source venue forum id (raw per-year proceedings); null unless re-stamped. */
+    private String originalForumId;
     /** H66B M7: book venue Scopus Source ID (set instead of forumId for book-typed publications). */
     private String bookId;
     private Set<String> citingPublicationIds = new LinkedHashSet<>();
@@ -152,6 +154,7 @@ public class ScholardexPublicationView {
                 eid,
                 forumId,
                 bookId,
+                originalForumId,
                 coverDate,
                 subtype,
                 scopusSubtype,

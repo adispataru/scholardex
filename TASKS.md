@@ -30,6 +30,13 @@ Done history moved to `TASKS-done.md`.
   to the LNCS special case (per-standard gating precedent: workshopCategory2026). Second facet: Florin's
   UCC entries display as "UCC Companion" though published in the MAIN volume — investigate on prod (Scopus
   venue assignment vs our forum merge); near-term remedy exists via admin bulk reassign-forum.
+  **Slice A DONE 2026-07-24** (floor + 4 clones, deployed + prod data applied). **Slice B DONE** —
+  Companion mislabel not present in current prod data (ask Florin where he sees it).
+  **Slice C DONE locally 2026-07-24** — the sweep's conf/X re-stamp destroyed the ACM name signal
+  ("UCC", empty publisher), so Slice A missed exactly Florin's papers; fix preserves the displaced raw
+  proceedings forum as `originalForumId` (fact → view → Postgres V25 → ScoringPublication) and the floor
+  consults it. Rollout: deploy, then admin "Full derived-data rebuild" backfills; then Florin's refresh
+  should show UCC 2012/2014 = C (quarter ACM), UCC 2011 = D.
 
 - [ ] `H83` University rankings — QS + ARWU ingestion, best-of resolution, URAP back-catalog.
   **SCOPED 2026-07-24** (`docs/tasks/active/h83-university-rankings-best-of.md`). OM 3019/2025 footnote *3

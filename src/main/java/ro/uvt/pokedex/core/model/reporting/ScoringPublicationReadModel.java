@@ -9,6 +9,9 @@ public interface ScoringPublicationReadModel {
     String getForumId();
     /** H66B M7: book venue Scopus Source ID (set instead of forumId for book-typed publications). */
     String getBookId();
+    /** H85: pre-DBLP-restamp source venue forum id (raw per-year proceedings), or null if never re-stamped.
+     *  Defaulted so non-projection constructors (tests, synthetic pubs) keep working. */
+    default String getOriginalForumId() { return null; }
     String getCoverDate();
     String getSubtype();
     String getScopusSubtype();
