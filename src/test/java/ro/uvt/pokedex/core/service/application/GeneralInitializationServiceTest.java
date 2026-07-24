@@ -66,6 +66,7 @@ class GeneralInitializationServiceTest {
                 adminUserService,
                 artisticEventsService,
                 urapRankingService,
+                org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.importing.UniversityRankingCsvService.class),
                 cncsisService,
                 coreConferenceRankingService,
                 senseRankingService,

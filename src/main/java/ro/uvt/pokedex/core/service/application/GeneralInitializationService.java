@@ -30,6 +30,7 @@ public class GeneralInitializationService {
     private final AdminUserService adminUserService;
     private final ArtisticEventsService artisticEventsService;
     private final URAPRankingService urapRankingService;
+    private final ro.uvt.pokedex.core.service.importing.UniversityRankingCsvService universityRankingCsvService;
     private final CNCSISService cncsisService;
     private final CoreConferenceRankingService coreConferenceRankingService;
     private final SenseRankingService senseRankingService;
@@ -40,6 +41,9 @@ public class GeneralInitializationService {
 
     @Value("${general.init.urap.folder:data/urap-univ}")
     private String urapFolderPath;
+
+    @Value("${general.init.arwu.folder:data/arwu}")
+    private String arwuFolderPath;
 
     @Value("${general.init.cncsis.file:data/cncsis/publisher_list.xlsx}")
     private String cncsisFilePath;
@@ -87,6 +91,13 @@ public class GeneralInitializationService {
         return runStep("urap-import", false, "urap", () -> {
             urapRankingService.loadRankingsFromFolder(urapFolderPath);
             return "urap import completed from " + urapFolderPath;
+        });
+    }
+
+    public GeneralInitializationStepResult runArwuImport() {
+        return runStep("arwu-import", false, "arwu", () -> {
+            universityRankingCsvService.loadSourceFromFolder("ARWU", arwuFolderPath, "ARWU");
+            return "arwu import completed from " + arwuFolderPath;
         });
     }
 

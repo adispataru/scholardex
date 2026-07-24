@@ -35,7 +35,19 @@ instead of 2.00 (closest-2018 top-500).
 in prod Mongo; (4) POST `/admin/initialization/general/urap` from an admin session. Do (3)+(4) right
 after a deploy restart so the name-resolution cache starts empty.
 
-**S2 — QS + ARWU ingestion.** New generic model `UniversityRanking {name, source (QS|ARWU), country,
+**S2a — ARWU ingestion — DONE locally (2026-07-24).** Scraped straight from ShanghaiRanking's own
+public JSON API (`/api/pub/v1/arwu/rank?version=<year>`, 2003–2025; 2018 rejects the version parameter
+upstream — recovered from the Wayback snapshot of the old ARWU2018.html). 23 CSVs in `data/arwu/`
+(`rank,rankBand,name,country`, band lower-bounded per the pinned decision). New generic
+`UniversityRanking {id=source|name, name, source, country, ranks{year -> {rank, rankBand}}}` in
+`university_rankings`, loaded by `UniversityRankingCsvService` (per-source load-once guard) via
+`POST /admin/initialization/general/arwu` (+ admin card). Local load: 1,505 universities, 15,316 rows,
+0 skipped; Pisa spans 2003–2025 with STABLE naming (no URAP-style drift); Aix = "Aix Marseille
+University" 2012+ with the "(Aix-Marseille 2)" predecessor doc 2003–2010.
+**Prod rollout: defer until S3 ships** — the data is inert until the scorer consumes it; roll out code
+(deploy) + `data/arwu/` PVC copy + init button together with S3.
+
+**S2b — QS ingestion.** New generic model `UniversityRanking {name, source (QS|ARWU), country,
 Map<year, rank>}` in one collection (URAP stays in its collection for now; unification is a later cleanup).
 Sources, best-available first:
 - ARWU: Kaggle 2003–2025 compilation (full back-catalog) — https://www.kaggle.com/datasets/pawellenartowicz/arwu-shanghai-ranking-2003-2025;

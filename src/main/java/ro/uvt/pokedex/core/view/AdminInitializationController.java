@@ -124,6 +124,11 @@ public class AdminInitializationController {
         return redirectAfterGeneralStep(generalInitializationService.runUrapImport(), redirectAttributes);
     }
 
+    @PostMapping("/general/arwu")
+    public String runGeneralArwu(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runArwuImport(), redirectAttributes);
+    }
+
     @PostMapping("/general/cncsis")
     public String runGeneralCncsis(RedirectAttributes redirectAttributes) {
         return redirectAfterGeneralStep(generalInitializationService.runCncsisImport(), redirectAttributes);
