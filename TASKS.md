@@ -9,6 +9,16 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H83` University rankings — QS + ARWU ingestion, best-of resolution, URAP back-catalog.
+  **SCOPED 2026-07-24** (`docs/tasks/active/h83-university-rankings-best-of.md`). OM 3019/2025 footnote *3
+  (same in 2016): D(viii)/D(ix)/D(xi) score by the BEST position across QS/URAP/ARWU — we only have URAP
+  (2018–2024). S1: scrape URAP 2010–2017 archives → same xlsx shape → re-run `/general/urap` (closest-year
+  becomes exact for old visits). S2: generic `UniversityRanking{name, source, year→rank}` + loaders for
+  ARWU (Kaggle 2003–2025 full back-catalog) and QS (2017–2022 + 2025/2026; older partial). S3: best-of
+  lookup facade (min rank across sources, closest-year per source, provenance in scoringInfo) consumed by
+  `UniversityRankScoringService` — bracket formulas untouched. S4 optional: UNIVERSITY_NAME autocomplete
+  picker mirroring the CORE conference picker. Verification: Florin's Pisa / Aix-Marseille cases.
+
 - [x] `H82` **DONE (2026-07-24, `39a1bbf6`)** Scopus re-sync re-enriches EXISTING publications (narrow-first).
   The coverDate precedence fix (`069153f3`) promised "existing wrong dates heal on the next Scopus author
   sync" — false in practice: a FULL publication sync reports "Imported 0 items" because already-imported pubs
