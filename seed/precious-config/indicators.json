@@ -367,6 +367,38 @@
  },
 {
   "_id": {
+   "$oid": "6a633aa137efb68d2e577b71"
+  },
+  "name": "Info_D_v_2026",
+  "formula": "(Interval_buget >= 2) ? (Rol == 'Membru' ? Interval_buget : Interval_buget * 2) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "1f7968b56e41809150fdaa2f4c58fce08ddabeddc5f523e095ed894346b04ddc",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+{
+  "_id": {
    "$oid": "6820e0f6b20a79244588e87d"
   },
   "name": "Info_D_vi",
