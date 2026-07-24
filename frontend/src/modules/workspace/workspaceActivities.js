@@ -325,6 +325,7 @@ function _insertDetailRow(inst, tr) {
     detailTr.querySelector('.app-ws-acts__detail-close')?.addEventListener('click', () => _closeDetail());
     _wireProjectPickers(detailTr);
     _wireConferencePickers(detailTr);
+    _wireUniversityPickers(detailTr);
 
     detailTr.querySelector('[data-save-inst]')?.addEventListener('click', () => _saveInst(inst.id, detailTr));
 
@@ -620,6 +621,102 @@ function _searchCoreConferences(q, results, input, note) {
         .catch(() => { results.hidden = true; });
 }
 
+// ── University picker: URAP/ARWU/QS-backed autocomplete for UNIVERSITY_NAME ───
+// Same pattern as the conference picker: the picked name goes straight into the visible
+// [data-ref-field] input, free text stays valid. Each suggestion is one exact name VARIANT
+// with the rankings that know that spelling — scoring resolves exact-per-source, so picking
+// the variant with the coverage you need is the point (e.g. four Aix-Marseille spellings).
+function _universityPickerFieldHtml(label, dataAttr, currentValue) {
+    return `<div class="app-ws-acts__field js-uni-picker">
+        <label class="app-ws-acts__label">${_esc(label)}</label>
+        <div class="app-ws-acts__picker">
+          <input class="app-ws-acts__input js-uni-picker-input" type="text" autocomplete="off"
+                 ${dataAttr}="UNIVERSITY_NAME" value="${_esc(currentValue)}"
+                 placeholder="Search ranked universities — free text also accepted"/>
+          <ul class="app-ws-acts__picker-results js-uni-picker-results" hidden></ul>
+        </div>
+        <div class="app-ws-acts__picker-note js-uni-picker-note" hidden></div>
+    </div>`;
+}
+
+function _renderUniversityBadge(note, item) {
+    if (!note) return;
+    if (item && (item.rankings || []).length) {
+        note.innerHTML = `Rankings for this spelling: <strong>${_esc(item.rankings.join(' \u00b7 '))}</strong>`;
+        note.hidden = false;
+    } else {
+        note.textContent = 'Not matched in URAP/ARWU/QS — the score is resolved at report time '
+            + '(unranked floor if no ranking matches this exact name).';
+        note.hidden = false;
+    }
+}
+
+function _resolveUniversityBadge(value, note) {
+    const v = (value || '').trim();
+    if (!note) return;
+    if (v.length < 2) { note.hidden = true; note.textContent = ''; return; }
+    fetch(`/api/entities/universities?q=${encodeURIComponent(v)}`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(items => {
+            const hit = (items || []).find(u => u.name?.toLowerCase() === v.toLowerCase());
+            _renderUniversityBadge(note, hit ?? null);
+        })
+        .catch(() => { note.hidden = true; });
+}
+
+function _wireUniversityPickers(root) {
+    root.querySelectorAll('.js-uni-picker').forEach(wrap => {
+        const input   = wrap.querySelector('.js-uni-picker-input');
+        const results = wrap.querySelector('.js-uni-picker-results');
+        const note    = wrap.querySelector('.js-uni-picker-note');
+        if (!input || !results) return;
+
+        let timer = null;
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            clearTimeout(timer);
+            if (note) { note.hidden = true; note.textContent = ''; }
+            if (q.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
+            timer = setTimeout(() => _searchUniversities(q, results, input, note), 250);
+        });
+        input.addEventListener('blur', () => {
+            if (note && note.hidden && input.value.trim().length >= 2) {
+                _resolveUniversityBadge(input.value, note);
+            }
+        });
+        document.addEventListener('click', e => { if (!wrap.contains(e.target)) results.hidden = true; });
+
+        if (input.value.trim().length >= 2) _resolveUniversityBadge(input.value, note);
+    });
+}
+
+function _searchUniversities(q, results, input, note) {
+    fetch(`/api/entities/universities?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(items => {
+            if (!items || items.length === 0) {
+                results.innerHTML = `<li class="app-ws-acts__picker-empty">No ranked university matches — `
+                    + `your typed text will be used as-is.</li>`;
+                results.hidden = false;
+                return;
+            }
+            results.innerHTML = items.map((u, idx) => {
+                const meta = (u.rankings || []).join(' \u00b7 ');
+                return `<li class="app-ws-acts__picker-item" data-value="${_esc(u.name)}" data-idx="${idx}">`
+                    + `${_esc(u.name)}${meta ? ` <span style="color:var(--app-color-text-muted)">(${_esc(meta)})</span>` : ''}</li>`;
+            }).join('');
+            results.hidden = false;
+            results.querySelectorAll('.app-ws-acts__picker-item').forEach(li => {
+                li.addEventListener('click', () => {
+                    input.value = li.dataset.value;
+                    results.hidden = true;
+                    _renderUniversityBadge(note, items[Number(li.dataset.idx)]);
+                });
+            });
+        })
+        .catch(() => { results.hidden = true; });
+}
+
 // ── H78 slice 3: link an existing activity to a canonical project ──────────────
 // One-click affordance on project-supporting rows that aren't linked yet. Opens a focused picker; selecting a project
 // calls the link endpoint (sets PROJECT_GRANT_ID + back-fills blank display fields), then reloads.
@@ -777,6 +874,9 @@ function _buildDetailPanel(inst) {
             }
             if (rf === 'FORUM_NAME') {
                 return _conferencePickerFieldHtml(label, 'data-ref-field', val);
+            }
+            if (rf === 'UNIVERSITY_NAME') {
+                return _universityPickerFieldHtml(label, 'data-ref-field', val);
             }
             return `<div class="app-ws-acts__field">
                 <label class="app-ws-acts__label">${_esc(label)}</label>
@@ -1022,6 +1122,9 @@ function _renderCreateFields(container, activity) {
         if (rf === 'FORUM_NAME') {
             return _conferencePickerFieldHtml(label, 'data-create-ref-field', '');
         }
+        if (rf === 'UNIVERSITY_NAME') {
+            return _universityPickerFieldHtml(label, 'data-create-ref-field', '');
+        }
         return `<div class="app-ws-acts__field">
             <label class="app-ws-acts__label">${_esc(label)}</label>
             <input class="app-ws-acts__input" type="text"
@@ -1036,6 +1139,7 @@ function _renderCreateFields(container, activity) {
         </div>`;
     _wireProjectPickers(container);
     _wireConferencePickers(container);
+    _wireUniversityPickers(container);
 }
 
 function _submitCreate(placeholder) {

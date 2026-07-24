@@ -9,4 +9,7 @@ public interface UniversityRankingRepository extends MongoRepository<UniversityR
     long countBySource(String source);
     List<UniversityRanking> findByNameIgnoreCase(String name);
     List<UniversityRanking> findBySourceAndNameIgnoreCase(String source, String name);
+
+    /** University picker autocomplete (H83 S4) — returns per-(source,name) docs; the facade groups. */
+    List<UniversityRanking> findTop20ByNameContainingIgnoreCaseOrderByNameAsc(String fragment);
 }
