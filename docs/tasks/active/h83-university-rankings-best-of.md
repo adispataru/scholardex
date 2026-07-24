@@ -67,7 +67,16 @@ Sources, best-available first:
 Loaders + `/admin/initialization/general/{arwu,qs}` endpoints mirroring the URAP one; files under
 `data/arwu/`, `data/qs/`.
 
-**S3 — best-of resolution in the scorer.** A `UniversityRankingLookupFacade.bestRank(name, year)` resolves
+**S3 — best-of resolution — DONE locally (2026-07-24).** `UniversityRankingLookupService.bestRank(name,
+year)` (service.model): resolves the name in URAP (legacy collection) and university_rankings (ARWU/QS)
+exact-ignore-case, per-source closest data year (tie → earlier, the pinned URAP behavior), returns the
+MINIMUM rank with provenance {source, dataYear, rankBand}; equal ranks prefer the closer data year.
+`UniversityRankScoringService` consumes it — bracket formulas untouched; provenance stamped into
+scoringSource + scoringInfo (matchSource/resolvedDataYear/resolvedRank/rankBand/universityName) and
+persisted in run indicator results. The orphaned `URAPUniversityRankingService` was deleted.
+Live-verified: two 2015 Aix visiting entries — ARWU-named → ARWU 101-150 → 4p, URAP-named → URAP 76 →
+8p (also demonstrates the name-fragmentation the S4 picker will fix). Prod rollout script:
+`deploy_arwu_qs_prod.sh` (PVC copy + two init buttons, AFTER the code deploy). A `UniversityRankingLookupFacade.bestRank(name, year)` resolves
 the name in each source (exact-ignore-case per source, same policy as URAP today), takes each source's
 closest-year rank, returns the MINIMUM (best position) + provenance {source, dataYear, rank}.
 `UniversityRankScoringService` consumes it; provenance goes into `scoringInfo` so the drilldown can show

@@ -4,15 +4,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
-import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
-import ro.uvt.pokedex.core.service.model.URAPUniversityRankingService;
+import ro.uvt.pokedex.core.service.model.UniversityRankingLookupService;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
@@ -25,11 +23,12 @@ import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 public class UniversityRankScoringService extends AbstractForumScoringService {
 
     private static final Logger logger = LoggerFactory.getLogger(UniversityRankScoringService.class);
-    private final URAPUniversityRankingService urapRankingService;
+    private final UniversityRankingLookupService rankingLookupService;
 
-    public UniversityRankScoringService(ReportingLookupPort lookupPort, URAPUniversityRankingService urapRankingService) {
+    public UniversityRankScoringService(ReportingLookupPort lookupPort,
+                                        UniversityRankingLookupService rankingLookupService) {
         super(lookupPort);
-        this.urapRankingService = urapRankingService;
+        this.rankingLookupService = rankingLookupService;
     }
 
     /* ------------------------------------------------------------------ */
@@ -53,52 +52,35 @@ public class UniversityRankScoringService extends AbstractForumScoringService {
             return createScore(scoreResult);
         }
         String name = activity.getReferenceFields().get(Activity.ReferenceField.UNIVERSITY_NAME);
-        URAPUniversityRanking uniRank = urapRankingService.getURAPUniversityRankingByName(name);
-        if(uniRank == null){
-            logger.warn("No URAP ranking found for university: {}", name);
-            return createScore(scoreResult);
-        }
         List<Integer> allowedYears =
                 indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
-
-        computeScoresWithUniversity(uniRank,
-                allowedYears,
-                scoreResult,
-                (rank, year) -> Optional.of(closestYearRank(rank, year)));
-        scoreResult.bestCategory.set(rankToCategory(scoreResult.bestPoints.get()));
+        // H83 S3 — best-of across URAP/ARWU/QS per the OM footnote ("cele mai bune poziții conform
+        // clasamentelor"): each allowed year resolves to the minimum rank any source gives (per-source
+        // closest data year), and the winning source's provenance is kept for the drilldown.
+        UniversityRankingLookupService.BestRank winner = null;
+        int winnerYear = 0;
+        for (int year : allowedYears) {
+            Optional<UniversityRankingLookupService.BestRank> best = rankingLookupService.bestRank(name, year);
+            if (best.isPresent() && (winner == null || best.get().rank() < winner.rank())) {
+                winner = best.get();
+                winnerYear = year;
+            }
+        }
+        if (winner == null) {
+            logger.warn("No university ranking (URAP/ARWU/QS) found for: {}", name);
+            return createScore(scoreResult);
+        }
+        scoreResult.bestPoints.set((double) winner.rank());
+        scoreResult.bestYear.set(winnerYear);
+        scoreResult.bestCategory.set(rankToCategory(winner.rank()));
+        scoreResult.scoringSource.set(winner.source());
+        scoreResult.scoringInfo.put("matchSource", winner.source());
+        scoreResult.scoringInfo.put("universityName", name);
+        scoreResult.scoringInfo.put("resolvedDataYear", winner.dataYear());
+        scoreResult.scoringInfo.put("resolvedRank", winner.rank());
+        scoreResult.scoringInfo.put("rankBand", winner.rankBand());
         return createScore(scoreResult);
-    }
-
-    /**
-     * URAP rank for {@code year}, falling back to the closest loaded data year when the activity's
-     * year has none — the URAP dataset starts at ~2018 while D_viii/D_ix visits can be far older, and
-     * a resolved university's rank is a far better estimate than dropping to the formula's unranked
-     * floor. Ties prefer the earlier year (closer to the visit's era). Returns 0 only when the
-     * ranking carries no data at all, which the indicator formulas map to the standard's
-     * {@code "> 500 → 1"} floor.
-     */
-    private static double closestYearRank(URAPUniversityRanking ranking, int year) {
-        Map<Integer, URAPUniversityRanking.Score> scores = ranking.getScores();
-        if (scores == null || scores.isEmpty()) {
-            return 0.0;
-        }
-        URAPUniversityRanking.Score exact = scores.get(year);
-        if (exact != null) {
-            return exact.getRank();
-        }
-        Integer closestYear = null;
-        for (Integer dataYear : scores.keySet()) {
-            if (dataYear == null || scores.get(dataYear) == null) {
-                continue;
-            }
-            if (closestYear == null
-                    || Math.abs(dataYear - year) < Math.abs(closestYear - year)
-                    || (Math.abs(dataYear - year) == Math.abs(closestYear - year) && dataYear < closestYear)) {
-                closestYear = dataYear;
-            }
-        }
-        return closestYear == null ? 0.0 : scores.get(closestYear).getRank();
     }
 
     /**
@@ -133,6 +115,6 @@ public class UniversityRankScoringService extends AbstractForumScoringService {
 
     @Override
     public String getDescription() {
-        return "Returns URAP university rank-based score (lower rank value is better).\n";
+        return "Best-of URAP/ARWU/QS university rank score (lower rank value is better).\n";
     }
 }

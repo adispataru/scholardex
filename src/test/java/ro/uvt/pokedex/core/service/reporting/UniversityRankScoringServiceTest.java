@@ -1,124 +1,98 @@
 package ro.uvt.pokedex.core.service.reporting;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.service.model.URAPUniversityRankingService;
+import ro.uvt.pokedex.core.service.model.UniversityRankingLookupService;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import org.junit.jupiter.api.BeforeEach;
 
+/** H83 S3 — the UNI_RANKING scorer consumes the best-of URAP/ARWU/QS lookup and stamps provenance. */
 @ExtendWith(MockitoExtension.class)
 class UniversityRankScoringServiceTest {
 
     @Mock
     private ReportingLookupPort lookupPort;
     @Mock
-    private URAPUniversityRankingService urapRankingService;
-
+    private UniversityRankingLookupService rankingLookupService;
 
     @BeforeEach
     void stubMaxAvailableYear() {
         org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
     }
+
+    private UniversityRankScoringService service() {
+        return new UniversityRankScoringService(lookupPort, rankingLookupService);
+    }
+
     @Test
     void missingUniversityReferenceReturnsZero() {
-        UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);
         ActivityInstance activity = new ActivityInstance();
         activity.setDate("2023-01-01");
         activity.setReferenceFields(Map.of());
 
-        Score score = service.getScore(activity, indicator());
-
-        assertEquals(0.0, score.getScore());
+        assertEquals(0.0, service().getScore(activity, indicator()).getScore());
     }
 
     @Test
-    void missingUrapEntryReturnsZero() {
-        UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);
-        ActivityInstance activity = activityWithUniversity("UVT");
-        when(urapRankingService.getURAPUniversityRankingByName("UVT")).thenReturn(null);
+    void unresolvedUniversityReturnsZero() {
+        ActivityInstance activity = activityWithUniversity("Nowhere U", "2023-03-10");
+        when(rankingLookupService.bestRank(eq("Nowhere U"), anyInt())).thenReturn(Optional.empty());
 
-        Score score = service.getScore(activity, indicator());
-
-        assertEquals(0.0, score.getScore());
+        assertEquals(0.0, service().getScore(activity, indicator()).getScore());
     }
 
     @Test
-    void selectsBestLowestRankAcrossAllowedYears() {
-        UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);
-        ActivityInstance activity = activityWithUniversity("UVT");
-        URAPUniversityRanking ranking = new URAPUniversityRanking();
-        ranking.setScores(Map.of(
-                2022, score(450),
-                2023, score(300),
-                2024, score(700)
-        ));
-        when(urapRankingService.getURAPUniversityRankingByName("UVT")).thenReturn(ranking);
+    void winningSourceProvenanceIsStamped() {
+        // ARWU 101-150 beats URAP's 106 — the OM's "cele mai bune poziții" reading. Provenance
+        // (source, data year, band) must reach scoringInfo for the drilldown.
+        ActivityInstance activity = activityWithUniversity("Aix Marseille University", "2015-04-01");
+        Indicator itemYear = indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(itemYear, "IY");
+        when(rankingLookupService.bestRank("Aix Marseille University", 2015))
+                .thenReturn(Optional.of(new UniversityRankingLookupService.BestRank(101, "ARWU", 2015, "101-150")));
 
-        Score score = service.getScore(activity, indicator());
+        Score score = service().getScore(activity, itemYear);
+
+        assertEquals(101.0, score.getScore());
+        assertEquals("B", score.getCoreRankingEquivalent()); // top-200 bracket
+        assertEquals("ARWU", score.getScoringSource());
+        assertEquals("101-150", score.getScoringInfo().get("rankBand"));
+        assertEquals(2015, score.getScoringInfo().get("resolvedDataYear"));
+    }
+
+    @Test
+    void bestRankAcrossAllowedYearsWins() {
+        // A windowed score-year range: the minimum rank across the allowed years is kept.
+        ActivityInstance activity = activityWithUniversity("UVT", "2023-03-10");
+        when(rankingLookupService.bestRank(eq("UVT"), anyInt()))
+                .thenAnswer(inv -> {
+                    int y = inv.getArgument(1);
+                    return Optional.of(new UniversityRankingLookupService.BestRank(
+                            y == 2023 ? 300 : 450, "URAP", y, String.valueOf(y == 2023 ? 300 : 450)));
+                });
+
+        Score score = service().getScore(activity, indicator());
 
         assertEquals(300.0, score.getScore());
         assertEquals(2023, score.getYear());
     }
 
-    @Test
-    void visitYearOutsideUrapWindowFallsBackToTheClosestDataYear() {
-        // URAP data starts ~2018; a 2010 Pisa visit used to land in the S==0 branch (unranked floor)
-        // even though the university IS ranked — the closest data year's rank is the right estimate.
-        UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);
+    private ActivityInstance activityWithUniversity(String name, String date) {
         ActivityInstance activity = new ActivityInstance();
-        activity.setDate("2010-05-01");
-        activity.setReferenceFields(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "University of Pisa"));
-        URAPUniversityRanking ranking = new URAPUniversityRanking();
-        ranking.setScores(Map.of(
-                2018, score(240),
-                2024, score(237)
-        ));
-        when(urapRankingService.getURAPUniversityRankingByName("University of Pisa")).thenReturn(ranking);
-        Indicator itemYear = indicator();
-        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(itemYear, "IY");
-
-        Score score = service.getScore(activity, itemYear);
-
-        // 2010 -> closest data year is 2018 (rank 240) -> top-500 bucket, category C.
-        assertEquals(240.0, score.getScore());
-        assertEquals("C", score.getCoreRankingEquivalent());
-    }
-
-    @Test
-    void closestYearTiePrefersTheEarlierYear() {
-        UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);
-        ActivityInstance activity = new ActivityInstance();
-        activity.setDate("2021-06-01");
-        activity.setReferenceFields(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "UVT"));
-        URAPUniversityRanking ranking = new URAPUniversityRanking();
-        ranking.setScores(Map.of(
-                2020, score(100),
-                2022, score(600)
-        ));
-        when(urapRankingService.getURAPUniversityRankingByName("UVT")).thenReturn(ranking);
-        Indicator itemYear = indicator();
-        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(itemYear, "IY");
-
-        Score score = service.getScore(activity, itemYear);
-
-        // 2021 is equidistant from 2020 and 2022 — the earlier year (closer to the visit era) wins.
-        assertEquals(100.0, score.getScore());
-    }
-
-    private ActivityInstance activityWithUniversity(String name) {
-        ActivityInstance activity = new ActivityInstance();
-        activity.setDate("2023-03-10");
+        activity.setDate(date);
         activity.setReferenceFields(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, name));
         return activity;
     }
@@ -128,13 +102,8 @@ class UniversityRankScoringServiceTest {
         domain.setName("ALL");
         Indicator indicator = new Indicator();
         indicator.setDomain(domain);
-        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "2022->2024"); // H52 11d.1: comma-list grammar dropped in v1
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "ACTIVITY_UNIVERSITY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "UNI_RANKING");
         return indicator;
-    }
-
-    private URAPUniversityRanking.Score score(int rank) {
-        URAPUniversityRanking.Score score = new URAPUniversityRanking.Score();
-        score.setRank(rank);
-        return score;
     }
 }
