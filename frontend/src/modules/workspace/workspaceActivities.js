@@ -324,6 +324,7 @@ function _insertDetailRow(inst, tr) {
 
     detailTr.querySelector('.app-ws-acts__detail-close')?.addEventListener('click', () => _closeDetail());
     _wireProjectPickers(detailTr);
+    _wireConferencePickers(detailTr);
 
     detailTr.querySelector('[data-save-inst]')?.addEventListener('click', () => _saveInst(inst.id, detailTr));
 
@@ -509,6 +510,69 @@ function _searchProjects(q, results, search, hidden, onPick) {
         .catch(() => { results.hidden = true; });
 }
 
+// ── Conference picker: CORE-backed autocomplete for FORUM_NAME fields ──────────
+// Unlike the project picker there is NO hidden id: the picked value is stored as plain
+// "ACRONYM — Full Name" text in FORUM_NAME. CORE is the authority the CS conference scorer
+// consults, and the acronym+name form both matches by exact acronym AND lets the scorer's
+// confidence machinery disambiguate same-acronym CORE collisions by name-token overlap.
+// Free text stays valid for conferences not in CORE.
+function _conferencePickerFieldHtml(label, dataAttr, currentValue) {
+    return `<div class="app-ws-acts__field js-conf-picker">
+        <label class="app-ws-acts__label">${_esc(label)}</label>
+        <div class="app-ws-acts__picker">
+          <input class="app-ws-acts__input js-conf-picker-input" type="text" autocomplete="off"
+                 ${dataAttr}="FORUM_NAME" value="${_esc(currentValue)}"
+                 placeholder="Search by acronym (e.g. SYNASC) or name — free text also accepted"/>
+          <ul class="app-ws-acts__picker-results js-conf-picker-results" hidden></ul>
+        </div>
+    </div>`;
+}
+
+function _wireConferencePickers(root) {
+    root.querySelectorAll('.js-conf-picker').forEach(wrap => {
+        const input   = wrap.querySelector('.js-conf-picker-input');
+        const results = wrap.querySelector('.js-conf-picker-results');
+        if (!input || !results) return;
+
+        let timer = null;
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            clearTimeout(timer);
+            if (q.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
+            timer = setTimeout(() => _searchCoreConferences(q, results, input), 250);
+        });
+        document.addEventListener('click', e => { if (!wrap.contains(e.target)) results.hidden = true; });
+    });
+}
+
+function _searchCoreConferences(q, results, input) {
+    fetch(`/api/entities/core-conferences?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(items => {
+            if (!items || items.length === 0) {
+                results.innerHTML = `<li class="app-ws-acts__picker-empty">No CORE conference matches — `
+                    + `your typed text will be used as-is.</li>`;
+                results.hidden = false;
+                return;
+            }
+            results.innerHTML = items.map(c => {
+                const value = `${c.acronym} — ${c.name}`;
+                const meta = [c.latestRank ? `CORE ${c.latestRank}` : null, c.latestYear ?? null]
+                    .filter(Boolean).join(' · ');
+                return `<li class="app-ws-acts__picker-item" data-value="${_esc(value)}">`
+                    + `${_esc(value)}${meta ? ` <span style="color:var(--app-color-text-muted)">(${_esc(meta)})</span>` : ''}</li>`;
+            }).join('');
+            results.hidden = false;
+            results.querySelectorAll('.app-ws-acts__picker-item').forEach(li => {
+                li.addEventListener('click', () => {
+                    input.value = li.dataset.value;
+                    results.hidden = true;
+                });
+            });
+        })
+        .catch(() => { results.hidden = true; });
+}
+
 // ── H78 slice 3: link an existing activity to a canonical project ──────────────
 // One-click affordance on project-supporting rows that aren't linked yet. Opens a focused picker; selecting a project
 // calls the link endpoint (sets PROJECT_GRANT_ID + back-fills blank display fields), then reloads.
@@ -663,6 +727,9 @@ function _buildDetailPanel(inst) {
             const val   = refValues[rf] ?? '';
             if (rf === 'PROJECT_GRANT_ID') {
                 return _projectPickerFieldHtml(label, 'data-ref-field', val);
+            }
+            if (rf === 'FORUM_NAME') {
+                return _conferencePickerFieldHtml(label, 'data-ref-field', val);
             }
             return `<div class="app-ws-acts__field">
                 <label class="app-ws-acts__label">${_esc(label)}</label>
@@ -905,6 +972,9 @@ function _renderCreateFields(container, activity) {
         if (rf === 'PROJECT_GRANT_ID') {
             return _projectPickerFieldHtml(label, 'data-create-ref-field', '');
         }
+        if (rf === 'FORUM_NAME') {
+            return _conferencePickerFieldHtml(label, 'data-create-ref-field', '');
+        }
         return `<div class="app-ws-acts__field">
             <label class="app-ws-acts__label">${_esc(label)}</label>
             <input class="app-ws-acts__input" type="text"
@@ -918,6 +988,7 @@ function _renderCreateFields(container, activity) {
           <div class="app-ws-acts__create-row">${customHtml}${refHtml}</div>
         </div>`;
     _wireProjectPickers(container);
+    _wireConferencePickers(container);
 }
 
 function _submitCreate(placeholder) {

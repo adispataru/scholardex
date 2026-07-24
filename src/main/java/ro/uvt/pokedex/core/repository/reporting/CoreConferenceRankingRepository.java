@@ -12,5 +12,8 @@ public interface CoreConferenceRankingRepository extends MongoRepository<CoreCon
     List<CoreConferenceRanking> findAllByAcronymIgnoreCase(String acronym);
     List<CoreConferenceRanking> findAllByNameAndAcronym(String name, String acronym);
 
+    /** Conference picker autocomplete: acronym prefix OR name substring, case-insensitive. */
+    List<CoreConferenceRanking> findTop20ByAcronymStartingWithIgnoreCaseOrNameContainingIgnoreCaseOrderByAcronymAsc(
+            String acronymPrefix, String nameFragment);
 
 }

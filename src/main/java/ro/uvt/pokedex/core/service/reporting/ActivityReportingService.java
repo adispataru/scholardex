@@ -89,6 +89,12 @@ public class ActivityReportingService {
         // researcher's self-declared interval select, else 0 (unknown). Budget-aware formulas consume
         // Interval_buget (1–5) instead of re-encoding the threshold bounds per indicator.
         injectBudgetBracketVariable(activity, variables);
+        // Editions multiplier for recurring roles (20 years on the SYNASC committee = ONE entry):
+        // N_editii = An_sfarsit - An_inceput + 1 from the optional year-pair fields, else 1. Rank-
+        // sensitive formulas (D_vi S/2) value the whole range at the entry-year rank — when the
+        // conference's category differed across the period the researcher splits entries per category
+        // period (user decision; true per-year expansion deferred, the year pair enables it later).
+        injectEditionsVariable(variables);
         final String rawformula = indicator.getFormula();
         // H52 slice 11d.1: typed-strategy dispatch. GENERIC_ACTIVITY and
         // GENERIC_COUNT both short-circuit to a unit base score (1.0); only
@@ -174,6 +180,24 @@ public class ActivityReportingService {
             bracket = GrantBudgetBracket.indexFromLabel(declared);
         }
         variables.put("Interval_buget", bracket);
+    }
+
+    /**
+     * Binds {@code N_editii} (int ≥ 1): the editions count from the optional {@code An_inceput}/
+     * {@code An_sfarsit} numeric fields, else 1. A partial or inverted pair degrades to 1 rather
+     * than failing the row.
+     */
+    private void injectEditionsVariable(Map<String, Object> variables) {
+        Object start = variables.get("An_inceput");
+        Object end = variables.get("An_sfarsit");
+        int editions = 1;
+        if (start instanceof Number s && end instanceof Number e) {
+            int span = (int) (e.doubleValue() - s.doubleValue()) + 1;
+            if (span >= 1) {
+                editions = span;
+            }
+        }
+        variables.put("N_editii", editions);
     }
 
     /**

@@ -269,6 +269,55 @@ class ActivityReportingServiceTest {
         assertEquals(2.0, service.calculateActivityScores(List.of(act), dV).get("g7").getAuthorScore(), 1e-9);
     }
 
+    @Test
+    void editionsMultiplierDerivesFromYearRangeFields() {
+        // 20 years on the SYNASC organizing committee = ONE entry: An_inceput/An_sfarsit derive
+        // N_editii, and the flat per-event formula multiplies exactly.
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator dVii = indicator("GENERIC_ACTIVITY", "(Rol == 'Membru' ? 1 : 2) * N_editii");
+        ActivityInstance act = editionsActivity("e1", Map.of(
+                "Rol", "Membru", "An_inceput", "2005", "An_sfarsit", "2024"));
+
+        assertEquals(20.0, service.calculateActivityScores(List.of(act), dVii).get("e1").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void editionsMultiplierDefaultsToOneWithoutOrWithInvertedYearRange() {
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator dVii = indicator("GENERIC_ACTIVITY", "(Rol == 'Membru' ? 1 : 2) * N_editii");
+
+        ActivityInstance noRange = editionsActivity("e2", Map.of("Rol", "Membru"));
+        ActivityInstance inverted = editionsActivity("e3", Map.of(
+                "Rol", "Membru", "An_inceput", "2024", "An_sfarsit", "2005"));
+
+        assertEquals(1.0, service.calculateActivityScores(List.of(noRange), dVii).get("e2").getAuthorScore(), 1e-9);
+        assertEquals(1.0, service.calculateActivityScores(List.of(inverted), dVii).get("e3").getAuthorScore(), 1e-9);
+    }
+
+    private ActivityInstance editionsActivity(String id, Map<String, String> fields) {
+        Activity.Field role = new Activity.Field();
+        role.setName("Rol");
+        role.setNumber(false);
+        Activity.Field start = new Activity.Field();
+        start.setName("An_inceput");
+        start.setNumber(true);
+        Activity.Field end = new Activity.Field();
+        end.setName("An_sfarsit");
+        end.setNumber(true);
+        Activity activity = new Activity();
+        activity.setFields(List.of(role, start, end));
+
+        ActivityInstance instance = new ActivityInstance();
+        instance.setId(id);
+        instance.setDate("2024-01-01");
+        instance.setActivity(activity);
+        instance.setFields(fields);
+        instance.setReferenceFields(Map.of());
+        return instance;
+    }
+
     private static ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse project(Long budget, String funder) {
         return new ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse(
                 "sproj_1", "PN-CODE", null, "Title", funder, "Dir", 2017, 2018, "UVT", budget);

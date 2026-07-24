@@ -513,7 +513,10 @@
   list-style: none;
   max-height: 16rem;
   overflow-y: auto;
-  background: var(--app-color-surface, #fff);
+  /* card-bg / card-bg-muted are the app's real surface variables — the previous
+     --app-color-surface never existed, so dark theme fell back to a white box
+     with near-white text (both pickers). */
+  background: var(--app-color-card-bg, #fff);
   border: 1px solid var(--app-color-border, #d0d5dd);
   border-radius: 0.4rem;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
@@ -527,7 +530,7 @@
 }
 
 .app-ws-acts__picker-item:hover {
-  background: var(--app-color-surface-muted, #f2f4f7);
+  background: var(--app-color-card-bg-muted, #f2f4f7);
 }
 
 .app-ws-acts__picker-empty {

@@ -304,7 +304,7 @@
    "$oid": "6820d3a18a61794835d91b24"
   },
   "name": "Info_D_ii",
-  "formula": "S/max(N_editori-2, 1)",
+  "formula": "(S/max(N_editori-2, 1)) * N_editii",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -321,7 +321,7 @@
    "strategy": "CS_CONFERENCE",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
   },
-  "formulaHash": "beb62ffd94c7b812be16b2fe03f2a20466100e0e352b768de3e70351dc2e4503",
+  "formulaHash": "ae57e2ef2277409c6f8f3fe86bca45caa639b346c56a09f7a1ec48e0b11efafa",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -370,7 +370,7 @@
    "$oid": "6820e0f6b20a79244588e87d"
   },
   "name": "Info_D_vi",
-  "formula": "S/2",
+  "formula": "(S/2) * N_editii",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -387,7 +387,7 @@
    "strategy": "CS_CONFERENCE",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
   },
-  "formulaHash": "8a1eaa115cf234d3b58f3d3475386b96941fe7260eb79af57719ac3364ca6a38",
+  "formulaHash": "57f566f2f9a39e74cd1429c5095e37be8f05d48c153932afacd114f970b71eab",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -404,7 +404,7 @@
    "$oid": "6820e4952654f8388e8d3649"
   },
   "name": "Info_D_vii",
-  "formula": "Rol == 'Membru' ? 1 : 2",
+  "formula": "(Rol == 'Membru' ? 1 : 2) * N_editii",
   "domain": {
    "$ref": "domains",
    "$id": "Computer Science"
@@ -419,7 +419,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "934c045d11b412815ffd6f4ea220394c1328a66c039dc8c2c46d334e6f786a37",
+  "formulaHash": "6f0a3d5b14b8052fdf7f59d776dc2084625875e21ec9189f48084dd2f2ed0c94",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
