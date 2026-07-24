@@ -13,7 +13,15 @@ CORE lists UCC as **Unranked** (2021/2023/2026), so the OM amendment decides its
   (`ComputerScienceConferenceScoringService` ~line 126: bestPoints==0 && LNCS forum → 2.0/C/Quarter.LNCS,
   before the D-tier default) — correct for 2016, incomplete for 2026.
 
-## Slice A — ACM/EPTCS → C floor (2026-scoped)
+## Slice A — ACM/EPTCS → C floor (2026-scoped) — DONE locally (2026-07-24, `7ab551c2`)
+
+Implemented as scoped, with two findings worth recording: (1) the 2026 report's Total also consumed the
+SHARED `Info_B`, so a FOURTH clone (`Info_B_2026`) was needed beyond the three activity indicators;
+(2) giving the clones `workshopCategory2026` surfaced and fixed a latent 2026 mis-scoring — CORE-National
+conferences are "categoria C" per the 2026 OM ("Workshop-urile/conferințele clasificate de CORE ca
+naționale sau regionale sunt considerate de categorie C"), so SYNASC-style committee entries correctly
+double (10 → 20) in the 2026 fișă while 2016 stays frozen. Prod: deploy first, then
+`apply_acm_floor_prod.sh`. Original scope:
 
 **Detection** (`isAcmForum` / `isEptcsForum`):
 - ACM: whole-word "ACM" token in the forum/proceedings name (covers "IEEE/ACM …") OR publisher containing
