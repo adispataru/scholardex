@@ -131,6 +131,18 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 trace = trace.withFallbackReason(FallbackReason.LNCS_SPECIAL_CASE);
                 applyTraceProvenance(scoreResult, trace, "SCOPUS");
             }
+            // H85 — 2026 OM amendment: CORE-unranked ACM/EPTCS venues floor to C (the 2016 standard's
+            // amendment is LNCS-only, so the flag lives on 2026 indicators exclusively). Mirrors the LNCS
+            // special case; the predatory gate has already zeroed excluded venues before this point.
+            if (scoreResult.bestPoints.get() == 0 && indicator != null && indicator.usesAcmEptcsCFloor2026()
+                    && isAcmOrEptcsVenue(forum)) {
+                scoreResult.bestPoints.set(2.0);
+                scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
+                scoreResult.bestQuarter.set(WoSRanking.Quarter.ACM);
+                scoreResult.bestYear.set(LAST_CORE_YEAR);
+                trace = trace.withFallbackReason(FallbackReason.ACM_EPTCS_SPECIAL_CASE);
+                applyTraceProvenance(scoreResult, trace, "SCOPUS");
+            }
         }
 
         // Default D-tier ONLY for a positively-typed Conference-Proceeding forum. A "cp" paper in a Journal forum
@@ -208,6 +220,14 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.LNCS);
                 trace = trace.withFallbackReason(FallbackReason.LNCS_SPECIAL_CASE);
+                applyTraceProvenance(scoreResult, trace, "SCOPUS");
+            } else if (indicator != null && indicator.usesAcmEptcsCFloor2026() && isAcmOrEptcsVenue(forum)) {
+                // H85 — 2026 OM ACM/EPTCS -> C amendment, activity flavor (Editor Proceedings, PC member
+                // at an ACM venue). Same floor as the publication path.
+                scoreResult.bestPoints.set(2.0);
+                scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
+                scoreResult.bestQuarter.set(WoSRanking.Quarter.ACM);
+                trace = trace.withFallbackReason(FallbackReason.ACM_EPTCS_SPECIAL_CASE);
                 applyTraceProvenance(scoreResult, trace, "SCOPUS");
             } else {
                 scoreResult.bestPoints.set(1.0);
@@ -1347,6 +1367,34 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         TITLE
     }
 
+    /**
+     * H85 — the 2026 OM amendment's ACM/EPTCS detection. Name/publisher based on purpose: UCC-style
+     * IEEE/ACM co-published proceedings keep IEEE-branded DOIs (10.1109), so a 10.1145 prefix check would
+     * miss exactly the venues the amendment covers. Whole-word "ACM" avoids substring false positives.
+     */
+    static boolean isAcmOrEptcsVenue(ScholardexForumView forum) {
+        if (forum == null) {
+            return false;
+        }
+        String name = forum.getPublicationName();
+        if (name != null) {
+            String lower = name.toLowerCase(java.util.Locale.ROOT);
+            if (java.util.regex.Pattern.compile("\\bacm\\b").matcher(lower).find()) {
+                return true;
+            }
+            if (lower.contains("eptcs") || lower.contains("electronic proceedings in theoretical computer science")) {
+                return true;
+            }
+        }
+        String publisher = forum.getPublisher();
+        if (publisher != null) {
+            String lower = publisher.toLowerCase(java.util.Locale.ROOT);
+            return java.util.regex.Pattern.compile("\\bacm\\b").matcher(lower).find()
+                    || lower.contains("association for computing machinery");
+        }
+        return false;
+    }
+
     enum FallbackReason {
         NONE,
         NO_FORUM_NAME,
@@ -1356,6 +1404,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         AMBIGUOUS_WINNERS,
         NO_CLOSEST_YEAR,
         LNCS_SPECIAL_CASE,
+        ACM_EPTCS_SPECIAL_CASE,
         SCOPUS_FALLBACK
     }
 

@@ -1318,6 +1318,7 @@
    "$oid": "6a47f17bcb06b11f3b6121f0"
   },
   "name": "Info_C_2026",
+  "acmEptcsCFloor2026": true,
   "formula": "S/max(N-2, 1)",
   "domain": {
    "$ref": "domains",
@@ -1349,6 +1350,7 @@
    "$oid": "6a47f2d27be56ad867b997c2"
   },
   "name": "Info_C (A*, A, B) 2026",
+  "acmEptcsCFloor2026": true,
   "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
   "domain": {
    "$ref": "domains",
@@ -1380,6 +1382,7 @@
    "$oid": "6a47f57bf5f5a3371821fd41"
   },
   "name": "Info_B (A*, A)",
+  "acmEptcsCFloor2026": true,
   "formula": "(S >= 8 && !feeJournal) ? (S/max(N-2, 1)) : 0",
   "domain": {
    "$ref": "domains",
@@ -1441,6 +1444,7 @@
    "$oid": "6a480678cefa56310d7f8023"
   },
   "name": "Info_B (A*, A, B) 2026",
+  "acmEptcsCFloor2026": true,
   "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
   "domain": {
    "$ref": "domains",
@@ -1502,6 +1506,7 @@
    "$oid": "6a481bc682ebdb034bfc8e10"
   },
   "name": "Info_B_Conferințe 2026",
+  "acmEptcsCFloor2026": true,
   "formula": "S > 1 ? S/max(N-2, 1) : 0",
   "domain": {
    "$ref": "domains",
@@ -2093,6 +2098,144 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
   "formulaHash": "92f37034c1652cd7e138785dad39fae90cf5b27875c89da52448601dba924c7b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a63b59843226fd40f87b942"
+  },
+  "name": "Info_B_2026",
+  "formula": "S/max(N-2, 1)",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 0,
+  "kind": {
+   "role": "ALL",
+   "strategy": "CS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+  "workshopCategory2026": true,
+  "acmEptcsCFloor2026": true,
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a63b59843226fd40f87b943"
+  },
+  "name": "Info_D_ii_2026",
+  "formula": "(S/max(N_editori-2, 1)) * N_editii",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "681674c0e50b262637be9a86"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "type": "FORUM",
+   "strategy": "CS_CONFERENCE",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+  },
+  "formulaHash": "ae57e2ef2277409c6f8f3fe86bca45caa639b346c56a09f7a1ec48e0b11efafa",
+  "workshopCategory2026": true,
+  "acmEptcsCFloor2026": true,
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a63b59843226fd40f87b944"
+  },
+  "name": "Info_D_vi_2026",
+  "formula": "(S/2) * N_editii",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6820e32a2654f8388e8d3646"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "type": "FORUM",
+   "strategy": "CS_CONFERENCE",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+  },
+  "formulaHash": "57f566f2f9a39e74cd1429c5095e37be8f05d48c153932afacd114f970b71eab",
+  "workshopCategory2026": true,
+  "acmEptcsCFloor2026": true,
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a63b59843226fd40f87b945"
+  },
+  "name": "Info_D_viii-b_2026",
+  "formula": "S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Computer Science"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6820e5472654f8388e8d364b"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "type": "FORUM",
+   "strategy": "CS_CONFERENCE",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+  },
+  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+  "workshopCategory2026": true,
+  "acmEptcsCFloor2026": true,
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },

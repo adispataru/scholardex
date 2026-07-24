@@ -450,6 +450,8 @@ public class AdminViewController {
          * the 2026 conference indicators.
          */
         private Boolean workshopCategory2026;
+        /** H85 — 2026 ACM/EPTCS→C amendment flag; hidden-input round-trip like {@link #workshopCategory2026}. */
+        private Boolean acmEptcsCFloor2026;
 
         static IndicatorForm fromIndicator(Indicator indicator) {
             IndicatorForm form = new IndicatorForm();
@@ -468,6 +470,7 @@ public class AdminViewController {
             form.selector = indicator.getSelector() == null ? "ALL" : indicator.getSelector();
             form.maxPoints = indicator.getMaxPoints();
             form.workshopCategory2026 = indicator.getWorkshopCategory2026();
+            form.acmEptcsCFloor2026 = indicator.getAcmEptcsCFloor2026();
             return form;
         }
 
@@ -485,6 +488,7 @@ public class AdminViewController {
             indicator.setSelectorSpec(Selector.of(selector));
             indicator.setMaxPoints(maxPoints);
             indicator.setWorkshopCategory2026(workshopCategory2026);
+            indicator.setAcmEptcsCFloor2026(acmEptcsCFloor2026);
             return indicator;
         }
     }

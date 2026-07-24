@@ -2596,6 +2596,128 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         return new ScoringPublication(id, null, forumId, coverDate, "ch", "ch", List.of(), 0, null, null, null, 0, Set.of());
     }
 
+    // ── H85: 2026 OM amendment — CORE-unranked ACM/EPTCS venues floor to C ─────
+
+    private Indicator acmFloorIndicator2026() {
+        Indicator indicator = new Indicator();
+        indicator.setAcmEptcsCFloor2026(true);
+        return indicator;
+    }
+
+    private ScholardexForumView conferenceForum(String name) {
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName(name);
+        forum.setAggregationType("Conference Proceeding");
+        return forum;
+    }
+
+    @Test
+    void ieeeAcmProceedingsFloorToCUnderThe2026Flag() {
+        // The UCC-2013+ shape: IEEE/ACM co-published, CORE-Unranked, IEEE-branded DOI (irrelevant —
+        // detection is name-based on purpose).
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-ucc13", "2013-12-09");
+        when(cacheService.getForum("forum-ucc13")).thenReturn(conferenceForum(
+                "Proceedings - 2013 IEEE/ACM 6th International Conference on Utility and Cloud Computing, UCC 2013"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(2.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals(WoSRanking.Quarter.ACM.toString(), score.getQuarter());
+    }
+
+    @Test
+    void ieeeAcmProceedingsStayDWithoutTheFlag() {
+        // Frozen 2016 behaviour: the 2016 amendment is LNCS-only, so ACM venues keep the D fallback.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-ucc13", "2013-12-09");
+        when(cacheService.getForum("forum-ucc13")).thenReturn(conferenceForum(
+                "Proceedings - 2013 IEEE/ACM 6th International Conference on Utility and Cloud Computing, UCC 2013"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void ieeeOnlyProceedingsStayDEvenWithTheFlag() {
+        // The UCC-2011 shape: IEEE-only era — no ACM token, floor must not fire.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-ucc11", "2011-12-05");
+        when(cacheService.getForum("forum-ucc11")).thenReturn(conferenceForum(
+                "Proceedings - 2011 4th IEEE International Conference on Utility and Cloud Computing, UCC 2011"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void eptcsProceedingsFloorToCUnderThe2026Flag() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-eptcs", "2020-04-01");
+        when(cacheService.getForum("forum-eptcs")).thenReturn(conferenceForum(
+                "Electronic Proceedings in Theoretical Computer Science, EPTCS"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(2.0, score.getScore());
+        assertEquals(WoSRanking.Quarter.ACM.toString(), score.getQuarter());
+    }
+
+    @Test
+    void acmSubstringInsideAnotherWordDoesNotTriggerTheFloor() {
+        // Whole-word matching: "Macmillan"/"ACME" must not read as ACM.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-acme", "2020-04-01");
+        when(cacheService.getForum("forum-acme")).thenReturn(conferenceForum(
+                "ACME Workshop on Macmillan Computing Topics"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(1.0, score.getScore()); // plain conference D fallback, no ACM floor
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void acmPublisherFieldTriggersTheFloorWhenTheNameLacksTheToken() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-acmpub", "2019-06-01");
+        ScholardexForumView forum = conferenceForum("Proceedings of the 12th Something Conference");
+        forum.setPublisher("Association for Computing Machinery");
+        when(cacheService.getForum("forum-acmpub")).thenReturn(forum);
+        // no getConferenceRankings stub: this name yields no acronym candidates, CORE is never consulted
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(2.0, score.getScore());
+        assertEquals(WoSRanking.Quarter.ACM.toString(), score.getQuarter());
+    }
+
+    @Test
+    void coreRankedAcmVenueKeepsItsCoreRankNotTheFloor() {
+        // The amendment covers only venues NOT in A*/A/B — a CORE-ranked ACM conference keeps its rank.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-acm-a", "2023-10-10");
+        when(cacheService.getForum("forum-acm-a")).thenReturn(conferenceForum(
+                "Proceedings of the ACM Great Conference, AGC 2023"));
+        when(cacheService.getConferenceRankings(anyString()))
+                .thenReturn(List.of(ranking("AGC", "ACM Great Conference", CoreConferenceRanking.Rank.A)));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(8.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+    }
+
     private Indicator indicator(String scoreYearRange) {
         Indicator indicator = new Indicator();
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, scoreYearRange);

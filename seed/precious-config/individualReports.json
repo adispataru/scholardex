@@ -989,7 +989,7 @@
   "indicatorRolesByIndicatorId": {
    "6820ffde04e38843635e0cb5": "activities-perspectiva-d",
    "6820fe4104e38843635e0cb2": "activities-perspectiva-d",
-   "6820d3a18a61794835d91b24": "activities-perspectiva-d",
+   "6a63b59843226fd40f87b943": "activities-perspectiva-d",
    "68191a2f526ce829aca68b34": "activities-perspectiva-d",
    "6820cafbfe404029dad193d1": "activities-perspectiva-d",
    "6820e4952654f8388e8d3649": "activities-perspectiva-d",
@@ -997,12 +997,12 @@
    "6a629148d8ddfc14de2b6a1c": "activities-perspectiva-d",
    "6a633aa137efb68d2e577b71": "activities-perspectiva-d",
    "6823535fbb926870c1f86fbd": "activities-perspectiva-d",
-   "665ce9102dbfdf2e0b3caa33": "__not_exported__",
+   "6a63b59843226fd40f87b942": "__not_exported__",
    "6820eff604e38843635e0cab": "activities-perspectiva-d",
-   "6820e0f6b20a79244588e87d": "activities-perspectiva-d",
+   "6a63b59843226fd40f87b944": "activities-perspectiva-d",
    "6820eec804e38843635e0ca8": "activities-perspectiva-d",
    "682100ba04e38843635e0cb8": "activities-perspectiva-d",
-   "6820e5552654f8388e8d364c": "activities-perspectiva-d",
+   "6a63b59843226fd40f87b945": "activities-perspectiva-d",
    "6a47f17bcb06b11f3b6121f0": "citations-per-publication",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
@@ -1015,7 +1015,7 @@
   "blockByIndicatorId": {
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
    "6820fe4104e38843635e0cb2": "Carti/Capitole",
-   "6820d3a18a61794835d91b24": "Editor proceedings",
+   "6a63b59843226fd40f87b943": "Editor proceedings",
    "68191a2f526ce829aca68b34": "Keynote/invited speaker",
    "6820cafbfe404029dad193d1": "Curs in format electronic",
    "6820e4952654f8388e8d3649": "Organizare evenimente",
@@ -1023,12 +1023,12 @@
    "6a629148d8ddfc14de2b6a1c": "Comisii doctorat",
    "6a633aa137efb68d2e577b71": "Granturi",
    "6823535fbb926870c1f86fbd": "Keynote/invited speaker",
-   "665ce9102dbfdf2e0b3caa33": "__not_exported__",
+   "6a63b59843226fd40f87b942": "__not_exported__",
    "6820eff604e38843635e0cab": "Comisii doctorat",
-   "6820e0f6b20a79244588e87d": "Membru comitet stiintific",
+   "6a63b59843226fd40f87b944": "Membru comitet stiintific",
    "6820eec804e38843635e0ca8": "Consolidarea de echipe",
    "682100ba04e38843635e0cb8": "Pozitii de conducere",
-   "6820e5552654f8388e8d364c": "Keynote/invited speaker",
+   "6a63b59843226fd40f87b945": "Keynote/invited speaker",
    "6a47f17bcb06b11f3b6121f0": "__not_exported__",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
@@ -1043,7 +1043,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "665ce9102dbfdf2e0b3caa33"
+     "$oid": "6a63b59843226fd40f87b942"
     }
    },
    {
@@ -1073,7 +1073,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6820d3a18a61794835d91b24"
+     "$oid": "6a63b59843226fd40f87b943"
     }
    },
    {
@@ -1097,7 +1097,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6820e0f6b20a79244588e87d"
+     "$oid": "6a63b59843226fd40f87b944"
     }
    },
    {
@@ -1115,7 +1115,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6820e5552654f8388e8d364c"
+     "$oid": "6a63b59843226fd40f87b945"
     }
    },
    {

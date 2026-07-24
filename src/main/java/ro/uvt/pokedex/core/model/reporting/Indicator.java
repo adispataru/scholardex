@@ -73,6 +73,19 @@ public class Indicator {
     }
 
     /**
+     * H85 — opt into the 2026 OM conference-list amendment "categoria C va include și lucrările publicate
+     * în ACM, EPTCS și LNCS care nu sunt în categoriile A*, A și B". The 2016 amendment lists LNCS only,
+     * so this flag is set on 2026 indicators exclusively; {@code null}/false keeps the frozen 2016
+     * behaviour (ACM/EPTCS venues fall to the D fallback). Nullable-only, like {@link #workshopCategory2026}.
+     */
+    private Boolean acmEptcsCFloor2026;
+
+    /** True when CORE-unranked ACM/EPTCS venues floor to category C (2026 OM amendment). */
+    public boolean usesAcmEptcsCFloor2026() {
+        return Boolean.TRUE.equals(acmEptcsCFloor2026);
+    }
+
+    /**
      * RETIRED (2026-07-24): best-of-AIS/JIF journal classification is now universal in
      * {@code ComputerScienceJournalScoringService} — the 2016 standard's AIS-only regime applied to too
      * few years to be worth keeping distinguishable. The field stays only so persisted documents that

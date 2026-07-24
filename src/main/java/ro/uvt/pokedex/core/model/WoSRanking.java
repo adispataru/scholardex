@@ -58,7 +58,7 @@ public class WoSRanking {
     }
 
     public enum Quarter {
-        Q1, Q2, Q3, Q4, REMOVED, NOT_FOUND, SCOPUS, LNCS, SENSE, CORE, ESCI, AHCI
+        Q1, Q2, Q3, Q4, REMOVED, NOT_FOUND, SCOPUS, LNCS, SENSE, CORE, ESCI, AHCI, ACM
     }
 
     public void generateId() {
