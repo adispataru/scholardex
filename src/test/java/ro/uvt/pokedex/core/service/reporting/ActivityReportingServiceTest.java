@@ -204,6 +204,71 @@ class ActivityReportingServiceTest {
         assertEquals(10.0, service.calculateActivityScores(List.of(act), gate).get("g3").getAuthorScore(), 1e-9);
     }
 
+    // ── Grant budget brackets: the derived Interval_buget variable + optional-number robustness ──
+
+    @Test
+    void missingOrBlankNumberFieldBindsNullInsteadOfCrashing() {
+        // The erascu/sancira prod case: grant entries without (or with blank) Buget used to NPE in
+        // Double.parseDouble and take down the whole indicator computation for the report.
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator nullCheck = indicator("GENERIC_ACTIVITY", "Buget == null ? 7 : 1");
+
+        ActivityInstance missing = grantActivity("g-missing", Map.of("Rol", "Director", "Nume Proiect", "X"));
+        ActivityInstance blank = grantActivity("g-blank", Map.of("Buget", "", "Rol", "Membru", "Nume Proiect", "Y"));
+
+        assertEquals(7.0, service.calculateActivityScores(List.of(missing), nullCheck).get("g-missing").getAuthorScore(), 1e-9);
+        assertEquals(7.0, service.calculateActivityScores(List.of(blank), nullCheck).get("g-blank").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void intervalBugetPrefersCanonicalProjectBudget() {
+        when(scholardexProjectReadPort.findById("sproj_1")).thenReturn(project(270000L, "EC"));
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator bracket = indicator("GENERIC_ACTIVITY", "Interval_buget");
+        ActivityInstance act = grantActivityWithProject("g4",
+                Map.of("Buget", "50000", "Rol", "Director", "Nume Proiect", "X"), "sproj_1");
+
+        // CORDIS 270k beats the declared 50k: bracket 4 (200.000–499.999), not 2.
+        assertEquals(4.0, service.calculateActivityScores(List.of(act), bracket).get("g4").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void intervalBugetFallsBackToExactDeclaredBudget() {
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator bracket = indicator("GENERIC_ACTIVITY", "Interval_buget");
+        ActivityInstance act = grantActivity("g5", Map.of("Buget", "150000", "Rol", "Membru", "Nume Proiect", "X"));
+
+        assertEquals(3.0, service.calculateActivityScores(List.of(act), bracket).get("g5").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void intervalBugetUsesTheDeclaredIntervalSelectWhenNoAmountIsKnown() {
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator bracket = indicator("GENERIC_ACTIVITY", "Interval_buget");
+        ActivityInstance act = grantActivity("g6", Map.of(
+                "Rol", "Membru", "Nume Proiect", "X",
+                "Interval_buget", "50.000 – 99.999 EUR"));
+
+        assertEquals(2.0, service.calculateActivityScores(List.of(act), bracket).get("g6").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void unknownBudgetScoresAsLowestBracketViaTheFormulaDefault() {
+        // Info_D_v's new shape: nothing known → Interval_buget == 0 → the formula's own default takes
+        // the LOWEST bracket (user decision: a competitive grant's existence merits the base tier).
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator dV = indicator("GENERIC_ACTIVITY",
+                "X = Interval_buget == 0 ? 1 : Interval_buget; Rol == 'Membru' ? X : X * 2");
+        ActivityInstance act = grantActivity("g7", Map.of("Rol", "Director (proiect național)", "Nume Proiect", "X"));
+
+        assertEquals(2.0, service.calculateActivityScores(List.of(act), dV).get("g7").getAuthorScore(), 1e-9);
+    }
+
     private static ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse project(Long budget, String funder) {
         return new ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse(
                 "sproj_1", "PN-CODE", null, "Title", funder, "Dir", 2017, 2018, "UVT", budget);
@@ -288,9 +353,12 @@ class ActivityReportingServiceTest {
         Activity.Field project = new Activity.Field();
         project.setName("Nume Proiect");
         project.setNumber(false);
+        Activity.Field interval = new Activity.Field();
+        interval.setName("Interval_buget");
+        interval.setNumber(false);
 
         Activity activity = new Activity();
-        activity.setFields(List.of(budget, role, project));
+        activity.setFields(List.of(budget, role, project, interval));
 
         ActivityInstance instance = new ActivityInstance();
         instance.setId(id);

@@ -338,7 +338,7 @@
    "$oid": "6820d9bcd7ca817372b6d6f3"
   },
   "name": "Info_D_v",
-  "formula": "B = proj_budget != null ? proj_budget : Buget; X = B < 50000 ? 1 : B < 100000 ? 2 : B < 200000 ? 3 : B < 500000 ? 4 : 5; Rol == 'Membru' ? X : X * 2",
+  "formula": "X = Interval_buget == 0 ? 1 : Interval_buget; Rol == 'Membru' ? X : X * 2",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -353,7 +353,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "841ffca505f67714f0b45e700dcb10a97638734da892267f3e25589d632daf21",
+  "formulaHash": "2be84c3a63e3a889c59e62fe056a143e3c32a286798d81bebc0ea3610145809b",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -1499,7 +1499,7 @@
    "$oid": "6a493be99fe41c33d2883e87"
   },
   "name": "Info_D_Proiecte_Director",
-  "formula": "B = proj_budget != null ? proj_budget : Buget; (Rol != 'Membru' && B >= 50000) ? 1 : 0",
+  "formula": "(Rol != 'Membru' && Interval_buget >= 2) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -1514,7 +1514,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "94ad3a09d7fc9cea92d5a564d88f72804cdb68ebd05cd5d68873ac8814a45551",
+  "formulaHash": "4f8a1c81cffa93216cce289e42291db07d56922a4894bb941f62845e1a6d5441",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },

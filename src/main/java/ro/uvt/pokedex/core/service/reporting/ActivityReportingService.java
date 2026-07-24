@@ -62,7 +62,10 @@ public class ActivityReportingService {
                 String fieldName = key.getName();
                 String value = activity.getFields().get(fieldName);
                 if (key.isNumber()) {
-                    variables.put(fieldName, Double.parseDouble(value));
+                    // Optional/blank number fields bind null instead of crashing: Double.parseDouble
+                    // used to NPE on an absent value and throw on "" — one budget-less grant entry
+                    // took down the whole indicator computation for that researcher's report.
+                    variables.put(fieldName, parseNumberOrNull(fieldName, value, activity));
                 } else {
                     variables.put(fieldName, value);
                 }
@@ -81,6 +84,11 @@ public class ActivityReportingService {
         // keys are ALWAYS bound (null when there is no/unresolved PROJECT_GRANT_ID reference) so a formula can null-check
         // them; formulas that don't reference proj_* are unaffected, so existing indicator totals do not change.
         injectLinkedProjectVariables(activity, variables);
+        // The platform's canonical grant-budget bracket (GrantBudgetBracket, EUR): derived here, once,
+        // with trusted-first precedence — CORDIS proj_budget, else the declared exact budget, else the
+        // researcher's self-declared interval select, else 0 (unknown). Budget-aware formulas consume
+        // Interval_buget (1–5) instead of re-encoding the threshold bounds per indicator.
+        injectBudgetBracketVariable(activity, variables);
         final String rawformula = indicator.getFormula();
         // H52 slice 11d.1: typed-strategy dispatch. GENERIC_ACTIVITY and
         // GENERIC_COUNT both short-circuit to a unit base score (1.0); only
@@ -131,6 +139,41 @@ public class ActivityReportingService {
             }
         }
         return result;
+    }
+
+    /** Null-safe numeric field binding; a malformed value logs and binds null rather than failing the row. */
+    private Double parseNumberOrNull(String fieldName, String value, ActivityInstance activity) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Activity {} field '{}' has non-numeric value '{}' — binding null", activity.getId(), fieldName, value);
+            return null;
+        }
+    }
+
+    /**
+     * Binds {@code Interval_buget} (int 1–5 per {@link GrantBudgetBracket}, 0 = unknown), derived
+     * trusted-first: CORDIS {@code proj_budget} → the declared exact {@code Buget} → the
+     * researcher's interval select (label-matched against the bracket scale) → 0. Always bound, so
+     * formulas can reference it without null checks; overwrites the raw select label the generic
+     * field loop bound under the same name.
+     */
+    private void injectBudgetBracketVariable(ActivityInstance activity, Map<String, Object> variables) {
+        Object projBudget = variables.get("proj_budget");
+        Object exactBudget = variables.get("Buget");
+        int bracket;
+        if (projBudget instanceof Number n) {
+            bracket = GrantBudgetBracket.fromAmount(n.doubleValue()).index;
+        } else if (exactBudget instanceof Number n) {
+            bracket = GrantBudgetBracket.fromAmount(n.doubleValue()).index;
+        } else {
+            String declared = activity.getFields() == null ? null : activity.getFields().get("Interval_buget");
+            bracket = GrantBudgetBracket.indexFromLabel(declared);
+        }
+        variables.put("Interval_buget", bracket);
     }
 
     /**
