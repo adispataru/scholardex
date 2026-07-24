@@ -127,40 +127,15 @@ assertNotContains(
   'scopusPublicationRepository.',
   `${userPublicationFacadePath}: edit/update/citation flows must not use legacy source-silo scopusPublicationRepository.`
 );
-const findForEditMethod = extractMethodSlice(
-  userPublicationFacadeContent,
-  'public Optional<ScholardexPublicationView> findPublicationForEdit(',
-  ['public void updatePublicationMetadata(']
-);
-if (findForEditMethod == null) {
-  errors.push(`${userPublicationFacadePath}: missing findPublicationForEdit method.`);
-} else {
-  assertContains(
-    findForEditMethod,
-    'findPublicationByAnyId(publicationId)',
-    `${userPublicationFacadePath}: findPublicationForEdit must use canonical projection lookup (findPublicationByAnyId).`
-  );
-}
-
-const updateMetadataMethod = extractMethodSlice(
+// findPublicationForEdit / updatePublicationMetadata contracts removed: researcher-facing
+// publication metadata editing was deleted entirely (a7cd7cc5) — subtype is scoring-critical
+// and no longer user-editable. If an edit flow ever returns, it must go through
+// ScholardexProjectionReadService.findPublicationByAnyId like the citation flow below.
+assertNotContains(
   userPublicationFacadeContent,
   'public void updatePublicationMetadata(',
-  ['private int computeHIndex(']
+  `${userPublicationFacadePath}: researcher-facing publication metadata editing was removed (a7cd7cc5) — do not reintroduce without restoring its canonical-lookup contract here.`
 );
-if (updateMetadataMethod == null) {
-  errors.push(`${userPublicationFacadePath}: missing updatePublicationMetadata method.`);
-} else {
-  assertContains(
-    updateMetadataMethod,
-    'findPublicationViewById(publicationId)',
-    `${userPublicationFacadePath}: updatePublicationMetadata must first resolve canonical projection row by id.`
-  );
-  assertContains(
-    updateMetadataMethod,
-    'findPublicationByAnyId(publicationId)',
-    `${userPublicationFacadePath}: updatePublicationMetadata must use canonical compatibility fallback through findPublicationByAnyId.`
-  );
-}
 
 const citationsViewMethod = extractMethodSlice(
   userPublicationFacadeContent,

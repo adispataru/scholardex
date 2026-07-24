@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
-import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
+import ro.uvt.pokedex.core.service.application.CoreConferenceLookupFacade;
 
 import java.util.List;
 import java.util.Map;
@@ -27,7 +27,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EntityCoreConferenceApiController {
 
-    private final CoreConferenceRankingRepository coreConferenceRankingRepository;
+    private final CoreConferenceLookupFacade coreConferenceLookupFacade;
 
     /** One picker suggestion; {@code latestRank}/{@code latestYear} let same-acronym rows disambiguate. */
     public record CoreConferenceSuggestion(String acronym, String name, String latestRank, Integer latestYear) {}
@@ -38,8 +38,8 @@ public class EntityCoreConferenceApiController {
         if (query.length() < 2) {
             return ResponseEntity.ok(List.of());
         }
-        List<CoreConferenceSuggestion> suggestions = coreConferenceRankingRepository
-                .findTop20ByAcronymStartingWithIgnoreCaseOrNameContainingIgnoreCaseOrderByAcronymAsc(query, query)
+        List<CoreConferenceSuggestion> suggestions = coreConferenceLookupFacade
+                .searchByAcronymOrName(query)
                 .stream()
                 .map(EntityCoreConferenceApiController::toSuggestion)
                 .toList();
