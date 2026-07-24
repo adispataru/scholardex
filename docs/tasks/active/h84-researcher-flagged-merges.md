@@ -140,6 +140,26 @@ at approval). Researcher sees "merge requested — awaiting admin" on both rows 
 pubs (not just one researcher's) feeding the same queue. Throttled/paginated; separate decision because
 the corpus-wide pair count is unknown.
 
+## Incident + fix (2026-07-25, prod)
+
+Two mis-paired direct merges were run in prod (the two SURVIVORS merged together and the two DUPLICATES
+merged together), deleting both SCPE publications and backfilling the SCPE DOI onto the wrong paper.
+Recovery, in order: (1) both wrong decisions flipped to REJECTED (stops rebuild re-apply, permanently
+suppresses those pairs); (2) the two CORRECT pairs seeded as APPROVED with HAND-BUILT source refs — the
+live source_links were polluted by the wrong merges, so refs must never be derived from links after a
+bad merge; (3) Florin's CONFIRMED authorship row on the SCPE paper restored (deleted by the collision
+rule — the only human-decision damage; no other users had rows on these pubs); (4) pod restarted to
+drop the stale in-memory aliases BEFORE any rebuild (without this, the canon hooks would have re-applied
+the wrong merges from memory even with the decisions REJECTED); (5) full derive rebuild — restored all
+four pubs from the untouched source layer.
+
+The rebuild exposed a real gap: the correct APPROVED merges stayed `applied=never` because
+`reapplyApproved()` was chained only in the Tier-2 incremental path (`ScopusCanonicalMaterializationService`)
+— the `rebuildAllDerived` flow goes through `ScopusBigBangMigrationService.deriveCanonicalAndProject`,
+which never ran it (the classic dual-path trap). Fixed: the pass now runs in BOTH paths, in the big-bang
+path after `rebuildFromEvidence()` and BEFORE `rebuildViews()`; pinned by InOrder regression tests.
+Takeaway recorded in the verify-code-path-before-rebuild memory.
+
 ## Ordering & verification
 
 S1 → S2 → S3 (each independently shippable; S1 alone + two direct-merge curl calls already fixes Florin's

@@ -58,6 +58,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
     @Mock private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     @Mock private ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
+    @Mock private PublicationMergeService publicationMergeService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private ro.uvt.pokedex.core.service.derivation.CanonicalDerivationV2Service canonicalDerivationV2Service;
     @Mock private ScholardexForumBuilder forumBuilder;
@@ -93,6 +94,7 @@ class ScopusBigBangMigrationServiceTest {
                 openAlexCanonicalizationService,
                 openAlexCitationCanonicalizationService,
                 dblpConferenceResolveService,
+                publicationMergeService,
                 citationCanonicalizationService,
                 canonicalDerivationV2Service,
                 forumBuilder,
@@ -198,6 +200,37 @@ class ScopusBigBangMigrationServiceTest {
         assertEquals(100L, full.verification().importEvents());
         assertEquals(78L, full.verification().canonicalCitationFacts());
         assertEquals(50L, full.verification().publicationViews());
+
+        // H84 regression (2026-07-25 prod incident): the FULL-REBUILD path must re-apply approved publication
+        // merges — after the DBLP evidence re-link (pubs re-minted from source) and BEFORE the projection
+        // rebuild (so retired pubs drop out of the views). Chaining only the Tier-2 incremental path left prod
+        // merges applied=never after a derive rebuild.
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(
+                dblpConferenceResolveService, publicationMergeService, scopusProjectionBuilderService);
+        inOrder.verify(dblpConferenceResolveService).rebuildFromEvidence();
+        inOrder.verify(publicationMergeService).reapplyApproved();
+        inOrder.verify(scopusProjectionBuilderService).rebuildViews();
+    }
+
+    @Test
+    void runDeriveFromFactsAlsoReappliesApprovedMergesBeforeProjections() {
+        when(scopusProjectionBuilderService.rebuildViews()).thenReturn(result(1, 1, 0, 0, 0));
+        when(forumBuilder.buildScopusForums(any(), any())).thenReturn(emptyForumBuild());
+        when(indexMaintenanceService.ensureIndexes()).thenReturn(
+                new ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult(
+                        List.of(), List.of(), List.of(), List.of()));
+        when(jdbcTemplate.queryForObject(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(Long.class)
+        )).thenReturn(0L);
+
+        service.runDeriveFromFacts();
+
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(
+                dblpConferenceResolveService, publicationMergeService, scopusProjectionBuilderService);
+        inOrder.verify(dblpConferenceResolveService).rebuildFromEvidence();
+        inOrder.verify(publicationMergeService).reapplyApproved();
+        inOrder.verify(scopusProjectionBuilderService).rebuildViews();
     }
 
     @Test

@@ -79,6 +79,7 @@ public class ScopusBigBangMigrationService {
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
+    private final PublicationMergeService publicationMergeService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     // H75: the V2 batch derivation engine — replaces the V1 canon block in runFull (the full-rebuild path).
     private final ro.uvt.pokedex.core.service.derivation.CanonicalDerivationV2Service canonicalDerivationV2Service;
@@ -424,6 +425,14 @@ public class ScopusBigBangMigrationService {
         // H66B Phase 4b: re-mint DBLP conference forums + re-link forumId from durable evidence (no API), since
         // forum_facts is wiped here. Runs after pubs + forums exist, before projections.
         ImportProcessingResult dblpConferences = dblpConferenceResolveService.rebuildFromEvidence();
+        // H84: re-apply human-approved publication merges — the canon replay above re-minted both sides of every
+        // merged pair from source. MUST run before rebuildViews so the projection reflects the merged state
+        // (retired pubs dropped, re-keyed edges projected). This is the FULL-REBUILD path (rebuildAllDerived →
+        // runFull/runDeriveFromFacts); the Tier-2 incremental path chains the same pass in
+        // ScopusCanonicalMaterializationService — the two paths are separate on purpose (V2 dual-path), so the
+        // pass lives in BOTH. Caught live 2026-07-25: merges seeded in prod stayed applied=never after a
+        // derive rebuild because only the incremental path was chained.
+        publicationMergeService.reapplyApproved();
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
