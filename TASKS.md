@@ -19,6 +19,11 @@ Done history moved to `TASKS-done.md`.
   decision persists in a durable side-table (pattern: publication_authorship_decisions / DBLP evidence)
   consulted during canonicalization — so full rebuilds RE-APPLY merges and the decision acts as an
   identity hint (title+creator match with coverDate tolerance), enriching rather than fighting rebuilds.
+  **SCOPED 2026-07-25** (`docs/tasks/active/h84-researcher-flagged-merges.md`). Both pairs re-verified in
+  prod post-rebuild. S1 executor + re-apply pass + resurrection-guard alias (merge Florin's pairs via
+  direct admin endpoint) → S2 admin queue UI → S3 researcher suggest/flag flow → S4 optional corpus-wide
+  sweep. Durable side-table `scholardex.publication_merge_decisions` anchored on source-record refs;
+  executor shared by live-approve and the rebuild re-apply (chained after rebuildFromEvidence).
 
 - [ ] `H85` OM 2026 conference-list amendments: ACM/EPTCS → C; UCC Companion mislabeling.
   **SCOPED 2026-07-24** (`docs/tasks/active/h85-om2026-acm-eptcs-c-floor.md`).
