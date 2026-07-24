@@ -259,11 +259,41 @@ public class OpenAlexCanonicalizationService {
             canonicalPublicationId = publicationCanonicalizationService.buildCanonicalPublicationId(
                     null, null, null, null, doiNormalized, titleNormalized,
                     source.getCoverDate(), source.getCreator(), null);
-            applyOpenAlexFields(new ScholardexPublicationFact(), source, doiNormalized, canonicalPublicationId);
-            result.markImported();
+            // H84 resurrection guard: a human-approved merge may have retired this identity. Resolve through the
+            // merge-alias registry (by the OpenAlex work ref AND the computed id) and enrich the surviving pub
+            // instead of re-minting the deleted duplicate — a re-sync must not undo an admin-approved merge.
+            ScholardexPublicationFact mergeSurvivor = resolveMergeSurvivor(workId, canonicalPublicationId);
+            if (mergeSurvivor != null) {
+                canonicalPublicationId = mergeSurvivor.getId();
+                bumpCitedByCount(mergeSurvivor, source.getCitedByCount());
+                sourceLinkService.link(
+                        ScholardexEntityType.PUBLICATION,
+                        SOURCE_OPENALEX,
+                        workId,
+                        canonicalPublicationId,
+                        LINK_REASON_OPENALEX_PUBLICATION,
+                        source.getSourceEventId(),
+                        source.getSourceBatchId(),
+                        source.getSourceCorrelationId(),
+                        false);
+                result.markUpdated();
+            } else {
+                applyOpenAlexFields(new ScholardexPublicationFact(), source, doiNormalized, canonicalPublicationId);
+                result.markImported();
+            }
         }
 
         writeAuthorshipEdges(source, canonicalPublicationId, doiNormalized, state);
+    }
+
+    /** H84: the surviving publication when this work (or the id it would mint) was merged away, else null. */
+    private ScholardexPublicationFact resolveMergeSurvivor(String workId, String computedCanonicalId) {
+        String survivorId = PublicationMergeAliasRegistry.survivorForSourceRecord(SOURCE_OPENALEX, workId);
+        if (survivorId == null) {
+            String resolved = PublicationMergeAliasRegistry.resolveCanonicalId(computedCanonicalId);
+            survivorId = resolved != null && !resolved.equals(computedCanonicalId) ? resolved : null;
+        }
+        return survivorId == null ? null : scholardexPublicationFactRepository.findById(survivorId).orElse(null);
     }
 
     /**

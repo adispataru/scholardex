@@ -688,6 +688,9 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                 scopusFact.getCreator(),
                 scopusFact.getForumId()
         );
+        // H84: a merged-away identity resolves to its survivor — without this, setId below would re-key the
+        // survivor fact (returned by loadExistingByEidOrDoi's merge guard) back onto the retired duplicate id.
+        canonicalId = PublicationMergeAliasRegistry.resolveCanonicalId(canonicalId);
         // H73 S2.2 (defer-to-OpenAlex precedence): when the existing canonical pub was minted by the OpenAlex-first
         // canon, OpenAlex is authoritative for the bibliographic content (title/venue/citations/author list/owning
         // source). Scopus then ENRICHES — it adds its eid + Scopus-only fields and authorship/affiliation edges —
@@ -1183,6 +1186,25 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     }
 
     private ScholardexPublicationFact loadExistingByEidOrDoi(String eid, String doiNormalized, ImportProcessingResult result, ChunkContext context) {
+        // H84 resurrection guard: a human-approved merge may have retired this record's own identity — resolve
+        // through the merge-alias registry and enrich the SURVIVOR instead of re-minting the deleted duplicate.
+        // (Paired with the alias resolve on the derived canonical id in applyCanonicalPublicationFields, which
+        // keeps setId from re-keying the survivor back onto the retired id.)
+        String normalizedEidForMerge = normalizeBlank(eid, context);
+        if (normalizedEidForMerge != null) {
+            String mergeSurvivorId = PublicationMergeAliasRegistry.survivorForSourceRecord("SCOPUS", normalizedEidForMerge);
+            if (mergeSurvivorId != null) {
+                ScholardexPublicationFact survivor = context != null && context.preloaded
+                        ? context.pendingPublicationFacts.get(mergeSurvivorId)
+                        : null;
+                if (survivor == null) {
+                    survivor = scholardexPublicationFactRepository.findById(mergeSurvivorId).orElse(null);
+                }
+                if (survivor != null) {
+                    return survivor;
+                }
+            }
+        }
         if (context != null && context.preloaded) {
             String normalizedEid = normalizeBlank(eid, context);
             if (normalizedEid != null) {

@@ -80,7 +80,19 @@ H84 registration).
 
 ## Slices
 
-**S1 — executor + durability (backend core).** Model + repository, `PublicationMergeService` (resolve,
+**S1 — executor + durability (backend core). — DONE locally (2026-07-25).** Implementation notes on top of
+the scope below: the resurrection guard became the static `PublicationMergeAliasRegistry`
+(PredatoryVenueSupport precedent — zero constructor churn in the canon services; loaded from APPROVED
+decisions by `PublicationMergeService.@PostConstruct`), with hooks in `OpenAlexCanonicalizationService`'s
+MINT branch (by work ref AND computed id → enrich survivor + link instead of re-mint) and in
+`ScholardexPublicationCanonicalizationService` at BOTH `loadExistingByEidOrDoi` (returns the survivor fact)
+and the derived-canonical-id site (alias resolve so `setId` can't re-key the survivor onto the retired id).
+Live-merge projection sync = batchless dirty marker → full view rebuild (TRUNCATE+reload drops the retired
+row); the endpoint does this synchronously like other admin initialization actions. Creator matching in the
+identity hint is shared-token (≥4 chars) because "Moscato F." vs "Francesco Moscato" defeats containment.
+Covered by `PublicationMergeDerivationIntegrationTest` (real Mongo: live merge with citation/decision
+dedupe, re-apply after simulated re-mint, OpenAlex full-replay resurrection guard incl. citedByCount bump
+landing on the survivor) + `PublicationMergeAliasRegistryTest`. Original scope: Model + repository, `PublicationMergeService` (resolve,
 re-key, enrich, delete, alias), materialization chaining, alias guard in both canon paths, admin REST
 endpoints (`POST /admin/publications/merge` direct-merge for the two known pairs;
 `GET/POST /admin/publications/mergeRequests/{id}/approve|reject`). Tests: unit (re-key dedupe on citation

@@ -24,6 +24,7 @@ public class ScopusCanonicalMaterializationService {
     private final UserDefinedCanonicalizationService userDefinedCanonicalizationService;
     private final OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
+    private final ro.uvt.pokedex.core.service.application.PublicationMergeService publicationMergeService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -69,6 +70,10 @@ public class ScopusCanonicalMaterializationService {
         // replay reset OpenAlex-conference pubs' forumId. Full-maintenance only, mirroring the OpenAlex replay above.
         if (!incrementalBatchRun) {
             dblpConferenceResolveService.rebuildFromEvidence();
+            // H84: re-apply human-approved publication merges — the canonical replay above re-minted both sides
+            // of every merged pair from source, so each merge re-executes here (idempotent; projections are not
+            // dirty-marked because the full view rebuild follows in this same run).
+            publicationMergeService.reapplyApproved();
         }
         ImportProcessingResult canonicalCitationResult = buildInputs.canonicalCitationResult();
         ScholardexSourceLinkService.ImportRepairSummary sourceLinkRepair = effectiveOptions.reconcileSourceLinks()

@@ -24,6 +24,11 @@ Done history moved to `TASKS-done.md`.
   direct admin endpoint) → S2 admin queue UI → S3 researcher suggest/flag flow → S4 optional corpus-wide
   sweep. Durable side-table `scholardex.publication_merge_decisions` anchored on source-record refs;
   executor shared by live-approve and the rebuild re-apply (chained after rebuildFromEvidence).
+  **S1 DONE locally 2026-07-25**: `PublicationMergeService` + static `PublicationMergeAliasRegistry`
+  (canon-path resurrection guard, zero constructor churn) + `/admin/publications/merge` +
+  `mergeRequests/{id}/approve|reject` endpoints; real-Mongo integration test covers live merge with
+  edge dedupe, rebuild re-apply, and OpenAlex-replay resurrection guard. Prod rollout after deploy:
+  two direct-merge curls (mOSAIC pair + SCPE pair), then Florin's refresh shows one entry each.
 
 - [ ] `H85` OM 2026 conference-list amendments: ACM/EPTCS → C; UCC Companion mislabeling.
   **SCOPED 2026-07-24** (`docs/tasks/active/h85-om2026-acm-eptcs-c-floor.md`).
