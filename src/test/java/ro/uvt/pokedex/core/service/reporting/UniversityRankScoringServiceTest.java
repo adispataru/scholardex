@@ -71,6 +71,51 @@ class UniversityRankScoringServiceTest {
         assertEquals(2023, score.getYear());
     }
 
+    @Test
+    void visitYearOutsideUrapWindowFallsBackToTheClosestDataYear() {
+        // URAP data starts ~2018; a 2010 Pisa visit used to land in the S==0 branch (unranked floor)
+        // even though the university IS ranked — the closest data year's rank is the right estimate.
+        UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);
+        ActivityInstance activity = new ActivityInstance();
+        activity.setDate("2010-05-01");
+        activity.setReferenceFields(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "University of Pisa"));
+        URAPUniversityRanking ranking = new URAPUniversityRanking();
+        ranking.setScores(Map.of(
+                2018, score(240),
+                2024, score(237)
+        ));
+        when(urapRankingService.getURAPUniversityRankingByName("University of Pisa")).thenReturn(ranking);
+        Indicator itemYear = indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(itemYear, "IY");
+
+        Score score = service.getScore(activity, itemYear);
+
+        // 2010 -> closest data year is 2018 (rank 240) -> top-500 bucket, category C.
+        assertEquals(240.0, score.getScore());
+        assertEquals("C", score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void closestYearTiePrefersTheEarlierYear() {
+        UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);
+        ActivityInstance activity = new ActivityInstance();
+        activity.setDate("2021-06-01");
+        activity.setReferenceFields(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "UVT"));
+        URAPUniversityRanking ranking = new URAPUniversityRanking();
+        ranking.setScores(Map.of(
+                2020, score(100),
+                2022, score(600)
+        ));
+        when(urapRankingService.getURAPUniversityRankingByName("UVT")).thenReturn(ranking);
+        Indicator itemYear = indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(itemYear, "IY");
+
+        Score score = service.getScore(activity, itemYear);
+
+        // 2021 is equidistant from 2020 and 2022 — the earlier year (closer to the visit era) wins.
+        assertEquals(100.0, score.getScore());
+    }
+
     private ActivityInstance activityWithUniversity(String name) {
         ActivityInstance activity = new ActivityInstance();
         activity.setDate("2023-03-10");
