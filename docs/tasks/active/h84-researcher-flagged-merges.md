@@ -100,10 +100,20 @@ endpoints (`POST /admin/publications/merge` direct-merge for the two known pairs
 (Testcontainers: seed both source facts → runFull order → assert one pub, union citations → run again →
 still one). **Deliverable: Florin's two pairs merged in prod and surviving the next rebuild.**
 
-**S2 — admin queue UI.** `admin/publication-merges.html` (pattern: conflicts.html): PENDING queue with
+**S2 — admin queue UI. — DONE locally (2026-07-25).** `admin/publication-merges.html` (pattern: conflicts.html): PENDING queue with
 side-by-side compare (title/source/coverDate/DOI/eid/cites/forum), Approve/Reject with note; a
 "Merged" tab showing APPLIED decisions + lastAppliedAt; a manual "merge two ids" form (admin-initiated,
 no researcher request). Controller → facade only (Z1 architecture rule).
+Implementation notes: `PublicationMergeAdminFacade` assembles rows from LIVE facts (fallback to the
+decision snapshot — a vanished duplicate renders as "applied", a live one as "awaiting re-apply");
+`AdminPublicationMergeViewController` at `/admin/publication-merges` with approve (note + swap-sides +
+rebuild-now), reject, and direct-merge form posts; sidebar entry "Merges" (fa-code-merge). Projection
+sync defaults to dirty-marking (Conflicts-page rebuild is the lever); "rebuild now" checkbox runs the
+full view rebuild synchronously. Verified live on agent-dev: direct merge of a synthetic mOSAIC
+duplicate via the page endpoint — success flash, Approved (1) row with resolved forum name, duplicate
+deleted, decision APPROVED + lastAppliedAt. Gotcha for local demos: the app's Mongo db is `scholardex`
+(`spring.mongodb.uri` default), NOT `test` — seeding `test` makes every merge a "not found" no-op.
+Contract-tested (@WebMvcTest render + action wiring, 5 tests).
 
 **S3 — researcher flow (workspace publications screen).** Two entry points in
 `workspacePublications.js`:

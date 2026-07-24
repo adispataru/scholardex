@@ -29,6 +29,10 @@ Done history moved to `TASKS-done.md`.
   `mergeRequests/{id}/approve|reject` endpoints; real-Mongo integration test covers live merge with
   edge dedupe, rebuild re-apply, and OpenAlex-replay resurrection guard. Prod rollout after deploy:
   two direct-merge curls (mOSAIC pair + SCPE pair), then Florin's refresh shows one entry each.
+  **S2 DONE locally 2026-07-25**: `/admin/publication-merges` queue page (facade-assembled side-by-side
+  compare from live facts, approve/reject/direct-merge forms, applied-vs-awaiting-re-apply state,
+  sidebar "Merges" entry); verified live on agent-dev with a synthetic duplicate. With the UI in place,
+  the prod merges can be done from the page instead of curls.
 
 - [ ] `H85` OM 2026 conference-list amendments: ACM/EPTCS → C; UCC Companion mislabeling.
   **SCOPED 2026-07-24** (`docs/tasks/active/h85-om2026-acm-eptcs-c-floor.md`).

@@ -458,6 +458,13 @@
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'publication-merges'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/publication-merges}">
+                        <i class="fa-solid fa-fw fa-code-merge"></i>
+                        <span>Merges</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'sourceLinks'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/source-links}">
                         <i class="fa-solid fa-fw fa-link"></i>
