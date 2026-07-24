@@ -47,6 +47,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 new SimpleMeterRegistry(),
                 webClient
         );
@@ -80,6 +82,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 meterRegistry,
                 mockAuthorWorksClient()
         );
@@ -137,6 +141,63 @@ class ScopusUpdateSchedulerTest {
     }
 
     @Test
+    void pollQueueFullPublicationTaskRunsNarrowReenrichmentOverSeenEids() {
+        // H82: FULL mode must re-claim precedence fields on EXISTING pubs (payload-dedupe keeps them out
+        // of ingestion), append the count to the task message, and push the dirty projections.
+        ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
+        ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
+        ScholardexProjectionReadService projectionReadService = mock(ScholardexProjectionReadService.class);
+        ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
+        ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
+        var reenrichmentService = mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class);
+        var dirtyService = mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class);
+        List<ScopusPublicationUpdate> savedTasks = capturePublicationSaves(publicationTaskRepo);
+
+        ScopusUpdateScheduler scheduler = new ScopusUpdateScheduler(
+                publicationTaskRepo,
+                citationTaskRepo,
+                projectionReadService,
+                ingestionService,
+                canonicalMaterializationService,
+                reenrichmentService,
+                dirtyService,
+                new SimpleMeterRegistry(),
+                mockAuthorWorksClient()
+        );
+        ReflectionTestUtils.setField(scheduler, "pageSize", 100);
+        ReflectionTestUtils.setField(scheduler, "defaultMaxAttempts", 3);
+        ReflectionTestUtils.setField(scheduler, "initialBackoffSeconds", 60L);
+        ReflectionTestUtils.setField(scheduler, "maxBackoffSeconds", 3600L);
+
+        ScopusPublicationUpdate task = new ScopusPublicationUpdate();
+        task.setId("pub-full");
+        task.setScopusId("a1");
+        task.setSyncMode("FULL");
+        task.setStatus(Status.PENDING);
+        task.setAttemptCount(0);
+        task.setMaxAttempts(3);
+        when(publicationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of(task));
+        when(citationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of());
+        when(projectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of());
+        // Payload identical to the stored event -> dedupe skips, "Imported 0 items" — the H82 case.
+        when(ingestionService.ingest(any(), anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.skipped());
+        when(reenrichmentService.reclaimPrecedenceFields(argThat(eids -> eids.contains("2-s2.0-1")), anyString()))
+                .thenReturn(2);
+        when(dirtyService.rebuildDirtyProjections()).thenReturn(
+                new ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.ProjectionRebuildResult(
+                        1, 1, 0, 1, 0, 0, List.of()));
+
+        scheduler.pollQueue();
+
+        assertEquals("Imported 0 items (full update), re-enriched 2 existing",
+                savedTasks.get(savedTasks.size() - 1).getMessage());
+        verify(reenrichmentService).reclaimPrecedenceFields(
+                argThat(eids -> eids.size() == 1 && eids.contains("2-s2.0-1")), anyString());
+        verify(dirtyService).rebuildDirtyProjections();
+    }
+
+    @Test
     void pollQueuePublicationTaskFiltersPeriodItemsAfterEndYear() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
@@ -151,6 +212,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 new SimpleMeterRegistry(),
                 mockAuthorWorksClient(authorWorksResponse(List.of(
                         Map.of("eid", "2-s2.0-in", "coverDate", "2023-12-31"),
@@ -222,6 +285,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 new SimpleMeterRegistry(),
                 webClient
         );
@@ -280,6 +345,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 meterRegistry,
                 webClient
         );
@@ -378,6 +445,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 new SimpleMeterRegistry(),
                 mockCitationsClient(Mono.just(response))
         );
@@ -455,6 +524,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 new SimpleMeterRegistry(),
                 webClient
         );
@@ -498,6 +569,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 meterRegistry,
                 mockAuthorWorksClient(Mono.error(new ro.uvt.pokedex.core.service.integration.IntegrationException(
                         ro.uvt.pokedex.core.service.integration.IntegrationErrorCode.EXTERNAL_TIMEOUT,
@@ -562,6 +635,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 meterRegistry,
                 mockCitationsClient(Mono.empty())
         );
@@ -626,6 +701,8 @@ class ScopusUpdateSchedulerTest {
                 projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
                 meterRegistry,
                 mockAuthorWorksClient(Mono.empty())
         );

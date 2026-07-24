@@ -45,6 +45,9 @@ public class ScopusUpdateScheduler {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
+    // H82: FULL-sync narrow re-enrichment of existing pubs + the dirty-projection push that follows it.
+    private final ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService reenrichmentService;
+    private final ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService projectionDirtyService;
     private final MeterRegistry meterRegistry;
 
     private final WebClient scopusPythonClient;
@@ -179,6 +182,11 @@ public class ScopusUpdateScheduler {
         String cursor = null;
         int imported = 0;
         String batchId = "scheduler-publication-task-" + task.getId() + "-attempt-" + task.getAttemptCount();
+        // H82: on a FULL sync (no fromDate window), every eid the API returns is collected so existing
+        // pubs — which payload-hash dedupe keeps out of the ingest pipeline — still get the narrow
+        // precedence-field re-enrichment pass after the loop.
+        boolean fullSync = fromDate == null;
+        java.util.Set<String> seenEids = fullSync ? new java.util.LinkedHashSet<>() : null;
 
         do {
             AuthorWorksRequest req = publicationPlanner.buildRequest(authorScopusId, fromDate, cursor, pageSize);
@@ -189,6 +197,9 @@ public class ScopusUpdateScheduler {
                     String sourceRecordId = text(item, "eid");
                     if (sourceRecordId == null || sourceRecordId.isBlank()) {
                         continue;
+                    }
+                    if (seenEids != null) {
+                        seenEids.add(sourceRecordId);
                     }
                     // PERIOD mode: skip items whose coverDate year is beyond the requested end year
                     if ("PERIOD".equals(task.getSyncMode()) && task.getEndYear() != null) {
@@ -220,15 +231,33 @@ public class ScopusUpdateScheduler {
                     task.getId(), imported, cursor != null && !cursor.isBlank());
         } while (cursor != null && !cursor.isBlank());
 
+        // H82: re-claim Scopus precedence fields (coverDate/coverDisplayDate) on this author's EXISTING
+        // pubs — payload-hash dedupe keeps unchanged records out of the ingest pipeline, so without this
+        // pass a FULL sync is a no-op for them and merge-rule fixes stay stranded until a full rebuild.
+        int reenriched = 0;
+        if (seenEids != null && !seenEids.isEmpty()) {
+            reenriched = reenrichmentService.reclaimPrecedenceFields(
+                    seenEids, "H82 full-sync re-enrichment, task " + task.getId());
+        }
+
         MDC.put("phase", "complete");
         task.setStatus(Status.COMPLETED);
-        task.setMessage("Imported " + imported + " items" + (fromDate != null ? " since " + fromDate : " (full update)"));
+        task.setMessage("Imported " + imported + " items" + (fromDate != null ? " since " + fromDate : " (full update)")
+                + (reenriched > 0 ? ", re-enriched " + reenriched + " existing" : ""));
         task.setExecutionDate(Instant.now().toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
         taskRepo.save(task);
         canonicalMaterializationService.rebuildFactsAndViews("scheduler-publication-task-" + task.getId(), batchId);
+        if (reenriched > 0) {
+            // Push the re-claimed fields into the Postgres read model now (per-batch partial path via the
+            // pubs' own sourceBatchIds) — otherwise the researcher's next report refresh reads stale dates
+            // until the nightly reconcile or an admin dirty-rebuild.
+            var rebuild = projectionDirtyService.rebuildDirtyProjections();
+            log.info("H82 dirty-projection rebuild after re-enrichment: requested={}, rebuilt={}, failed={}",
+                    rebuild.requestedMarkers(), rebuild.rebuiltMarkers(), rebuild.failedMarkers());
+        }
     }
 
 
