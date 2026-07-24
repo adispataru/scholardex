@@ -86,3 +86,41 @@ variants on top.
 
 Sibling to [H66](h66-curated-allowlists.md) + [H67](h67-h-index.md) (the istorie "h OR citations" OR-gate
 lands here). Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica (Da/Nu).
+
+## Slice 3 — percent-of-criterion caps (scoped 2026-07-24)
+
+**Consumer (first real one):** Informatică Perspectiva D — the 2026 OM (3019/2025) caps D(x) Consolidare
+echipe and D(xiv) pachete software at "maximum 10% din punctajul total al perspectivei d" (D(xvii) Premii
+too, but that item is S3-gated and out of scope). The **2016 standard has the same three caps** (x, xiv,
+xvi), so both FV Info reports get flagged. Verified: the official FV 2016 Excel does NOT implement these
+caps (plain SUM on the D sheet) — whatever we ship becomes the operational interpretation.
+
+**Semantics — fixed point, user decision 2026-07-24.** The final criterion total `T` satisfies
+`capped_i = min(c_i, p_i·T)` and `T = rest + Σ capped_i`. Chosen over "percent of the other indicators"
+(conservative, EU-indirect-costs style) and "percent of the raw total" (violates its own recheck) because
+it is the only reading where the shipped state satisfies the OM constraint against the FINAL total, and it
+is candidate-favorable — consistent with the standards' own favorability ethos ("lista cea mai favorabilă
+candidatului"). Closed form via water-filling (≤|F| passes): assume all flagged caps bind,
+`T = (rest + Σ non-binding c_i) / (1 − Σ binding p_i)`, drop any i with `c_i ≤ p_i·T`, repeat.
+Numeric pin: rest=90, raw=30, p=10% → cap=10, T=100 (exactly 10%).
+Guards: `1 − Σp ≤ 0` → fall back to percent-of-rest + warn (degenerate config); `rest=0` with all flagged
+binding → T=0 (faithful to the letter; documented).
+
+**Model:** `Criterion.maxPercentOfTotal: Map<Integer, Double>` (indicatorIndex → percent, 0–100), nullable,
+mirrors the `weights` keying. Embedded doc — new nullable field is deserialization-safe, but boot against
+real data anyway (record-component lesson).
+
+**Engine:** second phase inside the single private `computeCriterionScores` core
+(`ReportingComputationSupport`) — order: weights → percent caps (fixed point) → `maxTotal` clamp. Add a
+detail overload exposing per-indicator effective contributions so UI/export can annotate.
+
+**UI/export:** indicator card gets a "counts as X in <criterion> (10% cap)" note from the detail map; FV
+export must keep the render→parse round-trip green (binding block-name invariant test).
+
+**Data (AFTER code deploys — new field is read only by new code):** both FV Info reports' Perspectiva D
+criterion: `maxPercentOfTotal: {13: 10, 17: 10}` — indices verified identical in both reports (13 =
+Info_D_x, 17 = Info_D_xiv; safe because the D_v swap was done in-place).
+
+**Tests:** the numeric pin above; non-binding flagged indicator; two flagged both binding (rest=80, raws
+30+40, p=10% each → T=100, caps 10+10); one binding one not; rest=0; Σp≥1 guard; composition with weights
+and maxTotal; legacy criterion docs without the field.
