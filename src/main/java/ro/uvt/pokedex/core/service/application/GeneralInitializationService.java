@@ -45,6 +45,9 @@ public class GeneralInitializationService {
     @Value("${general.init.arwu.folder:data/arwu}")
     private String arwuFolderPath;
 
+    @Value("${general.init.qs.folder:data/qs}")
+    private String qsFolderPath;
+
     @Value("${general.init.cncsis.file:data/cncsis/publisher_list.xlsx}")
     private String cncsisFilePath;
 
@@ -98,6 +101,13 @@ public class GeneralInitializationService {
         return runStep("arwu-import", false, "arwu", () -> {
             universityRankingCsvService.loadSourceFromFolder("ARWU", arwuFolderPath, "ARWU");
             return "arwu import completed from " + arwuFolderPath;
+        });
+    }
+
+    public GeneralInitializationStepResult runQsImport() {
+        return runStep("qs-import", false, "qs", () -> {
+            universityRankingCsvService.loadSourceFromFolder("QS", qsFolderPath, "QS");
+            return "qs import completed from " + qsFolderPath;
         });
     }
 

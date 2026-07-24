@@ -47,7 +47,16 @@ University" 2012+ with the "(Aix-Marseille 2)" predecessor doc 2003–2010.
 **Prod rollout: defer until S3 ships** — the data is inert until the scorer consumes it; roll out code
 (deploy) + `data/arwu/` PVC copy + init button together with S3.
 
-**S2b — QS ingestion.** New generic model `UniversityRanking {name, source (QS|ARWU), country,
+**S2b — QS ingestion — DONE locally (2026-07-24).** topuniversities.com sits behind Cloudflare, so the
+harvest ran through the in-app browser: per-edition pages expose their ranking nid in
+`drupalSettings.qs_rankings_rest_api`, and page-context fetches of `/rankings/endpoint` POSTed each
+edition's rows to a throwaway local receiver (no Kaggle auth needed). Editions 2015–2027 (13; the current
+site's oldest is 2015 — ARWU/URAP cover earlier years). Note QS paths are publication years but pages are
+EDITION years (path /2014 serves edition 2015); keyed by edition. Normalization: "=2" ties stripped,
+"401-410"/"1001+" bands lower-bounded. 13 CSVs in `data/qs/`; `/general/qs` init step reuses
+`UniversityRankingCsvService` (source QS). Local load: 1,772 universities / 15,509 rows / 0 skipped;
+Pisa + Aix stable-named across all editions; UVT itself tracked 2015–2027 (701+ → 1201-1400).
+**Prod rollout: with S3**, same as ARWU (PVC copy of `data/arwu/` + `data/qs/` + two init buttons). New generic model `UniversityRanking {name, source (QS|ARWU), country,
 Map<year, rank>}` in one collection (URAP stays in its collection for now; unification is a later cleanup).
 Sources, best-available first:
 - ARWU: Kaggle 2003–2025 compilation (full back-catalog) — https://www.kaggle.com/datasets/pawellenartowicz/arwu-shanghai-ranking-2003-2025;
