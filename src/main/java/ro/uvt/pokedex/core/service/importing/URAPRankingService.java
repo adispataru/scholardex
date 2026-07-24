@@ -135,8 +135,21 @@ public class URAPRankingService {
 
     private String getStringValue(Cell cell) {
         if (cell == null) return "";
-        cell.setCellType(CellType.STRING);
-        return cell.getStringCellValue();
+        // No setCellType(STRING) coercion: on inline-string cells (openpyxl-generated files, e.g. the
+        // H83 URAP back-catalog) the deprecated conversion CLEARS the value before reading — 7,750
+        // rows silently skipped. Read by actual type instead.
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> {
+                double v = cell.getNumericCellValue();
+                yield v == Math.floor(v) && !Double.isInfinite(v)
+                        ? String.valueOf((long) v)
+                        : String.valueOf(v);
+            }
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case FORMULA -> cell.getRichStringCellValue().getString();
+            default -> "";
+        };
     }
 
     private double getDoubleValue(Cell cell) {

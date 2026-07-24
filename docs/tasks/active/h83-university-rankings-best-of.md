@@ -19,12 +19,21 @@ exists upstream while our closest-year fallback approximates from 2018.
 
 ## Slices
 
-**S1 — URAP back-catalog 2010–2017 (data-only).** URAP publishes per-year archives
-(`urapcenter.org/<year>/world.php`, paginated HTML; CDN PDFs also exist, e.g. 2014-2015, 2016-2017).
-Scrape per year → build `URAP_WR_<year>.xlsx` matching the current loader's column shape → drop into
-`data/urap-univ/` → re-run `/general/urap` (verify upsert merges new years into existing name docs rather
-than duplicating). Effect: `closestYearRank` becomes exact for old visits. Name-drift across eras accepted
-(status quo policy).
+**S1 — URAP back-catalog 2010–2017 — DONE locally (2026-07-24).** Scraped via Wayback CDX (the live
+site is now a Meteor SPA; old world.php paths serve the shell). `URAP_WR_2010..2017.xlsx` built and loaded:
+4,499 ranking docs (was 3,562), Harvard spans all 15 years. Coverage: full top-500 for 2011/2013/2014/2016/
+2017; top-250 only for 2010/2012/2015 (251-500 windows never usably archived) — adjacent full years cover
+via closestYearRank. Only ranks ≤500 differentiate the brackets, so tail gaps are cosmetic (D_xi's 0.5
+floor for >500 aside). Name drift confirmed and accepted (e.g. "Universita di Pisa" 2010-2013+2015 vs
+"University of Pisa" 2014+; four Aix-Marseille variants) — S4 picker is the eventual fix.
+**Loader bug found+fixed:** POI's deprecated `setCellType(STRING)` CLEARS inline-string cells
+(openpyxl output) — all 7,750 back-catalog rows skipped silently; `getStringValue` now reads by actual
+cell type. Verified end-to-end: a 2014 Pisa Visiting-Staff entry scores D_ix 4.00 (era-true top-200)
+instead of 2.00 (closest-2018 top-500).
+**Prod rollout (pending):** (1) deploy the loader fix FIRST (prod has the same inlineStr bug);
+(2) copy the 8 xlsx onto the `scholardex-data` PVC via a writable helper pod; (3) drop `urap.rankings`
+in prod Mongo; (4) POST `/admin/initialization/general/urap` from an admin session. Do (3)+(4) right
+after a deploy restart so the name-resolution cache starts empty.
 
 **S2 — QS + ARWU ingestion.** New generic model `UniversityRanking {name, source (QS|ARWU), country,
 Map<year, rank>}` in one collection (URAP stays in its collection for now; unification is a later cleanup).
