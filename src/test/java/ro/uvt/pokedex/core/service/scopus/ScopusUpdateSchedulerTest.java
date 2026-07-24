@@ -20,7 +20,6 @@ import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidResponse;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -119,7 +118,7 @@ class ScopusUpdateSchedulerTest {
         assertPublicationSnapshot(savedTasks.get(0), Status.IN_PROGRESS, "Starting", null, null,
                 "STALE_CODE", "stale message", 1, 3);
         assertPublicationSnapshot(savedTasks.get(1), Status.COMPLETED, "Imported 1 items since 2023-06-15",
-                LocalDate.now().toString(), null, null, null, 1, 3);
+                RECENT_INSTANT, null, null, null, 1, 3);
         assertEquals(1.0, meterRegistry.counter(
                 "core.external.scopus_python.calls",
                 "operation", "authorWorks",
@@ -191,7 +190,7 @@ class ScopusUpdateSchedulerTest {
 
         assertEquals(2, savedTasks.size());
         assertPublicationSnapshot(savedTasks.get(1), Status.COMPLETED, "Imported 3 items since 2020-01-01",
-                LocalDate.now().toString(), null, null, null, 1, 3);
+                RECENT_INSTANT, null, null, null, 1, 3);
         verify(ingestionService).ingest(eq(ScopusImportEntityType.PUBLICATION), eq("SCOPUS_PYTHON_AUTHOR_WORKS"),
                 eq("2-s2.0-in"), anyString(), anyString(), eq("json-object"), any());
         verify(ingestionService, never()).ingest(eq(ScopusImportEntityType.PUBLICATION), eq("SCOPUS_PYTHON_AUTHOR_WORKS"),
@@ -252,7 +251,7 @@ class ScopusUpdateSchedulerTest {
 
         assertEquals(2, savedTasks.size());
         assertPublicationSnapshot(savedTasks.get(1), Status.COMPLETED, "Imported 2 items since 2023-06-15",
-                LocalDate.now().toString(), null, null, null, 1, 3);
+                RECENT_INSTANT, null, null, null, 1, 3);
         ArgumentCaptor<AuthorWorksRequest> requestCaptor = ArgumentCaptor.forClass(AuthorWorksRequest.class);
         verify(webClient.post(), times(2)).bodyValue(requestCaptor.capture());
         List<AuthorWorksRequest> requests = requestCaptor.getAllValues();
@@ -334,7 +333,7 @@ class ScopusUpdateSchedulerTest {
                 "STALE_CODE", "stale message", 1, 3);
         assertCitationSnapshot(savedTasks.get(1), Status.COMPLETED,
                 "Author a1: imported/updated 1 citing publications and 1 citation links.",
-                LocalDate.now().toString(), null, null, null, 1, 3);
+                RECENT_INSTANT, null, null, null, 1, 3);
         assertEquals(1.0, meterRegistry.counter(
                 "core.external.scopus_python.calls",
                 "operation", "citationsByEid",
@@ -412,7 +411,7 @@ class ScopusUpdateSchedulerTest {
         assertEquals(2, savedTasks.size());
         assertCitationSnapshot(savedTasks.get(1), Status.COMPLETED,
                 "Author a1: imported/updated 1 citing publications and 1 citation links.",
-                LocalDate.now().toString(), null, null, null, 1, 3);
+                RECENT_INSTANT, null, null, null, 1, 3);
         verify(ingestionService).ingest(eq(ScopusImportEntityType.PUBLICATION),
                 eq("SCOPUS_PYTHON_CITATIONS_PUBLICATION"),
                 eq("2-s2.0-valid"),
@@ -477,7 +476,7 @@ class ScopusUpdateSchedulerTest {
         assertCitationSnapshot(savedTasks.get(0), Status.IN_PROGRESS, "Starting citations update", null, null, null, null, 1, 3);
         assertCitationSnapshot(savedTasks.get(1), Status.COMPLETED,
                 "No publications found for author a-empty, nothing to update.",
-                LocalDate.now().toString(), null, null, null, 1, 3);
+                RECENT_INSTANT, null, null, null, 1, 3);
         verify(webClient, never()).post();
         verifyNoInteractions(ingestionService, canonicalMaterializationService);
         verify(projectionReadService, never()).findAllCitationsByCitedIdIn(anyList());
@@ -592,7 +591,7 @@ class ScopusUpdateSchedulerTest {
         ScopusCitationsUpdate failure = savedTasks.get(1);
         assertEquals(Status.FAILED, failure.getStatus());
         assertEquals("FAILED: Python citations service returned empty response", failure.getMessage());
-        assertEquals(LocalDate.now().toString(), failure.getExecutionDate());
+        assertRecentInstant(failure.getExecutionDate());
         assertNull(failure.getNextAttemptAt());
         assertEquals("EXTERNAL_BAD_PAYLOAD", failure.getLastErrorCode());
         assertEquals("Python citations service returned empty response", failure.getLastErrorMessage());
@@ -652,7 +651,7 @@ class ScopusUpdateSchedulerTest {
         ScopusPublicationUpdate failure = savedTasks.get(1);
         assertEquals(Status.FAILED, failure.getStatus());
         assertEquals("FAILED: Python author works service returned empty response", failure.getMessage());
-        assertEquals(LocalDate.now().toString(), failure.getExecutionDate());
+        assertRecentInstant(failure.getExecutionDate());
         assertNull(failure.getNextAttemptAt());
         assertEquals("EXTERNAL_BAD_PAYLOAD", failure.getLastErrorCode());
         assertEquals("Python author works service returned empty response", failure.getLastErrorMessage());
@@ -802,6 +801,24 @@ class ScopusUpdateSchedulerTest {
         return publication;
     }
 
+    /** Execution stamps are now full Instants (was a bare LocalDate) — assert freshness, not equality. */
+    private static final String RECENT_INSTANT = "<recent-instant>";
+
+    private static void assertTaskDate(String expected, String actual) {
+        if (RECENT_INSTANT.equals(expected)) {
+            assertRecentInstant(actual);
+        } else {
+            assertEquals(expected, actual);
+        }
+    }
+
+    private static void assertRecentInstant(String actual) {
+        java.time.Instant parsed = java.time.Instant.parse(actual);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                java.time.Duration.between(parsed, java.time.Instant.now()).abs().toMinutes() < 5,
+                "expected a recent instant, got " + actual);
+    }
+
     private void assertPublicationSnapshot(
             ScopusPublicationUpdate task,
             Status status,
@@ -815,7 +832,7 @@ class ScopusUpdateSchedulerTest {
     ) {
         assertEquals(status, task.getStatus());
         assertEquals(message, task.getMessage());
-        assertEquals(executionDate, task.getExecutionDate());
+        assertTaskDate(executionDate, task.getExecutionDate());
         assertEquals(nextAttemptAt, task.getNextAttemptAt());
         assertEquals(lastErrorCode, task.getLastErrorCode());
         assertEquals(lastErrorMessage, task.getLastErrorMessage());
@@ -836,7 +853,7 @@ class ScopusUpdateSchedulerTest {
     ) {
         assertEquals(status, task.getStatus());
         assertEquals(message, task.getMessage());
-        assertEquals(executionDate, task.getExecutionDate());
+        assertTaskDate(executionDate, task.getExecutionDate());
         assertEquals(nextAttemptAt, task.getNextAttemptAt());
         assertEquals(lastErrorCode, task.getLastErrorCode());
         assertEquals(lastErrorMessage, task.getLastErrorMessage());

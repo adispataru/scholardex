@@ -32,8 +32,6 @@ import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidRequest;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidResponse;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
@@ -66,7 +64,6 @@ public class ScopusUpdateScheduler {
     @Value("${scopus.update.retry.max-backoff-seconds:3600}")
     private long maxBackoffSeconds;
 
-    private static final ZoneId Z = ZoneId.systemDefault();
 
 
 
@@ -226,7 +223,7 @@ public class ScopusUpdateScheduler {
         MDC.put("phase", "complete");
         task.setStatus(Status.COMPLETED);
         task.setMessage("Imported " + imported + " items" + (fromDate != null ? " since " + fromDate : " (full update)"));
-        task.setExecutionDate(LocalDate.now(Z).toString());
+        task.setExecutionDate(Instant.now().toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
@@ -288,7 +285,7 @@ public class ScopusUpdateScheduler {
         if (eidLastDate.isEmpty()) {
             task.setStatus(Status.COMPLETED);
             task.setMessage("No publications found for author " + authorScopusId + ", nothing to update.");
-            task.setExecutionDate(LocalDate.now(Z).toString());
+            task.setExecutionDate(Instant.now().toString());
             task.setLastErrorCode(null);
             task.setLastErrorMessage(null);
             task.setNextAttemptAt(null);
@@ -358,7 +355,7 @@ public class ScopusUpdateScheduler {
         task.setStatus(Status.COMPLETED);
         task.setMessage("Author " + authorScopusId + ": imported/updated " +
                 importedPublications + " citing publications and " + createdCitations + " citation links.");
-        task.setExecutionDate(LocalDate.now(Z).toString());
+        task.setExecutionDate(Instant.now().toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
@@ -490,7 +487,7 @@ public class ScopusUpdateScheduler {
         task.setMessage(decision.message());
         task.setNextAttemptAt(decision.nextAttemptAt());
         if (decision.terminal()) {
-            task.setExecutionDate(LocalDate.now(Z).toString());
+            task.setExecutionDate(Instant.now().toString());
         }
         task.setLastErrorCode(decision.lastErrorCode());
         task.setLastErrorMessage(decision.lastErrorMessage());
@@ -514,7 +511,7 @@ public class ScopusUpdateScheduler {
         task.setMessage(decision.message());
         task.setNextAttemptAt(decision.nextAttemptAt());
         if (decision.terminal()) {
-            task.setExecutionDate(LocalDate.now(Z).toString());
+            task.setExecutionDate(Instant.now().toString());
         }
         task.setLastErrorCode(decision.lastErrorCode());
         task.setLastErrorMessage(decision.lastErrorMessage());

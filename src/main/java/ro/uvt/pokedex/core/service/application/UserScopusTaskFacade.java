@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -55,7 +54,7 @@ public class UserScopusTaskFacade {
     private void initializeDraft(ScopusPublicationUpdate draft, String userEmail) {
         draft.setInitiator(userEmail);
         draft.setStatus(Status.PENDING);
-        draft.setInitiatedDate(LocalDate.now().toString());
+        draft.setInitiatedDate(java.time.Instant.now().toString());
         if (draft.getMaxAttempts() <= 0) {
             draft.setMaxAttempts(3);
         }
@@ -68,7 +67,7 @@ public class UserScopusTaskFacade {
     private void initializeDraft(ScopusCitationsUpdate draft, String userEmail) {
         draft.setInitiator(userEmail);
         draft.setStatus(Status.PENDING);
-        draft.setInitiatedDate(LocalDate.now().toString());
+        draft.setInitiatedDate(java.time.Instant.now().toString());
         if (draft.getMaxAttempts() <= 0) {
             draft.setMaxAttempts(3);
         }

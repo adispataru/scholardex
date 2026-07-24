@@ -808,6 +808,16 @@ function _modeLabel(mode) {
 function _fmtDate(iso) {
     if (!iso) return '—';
     try {
+        // Legacy tasks stored a bare date ("2026-07-24"); new Date() reads that as
+        // midnight UTC, so rendering hour/minute fabricated a constant fake time
+        // (03:00 in Romania). Date-only values render as date only.
+        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+            return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
         return new Date(iso).toLocaleString(undefined, {
             year: 'numeric',
             month: 'short',

@@ -13,8 +13,6 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -28,7 +26,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OpenAlexUpdateScheduler {
 
-    private static final ZoneId Z = ZoneId.systemDefault();
 
     private final OpenAlexAuthorUpdateRepository taskRepo;
     private final OpenAlexImportService importService;
@@ -115,7 +112,7 @@ public class OpenAlexUpdateScheduler {
                 + ", linked=" + result.getUpdatedCount() + ", skipped=" + result.getSkippedCount()
                 + ", citationEdges=" + citationResult.getImportedCount()
                 + ", dblpConferences=" + dblpResult.getImportedCount() + ")");
-        task.setExecutionDate(LocalDate.now(Z).toString());
+        task.setExecutionDate(Instant.now().toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);

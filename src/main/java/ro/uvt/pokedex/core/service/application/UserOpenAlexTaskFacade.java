@@ -6,7 +6,6 @@ import ro.uvt.pokedex.core.model.tasks.OpenAlexAuthorUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
 import ro.uvt.pokedex.core.repository.tasks.OpenAlexAuthorUpdateRepository;
 
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -27,7 +26,7 @@ public class UserOpenAlexTaskFacade {
     public OpenAlexAuthorUpdate createAuthorTask(String userEmail, OpenAlexAuthorUpdate draft) {
         draft.setInitiator(userEmail);
         draft.setStatus(Status.PENDING);
-        draft.setInitiatedDate(LocalDate.now().toString());
+        draft.setInitiatedDate(java.time.Instant.now().toString());
         if (draft.getMaxAttempts() <= 0) {
             draft.setMaxAttempts(3);
         }
