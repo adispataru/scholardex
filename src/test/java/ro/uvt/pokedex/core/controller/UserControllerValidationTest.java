@@ -208,6 +208,8 @@ class UserControllerValidationTest {
                 }
                 """;
 
+        org.mockito.ArgumentCaptor<User> saved = org.mockito.ArgumentCaptor.forClass(User.class);
+
         mockMvc.perform(put("/api/admin/users/{email}", "user@uvt.ro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -216,6 +218,16 @@ class UserControllerValidationTest {
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.authorities").doesNotExist())
                 .andExpect(jsonPath("$.credentialsNonExpired").doesNotExist());
+
+        // Regression: the body carries "password":"secret" and this handler used to store it VERBATIM —
+        // unencoded, unlike createUser which hashes. Auth is OIDC-only, so the supplied password must be
+        // ignored outright and the existing scrambled hash carried forward. Never the raw string.
+        org.mockito.Mockito.verify(userService)
+                .updateUser(org.mockito.ArgumentMatchers.eq("user@uvt.ro"), saved.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("encoded", saved.getValue().getPassword(),
+                "the existing scrambled hash must be carried forward");
+        org.junit.jupiter.api.Assertions.assertNotEquals("secret", saved.getValue().getPassword(),
+                "the raw password from the request body must never be stored");
     }
 
     @Test

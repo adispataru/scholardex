@@ -64,7 +64,11 @@ public class UserController {
         User existing = existingOpt.get();
         User updated = new User();
         updated.setEmail(email);
-        updated.setPassword((request.password() == null || request.password().isBlank()) ? existing.getPassword() : request.password());
+        // Authentication is OIDC-only; the stored hash is a random scramble that nothing verifies against.
+        // This used to write `request.password()` STRAIGHT THROUGH — unencoded, unlike createUser, which
+        // hashes — so an admin-supplied password landed in Mongo as plaintext. Carry the existing value
+        // instead and ignore the field entirely: there is no password to set.
+        updated.setPassword(existing.getPassword());
         updated.setLocked(request.locked() != null ? request.locked() : existing.isLocked());
         updated.setRoles(userService.parseRoles(request.roles()));
 

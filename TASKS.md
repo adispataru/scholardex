@@ -99,16 +99,40 @@ Done history moved to `TASKS-done.md`.
   `Perspectiva D.maxPercentOfTotal = {13: 10, 17: 10}`. Nothing pending here.
 
 - [ ] `H88` Production readiness / launch checklist (operational, not feature work).
-  **RAISED 2026-07-25 during the backlog audit.** These items existed only in session memory and appeared in
-  NEITHER `TASKS.md` nor `TASKS-done.md`, which means the only record of them was outside the repo. Written
-  down so they survive.
-  - **Rotate the Elsevier (Scopus) API key** — the current key has been in use across development.
-  - **Keycloak decision** — commit to Keycloak or to the current OIDC setup for production sign-in. (Keycloak
-    appears only in `TASKS-done.md`; there is no open entry recording that the decision is still pending.)
-  - **On-prem Scopus smoke test** — confirm the scopus-python path works from the cluster, not just locally.
-  - **Mongodump seeding** — a restored dump currently carries the dev admin password; seeding a fresh
-    environment must not inherit it.
-  Exit criteria: each item either done or explicitly deferred with a reason, in this entry.
+  **RAISED + AUDITED 2026-07-25.** These existed only in session memory, in neither task file. Audited
+  against production the same day; two were already done and my initial reading of a third was WRONG.
+  - **Keycloak decision — DONE 2026-07-18 (`c8350488`).** OIDC-only through the Keycloak realm; `formLogin`
+    and `DaoAuthenticationProvider` DELETED, not hidden. Prod confirms the design: `rdi-breakglass` exists
+    with PLATFORM_ADMIN and no password.
+  - **On-prem Scopus smoke test — DONE.** Superseded by real traffic: `scholardex-scopus-python` served
+    `POST /v1/author-works` and `/v1/citations/by-eid` against live AU-ID queries, all 200, on 2026-07-25.
+  - **Mongodump / dev admin password — DONE 2026-07-18, and my first read of it was wrong.** I reported
+    "57 of 58 users still carry bcrypt hashes" as unresolved residue. They are RANDOM UUID hashes:
+    `LocalPasswordScrambleRunner` (marker `local-password-scramble-v1`, applied 2026-07-18T18:55Z,
+    `scrambledUsers: 56`) already neutralized every stored password for exactly this reason. Nothing
+    guessable survives even if a password path were reintroduced.
+  - **Rotate the Elsevier key — OPEN (one step left).** The key WAS rotated, but prod and the local dev
+    `.env` hold the SAME value (identical SHA-256, len 32). A laptop compromise therefore reaches prod, and
+    Elsevier's quota/logs cannot separate prod from local experiments. Fix: issue a second key so prod has
+    its own. Script: `scripts/ops/rotate-scopus-key.sh` (prompts with echo off, never writes or prints the
+    key, refuses the `.env` value, restarts both consumers, tells you how to verify before revoking).
+  - **Remove `agent@dev.local` from prod — OPEN (script ready).** The agent-dev principal sits in the
+    production user collection with PLATFORM_ADMIN + SUPERVISOR + RESEARCHER. Not exploitable today (the
+    profile is never active in prod, and it bypasses security wholesale anyway, so the account is not the
+    weak link) but an unowned admin identity has no business there. Verified zero references — no report
+    runs, authorship decisions or merge decisions. Script: `scripts/ops/remove-agent-dev-user.sh`
+    (audit copy into `app_migrations` before deleting; agent-dev falls back to a synthetic principal).
+  **Decided AGAINST: removing `User.password` and the `PasswordEncoder` bean.** Scoped it and it is not the
+  cheap cleanup I first called it — `PasswordEncoder` is threaded through SEVEN production services
+  (`UserService`, `AdminUserService`, `GroupService`, `StaffImportService`, `ResearcherShellService`,
+  `KeycloakOAuth2LoginSuccessHandler`, `LocalPasswordScrambleRunner`) and ~15 test classes, because every
+  provisioning path defensively writes a random hash. With the scramble already applied and no login path,
+  the security gain is nil and the blast radius is every user-creation path. Revisit only if the field
+  causes a real problem.
+  **Fixed in passing (`UserController`)**: `PUT /api/admin/users/{email}` wrote `request.password()`
+  STRAIGHT THROUGH — unencoded, unlike `createUser` which hashes — so an admin-supplied password landed in
+  Mongo as plaintext. Inert without a login path, but a real defect. It now ignores the field and carries
+  the existing scrambled hash; pinned by a regression assertion on the captured save.
 
 - [ ] `H89` RIS projection emits a non-finite forum metric (root cause).
   **RAISED 2026-07-25 during the backlog audit** — previously memory-only. A RIS forum metric is projected as
