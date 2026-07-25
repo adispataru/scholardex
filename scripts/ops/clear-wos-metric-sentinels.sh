@@ -82,25 +82,31 @@ if (before.length > 0) {
 // ---- Phase B: clear quartiles stranded on now-value-less metrics ----------------------------------
 // A category fact keeps quarter/quartileRank/rank computed from a value that is now gone. The builder
 // will not recompute it (value-less facts are "uncomputable"), so it must be cleared explicitly.
-// Batched by (year, metricType) — ~90 groups rather than one query per value-less fact (10k+).
-const groups = new Map();
-M.find({ value: null }, { journalId:1, year:1, metricType:1 }).forEach(f => {
-  const k = f.year + "|" + f.metricType;
-  if (!groups.has(k)) groups.set(k, []);
-  groups.get(k).push(f.journalId);
-});
-let stranded = 0, cleared = 0;
-groups.forEach((journalIds, k) => {
-  const [year, metricType] = k.split("|");
-  const sel = { journalId: { $in: journalIds }, year: parseInt(year, 10), metricType: metricType,
-                quarter: { $ne: null } };
-  const n = C.countDocuments(sel);
-  if (n === 0) return;
-  stranded += n;
-  cleared += C.updateMany(sel, { $unset: { quarter: "", quartileRank: "", rank: "" } }).modifiedCount;
-  print("   " + metricType + " " + year + ": cleared " + n);
-});
-print("phase B — category facts with a quartile but no metric value: " + stranded + ", cleared: " + cleared);
+//
+// SCOPED, not general. An earlier version swept every value-less metric fact — 108,340 of them — with an
+// $in per (year, metricType) against 1,044,795 category facts, and ground for minutes. That generality
+// bought nothing: a 400-row sample proved value-less IF facts in every year EXCEPT 1998 correctly carry
+// no quartile, because only the sentinel rows ever had a value to compute one from. So repair the known
+// set directly, and merely REPORT anything outside it rather than scanning to fix it.
+const SENTINEL_YEAR = 1998;
+const affected = M.distinct("journalId", { year: SENTINEL_YEAR, metricType: "IF", value: null });
+print("phase B — journals with a value-less " + SENTINEL_YEAR + " IF fact: " + affected.length);
+if (affected.length > 0) {
+  const sel = { journalId: { $in: affected }, year: SENTINEL_YEAR, metricType: "IF", quarter: { $ne: null } };
+  const stranded = C.countDocuments(sel);
+  const cleared = stranded === 0 ? 0
+      : C.updateMany(sel, { $unset: { quarter: "", quartileRank: "", rank: "" } }).modifiedCount;
+  print("   category facts carrying a stale quartile: " + stranded + ", cleared: " + cleared);
+} else {
+  print("   nothing to clear");
+}
+
+// Cheap tripwire: if the sentinel ever appears in another year, this surfaces it without a full sweep.
+const otherYears = M.distinct("year", { value: { $gte: 999.0 } }).filter(y => y !== SENTINEL_YEAR);
+if (otherYears.length > 0) {
+  print("   WARNING: sentinel values also present in years " + JSON.stringify(otherYears)
+        + " — widen SENTINEL_YEAR and re-run.");
+}
 '
 
 echo
