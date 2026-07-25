@@ -1,0 +1,149 @@
+/* H86 — changelog / "Noutăți" page. A dated timeline whose primary job is answering
+   "why did my score change?", so scoring-impact entries are the visually dominant ones. */
+
+.app-changelog {
+  max-width: 56rem;
+}
+
+.app-changelog__header {
+  margin-bottom: 2rem;
+}
+
+.app-changelog__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-color-primary);
+}
+
+.app-changelog__title {
+  margin: 0 0 0.6rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--app-color-text-strong);
+}
+
+.app-changelog__intro {
+  margin: 0;
+  max-width: 46rem;
+  color: var(--app-color-text-muted);
+  line-height: 1.6;
+}
+
+.app-changelog__timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-changelog__day + .app-changelog__day {
+  margin-top: 2rem;
+}
+
+.app-changelog__date {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 0.75rem;
+  padding: 0.35rem 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--app-color-text-muted);
+  background: var(--app-color-content-bg);
+  border-bottom: 1px solid var(--app-color-border);
+}
+
+.app-changelog__entry {
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.75rem;
+  background: var(--app-color-card-bg);
+  border: 1px solid var(--app-color-border);
+  border-left: 3px solid transparent;
+  border-radius: var(--app-radius-card);
+}
+
+/* The one thing a reader is usually hunting for. */
+.app-changelog__entry--impact {
+  border-left-color: var(--app-color-primary);
+}
+
+.app-changelog__entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.app-changelog__entry-title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong);
+}
+
+.app-changelog__impact-chip,
+.app-changelog__admin-chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+
+.app-changelog__impact-chip {
+  color: var(--app-color-primary-strong);
+  background: var(--app-color-primary-soft);
+}
+
+.app-changelog__admin-chip {
+  color: var(--app-color-text-muted);
+  background: var(--app-color-card-bg-muted);
+  border: 1px solid var(--app-color-border);
+}
+
+.app-changelog__entry-body {
+  margin: 0;
+  color: var(--app-color-text);
+  line-height: 1.65;
+}
+
+.app-changelog__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+}
+
+.app-changelog__tag {
+  padding: 0.08rem 0.45rem;
+  font-size: 0.72rem;
+  color: var(--app-color-text-muted);
+  background: var(--app-color-card-bg-muted);
+  border: 1px solid var(--app-color-border);
+  border-radius: 0.4rem;
+}
+
+.app-changelog__empty,
+.app-changelog__footnote {
+  color: var(--app-color-text-muted);
+  font-size: 0.85rem;
+}
+
+.app-changelog__footnote {
+  margin-top: 2rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--app-color-border);
+}
+
+@media (max-width: 40rem) {
+  .app-changelog__date {
+    position: static;
+  }
+}

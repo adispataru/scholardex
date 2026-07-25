@@ -1,0 +1,98 @@
+[
+  {
+    "date": "2026-07-25",
+    "title": "Lucrări duplicate: sugestii automate și unificare la cerere",
+    "body": "Aceeași lucrare ajungea uneori de două ori în platformă, pe două trasee (Scopus și OpenAlex), când nu avea DOI și sursele o înregistrau cu date de apariție diferite. Acum, în ecranul Publications, platforma îți sugerează perechile care par duplicate și poți cere unificarea cu un buton; un administrator o aprobă, iar decizia rezistă la reconstrucțiile bazei de date. Atenție la punctaj: după unificare citările nu mai sunt numărate de două ori, deci un total poate scădea — valoarea corectă este cea de după unificare.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "affects": ["Publicații", "Perspectiva C", "Citări de top"]
+  },
+  {
+    "date": "2026-07-25",
+    "title": "Conferințele ACM/EPTCS intră în categoria C (fișa 2026)",
+    "body": "OM 3019/2025 prevede că «categoria C va include și lucrările publicate în ACM, EPTCS și LNCS care nu sunt în categoriile A*, A și B». Regula este acum aplicată în fișa 2026. Clasificarea se face pe volumul real al anului respectiv, nu pe numele seriei: o conferință devenită IEEE/ACM din 2012 este C pentru lucrările de după acel an, dar rămâne D pentru edițiile anterioare, doar-IEEE. În detaliile punctajului apare volumul care a decis încadrarea. Fișa 2016 rămâne neschimbată, acolo amendamentul se referă doar la LNCS.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "affects": ["FV Info 2026", "Perspectiva B", "Perspectiva C"]
+  },
+  {
+    "date": "2026-07-25",
+    "title": "Coadă de unificare a publicațiilor în administrare",
+    "body": "Pagina Merges arată cererile de unificare venite de la cercetători, cu o comparație a celor două înregistrări, și permite aprobarea, respingerea sau o unificare directă. Deciziile aprobate sunt durabile: se re-aplică la reconstrucțiile complete și blochează re-crearea duplicatului la sincronizările incrementale.",
+    "audience": "ADMIN",
+    "scoringImpact": false,
+    "affects": ["Administrare"]
+  },
+  {
+    "date": "2026-07-24",
+    "title": "Plafoane procentuale pe Perspectiva D",
+    "body": "Subpunctele plafonate de standard la 10% din totalul Perspectivei D sunt acum limitate automat, în ambele fișe. Plafonul se raportează la totalul final (interpretare de tip punct fix, favorabilă candidatului). Când plafonul se aplică, sub antetul perspectivei apare o notă cu valoarea inițială și cea plafonată.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "affects": ["Perspectiva D", "D(x)", "D(xiv)"]
+  },
+  {
+    "date": "2026-07-24",
+    "title": "Clasamente universitare: cea mai bună poziție din QS, ARWU și URAP",
+    "body": "Pe lângă URAP, platforma folosește acum QS (2015–2027) și ARWU/Shanghai (2003–2025), plus arhiva URAP 2010–2017. Punctajul ia cea mai bună poziție dintre cele trei surse, pentru anul cel mai apropiat de cel raportat, iar în dovezi se vede exact clasamentul și anul folosit. Câmpul de universitate are sugestii care arată în ce clasamente apare fiecare variantă de denumire.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "affects": ["D(viii)", "D(ix)", "D(xi)"]
+  },
+  {
+    "date": "2026-07-24",
+    "title": "Conferințele naționale și regionale devin categoria C în fișa 2026",
+    "body": "Conform OM 3019/2025, «workshop-urile/conferințele clasificate de CORE ca naționale sau regionale sunt considerate de categorie C». Regula se aplică și activităților asociate (comitete de program, editare de volume), deci unele intrări se punctează diferit în fișa 2026 față de 2016.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "affects": ["FV Info 2026", "Perspectiva D"]
+  },
+  {
+    "date": "2026-07-24",
+    "title": "Import ARWU, QS și arhiva URAP",
+    "body": "Sursele de clasamente universitare se încarcă din pagina de inițializare (butoane separate pentru ARWU și QS); fișierele stau pe volumul de date montat în aplicație. Rezoluția „cea mai bună poziție” este centralizată, deci scorurile și paginile de detaliu nu pot diverge.",
+    "audience": "ADMIN",
+    "scoringImpact": false,
+    "affects": ["Administrare", "Clasamente"]
+  },
+  {
+    "date": "2026-07-23",
+    "title": "Perspectiva D aliniată la OM 3019/2025",
+    "body": "Mai multe subpuncte au fost aduse la litera standardului: rolul de editor invitat se punctează separat; granturile sub pragul din tabelul OM nu mai primesc puncte în fișa 2026; consolidarea echipelor se punctează doar pentru poziția de lider, cu numărul de membri declarat; conducerea și calitatea de membru se separă; numărul de ediții devine multiplicator; iar subpunctul cu plafon de 24 de puncte respectă acum și pragul minim.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "affects": ["Perspectiva D", "D(ii)", "D(iv)", "D(v)", "D(x)", "D(xii)"]
+  },
+  {
+    "date": "2026-07-23",
+    "title": "Ajutoare la completare: conferințe CORE, edituri SENSE, universități",
+    "body": "La activitățile pe conferințe există sugestii din lista CORE, cu categoria afișată lângă câmp; la cărți, categoria SENSE a editurii se verifică în timp real în formular; la universități, câmpul propune denumirile cunoscute de clasamente. Toate folosesc aceeași rezoluție ca punctajul, deci ce vezi la completare este ce se va calcula.",
+    "audience": "RESEARCHER",
+    "scoringImpact": false,
+    "affects": ["Activități", "Publicații"]
+  },
+  {
+    "date": "2026-07-22",
+    "title": "Anii de apariție corectați din sursa autoritară",
+    "body": "Câteva publicații apăreau cu anul preluat dintr-o sursă secundară, ceea ce muta lucrarea într-un an greșit și, uneori, într-un clasament greșit. Anul (și data completă) vin acum de la sursa autoritară, iar corecția se aplică automat la fiecare sincronizare completă, nu doar la lucrările nou-descoperite.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "affects": ["Publicații"]
+  },
+  {
+    "date": "2026-07-22",
+    "title": "Ora reală în istoricul de sincronizare",
+    "body": "Sincronizările apăreau toate la „03:00” — un artefact de afișare (miezul nopții UTC), nu ora reală a rulării. Acum se afișează momentul efectiv; intrările mai vechi rămân doar cu data, pentru că ora nu a fost înregistrată atunci.",
+    "audience": "ALL",
+    "scoringImpact": false,
+    "affects": ["Sincronizare"]
+  },
+  {
+    "date": "2026-07-22",
+    "title": "Sincronizarea completă re-îmbogățește publicațiile existente",
+    "body": "Rularea „Full update” nu se mai limitează la publicațiile noi: recitește și înregistrările deja existente pentru câmpurile care pot fi corectate la sursă (dată de apariție, identificatori), iar rezultatul apare în istoric ca „re-enriched N existing”.",
+    "audience": "ADMIN",
+    "scoringImpact": false,
+    "affects": ["Sincronizare", "Administrare"]
+  }
+]

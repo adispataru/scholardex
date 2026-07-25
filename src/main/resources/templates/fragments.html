@@ -136,6 +136,10 @@
                    class="app-shell-topbar__nav-link"
                    th:classappend="${#strings.startsWith(reqUri, '/rankings') or #strings.startsWith(reqUri, '/core/') or reqUri == '/core' or #strings.startsWith(reqUri, '/universities') or #strings.startsWith(reqUri, '/events') or #strings.startsWith(reqUri, '/wos/')} ? ' is-active' : ''"
                    th:attr="aria-current=${#strings.startsWith(reqUri, '/rankings') or #strings.startsWith(reqUri, '/core/') or reqUri == '/core' or #strings.startsWith(reqUri, '/universities') or #strings.startsWith(reqUri, '/events') or #strings.startsWith(reqUri, '/wos/')} ? 'page' : null">Rankings</a>
+                <a href="/changelog"
+                   class="app-shell-topbar__nav-link"
+                   th:classappend="${#strings.startsWith(reqUri, '/changelog')} ? ' is-active' : ''"
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/changelog')} ? 'page' : null">Noutăți</a>
             </nav>
 
             <div class="app-shell-topbar__spacer"></div>
@@ -1069,6 +1073,10 @@
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'rankings'} ? ' is-active' : ''"
                th:attr="aria-current=${activeSection == 'rankings'} ? 'page' : null">Rankings</a>
+            <a href="/changelog"
+               class="app-public-header__nav-link"
+               th:classappend="${activeSection == 'changelog'} ? ' is-active' : ''"
+               th:attr="aria-current=${activeSection == 'changelog'} ? 'page' : null">Noutăți</a>
         </nav>
 
         <div class="app-public-header__actions">

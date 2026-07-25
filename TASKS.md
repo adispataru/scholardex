@@ -10,6 +10,15 @@ Done history moved to `TASKS-done.md`.
 ## Active
 
 - [ ] `H86` In-app changelog page ("Noutăți / What's new").
+  **PAGE DONE locally 2026-07-25.** `/changelog` renders the committed
+  `src/main/resources/changelog/changelog.json` (12 backfilled entries covering the H82–H85 wave), grouped
+  by date newest-first, Romanian dates via an explicit `ro` locale, scoring-impact entries accented and
+  chipped, ADMIN-audience entries + the maintenance footnote visible only to PLATFORM_ADMIN. Loader is
+  fail-soft (bad/missing fixture → empty page, never a broken context) and the service test runs against
+  the REAL fixture so a malformed entry fails the build. Nav link added to both the public header and the
+  app shell topbar. REMAINING: the "what's new" badge — `ChangelogService.newSince(lastVisit, isAdmin)` is
+  implemented and tested but not yet wired into the workspace (needs a model attribute + a badge in the
+  workspace header); optional later: deep-link a report drilldown to the entry that changed an indicator.
   Driver (2026-07-25): the platform now changes fast enough that researchers see score movements without
   knowing why (UCC → C, SYNASC 10 → 20, percent caps, best-of rankings), and the only record is email.
   Proposed shape: entries live in a COMMITTED file (`src/main/resources/changelog/changelog.json`) so an

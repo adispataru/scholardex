@@ -30,6 +30,7 @@ import './styles/admin-forms.css';
 import './styles/public-shell.css';
 import './styles/public-forums.css';
 import './styles/public-universities.css';
+import './styles/public-changelog.css';
 import { initConfirmationDialog } from './modules/shared/confirmationDialog';
 import { initModalShell } from './modules/shared/modalShell';
 import { initSearchInputs } from './modules/shared/searchInput';
