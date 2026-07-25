@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Supervisor workspace</title>
+    <title th:text="#{supervisor.workspace.meta.title}">Supervisor workspace</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -12,24 +12,21 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar('Supervisor workspace')}"></div>
+            <div th:replace="~{fragments :: navbar(#{supervisor.workspace.meta.title})}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-page-toolbar app-workflow">
                     <p class="app-workflow__intro">
-                        Signed in as <strong th:text="${userId}">you</strong>.
-                        The health of everyone you head, for one report — click a unit to drill in.
+                        <span th:text="#{supervisor.workspace.signedInAs(${userId})}">Signed in as you.</span>
+                        <span th:text="#{supervisor.workspace.intro}">The health of everyone you head.</span>
                     </p>
                 </div>
 
                 <!-- ── Empty state: heads nothing ──────────────────────────────── -->
                 <div th:if="${cockpit.isEmpty()}" class="app-empty-state">
                     <i class="fa-solid fa-binoculars fa-2x text-muted mb-3"></i>
-                    <h5>Nothing assigned yet</h5>
-                    <p class="text-muted">
-                        Ask a platform admin to add you to the <em>Heads</em> list of a Division
-                        or Department, or to the <em>Supervisors</em> list of a specific Group.
-                        Implicit supervision propagates downward — if you head a Faculty, every
-                        Department and Group below it lights up here automatically.
+                    <h5 th:text="#{supervisor.workspace.empty.title}">Nothing assigned yet</h5>
+                    <p class="text-muted" th:utext="#{supervisor.workspace.empty.body}">
+                        Ask a platform admin to add you to the Heads list of a Division or Department.
                     </p>
                 </div>
 
@@ -38,7 +35,8 @@
                     <!-- ── Report selector ─────────────────────────────────────── -->
                     <form th:if="${!cockpit.reportOptions().isEmpty()}" method="get" action="/supervisor"
                           class="app-eval-report-switcher mb-3">
-                        <label for="supervisor-report" class="app-eval-report-switcher__label">Report</label>
+                        <label for="supervisor-report" class="app-eval-report-switcher__label"
+                               th:text="#{supervisor.workspace.report.label}">Report</label>
                         <select id="supervisor-report" name="report"
                                 class="form-control form-control-sm app-eval-report-switcher__select"
                                 onchange="this.form.submit()">
@@ -47,55 +45,56 @@
                                     th:text="${opt.title()}"
                                     th:selected="${opt.id() == cockpit.selectedReportId()}"></option>
                         </select>
-                        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary ml-2">Go</button></noscript>
+                        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary ml-2"
+                                          th:text="#{supervisor.workspace.report.go}">Go</button></noscript>
                     </form>
 
-                    <p th:if="${cockpit.reportOptions().isEmpty()}" class="alert alert-info">
-                        No report is assigned to any unit you head yet — the directory below still lets
-                        you open each unit. Ask an admin to select a report for your division/department.
+                    <p th:if="${cockpit.reportOptions().isEmpty()}" class="alert alert-info"
+                       th:text="#{supervisor.workspace.report.none}">
+                        No report is assigned to any unit you head yet.
                     </p>
 
                     <!-- ── Health strip ────────────────────────────────────────── -->
                     <div th:if="${cockpit.hasStrip()}" th:with="s=${cockpit.strip()}" class="app-summary-grid mb-4">
-                        <th:block th:replace="~{fragments :: stat-card('Researchers', ${s.researcherCount()},
-                            'neutral', ${s.researcherCount() + ' overseen'}, 'fa-solid fa-users')}"></th:block>
-                        <th:block th:replace="~{fragments :: stat-card('Onboarded',
+                        <th:block th:replace="~{fragments :: stat-card(#{supervisor.workspace.stat.researchers}, ${s.researcherCount()},
+                            'neutral', #{supervisor.workspace.stat.researchersHint(${s.researcherCount()})}, 'fa-solid fa-users')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(#{supervisor.workspace.stat.onboarded},
                             ${s.onboardedPercent() != null ? s.onboardedPercent() + '%' : '—'},
                             ${s.onboardedPercent() != null and s.onboardedPercent() >= 80 ? 'success' : 'warning'},
-                            ${s.withRunCount() + ' of ' + s.researcherCount() + ' have a run'},
+                            #{supervisor.workspace.stat.onboardedHint(${s.withRunCount()}, ${s.researcherCount()})},
                             'fa-solid fa-user-check')}"></th:block>
-                        <th:block th:replace="~{fragments :: stat-card('Meeting threshold',
+                        <th:block th:replace="~{fragments :: stat-card(#{supervisor.workspace.stat.meeting},
                             ${s.metPercent() != null ? s.metPercent() + '%' : 'n/a'},
                             ${s.metPercent() == null ? 'neutral' : (s.metPercent() >= 50 ? 'success' : 'warning')},
-                            'across applicable criteria', 'fa-solid fa-gauge-high')}"></th:block>
-                        <th:block th:replace="~{fragments :: stat-card('Near-miss', ${s.nearMissCount()},
+                            #{supervisor.workspace.stat.meetingHint}, 'fa-solid fa-gauge-high')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(#{supervisor.workspace.stat.nearMiss}, ${s.nearMissCount()},
                             ${s.nearMissCount() > 0 ? 'warning' : 'neutral'},
-                            'one criterion short', 'fa-solid fa-arrows-to-circle')}"></th:block>
-                        <th:block th:replace="~{fragments :: stat-card('Provisional', ${s.provisionalCount()},
+                            #{supervisor.workspace.stat.nearMissHint}, 'fa-solid fa-arrows-to-circle')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(#{supervisor.workspace.stat.provisional}, ${s.provisionalCount()},
                             ${s.provisionalCount() > 0 ? 'info' : 'neutral'},
-                            'unlinked / unvalidated', 'fa-solid fa-wand-magic-sparkles')}"></th:block>
-                        <th:block th:replace="~{fragments :: stat-card('Stale runs', ${s.staleCount()},
+                            #{supervisor.workspace.stat.provisionalHint}, 'fa-solid fa-wand-magic-sparkles')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(#{supervisor.workspace.stat.stale}, ${s.staleCount()},
                             ${s.staleCount() > 0 ? 'warning' : 'success'},
-                            'predate the last data refresh', 'fa-solid fa-clock-rotate-left')}"></th:block>
+                            #{supervisor.workspace.stat.staleHint}, 'fa-solid fa-clock-rotate-left')}"></th:block>
                     </div>
 
                     <!-- ── Units you head (attention-ranked) ───────────────────── -->
                     <div class="app-table-section mb-4">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header">
-                                <h6 class="app-table-section__title">Units you head</h6>
-                                <span class="app-table-section__hint">Ordered by how many members need attention — no run yet, a stale run, or a provisional score. Click to open the unit's report dashboard.</span>
+                                <h6 class="app-table-section__title" th:text="#{supervisor.workspace.units.title}">Units you head</h6>
+                                <span class="app-table-section__hint" th:text="#{supervisor.workspace.units.hint}">Ordered by how many members need attention.</span>
                             </div>
                             <div class="app-table-section__body">
                                 <div class="app-table-scroll">
                                     <table class="table app-table">
                                         <thead>
                                         <tr>
-                                            <th scope="col">Unit</th>
-                                            <th scope="col">Type</th>
-                                            <th scope="col" class="text-right">Researchers</th>
-                                            <th scope="col" class="text-right">Needs attention</th>
-                                            <th scope="col"><span class="sr-only">Open</span></th>
+                                            <th scope="col" th:text="#{supervisor.workspace.units.col.unit}">Unit</th>
+                                            <th scope="col" th:text="#{supervisor.workspace.units.col.type}">Type</th>
+                                            <th scope="col" class="text-right" th:text="#{supervisor.workspace.units.col.researchers}">Researchers</th>
+                                            <th scope="col" class="text-right" th:text="#{supervisor.workspace.units.col.attention}">Needs attention</th>
+                                            <th scope="col"><span class="sr-only" th:text="#{supervisor.workspace.units.col.open}">Open</span></th>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -108,19 +107,23 @@
                                             <td class="text-right">
                                                 <span th:if="${row.attentionCount() > 0}"
                                                       class="badge badge-warning"
-                                                      th:title="${row.membersWithoutRun() + ' without a run, ' + row.staleCount() + ' stale, ' + row.provisionalCount() + ' provisional'}"
+                                                      th:title="#{supervisor.workspace.units.attentionTitle(${row.membersWithoutRun()}, ${row.staleCount()}, ${row.provisionalCount()})}"
                                                       th:text="${row.attentionCount()}">0</span>
                                                 <span th:if="${row.attentionCount() == 0}"
-                                                      class="text-muted" title="Everyone has a fresh, validated run">clear</span>
+                                                      class="text-muted"
+                                                      th:title="#{supervisor.workspace.units.clearTitle}"
+                                                      th:text="#{supervisor.workspace.units.clear}">clear</span>
                                             </td>
                                             <td class="text-right">
                                                 <a th:if="${row.unitType() == 'department'}"
                                                    th:href="@{/supervisor/departments/{id}/members(id=${row.unitId()})}"
                                                    class="btn btn-sm btn-outline-secondary mr-1">
-                                                    <i class="fa-solid fa-user-gear fa-xs" aria-hidden="true"></i> Manage roster
+                                                    <i class="fa-solid fa-user-gear fa-xs" aria-hidden="true"></i>
+                                                    <span th:text="#{supervisor.workspace.units.manageRoster}">Manage roster</span>
                                                 </a>
                                                 <a th:href="${row.dashboardHref()}" class="btn btn-sm btn-outline-primary">
-                                                    Open dashboard <i class="fa-solid fa-arrow-right fa-xs" aria-hidden="true"></i>
+                                                    <span th:text="#{supervisor.workspace.units.openDashboard}">Open dashboard</span>
+                                                    <i class="fa-solid fa-arrow-right fa-xs" aria-hidden="true"></i>
                                                 </a>
                                             </td>
                                         </tr>

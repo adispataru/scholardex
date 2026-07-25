@@ -207,7 +207,7 @@ function _affRadio(id, value, label, selected) {
 }
 
 function _buildAuthorMatchStep() {
-    const header = '<h6 class="app-onb__panel-title">${t('workspace.onboarding.matchAuthor')}</h6>';
+    const header = `<h6 class="app-onb__panel-title">${t('workspace.onboarding.matchAuthor')}</h6>`;
     if (_candidates === null) {
         return `<div class="app-onb__panel">${header}
           <div class="app-skeleton-block" style="height:5rem;border-radius:var(--app-radius-card)"></div></div>`;
@@ -274,7 +274,7 @@ function _saveAuthorMatch() {
 }
 
 function _buildClaimStep() {
-    const header = '<h6 class="app-onb__panel-title">${t('workspace.onboarding.claimPublications')}</h6>';
+    const header = `<h6 class="app-onb__panel-title">${t('workspace.onboarding.claimPublications')}</h6>`;
     if (_recommendations === null) {
         return `<div class="app-onb__panel">${header}
           <div class="app-skeleton-block" style="height:5rem;border-radius:var(--app-radius-card)"></div></div>`;
@@ -344,7 +344,7 @@ function _buildFooter(step) {
     return `<div class="app-onb__footer">
       <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>${t('workspace.onboarding.finishLater')}</button>
       <div class="app-onb__footer-nav">
-        ${isFirst ? '' : '<button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>${t('common.back')}</button>'}
+        ${isFirst ? '' : `<button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>${t('common.back')}</button>`}
         <button type="button" class="btn btn-primary btn-sm" data-onb-next>${nextLabel}</button>
       </div>
     </div>`;
@@ -354,7 +354,7 @@ function _buildClaimFooter() {
     const count = _recommendations ? (_recommendations.recommendedConfirmIds || []).length : 0;
     const primaryLabel = count > 0 ? tPlural('workspace.onboarding.confirmFinish', count) : 'Finish';
     const skip = count > 0
-        ? '<button type="button" class="btn btn-link btn-sm" data-onb-skip-claim>${t('workspace.onboarding.finishWithoutClaiming')}</button>' : '';
+        ? `<button type="button" class="btn btn-link btn-sm" data-onb-skip-claim>${t('workspace.onboarding.finishWithoutClaiming')}</button>` : '';
     return `<div class="app-onb__footer">
       <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>${t('workspace.onboarding.finishLater')}</button>
       <div class="app-onb__footer-nav">

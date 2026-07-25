@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${vm.unitName} + ' — ' + ${vm.report.title}">Report</title>
+    <title th:text="#{orgunit.view.meta.title(${vm.unitName}, ${vm.report.title})}">Report</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -12,64 +12,66 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar(${vm.unitName} + ' — ' + ${vm.report.title})}"></div>
+            <div th:replace="~{fragments :: navbar(#{orgunit.view.meta.title(${vm.unitName}, ${vm.report.title})})}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-page-toolbar app-workflow">
                     <p class="app-workflow__intro">
-                        Roll-up for
-                        <strong th:text="${vm.unitName}">unit</strong>:
-                        report <strong th:text="${vm.report.title}">name</strong>,
-                        <span th:text="${#lists.size(vm.researchers)}">0</span> researcher(s)
-                        currently affiliated<th:block th:if="${vm.membersWithoutRun > 0}">,
-                        <span th:text="${vm.membersWithoutRun}">0</span> without a report run yet</th:block><th:block
-                        th:if="${vm.provisionalCount > 0}">,
-                        <span th:text="${vm.provisionalCount}">0</span> provisional</th:block>.
-                        <span class="text-muted">Scores are each researcher's latest report run
-                        (their confirmed publications) — the numbers they see in their own workspace.</span>
+                        <th:block th:text="#{orgunit.view.intro(${vm.unitName}, ${vm.report.title}, ${#lists.size(vm.researchers)})}">roll-up</th:block><th:block
+                            th:if="${vm.membersWithoutRun > 0}"
+                            th:text="#{orgunit.view.introWithoutRun(${vm.membersWithoutRun})}"></th:block><th:block
+                            th:if="${vm.provisionalCount > 0}"
+                            th:text="#{orgunit.view.introProvisional(${vm.provisionalCount})}"></th:block>.
+                        <span class="text-muted" th:text="#{orgunit.view.introNote}">Latest run per researcher.</span>
                     </p>
                     <div class="app-workflow__actions">
                         <form th:if="${unitType == 'group'}" method="post" class="d-inline"
                               th:action="@{'/admin/groups/' + ${vm.unitId} + '/reports/view/' + ${vm.report.id} + '/refresh'}">
                             <button type="submit" class="btn btn-primary btn-sm"
-                                    title="Recompute every member's run">
-                                <i class="fa-solid fa-rotate mr-1"></i>Refresh all members
+                                    th:title="#{orgunit.view.refreshAllMembersTitle}">
+                                <i class="fa-solid fa-rotate mr-1"></i><span
+                                    th:text="#{orgunit.view.refreshAllMembers}">Refresh all members</span>
                             </button>
                         </form>
                         <form th:if="${unitType != 'group'}" method="post" class="d-inline"
                               th:action="@{'/admin/' + ${unitType} + 's/' + ${vm.unitId} + '/reports/' + ${vm.report.id} + '/refresh-all'}">
                             <input type="hidden" name="scope" value="stale"/>
                             <button type="submit" class="btn btn-primary btn-sm"
-                                    title="Recompute runs that are missing or predate the last data rebuild">
-                                <i class="fa-solid fa-rotate mr-1"></i>Refresh stale runs
+                                    th:title="#{orgunit.view.refreshStaleTitle}">
+                                <i class="fa-solid fa-rotate mr-1"></i><span
+                                    th:text="#{orgunit.view.refreshStale}">Refresh stale runs</span>
                             </button>
                         </form>
                         <form th:if="${unitType != 'group'}" method="post" class="d-inline"
                               th:action="@{'/admin/' + ${unitType} + 's/' + ${vm.unitId} + '/reports/' + ${vm.report.id} + '/refresh-all'}">
                             <input type="hidden" name="scope" value="all"/>
                             <button type="submit" class="btn btn-outline-primary btn-sm"
-                                    title="Recompute every member's run (may take minutes for large units)">Refresh all</button>
+                                    th:title="#{orgunit.view.refreshAllTitle}"
+                                    th:text="#{orgunit.view.refreshAll}">Refresh all</button>
                         </form>
                         <form method="post" class="d-inline"
                               th:action="${unitType == 'group'
                                   ? '/admin/groups/' + vm.unitId + '/reports/view/' + vm.report.id + '/score-provisional'
                                   : '/admin/' + unitType + 's/' + vm.unitId + '/reports/' + vm.report.id + '/score-provisional'}">
                             <button type="submit" class="btn btn-outline-warning btn-sm"
-                                    title="For members WITHOUT confirmed publications: resolve authors from the Scopus/WoS/Scholar/ORCID ids linked on their profile and score provisionally (runs are marked provisional — unvalidated authorship)">
-                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Score provisional (unlinked)
+                                    th:title="#{orgunit.view.scoreProvisionalTitle}">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i><span
+                                    th:text="#{orgunit.view.scoreProvisional}">Score provisional (unlinked)</span>
                             </button>
                         </form>
                         <a th:if="${promotionsHref != null}" th:href="${promotionsHref}"
                            class="btn btn-outline-primary btn-sm"
-                           title="Who meets the scientific minimum standards of the next position">
-                            <i class="fa-solid fa-arrow-trend-up mr-1"></i>Promotion readiness
+                           th:title="#{orgunit.view.promotionReadinessTitle}">
+                            <i class="fa-solid fa-arrow-trend-up mr-1"></i><span
+                                th:text="#{orgunit.view.promotionReadiness}">Promotion readiness</span>
                         </a>
                         <a th:if="${compareHref != null}" th:href="${compareHref}"
                            class="btn btn-outline-secondary btn-sm"
-                           th:title="'Compare the whole roster against ' + ${compatibleReportTitle}">
+                           th:title="#{orgunit.view.compareWithTitle(${compatibleReportTitle})}">
                             <i class="fa-solid fa-code-compare mr-1"></i>
-                            Compare with <span th:text="${compatibleReportTitle}">report</span>
+                            <span th:text="#{orgunit.view.compareWith}">Compare with</span>
+                            <span th:text="${compatibleReportTitle}">report</span>
                         </a>
-                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← All reports</a>
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm" th:text="#{orgunit.view.backToReports}">← All reports</a>
                     </div>
                 </div>
 
@@ -81,74 +83,72 @@
                           ? '/admin/groups/' + vm.unitId + '/reports/view/' + vm.report.id
                           : '/admin/' + unitType + 's/' + vm.unitId + '/reports/' + vm.report.id}"
                       th:action="${viewHref}">
-                    <label class="mr-2" for="orgunit-compare-to">Compare with</label>
+                    <label class="mr-2" for="orgunit-compare-to" th:text="#{orgunit.view.compareWith}">Compare with</label>
                     <select name="compareTo" id="orgunit-compare-to" class="form-control form-control-sm mr-2">
-                        <option value="">— pick a past refresh —</option>
+                        <option value="" th:text="#{orgunit.view.comparePick}">— pick a past refresh —</option>
                         <option th:each="opt : ${vm.compareOptions}"
                                 th:value="${opt.instant}"
                                 th:selected="${vm.delta != null and vm.delta.compareTo.equals(opt.instant)}"
                                 th:text="${#temporals.format(opt.instant, 'yyyy-MM-dd HH:mm')} + ' — ' + ${opt.label}">refresh</option>
                     </select>
-                    <button type="submit" class="btn btn-outline-primary btn-sm mr-2">Compare</button>
+                    <button type="submit" class="btn btn-outline-primary btn-sm mr-2" th:text="#{orgunit.view.compareSubmit}">Compare</button>
                     <a th:if="${vm.delta != null}" th:href="${viewHref}"
-                       class="btn btn-outline-secondary btn-sm">Clear</a>
+                       class="btn btn-outline-secondary btn-sm" th:text="#{orgunit.view.compareClear}">Clear</a>
                 </form>
 
                 <div th:if="${vm.delta != null}" class="alert alert-info">
                     <i class="fa-solid fa-code-compare mr-1"></i>
-                    Comparing each member's latest run against their runs as of
-                    <strong th:text="${#temporals.format(vm.delta.compareTo, 'yyyy-MM-dd HH:mm')}">date</strong>.
+                    <span th:text="#{orgunit.view.comparingAgainst(${#temporals.format(vm.delta.compareTo, 'yyyy-MM-dd HH:mm')})}">Comparing runs.</span>
                     <span th:if="${!vm.delta.newMemberEmails.isEmpty()}"
-                          th:text="${#sets.size(vm.delta.newMemberEmails)} + ' member(s) had no run back then (marked new).'"></span>
+                          th:text="#{orgunit.view.comparingNewMembers(${#sets.size(vm.delta.newMemberEmails)})}"></span>
                 </div>
 
                 <div th:if="${vm.staleCount > 0}" class="alert alert-warning">
                     <i class="fa-solid fa-clock-rotate-left mr-1"></i>
-                    <strong th:text="${vm.staleCount}">0</strong> of
-                    <span th:text="${#maps.size(vm.runMetaByEmail)}">0</span> runs predate the last
-                    data rebuild<th:block th:if="${vm.epochLastReason != null}">
+                    <th:block th:text="#{orgunit.view.staleWarning(${vm.staleCount}, ${#maps.size(vm.runMetaByEmail)})}">stale runs</th:block><th:block
+                        th:if="${vm.epochLastReason != null}">
                     (<span th:text="${vm.epochLastReason}">reason</span><th:block
                         th:if="${vm.epochUpdatedAt != null}">,
                     <span th:text="${#temporals.format(vm.epochUpdatedAt, 'yyyy-MM-dd HH:mm')}">when</span></th:block>)</th:block>
-                    — their scores may not reflect the current data.
+                    <th:block th:text="#{orgunit.view.staleSuffix}">— scores may be out of date.</th:block>
                 </div>
 
                 <div th:if="${!vm.buildErrors.isEmpty()}" class="alert alert-warning">
-                    <strong>Compute warnings:</strong>
+                    <strong th:text="#{orgunit.view.computeWarnings}">Compute warnings:</strong>
                     <ul class="mb-0">
                         <li th:each="err : ${vm.buildErrors}" th:text="${err}"></li>
                     </ul>
                 </div>
 
                 <div th:if="${!vm.researchers.isEmpty()}" class="app-summary-grid mb-3">
-                    <th:block th:replace="~{fragments :: stat-card('Researchers', ${vm.totals.researcherCount},
-                        'primary', 'currently affiliated', 'fa-solid fa-users')}"></th:block>
-                    <th:block th:replace="~{fragments :: stat-card('With a run', ${vm.totals.scoredCount},
+                    <th:block th:replace="~{fragments :: stat-card(#{orgunit.view.stat.researchers}, ${vm.totals.researcherCount},
+                        'primary', #{orgunit.view.stat.researchersHint}, 'fa-solid fa-users')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card(#{orgunit.view.stat.withRun}, ${vm.totals.scoredCount},
                         ${vm.membersWithoutRun > 0 ? 'warning' : 'success'},
-                        ${vm.membersWithoutRun} + ' without a run yet', 'fa-solid fa-clipboard-check')}"></th:block>
-                    <th:block th:replace="~{fragments :: stat-card('Met thresholds',
+                        #{orgunit.view.stat.withRunHint(${vm.membersWithoutRun})}, 'fa-solid fa-clipboard-check')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card(#{orgunit.view.stat.metThresholds},
                         ${vm.totals.overallMetPercent != null ? vm.totals.overallMetPercent + '%' : '—'},
-                        'success', 'of applicable researcher-criterion checks', 'fa-solid fa-check-double')}"></th:block>
-                    <th:block th:replace="~{fragments :: stat-card('Near misses', ${vm.totals.nearMissCount},
-                        'warning', 'within 10% below a threshold', 'fa-solid fa-arrows-up-to-line')}"></th:block>
-                    <th:block th:replace="~{fragments :: stat-card('Runs to refresh', ${vm.membersWithoutRun + vm.staleCount},
+                        'success', #{orgunit.view.stat.metThresholdsHint}, 'fa-solid fa-check-double')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card(#{orgunit.view.stat.nearMisses}, ${vm.totals.nearMissCount},
+                        'warning', #{orgunit.view.stat.nearMissesHint}, 'fa-solid fa-arrows-up-to-line')}"></th:block>
+                    <th:block th:replace="~{fragments :: stat-card(#{orgunit.view.stat.toRefresh}, ${vm.membersWithoutRun + vm.staleCount},
                         ${vm.membersWithoutRun + vm.staleCount > 0 ? 'warning' : 'success'},
-                        ${vm.staleCount} + ' stale · ' + ${vm.provisionalCount} + ' provisional',
+                        #{orgunit.view.stat.toRefreshHint(${vm.staleCount}, ${vm.provisionalCount})},
                         'fa-solid fa-rotate')}"></th:block>
                 </div>
 
                 <div th:if="${vm.totals.scoredCount > 0}" class="row">
                     <div class="col-lg-5 mb-3">
                         <div class="app-summary-card h-100">
-                            <p class="app-summary-card__label">Researchers by position</p>
+                            <p class="app-summary-card__label" th:text="#{orgunit.view.chart.byPosition}">Researchers by position</p>
                             <div class="app-orgunit-chart">
-                                <canvas id="orgunit-position-count-chart"></canvas>
+                                <canvas id="orgunit-position-count-chart" th:attr="data-series-label=#{orgunit.col.researchers}"></canvas>
                             </div>
                         </div>
                     </div>
                     <div class="col-lg-7 mb-3">
                         <div class="app-summary-card h-100">
-                            <p class="app-summary-card__label">Met threshold % by position</p>
+                            <p class="app-summary-card__label" th:text="#{orgunit.view.chart.metByPosition}">Met threshold % by position</p>
                             <div class="app-orgunit-chart">
                                 <canvas id="orgunit-met-percent-chart"></canvas>
                             </div>
@@ -163,10 +163,10 @@
                                 <table class="table app-table">
                                     <thead>
                                     <tr>
-                                        <th>Position</th>
-                                        <th>Researchers</th>
+                                        <th th:text="#{orgunit.col.position}">Position</th>
+                                        <th th:text="#{orgunit.col.researchers}">Researchers</th>
                                         <th th:each="crit, stat : ${vm.report.criteria}"
-                                            th:text="${crit.name != null and !#strings.isEmpty(#strings.trim(crit.name)) ? crit.name : 'Criterion ' + (stat.index + 1)}">Criterion</th>
+                                            th:text="${crit.name != null and !#strings.isEmpty(#strings.trim(crit.name))} ? ${crit.name} : #{orgunit.criterionNumbered(${stat.index + 1})}">Criterion</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -176,14 +176,15 @@
                                         <td th:each="stats : ${row.byCriterion}">
                                             <th:block th:if="${stats.count > 0}">
                                                 <span th:if="${stats.metPercent != null}"
-                                                      th:text="${#numbers.formatDecimal(stats.metPercent, 1, 0)} + '% met'">met</span>
+                                                      th:text="#{orgunit.view.percentMet(${#numbers.formatDecimal(stats.metPercent, 1, 0)})}">met</span>
                                                 <span th:if="${stats.metPercent == null}" class="text-muted"
-                                                      title="No threshold defined for this position">n/a</span>
+                                                      th:title="#{orgunit.view.noThresholdTitle}"
+                                                      th:text="#{orgunit.view.noThreshold}">n/a</span>
                                                 <span class="text-muted"
-                                                      th:text="'· median ' + ${#numbers.formatDecimal(stats.medianScore, 1, 2)} + ' · n=' + ${stats.count}">detail</span>
+                                                      th:text="#{orgunit.view.medianDetail(${#numbers.formatDecimal(stats.medianScore, 1, 2)}, ${stats.count})}">detail</span>
                                                 <span th:if="${stats.nearMissCount != null and stats.nearMissCount > 0}"
                                                       class="badge badge-warning ml-1"
-                                                      th:text="${stats.nearMissCount} + ' near'">near</span>
+                                                      th:text="#{orgunit.view.nearCount(${stats.nearMissCount})}">near</span>
                                             </th:block>
                                             <span th:if="${stats.count == 0}" class="text-muted">—</span>
                                         </td>
@@ -196,15 +197,19 @@
                 </div>
 
                 <div th:if="${!vm.researchers.isEmpty()}" class="d-flex align-items-center mb-2">
-                    <label class="mr-2 mb-0" for="orgunit-position-filter">Position</label>
+                    <label class="mr-2 mb-0" for="orgunit-position-filter" th:text="#{orgunit.col.position}">Position</label>
                     <select id="orgunit-position-filter" class="form-control form-control-sm mr-2" style="width: auto;">
-                        <option value="">All positions</option>
+                        <option value="" th:text="#{orgunit.view.allPositions}">All positions</option>
                         <option th:each="row : ${vm.positionAggregates}"
                                 th:value="${row.positionKey == 'UNCLASSIFIED' ? '' : row.positionKey}"
                                 th:text="${row.positionLabel}">POS</option>
                     </select>
-                    <button type="button" id="orgunit-export-csv" class="btn btn-outline-secondary btn-sm ml-auto">
-                        <i class="fa-solid fa-file-csv mr-1"></i>Export CSV
+                    <!-- The CSV header and the chart series label are consumed by orgUnitReportDashboard.js.
+                         This page has no inline appI18n bundle, so they ride along as data attributes rather
+                         than being hardcoded in the module. -->
+                    <button type="button" id="orgunit-export-csv" class="btn btn-outline-secondary btn-sm ml-auto"
+                            th:attr="data-csv-header=#{orgunit.col.researcher} + '|' + #{orgunit.col.position} + '|' + #{orgunit.col.department}">
+                        <i class="fa-solid fa-file-csv mr-1"></i><span th:text="#{orgunit.view.exportCsv}">Export CSV</span>
                     </button>
                 </div>
 
@@ -217,12 +222,12 @@
                                        data-datatable-page-length="25">
                                     <thead>
                                     <tr>
-                                        <th>Researcher</th>
-                                        <th>Position</th>
-                                        <th th:if="${unitType == 'division'}">Department</th>
+                                        <th th:text="#{orgunit.col.researcher}">Researcher</th>
+                                        <th th:text="#{orgunit.col.position}">Position</th>
+                                        <th th:if="${unitType == 'division'}" th:text="#{orgunit.col.department}">Department</th>
                                         <th th:each="crit, stat : ${vm.report.criteria}"
-                                            th:text="${crit.name != null and !#strings.isEmpty(#strings.trim(crit.name)) ? crit.name : 'Criterion ' + (stat.index + 1)}">Criterion</th>
-                                        <th>Latest run</th>
+                                            th:text="${crit.name != null and !#strings.isEmpty(#strings.trim(crit.name))} ? ${crit.name} : #{orgunit.criterionNumbered(${stat.index + 1})}">Criterion</th>
+                                        <th th:text="#{orgunit.col.latestRun}">Latest run</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -253,7 +258,7 @@
                                                 </th:block>
                                             </th:block>
                                             <th:block th:unless="${scored}">
-                                                <span class="text-muted" title="No report run yet for this researcher">—</span>
+                                                <span class="text-muted" th:title="#{orgunit.view.noRunTitle}">—</span>
                                             </th:block>
                                         </td>
                                         <td th:with="meta=${vm.runMetaByEmail[researcher.email]}"
@@ -262,24 +267,29 @@
                                                 <span class="text-nowrap"
                                                       th:text="${meta.createdAt != null ? #temporals.format(meta.createdAt, 'yyyy-MM-dd') : '—'}">date</span>
                                                 <span th:if="${meta.provisional}" class="badge badge-info ml-1"
-                                                      title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">provisional</span>
+                                                      th:title="#{orgunit.view.provisionalTitle}"
+                                                      th:text="#{orgunit.view.provisional}">provisional</span>
                                                 <span th:if="${meta.stale}" class="badge badge-warning ml-1"
-                                                      title="Run predates the last data rebuild">stale</span>
+                                                      th:title="#{orgunit.view.staleTitle}"
+                                                      th:text="#{orgunit.view.stale}">stale</span>
                                                 <span th:if="${meta.status != null and meta.status.name() != 'READY'}"
                                                       class="badge badge-secondary ml-1"
                                                       th:text="${#strings.toLowerCase(meta.status.name())}">status</span>
                                                 <span th:if="${vm.delta != null and vm.delta.newMemberEmails.contains(researcher.email)}"
                                                       class="badge badge-success ml-1"
-                                                      title="No run existed at the compare point">new</span>
+                                                      th:title="#{orgunit.view.newBadgeTitle}"
+                                                      th:text="#{orgunit.view.newBadge}">new</span>
                                             </th:block>
-                                            <span th:if="${meta == null}" class="text-muted" title="No report run yet">no run</span>
+                                            <span th:if="${meta == null}" class="text-muted"
+                                                  th:title="#{orgunit.view.noRunShortTitle}"
+                                                  th:text="#{orgunit.view.noRun}">no run</span>
                                         </td>
                                     </tr>
                                     <tr th:if="${vm.researchers.isEmpty()}" class="app-admin-empty-row">
                                         <td th:colspan="${unitType == 'division' ? #lists.size(vm.report.criteria) + 4 : #lists.size(vm.report.criteria) + 3}">
                                             <th:block th:replace="~{fragments :: admin-empty-state(
-                                                'No researchers affiliated',
-                                                'Assign at least one researcher via the Department admin page or the CSV import.',
+                                                #{orgunit.empty.noResearchers.title},
+                                                #{orgunit.empty.noResearchers.body},
                                                 '', '')}"></th:block>
                                         </td>
                                     </tr>

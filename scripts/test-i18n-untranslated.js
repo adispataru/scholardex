@@ -30,6 +30,8 @@ const ALLOWED = new Set([
 
 const TEMPLATE_DIRS = [
     'src/main/resources/templates/user',
+    'src/main/resources/templates/supervisor',
+    'src/main/resources/templates/reports',
     'src/main/resources/templates/publications',
     'src/main/resources/templates/forums',
     'src/main/resources/templates/authors',
@@ -38,8 +40,21 @@ const TEMPLATE_DIRS = [
     'src/main/resources/templates/core',
     'src/main/resources/templates/errors',
 ];
-const TEMPLATE_FILES = ['src/main/resources/templates/landing.html', 'src/main/resources/templates/changelog.html'];
+// The six org-unit report templates live under admin/ but are gated
+// `hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')` — they are the supervisor's daily
+// drill-in surface, so they are in scope. The rest of admin/ is admin-only and deliberately is not.
+const TEMPLATE_FILES = [
+    'src/main/resources/templates/landing.html',
+    'src/main/resources/templates/changelog.html',
+    'src/main/resources/templates/admin/orgunit-reports-list.html',
+    'src/main/resources/templates/admin/orgunit-report-view.html',
+    'src/main/resources/templates/admin/orgunit-report-compare.html',
+    'src/main/resources/templates/admin/orgunit-promotions.html',
+    'src/main/resources/templates/admin/division-report-select.html',
+    'src/main/resources/templates/admin/department-report-visibility.html',
+];
 const JS_DIRS = ['frontend/src/modules/workspace'];
+const JS_FILES = ['frontend/src/modules/admin/orgUnitReportDashboard.js'];
 
 // Two capitals or a capital + lowercase word, i.e. prose rather than a code/acronym token.
 const ENGLISH_LIKE = /^[A-Z][a-z][A-Za-z0-9 ,&;:/()'’.\-]{2,120}$/;
@@ -95,7 +110,7 @@ for (const file of [...TEMPLATE_DIRS.flatMap(d => walk(d, '.html')), ...TEMPLATE
     scan(file, false).forEach(h => problems.push(`${file}:${h.line}  "${h.text}"`));
     scanExpressions(file).forEach(h => problems.push(`${file}:${h.line}  (in th:* expression) "${h.text}"`));
 }
-for (const file of JS_DIRS.flatMap(d => walk(d, '.js'))) {
+for (const file of [...JS_DIRS.flatMap(d => walk(d, '.js')), ...JS_FILES]) {
     scan(file, true).forEach(h => problems.push(`${file}:${h.line}  "${h.text}"`));
 }
 

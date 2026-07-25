@@ -40,7 +40,8 @@
     "verify-quality-gates-baseline": "./gradlew verifyQualityGatesBaseline",
     "verify-h03-baseline": "npm run verify-architecture-boundaries && npm run verify-assets && npm run verify-template-assets && ./gradlew test --tests \"*UserViewControllerContractTest\" --tests \"*AdminGroupControllerContractTest\" --tests \"*AdminViewControllerContractTest\" --tests \"*ExportControllerContractTest\" --tests \"*UserReportFacadeTest\" --tests \"*GroupCnfisExportFacadeTest\" --tests \"*RankingMaintenanceFacadeTest\" --tests \"*CoreApplicationTests\"",
     "verify-h04-baseline": "npm run verify-architecture-boundaries && npm run verify-assets && npm run verify-template-assets && ./gradlew test --tests \"*UserViewControllerContractTest\" --tests \"*AdminGroupControllerContractTest\" --tests \"*AdminViewControllerContractTest\" --tests \"*ExportControllerContractTest\" --tests \"*UserReportFacadeTest\" --tests \"*GroupCnfisExportFacadeTest\" --tests \"*RankingMaintenanceFacadeTest\" --tests \"*CNFISScoringService2025Test\" --tests \"*ComputerScienceScoringServiceTest\" --tests \"*CoreApplicationTests\" && node scripts/verify-test-runtime.js",
-    "verify-h04-mongo-integration": "./gradlew test --tests \"*ScopusPublicationRepositoryIntegrationTest\" --tests \"*ScopusCitationRepositoryIntegrationTest\""
+    "verify-h04-mongo-integration": "./gradlew test --tests \"*ScopusPublicationRepositoryIntegrationTest\" --tests \"*ScopusCitationRepositoryIntegrationTest\"",
+    "verify-assets-fresh": "node scripts/verify-assets-fresh.js"
   },
   "devDependencies": {
     "esbuild": "^0.25.1"

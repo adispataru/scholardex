@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${division.name} + ' — select reports'">Select reports</title>
+    <title th:text="#{orgunit.select.meta.title(${division.name})}">Select reports</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -12,16 +12,14 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar(${division.name} + ' — select reports')}"></div>
+            <div th:replace="~{fragments :: navbar(#{orgunit.select.meta.title(${division.name})})}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-page-toolbar app-workflow">
-                    <p class="app-workflow__intro">
-                        Pick which individual reports apply to <strong th:text="${division.name}">division</strong>.
-                        Only selected reports surface to users and departments under this division.
-                        Department heads may further hide individual reports for their own departments.
+                    <p class="app-workflow__intro" th:text="#{orgunit.select.intro(${division.name})}">
+                        Pick which individual reports apply to this division.
                     </p>
                     <div class="app-workflow__actions">
-                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Reports</a>
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm" th:text="#{orgunit.select.back}">← Reports</a>
                     </div>
                 </div>
 
@@ -35,10 +33,10 @@
                                 <table class="table app-table">
                                     <thead>
                                     <tr>
-                                        <th style="width:1%; white-space:nowrap;">Selected</th>
-                                        <th>Title</th>
-                                        <th>Description</th>
-                                        <th>Criteria</th>
+                                        <th style="width:1%; white-space:nowrap;" th:text="#{orgunit.select.col.selected}">Selected</th>
+                                        <th th:text="#{orgunit.col.title}">Title</th>
+                                        <th th:text="#{orgunit.col.description}">Description</th>
+                                        <th th:text="#{orgunit.col.criteria}">Criteria</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -51,7 +49,7 @@
                                                 <button type="submit"
                                                         class="btn btn-sm"
                                                         th:classappend="${selectedIds.contains(r.id) ? 'btn-success' : 'btn-outline-secondary'}"
-                                                        th:text="${selectedIds.contains(r.id) ? 'Selected' : 'Off'}">Off</button>
+                                                        th:text="${selectedIds.contains(r.id)} ? #{orgunit.select.on} : #{orgunit.select.off}">Off</button>
                                             </form>
                                         </td>
                                         <td th:text="${r.title}">Report</td>
@@ -61,8 +59,8 @@
                                     <tr th:if="${catalog.isEmpty()}" class="app-admin-empty-row">
                                         <td colspan="4">
                                             <th:block th:replace="~{fragments :: admin-empty-state(
-                                                'No report definitions yet',
-                                                'Create individual reports in the catalog first.',
+                                                #{orgunit.select.empty.title},
+                                                #{orgunit.select.empty.body},
                                                 '', '')}"></th:block>
                                         </td>
                                     </tr>

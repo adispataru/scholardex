@@ -16,15 +16,20 @@ function applyTheme(theme, toggle) {
   const icon = toggle.querySelector('i');
   const label = toggle.querySelector('.app-shell-theme-toggle__label');
 
+  // The shell renders on every page, including ones with no inline appI18n bundle, so the four strings
+  // this function swaps in come from the button's own data-* attributes (filled by messages.properties).
+  const d = toggle.dataset;
   toggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
-  toggle.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+  toggle.setAttribute('aria-label', isDark
+    ? (d.ariaToLight || 'Switch to light theme')
+    : (d.ariaToDark || 'Switch to dark theme'));
 
   if (icon) {
     icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
   }
 
   if (label) {
-    label.textContent = isDark ? 'Light' : 'Dark';
+    label.textContent = isDark ? (d.labelLight || 'Light') : (d.labelDark || 'Dark');
   }
 
   window.dispatchEvent(new CustomEvent('app:themechange', {

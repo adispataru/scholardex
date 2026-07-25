@@ -160,17 +160,17 @@ function _buildProfileSection(researcher) {
       <span class="app-ws-prof__info-label">${t('common.name')}</span>
       <span class="app-ws-prof__info-value">${_esc([researcher?.firstName, researcher?.lastName].filter(Boolean).join(' ') || '—')}</span>
       <span class="app-ws-prof__info-label">ORCID</span>
-      <span class="app-ws-prof__info-value">${researcher?.orcid ? _esc(researcher.orcid) : '<em class="app-ws-prof__info-value--muted">${t('common.notSet')}</em>'}</span>
+      <span class="app-ws-prof__info-value">${researcher?.orcid ? _esc(researcher.orcid) : `<em class="app-ws-prof__info-value--muted">${t('common.notSet')}</em>`}</span>
       <span class="app-ws-prof__info-label">${t('workspace.profile.phdYear')}</span>
-      <span class="app-ws-prof__info-value">${researcher?.phdAwardYear ? _esc(String(researcher.phdAwardYear)) : '<em class="app-ws-prof__info-value--muted">${t('common.notSet')}</em>'}</span>
+      <span class="app-ws-prof__info-value">${researcher?.phdAwardYear ? _esc(String(researcher.phdAwardYear)) : `<em class="app-ws-prof__info-value--muted">${t('common.notSet')}</em>`}</span>
       <span class="app-ws-prof__info-label">Scopus IDs</span>
-      <span class="app-ws-prof__info-value">${scopusPills || '<em class="app-ws-prof__info-value--muted">${t('common.none')}</em>'}</span>
+      <span class="app-ws-prof__info-value">${scopusPills || `<em class="app-ws-prof__info-value--muted">${t('common.none')}</em>`}</span>
       <span class="app-ws-prof__info-label">WoS IDs</span>
-      <span class="app-ws-prof__info-value">${wosPills || '<em class="app-ws-prof__info-value--muted">${t('common.none')}</em>'}</span>
+      <span class="app-ws-prof__info-value">${wosPills || `<em class="app-ws-prof__info-value--muted">${t('common.none')}</em>`}</span>
       <span class="app-ws-prof__info-label">${t('workspace.profile.currentAffiliations')}</span>
-      <span class="app-ws-prof__info-value">${currentAffiliations || '<em class="app-ws-prof__info-value--muted">${t('workspace.profile.noneConfirmed')}</em>'}</span>
+      <span class="app-ws-prof__info-value">${currentAffiliations || `<em class="app-ws-prof__info-value--muted">${t('workspace.profile.noneConfirmed')}</em>`}</span>
       <span class="app-ws-prof__info-label">${t('workspace.profile.pastAffiliations')}</span>
-      <span class="app-ws-prof__info-value">${pastAffiliations || '<em class="app-ws-prof__info-value--muted">${t('workspace.profile.noneConfirmed')}</em>'}</span>
+      <span class="app-ws-prof__info-value">${pastAffiliations || `<em class="app-ws-prof__info-value--muted">${t('workspace.profile.noneConfirmed')}</em>`}</span>
     </div>`;
     const editForm = _buildEditForm(researcher, _data?.observedAffiliations, _data?.affiliationConfirmationRequired);
 
@@ -276,11 +276,11 @@ function _buildAffiliationScopeField(researcher, observedAffiliations, affiliati
     }
 
     const intro = researcher?.affiliationsConfirmedAt
-        ? '<p class="app-ws-prof__info-value" style="margin:.35rem 0 .75rem 0">${t('workspace.profile.scopeConfirmed')}</p>'
+        ? `<p class="app-ws-prof__info-value" style="margin:.35rem 0 .75rem 0">${t('workspace.profile.scopeConfirmed')}</p>`
         : '<p class="app-ws-prof__info-value" style="margin:.35rem 0 .75rem 0">Select the affiliations that belong to your researcher identity. Publication review stays blocked until you save this section.</p>';
 
     const rows = candidates.length === 0
-        ? '<p class="app-ws-prof__task-empty">${t('workspace.profile.noObservedAffiliations')}</p>'
+        ? `<p class="app-ws-prof__task-empty">${t('workspace.profile.noObservedAffiliations')}</p>`
         : `<div style="display:grid;gap:.5rem">${candidates.map((item) => {
             const id = _getAffiliationId(item);
             const currentChecked = currentIds.has(id);
@@ -320,7 +320,7 @@ function _buildSyncSection(data) {
 
     let syncRows;
     if (scopusIds.length === 0) {
-        syncRows = '<p class="app-ws-prof__task-empty">${t('workspace.profile.addScopusId')}</p>';
+        syncRows = `<p class="app-ws-prof__task-empty">${t('workspace.profile.addScopusId')}</p>`;
     } else {
         syncRows = `<ul class="app-ws-prof__sync-list">${scopusIds.map((id, idx) => `
           <li class="app-ws-prof__sync-id-row" data-sync-row>
@@ -406,7 +406,7 @@ function _buildTaskTable(tableId, tasks, cols) {
         .slice(0, 10);
 
     if (sorted.length === 0) {
-        return '<p class="app-ws-prof__task-empty">${t('workspace.profile.noHistory')}</p>';
+        return `<p class="app-ws-prof__task-empty">${t('workspace.profile.noHistory')}</p>`;
     }
 
     const rows = sorted.map((task) => `<tr data-task-id="${_esc(task?.id ?? '')}">

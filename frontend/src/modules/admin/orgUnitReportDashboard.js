@@ -70,7 +70,8 @@ function positionCountChart(data) {
     data: {
       labels: data.positions.map((p) => p.label),
       datasets: [{
-        label: 'Researchers',
+        // Localized server-side: this page has no inline appI18n bundle, so the label rides in on the canvas.
+        label: canvas.dataset.seriesLabel || 'Researchers',
         data: data.positions.map((p) => p.count),
         backgroundColor: alphaColor(theme.series[0], 0.55),
         borderColor: theme.series[0],
@@ -143,7 +144,7 @@ function bindCsvExport(data) {
     return;
   }
   button.addEventListener('click', () => {
-    const header = ['Researcher', 'Position', 'Department']
+    const header = (button.dataset.csvHeader || 'Researcher|Position|Department').split('|')
       .concat(data.criteria.map((c) => c.name));
     const lines = [header.map(csvEscape).join(',')];
     data.rows.forEach((row) => {

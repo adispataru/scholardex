@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Researcher reports</title>
+    <title th:text="#{report.picker.meta.title}">Researcher reports</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -12,26 +12,25 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar('Researcher reports')}"></div>
+            <div th:replace="~{fragments :: navbar(#{report.picker.meta.title})}"></div>
 
             <div class="container-fluid app-page-content">
                 <div class="app-page-toolbar app-workflow">
-                    <p class="app-workflow__intro">
-                        Open the individual evaluation report a researcher sees — read-only, with the
-                        option to refresh or export it on their behalf.
+                    <p class="app-workflow__intro" th:text="#{report.picker.intro}">
+                        Open the individual evaluation report a researcher sees.
                     </p>
                 </div>
 
                 <div class="app-table-section">
                     <div class="app-table-section__surface">
                         <div class="app-table-section__header">
-                            <h6 class="app-table-section__title">Researchers in scope</h6>
+                            <h6 class="app-table-section__title" th:text="#{report.picker.inScope}">Researchers in scope</h6>
                         </div>
                         <div class="app-table-section__body">
                             <th:block th:if="${#lists.isEmpty(researchers)}"
                                       th:replace="~{fragments :: admin-empty-state(
-                                          'No researchers in scope',
-                                          'You do not currently oversee any researchers with a profile.',
+                                          #{report.picker.empty.title},
+                                          #{report.picker.empty.body},
                                           null, null)}"></th:block>
 
                             <div th:unless="${#lists.isEmpty(researchers)}" class="app-table-scroll">
@@ -39,9 +38,9 @@
                                        width="100%" cellspacing="0">
                                     <thead>
                                     <tr>
-                                        <th scope="col">Researcher</th>
-                                        <th scope="col">Email</th>
-                                        <th scope="col">Report</th>
+                                        <th scope="col" th:text="#{report.picker.col.researcher}">Researcher</th>
+                                        <th scope="col" th:text="#{report.picker.col.email}">Email</th>
+                                        <th scope="col" th:text="#{report.picker.col.report}">Report</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -53,9 +52,9 @@
                                         <td>
                                             <a class="btn btn-sm btn-outline-primary"
                                                th:href="@{/reports/researcher/{e}(e=${r.email})}"
-                                               th:aria-label="'View ' + ${r.email} + ' report'">
+                                               th:aria-label="#{report.picker.viewReportAria(${r.email})}">
                                                 <i class="fa-solid fa-up-right-from-square fa-xs" aria-hidden="true"></i>
-                                                View report
+                                                <span th:text="#{report.picker.viewReport}">View report</span>
                                             </a>
                                         </td>
                                     </tr>

@@ -13,34 +13,31 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar('Compare reports')}"></div>
+            <div th:replace="~{fragments :: navbar(#{report.compare.meta.title})}"></div>
 
             <div class="container-fluid app-page-content app-dashboard individual-report-dashboard">
                 <div class="alert alert-info mb-3" role="status">
                     <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
-                    Viewing <strong th:text="${delegatedSubjectName}">researcher</strong>'s report comparison — read-only.
+                    <span th:text="#{report.compare.delegatedNotice(${delegatedSubjectName})}">Read-only comparison.</span>
                 </div>
 
                 <div class="app-page-toolbar app-workflow mb-3">
-                    <p class="app-workflow__intro">
-                        Criterion-level comparison between
-                        <strong th:text="${comparison.olderReport.title}">older</strong> and
-                        <strong th:text="${comparison.newerReport.title}">newer</strong> — matched by
-                        criterion name; a criterion shown on only one side has no counterpart in the
-                        other report.
+                    <p class="app-workflow__intro"
+                       th:text="#{report.compare.intro(${comparison.olderReport.title}, ${comparison.newerReport.title})}">
+                        Criterion-level comparison between the two reports.
                     </p>
                     <a class="btn btn-sm btn-outline-secondary"
                        th:href="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${comparison.newerReport.id})}">
-                        <i class="fa-solid fa-arrow-left fa-xs" aria-hidden="true"></i> Back to report
+                        <i class="fa-solid fa-arrow-left fa-xs" aria-hidden="true"></i>
+                        <span th:text="#{report.compare.back}">Back to report</span>
                     </a>
                 </div>
 
                 <!-- ── Missing-run state: one or both sides have never been run ─────────── -->
                 <th:block th:if="${!comparison.olderRunAvailable or !comparison.newerRunAvailable}">
                     <th:block th:replace="~{fragments :: admin-empty-state(
-                        'Nothing to compare yet',
-                        (${!comparison.olderRunAvailable} ? ${comparison.olderReport.title} : ${comparison.newerReport.title})
-                            + ' has no run yet for this researcher — generate it from that report''s page first.',
+                        #{report.compare.nothing.title},
+                        #{report.compare.nothing.body(${!comparison.olderRunAvailable ? comparison.olderReport.title : comparison.newerReport.title})},
                         null, null)}"></th:block>
                 </th:block>
 
@@ -53,17 +50,19 @@
                             <span class="app-eval-aggregate__value"
                                   th:text="${#numbers.formatDecimal(comparison.olderTotalScore, 1, 2)}">0.00</span>
                             <span th:if="${comparison.olderRunProvisional}" class="badge badge-info ml-1"
-                                  title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">provisional</span>
+                                  th:title="#{report.compare.provisionalTitle}"
+                                  th:text="#{report.compare.provisional}">provisional</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
                             <span class="app-eval-aggregate__label" th:text="${comparison.newerReport.title}">Newer</span>
                             <span class="app-eval-aggregate__value"
                                   th:text="${#numbers.formatDecimal(comparison.newerTotalScore, 1, 2)}">0.00</span>
                             <span th:if="${comparison.newerRunProvisional}" class="badge badge-info ml-1"
-                                  title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">provisional</span>
+                                  th:title="#{report.compare.provisionalTitle}"
+                                  th:text="#{report.compare.provisional}">provisional</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">Δ Total</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.compare.deltaTotal}">Δ Total</span>
                             <span class="app-eval-aggregate__value eval-delta"
                                   th:classappend="${comparison.totalScoreDelta > 0.005 ? 'eval-delta--positive' : (comparison.totalScoreDelta lt -0.005 ? 'eval-delta--negative' : 'eval-delta--neutral')}"
                                   th:text="${(comparison.totalScoreDelta > 0.005 ? '+' : '') + #numbers.formatDecimal(comparison.totalScoreDelta, 1, 2)
@@ -74,14 +73,14 @@
                     <div class="app-table-section">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header">
-                                <h6 class="app-table-section__title">Criteria</h6>
+                                <h6 class="app-table-section__title" th:text="#{report.compare.criteria}">Criteria</h6>
                             </div>
                             <div class="app-table-section__body">
                                 <div class="app-table-scroll">
                                     <table class="table app-table" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col">Criterion</th>
+                                            <th scope="col" th:text="#{report.compare.col.criterion}">Criterion</th>
                                             <th scope="col" class="text-right" th:text="${comparison.olderReport.title}">Older</th>
                                             <th scope="col" class="text-right" th:text="${comparison.newerReport.title}">Newer</th>
                                             <th scope="col" class="text-right">Δ</th>
@@ -95,7 +94,7 @@
                                                       th:text="${#numbers.formatDecimal(row.olderScore, 1, 2)}">0.00</span>
                                                 <i th:if="${row.olderMet != null and row.olderMet}"
                                                    class="fa-solid fa-circle-check text-success fa-xs ml-1"
-                                                   title="Meets threshold"></i>
+                                                   th:title="#{report.compare.meetsThreshold}"></i>
                                                 <span th:unless="${row.presentInOlder}" class="text-muted">—</span>
                                             </td>
                                             <td class="text-right">
@@ -103,7 +102,7 @@
                                                       th:text="${#numbers.formatDecimal(row.newerScore, 1, 2)}">0.00</span>
                                                 <i th:if="${row.newerMet != null and row.newerMet}"
                                                    class="fa-solid fa-circle-check text-success fa-xs ml-1"
-                                                   title="Meets threshold"></i>
+                                                   th:title="#{report.compare.meetsThreshold}"></i>
                                                 <span th:unless="${row.presentInNewer}" class="text-muted">—</span>
                                             </td>
                                             <td class="text-right">
@@ -113,7 +112,7 @@
                                                       th:text="${(row.delta > 0.005 ? '+' : '') + #numbers.formatDecimal(row.delta, 1, 2)
                                                                 + (row.deltaPercent != null ? ' (' + #numbers.formatDecimal(row.deltaPercent > 0 ? row.deltaPercent : -row.deltaPercent, 1, 2) + '%)' : '')}">+0.00 (0.00%)</span>
                                                 <span th:unless="${row.delta != null}" class="text-muted"
-                                                      th:text="${row.presentInNewer and !row.presentInOlder} ? 'new' : (${row.presentInOlder and !row.presentInNewer} ? 'dropped' : '—')">—</span>
+                                                      th:text="${row.presentInNewer and !row.presentInOlder} ? #{report.compare.rowNew} : (${row.presentInOlder and !row.presentInNewer} ? #{report.compare.rowDropped} : '—')">—</span>
                                             </td>
                                         </tr>
                                         </tbody>

@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${vm.unitName} + ' — Promotion readiness'">Promotion readiness</title>
+    <title th:text="#{orgunit.promo.meta.title(${vm.unitName})}">Promotion readiness</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <style>
         .app-promo__band { margin-bottom: 1.5rem; }
@@ -55,46 +55,46 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar(${vm.unitName} + ' — Promotion readiness')}"></div>
+            <div th:replace="~{fragments :: navbar(#{orgunit.promo.meta.title(${vm.unitName})})}"></div>
             <div class="container-fluid app-page-content">
 
                 <div class="app-page-toolbar app-workflow">
                     <p class="app-workflow__intro">
-                        Who meets the <strong>scientific minimum standards of the next position</strong> under
-                        <strong th:text="${vm.report.title}">report</strong>. Each member's latest run is checked
-                        against the thresholds of the rung above their current one.
-                        <span class="text-muted">This covers the metric part of a promotion dossier only —
-                        seniority, teaching, and habilitation requirements are not tracked here.</span>
+                        <th:block th:utext="#{orgunit.promo.intro(${vm.report.title})}">Who meets the next-position standards.</th:block>
+                        <span class="text-muted" th:text="#{orgunit.promo.introNote}">Metric part only.</span>
                     </p>
                     <div class="app-workflow__actions">
-                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Back to report</a>
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm" th:text="#{orgunit.promo.back}">← Back to report</a>
                     </div>
                 </div>
 
                 <!-- Criterion filter: click a chip to exclude that criterion from every check; the
                      buckets, met counts, and near-miss sorting recompute over the remaining ones. -->
                 <div class="app-promo__filter" th:if="${not #lists.isEmpty(criterionToggles)}">
-                    <span class="app-promo__filter-label">Criteria</span>
+                    <span class="app-promo__filter-label" th:text="#{orgunit.promo.criteria}">Criteria</span>
                     <a th:each="c : ${criterionToggles}"
                        class="app-promo__toggle"
                        th:classappend="${c.excluded()} ? ' is-off' : ''"
                        th:href="${c.toggleHref()}"
                        th:text="${c.name()}"
-                       th:title="${c.excluded()} ? 'Excluded from the buckets — click to include again' : 'Click to exclude this criterion from the buckets'">C1</a>
+                       th:title="${c.excluded()} ? #{orgunit.promo.toggleExcluded} : #{orgunit.promo.toggleIncluded}">C1</a>
                     <th:block th:if="${excludedCount > 0}">
                         <span class="app-promo__filter-note"
-                              th:text="'Buckets computed without ' + ${excludedCount} + ' excluded ' + (${excludedCount} == 1 ? 'criterion' : 'criteria')">note</span>
-                        <a class="app-promo__filter-reset" th:href="${resetHref}">reset</a>
+                              th:with="pluralKey=${T(ro.uvt.pokedex.core.service.application.PluralRules).key(
+                                           'orgunit.promo.excludedNote', #locale, excludedCount)}"
+                              th:text="#{__${pluralKey}__(${excludedCount})}">note</span>
+                        <a class="app-promo__filter-reset" th:href="${resetHref}" th:text="#{orgunit.promo.reset}">reset</a>
                     </th:block>
                 </div>
 
                 <!-- Band: meets -->
                 <div class="app-promo__band">
                     <div class="app-promo__band-title text-success">
-                        <i class="fa-solid fa-circle-check"></i> Meets next-position standards
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span th:text="#{orgunit.promo.band.meets}">Meets next-position standards</span>
                         <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.meets)} + ')'">(0)</span>
                     </div>
-                    <p th:if="${vm.board.meets.isEmpty()}" class="text-muted mb-2">Nobody currently clears every threshold of their next position.</p>
+                    <p th:if="${vm.board.meets.isEmpty()}" class="text-muted mb-2" th:text="#{orgunit.promo.band.meetsEmpty}">Nobody clears every threshold yet.</p>
                     <th:block th:each="m : ${vm.board.meets}">
                         <div th:replace="~{:: promo-row(${m})}"></div>
                     </th:block>
@@ -103,10 +103,11 @@
                 <!-- Band: borderline -->
                 <div class="app-promo__band">
                     <div class="app-promo__band-title text-warning">
-                        <i class="fa-solid fa-circle-half-stroke"></i> Borderline — within 10% on the missing criteria
+                        <i class="fa-solid fa-circle-half-stroke"></i>
+                        <span th:text="#{orgunit.promo.band.borderline}">Borderline — within 10% on the missing criteria</span>
                         <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.borderline)} + ')'">(0)</span>
                     </div>
-                    <p th:if="${vm.board.borderline.isEmpty()}" class="text-muted mb-2">No near-misses.</p>
+                    <p th:if="${vm.board.borderline.isEmpty()}" class="text-muted mb-2" th:text="#{orgunit.promo.band.borderlineEmpty}">No near-misses.</p>
                     <th:block th:each="m : ${vm.board.borderline}">
                         <div th:replace="~{:: promo-row(${m})}"></div>
                     </th:block>
@@ -115,7 +116,8 @@
                 <!-- Band: building -->
                 <div class="app-promo__band">
                     <div class="app-promo__band-title text-muted">
-                        <i class="fa-solid fa-seedling"></i> Building
+                        <i class="fa-solid fa-seedling"></i>
+                        <span th:text="#{orgunit.promo.band.building}">Building</span>
                         <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.building)} + ')'">(0)</span>
                     </div>
                     <th:block th:each="m : ${vm.board.building}">
@@ -126,7 +128,8 @@
                 <!-- Band: not evaluable -->
                 <div class="app-promo__band" th:if="${!vm.board.notEvaluable.isEmpty()}">
                     <div class="app-promo__band-title text-muted">
-                        <i class="fa-solid fa-circle-question"></i> Not evaluable
+                        <i class="fa-solid fa-circle-question"></i>
+                        <span th:text="#{orgunit.promo.band.notEvaluable}">Not evaluable</span>
                         <span class="app-promo__count" th:text="'(' + ${#lists.size(vm.board.notEvaluable)} + ')'">(0)</span>
                     </div>
                     <div class="app-promo__row" th:each="m : ${vm.board.notEvaluable}">
@@ -135,12 +138,14 @@
                             <span class="app-promo__path" th:text="${m.row.departmentLabel}">dept</span>
                             <span class="app-promo__chips">
                                 <span class="app-promo__chip app-promo__chip--info"
-                                      th:text="${m.band.name() == 'TOP_OF_LADDER'} ? 'Top of ladder (' + ${m.currentPosition} + ')'
-                                             : (${m.band.name() == 'NO_RUN'} ? 'No report run yet'
-                                             : (${m.band.name() == 'NO_STANDARD'} ? 'Report defines no thresholds for ' + ${m.targetPosition}
-                                             : 'No position set'))">why</span>
-                                <span class="app-promo__chip app-promo__chip--met" th:if="${!m.habilChecks.isEmpty() and m.habilMet}">habil. standards ✓</span>
-                                <span class="app-promo__chip app-promo__chip--near" th:if="${!m.habilChecks.isEmpty() and !m.habilMet}">habil. standards ✗</span>
+                                      th:text="${m.band.name() == 'TOP_OF_LADDER'} ? #{orgunit.promo.why.topOfLadder(${m.currentPosition})}
+                                             : (${m.band.name() == 'NO_RUN'} ? #{orgunit.promo.why.noRun}
+                                             : (${m.band.name() == 'NO_STANDARD'} ? #{orgunit.promo.why.noStandard(${m.targetPosition})}
+                                             : #{orgunit.promo.why.noPosition}))">why</span>
+                                <span class="app-promo__chip app-promo__chip--met" th:if="${!m.habilChecks.isEmpty() and m.habilMet}"
+                                      th:text="#{orgunit.promo.habilMet}">habil. standards ✓</span>
+                                <span class="app-promo__chip app-promo__chip--near" th:if="${!m.habilChecks.isEmpty() and !m.habilMet}"
+                                      th:text="#{orgunit.promo.habilNotMet}">habil. standards ✗</span>
                             </span>
                         </div>
                     </div>
@@ -148,8 +153,7 @@
 
                 <p class="text-muted small" th:if="${vm.board.provisionalCount > 0}">
                     <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                    <span th:text="${vm.board.provisionalCount}">0</span> member(s) are scored from a
-                    <em>provisional</em> run (unvalidated authorship) — treat their verdicts as indicative.
+                    <th:block th:utext="#{orgunit.promo.provisionalNote(${vm.board.provisionalCount})}">Some runs are provisional.</th:block>
                 </p>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
@@ -170,20 +174,23 @@
                 <span th:text="${m.currentPosition}">POS</span> → <strong th:text="${m.targetPosition}">NEXT</strong>
             </span>
             <span class="app-promo__chips">
-                <span class="app-promo__chip app-promo__chip--info" th:if="${m.row.current != null and m.row.current.provisional}">provisional</span>
+                <span class="app-promo__chip app-promo__chip--info" th:if="${m.row.current != null and m.row.current.provisional}"
+                      th:text="#{orgunit.promo.provisional}">provisional</span>
                 <!-- NOTE: no literal '__' inside th:* expressions — Thymeleaf treats __…__ as preprocessing. -->
                 <span class="app-promo__chip"
                       th:classappend="${m.metCount == m.applicableCount} ? 'is-met' : (${m.band.name() == 'BORDERLINE'} ? 'is-near' : 'is-gap')"
-                      th:text="${m.metCount} + '/' + ${m.applicableCount} + ' criteria'">0/0</span>
-                <span class="app-promo__chip app-promo__chip--met" th:if="${!m.habilChecks.isEmpty() and m.habilMet}">habil. standards ✓</span>
-                <span class="app-promo__chip app-promo__chip--near" th:if="${!m.habilChecks.isEmpty() and !m.habilMet}">habil. standards ✗</span>
+                      th:text="#{orgunit.promo.criteriaCount(${m.metCount}, ${m.applicableCount})}">0/0</span>
+                <span class="app-promo__chip app-promo__chip--met" th:if="${!m.habilChecks.isEmpty() and m.habilMet}"
+                                      th:text="#{orgunit.promo.habilMet}">habil. standards ✓</span>
+                <span class="app-promo__chip app-promo__chip--near" th:if="${!m.habilChecks.isEmpty() and !m.habilMet}"
+                                      th:text="#{orgunit.promo.habilNotMet}">habil. standards ✗</span>
             </span>
         </span>
     </summary>
     <div class="app-promo__detail">
         <table class="table table-sm mb-1">
             <thead>
-            <tr><th>Criterion</th><th class="text-right">Current</th><th class="text-right" th:text="'Required (' + ${m.targetPosition} + ')'">Required</th><th class="text-right">Gap</th></tr>
+            <tr><th th:text="#{orgunit.promo.col.criterion}">Criterion</th><th class="text-right" th:text="#{orgunit.promo.col.current}">Current</th><th class="text-right" th:text="#{orgunit.promo.col.required(${m.targetPosition})}">Required</th><th class="text-right" th:text="#{orgunit.promo.col.gap}">Gap</th></tr>
             </thead>
             <tbody>
             <tr th:each="c : ${m.checks}">
@@ -197,14 +204,14 @@
             </tbody>
         </table>
         <p class="app-promo__habil" th:if="${!m.habilChecks.isEmpty()}">
-            Abilitare (habilitation) standards:
+            <th:block th:text="#{orgunit.promo.habilStandards}">Habilitation standards:</th:block>
             <th:block th:each="c,it : ${m.habilChecks}"><span
                     th:classappend="${c.met} ? 'text-success' : 'text-danger'"
                     th:text="${c.name} + ' ' + ${#numbers.formatDecimal(c.score,1,1)} + '/' + ${#numbers.formatDecimal(c.threshold,1,1)}">c</span><th:block
                     th:if="${!it.last}"> · </th:block></th:block>
         </p>
         <a class="btn btn-outline-primary btn-sm"
-           th:href="@{'/reports/researcher/' + ${m.row.user.email}}">Open individual report</a>
+           th:href="@{'/reports/researcher/' + ${m.row.user.email}}" th:text="#{orgunit.promo.openIndividual}">Open individual report</a>
     </div>
 </details>
 

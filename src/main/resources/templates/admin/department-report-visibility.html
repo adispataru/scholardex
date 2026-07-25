@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${department.name} + ' — report visibility'">Visibility</title>
+    <title th:text="#{orgunit.visibility.meta.title(${department.name})}">Visibility</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -12,17 +12,14 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar(${department.name} + ' — report visibility')}"></div>
+            <div th:replace="~{fragments :: navbar(#{orgunit.visibility.meta.title(${department.name})})}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-page-toolbar app-workflow">
-                    <p class="app-workflow__intro">
-                        These are the reports the parent division has selected. Toggle <em>Hidden</em>
-                        on any of them to remove that report from users in
-                        <strong th:text="${department.name}">department</strong>.
-                        Department heads cannot add new reports — that's a division-head decision.
+                    <p class="app-workflow__intro" th:utext="#{orgunit.visibility.intro(${department.name})}">
+                        These are the reports the parent division has selected.
                     </p>
                     <div class="app-workflow__actions">
-                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Reports</a>
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm" th:text="#{orgunit.select.back}">← Reports</a>
                     </div>
                 </div>
 
@@ -36,10 +33,10 @@
                                 <table class="table app-table">
                                     <thead>
                                     <tr>
-                                        <th style="width:1%; white-space:nowrap;">Hidden here</th>
-                                        <th>Title</th>
-                                        <th>Description</th>
-                                        <th>Criteria</th>
+                                        <th style="width:1%; white-space:nowrap;" th:text="#{orgunit.visibility.col.hiddenHere}">Hidden here</th>
+                                        <th th:text="#{orgunit.col.title}">Title</th>
+                                        <th th:text="#{orgunit.col.description}">Description</th>
+                                        <th th:text="#{orgunit.col.criteria}">Criteria</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -52,7 +49,7 @@
                                                 <button type="submit"
                                                         class="btn btn-sm"
                                                         th:classappend="${hiddenIds.contains(r.id) ? 'btn-warning' : 'btn-outline-secondary'}"
-                                                        th:text="${hiddenIds.contains(r.id) ? 'Hidden' : 'Visible'}">Visible</button>
+                                                        th:text="${hiddenIds.contains(r.id)} ? #{orgunit.visibility.hidden} : #{orgunit.visibility.visible}">Visible</button>
                                             </form>
                                         </td>
                                         <td th:text="${r.title}">Report</td>
@@ -62,8 +59,8 @@
                                     <tr th:if="${inherited.isEmpty()}" class="app-admin-empty-row">
                                         <td colspan="4">
                                             <th:block th:replace="~{fragments :: admin-empty-state(
-                                                'No reports inherited',
-                                                'The parent division has not selected any reports yet.',
+                                                #{orgunit.visibility.empty.title},
+                                                #{orgunit.visibility.empty.body},
                                                 '', '')}"></th:block>
                                         </td>
                                     </tr>

@@ -49,7 +49,7 @@ class SupervisorWorkspaceControllerContractTest {
                         .with(user("agent@uvt.ro").authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(view().name("supervisor/workspace"))
-                .andExpect(content().string(containsString("Nothing assigned yet")));
+                .andExpect(content().string(containsString("Nu ai încă nicio unitate atribuită")));
     }
 
     @Test
@@ -68,8 +68,8 @@ class SupervisorWorkspaceControllerContractTest {
                         .with(user("ana@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
                 .andExpect(status().isOk())
                 // strip
-                .andExpect(content().string(containsString("Meeting threshold")))
-                .andExpect(content().string(containsString("Onboarded")))
+                .andExpect(content().string(containsString("Îndeplinesc pragul")))
+                .andExpect(content().string(containsString("Profil completat")))
                 // report selector
                 .andExpect(content().string(containsString("FV Info 2026")))
                 // units + deep-links

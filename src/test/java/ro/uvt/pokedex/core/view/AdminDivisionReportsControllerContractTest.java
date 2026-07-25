@@ -66,14 +66,14 @@ class AdminDivisionReportsControllerContractTest {
                 .andReturn().getResponse().getContentAsString();
 
         // Stat cards + dashboard sections
-        assertTrue(html.contains("Met thresholds"));
-        assertTrue(html.contains("Near misses"));
-        assertTrue(html.contains("Researchers by position"));
+        assertTrue(html.contains("Praguri îndeplinite"));
+        assertTrue(html.contains("La limită"));
+        assertTrue(html.contains("Cercetători după funcție"));
         // Score cell heat class + numeric sort attribute
         assertTrue(html.contains("app-heat--met"));
         assertTrue(html.contains("data-order"));
         // Division views show the Department column
-        assertTrue(html.contains("<th>Department</th>"));
+        assertTrue(html.contains(">Departament</th>"));
         // The JSON payload script tag is emitted un-escaped
         assertTrue(html.contains("id=\"orgunit-dashboard-data\""));
         assertTrue(html.contains("\"metPercentByPosition\""));
@@ -93,7 +93,7 @@ class AdminDivisionReportsControllerContractTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertTrue(html.contains("Comparing each member"));
+        assertTrue(html.contains("Se compară ultima evaluare a fiecărui membru"));
         // Current 6.0 vs baseline 2.0 → +4.00 badge on the score cell.
         assertTrue(html.matches("(?s).*badge badge-success ml-1\">\\+4[.,]00.*"));
     }
@@ -190,15 +190,15 @@ class AdminDivisionReportsControllerContractTest {
                 .andReturn().getResponse().getContentAsString();
 
         // Band headers + the honest-scope disclaimer
-        assertTrue(html.contains("Meets next-position standards"));
-        assertTrue(html.contains("Borderline"));
-        assertTrue(html.contains("scientific minimum standards"));
+        assertTrue(html.contains("Îndeplinește standardele poziției următoare"));
+        assertTrue(html.contains("La limită"));
+        assertTrue(html.contains("standardele minimale științifice"));
         // 30 vs 32 → borderline row with the criterion gap and target position rendered
         assertTrue(html.contains("Bob Ionescu"));
         assertTrue(html.contains("LECT_UNIV"));
         assertTrue(html.contains("CONF_UNIV"));
         assertTrue(html.contains("Perspectiva B"));
-        assertTrue(html.contains("0/1 criteria"));
+        assertTrue(html.contains("0/1 criterii"));
         // Row links to the delegated individual report
         assertTrue(html.contains("/reports/researcher/bob@uvt.ro"));
     }
@@ -231,10 +231,9 @@ class AdminDivisionReportsControllerContractTest {
         assertTrue(html.contains("Perspectiva B"));
         assertTrue(html.contains("Perspectiva D"));
         assertTrue(html.contains("is-off"));
-        assertTrue(html.contains("Buckets computed without 1 excluded criterion"));
+        assertTrue(html.contains("Grupare calculată fără 1 criteriu exclus"));
         assertTrue(html.contains("?exclude=0,1") || html.contains("?exclude=0&#44;1")); // toggling B adds it to the set
-        assertTrue(html.contains("/admin/divisions/div-1/reports/rep-1/promotions\">reset</a>")
-                || html.contains(">reset<"));
+        assertTrue(html.contains(">resetează</a>"));
     }
 
     @Test
@@ -247,7 +246,7 @@ class AdminDivisionReportsControllerContractTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertTrue(html.contains("Promotion readiness"));
+        assertTrue(html.contains("Pregătire pentru promovare"));
         assertTrue(html.contains("/admin/divisions/div-1/reports/rep-1/promotions"));
     }
 
@@ -266,7 +265,7 @@ class AdminDivisionReportsControllerContractTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertTrue(html.contains("Compare with"));
+        assertTrue(html.contains("Compară cu"));
         assertTrue(html.contains("CS 2016"));
         assertTrue(html.contains("/admin/divisions/div-1/reports/rep-1/compare"));
     }
@@ -359,7 +358,7 @@ class AdminDivisionReportsControllerContractTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertTrue(html.contains("No reports defined"));
-        assertTrue(html.contains("Create an Individual Report definition first"));
+        assertTrue(html.contains("Nicio fișă definită"));
+        assertTrue(html.contains("Creează întâi o definiție de fișă individuală"));
     }
 }

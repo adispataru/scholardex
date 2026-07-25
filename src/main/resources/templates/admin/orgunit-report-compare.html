@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${vm.unitName} + ' — ' + ${vm.olderReport.title} + ' vs ' + ${vm.newerReport.title}">Compare reports</title>
+    <title th:text="#{orgunit.compare.meta.title(${vm.unitName}, ${vm.olderReport.title}, ${vm.newerReport.title})}">Compare reports</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -12,24 +12,19 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar(${vm.unitName} + ' — compare reports')}"></div>
+            <div th:replace="~{fragments :: navbar(#{orgunit.compare.navTitle(${vm.unitName})})}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-page-toolbar app-workflow">
                     <p class="app-workflow__intro">
-                        Whole-roster comparison for <strong th:text="${vm.unitName}">unit</strong>:
-                        <strong th:text="${vm.olderReport.title}">older</strong> vs
-                        <strong th:text="${vm.newerReport.title}">newer</strong> — matched by criterion
-                        name; a criterion on only one side has no counterpart in the other report
-                        <th:block th:if="${vm.membersWithoutOlderRun > 0}">,
-                        <span th:text="${vm.membersWithoutOlderRun}">0</span> without a
-                        <span th:text="${vm.olderReport.title}">older</span> run</th:block><th:block
-                        th:if="${vm.membersWithoutNewerRun > 0}">,
-                        <span th:text="${vm.membersWithoutNewerRun}">0</span> without a
-                        <span th:text="${vm.newerReport.title}">newer</span> run</th:block>.
-                        <span class="text-muted">Scores are each researcher's latest report run for each side.</span>
+                        <th:block th:text="#{orgunit.compare.intro(${vm.unitName}, ${vm.olderReport.title}, ${vm.newerReport.title})}">comparison</th:block><th:block
+                            th:if="${vm.membersWithoutOlderRun > 0}"
+                            th:text="#{orgunit.compare.withoutRun(${vm.membersWithoutOlderRun}, ${vm.olderReport.title})}"></th:block><th:block
+                            th:if="${vm.membersWithoutNewerRun > 0}"
+                            th:text="#{orgunit.compare.withoutRun(${vm.membersWithoutNewerRun}, ${vm.newerReport.title})}"></th:block>.
+                        <span class="text-muted" th:text="#{orgunit.compare.note}">Latest run per side.</span>
                     </p>
                     <div class="app-workflow__actions">
-                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Back to report</a>
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm" th:text="#{orgunit.compare.back}">← Back to report</a>
                     </div>
                 </div>
 
@@ -40,11 +35,11 @@
                                 <table class="table app-table">
                                     <thead>
                                     <tr>
-                                        <th rowspan="2">Researcher</th>
-                                        <th rowspan="2">Position</th>
-                                        <th th:if="${unitType == 'division'}" rowspan="2">Department</th>
+                                        <th rowspan="2" th:text="#{orgunit.col.researcher}">Researcher</th>
+                                        <th rowspan="2" th:text="#{orgunit.col.position}">Position</th>
+                                        <th th:if="${unitType == 'division'}" rowspan="2" th:text="#{orgunit.col.department}">Department</th>
                                         <th th:each="col : ${vm.columns}" colspan="3" th:text="${col.name}">Criterion</th>
-                                        <th colspan="3">Total</th>
+                                        <th colspan="3" th:text="#{orgunit.compare.total}">Total</th>
                                     </tr>
                                     <tr>
                                         <th:block th:each="col : ${vm.columns}">
@@ -89,14 +84,16 @@
                                                   th:text="${#numbers.formatDecimal(row.olderTotal, 1, 2)}">0.00</span>
                                             <span th:unless="${row.olderTotal != null}" class="text-muted">—</span>
                                             <span th:if="${row.olderProvisional}" class="badge badge-info ml-1"
-                                                  title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">prov.</span>
+                                                  th:title="#{orgunit.view.provisionalTitle}"
+                                                  th:text="#{orgunit.compare.provAbbrev}">prov.</span>
                                         </td>
                                         <td class="text-right">
                                             <span th:if="${row.newerTotal != null}"
                                                   th:text="${#numbers.formatDecimal(row.newerTotal, 1, 2)}">0.00</span>
                                             <span th:unless="${row.newerTotal != null}" class="text-muted">—</span>
                                             <span th:if="${row.newerProvisional}" class="badge badge-info ml-1"
-                                                  title="Scored from declared authorship (admin provisional run), not the researcher's confirmed publications">prov.</span>
+                                                  th:title="#{orgunit.view.provisionalTitle}"
+                                                  th:text="#{orgunit.compare.provAbbrev}">prov.</span>
                                         </td>
                                         <td class="text-right">
                                             <span th:if="${row.totalDelta != null}"
@@ -109,8 +106,8 @@
                                     <tr th:if="${vm.rows.isEmpty()}" class="app-admin-empty-row">
                                         <td th:colspan="${(unitType == 'division' ? 3 : 2) + (#lists.size(vm.columns) * 3) + 3}">
                                             <th:block th:replace="~{fragments :: admin-empty-state(
-                                                'No researchers affiliated',
-                                                'Assign at least one researcher via the Department admin page or the CSV import.',
+                                                #{orgunit.empty.noResearchers.title},
+                                                #{orgunit.empty.noResearchers.body},
                                                 '', '')}"></th:block>
                                         </td>
                                     </tr>

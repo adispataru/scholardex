@@ -426,7 +426,7 @@ class AdminGroupControllerContractTest {
                 .getContentAsString();
 
         assertTrue(html.contains("Citations"));
-        assertTrue(html.contains("Criterion 2"));
+        assertTrue(html.contains("Criteriul 2"));
     }
 
     @Test
