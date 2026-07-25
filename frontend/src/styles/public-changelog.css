@@ -85,6 +85,7 @@
 }
 
 .app-changelog__impact-chip,
+.app-changelog__scope-chip,
 .app-changelog__admin-chip {
   display: inline-block;
   padding: 0.1rem 0.5rem;
@@ -98,6 +99,21 @@
 .app-changelog__impact-chip {
   color: var(--app-color-primary-strong);
   background: var(--app-color-primary-soft);
+}
+
+/* Reach of the change. A named report reads as a scoped claim (solid outline); "toată platforma" is the
+   quieter default so per-fișă entries stand out when scanning. */
+.app-changelog__scope-chip {
+  color: var(--app-color-text-strong);
+  background: transparent;
+  border: 1px solid var(--app-color-primary-soft);
+  box-shadow: inset 0 0 0 1px var(--app-color-primary-soft);
+}
+
+.app-changelog__scope-chip--platform {
+  color: var(--app-color-text-muted);
+  border-color: var(--app-color-border);
+  box-shadow: none;
 }
 
 .app-changelog__admin-chip {

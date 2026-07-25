@@ -9,6 +9,31 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H87` i18n for the public, researcher and supervisor UI (RO/EN).
+  **SCOPED 2026-07-25.** Driver: the UI is English while the domain, the researchers and every message we
+  send them are Romanian; the changelog + welcome banner shipped in Romanian, so the app now visibly mixes
+  languages. Decision from the user: **UI only** — reports, indicators and standards text stay Romanian
+  (they quote OM 3019/2025 and the FV templates; translating them would misrepresent the standard).
+  Admin pages are out of scope (operator surface, English is fine).
+  Surface inventory: ~26 Thymeleaf templates (root 4, user 4, supervisor 2, publications 2, forums 2,
+  authors 2, rankings 1, universities 1, core 1, reports 2, shared 1, errors 4) + `fragments.html`
+  (shell/nav/footer, the highest-leverage file) + ~113 user-visible strings across the 7 workspace JS
+  modules (toasts, empty states, badges, wizard copy).
+  Slices:
+  - **S1 infra**: `MessageSource` (UTF-8 `messages_ro`/`messages_en`), `LocaleResolver` persisting the
+    choice per user (cookie + the existing WorkspacePreferences for logged-in users), a switcher in the
+    shell header, `#{...}` in the two newest surfaces (landing welcome + changelog) as the pilot, and a
+    test asserting both bundles have identical key sets (the classic drift bug).
+  - **S2 shell + public pages**: fragments.html nav/footer/topbar, landing, publications/forums/authors/
+    rankings/universities/core, error pages.
+  - **S3 researcher workspace**: user templates + a small `t()` helper in the frontend fed by a JSON
+    bundle exposed per locale; convert the 7 workspace modules.
+  - **S4 supervisor pages** + a sweep for leftovers (a lint that fails on bare text nodes in the
+    in-scope templates).
+  Open decisions for the user: default locale (RO for uvt.ro users vs browser `Accept-Language`), and
+  whether report/indicator NAMES stay Romanian inside an English UI (recommended: yes, they are the
+  standard's own labels).
+
 - [ ] `H86` In-app changelog page ("Noutăți / What's new").
   **PAGE DONE locally 2026-07-25.** `/changelog` renders the committed
   `src/main/resources/changelog/changelog.json` (12 backfilled entries covering the H82–H85 wave), grouped

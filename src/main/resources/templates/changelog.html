@@ -22,7 +22,9 @@
                 în ordinea în care au ajuns la utilizatori. Intrările marcate
                 <span class="app-changelog__impact-chip">afectează punctajul</span>
                 pot schimba scorul unei fișe — acolo se găsește, de obicei, răspunsul la
-                „de ce mi s-a modificat punctajul?”.
+                „de ce mi s-a modificat punctajul?”. Eticheta de alături arată cât de departe ajunge
+                modificarea: <span class="app-changelog__scope-chip app-changelog__scope-chip--platform">toată platforma</span>
+                sau doar fișa indicată, de exemplu <span class="app-changelog__scope-chip">FV Info 2026</span>.
             </p>
         </header>
 
@@ -42,6 +44,12 @@
                     <div class="app-changelog__entry-head">
                         <h3 class="app-changelog__entry-title" th:text="${entry.title}">Titlu</h3>
                         <span class="app-changelog__impact-chip" th:if="${entry.scoringImpact}">afectează punctajul</span>
+                        <!-- Reach: either the whole platform, or exactly the fișe named by the entry. The 2016
+                             and 2026 standards diverge on purpose, so several changes apply to only one. -->
+                        <span class="app-changelog__scope-chip app-changelog__scope-chip--platform"
+                              th:if="${entry.scope.name() == 'PLATFORM'}">toată platforma</span>
+                        <span class="app-changelog__scope-chip" th:each="report : ${entry.reports}"
+                              th:text="${report}">FV Info 2026</span>
                         <span class="app-changelog__admin-chip"
                               th:if="${entry.audience.name() == 'ADMIN'}">administrare</span>
                     </div>

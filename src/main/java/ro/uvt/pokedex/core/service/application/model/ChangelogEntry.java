@@ -24,12 +24,30 @@ public record ChangelogEntry(
         String body,
         Audience audience,
         boolean scoringImpact,
+        Scope scope,
+        List<String> reports,
         List<String> affects
 ) {
 
     public ChangelogEntry {
         affects = affects == null ? List.of() : List.copyOf(affects);
+        reports = reports == null ? List.of() : List.copyOf(reports);
         audience = audience == null ? Audience.ALL : audience;
+        // A REPORT-scoped entry that names no report is indistinguishable from a platform change to a reader,
+        // so treat it as platform-wide rather than rendering an empty "affects these reports" claim.
+        scope = (scope == null || (scope == Scope.REPORT && reports.isEmpty())) ? Scope.PLATFORM : scope;
+    }
+
+    /**
+     * How far a change reaches. A researcher reading "my score moved" needs to know whether the rule changed
+     * everywhere or only inside one fișă — the 2016 and 2026 standards deliberately diverge, so several
+     * entries apply to exactly one of them.
+     */
+    public enum Scope {
+        /** Applies across the platform (data sources, publications, sync, UI). */
+        PLATFORM,
+        /** Applies only to the report(s) listed in {@link #reports()}. */
+        REPORT
     }
 
     public enum Audience {

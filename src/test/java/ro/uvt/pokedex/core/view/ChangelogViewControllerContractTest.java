@@ -41,7 +41,7 @@ class ChangelogViewControllerContractTest {
 
     private static ChangelogEntry entry(String title, ChangelogEntry.Audience audience, boolean impact) {
         return new ChangelogEntry(LocalDate.of(2026, 7, 25), title, "Ce s-a schimbat.", audience, impact,
-                List.of("FV Info 2026"));
+                ChangelogEntry.Scope.REPORT, List.of("FV Info 2026"), List.of("Perspectiva D"));
     }
 
     private static Map<LocalDate, List<ChangelogEntry>> grouped(List<ChangelogEntry> entries) {
@@ -66,6 +66,7 @@ class ChangelogViewControllerContractTest {
                 .andExpect(content().string(containsString("afectează punctajul")))
                 .andExpect(content().string(containsString("app-changelog__entry--impact")))
                 .andExpect(content().string(containsString("FV Info 2026")))
+                .andExpect(content().string(containsString("app-changelog__scope-chip")))
                 // the admin-only editing footnote must not leak to researchers
                 .andExpect(content().string(not(containsString("changelog.json"))));
     }

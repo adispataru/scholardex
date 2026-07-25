@@ -80,6 +80,31 @@ class ChangelogServiceTest {
     }
 
     @Test
+    void everyEntryDeclaresItsReachAndReportScopedOnesNameTheirFise() {
+        List<ChangelogEntry> entries = service.entriesFor(true);
+
+        assertThat(entries).allSatisfy(entry -> assertThat(entry.scope()).isNotNull());
+        assertThat(entries)
+                .filteredOn(e -> e.scope() == ChangelogEntry.Scope.REPORT)
+                .isNotEmpty()
+                .allSatisfy(e -> assertThat(e.reports()).isNotEmpty());
+        assertThat(entries)
+                .filteredOn(e -> e.scope() == ChangelogEntry.Scope.PLATFORM)
+                .allSatisfy(e -> assertThat(e.reports()).isEmpty());
+        // the two fișe are the only report labels in use — a typo here would render as a phantom report
+        assertThat(entries.stream().flatMap(e -> e.reports().stream()).distinct())
+                .allMatch(r -> r.equals("FV Info 2016") || r.equals("FV Info 2026"));
+    }
+
+    @Test
+    void aReportScopedEntryWithoutReportsFallsBackToPlatformRatherThanClaimingNothing() {
+        ChangelogEntry degenerate = new ChangelogEntry(LocalDate.of(2026, 7, 25), "t", "b",
+                ChangelogEntry.Audience.ALL, false, ChangelogEntry.Scope.REPORT, List.of(), List.of());
+
+        assertThat(degenerate.scope()).isEqualTo(ChangelogEntry.Scope.PLATFORM);
+    }
+
+    @Test
     void aMissingFixtureYieldsAnEmptyLogInsteadOfBreakingTheApp() {
         ChangelogService broken = new ChangelogService() {
             @Override
