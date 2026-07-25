@@ -9,6 +9,18 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H86` In-app changelog page ("Noutăți / What's new").
+  Driver (2026-07-25): the platform now changes fast enough that researchers see score movements without
+  knowing why (UCC → C, SYNASC 10 → 20, percent caps, best-of rankings), and the only record is email.
+  Proposed shape: entries live in a COMMITTED file (`src/main/resources/changelog/changelog.json`) so an
+  entry ships in the same commit as the change it documents and cannot drift; loaded at startup like the
+  standards/publisher lists. Entry = {date, title, body, audience RESEARCHER|ADMIN|ALL, scoringImpact
+  flag, affects[] (report/indicator keys)}. Page at `/changelog` (researchers see RESEARCHER+ALL, admins
+  see everything), newest first, scoring-impact entries visually distinct — that is the "why did my score
+  change" answer. Workspace hook: reuse the existing lastVisit stamp + NudgeService for a "what's new"
+  badge. Backfill entries for the whole H82–H85 wave. Later (optional): deep-link from a report drilldown
+  to the entry that changed that indicator.
+
 - [ ] `H84` Researcher-flagged publication merges (durable across rebuilds).
   Consumer: Florin's FedCSIS duplicate — no DOI (FedCSIS never assigned), arrived via Scopus + a second
   route; canonical identity is titleNormalized+coverDate+creator and the two routes carry DIFFERENT
