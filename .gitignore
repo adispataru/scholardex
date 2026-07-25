@@ -66,3 +66,6 @@ backups/
 
 # JCR harvest session state (Clarivate SSO cookies) — never commit
 scopus-python/_state/
+
+# ops snapshots from scripts/ops/check-user-data-integrity.sh
+user-data-integrity-*.txt

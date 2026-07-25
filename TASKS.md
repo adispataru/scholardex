@@ -186,6 +186,24 @@ Done history moved to `TASKS-done.md`.
     `scripts/ops/clear-wos-metric-sentinels.sh` nulls the stored values (matching what a re-ingest now
     produces, so the two converge) with a restorable copy in `app_migrations`; a projection rebuild and a
     refresh of any run scoring a 1998 journal are needed afterwards.
+  - **Rebuild safety — user data is NOT deleted, but it CAN be orphaned (checked 2026-07-25).** Every
+    deletion in `ScopusBigBangMigrationService`'s reset is scoped: the five unscoped `deleteAll()` calls are
+    on `Scopus*FactRepository` (the source layer, re-ingested), canonical facts go only where
+    `source ^SCOPUS` (`findCanonicalIdsBySource`), source-links and identity conflicts likewise. No user
+    collection appears in the reset at all. The real exposure is quieter: canonical ids are deterministic
+    hashes of identity inputs (titleNormalized + coverDate + creator), so a rebuild that shifts any of those
+    re-mints the publication under a NEW id and leaves user rows keyed on the old one dangling — nothing is
+    deleted, a confirmed claim just silently stops counting. Standing rate in prod: **1 of 423** authorship
+    refs (~0.2%), 1 of 3,094 DBLP evidence refs, 0 actionable merge survivors (the 1 that dangles is a
+    REJECTED incident decision, benign — `reapplyApproved` only reads APPROVED). The one orphaned claim
+    (florin.spataru, "Decentralized and Fault Tolerant Cloud Service Orchestration") had already self-healed:
+    the paper exists as `spub_71adaeb352fb9ecdbf97fd39` and carries its own CONFIRMED decision.
+    `scripts/ops/check-user-data-integrity.sh` snapshots all of this and diffs before/after, exiting non-zero
+    when any `*_dangling` count RISES. Read-only. Negative-control tested (exit 1 on a synthetic regression,
+    0 on a clean run). **An auto-reconciler for orphaned claims was considered and NOT built** — 0.2% and
+    self-healing does not justify it, and re-pointing a user's CONFIRMED claim by fuzzy identity match is the
+    same shape of automated decision that caused the mis-merge. If the rate ever jumps (an identity-input
+    change like the coverDate precedence class would do it), build it as a REVIEW QUEUE, not a silent fix.
   - **(superseded note) 56 forums carried `IF = 999.999`, all year 1998** — a source sentinel ingested
     as a real Impact Factor (Journal Of Sociology, Journal Of Porous Media, International Review Of
     Hydrobiology, …). Nothing clamps it because 999.999 is perfectly finite; any 1998 publication in those
