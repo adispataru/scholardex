@@ -26,6 +26,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class CustomErrorControllerTest {
 
+    // H87: Romanian is the default UI locale, so the default-locale expectations are Romanian.
+    // English coverage lives in ErrorPageModelFactoryTest, which asserts both bundles resolve.
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -36,9 +39,9 @@ class CustomErrorControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("errors/error-404"))
                 .andExpect(model().attribute("errorStatus", "404"))
-                .andExpect(model().attribute("errorTitle", "Page not found"))
+                .andExpect(model().attribute("errorTitle", "Pagina nu a fost găsită"))
                 .andExpect(model().attribute("errorShowBrowseLinks", true))
-                .andExpect(content().string(containsString("Try one of these areas instead")))
+                .andExpect(content().string(containsString("Încearcă una dintre aceste zone")))
                 .andExpect(content().string(not(containsString("stackpath.bootstrapcdn.com/bootstrap"))));
     }
 
@@ -51,7 +54,7 @@ class CustomErrorControllerTest {
                 .andExpect(model().attribute("errorStatus", "500"))
                 .andExpect(model().attribute("errorShowRetry", true))
                 .andExpect(model().attributeExists("errorTimestamp"))
-                .andExpect(content().string(containsString("Try again")));
+                .andExpect(content().string(containsString("Încearcă din nou")));
     }
 
     @Test
@@ -61,8 +64,8 @@ class CustomErrorControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("errors/error-403"))
                 .andExpect(model().attribute("errorStatus", "403"))
-                .andExpect(model().attribute("errorTitle", "Access denied"))
-                .andExpect(content().string(containsString("ask a platform administrator")));
+                .andExpect(model().attribute("errorTitle", "Acces refuzat"))
+                .andExpect(content().string(containsString("roagă un administrator")));
     }
 
     @Test
@@ -85,7 +88,7 @@ class CustomErrorControllerTest {
                             .requestAttr(RequestDispatcher.ERROR_STATUS_CODE, 403))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("app-shell-sidebar")))
-                    .andExpect(content().string(containsString("Go to admin dashboard")));
+                    .andExpect(content().string(containsString("Mergi la panoul de administrare")));
         } finally {
             SecurityContextHolder.clearContext();
         }

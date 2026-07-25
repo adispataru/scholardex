@@ -30,7 +30,7 @@ class MvcExceptionHandlerTest {
                 .andExpect(view().name("errors/error"))
                 .andExpect(model().attribute("error", "400"))
                 .andExpect(model().attribute("errorStatus", "400"))
-                .andExpect(model().attribute("errorTitle", "Request could not be processed"));
+                .andExpect(model().attribute("errorTitle", "Cererea nu a putut fi procesată"));
     }
 
     @Test
@@ -41,6 +41,6 @@ class MvcExceptionHandlerTest {
                 .andExpect(model().attribute("error", "500"))
                 .andExpect(model().attribute("errorStatus", "500"))
                 .andExpect(model().attributeExists("errorTimestamp"))
-                .andExpect(content().string(containsString("Timestamp")));
+                .andExpect(content().string(containsString("Moment")));
     }
 }

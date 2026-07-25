@@ -30,8 +30,17 @@ Done history moved to `TASKS-done.md`.
     choice per user (cookie + the existing WorkspacePreferences for logged-in users), a switcher in the
     shell header, `#{...}` in the two newest surfaces (landing welcome + changelog) as the pilot, and a
     test asserting both bundles have identical key sets (the classic drift bug).
-  - **S2 shell + public pages**: fragments.html nav/footer/topbar, landing, publications/forums/authors/
-    rankings/universities/core, error pages.
+  - **S2a DONE locally 2026-07-25**: shell chrome (skip link, nav aria, theme toggle, workspace switcher,
+    panel labels, sign-in/out), landing page (title/meta/hero/CTAs/surface cards), and ALL error copy —
+    which lived in `ErrorPageModelFactory`, not in templates, so that class now resolves through
+    MessageSource (both construction sites inject it). Terminology set: Forums → "Forumuri", Workspace →
+    "Spațiul meu". GOTCHA: `LocaleChangeInterceptor` does not run when no handler matched, so `?lang=` was
+    dead on 404/error pages — the resolver now reads the `lang` parameter itself (read-only; persistence
+    still happens via setLocale). Test copy assertions moved to the Romanian default; English coverage sits
+    in `ErrorPageModelFactoryTest`, which asserts both bundles resolve.
+  - **S2b remaining**: the five public data pages (publications/forums/authors/rankings hub/universities/
+    core detail, ~250 strings). `RankingViewControllerContractTest` pins ~25 English strings on those pages
+    and will need the same default-locale update.
   - **S3 researcher workspace**: user templates + a small `t()` helper in the frontend fed by a JSON
     bundle exposed per locale; convert the 7 workspace modules.
   - **S4 supervisor pages** + a sweep for leftovers (a lint that fails on bare text nodes in the

@@ -109,7 +109,7 @@ class RankingViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
                         .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("app-landing__welcome"))))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("Sign in")));
+                        .string(org.hamcrest.Matchers.containsString("Autentificare")));
     }
 
     @AfterEach
@@ -261,7 +261,7 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Sign in to view Web of Science rankings")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Log out"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Ieșire"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("General Metrics"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Category Rankings"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("frappe-charts"))));

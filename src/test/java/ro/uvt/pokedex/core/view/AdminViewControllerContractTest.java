@@ -119,7 +119,7 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
                         .string(org.hamcrest.Matchers.containsString("method=\"post\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("Log out")));
+                        .string(org.hamcrest.Matchers.containsString("Ieșire")));
     }
 
     @Test

@@ -13,7 +13,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class CustomErrorController implements ErrorController {
 
-    private final ErrorPageModelFactory errorPageModelFactory = new ErrorPageModelFactory();
+    private final ErrorPageModelFactory errorPageModelFactory;
+
+    public CustomErrorController(org.springframework.context.MessageSource messageSource) {
+        this.errorPageModelFactory = new ErrorPageModelFactory(messageSource);
+    }
 
     @RequestMapping("/error")
     public String handleError(HttpServletRequest request, Model model) {

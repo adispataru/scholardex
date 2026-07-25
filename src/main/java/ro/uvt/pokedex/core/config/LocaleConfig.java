@@ -29,7 +29,7 @@ public class LocaleConfig implements WebMvcConfigurer {
     @Bean
     public LocaleChangeInterceptor localeChangeInterceptor() {
         LocaleChangeInterceptor interceptor = new LocaleChangeInterceptor();
-        interceptor.setParamName("lang");
+        interceptor.setParamName(UserPreferenceLocaleResolver.PARAM_NAME);
         // An unknown value must not 500 the page; the resolver ignores unsupported tags anyway.
         interceptor.setIgnoreInvalidLocale(true);
         return interceptor;

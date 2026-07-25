@@ -15,6 +15,22 @@ import java.util.Optional;
 
 public class ErrorPageModelFactory {
 
+    /**
+     * H87 S2a: error copy lives in the message bundles, not in this factory — the error pages are the most
+     * likely place an anonymous visitor lands, so they must speak the resolved UI language. The locale comes
+     * from LocaleContextHolder, which the LocaleResolver has already populated for the request.
+     */
+    private final org.springframework.context.MessageSource messageSource;
+
+    public ErrorPageModelFactory(org.springframework.context.MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
+
+    private String msg(String key) {
+        return messageSource.getMessage(key, null,
+                org.springframework.context.i18n.LocaleContextHolder.getLocale());
+    }
+
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z").withZone(ZoneId.systemDefault());
 
@@ -46,45 +62,21 @@ public class ErrorPageModelFactory {
     }
 
     private ErrorContent contentFor(int statusCode) {
-        return switch (statusCode) {
-            case 400 -> new ErrorContent(
-                    "Request could not be processed",
-                    "The request needs a correction before ScholarDex can continue.",
-                    "Check the URL or submitted values, then try the action again.",
-                    "fa-solid fa-triangle-exclamation",
-                    "warning"
-            );
-            case 403 -> new ErrorContent(
-                    "Access denied",
-                    "Your account does not have permission to open this page.",
-                    "If this is part of your role, ask a platform administrator to review your access. "
-                            + "Otherwise, return to a workspace you can use.",
-                    "fa-solid fa-lock",
-                    "warning"
-            );
-            case 404 -> new ErrorContent(
-                    "Page not found",
-                    "The page may have moved, been removed, or the address may be mistyped.",
-                    "Try searching from the forum directory or browse the ranking areas below.",
-                    "fa-solid fa-magnifying-glass",
-                    "primary"
-            );
-            case 500 -> new ErrorContent(
-                    "Something went wrong",
-                    "ScholarDex could not complete this request.",
-                    "Try again in a moment. If the problem continues, include the timestamp and request id "
-                            + "when asking for support.",
-                    "fa-solid fa-screwdriver-wrench",
-                    "danger"
-            );
-            default -> new ErrorContent(
-                    "Unexpected request error",
-                    "ScholarDex could not complete this request.",
-                    "Use the recovery actions below to return to a known workspace.",
-                    "fa-solid fa-circle-exclamation",
-                    "danger"
-            );
+        String prefix = switch (statusCode) {
+            case 400, 403, 404, 500 -> "error." + statusCode;
+            default -> "error.default";
         };
+        return switch (statusCode) {
+            case 400 -> content(prefix, "fa-solid fa-triangle-exclamation", "warning");
+            case 403 -> content(prefix, "fa-solid fa-lock", "warning");
+            case 404 -> content(prefix, "fa-solid fa-magnifying-glass", "primary");
+            case 500 -> content(prefix, "fa-solid fa-screwdriver-wrench", "danger");
+            default -> content(prefix, "fa-solid fa-circle-exclamation", "danger");
+        };
+    }
+
+    private ErrorContent content(String prefix, String icon, String tone) {
+        return new ErrorContent(msg(prefix + ".title"), msg(prefix + ".lead"), msg(prefix + ".message"), icon, tone);
     }
 
     private String requestedPath(HttpServletRequest request) {
@@ -132,12 +124,12 @@ public class ErrorPageModelFactory {
 
     private String primaryLabel(int statusCode, Optional<User> currentUser, boolean adminContext) {
         if (currentUser.isEmpty()) {
-            return "Sign in";
+            return msg("error.action.signIn");
         }
         if (statusCode == 404) {
-            return "Browse forums";
+            return msg("error.action.browseForums");
         }
-        return adminContext ? "Go to admin dashboard" : "Go to workspace";
+        return msg(adminContext ? "error.action.adminDashboard" : "error.action.workspace");
     }
 
     private record ErrorContent(String title, String lead, String message, String icon, String tone) {

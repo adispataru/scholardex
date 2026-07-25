@@ -73,6 +73,25 @@ class UserPreferenceLocaleResolverTest {
         assertThat(resolver().resolveLocale(new MockHttpServletRequest()).getLanguage()).isEqualTo("ro");
     }
 
+    /** Error pages: no handler matched, so LocaleChangeInterceptor never ran — the switcher must still work. */
+    @Test
+    void theLangParameterWinsEvenWhenNoInterceptorHasRun() {
+        signIn("u@uvt.ro", "ro");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter(UserPreferenceLocaleResolver.PARAM_NAME, "en");
+
+        assertThat(resolver().resolveLocale(request).getLanguage()).isEqualTo("en");
+    }
+
+    @Test
+    void anUnsupportedLangParameterIsIgnoredInFavourOfTheSavedPreference() {
+        signIn("u@uvt.ro", "en");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter(UserPreferenceLocaleResolver.PARAM_NAME, "fr");
+
+        assertThat(resolver().resolveLocale(request).getLanguage()).isEqualTo("en");
+    }
+
     @Test
     void theSavedUserPreferenceWinsOverTheCookie() {
         signIn("u@uvt.ro", "en");

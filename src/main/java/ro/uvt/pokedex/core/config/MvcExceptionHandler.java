@@ -15,7 +15,11 @@ import ro.uvt.pokedex.core.controller.ErrorPageModelFactory;
 public class MvcExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(MvcExceptionHandler.class);
 
-    private final ErrorPageModelFactory errorPageModelFactory = new ErrorPageModelFactory();
+    private final ErrorPageModelFactory errorPageModelFactory;
+
+    public MvcExceptionHandler(org.springframework.context.MessageSource messageSource) {
+        this.errorPageModelFactory = new ErrorPageModelFactory(messageSource);
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

@@ -32,6 +32,7 @@ public class UserPreferenceLocaleResolver implements LocaleResolver {
 
     public static final Locale DEFAULT_LOCALE = Locale.forLanguageTag("ro");
     public static final String COOKIE_NAME = "SCHOLARDEX_LANG";
+    public static final String PARAM_NAME = "lang";
     private static final List<String> SUPPORTED = List.of("ro", "en");
     private static final int COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
@@ -44,6 +45,13 @@ public class UserPreferenceLocaleResolver implements LocaleResolver {
 
     @Override
     public Locale resolveLocale(HttpServletRequest request) {
+        // The ?lang= parameter is read here, not only by LocaleChangeInterceptor: interceptors do not run when
+        // no handler matched, so on a 404 (or any error dispatch) the switcher would otherwise be dead. Read-only
+        // — persistence still happens through setLocale on normal pages, keeping resolve free of side effects.
+        String fromParam = request == null ? null : request.getParameter(PARAM_NAME);
+        if (isSupported(fromParam)) {
+            return Locale.forLanguageTag(fromParam);
+        }
         String fromUser = currentUser().map(User::getPreferredLanguage).orElse(null);
         if (isSupported(fromUser)) {
             return Locale.forLanguageTag(fromUser);
