@@ -194,7 +194,7 @@ function _renderMergeSuggestions() {
                   <button type="button" class="btn btn-sm btn-outline-primary"
                           data-merge-flag-a="${_esc(s.survivor.id)}" data-merge-flag-b="${_esc(s.duplicate.id)}"
                           data-merge-flag-index="${i}">
-                    Request merge
+                    ${t('workspace.pubs.requestMerge')}
                   </button>
                 </div>`;
     }).join('');
@@ -396,12 +396,12 @@ function _renderPage() {
                      ${allPageSelected ? 'checked' : ''}
                      ${selectablePagePubs.length === 0 ? 'disabled' : ''}>
             </th>
-            <th scope="col">Title</th>
-            <th scope="col">Year</th>
-            <th scope="col">Type</th>
-            <th scope="col">Venue</th>
-            <th scope="col" style="text-align:right">Cites</th>
-            <th scope="col" style="text-align:right"><span class="sr-only">Actions</span></th>
+            <th scope="col">${t('common.title')}</th>
+            <th scope="col">${t('common.year')}</th>
+            <th scope="col">${t('common.type')}</th>
+            <th scope="col">${t('authors.detail.venue')}</th>
+            <th scope="col" style="text-align:right">${t('workspace.pubs.cites')}</th>
+            <th scope="col" style="text-align:right"><span class="sr-only">${t('common.actions')}</span></th>
           </tr>
         </thead>
         <tbody id="ws-pubs-tbody"></tbody>`;
@@ -614,7 +614,7 @@ function _buildDetailPanel(pub) {
 
     let citationsHtml;
     if (cites === 0) {
-        citationsHtml = `<p class="app-ws-pubs__citations-count">No citations yet.</p>`;
+        citationsHtml = `<p class="app-ws-pubs__citations-count">${t('workspace.pubs.noCitationsYet')}</p>`;
     } else {
         const previewIds  = citingIds.slice(0, 5);
         const previewItems = previewIds.map(cid => {
@@ -650,7 +650,7 @@ function _buildDetailPanel(pub) {
           <div class="app-ws-pubs__detail-panel">
 
             <div>
-              <p class="app-ws-pubs__detail-section-title">Citations</p>
+              <p class="app-ws-pubs__detail-section-title">${t('common.citations')}</p>
               ${citationsHtml}
             </div>
 
@@ -659,7 +659,7 @@ function _buildDetailPanel(pub) {
             </div>
 
             <div>
-              <p class="app-ws-pubs__detail-section-title">Authorship</p>
+              <p class="app-ws-pubs__detail-section-title">${t('workspace.pubs.authorship')}</p>
               <div class="app-ws-pubs__authorship-panel">
                 <div class="app-ws-pubs__authorship-header">
                   ${reviewBadge}
@@ -678,13 +678,13 @@ function _buildDetailPanel(pub) {
                     : ''}
                 <div class="app-ws-pubs__authorship-actions">
                   <button class="btn btn-sm btn-outline-success" type="button" data-confirm-authorship="${_esc(pub.id)}">
-                    Confirm mine
+                    ${t('workspace.pubs.confirmMine')}
                   </button>
                   <button class="btn btn-sm ${rejectConfirm ? 'btn-danger' : 'btn-outline-danger'}" type="button" data-reject-authorship="${_esc(pub.id)}">
                     ${rejectConfirm ? t('workspace.pubs.confirmRejection') : t('workspace.pubs.rejectAuthorship')}
                   </button>
                   <button class="btn btn-sm btn-link px-0" type="button" data-clear-authorship="${_esc(pub.id)}">
-                    Clear decision
+                    ${t('workspace.pubs.clearDecision')}
                   </button>
                 </div>
                 <span class="app-ws-pubs__authorship-feedback" role="status" aria-live="polite"></span>
@@ -700,7 +700,7 @@ function _buildDetailPanel(pub) {
  *  The auto-suggest banner covers exact-title pairs; this catches the ones it can't see. */
 function _buildMergeFlagSection(pub) {
     if (_mergeRequestState(pub.id) === 'PENDING') {
-        return `<p class="app-ws-pubs__detail-section-title" style="margin-top:0.75rem;">Duplicate</p>
+        return `<p class="app-ws-pubs__detail-section-title" style="margin-top:0.75rem;">${t('workspace.pubs.duplicate')}</p>
                 <p style="font-size:0.8rem;" class="text-muted">Merge requested — awaiting admin approval.</p>`;
     }
     const others = _allPubs
@@ -720,11 +720,11 @@ function _buildMergeFlagSection(pub) {
             ${options}
           </select>
           <button type="button" class="btn btn-sm btn-outline-primary" data-flag-merge="${_esc(pub.id)}">
-            Flag as duplicate
+            ${t('workspace.pubs.flagDuplicate')}
           </button>
         </div>
         <p class="text-muted" style="font-size:0.75rem; margin:0.25rem 0 0;">
-          An admin reviews the request and combines the two records (citations are merged, nothing is lost).
+          ${t('workspace.pubs.mergeExplainer')}
         </p>`;
 }
 
@@ -950,12 +950,12 @@ function _buildReviewMeta(pub, state) {
 
 function _buildSuspiciousBadge(state) {
     if (!state?.flags?.length) return '';
-    return `<span class="app-ws-pubs__suspicious-badge">Needs review</span>`;
+    return `<span class="app-ws-pubs__suspicious-badge">${t('workspace.pubs.needsReview')}</span>`;
 }
 
 function _buildRecommendationBadge(pubId) {
     if (!_isRecommendedPending(pubId)) return '';
-    return `<span class="app-ws-pubs__recommended-badge">Recommended accept</span>`;
+    return `<span class="app-ws-pubs__recommended-badge">${t('workspace.pubs.recommendedAccept')}</span>`;
 }
 
 function _buildReviewSummaryText(pub, state) {
@@ -1084,9 +1084,9 @@ function _buildReviewSummary() {
     const bulkBar = selectedCount > 0
         ? `<div class="app-ws-pubs__bulk-bar" role="region" aria-label="${t('workspace.pubs.bulkActions')}">
             <span class="app-ws-pubs__bulk-count">${selectedCount} selected</span>
-            <button type="button" class="btn btn-sm btn-outline-success" data-bulk-confirm>Confirm selected</button>
-            <button type="button" class="btn btn-sm btn-outline-danger" data-bulk-reject>Reject selected</button>
-            <button type="button" class="btn btn-sm btn-link px-0" data-bulk-clear-selection>Clear selection</button>
+            <button type="button" class="btn btn-sm btn-outline-success" data-bulk-confirm>${t('workspace.pubs.confirmSelected')}</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bulk-reject>${t('workspace.pubs.rejectSelected')}</button>
+            <button type="button" class="btn btn-sm btn-link px-0" data-bulk-clear-selection>${t('workspace.pubs.clearSelection')}</button>
           </div>`
         : '';
     return `
@@ -1098,7 +1098,7 @@ function _buildReviewSummary() {
             <span class="app-ws-pubs__review-stat app-ws-pubs__review-stat--pending"><strong>${counts.pending}</strong> pending</span>
           </div>
           <div class="app-ws-pubs__triage-summary">
-            <span class="app-ws-pubs__triage-label">Pending Review</span>
+            <span class="app-ws-pubs__triage-label">${t('workspace.pubs.pendingReviewTitle')}</span>
             <strong class="app-ws-pubs__triage-count">${pendingCount}</strong>
             <span class="app-ws-pubs__triage-body">pending publication${pendingCount === 1 ? '' : 's'} need authorship review</span>
             <span class="app-ws-pubs__triage-meta">${suspiciousCount} suspicious, ${recommendedCount} recommended accept</span>
@@ -1108,7 +1108,7 @@ function _buildReviewSummary() {
               All
             </button>
             <button type="button" class="app-ws-pubs__triage-filter ${queueActive ? 'app-ws-pubs__triage-filter--active' : ''}" data-publication-filter="pending-review" aria-pressed="${queueActive}">
-              Pending Review
+              ${t('workspace.pubs.pendingReviewTitle')}
             </button>
           </div>
           ${bulkBar}
@@ -1152,7 +1152,7 @@ function _buildSuspiciousDetailSection(state) {
         `<li class="app-ws-pubs__triage-reason-item"><span class="app-ws-pubs__triage-reason-code">${_esc(_formatFlagCode(flag.code))}</span><span>${_esc(flag.message ?? '')}</span></li>`
     ).join('');
     return `
-      <p class="app-ws-pubs__detail-section-title">Why this needs review</p>
+      <p class="app-ws-pubs__detail-section-title">${t('workspace.pubs.whyReview')}</p>
       <div class="app-ws-pubs__triage-panel">
         <ul class="app-ws-pubs__triage-reason-list">${reasons}</ul>
       </div>`;
@@ -1199,8 +1199,8 @@ function _buildQueueEmpty() {
     return `
       <div class="app-ws-pubs__queue-empty">
         <div class="app-ws-pubs__queue-empty-icon"><i class="fa-solid fa-shield-check" aria-hidden="true"></i></div>
-        <h3 class="app-ws-pubs__queue-empty-title">No pending publications need review</h3>
-        <p class="app-ws-pubs__queue-empty-body">Pending authorship items will appear here until they are confirmed or rejected.</p>
+        <h3 class="app-ws-pubs__queue-empty-title">${t('workspace.pubs.noPending')}</h3>
+        <p class="app-ws-pubs__queue-empty-body">${t('workspace.pubs.pendingHint')}</p>
       </div>`;
 }
 
@@ -1270,7 +1270,7 @@ function _renderCitationsModal(data, pubEl, body, totalEl) {
     if (totalEl) totalEl.textContent = `${citations.length} citing publication${citations.length !== 1 ? 's' : ''}`;
 
     if (citations.length === 0) {
-        body.innerHTML = `<p style="padding:1.5rem;font-size:.88rem;color:var(--app-color-text-muted)">No citations found.</p>`;
+        body.innerHTML = `<p style="padding:1.5rem;font-size:.88rem;color:var(--app-color-text-muted)">${t('workspace.pubs.noCitationsFound')}</p>`;
         return;
     }
 
@@ -1291,10 +1291,10 @@ function _renderCitationsModal(data, pubEl, body, totalEl) {
     body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.83rem">
         <thead>
           <tr style="background:color-mix(in srgb,var(--app-color-card-bg-muted) 80%,transparent)">
-            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border)">Title</th>
-            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border);white-space:nowrap">Year</th>
-            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border)">Venue</th>
-            <th style="padding:.5rem .75rem;text-align:right;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border);white-space:nowrap">Cited&nbsp;by</th>
+            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border)">${t('common.title')}</th>
+            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border);white-space:nowrap">${t('common.year')}</th>
+            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border)">${t('authors.detail.venue')}</th>
+            <th style="padding:.5rem .75rem;text-align:right;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border);white-space:nowrap">${t('workspace.pubs.citedBy')}</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1494,12 +1494,12 @@ function _renderStep1() {
           <summary>${_esc(t('workspace.pubs.wizard.createForumSummary'))}</summary>
           <div class="app-ws-pubs__wiz-new-forum-fields">
             <div class="app-ws-pubs__wiz-field">
-              <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-forum-name">Publication name</label>
+              <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-forum-name">${t('workspace.pubs.publicationName')}</label>
               <input class="app-ws-pubs__wiz-input" id="ws-wiz-forum-name" type="text"
                      value="${_esc(nf.publicationName ?? '')}" placeholder="e.g. IEEE Transactions on …"/>
             </div>
             <div class="app-ws-pubs__wiz-field">
-              <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-forum-type">Forum type</label>
+              <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-forum-type">${t('workspace.pubs.forumType')}</label>
               <select class="app-ws-pubs__wiz-select" id="ws-wiz-forum-type">
                 <option value="">— select —</option>
                 ${aggrOptions}
@@ -1516,7 +1516,7 @@ function _renderStep1() {
                      value="${_esc(nf.eIssn ?? '')}" placeholder="1234-5678"/>
             </div>
             <div class="app-ws-pubs__wiz-field">
-              <label class="app-ws-pubs__wiz-label" for="ws-wiz-forum-publisher">Publisher</label>
+              <label class="app-ws-pubs__wiz-label" for="ws-wiz-forum-publisher">${t('workspace.pubs.publisher')}</label>
               <input class="app-ws-pubs__wiz-input" id="ws-wiz-forum-publisher" type="text"
                      value="${_esc(nf.publisher ?? '')}" placeholder="e.g. Springer"/>
               <div class="app-ws-pubs__wiz-sense-badge" id="ws-wiz-sense-badge" hidden></div>
@@ -1534,7 +1534,7 @@ function _renderStep1() {
         ${newForumHtml}
         <div class="app-ws-pubs__wiz-nav">
           <span class="app-ws-pubs__wiz-feedback" id="ws-pubs-wiz-error" role="alert" aria-live="assertive"></span>
-          <button class="btn btn-sm btn-outline-secondary" type="button" id="ws-pubs-wiz-cancel">Cancel</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" id="ws-pubs-wiz-cancel">${t('common.cancel')}</button>
           <button class="btn btn-sm btn-primary" type="button" id="ws-pubs-wiz-next">Next →</button>
         </div>`;
 }
@@ -1565,7 +1565,7 @@ function _renderStep2() {
                <i class="fa-solid fa-plus" aria-hidden="true" style="color:var(--app-color-primary);font-size:0.75rem"></i>
              </li>`
         ).join('')
-        : `<li class="app-ws-pubs__wiz-empty-authors">No co-authors found for this affiliation.</li>`;
+        : `<li class="app-ws-pubs__wiz-empty-authors">${t('workspace.pubs.noCoauthors')}</li>`;
 
     const stagedItems = staged.length > 0
         ? staged.map(a =>
@@ -1574,16 +1574,16 @@ function _renderStep2() {
                <i class="fa-solid fa-xmark" aria-hidden="true" style="color:var(--app-color-danger);font-size:0.75rem"></i>
              </li>`
         ).join('')
-        : `<li class="app-ws-pubs__wiz-empty-authors">No authors staged yet.</li>`;
+        : `<li class="app-ws-pubs__wiz-empty-authors">${t('workspace.pubs.noStagedAuthors')}</li>`;
 
     return `
         <div class="app-ws-pubs__wiz-author-cols">
           <div>
-            <p class="app-ws-pubs__wiz-author-col-title">Available co-authors</p>
+            <p class="app-ws-pubs__wiz-author-col-title">${t('workspace.pubs.availableCoauthors')}</p>
             <ul class="app-ws-pubs__wiz-author-list" id="ws-pubs-wiz-available">${availableItems}</ul>
           </div>
           <div>
-            <p class="app-ws-pubs__wiz-author-col-title">Staged authors</p>
+            <p class="app-ws-pubs__wiz-author-col-title">${t('workspace.pubs.stagedAuthors')}</p>
             <ul class="app-ws-pubs__wiz-author-list" id="ws-pubs-wiz-staged">${stagedItems}</ul>
           </div>
         </div>
@@ -1603,22 +1603,22 @@ function _renderStep3() {
     return `
         <div class="app-ws-pubs__wiz-fields">
           <div class="app-ws-pubs__wiz-field app-ws-pubs__wiz-field--full">
-            <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-title">Title</label>
+            <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-title">${t('common.title')}</label>
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-title" type="text"
                    value="${_esc(_wTitle)}" placeholder="${t('workspace.pubs.wizard.title')}"/>
           </div>
           <div class="app-ws-pubs__wiz-field">
-            <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-date">Cover date</label>
+            <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-date">${t('workspace.pubs.coverDate')}</label>
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-date" type="date"
                    value="${_esc(_wDate)}"/>
           </div>
           <div class="app-ws-pubs__wiz-field">
-            <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-subtype-desc">Type description</label>
+            <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-subtype-desc">${t('workspace.pubs.typeDescription')}</label>
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-subtype-desc" type="text"
                    value="${_esc(_wSubtypeDesc)}" placeholder="e.g. Journal Article"/>
           </div>
           <div class="app-ws-pubs__wiz-field">
-            <label class="app-ws-pubs__wiz-label" for="ws-wiz-subtype">Subtype code</label>
+            <label class="app-ws-pubs__wiz-label" for="ws-wiz-subtype">${t('workspace.pubs.subtypeCode')}</label>
             <select class="app-ws-pubs__wiz-select" id="ws-wiz-subtype">
               ${subtypeOptions}
             </select>
@@ -1629,12 +1629,12 @@ function _renderStep3() {
                    value="${_esc(_wDoi)}" placeholder="10.1234/…"/>
           </div>
           <div class="app-ws-pubs__wiz-field">
-            <label class="app-ws-pubs__wiz-label" for="ws-wiz-volume">Volume</label>
+            <label class="app-ws-pubs__wiz-label" for="ws-wiz-volume">${t('publications.detail.volume')}</label>
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-volume" type="text"
                    value="${_esc(_wVolume)}" placeholder="e.g. 42"/>
           </div>
           <div class="app-ws-pubs__wiz-field">
-            <label class="app-ws-pubs__wiz-label" for="ws-wiz-issue">Issue</label>
+            <label class="app-ws-pubs__wiz-label" for="ws-wiz-issue">${t('publications.detail.issue')}</label>
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-issue" type="text"
                    value="${_esc(_wIssueIdentifier)}" placeholder="e.g. 3"/>
           </div>
@@ -1642,7 +1642,7 @@ function _renderStep3() {
         <div class="app-ws-pubs__wiz-nav">
           <span class="app-ws-pubs__wiz-feedback" id="ws-pubs-wiz-error" role="alert" aria-live="assertive"></span>
           <button class="btn btn-sm btn-outline-secondary" type="button" id="ws-pubs-wiz-back">← Back</button>
-          <button class="btn btn-sm btn-primary" type="button" id="ws-pubs-wiz-submit">Submit</button>
+          <button class="btn btn-sm btn-primary" type="button" id="ws-pubs-wiz-submit">${t('common.submit')}</button>
         </div>`;
 }
 
@@ -1927,10 +1927,10 @@ function _buildToolbar() {
             <i class="fa-solid fa-plus" aria-hidden="true"></i> ${_esc(t('workspace.pubs.wizard.heading'))}
           </a>
           <a href="/user/publications" class="btn btn-sm btn-outline-secondary">
-            <i class="fa-solid fa-file-export" aria-hidden="true"></i> Export CNFIS
+            <i class="fa-solid fa-file-export" aria-hidden="true"></i> ${t('workspace.publications.exportCnfis')}
           </a>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="ws-pubs-scopus-btn">
-            <i class="fa-solid fa-rotate" aria-hidden="true"></i> Scopus Updates
+            <i class="fa-solid fa-rotate" aria-hidden="true"></i> ${t('workspace.publications.scopusUpdates')}
           </button>
           <span class="app-ws-pubs__toolbar-spacer"></span>
         </div>`;
@@ -1943,11 +1943,11 @@ function _buildStats() {
     return `
         <div class="app-ws-pubs__stats">
           <div class="app-ws-pubs__stat">
-            <p class="app-ws-pubs__stat-label">Publications</p>
+            <p class="app-ws-pubs__stat-label">${t('workspace.card.publications')}</p>
             <p class="app-ws-pubs__stat-value">${count}</p>
           </div>
           <div class="app-ws-pubs__stat app-ws-pubs__stat--success">
-            <p class="app-ws-pubs__stat-label">Citations</p>
+            <p class="app-ws-pubs__stat-label">${t('common.citations')}</p>
             <p class="app-ws-pubs__stat-value">${cites}</p>
           </div>
           <div class="app-ws-pubs__stat app-ws-pubs__stat--warning">
@@ -1962,8 +1962,8 @@ function _buildEmpty() {
     return `
         <div class="app-ws-pubs__empty">
           <i class="fa-solid fa-book-open app-ws-pubs__empty-icon" aria-hidden="true"></i>
-          <h2 class="app-ws-pubs__empty-title">No publications yet</h2>
-          <p class="app-ws-pubs__empty-body">Add your first publication to start tracking your research output.</p>
+          <h2 class="app-ws-pubs__empty-title">${t('workspace.pubs.noPublications')}</h2>
+          <p class="app-ws-pubs__empty-body">${t('workspace.pubs.emptyHint')}</p>
           <a href="#" id="ws-pubs-add-btn-empty" class="btn btn-sm btn-primary" style="margin-top:0.5rem">
             <i class="fa-solid fa-plus" aria-hidden="true"></i> ${_esc(t('workspace.pubs.wizard.heading'))}
           </a>
@@ -1974,10 +1974,10 @@ function _buildError() {
     return `
         <div class="app-panel-error app-dashboard-empty">
           <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-          <h3 class="app-dashboard-empty__title">Could not load Publications</h3>
-          <p class="app-dashboard-empty__body">Something went wrong while fetching this content.</p>
+          <h3 class="app-dashboard-empty__title">${t('workspace.pubs.loadFailed')}</h3>
+          <p class="app-dashboard-empty__body">${t('common.fetchError')}</p>
           <button type="button" class="btn btn-sm btn-outline-primary" data-retry-panel>
-            Try again
+            ${t('common.tryAgain')}
           </button>
         </div>`;
 }

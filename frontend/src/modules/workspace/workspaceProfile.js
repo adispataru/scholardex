@@ -56,9 +56,9 @@ function _showSkeleton() {
 function _buildError(message) {
     return `<div class="app-ws-prof__empty">
       <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;color:var(--app-color-text-muted);opacity:.45"></i>
-      <p style="margin:0;font-size:.88rem;color:var(--app-color-text-muted)">Failed to load profile data.</p>
+      <p style="margin:0;font-size:.88rem;color:var(--app-color-text-muted)">${t('workspace.profile.loadFailed')}</p>
       ${message ? `<p style="margin:.35rem 0 0 0;font-size:.8rem;color:var(--app-color-danger)">${_esc(message)}</p>` : ''}
-      <button class="btn btn-sm btn-outline-secondary" id="ws-prof-retry-btn">Retry</button>
+      <button class="btn btn-sm btn-outline-secondary" id="ws-prof-retry-btn">${t('common.retry')}</button>
     </div>`;
 }
 
@@ -114,17 +114,17 @@ function _buildCompletenessCard(researcher, completeness) {
             return `<li class="app-ws-prof__checklist-item">
               <span class="app-ws-prof__checklist-icon--missing"><i class="fa-solid fa-circle-exclamation"></i></span>
               <span class="app-ws-prof__checklist-label--missing">${_esc(s.label)}</span>
-              <button type="button" class="app-ws-prof__checklist-link" data-onboarding-open>Continue &rsaquo;</button>
+              <button type="button" class="app-ws-prof__checklist-link" data-onboarding-open>${t('workspace.profile.continue')}</button>
             </li>`;
         }).join('');
         const fillClass = pct >= 100
             ? 'app-ws-prof__progress-fill app-ws-prof__progress-fill--complete'
             : 'app-ws-prof__progress-fill';
         const cta = onboarding.complete ? ''
-            : `<button type="button" class="btn btn-sm btn-primary mt-2" data-onboarding-open>Continue setup</button>`;
+            : `<button type="button" class="btn btn-sm btn-primary mt-2" data-onboarding-open>${t('workspace.profile.continueSetup')}</button>`;
         return `<div class="app-ws-prof__completeness">
           <div class="app-ws-prof__completeness-header">
-            <p class="app-ws-prof__completeness-title">Onboarding</p>
+            <p class="app-ws-prof__completeness-title">${t('workspace.profile.onboarding')}</p>
             <span class="app-ws-prof__completeness-score">${pct}%<span class="app-ws-prof__completeness-score-label">complete</span></span>
           </div>
           <div class="app-ws-prof__progress-track">
@@ -142,7 +142,7 @@ function _buildCompletenessCard(researcher, completeness) {
         : 'app-ws-prof__progress-fill';
     return `<div class="app-ws-prof__completeness">
       <div class="app-ws-prof__completeness-header">
-        <p class="app-ws-prof__completeness-title">Profile completeness</p>
+        <p class="app-ws-prof__completeness-title">${t('workspace.profile.completeness')}</p>
         <span class="app-ws-prof__completeness-score">${pct}%<span class="app-ws-prof__completeness-score-label">complete</span></span>
       </div>
       <div class="app-ws-prof__progress-track">
@@ -157,29 +157,29 @@ function _buildProfileSection(researcher) {
     const currentAffiliations = _buildAffiliationPills(researcher?.currentAffiliationIds, _data?.observedAffiliations);
     const pastAffiliations = _buildAffiliationPills(researcher?.pastAffiliationIds, _data?.observedAffiliations);
     const readonlyGrid = `<div id="ws-prof-readonly-grid" class="app-ws-prof__info-grid">
-      <span class="app-ws-prof__info-label">Name</span>
+      <span class="app-ws-prof__info-label">${t('common.name')}</span>
       <span class="app-ws-prof__info-value">${_esc([researcher?.firstName, researcher?.lastName].filter(Boolean).join(' ') || '—')}</span>
       <span class="app-ws-prof__info-label">ORCID</span>
-      <span class="app-ws-prof__info-value">${researcher?.orcid ? _esc(researcher.orcid) : '<em class="app-ws-prof__info-value--muted">Not set</em>'}</span>
-      <span class="app-ws-prof__info-label">PhD award year</span>
-      <span class="app-ws-prof__info-value">${researcher?.phdAwardYear ? _esc(String(researcher.phdAwardYear)) : '<em class="app-ws-prof__info-value--muted">Not set</em>'}</span>
+      <span class="app-ws-prof__info-value">${researcher?.orcid ? _esc(researcher.orcid) : '<em class="app-ws-prof__info-value--muted">${t('common.notSet')}</em>'}</span>
+      <span class="app-ws-prof__info-label">${t('workspace.profile.phdYear')}</span>
+      <span class="app-ws-prof__info-value">${researcher?.phdAwardYear ? _esc(String(researcher.phdAwardYear)) : '<em class="app-ws-prof__info-value--muted">${t('common.notSet')}</em>'}</span>
       <span class="app-ws-prof__info-label">Scopus IDs</span>
-      <span class="app-ws-prof__info-value">${scopusPills || '<em class="app-ws-prof__info-value--muted">None</em>'}</span>
+      <span class="app-ws-prof__info-value">${scopusPills || '<em class="app-ws-prof__info-value--muted">${t('common.none')}</em>'}</span>
       <span class="app-ws-prof__info-label">WoS IDs</span>
-      <span class="app-ws-prof__info-value">${wosPills || '<em class="app-ws-prof__info-value--muted">None</em>'}</span>
-      <span class="app-ws-prof__info-label">Current affiliations</span>
-      <span class="app-ws-prof__info-value">${currentAffiliations || '<em class="app-ws-prof__info-value--muted">None confirmed</em>'}</span>
-      <span class="app-ws-prof__info-label">Past affiliations</span>
-      <span class="app-ws-prof__info-value">${pastAffiliations || '<em class="app-ws-prof__info-value--muted">None confirmed</em>'}</span>
+      <span class="app-ws-prof__info-value">${wosPills || '<em class="app-ws-prof__info-value--muted">${t('common.none')}</em>'}</span>
+      <span class="app-ws-prof__info-label">${t('workspace.profile.currentAffiliations')}</span>
+      <span class="app-ws-prof__info-value">${currentAffiliations || '<em class="app-ws-prof__info-value--muted">${t('workspace.profile.noneConfirmed')}</em>'}</span>
+      <span class="app-ws-prof__info-label">${t('workspace.profile.pastAffiliations')}</span>
+      <span class="app-ws-prof__info-value">${pastAffiliations || '<em class="app-ws-prof__info-value--muted">${t('workspace.profile.noneConfirmed')}</em>'}</span>
     </div>`;
     const editForm = _buildEditForm(researcher, _data?.observedAffiliations, _data?.affiliationConfirmationRequired);
 
     return `<div class="app-ws-prof__section">
       <div class="app-ws-prof__section-header">
         <i class="fa-solid fa-user" style="color:var(--app-color-text-muted);font-size:.85rem"></i>
-        <h2 class="app-ws-prof__section-title">Identity</h2>
+        <h2 class="app-ws-prof__section-title">${t('workspace.profile.identity')}</h2>
         <button class="btn btn-sm btn-outline-secondary" id="ws-prof-edit-btn">
-          <i class="fa-solid fa-pen-to-square"></i> Edit
+          <i class="fa-solid fa-pen-to-square"></i> ${t('common.edit')}
         </button>
       </div>
       <div class="app-ws-prof__section-body">
@@ -221,18 +221,18 @@ function _buildEditForm(researcher, observedAffiliations, affiliationConfirmatio
     return `<div class="app-ws-prof__edit-form" id="ws-prof-edit-form">
       <div class="app-ws-prof__form-row">
         <div class="app-ws-prof__field">
-          <label class="app-ws-prof__label app-ws-prof__label--required" for="ws-prof-edit-firstName">First name</label>
+          <label class="app-ws-prof__label app-ws-prof__label--required" for="ws-prof-edit-firstName">${t('workspace.profile.firstName')}</label>
           <input class="app-ws-prof__input" type="text" id="ws-prof-edit-firstName" name="firstName"
                  value="${_esc(researcher?.firstName ?? '')}" autocomplete="given-name">
         </div>
         <div class="app-ws-prof__field">
-          <label class="app-ws-prof__label app-ws-prof__label--required" for="ws-prof-edit-lastName">Last name</label>
+          <label class="app-ws-prof__label app-ws-prof__label--required" for="ws-prof-edit-lastName">${t('workspace.profile.lastName')}</label>
           <input class="app-ws-prof__input" type="text" id="ws-prof-edit-lastName" name="lastName"
                  value="${_esc(researcher?.lastName ?? '')}" autocomplete="family-name">
         </div>
       </div>
       <div class="app-ws-prof__field">
-        <label class="app-ws-prof__label" for="ws-prof-edit-phdYear">PhD award year</label>
+        <label class="app-ws-prof__label" for="ws-prof-edit-phdYear">${t('workspace.profile.phdYear')}</label>
         <input class="app-ws-prof__input" type="number" id="ws-prof-edit-phdYear" name="phdAwardYear"
                value="${researcher?.phdAwardYear ?? ''}" min="1900" max="2100" placeholder="optional" style="max-width:10rem">
         <small class="app-ws-prof__hint">Optional — used by evaluation criteria that count only work after your doctorate.</small>
@@ -247,20 +247,20 @@ function _buildEditForm(researcher, observedAffiliations, affiliationConfirmatio
         <label class="app-ws-prof__label">Scopus IDs</label>
         <div class="app-ws-prof__id-entries" id="ws-prof-scopus-entries">${scopusRows}</div>
         <button type="button" class="btn btn-sm btn-link app-ws-prof__add-id-btn" id="ws-prof-add-scopus-btn">
-          <i class="fa-solid fa-plus"></i> Add Scopus ID
+          <i class="fa-solid fa-plus"></i> ${t('workspace.profile.addScopusIdBtn')}
         </button>
       </div>
       <div class="app-ws-prof__field" id="ws-prof-edit-wosId">
         <label class="app-ws-prof__label">WoS IDs</label>
         <div class="app-ws-prof__id-entries" id="ws-prof-wos-entries">${wosRows}</div>
         <button type="button" class="btn btn-sm btn-link app-ws-prof__add-id-btn" id="ws-prof-add-wos-btn">
-          <i class="fa-solid fa-plus"></i> Add WoS ID
+          <i class="fa-solid fa-plus"></i> ${t('workspace.profile.addWosIdBtn')}
         </button>
       </div>
       ${affiliationScope}
       <div class="app-ws-prof__form-actions">
-        <button type="button" class="btn btn-sm btn-primary" id="ws-prof-save-btn">Save</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="ws-prof-cancel-btn">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="ws-prof-save-btn">${t('common.save')}</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="ws-prof-cancel-btn">${t('common.cancel')}</button>
         <span class="app-ws-prof__form-feedback" id="ws-prof-form-feedback"></span>
       </div>
     </div>`;
@@ -276,11 +276,11 @@ function _buildAffiliationScopeField(researcher, observedAffiliations, affiliati
     }
 
     const intro = researcher?.affiliationsConfirmedAt
-        ? '<p class="app-ws-prof__info-value" style="margin:.35rem 0 .75rem 0">Affiliation scope confirmed. Update it whenever your profile changes.</p>'
+        ? '<p class="app-ws-prof__info-value" style="margin:.35rem 0 .75rem 0">${t('workspace.profile.scopeConfirmed')}</p>'
         : '<p class="app-ws-prof__info-value" style="margin:.35rem 0 .75rem 0">Select the affiliations that belong to your researcher identity. Publication review stays blocked until you save this section.</p>';
 
     const rows = candidates.length === 0
-        ? '<p class="app-ws-prof__task-empty">No observed affiliations found yet. Save this section to confirm that none currently apply.</p>'
+        ? '<p class="app-ws-prof__task-empty">${t('workspace.profile.noObservedAffiliations')}</p>'
         : `<div style="display:grid;gap:.5rem">${candidates.map((item) => {
             const id = _getAffiliationId(item);
             const currentChecked = currentIds.has(id);
@@ -291,13 +291,13 @@ function _buildAffiliationScopeField(researcher, observedAffiliations, affiliati
         <div style="font-weight:600">${_esc(item?.name ?? id)}</div>
         <div class="app-ws-prof__info-value--muted" style="font-size:.78rem">${_esc(subtitle || id)}</div>
       </div>
-      <label class="app-ws-prof__sync-mode-opt" style="margin:0"><input type="checkbox" data-affiliation-current ${currentChecked ? 'checked' : ''}> Current</label>
-      <label class="app-ws-prof__sync-mode-opt" style="margin:0"><input type="checkbox" data-affiliation-past ${pastChecked ? 'checked' : ''}> Past</label>
+      <label class="app-ws-prof__sync-mode-opt" style="margin:0"><input type="checkbox" data-affiliation-current ${currentChecked ? 'checked' : ''}> ${t('workspace.profile.current')}</label>
+      <label class="app-ws-prof__sync-mode-opt" style="margin:0"><input type="checkbox" data-affiliation-past ${pastChecked ? 'checked' : ''}> ${t('workspace.profile.past')}</label>
     </div>`;
         }).join('')}</div>`;
 
     return `<div class="app-ws-prof__field" id="ws-prof-affiliation-scope">
-      <label class="app-ws-prof__label app-ws-prof__label--required">Affiliation scope</label>
+      <label class="app-ws-prof__label app-ws-prof__label--required">${t('workspace.profile.affiliationScope')}</label>
       ${intro}
       ${rows}
     </div>`;
@@ -320,35 +320,35 @@ function _buildSyncSection(data) {
 
     let syncRows;
     if (scopusIds.length === 0) {
-        syncRows = '<p class="app-ws-prof__task-empty">Add a Scopus ID to enable sync.</p>';
+        syncRows = '<p class="app-ws-prof__task-empty">${t('workspace.profile.addScopusId')}</p>';
     } else {
         syncRows = `<ul class="app-ws-prof__sync-list">${scopusIds.map((id, idx) => `
           <li class="app-ws-prof__sync-id-row" data-sync-row>
             <span class="app-ws-prof__sync-id-label">${_esc(id)}</span>
             <div class="app-ws-prof__sync-mode-group" role="radiogroup" aria-label="${t('workspace.profile.syncMode')}">
               <label class="app-ws-prof__sync-mode-opt">
-                <input type="radio" name="sync-mode-${idx}" value="SINCE_LAST_UPDATE" checked> Since last update
+                <input type="radio" name="sync-mode-${idx}" value="SINCE_LAST_UPDATE" checked> ${t('workspace.profile.sinceLastUpdate')}
               </label>
               <label class="app-ws-prof__sync-mode-opt">
-                <input type="radio" name="sync-mode-${idx}" value="PERIOD"> Period
+                <input type="radio" name="sync-mode-${idx}" value="PERIOD"> ${t('workspace.profile.period')}
               </label>
               <label class="app-ws-prof__sync-mode-opt">
-                <input type="radio" name="sync-mode-${idx}" value="FULL"> Full update
+                <input type="radio" name="sync-mode-${idx}" value="FULL"> ${t('workspace.profile.fullUpdate')}
               </label>
             </div>
             <div class="app-ws-prof__sync-period" hidden>
-              <label>From <input type="number" class="app-ws-prof__input app-ws-prof__sync-year"
+              <label>${t('workspace.profile.from')}<input type="number" class="app-ws-prof__input app-ws-prof__sync-year"
                                   placeholder="e.g. 2017" min="1990" max="${currentYear}"></label>
               <span>–</span>
-              <label>To &nbsp;<input type="number" class="app-ws-prof__input app-ws-prof__sync-year"
+              <label>${t('workspace.profile.to')}<input type="number" class="app-ws-prof__input app-ws-prof__sync-year"
                                   placeholder="e.g. ${currentYear}" min="1990" max="${currentYear}"></label>
             </div>
             <div class="app-ws-prof__sync-actions">
               <button class="btn btn-sm btn-outline-primary" data-sync-type="publications" data-sync-id="${_esc(id)}">
-                <i class="fa-solid fa-book-open"></i> Update Publications
+                <i class="fa-solid fa-book-open"></i> ${t('workspace.profile.updatePublications')}
               </button>
               <button class="btn btn-sm btn-outline-primary" data-sync-type="citations" data-sync-id="${_esc(id)}">
-                <i class="fa-solid fa-quote-right"></i> Update Citations
+                <i class="fa-solid fa-quote-right"></i> ${t('workspace.profile.updateCitations')}
               </button>
             </div>
           </li>`).join('')}</ul>`;
@@ -369,12 +369,12 @@ function _buildSyncSection(data) {
           Pull your corresponding-author and citation data from OpenAlex by ORCID${orcid ? '' : ' — add your ORCID in the profile above first'}.</p>
         <div class="app-ws-prof__sync-actions">
           <button class="btn btn-sm btn-outline-primary" data-openalex-sync ${orcid ? '' : 'disabled'}>
-            <i class="fa-solid fa-arrows-rotate"></i> Update from OpenAlex
+            <i class="fa-solid fa-arrows-rotate"></i> ${t('workspace.onboarding.updateFromOpenAlex')}
           </button>
           <span class="app-ws-prof__openalex-feedback" role="status" aria-live="polite"></span>
         </div>
         <div class="app-ws-prof__task-subsection" style="padding:0;margin-top:.75rem">
-          <p class="app-ws-prof__task-subsection-title">OpenAlex sync history</p>
+          <p class="app-ws-prof__task-subsection-title">${t('workspace.profile.openAlexHistory')}</p>
           ${openAlexTable}
         </div>
       </div>
@@ -383,16 +383,16 @@ function _buildSyncSection(data) {
     return `<div class="app-ws-prof__section">
       <div class="app-ws-prof__section-header">
         <i class="fa-solid fa-rotate" style="color:var(--app-color-text-muted);font-size:.85rem"></i>
-        <h2 class="app-ws-prof__section-title">Scopus Sync</h2>
+        <h2 class="app-ws-prof__section-title">${t('workspace.profile.scopusSync')}</h2>
       </div>
       <div class="app-ws-prof__section-body" style="padding:0">
         ${syncRows}
         <div class="app-ws-prof__task-subsection">
-          <p class="app-ws-prof__task-subsection-title">Publication sync history</p>
+          <p class="app-ws-prof__task-subsection-title">${t('workspace.profile.publicationHistory')}</p>
           ${pubTable}
         </div>
         <div class="app-ws-prof__task-subsection">
-          <p class="app-ws-prof__task-subsection-title">Citation sync history</p>
+          <p class="app-ws-prof__task-subsection-title">${t('workspace.profile.citationHistory')}</p>
           ${citeTable}
         </div>
       </div>
@@ -406,7 +406,7 @@ function _buildTaskTable(tableId, tasks, cols) {
         .slice(0, 10);
 
     if (sorted.length === 0) {
-        return '<p class="app-ws-prof__task-empty">No sync history yet.</p>';
+        return '<p class="app-ws-prof__task-empty">${t('workspace.profile.noHistory')}</p>';
     }
 
     const rows = sorted.map((task) => `<tr data-task-id="${_esc(task?.id ?? '')}">
@@ -492,10 +492,9 @@ function _resumeWatchers(data) {
 function _buildNoProfile() {
     return `<div class="app-ws-prof__no-profile">
       <span class="app-ws-prof__no-profile-icon"><i class="fa-solid fa-user-slash"></i></span>
-      <h3 class="app-ws-prof__no-profile-title">No researcher profile linked</h3>
+      <h3 class="app-ws-prof__no-profile-title">${t('workspace.profile.noProfile')}</h3>
       <p class="app-ws-prof__no-profile-body">
-        Your account is not yet linked to a researcher profile.
-        Visit your <a href="/user/profile">profile page</a> to complete setup.
+        ${t('workspace.profile.notLinked')} <a href="/user/profile">profile page</a> to complete setup.
       </p>
     </div>`;
 }

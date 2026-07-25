@@ -62,11 +62,11 @@
             <div class="app-university-detail__section-header">
                 <div>
                     <p class="app-university-detail__eyebrow" th:text="#{authors.detail.affiliations}">Affiliations</p>
-                    <h2 id="author-affiliations-title" class="app-university-detail__section-title">Institutions</h2>
+                    <h2 id="author-affiliations-title" class="app-university-detail__section-title"><span th:text="#{authors.detail.institutions}">Institutions</span></h2>
                 </div>
             </div>
             <div th:if="${affiliations == null or affiliations.isEmpty()}" class="app-table-state app-table-state--warning" role="status">
-                No affiliations listed for this author.
+                <span th:text="#{authors.detail.noAffiliations}">No affiliations listed for this author.</span>
             </div>
             <dl th:if="${affiliations != null and !affiliations.isEmpty()}" class="app-university-detail__definition-grid">
                 <div th:each="aff : ${affiliations}">
@@ -82,12 +82,12 @@
         <section class="app-university-detail__section" aria-labelledby="author-publications-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">Output</p>
+                    <p class="app-university-detail__eyebrow"><span th:text="#{authors.detail.output}">Output</span></p>
                     <h2 id="author-publications-title" class="app-university-detail__section-title" th:text="#{authors.detail.publications}">Publications</h2>
                 </div>
             </div>
             <div th:if="${#lists.isEmpty(publications)}" class="app-table-state app-table-state--warning" role="status">
-                No publications linked to this author.
+                <span th:text="#{authors.detail.noPublications}">No publications linked to this author.</span>
             </div>
             <div th:if="${!#lists.isEmpty(publications)}" class="app-table-scroll">
                 <table class="table table-bordered app-table" width="100%" cellspacing="0">
@@ -96,10 +96,10 @@
                     <tr>
                         <th scope="col" th:text="#{common.title}">Title</th>
                         <th scope="col" th:text="#{common.year}">Year</th>
-                        <th scope="col">Authors</th>
+                        <th scope="col"><span th:text="#{publications.column.authors}">Authors</span></th>
                         <th scope="col" th:text="#{common.type}">Type</th>
                         <th scope="col" th:text="#{authors.detail.venue}">Venue</th>
-                        <th scope="col" class="app-table__cell--numeric">Citations</th>
+                        <th scope="col" class="app-table__cell--numeric"><span th:text="#{common.citations}">Citations</span></th>
                     </tr>
                     </thead>
                     <tbody>

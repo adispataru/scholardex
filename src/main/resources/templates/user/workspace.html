@@ -11,7 +11,7 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar('Research Workspace')}"></div>
+            <div th:replace="~{fragments :: navbar(#{workspace.meta.title})}"></div>
 
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
@@ -51,10 +51,10 @@
                                  th:attr="aria-label=#{workspace.notifications}"
                                  hidden>
                                 <div class="app-ws-notif__panel-header">
-                                    <span class="app-ws-notif__panel-title">Notifications</span>
+                                    <span class="app-ws-notif__panel-title" th:text="#{workspace.notifications}">Notifications</span>
                                     <button class="app-ws-notif__mark-all"
                                             type="button"
-                                            id="ws-notif-mark-all">Mark all as read</button>
+                                            id="ws-notif-mark-all" th:text="#{workspace.notif.markAllRead}">Mark all as read</button>
                                 </div>
                                 <ul class="app-ws-notif__list"
                                     id="ws-notif-list"
@@ -113,25 +113,25 @@
                                                 <span class="app-onboarding-list__icon app-onboarding-list__icon--pending" aria-hidden="true">
                                                     <i class="fa-solid fa-user"></i>
                                                 </span>
-                                                <span class="app-onboarding-list__label">Create your researcher profile</span>
+                                                <span class="app-onboarding-list__label" th:text="#{workspace.quick.createProfile}">Create your researcher profile</span>
                                                 <button type="button" class="btn btn-sm btn-outline-primary app-onboarding-list__action"
-                                                        data-tab-goto="profile">Start</button>
+                                                        data-tab-goto="profile" th:text="#{workspace.quick.start}">Start</button>
                                             </li>
                                             <li class="app-onboarding-list__item">
                                                 <span class="app-onboarding-list__icon app-onboarding-list__icon--pending" aria-hidden="true">
                                                     <i class="fa-solid fa-book"></i>
                                                 </span>
-                                                <span class="app-onboarding-list__label">Add your first publication</span>
+                                                <span class="app-onboarding-list__label" th:text="#{workspace.quick.addFirstPublication}">Add your first publication</span>
                                                 <button type="button" class="btn btn-sm btn-outline-secondary app-onboarding-list__action"
-                                                        data-tab-goto="publications">Add</button>
+                                                        data-tab-goto="publications" th:text="#{workspace.quick.add}">Add</button>
                                             </li>
                                             <li class="app-onboarding-list__item">
                                                 <span class="app-onboarding-list__icon app-onboarding-list__icon--pending" aria-hidden="true">
                                                     <i class="fa-solid fa-link"></i>
                                                 </span>
-                                                <span class="app-onboarding-list__label">Link your Scopus ID for automatic citation tracking</span>
+                                                <span class="app-onboarding-list__label" th:text="#{workspace.quick.linkScopus}">Link your Scopus ID for automatic citation tracking</span>
                                                 <button type="button" class="btn btn-sm btn-outline-secondary app-onboarding-list__action"
-                                                        data-tab-goto="profile">Link</button>
+                                                        data-tab-goto="profile" th:text="#{workspace.quick.link}">Link</button>
                                             </li>
                                         </ul>
                                     </div>
@@ -159,7 +159,7 @@
                                                          th:style="'width: ' + ${workspace.profileCompletenessPercent} + '%'"></div>
                                                 </div>
                                                 <p class="app-attention-panel__body" style="margin-top: 0.5rem; font-size: 0.86rem;">
-                                                    Profile <strong th:text="${workspace.profileCompletenessPercent}">0</strong>% complete —
+                                                    <span th:text="#{workspace.tab.profileShort}">Profile</span> <strong th:text="${workspace.profileCompletenessPercent}">0</strong>% complete —
                                                     <button type="button" data-tab-goto="profile" class="btn btn-link p-0 align-baseline fw-semibold" th:text="#{workspace.goToProfile}">Go to Profile</button>
                                                 </p>
                                             </div>
@@ -174,7 +174,7 @@
                                                 <div class="app-summary-panel__body">
                                                     <div class="app-summary-grid">
                                                         <div class="app-summary-card">
-                                                            <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review.">Publications</p>
+                                                            <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review." th:text="#{workspace.card.publications}">Publications</p>
                                                             <p class="app-summary-card__value" data-ws-publication-count th:text="${workspace.publicationCount}">0</p>
                                                             <p class="app-summary-card__meta" th:text="#{workspace.card.publications.meta}">…</p>
                                                         </div>
@@ -232,24 +232,24 @@
                                                     <p class="app-summary-panel__section-title" th:text="#{workspace.panel.keyMetrics}">Key Metrics</p>
                                                     <div class="app-summary-grid">
                                                         <div class="app-summary-card">
-                                                            <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review.">Publications</p>
+                                                            <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review." th:text="#{workspace.card.publications}">Publications</p>
                                                             <p class="app-summary-card__value" data-ws-publication-count th:text="${workspace.publicationCount}">0</p>
-                                                            <p class="app-summary-card__meta">Excludes rejected. See the Publications tab for the full breakdown.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.publications.meta}">Excludes rejected. See the Publications tab for the full breakdown.</p>
                                                         </div>
                                                         <div class="app-summary-card app-summary-card--success">
-                                                            <p class="app-summary-card__label">Citations</p>
+                                                            <p class="app-summary-card__label" th:text="#{workspace.card.citations}">Citations</p>
                                                             <p class="app-summary-card__value" th:text="${workspace.totalCitations}">0</p>
-                                                            <p class="app-summary-card__meta">Total citations across all publications.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.citations.meta}">Total citations across all publications.</p>
                                                         </div>
                                                         <div class="app-summary-card app-summary-card--warning">
                                                             <p class="app-summary-card__label">H-Index</p>
                                                             <p class="app-summary-card__value" th:text="${workspace.hIndex}">0</p>
-                                                            <p class="app-summary-card__meta">Current h-index for your publication record.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.hIndex.meta}">Current h-index for your publication record.</p>
                                                         </div>
                                                         <div class="app-summary-card">
-                                                            <p class="app-summary-card__label">Activities</p>
+                                                            <p class="app-summary-card__label" th:text="#{workspace.card.activities}">Activities</p>
                                                             <p class="app-summary-card__value" th:text="${workspace.activityInstanceCount}">0</p>
-                                                            <p class="app-summary-card__meta">Recorded activity instances.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.activities.meta}">Recorded activity instances.</p>
                                                         </div>
                                                     </div>
 
@@ -291,14 +291,14 @@
                                                         </button>
                                                         <button type="button" class="btn btn-sm btn-outline-primary"
                                                                 onclick="window.appWorkspaceTabs?.activateTab('activities'); window.appWorkspaceActivities?.openCreate();">
-                                                            <i class="fa-solid fa-pen-fancy" aria-hidden="true"></i> Add Activity
+                                                            <i class="fa-solid fa-pen-fancy" aria-hidden="true"></i> <span th:text="#{workspace.activities.addActivity}">Add Activity</span>
                                                         </button>
                                                         <a th:href="@{/user/evaluation}" class="btn btn-sm btn-outline-secondary">
-                                                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i> View Reports
+                                                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i> <span th:text="#{workspace.viewReports}">View Reports</span>
                                                         </a>
                                                         <button type="button" class="btn btn-sm btn-outline-secondary"
                                                                 onclick="window.appWorkspaceTabs?.activateTab('profile');">
-                                                            <i class="fa-solid fa-rotate" aria-hidden="true"></i> Sync Scopus
+                                                            <i class="fa-solid fa-rotate" aria-hidden="true"></i> <span th:text="#{workspace.syncScopus}">Sync Scopus</span>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -318,10 +318,12 @@
                                                         </h2>
                                                     </div>
                                                     <div class="app-summary-panel__body">
-                                                        <p th:text="'You have ' + ${workspace.availableReportCount} + ' individual report(s) available for review.'">Reports ready.</p>
+                                                        <p th:with="pluralKey=${T(ro.uvt.pokedex.core.service.application.PluralRules).key(
+                                                                'workspace.reportsAvailable', #locale, workspace.availableReportCount)}"
+                                                           th:text="#{__${pluralKey}__(${workspace.availableReportCount})}">Reports ready.</p>
                                                         <a th:href="@{/user/evaluation}"
                                                            class="btn btn-sm btn-primary" style="margin-top: 0.75rem;">
-                                                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i> View Reports
+                                                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i> <span th:text="#{workspace.viewReports}">View Reports</span>
                                                         </a>
                                                     </div>
                                                 </div>
@@ -398,7 +400,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div style="min-width:0;flex:1">
-                    <h5 class="modal-title" id="ws-citations-modal-title">Citations</h5>
+                    <h5 class="modal-title" id="ws-citations-modal-title" th:text="#{workspace.card.citations}">Citations</h5>
                     <p id="ws-citations-modal-pub"
                        style="margin:0;font-size:0.83rem;color:var(--app-color-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
                 </div>
@@ -422,7 +424,7 @@
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="ws-onboarding-title">Set up your researcher profile</h5>
+                <h5 class="modal-title" id="ws-onboarding-title" th:text="#{workspace.quick.setupProfile}">Set up your researcher profile</h5>
                 <button class="close" type="button" data-dismiss="modal" data-modal-close aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>

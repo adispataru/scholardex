@@ -101,8 +101,8 @@
         <nav th:if="${errorShowBrowseLinks}" class="app-error-browse" aria-label="Suggested areas">
             <p class="app-error-browse__title" th:text="#{error.browse.title}">Try one of these areas instead</p>
             <div class="app-error-browse__links">
-                <a href="/forums"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Forums</span></a>
-                <a th:if="${currentUser != null and currentUser.isPresent()}" href="/rankings"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>Rankings</span></a>
+                <a href="/forums"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span th:text="#{nav.forums}">Forums</span></a>
+                <a th:if="${currentUser != null and currentUser.isPresent()}" href="/rankings"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span th:text="#{nav.rankings}">Rankings</span></a>
                 <a href="/core/rankings"><i class="fa-solid fa-ranking-star" aria-hidden="true"></i><span>CORE rankings</span></a>
                 <a href="/universities"><i class="fa-solid fa-building-columns" aria-hidden="true"></i><span>Universities</span></a>
             </div>
@@ -175,7 +175,7 @@
                         aria-haspopup="menu"
                         aria-expanded="false"
                         aria-controls="app-workspace-menu">
-                        <span class="app-shell-workspace-switcher__label">Switch Workspace</span>
+                        <span class="app-shell-workspace-switcher__label" th:text="#{shell.switchWorkspace}">Switch Workspace</span>
                         <i class="fa-solid fa-users-cog" aria-hidden="true"></i>
                     </button>
                     <div
@@ -209,7 +209,7 @@
 
         <div class="app-shell-page-header" th:if="${pageTitle != null and !pageTitle.isEmpty()}">
             <p class="app-shell-page-header__eyebrow"
-               th:text="${sidebarContext == 'admin'} ? 'Admin workspace' : 'ScholarDex workspace'">ScholarDex workspace</p>
+               th:text="${sidebarContext == 'admin'} ? #{shell.sidebar.adminContext} : #{shell.sidebar.userContext}">ScholarDex workspace</p>
             <h1 class="app-shell-page-header__title" th:text="${pageTitle}">Page Title</h1>
         </div>
     </header>
@@ -237,30 +237,30 @@
             <div class="app-shell-sidebar__nav-wrap d-md-none">
                 <nav class="app-shell-sidebar__nav" aria-label="Browse research surfaces">
                     <section class="app-shell-sidebar__section">
-                        <p class="app-shell-sidebar__section-label">Browse</p>
+                        <p class="app-shell-sidebar__section-label" th:text="#{shell.group.browse}">Browse</p>
                         <ul class="app-shell-sidebar__section-list">
                             <li class="app-shell-sidebar__item">
                                 <a class="app-shell-sidebar__link" href="/publications">
                                     <i class="fa-solid fa-fw fa-file-lines"></i>
-                                    <span>Publications</span>
+                                    <span th:text="#{nav.publications}">Publications</span>
                                 </a>
                             </li>
                             <li class="app-shell-sidebar__item">
                                 <a class="app-shell-sidebar__link" href="/forums">
                                     <i class="fa-solid fa-fw fa-book"></i>
-                                    <span>Forums</span>
+                                    <span th:text="#{nav.forums}">Forums</span>
                                 </a>
                             </li>
                             <li class="app-shell-sidebar__item">
                                 <a class="app-shell-sidebar__link" href="/authors">
                                     <i class="fa-solid fa-fw fa-users"></i>
-                                    <span>Authors</span>
+                                    <span th:text="#{nav.authors}">Authors</span>
                                 </a>
                             </li>
                             <li class="app-shell-sidebar__item">
                                 <a class="app-shell-sidebar__link" href="/rankings">
                                     <i class="fa-solid fa-fw fa-ranking-star"></i>
-                                    <span>Rankings</span>
+                                    <span th:text="#{nav.rankings}">Rankings</span>
                                 </a>
                             </li>
                         </ul>
@@ -293,34 +293,34 @@
 
         <!-- 1. Operations Center -->
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Operations Center</p>
+            <p class="app-shell-sidebar__section-label" th:text="#{shell.group.operations}">Operations Center</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'dashboard'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin}">
                         <i class="fa-solid fa-fw fa-gauge-high"></i>
-                        <span>Dashboard</span>
+                        <span th:text="#{shell.item.dashboard}">Dashboard</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'initialization'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/initialization}">
                         <i class="fa-solid fa-fw fa-cogs"></i>
-                        <span>Initialization</span>
+                        <span th:text="#{shell.item.initialization}">Initialization</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'wos-enrichment'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/initialization/wos/enrichment}">
                         <i class="fa-solid fa-fw fa-database"></i>
-                        <span>WoS Enrichment</span>
+                        <span th:text="#{shell.item.wosEnrichment}">WoS Enrichment</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'incremental-updates'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/incremental-updates}">
                         <i class="fa-solid fa-fw fa-upload"></i>
-                        <span>Incremental Updates</span>
+                        <span th:text="#{shell.item.incrementalUpdates}">Incremental Updates</span>
                     </a>
                 </li>
             </ul>
@@ -328,41 +328,41 @@
 
         <!-- 2. People & Access -->
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">People &amp; Access</p>
+            <p class="app-shell-sidebar__section-label" th:text="#{shell.group.people}">People &amp; Access</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'users'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/users}">
                         <i class="fa-solid fa-fw fa-users"></i>
-                        <span>Users</span>
+                        <span th:text="#{shell.item.users}">Users</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'groups'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/groups}">
                         <i class="fa-solid fa-fw fa-object-group"></i>
-                        <span>Groups</span>
+                        <span th:text="#{shell.item.groups}">Groups</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'institutions'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/institutions}">
                         <i class="fa-solid fa-fw fa-university"></i>
-                        <span>Institutions</span>
+                        <span th:text="#{shell.item.institutions}">Institutions</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'divisions'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/divisions}">
                         <i class="fa-solid fa-fw fa-sitemap"></i>
-                        <span>Divisions</span>
+                        <span th:text="#{shell.item.divisions}">Divisions</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'departments'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/departments}">
                         <i class="fa-solid fa-fw fa-people-roof"></i>
-                        <span>Departments</span>
+                        <span th:text="#{shell.item.departments}">Departments</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
@@ -370,7 +370,7 @@
                     th:classappend="${activeSection == 'supervisor-workspace'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/supervisor}">
                         <i class="fa-solid fa-fw fa-user-shield"></i>
-                        <span>Supervisor workspace</span>
+                        <span th:text="#{shell.item.supervisorWorkspace}">Supervisor workspace</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
@@ -378,7 +378,7 @@
                     th:classappend="${activeSection == 'researcher-reports'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/reports/researcher}">
                         <i class="fa-solid fa-fw fa-chart-line"></i>
-                        <span>Researcher reports</span>
+                        <span th:text="#{shell.item.researcherReports}">Researcher reports</span>
                     </a>
                 </li>
             </ul>
@@ -386,34 +386,34 @@
 
         <!-- 3. Data Catalog -->
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Data Catalog</p>
+            <p class="app-shell-sidebar__section-label" th:text="#{shell.group.dataCatalog}">Data Catalog</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'scholardex-forums' or activeSection == 'scopus-forums' or activeSection == 'scopus-venues'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/forums}">
                         <i class="fa-solid fa-fw fa-journal-whills"></i>
-                        <span>Forums</span>
+                        <span th:text="#{nav.forums}">Forums</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'scholardex-authors' or activeSection == 'scopus-authors'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/authors}">
                         <i class="fa-solid fa-fw fa-user-graduate"></i>
-                        <span>Authors</span>
+                        <span th:text="#{nav.authors}">Authors</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'scholardex-affiliations' or activeSection == 'scopus-affiliations'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/affiliations}">
                         <i class="fa-solid fa-fw fa-building"></i>
-                        <span>Affiliations</span>
+                        <span th:text="#{shell.item.affiliations}">Affiliations</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'scholardex-publications' or activeSection == 'scopus-publications'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/publications}">
                         <i class="fa-solid fa-fw fa-file-lines"></i>
-                        <span>Publications</span>
+                        <span th:text="#{nav.publications}">Publications</span>
                     </a>
                 </li>
 
@@ -423,48 +423,48 @@
 
         <!-- 4. Evaluation -->
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Evaluation</p>
+            <p class="app-shell-sidebar__section-label" th:text="#{shell.item.evaluation}">Evaluation</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'indicators'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/indicators}">
                         <i class="fa-solid fa-fw fa-chart-bar"></i>
-                        <span>Indicators</span>
+                        <span th:text="#{shell.item.indicators}">Indicators</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'domains'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/domains}">
                         <i class="fa-solid fa-fw fa-umbrella"></i>
-                        <span>Domains</span>
+                        <span th:text="#{shell.item.domains}">Domains</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'activities'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/activities}">
                         <i class="fa-solid fa-fw fa-sliders"></i>
-                        <span>Eval. Config</span>
+                        <span th:text="#{shell.item.evalConfig}">Eval. Config</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'individualReports'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/individualReports}">
                         <i class="fa-solid fa-fw fa-clipboard"></i>
-                        <span>Reports</span>
+                        <span th:text="#{shell.item.reports}">Reports</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'groupReports'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/groupReports}">
                         <i class="fa-solid fa-fw fa-layer-group"></i>
-                        <span>Group Reports</span>
+                        <span th:text="#{shell.item.groupReports}">Group Reports</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'conflicts'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/conflicts}">
                         <i class="fa-solid fa-fw fa-triangle-exclamation"></i>
-                        <span>Conflicts</span>
+                        <span th:text="#{shell.item.conflicts}">Conflicts</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
@@ -493,7 +493,7 @@
 
         <!-- Rankings — kept for backwards compatibility -->
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Rankings</p>
+            <p class="app-shell-sidebar__section-label" th:text="#{nav.rankings}">Rankings</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'rankings' or activeSection == 'rankings-categories'} ? ' active' : ''">
@@ -532,25 +532,25 @@
 <div th:fragment="user-sidebar(activeSection)">
     <nav class="app-shell-sidebar__nav" aria-label="User navigation">
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Workspace</p>
+            <p class="app-shell-sidebar__section-label" th:text="#{shell.group.workspace}">Workspace</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'workspace' ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/user/workspace}">
                         <i class="fa-solid fa-fw fa-house-user"></i>
-                        <span>My Workspace</span>
+                        <span th:text="#{shell.item.myWorkspace}">My Workspace</span>
                     </a>
                 </li>
             </ul>
         </section>
 
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Reporting</p>
+            <p class="app-shell-sidebar__section-label" th:text="#{shell.group.reporting}">Reporting</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'indicators' or activeSection == 'individual-reports' or activeSection == 'evaluation'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/user/evaluation}">
                         <i class="fa-solid fa-fw fa-chart-bar"></i>
-                        <span>Evaluation</span>
+                        <span th:text="#{shell.item.evaluation}">Evaluation</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
@@ -558,7 +558,7 @@
                     th:classappend="${activeSection == 'researcher-reports'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/reports/researcher}">
                         <i class="fa-solid fa-fw fa-chart-line"></i>
-                        <span>Researcher reports</span>
+                        <span th:text="#{shell.item.researcherReports}">Researcher reports</span>
                     </a>
                 </li>
             </ul>

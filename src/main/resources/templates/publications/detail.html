@@ -67,12 +67,12 @@
             <div class="app-university-detail__section-header">
                 <div>
                     <p class="app-university-detail__eyebrow" th:text="#{publications.detail.sourceForum}">Source forum</p>
-                    <h2 id="publication-forum-title" class="app-university-detail__section-title">Forum</h2>
+                    <h2 id="publication-forum-title" class="app-university-detail__section-title"><span th:text="#{publications.column.forum}">Forum</span></h2>
                 </div>
             </div>
             <dl class="app-university-detail__definition-grid">
                 <div>
-                    <dt>Forum</dt>
+                    <dt><span th:text="#{publications.column.forum}">Forum</span></dt>
                     <dd th:if="${publication.forumId == null}">—</dd>
                     <dd th:if="${publication.forumId != null}">
                         <a th:href="@{/forums/{id}(id=${publication.forumId})}"
@@ -80,15 +80,15 @@
                     </dd>
                 </div>
                 <div>
-                    <dt>Volume</dt>
+                    <dt><span th:text="#{publications.detail.volume}">Volume</span></dt>
                     <dd th:text="${publication.volume != null && !publication.volume.isBlank() ? publication.volume : '—'}">Volume</dd>
                 </div>
                 <div>
-                    <dt>Issue</dt>
+                    <dt><span th:text="#{publications.detail.issue}">Issue</span></dt>
                     <dd th:text="${publication.issueIdentifier != null && !publication.issueIdentifier.isBlank() ? publication.issueIdentifier : '—'}">Issue</dd>
                 </div>
                 <div>
-                    <dt>Pages</dt>
+                    <dt><span th:text="#{publications.detail.pages}">Pages</span></dt>
                     <dd th:text="${publication.pageRange != null && !publication.pageRange.isBlank() ? publication.pageRange : '—'}">Pages</dd>
                 </div>
             </dl>
@@ -98,11 +98,11 @@
             <div class="app-university-detail__section-header">
                 <div>
                     <p class="app-university-detail__eyebrow" th:text="#{publications.detail.contributors}">Contributors</p>
-                    <h2 id="publication-authors-title" class="app-university-detail__section-title">Authors</h2>
+                    <h2 id="publication-authors-title" class="app-university-detail__section-title"><span th:text="#{publications.column.authors}">Authors</span></h2>
                 </div>
             </div>
             <div th:if="${#lists.isEmpty(detail.authors())}" class="app-table-state app-table-state--warning" role="status">
-                No author records linked to this publication.
+                <span th:text="#{publications.detail.noAuthors}">No author records linked to this publication.</span>
             </div>
             <ul th:if="${!#lists.isEmpty(detail.authors())}" class="app-publication-detail__author-list">
                 <li th:each="author : ${detail.authors()}">
@@ -130,15 +130,15 @@
                     </dd>
                 </div>
                 <div>
-                    <dt>Scopus EID</dt>
+                    <dt><span th:text="#{publications.detail.scopusEid}">Scopus EID</span></dt>
                     <dd th:text="${publication.eid != null && !publication.eid.isBlank() ? publication.eid : '—'}">EID</dd>
                 </div>
                 <div>
-                    <dt>Web of Science ID</dt>
+                    <dt><span th:text="#{publications.detail.wosId}">Web of Science ID</span></dt>
                     <dd th:text="${publication.wosId != null && !publication.wosId.isBlank() ? publication.wosId : '—'}">WoS ID</dd>
                 </div>
                 <div>
-                    <dt>Google Scholar ID</dt>
+                    <dt><span th:text="#{publications.detail.scholarId}">Google Scholar ID</span></dt>
                     <dd th:text="${publication.googleScholarId != null && !publication.googleScholarId.isBlank() ? publication.googleScholarId : '—'}">Google Scholar ID</dd>
                 </div>
             </dl>

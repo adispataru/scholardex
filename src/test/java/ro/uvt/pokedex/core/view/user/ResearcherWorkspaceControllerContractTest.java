@@ -101,8 +101,8 @@ class ResearcherWorkspaceControllerContractTest {
         assertTrue(template.contains("fragments :: search-input"));
         assertTrue(template.contains("id='ws-search-input'"));
         assertTrue(template.contains("kbdHint='/ or Ctrl+K'"));
-        assertTrue(template.contains("data-tab-goto=\"profile\">Start</button>"));
-        assertTrue(template.contains("data-tab-goto=\"publications\">Add</button>"));
+        assertTrue(template.contains("data-tab-goto=\"profile\" th:text=\"#{workspace.quick.start}\">Start</button>"));
+        assertTrue(template.contains("data-tab-goto=\"publications\" th:text=\"#{workspace.quick.add}\">Add</button>"));
         // H87 S3a: the label moved into the message bundle; the contract is that the control still exists
         // with its styling and now resolves its copy from a key rather than hardcoded English.
         assertTrue(template.contains("btn btn-link p-0 align-baseline fw-semibold\" th:text=\"#{workspace.goToProfile}\""));

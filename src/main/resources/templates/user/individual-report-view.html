@@ -55,7 +55,7 @@
                 <!-- ── Delegated (admin/supervisor) read-only banner ───────────── -->
                 <div th:if="${delegated}" class="alert alert-info mb-3" role="status">
                     <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
-                    Viewing <strong th:text="${delegatedSubjectName}">researcher</strong>'s report — read-only.
+                    <span th:text="#{report.view.viewing}">Viewing</span> <strong th:text="${delegatedSubjectName}">researcher</strong>'s report — read-only.
                 </div>
                 <div th:if="${#bools.isTrue(delegated) and successMessage != null}" class="alert alert-success mb-3" role="status"
                      th:text="${successMessage}"></div>
@@ -65,7 +65,7 @@
                     <div class="app-eval-summary__controls">
                         <!-- Delegated report switcher: plain links (no dashboard JS in read-only mode) -->
                         <div class="app-eval-report-switcher" th:if="${#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
-                            <label class="app-eval-report-switcher__label">Report</label>
+                            <label class="app-eval-report-switcher__label" th:text="#{report.view.report}">Report</label>
                             <a th:each="r : ${allReports}"
                                th:href="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${r.id})}"
                                th:text="${r.title}"
@@ -74,7 +74,7 @@
                         </div>
                         <!-- Report switcher -->
                         <div class="app-eval-report-switcher" th:if="${!#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
-                            <label for="eval-report-select" class="app-eval-report-switcher__label">Report</label>
+                            <label for="eval-report-select" class="app-eval-report-switcher__label" th:text="#{report.view.report}">Report</label>
                             <select id="eval-report-select" class="form-control form-control-sm app-eval-report-switcher__select"
                                     data-eval-report-switcher>
                                 <option th:each="r : ${allReports}"
@@ -135,11 +135,11 @@
                            th:href="@{/reports/researcher/{e}/report/{r}/export(e=${delegatedSubjectEmail},r=${report.id},format=${exportFormat},run=${runMetaId})}"
                            class="btn btn-sm btn-outline-secondary"
                            th:title="'Download this researcher\'s report as ' + ${exportFormatLabel}">
-                            <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}" >Export</span>
+                            <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.exportTo(${exportFormatLabel})}" >Export</span>
                         </a>
                         <form th:action="@{/reports/researcher/{e}/report/{r}/refresh(e=${delegatedSubjectEmail},r=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh
+                                <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.refreshShort}">Refresh</span>
                             </button>
                         </form>
                         <!-- Nudge this researcher: preset reason + optional note → their workspace bell -->
@@ -156,7 +156,7 @@
                             <input type="text" name="note" maxlength="200" class="form-control form-control-sm"
                                    placeholder="Optional note…" th:attr="aria-label=#{report.view.optionalNote}">
                             <button type="submit" class="btn btn-sm btn-outline-secondary" title="Send an in-app nudge">
-                                <i class="fa-solid fa-bell fa-sm" aria-hidden="true"></i> Nudge
+                                <i class="fa-solid fa-bell fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.nudge}">Nudge</span>
                             </button>
                         </form>
                     </div>
@@ -164,13 +164,13 @@
                     <div class="app-eval-summary__actions" th:unless="${delegated}">
                         <form th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh All
+                                <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.refreshAll}">Refresh All</span>
                             </button>
                         </form>
                         <div class="app-eval-overflow">
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-overflow-btn"
                                     aria-haspopup="true" aria-expanded="false" aria-controls="eval-overflow-menu">
-                                <i class="fa-solid fa-ellipsis" aria-hidden="true"></i> More
+                                <i class="fa-solid fa-ellipsis" aria-hidden="true"></i> <span th:text="#{report.view.more}">More</span>
                             </button>
                             <div class="app-eval-overflow__menu" id="eval-overflow-menu" hidden>
                                 <!-- Compare run picker (hidden until toggled) -->
@@ -180,29 +180,29 @@
                                     </select>
                                 </div>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-compare-btn">
-                                    <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i> Compare with&hellip;
+                                    <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.compareWithEllipsis}">Compare with&hellip;</span>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" id="eval-clear-compare-btn" hidden>
-                                    <i class="fa-solid fa-xmark fa-sm" aria-hidden="true"></i> Clear comparison
+                                    <i class="fa-solid fa-xmark fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.clearComparison}">Clear comparison</span>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-save-snapshot-btn">
-                                    <i class="fa-solid fa-camera fa-sm" aria-hidden="true"></i> Save Snapshot
+                                    <i class="fa-solid fa-camera fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.saveSnapshot}">Save Snapshot</span>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-snapshots-btn"
                                         aria-expanded="false" aria-controls="eval-snapshots-panel">
-                                    <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
+                                    <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.mySnapshots}">My Snapshots</span>
                                 </button>
                                 <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
                                    th:href="@{/user/evaluation/export(report=${report.id},run=${runMetaId},format=${exportFormat})}"
                                    class="btn btn-sm btn-outline-secondary"
                                    th:title="'Download this report as ' + ${exportFormatLabel}">
-                                    <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}" >Export</span>
+                                    <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.exportTo(${exportFormatLabel})}" >Export</span>
                                 </a>
                                 <a th:if="${importAvailable == true}"
                                    th:href="@{/user/evaluation/import(report=${report.id},run=${runMetaId})}"
                                    class="btn btn-sm btn-outline-secondary"
                                    title="Verify a filled file against platform scores">
-                                    <i class="fa-solid fa-file-circle-check fa-sm" aria-hidden="true"></i> Verify from file
+                                    <i class="fa-solid fa-file-circle-check fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.verifyFromFile}">Verify from file</span>
                                 </a>
                             </div>
                         </div>
@@ -231,14 +231,14 @@
                 <!-- Comparison active banner -->
                 <div class="app-eval-compare-banner" id="eval-compare-banner" hidden aria-live="polite">
                     <i class="fa-solid fa-code-compare" aria-hidden="true"></i>
-                    Comparing current run against <strong id="eval-compare-banner-label">—</strong>
+                    <span th:text="#{report.view.comparingAgainst}">Comparing current run against</span> <strong id="eval-compare-banner-label">—</strong>
                 </div>
 
                 <!-- My Snapshots panel -->
                 <div class="app-eval-snapshots-panel" id="eval-snapshots-panel" hidden role="region" aria-labelledby="eval-snapshots-title">
                     <div class="app-eval-snapshots-panel__header">
                         <span class="app-eval-snapshots-panel__title" id="eval-snapshots-title">
-                            <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
+                            <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> <span th:text="#{report.view.mySnapshots}">My Snapshots</span>
                         </span>
                         <button type="button" class="app-eval-snapshots-panel__close" id="eval-snapshots-close"
                                 th:attr="aria-label=#{report.view.closeSnapshots}">
@@ -258,7 +258,7 @@
                                 class="app-eval-rail__tile"
                                 th:attr="data-criterion-index=${critIndex.index},data-criterion-score=${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)},id=${'criterion-' + critIndex.index}">
                             <span class="app-eval-rail__name"
-                                  th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}" >Criterion</span>
+                                  th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : #messages.msgWithParams('report.view.criterionNumbered', new Object[]{critIndex.index + 1})}" >Criterion</span>
                             <span class="app-eval-rail__ratio"
                                   th:text="${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)}">0.00</span>
                             <span class="app-eval-rail__chip" hidden></span>
@@ -273,7 +273,7 @@
                                  hidden>
                             <header class="app-eval-evidence__header">
                                 <h2 class="app-eval-evidence__title"
-                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}" >Criterion</h2>
+                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : #messages.msgWithParams('report.view.criterionNumbered', new Object[]{critIndex.index + 1})}" >Criterion</h2>
                                 <span class="app-eval-evidence__ratio"></span>
                                 <span class="app-eval-evidence__chip" hidden></span>
                                 <span class="eval-trend" th:attr="data-criterion-index=${critIndex.index}"></span>

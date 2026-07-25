@@ -203,10 +203,10 @@ function _renderPage() {
           <col class="app-ws-acts__col-actions">
         </colgroup>
         <thead><tr>
-          <th scope="col">Name</th>
-          <th scope="col">Date</th>
-          <th scope="col">Type</th>
-          <th scope="col" style="text-align:right"><span class="sr-only">Actions</span></th>
+          <th scope="col">${t('common.name')}</th>
+          <th scope="col">${t('common.date')}</th>
+          <th scope="col">${t('common.type')}</th>
+          <th scope="col" style="text-align:right"><span class="sr-only">${t('common.actions')}</span></th>
         </tr></thead>
         <tbody id="ws-acts-tbody"></tbody>`;
 
@@ -390,17 +390,17 @@ function _buildMyProjects(projects) {
             </div>
             <button type="button" class="app-btn app-btn--sm app-ws-acts__myproj-import"
                     data-import-project="${_esc(p.id)}">
-                <i class="fa-solid fa-file-import" aria-hidden="true"></i> Import
+                <i class="fa-solid fa-file-import" aria-hidden="true"></i> ${t('workspace.activities.import')}
             </button>
         </li>`;
     }).join('');
     return `<div class="app-card app-ws-acts__myproj">
         <div class="app-ws-acts__myproj-head">
             <i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
-            <span class="app-ws-acts__myproj-heading">Projects that may be yours</span>
+            <span class="app-ws-acts__myproj-heading">${t('workspace.activities.maybeYours')}</span>
             <span class="app-ws-acts__myproj-count">${projects.length}</span>
         </div>
-        <p class="app-ws-acts__myproj-hint">Matched to you as project director. Import adds it as a Grant Cercetare activity.</p>
+        <p class="app-ws-acts__myproj-hint">${t('workspace.activities.directorMatch')}</p>
         <p class="app-ws-acts__myproj-feedback" id="ws-acts-myproj-feedback" hidden></p>
         <ul class="app-ws-acts__myproj-list">${items}</ul>
     </div>`;
@@ -776,7 +776,7 @@ function _toggleParticipantImport() {
     if (!host.hidden) { host.hidden = true; host.innerHTML = ''; return; }
     host.hidden = false;
     host.innerHTML = `<div class="app-card app-ws-acts__partimport">
-        <div class="app-ws-acts__partimport-title">Search a project you participated in</div>
+        <div class="app-ws-acts__partimport-title">${t('workspace.activities.searchParticipated')}</div>
         <div class="app-ws-acts__picker">
             <input class="app-ws-acts__input js-part-search" type="text" autocomplete="off"
                    placeholder="${t('workspace.activities.searchProject')}"/>
@@ -888,11 +888,11 @@ function _buildDetailPanel(inst) {
 
         fieldsHtml = `
             <div class="app-ws-acts__detail-fields">
-                <p class="app-ws-acts__detail-section-title">Fields</p>
+                <p class="app-ws-acts__detail-section-title">${t('common.fields')}</p>
                 ${customInputs}${refInputs}
             </div>`;
     } else {
-        fieldsHtml = `<p style="font-size:0.85rem;color:var(--app-color-text-muted)">This activity has no editable fields.</p>`;
+        fieldsHtml = `<p style="font-size:0.85rem;color:var(--app-color-text-muted)">${t('workspace.activities.noFields')}</p>`;
     }
 
     return `
@@ -903,21 +903,21 @@ function _buildDetailPanel(inst) {
           <div class="app-ws-acts__detail-grid">
             <!-- Left: info -->
             <div>
-              <p class="app-ws-acts__detail-section-title">Activity info</p>
+              <p class="app-ws-acts__detail-section-title">${t('workspace.activities.info')}</p>
               <p style="margin:0 0 0.25rem;font-size:0.85rem;">
-                <strong>Type:</strong> ${_esc(inst.activity?.name ?? '—')}
+                <strong>${t('common.typeColon')}</strong> ${_esc(inst.activity?.name ?? '—')}
               </p>
               <p style="margin:0;font-size:0.85rem;">
-                <strong>Date:</strong> ${_esc(inst.date ?? '—')}
+                <strong>${t('common.dateColon')}</strong> ${_esc(inst.date ?? '—')}
               </p>
             </div>
             <!-- Right: edit -->
             <div>
               ${fieldsHtml}
               <div class="app-ws-acts__detail-actions">
-                <button class="btn btn-sm btn-primary" type="button" data-save-inst="${_esc(inst.id)}">Save</button>
+                <button class="btn btn-sm btn-primary" type="button" data-save-inst="${_esc(inst.id)}">${t('common.save')}</button>
                 <button class="btn btn-sm btn-outline-danger" type="button" data-delete-inst="${_esc(inst.id)}">
-                  <i class="fa-solid fa-trash" aria-hidden="true"></i> Delete
+                  <i class="fa-solid fa-trash" aria-hidden="true"></i> ${t('common.delete')}
                 </button>
                 <span class="app-ws-acts__feedback" role="status" aria-live="polite"></span>
               </div>
@@ -1045,7 +1045,7 @@ function _buildCreateShell() {
     return `
         <div class="app-ws-acts__create-panel">
           <div class="app-ws-acts__create-header">
-            <h3 class="app-ws-acts__create-title">New Activity Instance</h3>
+            <h3 class="app-ws-acts__create-title">${t('workspace.activities.newInstance')}</h3>
             <button class="app-ws-acts__create-close" type="button" aria-label="${t('workspace.activities.closeCreateForm')}">
               <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
@@ -1060,7 +1060,7 @@ function _buildCreateShell() {
                 </select>
               </div>
               <div class="app-ws-acts__field">
-                <label class="app-ws-acts__label" for="ws-acts-create-name">Name / label</label>
+                <label class="app-ws-acts__label" for="ws-acts-create-name">${t('workspace.activities.nameLabel')}</label>
                 <input class="app-ws-acts__input" id="ws-acts-create-name" type="text" placeholder="${t('workspace.activities.optionalDisplayName')}"/>
               </div>
               <div class="app-ws-acts__field">
@@ -1070,9 +1070,9 @@ function _buildCreateShell() {
             </div>
             <div id="ws-acts-create-dynamic"></div>
             <div class="app-ws-acts__create-actions">
-              <button class="btn btn-sm btn-primary" type="button" data-create-save>Save</button>
+              <button class="btn btn-sm btn-primary" type="button" data-create-save>${t('common.save')}</button>
               <button class="btn btn-sm btn-outline-secondary" type="button"
-                      onclick="document.querySelector('.app-ws-acts__create-close')?.click()">Cancel</button>
+                      onclick="document.querySelector('.app-ws-acts__create-close')?.click()">${t('common.cancel')}</button>
               <span class="app-ws-acts__feedback" id="ws-acts-create-feedback" role="status" aria-live="polite"></span>
             </div>
           </div>
@@ -1135,7 +1135,7 @@ function _renderCreateFields(container, activity) {
 
     container.innerHTML = `
         <div class="app-ws-acts__create-fields">
-          <p class="app-ws-acts__create-fields-title">Fields</p>
+          <p class="app-ws-acts__create-fields-title">${t('common.fields')}</p>
           <div class="app-ws-acts__create-row">${customHtml}${refHtml}</div>
         </div>`;
     _wireProjectPickers(container);
@@ -1237,10 +1237,10 @@ function _buildToolbar() {
     return `
         <div class="app-ws-acts__toolbar">
           <button type="button" class="btn btn-sm btn-primary" id="ws-acts-add-btn" aria-expanded="false">
-            <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Activity
+            <i class="fa-solid fa-plus" aria-hidden="true"></i> ${t('workspace.activities.addActivity')}
           </button>
           <button type="button" class="btn btn-sm btn-outline-primary" id="ws-acts-participant-btn">
-            <i class="fa-solid fa-people-group" aria-hidden="true"></i> Add a project you took part in
+            <i class="fa-solid fa-people-group" aria-hidden="true"></i> ${t('workspace.activities.addParticipatedProject')}
           </button>
         </div>
         <div id="ws-acts-participant-import" hidden></div>`;
@@ -1278,19 +1278,19 @@ function _buildSummaryCard() {
                ${barHtml}
            </div>
            <div class="app-ws-acts__dist-legend">${legendHtml}</div>`
-        : `<p style="margin:0;font-size:0.82rem;color:var(--app-color-text-muted)">No activity data yet.</p>`;
+        : `<p style="margin:0;font-size:0.82rem;color:var(--app-color-text-muted)">${t('workspace.activities.emptyChart')}</p>`;
 
     return `
         <div class="app-ws-acts__summary-card">
           <div class="app-ws-acts__summary-metrics">
             <div class="app-ws-acts__summary-metric">
               <span class="app-ws-acts__summary-value" id="ws-acts-stat-count">${total}</span>
-              <span class="app-ws-acts__summary-label">Instances</span>
+              <span class="app-ws-acts__summary-label">${t('workspace.activities.instances')}</span>
             </div>
             <div class="app-ws-acts__summary-divider"></div>
             <div class="app-ws-acts__summary-metric">
               <span class="app-ws-acts__summary-value">${typeCount}</span>
-              <span class="app-ws-acts__summary-label">Types</span>
+              <span class="app-ws-acts__summary-label">${t('workspace.activities.types')}</span>
             </div>
           </div>
           <div class="app-ws-acts__dist">${distHtml}</div>
@@ -1302,8 +1302,8 @@ function _buildEmpty() {
     return `
         <div class="app-ws-acts__empty">
           <i class="fa-solid fa-pen-fancy app-ws-acts__empty-icon" aria-hidden="true"></i>
-          <h2 class="app-ws-acts__empty-title">No activities recorded yet</h2>
-          <p class="app-ws-acts__empty-body">Add your first activity to start tracking your professional contributions.</p>
+          <h2 class="app-ws-acts__empty-title">${t('workspace.activities.emptyList')}</h2>
+          <p class="app-ws-acts__empty-body">${t('workspace.activities.emptyHint')}</p>
         </div>`;
 }
 
@@ -1311,9 +1311,9 @@ function _buildError() {
     return `
         <div class="app-panel-error app-dashboard-empty">
           <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-          <h3 class="app-dashboard-empty__title">Could not load Activities</h3>
-          <p class="app-dashboard-empty__body">Something went wrong while fetching this content.</p>
-          <button type="button" class="btn btn-sm btn-outline-primary" data-retry-panel>Try again</button>
+          <h3 class="app-dashboard-empty__title">${t('workspace.activities.loadFailed')}</h3>
+          <p class="app-dashboard-empty__body">${t('common.fetchError')}</p>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-retry-panel>${t('common.tryAgain')}</button>
         </div>`;
 }
 

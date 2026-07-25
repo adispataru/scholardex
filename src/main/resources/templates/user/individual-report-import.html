@@ -17,7 +17,7 @@
                 <!-- Toolbar -->
                 <div class="app-page-toolbar">
                     <a th:href="@{/user/evaluation(report=${reportId})}" class="btn btn-sm btn-outline-secondary">
-                        <i class="fa-solid fa-arrow-left fa-sm" aria-hidden="true"></i> Back to evaluation
+                        <i class="fa-solid fa-arrow-left fa-sm" aria-hidden="true"></i> <span th:text="#{report.import.backToEvaluation}">Back to evaluation</span>
                     </a>
                 </div>
 
@@ -38,20 +38,20 @@
                                class="app-dropzone__input" aria-describedby="import-file-help">
                         <i class="fa-solid fa-file-arrow-up app-dropzone__icon" aria-hidden="true"></i>
                         <span class="app-dropzone__primary">
-                            Drag your Excel file here, or <span class="app-dropzone__browse">browse</span>
+                            <span th:text="#{report.import.dragFile}">Drag your Excel file here, or</span> <span class="app-dropzone__browse">browse</span>
                         </span>
                         <span class="app-dropzone__filename" id="import-filename" hidden></span>
                         <span id="import-file-help" class="app-dropzone__hint">.xlsx exported from this report</span>
                     </label>
                     <button type="submit" class="btn btn-primary mt-3">
-                        <i class="fa-solid fa-circle-check fa-sm" aria-hidden="true"></i> Verify
+                        <i class="fa-solid fa-circle-check fa-sm" aria-hidden="true"></i> <span th:text="#{report.import.verify}">Verify</span>
                     </button>
                 </form>
 
                 <!-- ── Comparison results ─────────────────────────────────────── -->
                 <th:block th:if="${comparison != null}">
                     <div th:if="${currentRunComparison != null}" class="alert alert-warning" role="status">
-                        This file was compared against the selected run
+                        <span th:text="#{report.import.comparedAgainst}">This file was compared against the selected run</span>
                         <strong th:text="${displayedRunId}">selected</strong>.
                         A newer current run
                         <strong th:text="${currentRunId}">current</strong>
@@ -114,7 +114,7 @@
                     <!-- Layout deviations: restructured template sheets that could not be compared -->
                     <div th:if="${layoutWarnings != null and !layoutWarnings.isEmpty()}" class="alert alert-warning" role="alert">
                         <p class="mb-1"><i class="fa-solid fa-table-columns mr-1" aria-hidden="true"></i>
-                            <strong>This file's layout differs from the official template.</strong></p>
+                            <strong th:text="#{report.import.layoutDiffers}">This file's layout differs from the official template.</strong></p>
                         <ul class="mb-1">
                             <li th:each="w : ${layoutWarnings}" th:text="${w}">warning</li>
                         </ul>
@@ -141,7 +141,7 @@
                                 <thead>
                                 <tr>
                                     <th scope="col" rowspan="2" style="width:2.5rem"><span class="sr-only" th:text="#{report.import.expand}">Expand</span></th>
-                                    <th scope="col" rowspan="2">Title</th>
+                                    <th scope="col" rowspan="2" th:text="#{common.title}">Title</th>
                                     <th scope="col" colspan="2" class="text-center" th:text="#{report.import.publicationPoints}">Publication points</th>
                                     <th scope="col" colspan="2" class="text-center" th:text="#{report.import.citationPoints}">Citation points</th>
                                 </tr>
@@ -168,10 +168,10 @@
                                         <td>
                                             <span th:text="${row.title()}">title</span>
                                             <span th:if="${row.rowMatches()}" class="app-chip app-chip--match ms-2">
-                                                <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i> Match
+                                                <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i> <span th:text="#{report.import.match}">Match</span>
                                             </span>
                                             <span th:unless="${row.rowMatches()}" class="app-chip app-chip--differs ms-2">
-                                                <i class="fa-solid fa-triangle-exclamation fa-xs" aria-hidden="true"></i> Differs
+                                                <i class="fa-solid fa-triangle-exclamation fa-xs" aria-hidden="true"></i> <span th:text="#{report.import.differs}">Differs</span>
                                             </span>
                                         </td>
                                         <!-- Publication points -->
@@ -211,13 +211,13 @@
                                                     <dt th:text="#{report.import.platformCategory}">Platform category</dt><dd th:text="${row.platformCategory()}">—</dd>
                                                 </div>
                                                 <div th:if="${row.platformForumName() != null}">
-                                                    <dt>Forum</dt><dd th:text="${row.platformForumName()}">—</dd>
+                                                    <dt th:text="#{publications.column.forum}">Forum</dt><dd th:text="${row.platformForumName()}">—</dd>
                                                 </div>
                                                 <div th:if="${row.platformAuthorCount() != null}">
-                                                    <dt>Authors</dt><dd th:text="${row.platformAuthorCount()}">—</dd>
+                                                    <dt th:text="#{publications.column.authors}">Authors</dt><dd th:text="${row.platformAuthorCount()}">—</dd>
                                                 </div>
                                                 <div th:if="${row.platformYear() != null}">
-                                                    <dt>Year</dt><dd th:text="${row.platformYear()}">—</dd>
+                                                    <dt th:text="#{common.year}">Year</dt><dd th:text="${row.platformYear()}">—</dd>
                                                 </div>
                                             </dl>
 
@@ -229,15 +229,15 @@
                                                     Why publication points differ
                                                 </div>
                                                 <div>
-                                                    Platform <strong th:text="${#numbers.formatDecimal(row.publication().platform(), 1, 2)}">0</strong>
+                                                    <span th:text="#{report.import.platform}">Platform</span> <strong th:text="${#numbers.formatDecimal(row.publication().platform(), 1, 2)}">0</strong>
                                                     vs file <strong th:text="${#numbers.formatDecimal(row.publication().file(), 1, 2)}">0</strong>.
                                                     <ul class="app-diff-list">
                                                         <li th:if="${row.categoryDiffers()}">
-                                                            Category: platform <strong th:text="${row.platformCategory()}">A</strong>,
+                                                            <span th:text="#{report.import.categoryPlatform}">Category: platform</span> <strong th:text="${row.platformCategory()}">A</strong>,
                                                             file <strong th:text="${row.fileCategory()}">C</strong>
                                                         </li>
                                                         <li th:if="${row.authorCountDiffers()}">
-                                                            Authors: platform <strong th:text="${row.platformAuthorCount()}">7</strong>,
+                                                            <span th:text="#{report.import.authorsPlatform}">Authors: platform</span> <strong th:text="${row.platformAuthorCount()}">7</strong>,
                                                             file <strong th:text="${row.fileAuthorCount()}">3</strong>
                                                         </li>
                                                         <li th:if="${!row.categoryDiffers() and !row.authorCountDiffers()}">
@@ -254,7 +254,7 @@
                                                     Why citation points differ
                                                 </div>
                                                 <div>
-                                                    Platform <strong th:text="${#numbers.formatDecimal(row.citation().platform(), 1, 2)}">0</strong>
+                                                    <span th:text="#{report.import.platform}">Platform</span> <strong th:text="${#numbers.formatDecimal(row.citation().platform(), 1, 2)}">0</strong>
                                                     vs file <strong th:text="${#numbers.formatDecimal(row.citation().file(), 1, 2)}">0</strong>.
                                                     <ul class="app-diff-list">
                                                         <li th:if="${row.citationsOnlyInFile() > 0}">
@@ -390,10 +390,10 @@
                                         </td>
                                         <td>
                                             <span th:if="${block.rowMatches()}" class="app-chip app-chip--match">
-                                                <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i> Match
+                                                <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i> <span th:text="#{report.import.match}">Match</span>
                                             </span>
                                             <span th:unless="${block.rowMatches()}" class="app-chip app-chip--differs">
-                                                <i class="fa-solid fa-triangle-exclamation fa-xs" aria-hidden="true"></i> Differs
+                                                <i class="fa-solid fa-triangle-exclamation fa-xs" aria-hidden="true"></i> <span th:text="#{report.import.differs}">Differs</span>
                                             </span>
                                         </td>
                                         <td class="app-table__cell--numeric">
@@ -447,7 +447,7 @@
                                                         <button type="button" class="btn btn-sm btn-outline-primary imp-toggle"
                                                                 th:if="${!block.activityOptions().isEmpty()}"
                                                                 th:attr="data-target=${'imp-form-' + bi.index + '-' + ii.index}">
-                                                            <i class="fa-solid fa-plus fa-xs" aria-hidden="true"></i> Add to platform
+                                                            <i class="fa-solid fa-plus fa-xs" aria-hidden="true"></i> <span th:text="#{report.import.addToPlatform}">Add to platform</span>
                                                         </button>
                                                         <span th:unless="${!block.activityOptions().isEmpty()}" class="app-importable__meta">
                                                             (no activity type bound — add via the workspace)
@@ -472,12 +472,12 @@
                                                                  th:with="def=${activityDefs != null ? activityDefs.get(opt.activityId()) : null}">
                                                                 <div class="app-form-grid app-form-grid--two-up">
                                                                     <div class="app-form-field">
-                                                                        <label>Name</label>
+                                                                        <label th:text="#{common.name}">Name</label>
                                                                         <input type="text" class="form-control form-control-sm imp-name"
                                                                                th:value="${imp.description()}">
                                                                     </div>
                                                                     <div class="app-form-field">
-                                                                        <label>Date</label>
+                                                                        <label th:text="#{common.date}">Date</label>
                                                                         <input type="text" class="form-control form-control-sm imp-date"
                                                                                placeholder="YYYY-MM-DD">
                                                                     </div>
@@ -505,7 +505,7 @@
                                                         </th:block>
                                                         <div class="app-form-actions app-form-actions--inline">
                                                             <button type="button" class="btn btn-sm btn-primary imp-submit">
-                                                                <i class="fa-solid fa-circle-check fa-xs" aria-hidden="true"></i> Add to platform
+                                                                <i class="fa-solid fa-circle-check fa-xs" aria-hidden="true"></i> <span th:text="#{report.import.addToPlatform}">Add to platform</span>
                                                             </button>
                                                             <span class="imp-status app-importable__meta"></span>
                                                         </div>

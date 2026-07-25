@@ -73,6 +73,13 @@ public class ResearcherWorkspaceController {
     private final ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
     private final ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade publicationMergeWorkspaceFacade;
     private final ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
+    private final org.springframework.context.MessageSource messageSource;
+
+    /** Resolve a UI string for the request locale (tab titles are model data, not template text). */
+    private String msg(String key) {
+        return messageSource.getMessage(key, null,
+                org.springframework.context.i18n.LocaleContextHolder.getLocale());
+    }
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
@@ -844,11 +851,12 @@ public class ResearcherWorkspaceController {
         List<WorkspaceNotification> notifications =
                 buildNotifications(currentUser, prefs.getLastVisitAt(), dismissedSet(prefs));
 
+        // H87: tab titles are model data, so they are resolved here rather than in the template.
         List<TabDef> tabs = List.of(
-                new TabDef("overview",     "Overview",      "fa-solid fa-house",         true,  false),
-                new TabDef("publications", "Publications",  "fa-solid fa-chart-area",    false, false),
-                new TabDef("activities",   "Activities",    "fa-solid fa-pen-fancy",     false, false),
-                new TabDef("profile",      "Profile & Sync","fa-solid fa-user-graduate", false, true)
+                new TabDef("overview",     msg("workspace.tab.overview"),     "fa-solid fa-house",         true,  false),
+                new TabDef("publications", msg("workspace.tab.publications"), "fa-solid fa-chart-area",    false, false),
+                new TabDef("activities",   msg("workspace.tab.activities"),   "fa-solid fa-pen-fancy",     false, false),
+                new TabDef("profile",      msg("workspace.tab.profile"),      "fa-solid fa-user-graduate", false, true)
         );
 
         return new ResearcherWorkspaceViewModel(

@@ -58,25 +58,25 @@
         <section class="app-university-detail__section" aria-labelledby="university-details-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">Directory record</p>
-                    <h2 id="university-details-title" class="app-university-detail__section-title">University Details</h2>
+                    <p class="app-university-detail__eyebrow"><span th:text="#{universities.detail.directoryRecord}">Directory record</span></p>
+                    <h2 id="university-details-title" class="app-university-detail__section-title"><span th:text="#{universities.detail.title}">University Details</span></h2>
                 </div>
             </div>
             <dl class="app-university-detail__definition-grid">
                 <div>
-                    <dt>University</dt>
+                    <dt><span th:text="#{rankings.urap.university}">University</span></dt>
                     <dd th:text="${ranking.name}">University Name</dd>
                 </div>
                 <div>
-                    <dt>Country</dt>
-                    <dd th:text="${ranking.country != null && !ranking.country.isBlank() ? ranking.country : 'Unknown'}">Country</dd>
+                    <dt><span th:text="#{common.country}">Country</span></dt>
+                    <dd th:text="${ranking.country != null && !ranking.country.isBlank() ? ranking.country : #messages.msg('common.unknown')}">Country</dd>
                 </div>
                 <div>
-                    <dt>Latest Ranking Year</dt>
+                    <dt><span th:text="#{universities.detail.latestYear}">Latest Ranking Year</span></dt>
                     <dd th:text="${latestYear != null ? latestYear : '—'}">2024</dd>
                 </div>
                 <div>
-                    <dt>Tracked Indicators</dt>
+                    <dt><span th:text="#{universities.detail.trackedIndicators}">Tracked Indicators</span></dt>
                     <dd>Article, Citation, Total Document, AIT, CIT, Collaboration, Total Score</dd>
                 </div>
             </dl>
@@ -85,20 +85,20 @@
         <div th:if="${ranking.scores == null || ranking.scores.isEmpty()}"
              class="alert alert-secondary app-university-detail__empty-state"
              role="status">
-            Historical URAP score data is not available for this university yet.
+            <span th:text="#{universities.detail.noHistory}">Historical URAP score data is not available for this university yet.</span>
         </div>
 
         <div th:if="${ranking.scores != null && !ranking.scores.isEmpty()}" class="app-university-detail__chart-sections">
             <section class="app-university-detail__section" aria-labelledby="overview-charts-title">
                 <div class="app-university-detail__section-header">
                     <div>
-                        <p class="app-university-detail__eyebrow">Performance</p>
+                        <p class="app-university-detail__eyebrow"><span th:text="#{universities.detail.performance}">Performance</span></p>
                         <h2 id="overview-charts-title" class="app-university-detail__section-title" th:text="#{universities.detail.overviewTrends}">Overview Trends</h2>
                     </div>
                 </div>
                 <div class="app-university-detail__chart-grid">
                     <article class="app-university-detail__chart-card">
-                        <h3 class="app-university-detail__chart-title">Total Score</h3>
+                        <h3 class="app-university-detail__chart-title"><span th:text="#{rankings.totalScore}">Total Score</span></h3>
                         <div class="app-university-detail__chart-shell">
                             <canvas id="urap-total-score-chart"></canvas>
                         </div>
@@ -115,7 +115,7 @@
             <section class="app-university-detail__section" aria-labelledby="indicator-charts-title">
                 <div class="app-university-detail__section-header">
                     <div>
-                        <p class="app-university-detail__eyebrow">Indicators</p>
+                        <p class="app-university-detail__eyebrow"><span th:text="#{universities.detail.indicators}">Indicators</span></p>
                         <h2 id="indicator-charts-title" class="app-university-detail__section-title" th:text="#{universities.detail.detailedIndicators}">Detailed Indicators</h2>
                     </div>
                 </div>

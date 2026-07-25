@@ -24,10 +24,10 @@
                     <div class="app-page-toolbar">
                         <div class="app-dashboard__actions">
                                 <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/exports/cnfis}" class="btn btn-sm btn-primary">
-                                <i class="fa-solid fa-download fa-sm"></i> Export CNFIS
+                                <i class="fa-solid fa-download fa-sm"></i> <span th:text="#{workspace.publications.exportCnfis}">Export CNFIS</span>
                             </a>
                             <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/scopus-tasks}" class="btn btn-sm btn-outline-success">
-                                <i class="fa-solid fa-download fa-sm"></i> Scopus Updates
+                                <i class="fa-solid fa-download fa-sm"></i> <span th:text="#{workspace.publications.scopusUpdates}">Scopus Updates</span>
                             </a>
                         </div>
                     </div>
@@ -45,7 +45,7 @@
                                 </div>
                                 <div class="app-summary-identity__body">
                                     <h4 class="app-summary-identity__title" th:text="${profileAuthor.name}">Author Name</h4>
-                                    <p class="app-summary-identity__meta">Publications and citation metrics below are scoped to this researcher profile view.</p>
+                                    <p class="app-summary-identity__meta"><span th:text="#{workspace.publications.scopeNote}">Publications and citation metrics below are scoped to this researcher profile view.</span></p>
                                 </div>
                             </div>
 
@@ -89,7 +89,7 @@
                             <p class="app-summary-card__meta">Indicative — citations from Scopus-indexed venues only; may differ from the official Scopus h-index.</p>
                         </div>
                         <div class="app-summary-card app-summary-card--warning">
-                            <p class="app-summary-card__label">WoS h</p>
+                            <p class="app-summary-card__label" th:text="#{workspace.publications.wosH}">WoS h</p>
                             <p class="app-summary-card__value" th:text="${hIndices != null ? hIndices.wosVenue() : 0}">0</p>
                             <p class="app-summary-card__meta">Indicative — citations from WoS-indexed venues only (conferences pending CPCI); may differ from the official WoS h-index.</p>
                         </div>
@@ -98,7 +98,7 @@
                     <div class="app-table-section">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
-                                <h6 class="app-table-section__title" th:text="${publicationTableTitle ?: 'Your Publications'}">Your Publications</h6>
+                                <h6 class="app-table-section__title" th:text="${publicationTableTitle} ?: #{workspace.publications.yourPublications}">Your Publications</h6>
                             </div>
                             <div class="app-table-section__body">
                                 <p class="app-table-context">Use the publications table to inspect titles, venues, funding metadata, and citation counts for the current researcher context.</p>
@@ -107,13 +107,13 @@
                                 <caption class="app-table-caption app-table-caption--sr-only">Publication workspace table showing publication title, year, authors, type, venue, funding identifier, and citation count for the current researcher context.</caption>
                                 <thead>
                                 <tr>
-                                    <th scope="col">Title</th>
-                                    <th scope="col">Year</th>
-                                    <th scope="col">Authors</th>
-                                    <th scope="col">Type</th>
-                                    <th scope="col">Venue</th>
-                                    <th scope="col">Funding</th>
-                                    <th scope="col">Citations</th>
+                                    <th scope="col" th:text="#{common.title}">Title</th>
+                                    <th scope="col" th:text="#{common.year}">Year</th>
+                                    <th scope="col" th:text="#{publications.column.authors}">Authors</th>
+                                    <th scope="col" th:text="#{common.type}">Type</th>
+                                    <th scope="col" th:text="#{authors.detail.venue}">Venue</th>
+                                    <th scope="col" th:text="#{workspace.publications.funding}">Funding</th>
+                                    <th scope="col" th:text="#{workspace.card.citations}">Citations</th>
                                 </tr>
                                 </thead>
                                 <tbody>

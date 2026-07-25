@@ -24,12 +24,12 @@
                 <section class="app-forum-detail__section" aria-labelledby="forum-summary-title">
                     <div class="app-forum-detail__section-header">
                         <div>
-                            <p class="app-forum-detail__eyebrow">Forum profile</p>
+                            <p class="app-forum-detail__eyebrow"><span th:text="#{forums.detail.eyebrow}">Forum profile</span></p>
                             <h1 id="forum-summary-title" class="app-forum-detail__section-title" th:text="${forum.publicationName}">Forum Name</h1>
                         </div>
                         <a href="/forums" class="btn btn-outline-primary btn-sm">
                             <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                            <span>All forums</span>
+                            <span><span th:text="#{forums.back}">All forums</span></span>
                         </a>
                     </div>
 
@@ -80,16 +80,16 @@
                         <div class="app-forum-detail__section-header">
                             <div>
                                 <p class="app-forum-detail__eyebrow">Web of Science</p>
-                                <h2 id="journal-details-title" class="app-forum-detail__section-title">Also Known As</h2>
+                                <h2 id="journal-details-title" class="app-forum-detail__section-title"><span th:text="#{forums.detail.alsoKnownAs}">Also Known As</span></h2>
                             </div>
                         </div>
                         <dl class="app-forum-detail__definition-grid">
                             <div th:if="${wosRanking.alternativeNames != null && !wosRanking.alternativeNames.isEmpty()}">
-                                <dt>Alternative names</dt>
+                                <dt><span th:text="#{forums.detail.altNames}">Alternative names</span></dt>
                                 <dd th:text="${#strings.listJoin(wosRanking.alternativeNames, ', ')}">Alt names</dd>
                             </div>
                             <div th:if="${wosRanking.alternativeIssns != null && !wosRanking.alternativeIssns.isEmpty()}">
-                                <dt>Alternative ISSNs</dt>
+                                <dt><span th:text="#{forums.detail.altIssns}">Alternative ISSNs</span></dt>
                                 <dd th:text="${#strings.listJoin(wosRanking.alternativeIssns, ', ')}">Alt ISSNs</dd>
                             </div>
                         </dl>
@@ -98,8 +98,8 @@
                     <section class="app-forum-detail__section" aria-labelledby="general-metrics-title">
                         <div class="app-forum-detail__section-header">
                             <div>
-                                <p class="app-forum-detail__eyebrow">Timeline</p>
-                                <h2 id="general-metrics-title" class="app-forum-detail__section-title">General Metrics</h2>
+                                <p class="app-forum-detail__eyebrow"><span th:text="#{forums.detail.timeline}">Timeline</span></p>
+                                <h2 id="general-metrics-title" class="app-forum-detail__section-title"><span th:text="#{forums.detail.generalMetrics}">General Metrics</span></h2>
                             </div>
                         </div>
                         <div class="app-forum-detail__chart-shell">
@@ -110,8 +110,8 @@
                     <section class="app-forum-detail__section" aria-labelledby="category-rankings-title">
                         <div class="app-forum-detail__section-header">
                             <div>
-                                <p class="app-forum-detail__eyebrow">Category history</p>
-                                <h2 id="category-rankings-title" class="app-forum-detail__section-title">Category Rankings</h2>
+                                <p class="app-forum-detail__eyebrow"><span th:text="#{forums.detail.categoryHistory}">Category history</span></p>
+                                <h2 id="category-rankings-title" class="app-forum-detail__section-title"><span th:text="#{forums.detail.categoryRankings}">Category Rankings</span></h2>
                             </div>
                         </div>
                         <div class="heatmap-legend" aria-label="Quartile legend">
@@ -119,7 +119,7 @@
                             <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-q2" aria-hidden="true"></span>Q2</span>
                             <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-q3" aria-hidden="true"></span>Q3</span>
                             <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-q4" aria-hidden="true"></span>Q4</span>
-                            <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-empty" aria-hidden="true"></span>No data</span>
+                            <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-empty" aria-hidden="true"></span><span th:text="#{common.noData}">No data</span></span>
                         </div>
                         <div th:if="${wosRanking.webOfScienceCategoryIndex == null || wosRanking.webOfScienceCategoryIndex.isEmpty()}" class="alert alert-secondary mb-0">
                             No category-level WoS data is currently available for this journal.
@@ -140,7 +140,7 @@
                 <div th:if="${detail.forumType().name() == 'JOURNAL' and !detail.wosIndexed() and currentUser != null and currentUser.isPresent()}"
                      class="alert alert-warning app-forum-detail__auth-callout"
                      role="status">
-                    This journal is not indexed by WoS.
+                    <span th:text="#{forums.detail.notWosIndexed}">This journal is not indexed by WoS.</span>
                 </div>
 
                 <section th:if="${detail.coreRanking() != null}"
@@ -153,12 +153,12 @@
                                 th:text="${detail.coreRanking().name + ' (' + detail.coreRanking().acronym + ')'}">Conference</h2>
                         </div>
                         <a th:href="@{/core/rankings/{id}(id=${detail.coreRanking().id})}" class="btn btn-outline-primary btn-sm">
-                            <span>View on CORE</span>
+                            <span><span th:text="#{forums.detail.viewOnCore}">View on CORE</span></span>
                         </a>
                     </div>
                     <div th:if="${detail.coreRanking().yearlyRankings == null or detail.coreRanking().yearlyRankings.isEmpty()}"
                          class="alert alert-secondary mb-0">
-                        No yearly CORE ranking data is available for this conference.
+                        <span th:text="#{forums.detail.noCoreYears}">No yearly CORE ranking data is available for this conference.</span>
                     </div>
                     <th:block th:if="${detail.coreRanking().yearlyRankings != null and !detail.coreRanking().yearlyRankings.isEmpty()}"
                               th:replace="~{fragments :: core-ranking-chart(${detail.coreRanking()})}"></th:block>
@@ -167,7 +167,7 @@
                 <div th:if="${detail.showCorePlaceholder()}"
                      class="alert alert-info app-forum-detail__auth-callout"
                      role="status">
-                    No CORE conference ranking is currently linked to this forum.
+                    <span th:text="#{forums.detail.noCoreLink}">No CORE conference ranking is currently linked to this forum.</span>
                 </div>
 
                 <section th:if="${detail.senseBookRanking() != null}"
@@ -182,7 +182,7 @@
                     </div>
                     <dl class="app-university-detail__definition-grid">
                         <div>
-                            <dt>Publisher</dt>
+                            <dt><span th:text="#{workspace.pubs.publisher}">Publisher</span></dt>
                             <dd th:text="${detail.senseBookRanking().name}">Publisher</dd>
                         </div>
                         <div>
@@ -195,7 +195,7 @@
                 <div th:if="${detail.showBookPlaceholder()}"
                      class="alert alert-info app-forum-detail__auth-callout"
                      role="status">
-                    No SENSE publisher ranking is currently linked to this forum.
+                    <span th:text="#{forums.detail.noSense}">No SENSE publisher ranking is currently linked to this forum.</span>
                 </div>
 
                 <div th:if="${detail.showGenericPlaceholder()}"

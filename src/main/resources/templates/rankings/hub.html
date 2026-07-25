@@ -209,8 +209,8 @@
                                 <!-- The trend column plots the selected metric; rank improves downward, so the
                                      sparkline's direction colouring is inverted for it. -->
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Trend metric" id="urap-metric">
-                                    <button type="button" class="btn btn-primary" data-metric="rank" aria-pressed="true">Rank</button>
-                                    <button type="button" class="btn btn-outline-primary" data-metric="total" aria-pressed="false">Total Score</button>
+                                    <button type="button" class="btn btn-primary" data-metric="rank" aria-pressed="true"><span th:text="#{rankings.rank}">Rank</span></button>
+                                    <button type="button" class="btn btn-outline-primary" data-metric="total" aria-pressed="false"><span th:text="#{rankings.totalScore}">Total Score</span></button>
                                 </div>
                                 <span id="urap-total-info" class="app-table-toolbar__meta"></span>
                             </div>
@@ -398,11 +398,11 @@
                                             <th scope="col" data-sort-key="edition" th:text="#{rankings.edition}">Edition</th>
                                             <th scope="col" data-sort-key="journalCount" th:attr="title=#{rankings.wos.journals.tooltip}" th:text="#{rankings.wos.journals}">Journals</th>
                                             <th scope="col" id="wos-categories-year-header" data-sort-key="year"
-                                                title="The category's latest year with data for the selected metric">Year</th>
+                                                title="The category's latest year with data for the selected metric"><span th:text="#{common.year}">Year</span></th>
                                             <th scope="col" id="wos-categories-avg-header" data-sort-key="avg"
-                                                title="Average of the selected metric across the category's journals in its latest year">Avg AIS</th>
+                                                title="Average of the selected metric across the category's journals in its latest year"><span th:text="#{rankings.wos.avgAis}">Avg AIS</span></th>
                                             <th scope="col" id="wos-categories-top-header" data-sort-key="top"
-                                                title="Highest value of the selected metric in the category's latest year">Top AIS</th>
+                                                title="Highest value of the selected metric in the category's latest year"><span th:text="#{rankings.wos.topAis}">Top AIS</span></th>
                                             <th scope="col" id="wos-categories-trend-header" th:text="#{rankings.wos.aisTrend}">AIS trend</th>
                                         </tr>
                                         </thead>

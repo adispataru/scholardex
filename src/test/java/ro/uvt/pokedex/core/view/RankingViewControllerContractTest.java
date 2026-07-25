@@ -241,11 +241,11 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("app-summary-card--primary")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-forum-detail__definition-grid\"")))
                 // identifiers live in the summary cards only; the WoS section carries just the aliases
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Also Known As")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Cunoscut și ca")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("TEST J")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Journal Details"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("General Metrics")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Category Rankings")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Indicatori generali")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Clasificări pe categorii")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"forum-wos-category-data\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("https://unpkg.com/frappe-charts"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))))
@@ -283,8 +283,8 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Sign in to view Web of Science rankings")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Ieșire"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("General Metrics"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Category Rankings"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Indicatori generali"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Clasificări pe categorii"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("frappe-charts"))));
     }
 
@@ -310,7 +310,7 @@ class RankingViewControllerContractTest {
         mockMvc.perform(get("/forums/{id}", "w2").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
                 .andExpect(status().isOk())
                 .andExpect(view().name("forums/detail"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("This journal is not indexed by WoS.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Această revistă nu este indexată WoS.")));
     }
 
     @Test
@@ -334,7 +334,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/forums/{id}", "c1"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("No CORE conference ranking is currently linked to this forum.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Acestui forum nu îi este asociată nicio clasificare CORE.")));
     }
 
     @Test
@@ -391,7 +391,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/forums/{id}", "b1"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("No SENSE publisher ranking is currently linked to this forum.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Acestui forum nu îi este asociată nicio clasificare SENSE a editurii.")));
     }
 
     @Test

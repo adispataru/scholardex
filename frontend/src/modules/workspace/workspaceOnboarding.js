@@ -126,7 +126,7 @@ function _buildStepBody(step) {
 
 function _buildIdentityStep() {
     return `<div class="app-onb__panel">
-      <h6 class="app-onb__panel-title">Your author identifiers</h6>
+      <h6 class="app-onb__panel-title">${t('workspace.onboarding.yourIdentifiers')}</h6>
       <p class="app-onb__panel-help">These link your account to your publications. Scopus ids are often already
         filled in from the staff import — confirm them or add more.</p>
       ${_idList('scopusId', t('workspace.onboarding.scopusId'), _profile.scopusId)}
@@ -155,9 +155,9 @@ function _idRow(field, value, index) {
 
 function _buildOrcidStep() {
     return `<div class="app-onb__panel">
-      <h6 class="app-onb__panel-title">Your ORCID iD</h6>
+      <h6 class="app-onb__panel-title">${t('workspace.onboarding.yourOrcid')}</h6>
       <p class="app-onb__panel-help">ORCID lets us pull corresponding-author and citation data from OpenAlex.
-        Once you've finished setup, run that update anytime with <strong>Update from OpenAlex</strong> in Profile &amp; Sync.</p>
+        Once you've finished setup, run that update anytime with <strong>${t('workspace.onboarding.updateFromOpenAlex')}</strong> in Profile &amp; Sync.</p>
       <div class="app-onb__field">
         <label class="app-onb__label" for="onb-orcid">ORCID</label>
         <input type="text" class="form-control form-control-sm" id="onb-orcid"
@@ -173,7 +173,7 @@ function _buildAffiliationsStep() {
     const past = new Set(_profile.pastAffiliationIds);
     if (!observed.length) {
         return `<div class="app-onb__panel">
-          <h6 class="app-onb__panel-title">Confirm your affiliations</h6>
+          <h6 class="app-onb__panel-title">${t('workspace.onboarding.confirmAffiliations')}</h6>
           <p class="app-onb__panel-help">No affiliations observed yet — they appear once your author identity
             resolves (after the identity/ORCID steps and a sync). You can confirm later.</p>
         </div>`;
@@ -192,7 +192,7 @@ function _buildAffiliationsStep() {
         </div>`;
     }).join('');
     return `<div class="app-onb__panel">
-      <h6 class="app-onb__panel-title">Confirm your affiliations</h6>
+      <h6 class="app-onb__panel-title">${t('workspace.onboarding.confirmAffiliations')}</h6>
       <p class="app-onb__panel-help">We observed these from your publications. Mark each as current, past, or not
         yours. Confirming unblocks your publication review.</p>
       ${rows}
@@ -207,7 +207,7 @@ function _affRadio(id, value, label, selected) {
 }
 
 function _buildAuthorMatchStep() {
-    const header = '<h6 class="app-onb__panel-title">Match your author record</h6>';
+    const header = '<h6 class="app-onb__panel-title">${t('workspace.onboarding.matchAuthor')}</h6>';
     if (_candidates === null) {
         return `<div class="app-onb__panel">${header}
           <div class="app-skeleton-block" style="height:5rem;border-radius:var(--app-radius-card)"></div></div>`;
@@ -233,7 +233,7 @@ function _buildAuthorMatchStep() {
             ${affs ? `<div class="app-onb__cand-affs">${affs}</div>` : ''}
             <label class="app-onb__cand-primary${checked ? '' : ' app-onb__cand-primary--off'}">
               <input type="radio" name="onb-primary" data-cand-primary value="${_esc(c.authorId)}"
-                     ${_authorMatch.primaryAuthorId === c.authorId ? 'checked' : ''} ${checked ? '' : 'disabled'}> Primary
+                     ${_authorMatch.primaryAuthorId === c.authorId ? 'checked' : ''} ${checked ? '' : 'disabled'}> ${t('workspace.onboarding.primary')}
             </label>
           </div>
         </div>`;
@@ -274,7 +274,7 @@ function _saveAuthorMatch() {
 }
 
 function _buildClaimStep() {
-    const header = '<h6 class="app-onb__panel-title">Claim your publications</h6>';
+    const header = '<h6 class="app-onb__panel-title">${t('workspace.onboarding.claimPublications')}</h6>';
     if (_recommendations === null) {
         return `<div class="app-onb__panel">${header}
           <div class="app-skeleton-block" style="height:5rem;border-radius:var(--app-radius-card)"></div></div>`;
@@ -292,7 +292,7 @@ function _buildClaimStep() {
     const more = count > titles.length
         ? `<li class="app-onb__claim-more">…and ${count - titles.length} more</li>` : '';
     return `<div class="app-onb__panel">${header}
-      <p class="app-onb__panel-help">We found <strong>${count}</strong> publication${count === 1 ? '' : 's'}
+      <p class="app-onb__panel-help">${t('workspace.onboarding.weFound')}<strong>${count}</strong> publication${count === 1 ? '' : 's'}
         attributed to your author record at your confirmed affiliations — high confidence these are yours.${r.reviewCount
           ? ` Another <strong>${r.reviewCount}</strong> need a manual look and will wait in your publications list.`
           : ''}</p>
@@ -344,7 +344,7 @@ function _buildFooter(step) {
     return `<div class="app-onb__footer">
       <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>${t('workspace.onboarding.finishLater')}</button>
       <div class="app-onb__footer-nav">
-        ${isFirst ? '' : '<button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>Back</button>'}
+        ${isFirst ? '' : '<button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>${t('common.back')}</button>'}
         <button type="button" class="btn btn-primary btn-sm" data-onb-next>${nextLabel}</button>
       </div>
     </div>`;
@@ -354,11 +354,11 @@ function _buildClaimFooter() {
     const count = _recommendations ? (_recommendations.recommendedConfirmIds || []).length : 0;
     const primaryLabel = count > 0 ? tPlural('workspace.onboarding.confirmFinish', count) : 'Finish';
     const skip = count > 0
-        ? '<button type="button" class="btn btn-link btn-sm" data-onb-skip-claim>Finish without claiming</button>' : '';
+        ? '<button type="button" class="btn btn-link btn-sm" data-onb-skip-claim>${t('workspace.onboarding.finishWithoutClaiming')}</button>' : '';
     return `<div class="app-onb__footer">
       <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>${t('workspace.onboarding.finishLater')}</button>
       <div class="app-onb__footer-nav">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>Back</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>${t('common.back')}</button>
         ${skip}
         <button type="button" class="btn btn-primary btn-sm" data-onb-finish>${primaryLabel}</button>
       </div>
