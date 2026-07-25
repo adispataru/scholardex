@@ -2718,6 +2718,51 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
     }
 
+    @Test
+    void theRealProdShape_aamasFiledUnderConfAtal_resolvesToItsCoreRank() {
+        // EXACT prod reproduction of cosmin.bonchis's three papers, which still score 0 after the fallback
+        // shipped. Every detail below is copied from production, including the two my earlier tests got
+        // wrong: the evidence carries conferenceName="AAMAS" (not a booktitle), and the pre-restamp forum
+        // is aggregationType "Journal", not "Conference Proceeding".
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication(
+                "spub_1285e0759f924f2a965e2052", null, "forum-atal-stream", null, "forum-aamas-raw",
+                "2020-01-01", null, "cp", List.of(), 0, null, null, null, 0, Set.of(), 0, 0, 0, List.of(), null);
+
+        ScholardexForumView atal = new ScholardexForumView();
+        atal.setPublicationName("ATAL");
+        atal.setAggregationType("Conference Proceeding");
+        when(cacheService.getForum("forum-atal-stream")).thenReturn(atal);
+
+        ScholardexForumView aamas = new ScholardexForumView();
+        aamas.setPublicationName("Proceedings of the International Joint Conference on Autonomous Agents and Multiagent Systems, AAMAS");
+        aamas.setAggregationType("Journal");   // <-- as in prod, NOT a conference-proceeding forum
+        when(cacheService.getForum("forum-aamas-raw")).thenReturn(aamas);
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("spub_1285e0759f924f2a965e2052");
+        evidence.setSeries("conf/atal");
+        evidence.setConferenceName("AAMAS");
+        when(dblpEvidenceRepository.findByPublicationId("spub_1285e0759f924f2a965e2052"))
+                .thenReturn(Optional.of(evidence));
+
+        CoreConferenceRanking aamasRanking = ranking("AAMAS",
+                "International Joint Conference on Autonomous Agents and Multiagent Systems",
+                CoreConferenceRanking.Rank.A);
+        // Prod-faithful: CORE is queried PER CANDIDATE and has NO "ATAL" entry. An anyString() stub hides
+        // the bug, because resolveDblpConferenceTitle deliberately seeds conf/atal -> "ATAL" as the FIRST
+        // candidate; only a per-candidate stub shows whether the search continues to AAMAS.
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("AAMAS")).thenReturn(List.of(aamasRanking));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent(),
+                "AAMAS is CORE A; prod scores this 0. trace=" + service.getLastTraceForTests());
+    }
+
     // ---------------------------------------------------------------------------------------------
     //  H89 — CORE match recovered from the pre-restamp forum
     // ---------------------------------------------------------------------------------------------
