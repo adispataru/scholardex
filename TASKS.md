@@ -120,17 +120,13 @@ Done history moved to `TASKS-done.md`.
     rotation did happen; what is missing is REVOCATION at dev.elsevier.com. Rewriting history is secondary
     and unreliable (clones, GitHub caches, archives) — revoking makes the string worthless, which is the
     actual fix. Also consider: any GHCR image built between those two dates baked the key into the jar.
-  - **Rotate the Elsevier key — OPEN (one step left).** The key WAS rotated, but prod and the local dev
-    `.env` hold the SAME value (identical SHA-256, len 32). A laptop compromise therefore reaches prod, and
-    Elsevier's quota/logs cannot separate prod from local experiments. Fix: issue a second key so prod has
-    its own. Script: `scripts/ops/rotate-scopus-key.sh` (prompts with echo off, never writes or prints the
-    key, refuses the `.env` value, restarts both consumers, tells you how to verify before revoking).
-  - **Remove `agent@dev.local` from prod — OPEN (script ready).** The agent-dev principal sits in the
-    production user collection with PLATFORM_ADMIN + SUPERVISOR + RESEARCHER. Not exploitable today (the
-    profile is never active in prod, and it bypasses security wholesale anyway, so the account is not the
-    weak link) but an unowned admin identity has no business there. Verified zero references — no report
-    runs, authorship decisions or merge decisions. Script: `scripts/ops/remove-agent-dev-user.sh`
-    (audit copy into `app_migrations` before deleting; agent-dev falls back to a synthetic principal).
+  - **Separate prod key — DONE 2026-07-25, verified.** Production now holds its own key
+    (`sha256=fbf72819…`), distinct from the local `.env` (`0dbb2a29…`) and from the exposed one
+    (`098dc67c…`) — three different values. Confirmed working: `ScopusSearch` 200 at 17:46 after both pods
+    restarted at 17:34; no 401/403/429. A laptop compromise no longer reaches production.
+  - **Remove `agent@dev.local` — DONE 2026-07-25, verified.** Gone from the prod user collection (57 users
+    left); the reversible copy is at `app_migrations/remove-agent-dev-user-v1` (17:48:59Z). Remaining
+    PLATFORM_ADMINs: `florin.spataru@e-uvt.ro` and `rdi-breakglass` (still passwordless, as designed).
   **History secret-scan (2026-07-25)**: swept every commit for credential-shaped literals in
   `*.properties`/`*.yml`/`*.yaml`. Exactly TWO values were ever committed — the Scopus key above, and
   `h14.wos.gov-ais.password=uefiscdi`, which is the password to UEFISCDI's publicly distributed WoS AIS
