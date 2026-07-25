@@ -145,14 +145,40 @@ Done history moved to `TASKS-done.md`.
   Mongo as plaintext. Inert without a login path, but a real defect. It now ignores the field and carries
   the existing scrambled hash; pinned by a regression assertion on the captured save.
 
-- [ ] `H89` RIS projection emits a non-finite forum metric (root cause).
-  **RAISED 2026-07-25 during the backlog audit** — previously memory-only. A RIS forum metric is projected as
-  `Infinity` even though the source `metric_facts` are clean; `S/N`-shaped formulas then yield `∞` and poison
-  the whole indicator total. **Symptom is guarded, cause is not:** `ScientificProductionService` line 398
-  clamps a non-finite `finalScore` to `0.0` (`Double.isFinite(finalScore) ? finalScore : 0.0`), so no user sees
-  `∞` — but a real metric silently becomes 0, which is its own wrong answer.
-  Open work: find where the projection divides by a zero/absent denominator and fix it at the source, then
-  decide whether the clamp stays as a belt-and-braces guard or is removed.
+- [ ] `H89` Conference CORE-rank losses + non-finite metric root cause.
+  **RENAMED + REFOCUSED 2026-07-25.** Opened for the RIS `Infinity` note; investigating it turned up a much
+  larger, live scoring bug that now leads the entry.
+  - **DBLP stream forums lose a conference's CORE rank — FIXED 2026-07-25 (`844d144f`).** DBLP files AAMAS
+    proceedings under `conf/atal` (the ATAL workshops that BECAME AAMAS), so the minted stream forum is named
+    "ATAL", CORE has no such entry, and a CORE-A conference fell through to the D default. Cost
+    cosmin.bonchis 48 points across the Info_B indicators (`Info_B (A*, A)` 56 → 8 = 3 papers × 16) after the
+    rebuild. **I first blamed the publication merges, which landed in the same refresh — wrong; the papers
+    were correctly scored before and simply stopped being A-ranked.** Fix: when the assigned stream forum
+    yields no CORE match, retry against `originalForumId` (preserved by H85) before the LNCS/ACM/D defaults,
+    stamping `coreEvidenceVenue`. Not only AAMAS — IEEECLOUD, 3PGCIC, ISGTEUROPE, ICCCNT, LCTRTS, INCOS all
+    show the same acronym-vs-CORE-name mismatch. **Needs a deploy + a report refresh to take effect.**
+  - **Complementary "add the DBLP booktitle as an alias" — MEASURED AND DECLINED 2026-07-25.** My first
+    suggestion was to name stream forums from the booktitle; that is WRONG and `DblpConferenceResolveService`
+    says so explicitly — a volume title on a stream forum re-creates the "AINA Workshops" mint accident and
+    even mis-triggers the scorer's workshop reduction. The user's correction (ADD an alias, never rewrite
+    `name`/`nameNormalized`) was the right shape. Measured before building:
+    1,082 stream forums (421 CORE-matchable) · 3,092 publications on them · 1,318 on unmatchable forums ·
+    **1,086 carry `originalForumId` and are already covered by the fix above** · **232 do not — the
+    alias-only population — of which exactly 1 is CONFIRMED by a UVT researcher.**
+    That one is florin.fortis's 2025 paper on forum "BDC" (`conf/bdc`), and CORE has NO BDC entry — the
+    nearest is BDCAT, a different conference, so an alias would either find nothing or attach a wrong A.
+    Cost would be a new field across fact + projection + view + widening `resolveConferenceMatch` (the
+    three-layer dual-path trap) plus a stricter match confidence. **Not worth it.** Revisit only if the
+    confirmed-population count grows materially as more researchers onboard.
+  - **RIS/`Infinity` — original symptom, still unexplained.** No non-finite values in prod today (0 across
+    AIS 341k / RIS 95k / IF 340k rows). `ScientificProductionService:398` clamps a non-finite score to 0.0,
+    so nothing renders ∞ — but a real metric silently reads 0. **549 publications have `author_count = 0`**,
+    the divisor the guard's comment names; note the Info_B/C formulas use `max(N-2,1)`, which floors at 1 and
+    CANNOT go infinite, so the offending bare-`N` formula is still unidentified.
+  - **NEW, unrelated, unguarded: 56 forums carry `IF = 999.999`, all year 1998** — a source sentinel ingested
+    as a real Impact Factor (Journal Of Sociology, Journal Of Porous Media, International Review Of
+    Hydrobiology, …). Nothing clamps it because 999.999 is perfectly finite; any 1998 publication in those
+    venues scores against it. Arguably worse than the bug this entry was opened for.
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
