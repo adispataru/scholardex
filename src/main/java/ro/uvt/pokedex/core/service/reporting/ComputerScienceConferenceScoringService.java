@@ -371,6 +371,26 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                     }
                     trace = dblpResolution.trace();
                 }
+                // H90 — the composed "<stream acronym> <conferenceName>" title above is a SYNTHETIC string, and
+                // when the conferenceName is itself an acronym that differs from the stream key it matches
+                // nothing: DBLP files BDCAT under conf/bdc, so the composed name is "BDC BDCAT", which neither
+                // contains nor overlaps CORE's "IEEE/ACM International Conference on Big Data Computing,
+                // Applications and Technologies" — the exact BDCAT acronym match is scored NONE and a CORE-C
+                // conference falls to D. The prepend is right when conferenceName is a full title (it supplies
+                // the acronym CORE keys on); it is pure noise when conferenceName IS the acronym. So retry the
+                // evidence's own conferenceName alone. This resolves only via EXACT_ACRONYM_ONLY, which demands
+                // the whole name equal a CORE acronym AND a single CORE entry to hold it — an ambiguous acronym
+                // (CISIS names two different conferences) still resolves to nothing here, as it must.
+                String evidenceName = evidence.get().getConferenceName();
+                if (evidenceName != null && !evidenceName.isBlank() && !evidenceName.equals(dblpConferenceTitle)) {
+                    ConferenceMatch nameMatch = resolveConferenceMatch(evidenceName.trim(), trace);
+                    trace = nameMatch.trace();
+                    ConferenceScoreResolution nameResolution = scoreResolvedConference(nameMatch, year, trace, ResolutionSource.DBLP, workshop2026, posterOrDemo);
+                    if (nameResolution.score().isPresent()) {
+                        return nameResolution;
+                    }
+                    trace = nameResolution.trace();
+                }
             }
         }
 

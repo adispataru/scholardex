@@ -376,7 +376,7 @@
 
   // Short pill label per zeroReason — the full sentence above lives in the tooltip.
   var ZERO_REASON_LABEL = {
-    'VENUE_TYPE_MISMATCH':  'other venue type',
+    'VENUE_TYPE_MISMATCH':  'counted elsewhere',
     'FEE_JOURNAL':          'APC journal',
     'NOT_TOP_RANKED':       'below top rank',
     'SCORED_BY_STRICTER':   'counted under I1/I5',
@@ -530,7 +530,7 @@
     if (!isCitations && (zeros.length > 0 || mismatched.length > 0)) {
       html += '<div class="app-eval-evidence-summary">' +
         counted.length + ' counted' +
-        (mismatched.length > 0 ? ' · ' + mismatched.length + ' other venue type' : '') +
+        (mismatched.length > 0 ? ' · ' + mismatched.length + ' counted elsewhere' : '') +
         (zeros.length > 0 ? ' · ' + zeros.length + ' zero' : '') +
         '</div>';
     }
@@ -551,9 +551,12 @@
     html += '</tbody></table>';
 
     if (mismatched.length > 0) {
+      // Name where they went, not just that they differ. A reviewer scanning a conference indicator
+      // sees journals at the foot of the list and cannot tell whether they were dropped or moved;
+      // "counted under the indicator for their own venue type" answers that without opening a tooltip.
       html += '<button type="button" class="app-eval-mismatch-toggle" aria-expanded="false">' +
         mismatched.length + ' publication' + (mismatched.length !== 1 ? 's are' : ' is') +
-        ' another venue type — show</button>';
+        ' a different venue type, counted under the indicator for that venue — show</button>';
     }
     return html;
   }

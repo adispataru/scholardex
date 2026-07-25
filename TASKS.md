@@ -170,6 +170,10 @@ Done history moved to `TASKS-done.md`.
     Cost would be a new field across fact + projection + view + widening `resolveConferenceMatch` (the
     three-layer dual-path trap) plus a stricter match confidence. **Not worth it.** Revisit only if the
     confirmed-population count grows materially as more researchers onboard.
+    **CORRECTION 2026-07-26 (see H90).** The premise above was wrong on the data. BDCAT is not "a different
+    conference" — `conf/bdc` IS BDCAT's DBLP stream (the conference was Big Data Computing before the
+    rename), and the paper's own evidence row already carries `conferenceName = "BDCAT"`, which CORE ranks C.
+    No alias field was ever needed: the identity was in hand and being thrown away. Fixed in H90.
   - **RIS/`Infinity` — original symptom, still unexplained.** No non-finite values in prod today (0 across
     AIS 341k / RIS 95k / IF 340k rows). `ScientificProductionService:398` clamps a non-finite score to 0.0,
     so nothing renders ∞ — but a real metric silently reads 0. **549 publications have `author_count = 0`**,
@@ -208,6 +212,58 @@ Done history moved to `TASKS-done.md`.
     as a real Impact Factor (Journal Of Sociology, Journal Of Porous Media, International Review Of
     Hydrobiology, …). Nothing clamps it because 999.999 is perfectly finite; any 1998 publication in those
     venues scores against it. Arguably worse than the bug this entry was opened for.
+
+- [ ] `H90` Reviewer-reported conference mis-identification (florin.fortis, 2026-07-26).
+  Fourteen flagged publications, checked one by one against prod. They split into three groups, and only
+  one of them was a code defect.
+  - **Already fixed by H89, report simply predates the deploy — CISIS ×5.** CORE holds TWO conferences under
+    the acronym CISIS ("Complex, Intelligent and Software Intensive Systems", C in every edition, and
+    "Computational Intelligence in Security for Information Systems", B→National), so the DBLP stream forum
+    named "CISIS" is ambiguous by construction and resolves to neither — correctly. The pre-restamp forum
+    ("Proceedings - 2014 8th International Conference on Complex, Intelligent and Software Intensive
+    Systems, CISIS 2014") names which one it is, and the H89 `originalForumId` fallback reads it. Pinned
+    with a verbatim-prod test; it passed on first run. **These need only a report refresh, no code.**
+    63 CORE acronyms are held by more than one conference, so this shape is not rare.
+  - **Real defect — DBLP's stream key can hide the conference's own acronym. FIXED (`H90`).**
+    `resolveDblpConferenceTitle` composes `"<stream acronym> <conferenceName>"` to seed the acronym CORE
+    keys on. That is right when `conferenceName` is a full title; when `conferenceName` is ITSELF an
+    acronym that differs from the stream key it fabricates a string that matches nothing: BDCAT is filed
+    under `conf/bdc`, so the composed name is `"BDC BDCAT"`, which neither contains nor token-overlaps
+    CORE's "IEEE/ACM International Conference on Big Data Computing, Applications and Technologies" — the
+    exact BDCAT acronym match scores NONE and a CORE-C conference falls to D. Same failure class as the
+    `eb1b882d` CORE-qualifier bug: an exact acronym match sunk by name dissimilarity. Fix retries the
+    evidence's own `conferenceName` alone after the composed attempt misses; it can only resolve via
+    EXACT_ACRONYM_ONLY, which demands the whole name equal a CORE acronym AND a single CORE entry to hold
+    it — so an ambiguous acronym (CISIS) still resolves to nothing, as it must.
+    **Measured in prod: 337 evidence rows carry the mismatch; 58 already resolve on the stream acronym,
+    41 are ambiguous and stay unresolved, 115 are recovered** (`IEEEANTS`→ANTS, `ERCIMDL`→TPDL,
+    `EUROMICRO`→SEAA, `ICMCS2`→ICMCS, …). Side effect: AAMAS now resolves straight from its evidence and
+    no longer depends on the pre-restamp forum surviving — its prod-shape test asserts that with a
+    `never()` on the fallback lookup.
+  - **Not a defect — no evidence to reason from. MedFusion-LM (ECML-PKDD workshop volume), the two AINA
+    volumes, AD-ZeroNAS.** All are 2025/2026 Springer chapters sitting on `Book Series` forums
+    ("Communications in Computer and Information Science", "Lecture Notes on Data Engineering and
+    Communications Technologies") with **no DBLP evidence row at all**. Nothing in our data says which
+    conference the volume belongs to; the reviewer knew from outside knowledge. **DBLP evidence covers only
+    6–20% of conference publications** (2025: 10 of 61; 2026: 1 of 16) — the local dump sweep is the
+    bottleneck, not the matcher. **Action is an ops one: refresh the DBLP dump and re-run
+    `/general/dblpLnChapterEnrichment` → `sweep()`, then a derive-only rebuild.** Two of these four are
+    cosmetic anyway — the reviewer notes AD-ZeroNAS "can stay Springer, no point difference" (LNCS floor C
+    == CISIS C), as with ISPDC and "Exploring Streaming…", where only the displayed venue name is ugly.
+  - **Open, needs a decision — workshop→parent conference where no source states the link.** EuroMLSys
+    (`10.1145/3721146.3721933`) should be C at half of EuroSys's points (workshop of a CORE-A = 4). DBLP
+    gives it its own stream `conf/euromlsys` with `conferenceName = "EuroMLSys"` and **no `@` marker**, and
+    CORE has no EUROMLSYS entry — so the existing `X@Y` workshop rule (which is exactly the convention the
+    reviewer proposed, already implemented) cannot fire, and neither can anything else. Resolving this
+    needs a **curated workshop→parent map**, i.e. new reference data, not a smarter matcher. Check first
+    whether a refreshed dump populates `booktitle` (null for every evidence row today) — DBLP does use
+    `EuroMLSys@EuroSys` in some editions, which would make it resolve for free.
+  - **UX — "other venue type" relabelled to "counted elsewhere".** Journals appear at the foot of a
+    conference indicator's list, already collapsed behind a toggle; the reviewer's point is that the label
+    does not say where they went, so a reader cannot tell whether they were dropped. Toggle now reads
+    "… a different venue type, counted under the indicator for that venue".
+  - Not an issue: "Benchmarking Database Systems…" (IETE TR) is correctly a journal; the reviewer confirms
+    its DAIT/BNCOD workshop origin does not change the class.
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*

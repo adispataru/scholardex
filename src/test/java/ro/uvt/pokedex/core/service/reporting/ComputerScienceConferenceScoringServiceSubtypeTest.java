@@ -2736,10 +2736,10 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         atal.setAggregationType("Conference Proceeding");
         when(cacheService.getForum("forum-atal-stream")).thenReturn(atal);
 
-        ScholardexForumView aamas = new ScholardexForumView();
-        aamas.setPublicationName("Proceedings of the International Joint Conference on Autonomous Agents and Multiagent Systems, AAMAS");
-        aamas.setAggregationType("Journal");   // <-- as in prod, NOT a conference-proceeding forum
-        when(cacheService.getForum("forum-aamas-raw")).thenReturn(aamas);
+        // The pre-restamp forum ("… Autonomous Agents and Multiagent Systems, AAMAS", aggregationType
+        // "Journal" as in prod) is deliberately NOT stubbed: since H90 the evidence's own conferenceName
+        // resolves AAMAS directly, so this paper no longer depends on the pre-restamp forum surviving.
+        // The never() below is the load-bearing part — it fails if resolution regresses to that fallback.
 
         ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
         evidence.setPublicationId("spub_1285e0759f924f2a965e2052");
@@ -2764,6 +2764,9 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
         assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent(),
                 "AAMAS 2020 is CORE A*; prod scores this D/0. trace=" + service.getLastTraceForTests());
+        assertEquals("DBLP+CORE", score.getScoringSource(),
+                "the rank must come from the DBLP evidence itself, not the pre-restamp forum");
+        verify(cacheService, org.mockito.Mockito.never()).getForum("forum-aamas-raw");
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -2910,5 +2913,101 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         yearlyRanking.setRank(rank);
         ranking.setYearlyRankings(Map.of(2023, yearlyRanking, 2024, yearlyRanking));
         return ranking;
+    }
+
+    // =============================================================================================
+    //  H90 — reviewer-reported conference mis-identification (florin.fortis)
+    // =============================================================================================
+
+    /** A CORE entry whose rank is pinned per edition year, as the real data is. */
+    private CoreConferenceRanking rankingWithYears(String acronym, String name,
+                                                   Map<Integer, CoreConferenceRanking.Rank> ranksByYear) {
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setId(acronym + "-" + name);
+        ranking.setAcronym(acronym);
+        ranking.setName(name);
+        Map<Integer, CoreConferenceRanking.YearlyRanking> yearly = new java.util.LinkedHashMap<>();
+        ranksByYear.forEach((year, rank) -> {
+            CoreConferenceRanking.YearlyRanking yearlyRanking = new CoreConferenceRanking.YearlyRanking();
+            yearlyRanking.setRank(rank);
+            yearly.put(year, yearlyRanking);
+        });
+        ranking.setYearlyRankings(yearly);
+        return ranking;
+    }
+
+    private ScoringPublication dblpStampedPublication(String id, String forumId, String originalForumId, String coverDate) {
+        return new ScoringPublication(id, null, forumId, null, originalForumId, coverDate, null, "cp",
+                List.of(), 0, null, null, null, 0, Set.of(), 0, 0, 0, List.of(), null);
+    }
+
+    private void stubEvidence(String publicationId, String series, String conferenceName) {
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId(publicationId);
+        evidence.setSeries(series);
+        evidence.setConferenceName(conferenceName);
+        when(dblpEvidenceRepository.findByPublicationId(publicationId)).thenReturn(Optional.of(evidence));
+    }
+
+    /** The two prod CORE entries that share the acronym CISIS — verbatim names and edition ranks. */
+    private List<CoreConferenceRanking> bothCisisRankings() {
+        return List.of(
+                rankingWithYears("CISIS", "Computational Intelligence in Security for Information Systems",
+                        Map.of(2010, CoreConferenceRanking.Rank.B, 2013, CoreConferenceRanking.Rank.B,
+                                2014, CoreConferenceRanking.Rank.B, 2017, CoreConferenceRanking.Rank.B,
+                                2018, CoreConferenceRanking.Rank.National, 2020, CoreConferenceRanking.Rank.National,
+                                2021, CoreConferenceRanking.Rank.National, 2023, CoreConferenceRanking.Rank.National)),
+                rankingWithYears("CISIS", "International Conference on Complex, Intelligent and Software Intensive Systems",
+                        Map.of(2010, CoreConferenceRanking.Rank.C, 2013, CoreConferenceRanking.Rank.C,
+                                2014, CoreConferenceRanking.Rank.C, 2017, CoreConferenceRanking.Rank.C,
+                                2018, CoreConferenceRanking.Rank.C, 2020, CoreConferenceRanking.Rank.C,
+                                2021, CoreConferenceRanking.Rank.C, 2023, CoreConferenceRanking.Rank.C)));
+    }
+
+    @Test
+    void cisisPaperResolvesTheComplexSystemsConferenceNotTheSecurityOne() {
+        // Prod shape of spub_114b588692be4bf53b226c8a. CORE holds TWO conferences under the acronym CISIS,
+        // so the DBLP stream name "CISIS" is ambiguous by construction and resolves to neither. The
+        // pre-restamp forum name is the only thing that says WHICH CISIS this is — and it says so plainly.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = dblpStampedPublication(
+                "spub_114b588692be4bf53b226c8a", "forum-cisis-stream", "forum-cisis-2014-raw", "2014-10-01");
+        when(cacheService.getForum("forum-cisis-stream")).thenReturn(conferenceForum("CISIS"));
+        when(cacheService.getForum("forum-cisis-2014-raw")).thenReturn(conferenceForum(
+                "Proceedings - 2014 8th International Conference on Complex, Intelligent and Software Intensive Systems, CISIS 2014"));
+        stubEvidence("spub_114b588692be4bf53b226c8a", "conf/cisis", "CISIS");
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("CISIS")).thenReturn(bothCisisRankings());
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent(),
+                "CISIS (Complex, Intelligent and Software Intensive Systems) is CORE C in every edition. "
+                        + "trace=" + service.getLastTraceForTests());
+        assertEquals(2.0, score.getScore());
+    }
+
+    @Test
+    void bdcatPaperResolvesItsOwnCoreEntryNotTheDblpStreamKey() {
+        // Prod shape of spub_f79f459296058bf1d49ec462. DBLP files BDCAT under the stream key conf/bdc, so
+        // the minted forum is named "BDC" — an acronym CORE has no entry for — while the evidence carries
+        // the real acronym BDCAT, which CORE ranks C. There is no pre-restamp forum to fall back on.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = dblpStampedPublication(
+                "spub_f79f459296058bf1d49ec462", "forum-bdc-stream", null, "2025-01-01");
+        when(cacheService.getForum("forum-bdc-stream")).thenReturn(conferenceForum("BDC"));
+        stubEvidence("spub_f79f459296058bf1d49ec462", "conf/bdc", "BDCAT");
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("BDCAT")).thenReturn(List.of(rankingWithYears(
+                "BDCAT", "IEEE/ACM International Conference on Big Data Computing, Applications and Technologies",
+                Map.of(2021, CoreConferenceRanking.Rank.C, 2023, CoreConferenceRanking.Rank.C))));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent(),
+                "BDCAT is CORE C; the conf/bdc stream key must not hide it. trace=" + service.getLastTraceForTests());
+        assertEquals(2.0, score.getScore());
     }
 }

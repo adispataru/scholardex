@@ -46,7 +46,8 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
         String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
         if (!"bk".equals(subtype) && !"ch".equals(subtype)) {
             // Not book-shaped — counted by the journal/proceedings indicators instead. The marker keeps
-            // the UI's "other venue type" bucket instead of a misleading generic formula-cutoff flag.
+            // the UI's VENUE_TYPE_MISMATCH ("counted elsewhere") bucket instead of a misleading
+            // generic formula-cutoff flag.
             score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
             return score;
         }
