@@ -175,6 +175,59 @@ class OfficialWosJsonImportEventParserTest {
     }
 
     @Test
+    void theNineNineNineSentinelIsNotIngestedAsAnImpactFactor() throws Exception {
+        // The real 1998 extracts carry journalImpactFactor=999.999 for 56 journals (50 SCIE + 6 SSCI) —
+        // WoS's "no value" sentinel, the positive twin of the -999 the parser already rejected. Nothing
+        // downstream clamps it (999.999 is an ordinary finite double), so before this guard "Journal Of
+        // Sociology" scored on an Impact Factor of 999.999. The record is still emitted; its value is null.
+        java.util.Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("journalTitle", "Journal Of Sociology");
+        payload.put("year", 1998);
+        payload.put("edition", "SCIE");
+        payload.put("issn", "1440-7833");
+        payload.put("journalImpactFactor", 999.999);
+        WosImportEvent event = new WosImportEvent();
+        event.setId("ev-1998");
+        event.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        event.setSourceFile("wos-json-1997-2019/journals-SCIE-year-1998.json");
+        event.setSourceVersion("v1998");
+        event.setSourceRowItem("1126");
+        event.setPayloadFormat("json-item");
+        event.setPayload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertNull(result.records().stream()
+                .filter(r -> r.metricType() == MetricType.IF).findFirst().orElseThrow().value(),
+                "999.999 is WoS's no-value sentinel, not an Impact Factor");
+    }
+
+    @Test
+    void aGenuinelyHighImpactFactorIsStillIngested() throws Exception {
+        // The bound must not eat real data: CA-A Cancer Journal legitimately reaches ~685.
+        java.util.Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("journalTitle", "CA-A Cancer Journal For Clinicians");
+        payload.put("year", 2025);
+        payload.put("edition", "SCIE");
+        payload.put("issn", "0007-9235");
+        payload.put("journalImpactFactor", 685.2);
+        WosImportEvent event = new WosImportEvent();
+        event.setId("ev-ca");
+        event.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        event.setSourceFile("wos-json-1997-2019/journals-SCIE-year-2025.json");
+        event.setSourceVersion("v2025");
+        event.setSourceRowItem("1");
+        event.setPayloadFormat("json-item");
+        event.setPayload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(685.2, result.records().stream()
+                .filter(r -> r.metricType() == MetricType.IF).findFirst().orElseThrow().value());
+    }
+
+    @Test
     void parsedIfRecordWhenIfValueNullButKeyPresent() throws Exception {
         java.util.Map<String, Object> payload = new java.util.HashMap<>();
         payload.put("journalTitle", "Journal IF Key");

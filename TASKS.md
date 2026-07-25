@@ -175,7 +175,18 @@ Done history moved to `TASKS-done.md`.
     so nothing renders ∞ — but a real metric silently reads 0. **549 publications have `author_count = 0`**,
     the divisor the guard's comment names; note the Info_B/C formulas use `max(N-2,1)`, which floors at 1 and
     CANNOT go infinite, so the offending bare-`N` formula is still unidentified.
-  - **NEW, unrelated, unguarded: 56 forums carry `IF = 999.999`, all year 1998** — a source sentinel ingested
+  - **WoS ±999 sentinel ingested as a real metric — FIXED 2026-07-25.** `AbstractWosImportEventParser`
+    rejected only the NEGATIVE sentinel (`parsed <= -999.0`), so `journalImpactFactor=999.999` rode in as a
+    genuine Impact Factor. Root cause traced to the extracts themselves: `journals-SCIE-year-1998.json` (50
+    rows) and `journals-SSCI-year-1998.json` (6) — an identical three-decimal value shared across a whole
+    year, in both editions, is not data. Guard is now symmetric (`>= 999.0` too); the bound is safe for every
+    metric the parser handles (highest real IF ~685 for CA-A Cancer Journal, AIS peaks ~108, RIS ~126) and
+    all WoS parsing goes through this one helper, verified by grep. Two tests: the sentinel is dropped, and
+    a genuinely high IF still ingests. **Prod data repair pending** —
+    `scripts/ops/clear-wos-metric-sentinels.sh` nulls the stored values (matching what a re-ingest now
+    produces, so the two converge) with a restorable copy in `app_migrations`; a projection rebuild and a
+    refresh of any run scoring a 1998 journal are needed afterwards.
+  - **(superseded note) 56 forums carried `IF = 999.999`, all year 1998** — a source sentinel ingested
     as a real Impact Factor (Journal Of Sociology, Journal Of Porous Media, International Review Of
     Hydrobiology, …). Nothing clamps it because 999.999 is perfectly finite; any 1998 publication in those
     venues scores against it. Arguably worse than the bug this entry was opened for.
