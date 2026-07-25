@@ -9,103 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H87` i18n for the public, researcher and supervisor UI (RO/EN).
-  **SCOPED 2026-07-25.** Driver: the UI is English while the domain, the researchers and every message we
-  send them are Romanian; the changelog + welcome banner shipped in Romanian, so the app now visibly mixes
-  languages. Decision from the user: **UI only** — reports, indicators and standards text stay Romanian
-  (they quote OM 3019/2025 and the FV templates; translating them would misrepresent the standard).
-  Admin pages are out of scope (operator surface, English is fine).
-  Surface inventory: ~26 Thymeleaf templates (root 4, user 4, supervisor 2, publications 2, forums 2,
-  authors 2, rankings 1, universities 1, core 1, reports 2, shared 1, errors 4) + `fragments.html`
-  (shell/nav/footer, the highest-leverage file) + ~113 user-visible strings across the 7 workspace JS
-  modules (toasts, empty states, badges, wizard copy).
-  **S1 DONE locally 2026-07-25**: `LocaleConfig` + `UserPreferenceLocaleResolver` (saved preference →
-  cookie → Romanian; `?lang=` switch persists to `User.preferredLanguage` AND a cookie), `messages`
-  (ro, the default bundle) + `messages_en`, a switcher in both shells, nav labels + the changelog page +
-  the landing welcome converted. GOTCHA: the resolver takes `ObjectProvider<UserRepository>` — a hard
-  dependency broke every `@WebMvcTest` slice (WebMvcConfigurer beans load, repositories do not). Pinned by
-  a bundle-parity test (same keys + same `{0}` placeholders in both languages) and resolver unit tests.
-  Slices:
-  - **S1 infra**: `MessageSource` (UTF-8 `messages_ro`/`messages_en`), `LocaleResolver` persisting the
-    choice per user (cookie + the existing WorkspacePreferences for logged-in users), a switcher in the
-    shell header, `#{...}` in the two newest surfaces (landing welcome + changelog) as the pilot, and a
-    test asserting both bundles have identical key sets (the classic drift bug).
-  - **S2a DONE locally 2026-07-25**: shell chrome (skip link, nav aria, theme toggle, workspace switcher,
-    panel labels, sign-in/out), landing page (title/meta/hero/CTAs/surface cards), and ALL error copy —
-    which lived in `ErrorPageModelFactory`, not in templates, so that class now resolves through
-    MessageSource (both construction sites inject it). Terminology set: Forums → "Forumuri", Workspace →
-    "Spațiul meu". GOTCHA: `LocaleChangeInterceptor` does not run when no handler matched, so `?lang=` was
-    dead on 404/error pages — the resolver now reads the `lang` parameter itself (read-only; persistence
-    still happens via setLocale). Test copy assertions moved to the Romanian default; English coverage sits
-    in `ErrorPageModelFactoryTest`, which asserts both bundles resolve.
-  - **S2b DONE locally 2026-07-25**: publications list+detail, forums list, authors list+detail,
-    universities detail, core ranking detail and the rankings hub (4 tabs: CORE/universities/events/WoS —
-    filters, sort options, table headers with their tooltips, loading/empty states, page intros, tab
-    labels). Shared `common.*` vocabulary (filters/sort/pagination/year/name/type/category) keeps the four
-    filter blocks consistent. Untranslated by rule, as agreed: entity names, ISSN/eISSN/DOI, CORE ranks
-    (A*/B/C/Unranked), quartiles, WoS/Scopus/DOAJ/ERIH, h-index — plus `th:text` design-time fallbacks,
-    which are placeholders for dynamic data, not copy. Contract assertions that pinned markup shape
-    (`<th scope="col" data-sort-key="name">…`) keep the shape and now expect the Romanian label.
-  - **S3a DONE locally 2026-07-25** (plumbing + 2 of 4 user templates): CLDR plural rules in BOTH
-    languages — `PluralRules.java` + the JS twin in `modules/shared/i18n.js`. Romanian needs three forms and
-    the third takes a particle ("20 DE publicații"); the old `n !== 1 ? 's' : ''` pattern could not express
-    it, and the S1 landing banner shipped with that defect (now fixed: keys are `.one/.few/.other`, selected
-    server-side via `#{__${pluralKey}__(...)}`). Client copy comes from `window.appI18n`, INLINED into
-    workspace.html by `UiMessageBundleService` (key list read from the base bundle, values resolved through
-    MessageSource) — synchronous, so nothing races the lazy panels. Guardrails: parity test now requires
-    complete plural families in both bundles; `scripts/test-i18n-helper.js` pins the JS categories against
-    the Java table (0/20/101 boundaries) and the contract test pins "21 de noutăți" through the real
-    template. GOTCHA (3rd time): a new controller constructor dep broke every `@WebMvcTest` for that
-    controller until mocked.
-  - **S3a REMAINING**: `user/individual-report-view.html` (29) and `user/individual-report-import.html`
-    (45) — deliberately left for last since report copy borders on standards wording.
-  - **S3b DONE locally 2026-07-25**: all 6 workspace JS modules converted to `t()`/`tPlural()` (~129
-    strings; bundle now 204 keys). Every `${n} thing${n !== 1 ? 's' : ''}` became a 3-form family, verified
-    live: "1 citare" / "5 citări" / "20 de citări". TRAPS handled: (1) `AGGREGATION_TYPES` were both the
-    label AND the persisted `aggregationType` value — split into {value, key} so a Romanian UI does not
-    start submitting Romanian venue types; (2) the aggregation render used `.map(t => …)`, which would have
-    shadowed the imported translator — parameter renamed; (3) most strings live inside HTML template
-    literals (placeholder/aria-label), not quoted JS, so a naive literal sweep misses them.
-  - **S3 REPORT TEMPLATES DONE locally 2026-07-25**: `individual-report-view.html` +
-    `individual-report-import.html`. The UI/standards line held: chrome translated ("Punctaj total",
-    "Criterii îndeplinite", "Total din fișier"), while the standard's own labels stay Romanian in both
-    locales — e.g. `report.import.perspectivaDActivities` is "Perspectiva D activities" in English.
-    TRAPS: (1) blanket `>Word<` replacement collided with tags that ALREADY had `th:text` (report title,
-    indicator name, criterion name, export label) → duplicate attribute = Thymeleaf parse failure; the
-    dynamic expression wins and the literal fallback is localized inside it. (2) `report.view.noRun.other`
-    tripped the plural-family guardrail because `.other` is a reserved CLDR suffix — renamed to
-    `.forOtherResearcher` rather than weakening the check.
-    NEW GUARDRAIL: `scripts/test-i18n-keys.js` (npm `test-i18n-keys`) statically verifies every `#{...}` in
-    a template and every `t()`/`tPlural()` base in the JS resolves against the bundle — it covers markup
-    that cannot be rendered without fixture state, like the report-import tables which need an upload.
-    Currently 455 keys, all resolving.
-  - **S4 supervisor pages** + a sweep for leftovers (a lint that fails on bare text nodes in the
-    in-scope templates).
-  Open decisions for the user: default locale (RO for uvt.ro users vs browser `Accept-Language`), and
-  whether report/indicator NAMES stay Romanian inside an English UI (recommended: yes, they are the
-  standard's own labels).
-
-- [ ] `H86` In-app changelog page ("Noutăți / What's new").
-  **PAGE DONE locally 2026-07-25.** `/changelog` renders the committed
-  `src/main/resources/changelog/changelog.json` (12 backfilled entries covering the H82–H85 wave), grouped
-  by date newest-first, Romanian dates via an explicit `ro` locale, scoring-impact entries accented and
-  chipped, ADMIN-audience entries + the maintenance footnote visible only to PLATFORM_ADMIN. Loader is
-  fail-soft (bad/missing fixture → empty page, never a broken context) and the service test runs against
-  the REAL fixture so a malformed entry fails the build. Nav link added to both the public header and the
-  app shell topbar. REMAINING: the "what's new" badge — `ChangelogService.newSince(lastVisit, isAdmin)` is
-  implemented and tested but not yet wired into the workspace (needs a model attribute + a badge in the
-  workspace header); optional later: deep-link a report drilldown to the entry that changed an indicator.
-  Driver (2026-07-25): the platform now changes fast enough that researchers see score movements without
-  knowing why (UCC → C, SYNASC 10 → 20, percent caps, best-of rankings), and the only record is email.
-  Proposed shape: entries live in a COMMITTED file (`src/main/resources/changelog/changelog.json`) so an
-  entry ships in the same commit as the change it documents and cannot drift; loaded at startup like the
-  standards/publisher lists. Entry = {date, title, body, audience RESEARCHER|ADMIN|ALL, scoringImpact
-  flag, affects[] (report/indicator keys)}. Page at `/changelog` (researchers see RESEARCHER+ALL, admins
-  see everything), newest first, scoring-impact entries visually distinct — that is the "why did my score
-  change" answer. Workspace hook: reuse the existing lastVisit stamp + NudgeService for a "what's new"
-  badge. Backfill entries for the whole H82–H85 wave. Later (optional): deep-link from a report drilldown
-  to the entry that changed that indicator.
-
 - [ ] `H84` Researcher-flagged publication merges (durable across rebuilds).
   Consumer: Florin's FedCSIS duplicate — no DOI (FedCSIS never assigned), arrived via Scopus + a second
   route; canonical identity is titleNormalized+coverDate+creator and the two routes carry DIFFERENT
@@ -134,46 +37,26 @@ Done history moved to `TASKS-done.md`.
   suggestions among OWN pubs, ownership-enforced flagging, richness-picked survivor), workspace
   endpoints merge-state/merge-requests, publications-tab banner + "merge requested" badges +
   detail-panel "Duplicate?" picker; requests land PENDING in the S2 admin queue. Bundle rebuilt.
-  Remaining: S4 optional corpus-wide sweep; prod rollout of the two known pairs after deploy.
-
-- [ ] `H85` OM 2026 conference-list amendments: ACM/EPTCS → C; UCC Companion mislabeling.
-  **SCOPED 2026-07-24** (`docs/tasks/active/h85-om2026-acm-eptcs-c-floor.md`).
-  The 2026 OM amends the CORE list: "categoria C va include și lucrările publicate în ACM, EPTCS și LNCS
-  care nu sunt în categoriile A*, A și B" — we implement only the LNCS→C floor (correct for 2016, whose
-  amendment is LNCS-only). UCC is CORE-Unranked (2021/2023/2026), so the amendment decides: ACM-published
-  from 2013+ (IEEE/ACM co-sponsorship; NOTE the DOI stays IEEE-branded, so detect via proceedings-name
-  tokens/publisher, not DOI prefix) → C in the 2026 fișă, D in 2016. Implement as a 2026-scoped floor next
-  to the LNCS special case (per-standard gating precedent: workshopCategory2026). Second facet: Florin's
-  UCC entries display as "UCC Companion" though published in the MAIN volume — investigate on prod (Scopus
-  venue assignment vs our forum merge); near-term remedy exists via admin bulk reassign-forum.
-  **Slice A DONE 2026-07-24** (floor + 4 clones, deployed + prod data applied). **Slice B DONE** —
-  Companion mislabel not present in current prod data (ask Florin where he sees it).
-  **Slice C DONE locally 2026-07-24** — the sweep's conf/X re-stamp destroyed the ACM name signal
-  ("UCC", empty publisher), so Slice A missed exactly Florin's papers; fix preserves the displaced raw
-  proceedings forum as `originalForumId` (fact → view → Postgres V25 → ScoringPublication) and the floor
-  consults it. Rollout: deploy, then admin "Full derived-data rebuild" backfills; then Florin's refresh
-  should show UCC 2012/2014 = C (quarter ACM), UCC 2011 = D.
-
-- [ ] `H83` University rankings — QS + ARWU ingestion, best-of resolution, URAP back-catalog.
-  **SCOPED 2026-07-24** (`docs/tasks/active/h83-university-rankings-best-of.md`). OM 3019/2025 footnote *3
-  (same in 2016): D(viii)/D(ix)/D(xi) score by the BEST position across QS/URAP/ARWU — we only have URAP
-  (2018–2024). S1: scrape URAP 2010–2017 archives → same xlsx shape → re-run `/general/urap` (closest-year
-  becomes exact for old visits). S2: generic `UniversityRanking{name, source, year→rank}` + loaders for
-  ARWU (Kaggle 2003–2025 full back-catalog) and QS (2017–2022 + 2025/2026; older partial). S3: best-of
-  lookup facade (min rank across sources, closest-year per source, provenance in scoringInfo) consumed by
-  `UniversityRankScoringService` — bracket formulas untouched. S4 optional: UNIVERSITY_NAME autocomplete
-  picker mirroring the CORE conference picker. Verification: Florin's Pisa / Aix-Marseille cases.
-
-- [x] `H82` **DONE (2026-07-24, `39a1bbf6`)** Scopus re-sync re-enriches EXISTING publications (narrow-first).
-  The coverDate precedence fix (`069153f3`) promised "existing wrong dates heal on the next Scopus author
-  sync" — false in practice: a FULL publication sync reports "Imported 0 items" because already-imported pubs
-  are skipped before `ScholardexPublicationCanonicalizationService` runs, so the enrichment that would claim
-  Scopus's coverDate/coverDisplayDate never touches them (verified in prod 2026-07-24 on the FGCS 2008→2009
-  case; healed via the full derived-data rebuild). Shipped: FULL mode collects all seen eids and
-  `ScopusExistingPublicationReenrichmentService` re-claims coverDate/coverDisplayDate on drifted canonical
-  pubs (narrow field list by design — broad re-enrichment risks re-clobbering DBLP forums/admin fixes),
-  dirty-marks with the pubs' own sourceBatchIds and pushes the per-batch partial projection rebuild.
-  Widening the field list (title/authors/forum with clobber guards) stays open for a future consumer.
+  **LIVE IN PROD 2026-07-25.** Nine merges approved and applied; all seven of the current wave rebuilt off a
+  single "rebuild now" on the last approval (a merge writes a BATCHLESS dirty marker, and
+  `rebuildDirtyProjections` sweeps every outstanding marker into one full rebuild — so per-merge rebuilds are
+  never needed). Verified: 13/13 markers REBUILT, 0 retired duplicates left in `publication_facts`, 0 dangling
+  refs across authorship/source-links/citation edges, and Mongo 154,016 = Postgres `scholardex_publication_view`
+  154,016. Report runs for the affected researchers still predate the epoch bump and need a refresh to show the
+  corrected (lower — dedup merges citation lists) totals.
+  **Admin request endpoint DONE 2026-07-25 (`2a3172af`)**: `POST /admin/publications/mergeRequests` queues a pair
+  PENDING without applying it. Until it existed the only admin-side write was the unreviewed direct merge — the
+  path the 2026-07-25 mis-merge took — and only a researcher could feed the queue. Idempotent, so a re-run can
+  neither resurrect a rejected pair nor clobber a live one.
+  **S4 RE-SCOPED 2026-07-25 after measuring it against prod.** The corpus-wide sweep as designed yields 1,398
+  actionable candidates (from 10,434 raw same-title pairs: −1,868 generic ≤3-word titles, −2,602 pairs whose two
+  sides carry DIFFERENT DOIs, i.e. genuinely distinct records) — but only **10 touch a UVT author at all** and
+  only **9 double-counted in a live score**. A batch job producing 1,398 rows would need ranking, paging and
+  bulk-reject purely to manage noise it creates itself. Re-scoped to a **UVT-authored sweep**: same grouping rule
+  restricted to publications carrying a UVT author id, scheduled, writing PENDING rows through the new endpoint.
+  ~10 rows today, grows with onboarding (57 of ~370 staff have profiles), structurally cannot flood the queue.
+  Left undone by decision: preprint-vs-published pairs (3 for madalina.erascu) — folding an arXiv preprint into
+  its published version changes a score and is a policy call, not a merge.
 
 - [ ] `H76` WoS CPCI onboarding — **MVP done + live; only blocked/attributed remainders open.**
   Plan: `docs/tasks/active/h76-wos-cpci-onboarding.md`. Background: `wosForumIds` come only from the WoS **journal**
@@ -185,8 +68,9 @@ Done history moved to `TASKS-done.md`.
   `applyCitationSourceSplit`). Projection refresh lifted `wos_citation_count` **+9,909 across +503 pubs**.
   **Remaining (both out of the MVP's hands):**
   - **Physics/FF forum-scoring** — `wosCpciIndexed` feeds ONLY the citation source-split, NOT forum-membership/WoS-forum
-    *paper* scoring; wiring the paper-count read to honor the flag (or projecting a CPCI membership row) is **`H65`
-    work**.
+    *paper* scoring; wiring the paper-count read to honor the flag (or projecting a CPCI membership row) is the
+    genuine open remainder. **This used to say "is `H65` work" — that pointer is dead:** H65 was archived
+    2026-06-30 on a different scope (Physics DOCX export), so the item had no owner. It lives here now.
   - **S3 broad citing coverage — BLOCKED on a WoS API key.** The UVT-scoped roster covers venues UVT publishes in; the
     full WoS citation graph (all citing venues) needs a programmatic Core-Collection pull (UI Records export caps
     ~1,000/file). Revisit when an Expanded/Starter API key is available.
@@ -210,34 +94,30 @@ Done history moved to `TASKS-done.md`.
   with T the final total, water-filling closed form; candidate-favorable and the only reading satisfying
   the OM constraint against the final total. `Criterion.maxPercentOfTotal` map, second phase in the single
   `computeCriterionScores` core, order weights → percent caps → maxTotal. Full scope + numeric pins:
-  `docs/tasks/active/h68-criteria-extensions.md` (Slice 3). Data change deploys AFTER code.
+  `docs/tasks/active/h68-criteria-extensions.md` (Slice 3).
+  **Data change VERIFIED IN PROD 2026-07-25** — both FV Info 2016 and 2026 carry
+  `Perspectiva D.maxPercentOfTotal = {13: 10, 17: 10}`. Nothing pending here.
 
-- [ ] `H81` Informatică 2026 Fișă (xlsx export/import). **SCOPED 2026-07-04**
-  (`docs/tasks/active/h81-informatica-2026-fisa-xlsx.md`). A 2026 version of the `informatica-2016` xlsx Fișă, adapted
-  from the 2016 template. Structure barely changes (FV Info 2026 has identical export roles); the deltas are the A*+A
-  publication criterion (a `Centralizator` template formula) and a new perspective-d **director-project count**
-  criterion (`Minim un proiect` as director, ≥50k EUR).
-  - **Slice 1 — DONE 2026-07-04:** GenericActivity indicator `Info_D_Proiecte_Director` counts grants where
-    `Rol != 'Membru' && budget >= 50000` (reuses Info_D_v's `B` pattern → no `Buget` field-type change, 2016 frozen).
-    Added to FV Info 2026 only; live-verified florin count=1. Team-size/competition not in our data (self-declared).
-  - **Slice 2 — DONE 2026-07-04:** `INDICATOR_TOTAL` scalar-cell export policy — `TemplateXlsxRenderer` 4-arg overload
-    stamps a template cell with the run's per-role total (`snapshot.getTotals()`, already keyed by role for every report
-    type). MANUAL cells untouched; missing total/sheet = warn-skip. Unit-tested; transfer suite green.
-  - **Slice 3 — DONE 2026-07-04:** `report-templates/informatica-2026/template.xlsx` — `D-Perspectiva D!K24`
-    "Număr proiecte ca director" (outside the points SUM, filled by the scalar cell) + `Centralizator` A*+A criterion
-    (correct `J17+J18+K19+K20` subtotal; 2016's A*-only `E10` left frozen) + director-project `count>=1` criterion +
-    an **Abilitare** block (rows 35–39: B 44/A*+A+B 28/A*+A 12, C 84/26, D 48, combined `AND` — no Total-points gate;
-    references stable `D7`/`D11`/`D15`, doesn't touch Hirsch cells). **Perspectiva-B per-rank *Publicații de top* gates
-    corrected to 2026** (CONF 16 / PROF 40 / HABIL 28) — aligns formulas with the sheet's own labels the 2016 template
-    contradicted (`E10` checked 16 though `C10` said 40; `E8` gated lector though `C8` said "oricare"); prof A*+A subtotal
-    fixed A*-only→A*+A.
-  - **Slice 4 — DONE 2026-07-04:** `informatica-2026/binding.json` (+ `INDICATOR_TOTAL` scalar cell, quoted sheet name)
-    + `Informatica2026ReportTypeImportSupport` (registry auto-discovered). FV Info 2026 already keyed `informatica-2026`
-    (export was failing on the unregistered support — now resolves). Seed consistent. Unit-tested.
-  - **Live E2E — DONE 2026-07-04:** booted `agent-dev`/8181, exported florin's FV Info 2026 Fișă (run
-    `directorScore=1`) → HTTP 200 xlsx with `D-Perspectiva D!K24 = 1.0` (director count stamped end-to-end) + corrected
-    perspectiva-B / A*+A / abilitare formulas intact; POI FormulaShifter correctly followed the B-Conferinte table
-    expansion (>10 conf pubs) so the A*+A refs stayed semantically right. **H81 fully done.**
+- [ ] `H88` Production readiness / launch checklist (operational, not feature work).
+  **RAISED 2026-07-25 during the backlog audit.** These items existed only in session memory and appeared in
+  NEITHER `TASKS.md` nor `TASKS-done.md`, which means the only record of them was outside the repo. Written
+  down so they survive.
+  - **Rotate the Elsevier (Scopus) API key** — the current key has been in use across development.
+  - **Keycloak decision** — commit to Keycloak or to the current OIDC setup for production sign-in. (Keycloak
+    appears only in `TASKS-done.md`; there is no open entry recording that the decision is still pending.)
+  - **On-prem Scopus smoke test** — confirm the scopus-python path works from the cluster, not just locally.
+  - **Mongodump seeding** — a restored dump currently carries the dev admin password; seeding a fresh
+    environment must not inherit it.
+  Exit criteria: each item either done or explicitly deferred with a reason, in this entry.
+
+- [ ] `H89` RIS projection emits a non-finite forum metric (root cause).
+  **RAISED 2026-07-25 during the backlog audit** — previously memory-only. A RIS forum metric is projected as
+  `Infinity` even though the source `metric_facts` are clean; `S/N`-shaped formulas then yield `∞` and poison
+  the whole indicator total. **Symptom is guarded, cause is not:** `ScientificProductionService` line 398
+  clamps a non-finite `finalScore` to `0.0` (`Double.isFinite(finalScore) ? finalScore : 0.0`), so no user sees
+  `∞` — but a real metric silently becomes 0, which is its own wrong answer.
+  Open work: find where the projection divides by a zero/absent denominator and fix it at the source, then
+  decide whether the clamp stays as a belt-and-braces guard or is removed.
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
@@ -248,29 +128,3 @@ Done history moved to `TASKS-done.md`.
   Remaining: **docx *import*/verify (H50.6)** — the docx supports' `parse()` still throw `UnsupportedOperationException` (Fizica/Feaa), so score-verification upload is xlsx-only; implement docx parsing for the docx report types. Plus any report definitions still lacking a binding (the remainder of H50.5).
   Exit criteria: each supported report type round-trips export → edit → upload → read-only verify (file-vs-run per-item + totals, no DB writes); xlsx-formula injection and docx-macro inputs are rejected/sanitized; misconfigured export mappings fail readiness instead of silently dropping rows.
   Dependency: none direct; planning doc at `docs/tasks/active/h50-individual-report-export-import.md`.
-
-- [ ] `H80` H79 production rollout (get the Informatică 2026 report live). **SCOPED 2026-07-04**
-  (`docs/tasks/active/h80-h79-production-rollout.md`). H79 code is merged + verified locally; the ingest→project pipeline
-  (`PipelineRebuildService`) already folds in DOAJ APC + the OPENALEX membership projection + the project projection —
-  the **only code gap** is that the OpenAlex source-APC derivation is a standalone endpoint, not a pipeline step.
-  - **Slice A (code) — DONE 2026-07-04:** shared `OpenAlexSourceApcAggregator`; `OpenAlexBulkImportService.importAll`
-    folds the per-venue APC derivation into the works/citers stream (mirroring the `referenced` institution-id threading)
-    → `openalex.source_facts` produced in-DAG before the stage-4 projection. Standalone service + endpoint kept for
-    manual re-runs. `BulkImportResult` gained `apcSources`/`apcFeeJournals` (logged in the rebuild). Unit-tested; full
-    suite green. No pipeline-wiring change (the DAG already calls `importAll`).
-  - **Slice B (ops) — DONE 2026-07-04:** the local `scholardex` Mongo/PG **is** the prod DB, so the full rebuild
-    (`rebuildAllDerived?confirmation=RESET&reingest=true`, caffeinated+daemonized, ~34 min, 0 errors) **was** the rollout.
-    Fold produced `source_facts` in-DAG (`apcSources=18575 apcFeeJournals=2140` from cleared-0); projection emitted 2,140
-    OPENALEX apc=true rows; MDPI *Electronics* → `isFeeJournal=true`; florin's Electronics zeroed in FV Info 2026 (2016
-    unchanged). Deploy to stage/prod is a later **data migration** (gated on Informatică backlog + public-UI polish).
-  - **Slice C — closed 2026-07-04. Informatică scoring backlog now clear.** **C1 posters/system-demos — DONE:** neither
-    Scopus (`cp`) nor OpenAlex (`article`) distinguishes them (verified in the raw dump), so a strict title-prefix detector
-    (`Poster:`/`Demo:`/`Demonstration:`) reuses the slice-6 reduced path (category A*/A/B→C, C→D + 6/4/2/1 pts + `topAB`
-    exclusion), 2026-gated (2016 unchanged), no indicator/seed change, unit-tested. **C2 per-pub-year APC — DROPPED**
-    (standard keys APC to "momentul depunerii dosarului" = current state). **C3 b↔c 20% compensation — NOT a platform
-    feature** (`id_parA118` discretionary — a committee exception like perspectiva-a ethics). **C4 CORE national/regional
-    → C (`id_parA81`) — DONE:** completeness check found `parseRank` collapsed National/Regional→D; now preserved as
-    `Rank.National`/`National_Regional`, scorer remaps →C (2026)/D (2016), version-gated; live-validated (124 National +
-    7 Regional re-imported). **No short-paper exclusion exists in the CS standard** (the `rezumate/abstract` list is a
-    different domain). **Deploy step:** stage/prod migration needs a CORE re-import
-    (`POST …/general/coreConference`) — a Scopus/WoS rebuild does not re-import CORE reference data.
