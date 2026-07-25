@@ -50,7 +50,7 @@
             <!-- ── Main evaluation view ──────────────────────────────────────── -->
             <div th:if="${noReports != true and noRun != true}"
                  class="container-fluid app-page-content app-dashboard individual-report-dashboard"
-                 th:attr="data-researcher-position=${researcherPosition},data-report-id=${report.id},data-run-id=${runMetaId},data-eval-api-base=${#bools.isTrue(delegated) ? ('/reports/researcher/' + delegatedSubjectEmail) : '/user/evaluation'}">
+                 th:attr="data-researcher-position=${researcherPosition},data-initial-position=${initialPosition},data-report-id=${report.id},data-run-id=${runMetaId},data-eval-api-base=${#bools.isTrue(delegated) ? ('/reports/researcher/' + delegatedSubjectEmail) : '/user/evaluation'}">
 
                 <!-- ── Delegated (admin/supervisor) read-only banner ───────────── -->
                 <div th:if="${delegated}" class="alert alert-info mb-3" role="status">
@@ -83,10 +83,14 @@
                                         th:selected="${r.id == report.id}"></option>
                             </select>
                         </div>
-                        <!-- Position selector: lives next to the report switcher (both pick "what am I looking at") -->
-                        <div class="app-eval-report-switcher" th:unless="${delegated}">
+                        <!-- Position selector: lives next to the report switcher (both pick "what am I looking at").
+                             Shown on the DELEGATED view too: a supervisor arrives here from the promotion board,
+                             whose entire question is "does this person clear the NEXT position" — hiding the one
+                             control that answers it was the frustration. Safe to expose: the selector only
+                             re-renders threshold marks from data already on the page (no server call, no writes). -->
+                        <div class="app-eval-report-switcher">
                             <label for="eval-position-select" class="app-eval-report-switcher__label"
-                                   title="View criteria thresholds as this position" th:text="#{report.view.position}">Position</label>
+                                   th:title="#{report.view.positionHint}" th:text="#{report.view.position}">Position</label>
                             <select id="eval-position-select"
                                     class="form-control form-control-sm app-eval-position-select"
                                     data-eval-position-selector>

@@ -888,7 +888,7 @@
     var select = document.querySelector('[data-eval-position-selector]');
     var positions = reportPositions();
 
-    if (!select) return; // delegated view: fixed researcher position, no selector
+    if (!select) return; // no selector on the page (e.g. no thresholds to switch between)
 
     if (positions.length === 0) {
       // No thresholds at all — hide the selector cell
@@ -897,18 +897,24 @@
       return;
     }
 
+    // A supervisor arriving from the promotion board carries the TARGET position in the URL — open on
+    // that, since "does she clear CONF_UNIV" is the question that was clicked. Falls back to the
+    // researcher's own position for a normal visit.
+    var initial = root.getAttribute('data-initial-position') || '';
+    var preferred = initial || researcherPosition;
+
     var seen = {};
     positions.forEach(function (pos) {
       seen[pos] = true;
       var opt = document.createElement('option');
       opt.value = pos;
       opt.textContent = POSITION_LABELS[pos] || pos;
-      if (pos === researcherPosition) opt.selected = true;
+      if (pos === preferred) opt.selected = true;
       select.appendChild(opt);
     });
 
-    // If researcher's position isn't in the list, pick the first available
-    if (!seen[researcherPosition]) {
+    // If the preferred position isn't among the report's thresholds, pick the first available
+    if (!seen[preferred]) {
       select.value = positions[0];
     }
     _position = select.value;

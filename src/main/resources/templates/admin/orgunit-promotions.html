@@ -211,7 +211,8 @@
                     th:if="${!it.last}"> · </th:block></th:block>
         </p>
         <a class="btn btn-outline-primary btn-sm"
-           th:href="@{'/reports/researcher/' + ${m.row.user.email}}" th:text="#{orgunit.promo.openIndividual}">Open individual report</a>
+           th:href="@{'/reports/researcher/' + ${m.row.user.email}(position=${m.targetPosition})}"
+           th:text="#{orgunit.promo.openIndividual}">Open individual report</a>
     </div>
 </details>
 

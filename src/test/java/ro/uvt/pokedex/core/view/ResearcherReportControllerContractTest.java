@@ -293,6 +293,38 @@ class ResearcherReportControllerContractTest {
     }
 
     @Test
+    void delegatedViewOpensOnThePositionCarriedFromThePromotionBoard() throws Exception {
+        // The board links with ?position=<targetPosition>; the view must carry it through so the page opens
+        // on the rung being investigated rather than the researcher's current one.
+        IndividualReport report = report();
+        IndividualReportRunDto run = new IndividualReportRunDto(
+                "run-1", "rep-1", List.of(),
+                Map.of("ind-1", 12.5), Map.of(0, 12.5),
+                Instant.now(), IndividualReportRunDto.Source.PERSISTED, "admin@e-uvt.ro");
+        when(userService.getUserByEmail(EMAIL)).thenReturn(Optional.of(researcher()));
+        when(userService.findDisplayLabels(List.of(EMAIL))).thenReturn(Map.of(EMAIL, "Florin S"));
+        when(userReportFacade.buildIndividualReportsListView(EMAIL))
+                .thenReturn(new UserReportsListViewModel(List.of(report)));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(userIndividualReportRunService.findLatestRun(EMAIL, "rep-1")).thenReturn(Optional.of(run));
+
+        mockMvc.perform(get("/reports/researcher/{email}", EMAIL)
+                        .param("report", "rep-1").param("position", "CONF_UNIV"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("initialPosition", "CONF_UNIV"))
+                .andExpect(content().string(containsString("data-initial-position=\"CONF_UNIV\"")))
+                // The selector itself MUST render on the delegated view. It used to be hidden
+                // (th:unless="${delegated}"), so a supervisor arriving from the promotion board — whose whole
+                // question is "does this person clear the NEXT position" — had no way to look at it. Safe to
+                // expose: switching only re-renders threshold marks client-side from data already on the page.
+                .andExpect(content().string(containsString("data-eval-position-selector")));
+
+        // No position param on a normal visit — the view falls back to the researcher's own position.
+        mockMvc.perform(get("/reports/researcher/{email}", EMAIL).param("report", "rep-1"))
+                .andExpect(model().attribute("initialPosition", org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
     void compareRedirectsBackToReportWhenNoCompatibleReportIsAssigned() throws Exception {
         IndividualReport report = report();
         when(userService.getUserByEmail(EMAIL)).thenReturn(Optional.of(researcher()));

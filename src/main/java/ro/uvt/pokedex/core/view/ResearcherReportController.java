@@ -66,6 +66,9 @@ public class ResearcherReportController {
     @PreAuthorize("@researcherAccess.canView(#email, authentication)")
     public String viewResearcherReport(@PathVariable String email,
                                        @RequestParam(name = "report", required = false) String reportId,
+                                       // Carried from the promotion board so the view opens on the TARGET
+                                       // position the supervisor clicked to investigate, not the current one.
+                                       @RequestParam(name = "position", required = false) String position,
                                        Model model) {
         Optional<User> researcherOpt = userService.getUserByEmail(email);
         if (researcherOpt.isEmpty()) {
@@ -74,6 +77,7 @@ public class ResearcherReportController {
         User researcher = researcherOpt.get();
 
         model.addAttribute("delegated", true);
+        model.addAttribute("initialPosition", position == null || position.isBlank() ? null : position.trim());
         model.addAttribute("delegatedSubjectEmail", email);
         model.addAttribute("delegatedSubjectName",
                 userService.findDisplayLabels(List.of(email)).getOrDefault(email, email));
