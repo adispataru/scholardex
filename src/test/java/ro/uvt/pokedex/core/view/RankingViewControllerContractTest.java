@@ -70,6 +70,47 @@ class RankingViewControllerContractTest {
     private WosCategoryPageService wosCategoryPageService;
     @MockitoBean
     private ScholardexPublicationMvcService scholardexPublicationMvcService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.WelcomeFacade welcomeFacade;
+
+    @org.junit.jupiter.api.Test
+    void landingPageGreetsASignedInUserAndLinksTheUnreadUpdates() throws Exception {
+        ro.uvt.pokedex.core.model.user.User user = new ro.uvt.pokedex.core.model.user.User();
+        user.setEmail("florin.fortis@e-uvt.ro");
+        org.mockito.Mockito.when(welcomeFacade.forUser(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenReturn(new ro.uvt.pokedex.core.service.application.WelcomeFacade.Welcome(
+                        "Florin", "florin.fortis@e-uvt.ro", 3L, true));
+
+        org.springframework.security.authentication.TestingAuthenticationToken auth =
+                new org.springframework.security.authentication.TestingAuthenticationToken(user, null, "RESEARCHER");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/")
+                        .with(request -> {
+                            request.setUserPrincipal(auth);
+                            org.springframework.security.core.context.SecurityContextHolder.getContext()
+                                    .setAuthentication(auth);
+                            return request;
+                        }))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("Bun venit, Florin!")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("florin.fortis@e-uvt.ro")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("3 noutăți de la ultima vizită")));
+    }
+
+    @org.junit.jupiter.api.Test
+    void landingPageShowsNoWelcomeBannerForAnonymousVisitors() throws Exception {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("app-landing__welcome"))))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("Sign in")));
+    }
 
     @AfterEach
     void clearSecurityContext() {

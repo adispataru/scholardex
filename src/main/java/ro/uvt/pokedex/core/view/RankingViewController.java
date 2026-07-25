@@ -40,9 +40,21 @@ public class RankingViewController {
     private final ScholardexForumDetailService scholardexForumDetailService;
     private final WosCategoryPageService wosCategoryPageService;
     private final ScholardexPublicationMvcService scholardexPublicationMvcService;
+    private final ro.uvt.pokedex.core.service.application.WelcomeFacade welcomeFacade;
 
+    /**
+     * The landing page doubles as the post-login destination, so a signed-in visitor gets a personal greeting
+     * (H86 follow-up): signed out and signed in used to look nearly identical, which made a successful login
+     * hard to tell from a failed one.
+     */
     @GetMapping("/")
-    public String showLandingPage() {
+    public String showLandingPage(org.springframework.security.core.Authentication authentication, Model model) {
+        if (authentication != null && authentication.getPrincipal() instanceof ro.uvt.pokedex.core.model.user.User user) {
+            boolean isAdmin = authentication.getAuthorities() != null
+                    && authentication.getAuthorities().stream()
+                    .anyMatch(a -> "PLATFORM_ADMIN".equals(a.getAuthority()));
+            model.addAttribute("welcome", welcomeFacade.forUser(user, isAdmin));
+        }
         return "landing";
     }
 

@@ -83,6 +83,8 @@ class RankingViewSecurityContractTest {
     @MockitoBean
     private ScholardexPublicationMvcService scholardexPublicationMvcService;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.WelcomeFacade welcomeFacade;
+    @MockitoBean
     private UserService userService;
     @MockitoBean
     private PostgresScholardexAdminReadPort postgresScholardexAdminReadPort;
