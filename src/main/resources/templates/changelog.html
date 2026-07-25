@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="ro">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Noutăți — ScholarDex</title>
-    <meta name="description" content="Ce s-a schimbat în ScholarDex: reguli de punctare, surse de date și funcționalități noi.">
+    <title th:text="#{changelog.title} + ' — ScholarDex'">Noutăți — ScholarDex</title>
+    <meta name="description" th:attr="content=#{changelog.meta.description}">
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body class="app-public-page">
@@ -15,27 +15,26 @@
     <div class="app-page-content app-changelog">
 
         <header class="app-changelog__header">
-            <p class="app-changelog__eyebrow">Noutăți</p>
-            <h1 class="app-changelog__title">Ce s-a schimbat în platformă</h1>
+            <p class="app-changelog__eyebrow" th:text="#{changelog.eyebrow}">Noutăți</p>
+            <h1 class="app-changelog__title" th:text="#{changelog.title}">Ce s-a schimbat în platformă</h1>
             <p class="app-changelog__intro">
-                Modificările de reguli de punctare, sursele de date nou adăugate și funcționalitățile noi,
-                în ordinea în care au ajuns la utilizatori. Intrările marcate
-                <span class="app-changelog__impact-chip">afectează punctajul</span>
-                pot schimba scorul unei fișe — acolo se găsește, de obicei, răspunsul la
-                „de ce mi s-a modificat punctajul?”. Eticheta de alături arată cât de departe ajunge
-                modificarea: <span class="app-changelog__scope-chip app-changelog__scope-chip--platform">toată platforma</span>
-                sau doar fișa indicată, de exemplu <span class="app-changelog__scope-chip">FV Info 2026</span>.
+                <span th:text="#{changelog.intro.before}">Modificările de reguli de punctare…</span>
+                <span class="app-changelog__impact-chip" th:text="#{changelog.chip.scoringImpact}">afectează punctajul</span>
+                <span th:text="#{changelog.intro.after}">…</span> <span class="app-changelog__scope-chip app-changelog__scope-chip--platform" th:text="#{changelog.chip.platform}">toată platforma</span>
+                <span th:text="#{changelog.intro.scopeExample}">sau doar fișa indicată, de exemplu</span>
+                <span class="app-changelog__scope-chip">FV Info 2026</span>.
             </p>
         </header>
 
         <p class="app-changelog__empty" th:if="${entryCount == 0}">
-            Nu există încă intrări în jurnalul de modificări.
+            <span th:text="#{changelog.empty}">Nu există încă intrări în jurnalul de modificări.</span>
         </p>
 
         <ol class="app-changelog__timeline" th:unless="${entryCount == 0}">
             <li class="app-changelog__day" th:each="day : ${entriesByDate}">
-                <!-- Explicit ro locale: the entries are Romanian, so an English month name from the
-                     request locale would read as a bug rather than a nicety. -->
+                <!-- Dates stay Romanian on purpose: the page CHROME is localized (H87 S1) but the entry
+                     text itself is Romanian content, so an English month name above Romanian prose would
+                     read as a half-finished translation. Content translation is a separate decision. -->
                 <h2 class="app-changelog__date"
                     th:text="${#temporals.format(day.key, 'd MMMM yyyy', T(java.util.Locale).forLanguageTag('ro'))}">1 ianuarie 2026</h2>
 
@@ -43,15 +42,15 @@
                          th:classappend="${entry.scoringImpact} ? ' app-changelog__entry--impact' : ''">
                     <div class="app-changelog__entry-head">
                         <h3 class="app-changelog__entry-title" th:text="${entry.title}">Titlu</h3>
-                        <span class="app-changelog__impact-chip" th:if="${entry.scoringImpact}">afectează punctajul</span>
+                        <span class="app-changelog__impact-chip" th:if="${entry.scoringImpact}" th:text="#{changelog.chip.scoringImpact}">afectează punctajul</span>
                         <!-- Reach: either the whole platform, or exactly the fișe named by the entry. The 2016
                              and 2026 standards diverge on purpose, so several changes apply to only one. -->
                         <span class="app-changelog__scope-chip app-changelog__scope-chip--platform"
-                              th:if="${entry.scope.name() == 'PLATFORM'}">toată platforma</span>
+                              th:if="${entry.scope.name() == 'PLATFORM'}" th:text="#{changelog.chip.platform}">toată platforma</span>
                         <span class="app-changelog__scope-chip" th:each="report : ${entry.reports}"
                               th:text="${report}">FV Info 2026</span>
                         <span class="app-changelog__admin-chip"
-                              th:if="${entry.audience.name() == 'ADMIN'}">administrare</span>
+                              th:if="${entry.audience.name() == 'ADMIN'}" th:text="#{changelog.chip.admin}">administrare</span>
                     </div>
                     <p class="app-changelog__entry-body" th:text="${entry.body}">Descriere.</p>
                     <ul class="app-changelog__tags" th:if="${!entry.affects.isEmpty()}">
@@ -62,9 +61,7 @@
         </ol>
 
         <p class="app-changelog__footnote" th:if="${viewerIsAdmin}">
-            Vezi și intrările de administrare. Jurnalul se editează în
-            <code>src/main/resources/changelog/changelog.json</code> și se publică odată cu versiunea de cod
-            pe care o descrie.
+            <span th:utext="#{changelog.footnote}">Vezi și intrările de administrare.</span>
         </p>
     </div>
 </main>

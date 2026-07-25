@@ -33,6 +33,13 @@ public class User implements UserDetails {
      */
     private ResearcherProfile researcherProfile;
 
+    /**
+     * H87: preferred UI language ("ro" / "en"), persisted so the choice follows the user across devices and
+     * sessions. Null means "never chose" — the resolver then falls back to the cookie, then to Romanian.
+     * Report and indicator names stay Romanian in every locale: they are the standard's own labels.
+     */
+    private String preferredLanguage;
+
     @Transient
     private List<SimpleGrantedAuthority> authority;
     private boolean locked = false;

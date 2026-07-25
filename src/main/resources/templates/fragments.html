@@ -123,27 +123,40 @@
                 <a href="/publications"
                    class="app-shell-topbar__nav-link"
                    th:classappend="${#strings.startsWith(reqUri, '/publications')} ? ' is-active' : ''"
-                   th:attr="aria-current=${#strings.startsWith(reqUri, '/publications')} ? 'page' : null">Publications</a>
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/publications')} ? 'page' : null" th:text="#{nav.publications}">Publications</a>
                 <a href="/forums"
                    class="app-shell-topbar__nav-link"
                    th:classappend="${#strings.startsWith(reqUri, '/forums')} ? ' is-active' : ''"
-                   th:attr="aria-current=${#strings.startsWith(reqUri, '/forums')} ? 'page' : null">Forums</a>
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/forums')} ? 'page' : null" th:text="#{nav.forums}">Forums</a>
                 <a href="/authors"
                    class="app-shell-topbar__nav-link"
                    th:classappend="${#strings.startsWith(reqUri, '/authors')} ? ' is-active' : ''"
-                   th:attr="aria-current=${#strings.startsWith(reqUri, '/authors')} ? 'page' : null">Authors</a>
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/authors')} ? 'page' : null" th:text="#{nav.authors}">Authors</a>
                 <a href="/rankings"
                    class="app-shell-topbar__nav-link"
                    th:classappend="${#strings.startsWith(reqUri, '/rankings') or #strings.startsWith(reqUri, '/core/') or reqUri == '/core' or #strings.startsWith(reqUri, '/universities') or #strings.startsWith(reqUri, '/events') or #strings.startsWith(reqUri, '/wos/')} ? ' is-active' : ''"
-                   th:attr="aria-current=${#strings.startsWith(reqUri, '/rankings') or #strings.startsWith(reqUri, '/core/') or reqUri == '/core' or #strings.startsWith(reqUri, '/universities') or #strings.startsWith(reqUri, '/events') or #strings.startsWith(reqUri, '/wos/')} ? 'page' : null">Rankings</a>
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/rankings') or #strings.startsWith(reqUri, '/core/') or reqUri == '/core' or #strings.startsWith(reqUri, '/universities') or #strings.startsWith(reqUri, '/events') or #strings.startsWith(reqUri, '/wos/')} ? 'page' : null" th:text="#{nav.rankings}">Rankings</a>
                 <a href="/changelog"
                    class="app-shell-topbar__nav-link"
                    th:classappend="${#strings.startsWith(reqUri, '/changelog')} ? ' is-active' : ''"
-                   th:attr="aria-current=${#strings.startsWith(reqUri, '/changelog')} ? 'page' : null">Noutăți</a>
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/changelog')} ? 'page' : null" th:text="#{nav.changelog}">Noutăți</a>
             </nav>
 
             <div class="app-shell-topbar__spacer"></div>
 
+            <!-- H87: language switcher. ?lang= is handled by LocaleChangeInterceptor; the resolver persists
+                 the choice on the user document (and a cookie for anonymous visitors). Preserves the current
+                 path so switching never navigates away from the page being read. -->
+            <div class="app-lang-switch" role="group" th:attr="aria-label=#{nav.language}">
+                <a class="app-lang-switch__option" th:href="@{''(lang='ro')}"
+                   th:classappend="${#locale.language == 'ro'} ? ' is-active' : ''"
+                   th:attr="aria-current=${#locale.language == 'ro'} ? 'true' : null"
+                   th:text="#{nav.language.ro}">Română</a>
+                <a class="app-lang-switch__option" th:href="@{''(lang='en')}"
+                   th:classappend="${#locale.language == 'en'} ? ' is-active' : ''"
+                   th:attr="aria-current=${#locale.language == 'en'} ? 'true' : null"
+                   th:text="#{nav.language.en}">English</a>
+            </div>
             <div class="app-shell-topbar__utilities">
                 <button
                     type="button"
@@ -1060,25 +1073,38 @@
             <a href="/publications"
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'publications'} ? ' is-active' : ''"
-               th:attr="aria-current=${activeSection == 'publications'} ? 'page' : null">Publications</a>
+               th:attr="aria-current=${activeSection == 'publications'} ? 'page' : null" th:text="#{nav.publications}">Publications</a>
             <a href="/forums"
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'forums'} ? ' is-active' : ''"
-               th:attr="aria-current=${activeSection == 'forums'} ? 'page' : null">Forums</a>
+               th:attr="aria-current=${activeSection == 'forums'} ? 'page' : null" th:text="#{nav.forums}">Forums</a>
             <a href="/authors"
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'authors'} ? ' is-active' : ''"
-               th:attr="aria-current=${activeSection == 'authors'} ? 'page' : null">Authors</a>
+               th:attr="aria-current=${activeSection == 'authors'} ? 'page' : null" th:text="#{nav.authors}">Authors</a>
             <a href="/rankings"
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'rankings'} ? ' is-active' : ''"
-               th:attr="aria-current=${activeSection == 'rankings'} ? 'page' : null">Rankings</a>
+               th:attr="aria-current=${activeSection == 'rankings'} ? 'page' : null" th:text="#{nav.rankings}">Rankings</a>
             <a href="/changelog"
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'changelog'} ? ' is-active' : ''"
-               th:attr="aria-current=${activeSection == 'changelog'} ? 'page' : null">Noutăți</a>
+               th:attr="aria-current=${activeSection == 'changelog'} ? 'page' : null" th:text="#{nav.changelog}">Noutăți</a>
         </nav>
 
+            <!-- H87: language switcher. ?lang= is handled by LocaleChangeInterceptor; the resolver persists
+                 the choice on the user document (and a cookie for anonymous visitors). Preserves the current
+                 path so switching never navigates away from the page being read. -->
+            <div class="app-lang-switch" role="group" th:attr="aria-label=#{nav.language}">
+                <a class="app-lang-switch__option" th:href="@{''(lang='ro')}"
+                   th:classappend="${#locale.language == 'ro'} ? ' is-active' : ''"
+                   th:attr="aria-current=${#locale.language == 'ro'} ? 'true' : null"
+                   th:text="#{nav.language.ro}">Română</a>
+                <a class="app-lang-switch__option" th:href="@{''(lang='en')}"
+                   th:classappend="${#locale.language == 'en'} ? ' is-active' : ''"
+                   th:attr="aria-current=${#locale.language == 'en'} ? 'true' : null"
+                   th:text="#{nav.language.en}">English</a>
+            </div>
         <div class="app-public-header__actions">
             <button
                 type="button"

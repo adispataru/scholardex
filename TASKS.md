@@ -19,6 +19,12 @@ Done history moved to `TASKS-done.md`.
   authors 2, rankings 1, universities 1, core 1, reports 2, shared 1, errors 4) + `fragments.html`
   (shell/nav/footer, the highest-leverage file) + ~113 user-visible strings across the 7 workspace JS
   modules (toasts, empty states, badges, wizard copy).
+  **S1 DONE locally 2026-07-25**: `LocaleConfig` + `UserPreferenceLocaleResolver` (saved preference →
+  cookie → Romanian; `?lang=` switch persists to `User.preferredLanguage` AND a cookie), `messages`
+  (ro, the default bundle) + `messages_en`, a switcher in both shells, nav labels + the changelog page +
+  the landing welcome converted. GOTCHA: the resolver takes `ObjectProvider<UserRepository>` — a hard
+  dependency broke every `@WebMvcTest` slice (WebMvcConfigurer beans load, repositories do not). Pinned by
+  a bundle-parity test (same keys + same `{0}` placeholders in both languages) and resolver unit tests.
   Slices:
   - **S1 infra**: `MessageSource` (UTF-8 `messages_ro`/`messages_en`), `LocaleResolver` persisting the
     choice per user (cookie + the existing WorkspacePreferences for logged-in users), a switcher in the

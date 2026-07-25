@@ -20,10 +20,10 @@
         <div class="app-landing__welcome-main">
             <p class="app-landing__welcome-greeting">
                 <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                <span th:text="'Bun venit, ' + ${welcome.displayName} + '!'">Bun venit!</span>
+                <span th:text="#{landing.welcome.greeting(${welcome.displayName})}">Bun venit!</span>
             </p>
             <p class="app-landing__welcome-account">
-                Ești autentificat ca <strong th:text="${welcome.email}">email</strong>.
+                <span th:utext="#{landing.welcome.account(${welcome.email})}">Ești autentificat ca <strong>email</strong>.</span>
             </p>
         </div>
         <!-- No workspace button here on purpose: the hero below already carries that primary action, and two
@@ -31,7 +31,9 @@
         <div class="app-landing__welcome-actions">
             <a href="/changelog" class="app-landing__welcome-updates" th:if="${welcome.newUpdates > 0}">
                 <i class="fa-solid fa-bell" aria-hidden="true"></i>
-                <span th:text="${welcome.newUpdates} + (${welcome.newUpdates} == 1 ? ' noutate' : ' noutăți') + ' de la ultima vizită'">noutăți</span>
+                <span th:text="${welcome.newUpdates} == 1
+                                 ? #{landing.welcome.updates.one(${welcome.newUpdates})}
+                                 : #{landing.welcome.updates.many(${welcome.newUpdates})}">noutăți</span>
             </a>
         </div>
     </section>
