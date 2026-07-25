@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>Verify Report from File</title>
+    <title th:text="#{report.import.meta.title}">Verify Report from File</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/individual-report-dashboard.css" rel="stylesheet">
 </head>
@@ -60,22 +60,22 @@
 
                     <div th:if="${currentRunComparison != null}" class="app-eval-aggregate mb-3">
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">Current Run Total</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.currentRunTotal}">Current Run Total</span>
                             <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                                   th:text="${#numbers.formatDecimal(currentRunComparison.platformTotal(), 1, 2)}">0.00</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">File Total vs Current</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.fileVsCurrent}">File Total vs Current</span>
                             <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                                   th:text="${#numbers.formatDecimal(currentRunComparison.fileTotal(), 1, 2)}">0.00</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">Current Correct Points</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.currentCorrectPoints}">Current Correct Points</span>
                             <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                                   th:text="${#numbers.formatDecimal(currentRunComparison.correctPoints(), 1, 2)}">0.00</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">Current Matching / Differing</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.currentMatchingDiffering}">Current Matching / Differing</span>
                             <span class="app-eval-aggregate__value app-eval-aggregate__value--sm">
                                 <span th:text="${currentRunComparison.matchingCount()}">0</span>
                                 <span aria-hidden="true"> / </span>
@@ -87,22 +87,22 @@
                     <!-- Summary metrics -->
                     <div class="app-eval-aggregate mb-3">
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">Correct Points</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.correctPoints}">Correct Points</span>
                             <span class="app-eval-aggregate__value"
                                   th:text="${#numbers.formatDecimal(comparison.correctPoints(), 1, 2)}">0.00</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">Platform Total</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.platformTotal}">Platform Total</span>
                             <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                                   th:text="${#numbers.formatDecimal(comparison.platformTotal(), 1, 2)}">0.00</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">File Total</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.fileTotal}">File Total</span>
                             <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                                   th:text="${#numbers.formatDecimal(comparison.fileTotal(), 1, 2)}">0.00</span>
                         </div>
                         <div class="app-eval-aggregate__cell">
-                            <span class="app-eval-aggregate__label">Matching / Differing</span>
+                            <span class="app-eval-aggregate__label" th:text="#{report.import.matchingDiffering}">Matching / Differing</span>
                             <span class="app-eval-aggregate__value app-eval-aggregate__value--sm">
                                 <span th:text="${comparison.matchingCount()}">0</span>
                                 <span aria-hidden="true"> / </span>
@@ -125,31 +125,31 @@
                     <!-- Empty state -->
                     <div th:if="${comparison.rows().isEmpty()}" class="app-empty-state">
                         <i class="fa-solid fa-scale-balanced fa-2x app-empty-state__icon" aria-hidden="true"></i>
-                        <p class="app-empty-state__title">Nothing to compare</p>
-                        <p class="app-empty-state__body">No scored rows were found in the uploaded file.</p>
+                        <p class="app-empty-state__title" th:text="#{report.import.nothingToCompare}">Nothing to compare</p>
+                        <p class="app-empty-state__body" th:text="#{report.import.noScoredRows}">No scored rows were found in the uploaded file.</p>
                     </div>
 
                     <!-- Per-publication comparison table -->
                     <div th:unless="${comparison.rows().isEmpty()}" class="app-table-section">
                       <div class="app-table-section__surface">
                         <div class="app-table-section__header app-table-toolbar">
-                            <h2 class="app-table-section__title">Per-publication comparison</h2>
+                            <h2 class="app-table-section__title" th:text="#{report.import.perPublication}">Per-publication comparison</h2>
                         </div>
                         <div class="app-table-section__body">
                           <div class="app-table-scroll">
                             <table class="table table-bordered app-table mb-0">
                                 <thead>
                                 <tr>
-                                    <th scope="col" rowspan="2" style="width:2.5rem"><span class="sr-only">Expand</span></th>
+                                    <th scope="col" rowspan="2" style="width:2.5rem"><span class="sr-only" th:text="#{report.import.expand}">Expand</span></th>
                                     <th scope="col" rowspan="2">Title</th>
-                                    <th scope="col" colspan="2" class="text-center">Publication points</th>
-                                    <th scope="col" colspan="2" class="text-center">Citation points</th>
+                                    <th scope="col" colspan="2" class="text-center" th:text="#{report.import.publicationPoints}">Publication points</th>
+                                    <th scope="col" colspan="2" class="text-center" th:text="#{report.import.citationPoints}">Citation points</th>
                                 </tr>
                                 <tr>
-                                    <th scope="col" class="app-table__cell--numeric">Platform</th>
-                                    <th scope="col" class="app-table__cell--numeric">File</th>
-                                    <th scope="col" class="app-table__cell--numeric">Platform</th>
-                                    <th scope="col" class="app-table__cell--numeric">File</th>
+                                    <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.platform}">Platform</th>
+                                    <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.file}">File</th>
+                                    <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.platform}">Platform</th>
+                                    <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.file}">File</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -206,9 +206,9 @@
                                         <td></td>
                                         <td colspan="5">
                                             <dl class="app-detail-grid mb-0">
-                                                <div><dt>Role</dt><dd th:text="${row.roleKey()}">—</dd></div>
+                                                <div><dt th:text="#{report.import.role}">Role</dt><dd th:text="${row.roleKey()}">—</dd></div>
                                                 <div th:if="${row.platformCategory() != null}">
-                                                    <dt>Platform category</dt><dd th:text="${row.platformCategory()}">—</dd>
+                                                    <dt th:text="#{report.import.platformCategory}">Platform category</dt><dd th:text="${row.platformCategory()}">—</dd>
                                                 </div>
                                                 <div th:if="${row.platformForumName() != null}">
                                                     <dt>Forum</dt><dd th:text="${row.platformForumName()}">—</dd>
@@ -277,13 +277,13 @@
                                             <!-- Per-citation breakdown -->
                                             <div th:if="${row.citationBreakdown() != null and !row.citationBreakdown().isEmpty()}"
                                                  class="mt-3">
-                                                <div class="app-detail-grid__heading">Individual citations</div>
+                                                <div class="app-detail-grid__heading" th:text="#{report.import.individualCitations}">Individual citations</div>
                                                 <table class="table table-sm app-subtable mb-0">
                                                     <thead>
                                                     <tr>
-                                                        <th scope="col">Citing publication</th>
-                                                        <th scope="col" class="app-table__cell--numeric">Platform</th>
-                                                        <th scope="col" class="app-table__cell--numeric">File</th>
+                                                        <th scope="col" th:text="#{report.import.citingPublication}">Citing publication</th>
+                                                        <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.platform}">Platform</th>
+                                                        <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.file}">File</th>
                                                     </tr>
                                                     </thead>
                                                     <tbody>
@@ -328,8 +328,8 @@
                                                 <table class="table table-sm app-subtable mb-0">
                                                     <thead>
                                                     <tr>
-                                                        <th scope="col">Citing publication</th>
-                                                        <th scope="col" class="app-table__cell--numeric">File</th>
+                                                        <th scope="col" th:text="#{report.import.citingPublication}">Citing publication</th>
+                                                        <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.file}">File</th>
                                                     </tr>
                                                     </thead>
                                                     <tbody>
@@ -356,18 +356,18 @@
                          class="app-table-section mt-4">
                       <div class="app-table-section__surface">
                         <div class="app-table-section__header app-table-toolbar">
-                            <h2 class="app-table-section__title">Perspectiva D activities</h2>
+                            <h2 class="app-table-section__title" th:text="#{report.import.perspectivaDActivities}">Perspectiva D activities</h2>
                         </div>
                         <div class="app-table-section__body">
                           <div class="app-table-scroll">
                             <table class="table table-bordered app-table mb-0">
                                 <thead>
                                 <tr>
-                                    <th scope="col" style="width:2.5rem"><span class="sr-only">Expand</span></th>
-                                    <th scope="col">Block</th>
-                                    <th scope="col">Status</th>
-                                    <th scope="col" class="app-table__cell--numeric">Platform</th>
-                                    <th scope="col" class="app-table__cell--numeric">File</th>
+                                    <th scope="col" style="width:2.5rem"><span class="sr-only" th:text="#{report.import.expand}">Expand</span></th>
+                                    <th scope="col" th:text="#{report.import.block}">Block</th>
+                                    <th scope="col" th:text="#{report.import.status}">Status</th>
+                                    <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.platform}">Platform</th>
+                                    <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.file}">File</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -410,12 +410,12 @@
                                         <td colspan="4">
                                             <!-- Matched activities -->
                                             <th:block th:if="${!block.matched().isEmpty()}">
-                                                <div class="app-detail-grid__heading">Matched activities</div>
+                                                <div class="app-detail-grid__heading" th:text="#{report.import.matchedActivities}">Matched activities</div>
                                                 <table class="table table-sm app-subtable mb-2">
                                                     <thead><tr>
-                                                        <th scope="col">Activity</th>
-                                                        <th scope="col" class="app-table__cell--numeric">Platform</th>
-                                                        <th scope="col" class="app-table__cell--numeric">File</th>
+                                                        <th scope="col" th:text="#{report.import.activity}">Activity</th>
+                                                        <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.platform}">Platform</th>
+                                                        <th scope="col" class="app-table__cell--numeric" th:text="#{report.import.file}">File</th>
                                                     </tr></thead>
                                                     <tbody>
                                                     <tr th:each="m : ${block.matched()}"
@@ -458,7 +458,7 @@
                                                     <div class="imp-form" th:if="${!block.activityOptions().isEmpty()}"
                                                          th:attr="id=${'imp-form-' + bi.index + '-' + ii.index}" hidden>
                                                         <div th:if="${#lists.size(block.activityOptions()) > 1}" class="app-form-field mb-2">
-                                                            <label>Activity type</label>
+                                                            <label th:text="#{report.import.activityType}">Activity type</label>
                                                             <select class="form-control form-control-sm imp-activity-select">
                                                                 <option th:each="opt : ${block.activityOptions()}"
                                                                         th:value="${opt.activityId()}" th:text="${opt.activityName()}"></option>
@@ -515,7 +515,7 @@
 
                                             <!-- Only in platform -->
                                             <th:block th:if="${!block.onlyInPlatform().isEmpty()}">
-                                                <div class="app-detail-grid__heading">Only in platform (not in your file)</div>
+                                                <div class="app-detail-grid__heading" th:text="#{report.import.onlyInPlatform}">Only in platform (not in your file)</div>
                                                 <table class="table table-sm app-subtable mb-0">
                                                     <tbody>
                                                     <tr th:each="op : ${block.onlyInPlatform()}">

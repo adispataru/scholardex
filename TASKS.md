@@ -66,8 +66,19 @@ Done history moved to `TASKS-done.md`.
     start submitting Romanian venue types; (2) the aggregation render used `.map(t => …)`, which would have
     shadowed the imported translator — parameter renamed; (3) most strings live inside HTML template
     literals (placeholder/aria-label), not quoted JS, so a naive literal sweep misses them.
-  - **S3 REMAINING**: `user/individual-report-view.html` (29) + `user/individual-report-import.html` (45),
-    left for last because their copy borders on standards wording.
+  - **S3 REPORT TEMPLATES DONE locally 2026-07-25**: `individual-report-view.html` +
+    `individual-report-import.html`. The UI/standards line held: chrome translated ("Punctaj total",
+    "Criterii îndeplinite", "Total din fișier"), while the standard's own labels stay Romanian in both
+    locales — e.g. `report.import.perspectivaDActivities` is "Perspectiva D activities" in English.
+    TRAPS: (1) blanket `>Word<` replacement collided with tags that ALREADY had `th:text` (report title,
+    indicator name, criterion name, export label) → duplicate attribute = Thymeleaf parse failure; the
+    dynamic expression wins and the literal fallback is localized inside it. (2) `report.view.noRun.other`
+    tripped the plural-family guardrail because `.other` is a reserved CLDR suffix — renamed to
+    `.forOtherResearcher` rather than weakening the check.
+    NEW GUARDRAIL: `scripts/test-i18n-keys.js` (npm `test-i18n-keys`) statically verifies every `#{...}` in
+    a template and every `t()`/`tPlural()` base in the JS resolves against the bundle — it covers markup
+    that cannot be rendered without fixture state, like the report-import tables which need an upload.
+    Currently 455 keys, all resolving.
   - **S4 supervisor pages** + a sweep for leftovers (a lint that fails on bare text nodes in the
     in-scope templates).
   Open decisions for the user: default locale (RO for uvt.ro users vs browser `Accept-Language`), and

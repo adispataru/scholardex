@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${report != null ? report.title : 'Evaluation'}">Evaluation</title>
+    <title th:text="${report != null ? report.title : #messages.msg('report.view.evaluation')}">Evaluation</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/individual-report-dashboard.css" rel="stylesheet">
 </head>
@@ -19,8 +19,8 @@
             <div th:if="${noReports == true}" class="container-fluid app-page-content">
                 <div class="app-empty-state">
                     <i class="fa-solid fa-chart-bar fa-2x app-empty-state__icon" aria-hidden="true"></i>
-                    <p class="app-empty-state__title">No reports available</p>
-                    <p class="app-empty-state__body">Ask your administrator to assign a report to your profile.</p>
+                    <p class="app-empty-state__title" th:text="#{report.view.noReports}">No reports available</p>
+                    <p class="app-empty-state__body" th:text="#{report.view.noReports.body}">…</p>
                 </div>
             </div>
 
@@ -33,15 +33,15 @@
                 </div>
                 <div class="app-empty-state">
                     <i class="fa-solid fa-rotate fa-2x app-empty-state__icon" aria-hidden="true"></i>
-                    <p class="app-empty-state__title">No run available for this report</p>
-                    <p class="app-empty-state__body">Trigger a refresh to compute your scores.</p>
+                    <p class="app-empty-state__title" th:text="#{report.view.noRun}">No run available for this report</p>
+                    <p class="app-empty-state__body" th:text="#{report.view.noRun.body}">…</p>
                     <form th:unless="${delegated}" th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post">
-                        <button type="submit" class="btn btn-primary">Run Now</button>
+                        <button type="submit" class="btn btn-primary" th:text="#{report.view.runNow}">Run Now</button>
                     </form>
                     <div th:if="${delegated}">
-                        <p class="app-empty-state__body">This researcher has not generated this report yet.</p>
+                        <p class="app-empty-state__body" th:text="#{report.view.noRun.forOtherResearcher}">…</p>
                         <form th:action="@{/reports/researcher/{e}/report/{r}/refresh(e=${delegatedSubjectEmail},r=${report.id})}" method="post">
-                            <button type="submit" class="btn btn-primary">Generate now</button>
+                            <button type="submit" class="btn btn-primary" th:text="#{report.view.generateNow}">Generate now</button>
                         </form>
                     </div>
                 </div>
@@ -86,7 +86,7 @@
                         <!-- Position selector: lives next to the report switcher (both pick "what am I looking at") -->
                         <div class="app-eval-report-switcher" th:unless="${delegated}">
                             <label for="eval-position-select" class="app-eval-report-switcher__label"
-                                   title="View criteria thresholds as this position">Position</label>
+                                   title="View criteria thresholds as this position" th:text="#{report.view.position}">Position</label>
                             <select id="eval-position-select"
                                     class="form-control form-control-sm app-eval-position-select"
                                     data-eval-position-selector>
@@ -96,13 +96,13 @@
                     </div>
                     <!-- Total score (only shown when at least one criterion is flagged contributesToTotal) -->
                     <div class="app-eval-aggregate__cell" th:if="${totalScore != null}">
-                        <span class="app-eval-aggregate__label">Total Score</span>
+                        <span class="app-eval-aggregate__label" th:text="#{report.view.totalScore}">Total Score</span>
                         <span class="app-eval-aggregate__value"
                               th:text="${#numbers.formatDecimal(totalScore, 1, 2)}">0.00</span>
                     </div>
                     <!-- Criteria Met — values updated by JS when position changes -->
                     <div class="app-eval-aggregate__cell" id="eval-criteria-met-cell">
-                        <span class="app-eval-aggregate__label">Criteria Met</span>
+                        <span class="app-eval-aggregate__label" th:text="#{report.view.criteriaMet}">Criteria Met</span>
                         <span class="app-eval-aggregate__value" id="eval-criteria-met-value"
                               th:text="${criteriaTotal != null and criteriaTotal > 0 ? criteriaMet + ' / ' + criteriaTotal : '—'}">—</span>
                         <div class="app-eval-aggregate__progress-bar">
@@ -111,7 +111,7 @@
                         </div>
                     </div>
                     <div class="app-eval-aggregate__cell app-eval-aggregate__cell--meta">
-                        <span class="app-eval-aggregate__label">Last Run</span>
+                        <span class="app-eval-aggregate__label" th:text="#{report.view.lastRun}">Last Run</span>
                         <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                               th:text="${runMetaCreatedAt != null ? #temporals.format(runMetaCreatedAt, 'yyyy-MM-dd HH:mm') : '—'}">—</span>
                         <span th:if="${runMetaTriggeredBy != null and user != null and runMetaTriggeredBy != user.email}"
@@ -129,13 +129,13 @@
                            class="btn btn-sm btn-outline-secondary"
                            th:title="'Compare criterion scores against ' + ${compatibleReport.title}">
                             <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i>
-                            <span th:text="'Compare with ' + ${compatibleReport.title}">Compare</span>
+                            <span th:text="#{report.view.compareWith(${compatibleReport.title})}">Compare</span>
                         </a>
                         <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
                            th:href="@{/reports/researcher/{e}/report/{r}/export(e=${delegatedSubjectEmail},r=${report.id},format=${exportFormat},run=${runMetaId})}"
                            class="btn btn-sm btn-outline-secondary"
                            th:title="'Download this researcher\'s report as ' + ${exportFormatLabel}">
-                            <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}">Export</span>
+                            <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}" >Export</span>
                         </a>
                         <form th:action="@{/reports/researcher/{e}/report/{r}/refresh(e=${delegatedSubjectEmail},r=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
@@ -147,14 +147,14 @@
                             <input type="hidden" name="recipientEmail" th:value="${delegatedSubjectEmail}">
                             <input type="hidden" name="returnUrl"
                                    th:value="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${report.id})}">
-                            <label class="sr-only" th:for="'nudge-kind'">Nudge reason</label>
+                            <label class="sr-only" th:for="'nudge-kind'" th:text="#{report.view.nudgeReason}">Nudge reason</label>
                             <select id="nudge-kind" name="kind" class="form-control form-control-sm">
-                                <option value="ONBOARD">Finish onboarding</option>
-                                <option value="CONFIRM_PUBLICATIONS">Confirm publications</option>
-                                <option value="REFRESH_REPORT">Refresh report</option>
+                                <option value="ONBOARD" th:text="#{report.view.finishOnboarding}">Finish onboarding</option>
+                                <option value="CONFIRM_PUBLICATIONS" th:text="#{report.view.confirmPublications}">Confirm publications</option>
+                                <option value="REFRESH_REPORT" th:text="#{report.view.refresh}">Refresh report</option>
                             </select>
                             <input type="text" name="note" maxlength="200" class="form-control form-control-sm"
-                                   placeholder="Optional note…" aria-label="Optional note">
+                                   placeholder="Optional note…" th:attr="aria-label=#{report.view.optionalNote}">
                             <button type="submit" class="btn btn-sm btn-outline-secondary" title="Send an in-app nudge">
                                 <i class="fa-solid fa-bell fa-sm" aria-hidden="true"></i> Nudge
                             </button>
@@ -175,7 +175,7 @@
                             <div class="app-eval-overflow__menu" id="eval-overflow-menu" hidden>
                                 <!-- Compare run picker (hidden until toggled) -->
                                 <div class="app-eval-compare-picker" id="eval-compare-picker" hidden>
-                                    <select id="eval-compare-select" class="form-control form-control-sm" aria-label="Select comparison run or snapshot">
+                                    <select id="eval-compare-select" class="form-control form-control-sm" th:attr="aria-label=#{report.view.selectComparison}">
                                         <option value="">— select a run or snapshot —</option>
                                     </select>
                                 </div>
@@ -196,7 +196,7 @@
                                    th:href="@{/user/evaluation/export(report=${report.id},run=${runMetaId},format=${exportFormat})}"
                                    class="btn btn-sm btn-outline-secondary"
                                    th:title="'Download this report as ' + ${exportFormatLabel}">
-                                    <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}">Export</span>
+                                    <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}" >Export</span>
                                 </a>
                                 <a th:if="${importAvailable == true}"
                                    th:href="@{/user/evaluation/import(report=${report.id},run=${runMetaId})}"
@@ -211,7 +211,7 @@
 
                 <!-- ── Next best actions strip ─────────────────────────────── -->
                 <div class="app-eval-actions" id="eval-actions-strip" hidden>
-                    <span class="app-eval-actions__label">Next best actions</span>
+                    <span class="app-eval-actions__label" th:text="#{report.view.nextActions}">Next best actions</span>
                     <a th:if="${!#bools.isTrue(delegated) and pendingReviewCount != null and pendingReviewCount > 0}"
                        class="app-eval-actions__chip app-eval-actions__chip--pending"
                        href="/user/workspace#publications"
@@ -241,7 +241,7 @@
                             <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
                         </span>
                         <button type="button" class="app-eval-snapshots-panel__close" id="eval-snapshots-close"
-                                aria-label="Close snapshots panel">
+                                th:attr="aria-label=#{report.view.closeSnapshots}">
                             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -252,13 +252,13 @@
 
                 <!-- ── Workbench: criteria rail + evidence pane ─────────────── -->
                 <div class="app-eval-workbench">
-                    <nav class="app-eval-rail" aria-label="Criteria">
+                    <nav class="app-eval-rail" th:attr="aria-label=#{report.view.criteriaAria}">
                         <button th:each="criterion, critIndex : ${report.criteria}"
                                 type="button"
                                 class="app-eval-rail__tile"
                                 th:attr="data-criterion-index=${critIndex.index},data-criterion-score=${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)},id=${'criterion-' + critIndex.index}">
                             <span class="app-eval-rail__name"
-                                  th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}">Criterion</span>
+                                  th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}" >Criterion</span>
                             <span class="app-eval-rail__ratio"
                                   th:text="${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)}">0.00</span>
                             <span class="app-eval-rail__chip" hidden></span>
@@ -273,7 +273,7 @@
                                  hidden>
                             <header class="app-eval-evidence__header">
                                 <h2 class="app-eval-evidence__title"
-                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}">Criterion</h2>
+                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}" >Criterion</h2>
                                 <span class="app-eval-evidence__ratio"></span>
                                 <span class="app-eval-evidence__chip" hidden></span>
                                 <span class="eval-trend" th:attr="data-criterion-index=${critIndex.index}"></span>
@@ -303,7 +303,7 @@
                                            th:unless="${delegated}"
                                            th:href="@{/user/indicators/export/{id}(id=${indicator.id})}"
                                            title="Export Excel"
-                                           aria-label="Export indicator to Excel">
+                                           th:attr="aria-label=#{report.view.exportIndicator}">
                                             <i class="fa-solid fa-download fa-xs" aria-hidden="true"></i>
                                         </a>
                                     </div>
@@ -324,13 +324,13 @@
                                 <section th:if="${indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= #lists.size(report.indicators)}"
                                          class="app-eval-indicator">
                                     <div class="app-eval-indicator__header">
-                                        <span class="app-eval-muted">Indicator reference unavailable</span>
+                                        <span class="app-eval-muted" th:text="#{report.view.indicatorUnavailable}">Indicator reference unavailable</span>
                                         <span class="indicator-row-score">N/A</span>
                                     </div>
                                 </section>
                             </th:block>
                             <div th:if="${criterion.indicatorIndices == null || criterion.indicatorIndices.isEmpty()}"
-                                 class="app-eval-muted">No indicators in this criterion.</div>
+                                 class="app-eval-muted" th:text="#{report.view.noIndicators}">No indicators in this criterion.</div>
                         </section>
                     </div>
                 </div>
@@ -352,7 +352,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div class="citation-modal-header-body">
-                    <h5 class="modal-title" id="citationDetailModalLabel">Citations</h5>
+                    <h5 class="modal-title" id="citationDetailModalLabel" th:text="#{report.view.citations}">Citations</h5>
                     <p class="citation-modal-pub-title" id="citationModalPubTitle"></p>
                 </div>
                 <button class="close" type="button" data-dismiss="modal" aria-label="Close">
@@ -364,7 +364,7 @@
             </div>
             <div class="modal-footer">
                 <span class="citation-modal-total" id="citationModalTotal"></span>
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" th:text="#{report.view.close}">Close</button>
             </div>
         </div>
     </div>

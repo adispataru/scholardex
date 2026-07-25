@@ -78,7 +78,7 @@ class EvaluationWorkspaceControllerContractTest {
     void evaluationTemplateExposesSnapshotRegionAndModalDescriptions() throws Exception {
         String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
 
-        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-compare-select\" class=\"form-control form-control-sm\" aria-label=\"Select comparison run or snapshot\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-compare-select\" class=\"form-control form-control-sm\" th:attr=\"aria-label=#{report.view.selectComparison}\""));
         org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-snapshots-panel\" hidden role=\"region\" aria-labelledby=\"eval-snapshots-title\""));
         org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-snapshots-title\""));
         org.junit.jupiter.api.Assertions.assertTrue(template.contains("aria-describedby=\"citationModalPubTitle citationModalTotal\""));
