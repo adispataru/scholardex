@@ -94,6 +94,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
         boolean lncsBookSeriesCandidate = isLncsBookSeriesCandidate(publication, forum);
         ScholardexForumView acmSignalForum = null;
+        boolean acmByDoi = false;
         ScholardexForumView originalForumMatch = null;
         // A paper published in a conference-proceeding forum is a conference contribution even when its
         // subtype is the generic "ar" (OpenAlex labels many proceedings papers as plain articles).
@@ -161,8 +162,12 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             // special case; the predatory gate has already zeroed excluded venues before this point.
             if (scoreResult.bestPoints.get() == 0 && indicator != null && indicator.usesAcmEptcsCFloor2026()) {
                 acmSignalForum = resolveAcmEptcsSignalForum(publication, forum);
+                // H90 — neither forum name need mention ACM. A DBLP-restamped stream forum carries the bare
+                // acronym ("EUROMLSYS") and the pre-restamp proceedings title often omits the publisher, so
+                // name-only detection misses genuinely ACM-published venues. The 10.1145 DOI prefix settles it.
+                acmByDoi = acmSignalForum == null && DoiVenueSupport.isAcmPublished(publication);
             }
-            if (acmSignalForum != null) {
+            if (acmSignalForum != null || acmByDoi) {
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.ACM);
@@ -199,6 +204,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             // The ACM/EPTCS signal came from the preserved pre-restamp venue, not the assigned stream
             // forum — surface it so the drilldown shows why a "UCC"-named forum floored to C.
             score.getScoringInfo().put("acmEvidenceVenue", acmSignalForum.getPublicationName());
+        }
+        if (acmByDoi) {
+            // Neither venue name says ACM — the floor came from the DOI. Name the evidence, or the C looks
+            // unfounded next to a forum called "EUROMLSYS".
+            score.getScoringInfo().put("acmEvidenceDoiPrefix", "10.1145");
         }
         if (!conferenceCandidate) {
             // Not a conference contribution at all (journal article, book chapter, …): this indicator

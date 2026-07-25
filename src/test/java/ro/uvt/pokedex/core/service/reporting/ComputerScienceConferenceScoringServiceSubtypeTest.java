@@ -3010,4 +3010,82 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
                 "BDCAT is CORE C; the conf/bdc stream key must not hide it. trace=" + service.getLastTraceForTests());
         assertEquals(2.0, score.getScore());
     }
+
+    /** A publication carrying a real DOI, for the DOI-prefix venue signals. */
+    private ScoringPublication doiPublication(String forumId, String originalForumId, String coverDate, String doi) {
+        return new ScoringPublication(null, null, forumId, null, originalForumId, coverDate, null, "cp",
+                List.of(), 0, doi, null, null, 0, Set.of(), 0, 0, 0, List.of(), null);
+    }
+
+    @Test
+    void acmPublishedConferenceFloorsToCOnItsDoiWhenNeitherVenueNameSaysAcm() {
+        // Prod shape of spub_94d1fcfdc25b229c49708a2d (EuroMLSys 2025). CORE has no EUROMLSYS entry, the
+        // DBLP-restamped forum is the bare acronym, and the pre-restamp proceedings title never says "ACM"
+        // — so name-based detection misses a venue the DBLP proceedings record lists as ACM-published.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = doiPublication("forum-euromlsys-stream", "forum-euromlsys-raw",
+                "2025-04-01", "https://doi.org/10.1145/3721146.3721933");
+        when(cacheService.getForum("forum-euromlsys-stream")).thenReturn(conferenceForum("EUROMLSYS"));
+        when(cacheService.getForum("forum-euromlsys-raw")).thenReturn(conferenceForum(
+                "Euromlsys 2025 Proceedings of the 2025 5th Workshop on Machine Learning and Systems"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent(),
+                "an ACM-published CORE-unranked venue floors to C under the 2026 amendment. trace="
+                        + service.getLastTraceForTests());
+        assertEquals(2.0, score.getScore());
+        assertEquals("10.1145", score.getScoringInfo().get("acmEvidenceDoiPrefix"),
+                "the drilldown must name the DOI as the evidence — the C is otherwise unfounded next to "
+                        + "a forum called EUROMLSYS");
+    }
+
+    @Test
+    void anAcmDoiDoesNotFloorAConferenceUnderThe2016Indicator() {
+        // The amendment is 2026-only, exactly as the name-based path already is. FV Info 2016 stays frozen.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = doiPublication("forum-euromlsys-stream", null,
+                "2025-04-01", "https://doi.org/10.1145/3721146.3721933");
+        when(cacheService.getForum("forum-euromlsys-stream")).thenReturn(conferenceForum("EUROMLSYS"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+        assertNull(score.getScoringInfo().get("acmEvidenceDoiPrefix"));
+    }
+
+    @Test
+    void aCoreRankedAcmDoiVenueKeepsItsCoreRankRatherThanTheFloor() {
+        // The floor is a LAST resort: it must not overwrite a rank the conference actually holds.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = doiPublication("forum-agc", null, "2023-10-10",
+                "https://doi.org/10.1145/9999999.9999999");
+        when(cacheService.getForum("forum-agc")).thenReturn(conferenceForum("Great Conference, AGC 2023"));
+        when(cacheService.getConferenceRankings(anyString()))
+                .thenReturn(List.of(ranking("AGC", "Great Conference", CoreConferenceRanking.Rank.A)));
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(8.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        assertNull(score.getScoringInfo().get("acmEvidenceDoiPrefix"));
+    }
+
+    @Test
+    void aNonAcmDoiOnAnUnrankedConferenceStillFallsToD() {
+        // Springer/Elsevier/IEEE DOIs must not pick up the ACM floor — the prefix is the whole signal.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = doiPublication("forum-unknown", null, "2023-10-10",
+                "https://doi.org/10.1109/ispdc67428.2025.00031");
+        when(cacheService.getForum("forum-unknown")).thenReturn(conferenceForum("ZZZ"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, acmFloorIndicator2026());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+    }
 }

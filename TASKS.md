@@ -250,14 +250,42 @@ Done history moved to `TASKS-done.md`.
     `/general/dblpLnChapterEnrichment` → `sweep()`, then a derive-only rebuild.** Two of these four are
     cosmetic anyway — the reviewer notes AD-ZeroNAS "can stay Springer, no point difference" (LNCS floor C
     == CISIS C), as with ISPDC and "Exploring Streaming…", where only the displayed venue name is ugly.
-  - **Open, needs a decision — workshop→parent conference where no source states the link.** EuroMLSys
-    (`10.1145/3721146.3721933`) should be C at half of EuroSys's points (workshop of a CORE-A = 4). DBLP
-    gives it its own stream `conf/euromlsys` with `conferenceName = "EuroMLSys"` and **no `@` marker**, and
-    CORE has no EUROMLSYS entry — so the existing `X@Y` workshop rule (which is exactly the convention the
-    reviewer proposed, already implemented) cannot fire, and neither can anything else. Resolving this
-    needs a **curated workshop→parent map**, i.e. new reference data, not a smarter matcher. Check first
-    whether a refreshed dump populates `booktitle` (null for every evidence row today) — DBLP does use
-    `EuroMLSys@EuroSys` in some editions, which would make it resolve for free.
+  - **The "refresh the dump to populate booktitle" idea — CHECKED 2026-07-26 AND WRONG ON BOTH HALVES.**
+    (a) `booktitle` is null on all 3,094 evidence rows not because the dump lacks it but because
+    `DblpConferenceResolveService.writeEvidence` never sets the field — the sweep DOES parse `<booktitle>`
+    and passes it into the `conferenceName` slot. So **`conferenceName` already IS the dump's booktitle**
+    and a refresh cannot change what is stored there. (The unused `booktitle` field makes
+    `isDblpWorkshopVolume`'s `getBooktitle()` fallback dead code; harmless, worth deleting or filling.)
+    (b) The dump is `2026.03.01` — four months old, not stale. Verified directly against DBLP:
+    `conf/euromlsys/BabucF25` has `<booktitle>EuroMLSys</booktitle>`, **not** `EuroMLSys@EuroSys`, and the
+    crossref'd proceedings record (`conf/euromlsys/2025`) names only "5th Workshop on Machine Learning and
+    Systems" — DBLP records no EuroSys link anywhere. 58 evidence rows DO carry the `@` marker
+    (`SecSE@ESORICS`, `MTD@CCS`, `SEAMS@ICSE`, `WORKS@SC`, …), so the mechanism works; EuroMLSys just is
+    not filed that way. A workshop→parent map remains the only route to the 4-point workshop-of-EuroSys
+    ladder, and it is curated reference data, not a matcher change.
+  - **EuroMLSys reaches C anyway — FIXED via the ACM DOI prefix.** The 2026 amendment already floors
+    CORE-unranked ACM venues to C (H85), which is the category the reviewer asked for; only detection was
+    failing, because `isAcmOrEptcsVenue` reads the venue NAME and neither "EUROMLSYS" nor "Euromlsys 2025
+    Proceedings of the 2025 5th Workshop on Machine Learning and Systems" contains "ACM" — though the DBLP
+    proceedings record lists `<publisher>ACM</publisher>`. Added `DoiVenueSupport.isAcmPublished`
+    (`10.1145`), consulted only inside the already-conference-gated floor: ACM registers journals and
+    proceedings under the same prefix, so it says nothing about venue TYPE, but the type is settled by the
+    time the floor runs. Stamps `acmEvidenceDoiPrefix` so the drilldown does not show an unexplained C next
+    to a forum called EUROMLSYS. Still 2026-only — a negative-control test pins FV Info 2016 at D.
+    **Prod scale: 701 publications carry a 10.1145 DOI, 272 already floor on a name, 429 are newly reachable
+    — but the floor only fires when CORE ranks nothing, and most of the 429 are CORE-ranked (OOPSLA, ICSE,
+    GECCO, CIKM). Approximate upper bound on actual D→C movement: 325.** Larger than the rest of H90 put
+    together; it is the same policy, only detected properly, but worth knowing before the refresh.
+  - **MedFusion-LM would need TWO things, and a dump refresh only supplies one.** DBLP does have it
+    (`conf/pkdd/BabucF25`, venue "PKDD/ECML Workshops", year 2025 — note DBLP says 2025, our OpenAlex
+    record says 2026), so a refresh would attach evidence. But CORE's matching entry has the acronym
+    **"ECML PKDD" — with a space** — while the bare `ECML` entry stops at 2014, so `getClosestYear(2025)`
+    returns null and the acronym candidates (PKDD, ECML) reach neither. Would still need a curated alias.
+    Related measurement worth keeping: **480 of 2,270 CORE entries were last ranked before 2017**, so any
+    recent paper at those venues silently yields `NO_CLOSEST_YEAR`.
+  - **The other two Springer volumes cannot be fixed at all right now** — "Cognitively Inspired
+    Preprocessing…" and "AD-ZeroNAS…" return **0 hits** from DBLP's live search today, not just in our
+    dump. There is no evidence to import.
   - **UX — "other venue type" relabelled to "counted elsewhere".** Journals appear at the foot of a
     conference indicator's list, already collapsed behind a toggle; the reviewer's point is that the label
     does not say where they went, so a reader cannot tell whether they were dropped. Toggle now reads
