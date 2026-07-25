@@ -111,6 +111,15 @@ Done history moved to `TASKS-done.md`.
     `LocalPasswordScrambleRunner` (marker `local-password-scramble-v1`, applied 2026-07-18T18:55Z,
     `scrambledUsers: 56`) already neutralized every stored password for exactly this reason. Nothing
     guessable survives even if a password path were reintroduced.
+  - **EXPOSED KEY — the old Elsevier key is in PUBLIC git history. Revoke it.** Found 2026-07-25 while
+    confirming which key `.env` holds. `scopus.api.key=186f196685e39c011a1c1a0123630231` was committed in
+    `application.properties` on 2025-12-12 (`74b0fa97`, "first push") and removed 2026-07-13 (`48f31efd`,
+    when the key moved to the container env). `github.com/adispataru/scholardex` is **PUBLIC**, and the value
+    is still reachable from history on `origin/main` plus five other remote branches — roughly seven months
+    of public exposure, and retrievable right now. It is NOT the current key (different SHA-256), so the
+    rotation did happen; what is missing is REVOCATION at dev.elsevier.com. Rewriting history is secondary
+    and unreliable (clones, GitHub caches, archives) — revoking makes the string worthless, which is the
+    actual fix. Also consider: any GHCR image built between those two dates baked the key into the jar.
   - **Rotate the Elsevier key — OPEN (one step left).** The key WAS rotated, but prod and the local dev
     `.env` hold the SAME value (identical SHA-256, len 32). A laptop compromise therefore reaches prod, and
     Elsevier's quota/logs cannot separate prod from local experiments. Fix: issue a second key so prod has
@@ -122,6 +131,12 @@ Done history moved to `TASKS-done.md`.
     weak link) but an unowned admin identity has no business there. Verified zero references — no report
     runs, authorship decisions or merge decisions. Script: `scripts/ops/remove-agent-dev-user.sh`
     (audit copy into `app_migrations` before deleting; agent-dev falls back to a synthetic principal).
+  **History secret-scan (2026-07-25)**: swept every commit for credential-shaped literals in
+  `*.properties`/`*.yml`/`*.yaml`. Exactly TWO values were ever committed — the Scopus key above, and
+  `h14.wos.gov-ais.password=uefiscdi`, which is the password to UEFISCDI's publicly distributed WoS AIS
+  archives (documented as such in `application.properties`), not a service credential. Everything else
+  matching was a Helm reference to a k8s secret NAME, not a value. No Mongo/Postgres/Keycloak secret has
+  ever been committed.
   **Decided AGAINST: removing `User.password` and the `PasswordEncoder` bean.** Scoped it and it is not the
   cheap cleanup I first called it — `PasswordEncoder` is threaded through SEVEN production services
   (`UserService`, `AdminUserService`, `GroupService`, `StaffImportService`, `ResearcherShellService`,
