@@ -19,6 +19,10 @@ import java.util.Map;
  * H84 S1 — admin JSON endpoints for publication merges. The queue UI (S2) and the researcher flagging flow (S3)
  * build on these; until then the direct-merge endpoint is the operational tool for known duplicate pairs.
  *
+ * <p>Two ways to write a pair: {@code POST /mergeRequests} queues it for review, {@code POST /merge} applies it
+ * on the spot. Prefer the former — the review step is what catches a mis-paired merge before it deletes a
+ * publication.</p>
+ *
  * <p>Approve/direct-merge apply the merge immediately and then rebuild the dirty projections synchronously
  * (a batchless dirty marker escalates to the full view rebuild, which re-projects the re-keyed edges and drops
  * the retired publication's rows — the TRUNCATE+reload semantics). Merges are rare admin actions; the
@@ -41,6 +45,37 @@ public class AdminPublicationMergeController {
         PublicationMergeService.MergeApplyResult result =
                 publicationMergeService.directMerge(survivorId, duplicateId, principalName(principal), note);
         return withProjectionRebuild(result, rebuildProjections);
+    }
+
+    /**
+     * Queue a pair for review WITHOUT applying it — the admin-side counterpart of a researcher's flag.
+     *
+     * <p>Until this existed, the only admin-side write was {@link #directMerge}, which merges immediately with
+     * no second pair of eyes; that is the operation the 2026-07-25 mis-merge incident went through, and an
+     * admin who spotted a duplicate had no way to route it into the review queue instead. It is also where a
+     * corpus-wide duplicate sweep writes its candidates.</p>
+     *
+     * <p>Idempotent: a pair that already has a decision (of any status) returns that decision untouched with
+     * {@code created=false}, so re-running a sweep never resurrects a rejected pair or clobbers a live one.</p>
+     */
+    @PostMapping("/mergeRequests")
+    public Map<String, Object> requestMerge(@RequestParam String survivorId,
+                                            @RequestParam String duplicateId,
+                                            @RequestParam(required = false) String note,
+                                            Principal principal) {
+        String survivor = survivorId.trim();
+        String duplicate = duplicateId.trim();
+        boolean existed = publicationMergeService.findDecision(survivor, duplicate).isPresent();
+        PublicationMergeDecision decision = publicationMergeService.requestMerge(
+                survivor, duplicate, principalName(principal), null, note);
+        return Map.of(
+                "created", !existed,
+                "id", decision.getId(),
+                "pairKey", decision.getPairKey(),
+                "status", decision.getStatus().name(),
+                "survivorId", decision.getSurvivor().getCanonicalId(),
+                "duplicateId", decision.getDuplicate().getCanonicalId()
+        );
     }
 
     @GetMapping("/mergeRequests")

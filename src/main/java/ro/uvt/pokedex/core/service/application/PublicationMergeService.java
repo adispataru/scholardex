@@ -168,6 +168,15 @@ public class PublicationMergeService {
         return new ReapplySummary(merged, verified, skipped);
     }
 
+    /**
+     * The standing decision for a pair, if any. Lets a caller distinguish "I created this request" from
+     * "there was already one" without re-deriving the pair key, since {@link #requestMerge} deliberately
+     * returns the existing decision rather than failing.
+     */
+    public Optional<PublicationMergeDecision> findDecision(String idA, String idB) {
+        return decisionRepository.findByPairKey(PublicationMergeDecision.pairKeyOf(idA, idB));
+    }
+
     public List<PublicationMergeDecision> listDecisions(PublicationMergeDecision.Status status) {
         return status == null
                 ? decisionRepository.findAllByOrderByUpdatedAtDesc()
