@@ -2748,9 +2748,12 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(dblpEvidenceRepository.findByPublicationId("spub_1285e0759f924f2a965e2052"))
                 .thenReturn(Optional.of(evidence));
 
+        // The REAL CORE name, verbatim from prod — note the long parenthetical tail, which a token-overlap
+        // similarity has to survive. My first version of this test invented a short clean name and passed.
         CoreConferenceRanking aamasRanking = ranking("AAMAS",
-                "International Joint Conference on Autonomous Agents and Multiagent Systems",
-                CoreConferenceRanking.Rank.A);
+                "International Joint Conference on Autonomous Agents and Multiagent Systems "
+                        + "(previously the International Conference on Multiagent Systems, ICMAS, changed in 2000)",
+                CoreConferenceRanking.Rank.A_STAR);
         // Prod-faithful: CORE is queried PER CANDIDATE and has NO "ATAL" entry. An anyString() stub hides
         // the bug, because resolveDblpConferenceTitle deliberately seeds conf/atal -> "ATAL" as the FIRST
         // candidate; only a per-candidate stub shows whether the search continues to AAMAS.
@@ -2759,8 +2762,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
         Score score = service.getScore(publication, indicator("IY"));
 
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent(),
-                "AAMAS is CORE A; prod scores this 0. trace=" + service.getLastTraceForTests());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent(),
+                "AAMAS 2020 is CORE A*; prod scores this D/0. trace=" + service.getLastTraceForTests());
     }
 
     // ---------------------------------------------------------------------------------------------

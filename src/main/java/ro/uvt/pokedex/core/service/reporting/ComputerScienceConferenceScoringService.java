@@ -1103,8 +1103,26 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         return false;
     }
 
+    /**
+     * CORE annotates many entries with a trailing history qualifier — AAMAS is stored as "International Joint
+     * Conference on Autonomous Agents and Multiagent Systems (previously the International Conference on
+     * Multiagent Systems, ICMAS, changed in 2000)". Those ~14 extra tokens are pure noise for matching, but
+     * they sink every similarity rule: the venue name no longer CONTAINS the ranking name, and token overlap
+     * falls under the threshold. AAMAS papers therefore scored D despite an EXACT acronym match — verified in
+     * prod on cosmin.bonchis's 2019/2020/2022 papers, whose trace showed acronym AAMAS == AAMAS with
+     * confidence NONE. Strip the parenthetical from the RANKING name only; venue names carry meaningful
+     * parentheses (DBLP's "AINA (5)" volume markers) that must survive.
+     */
+    private static String stripCoreNameQualifier(String rawRankingName) {
+        if (rawRankingName == null) {
+            return null;
+        }
+        String stripped = rawRankingName.replaceAll("\\([^)]*\\)", " ").trim();
+        return stripped.isBlank() ? rawRankingName : stripped;
+    }
+
     private MatchConfidence scoreMatchConfidence(String normalizedPublicationName, String acronymCandidate, CoreConferenceRanking ranking) {
-        String rankingName = normalizeVenueName(ranking.getName());
+        String rankingName = normalizeVenueName(stripCoreNameQualifier(ranking.getName()));
         if (rankingName.isBlank()) {
             return MatchConfidence.NONE;
         }
