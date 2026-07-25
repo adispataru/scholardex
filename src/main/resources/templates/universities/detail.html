@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,12 +24,12 @@
         <section class="app-university-detail__section" aria-labelledby="university-summary-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">University profile</p>
+                    <p class="app-university-detail__eyebrow" th:text="#{universities.detail.eyebrow}">University profile</p>
                     <h1 id="university-summary-title" class="app-university-detail__section-title" th:text="${ranking.name}">University Name</h1>
                 </div>
                 <a href="/rankings#universities" class="btn btn-outline-primary btn-sm">
                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                    <span>All universities</span>
+                    <span th:text="#{universities.detail.back}">All universities</span>
                 </a>
             </div>
 
@@ -93,7 +93,7 @@
                 <div class="app-university-detail__section-header">
                     <div>
                         <p class="app-university-detail__eyebrow">Performance</p>
-                        <h2 id="overview-charts-title" class="app-university-detail__section-title">Overview Trends</h2>
+                        <h2 id="overview-charts-title" class="app-university-detail__section-title" th:text="#{universities.detail.overviewTrends}">Overview Trends</h2>
                     </div>
                 </div>
                 <div class="app-university-detail__chart-grid">
@@ -104,7 +104,7 @@
                         </div>
                     </article>
                     <article class="app-university-detail__chart-card">
-                        <h3 class="app-university-detail__chart-title">Rank</h3>
+                        <h3 class="app-university-detail__chart-title" th:text="#{universities.detail.rank}">Rank</h3>
                         <div class="app-university-detail__chart-shell">
                             <canvas id="urap-rank-chart"></canvas>
                         </div>
@@ -116,7 +116,7 @@
                 <div class="app-university-detail__section-header">
                     <div>
                         <p class="app-university-detail__eyebrow">Indicators</p>
-                        <h2 id="indicator-charts-title" class="app-university-detail__section-title">Detailed Indicators</h2>
+                        <h2 id="indicator-charts-title" class="app-university-detail__section-title" th:text="#{universities.detail.detailedIndicators}">Detailed Indicators</h2>
                     </div>
                 </div>
                 <div class="app-university-detail__chart-grid app-university-detail__chart-grid--metrics">

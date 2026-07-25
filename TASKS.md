@@ -38,9 +38,14 @@ Done history moved to `TASKS-done.md`.
     dead on 404/error pages — the resolver now reads the `lang` parameter itself (read-only; persistence
     still happens via setLocale). Test copy assertions moved to the Romanian default; English coverage sits
     in `ErrorPageModelFactoryTest`, which asserts both bundles resolve.
-  - **S2b remaining**: the five public data pages (publications/forums/authors/rankings hub/universities/
-    core detail, ~250 strings). `RankingViewControllerContractTest` pins ~25 English strings on those pages
-    and will need the same default-locale update.
+  - **S2b DONE locally 2026-07-25**: publications list+detail, forums list, authors list+detail,
+    universities detail, core ranking detail and the rankings hub (4 tabs: CORE/universities/events/WoS —
+    filters, sort options, table headers with their tooltips, loading/empty states, page intros, tab
+    labels). Shared `common.*` vocabulary (filters/sort/pagination/year/name/type/category) keeps the four
+    filter blocks consistent. Untranslated by rule, as agreed: entity names, ISSN/eISSN/DOI, CORE ranks
+    (A*/B/C/Unranked), quartiles, WoS/Scopus/DOAJ/ERIH, h-index — plus `th:text` design-time fallbacks,
+    which are placeholders for dynamic data, not copy. Contract assertions that pinned markup shape
+    (`<th scope="col" data-sort-key="name">…`) keep the shape and now expect the Romanian label.
   - **S3 researcher workspace**: user templates + a small `t()` helper in the frontend fed by a JSON
     bundle exposed per locale; convert the 7 workspace modules.
   - **S4 supervisor pages** + a sweep for leftovers (a lint that fails on bare text nodes in the

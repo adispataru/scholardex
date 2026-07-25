@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,12 +24,12 @@
         <section aria-labelledby="publication-summary-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">Publication</p>
+                    <p class="app-university-detail__eyebrow" th:text="#{publications.detail.eyebrow}">Publication</p>
                     <h1 id="publication-summary-title" class="app-university-detail__section-title" th:text="${publication.title}">Publication Title</h1>
                 </div>
                 <a href="/publications" class="btn btn-outline-primary btn-sm">
                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                    <span>All publications</span>
+                    <span th:text="#{publications.back}">All publications</span>
                 </a>
             </div>
 
@@ -66,7 +66,7 @@
         <section class="app-university-detail__section" aria-labelledby="publication-forum-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">Source forum</p>
+                    <p class="app-university-detail__eyebrow" th:text="#{publications.detail.sourceForum}">Source forum</p>
                     <h2 id="publication-forum-title" class="app-university-detail__section-title">Forum</h2>
                 </div>
             </div>
@@ -97,7 +97,7 @@
         <section class="app-university-detail__section" aria-labelledby="publication-authors-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">Contributors</p>
+                    <p class="app-university-detail__eyebrow" th:text="#{publications.detail.contributors}">Contributors</p>
                     <h2 id="publication-authors-title" class="app-university-detail__section-title">Authors</h2>
                 </div>
             </div>
@@ -117,8 +117,8 @@
         <section class="app-university-detail__section" aria-labelledby="publication-identifiers-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">External references</p>
-                    <h2 id="publication-identifiers-title" class="app-university-detail__section-title">Identifiers</h2>
+                    <p class="app-university-detail__eyebrow" th:text="#{publications.detail.externalReferences}">External references</p>
+                    <h2 id="publication-identifiers-title" class="app-university-detail__section-title" th:text="#{publications.detail.identifiers}">Identifiers</h2>
                 </div>
             </div>
             <dl class="app-university-detail__definition-grid">

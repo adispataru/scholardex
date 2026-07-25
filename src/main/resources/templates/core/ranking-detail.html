@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,12 +24,12 @@
         <section aria-labelledby="conf-summary-title">
             <div class="app-university-detail__section-header">
                 <div>
-                    <p class="app-university-detail__eyebrow">CORE Conference</p>
+                    <p class="app-university-detail__eyebrow" th:text="#{core.detail.eyebrow}">CORE Conference</p>
                     <h1 id="conf-summary-title" class="app-university-detail__section-title" th:text="${conf.name}">Conference Name</h1>
                 </div>
                 <a href="/rankings#core" class="btn btn-outline-primary btn-sm">
                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                    <span>All rankings</span>
+                    <span th:text="#{core.detail.back}">All rankings</span>
                 </a>
             </div>
 
@@ -57,7 +57,7 @@
 
         <section class="mt-4" aria-labelledby="conf-chart-title">
             <div class="app-university-detail__section-header">
-                <h2 id="conf-chart-title" class="app-university-detail__section-title">Rankings Over the Years</h2>
+                <h2 id="conf-chart-title" class="app-university-detail__section-title" th:text="#{core.detail.overTheYears}">Rankings Over the Years</h2>
             </div>
             <th:block th:replace="~{fragments :: core-ranking-chart(${conf})}"></th:block>
         </section>
@@ -70,9 +70,9 @@
                 <table class="table table-bordered app-table">
                     <thead>
                     <tr>
-                        <th scope="col">Edition</th>
-                        <th scope="col">Rank</th>
-                        <th scope="col">Fields of research</th>
+                        <th scope="col" th:text="#{core.detail.edition}">Edition</th>
+                        <th scope="col" th:text="#{universities.detail.rank}">Rank</th>
+                        <th scope="col" th:text="#{core.detail.fieldsOfResearch}">Fields of research</th>
                     </tr>
                     </thead>
                     <tbody>

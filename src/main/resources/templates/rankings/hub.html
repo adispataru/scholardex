@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rankings — ScholarDex</title>
+    <title th:text="#{rankings.meta.title}">Rankings</title>
     <meta name="description" content="Browse academic and artistic rankings: CORE conference rankings, URAP university rankings, and the artistic events catalog.">
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
@@ -34,7 +34,7 @@
                         aria-selected="false"
                         tabindex="-1">
                     <i class="fa-solid fa-building-columns app-tab-bar__tab-icon" aria-hidden="true"></i>
-                    <span>Universities</span>
+                    <span th:text="#{rankings.tab.universities}">Universities</span>
                 </button>
                 <button type="button" role="tab"
                         class="app-tab-bar__tab"
@@ -44,7 +44,7 @@
                         aria-selected="false"
                         tabindex="-1">
                     <i class="fa-solid fa-palette app-tab-bar__tab-icon" aria-hidden="true"></i>
-                    <span>Events</span>
+                    <span th:text="#{rankings.tab.events}">Events</span>
                 </button>
                 <button th:if="${currentUser != null and currentUser.isPresent()}"
                         type="button" role="tab"
@@ -77,39 +77,39 @@
                 <div role="tabpanel" class="app-tab-bar__panel" id="tab-panel-core"
                      aria-labelledby="tab-trigger-core">
                     <div class="app-page-intro">
-                        <p class="app-page-intro__body">Explore CORE conference rankings from A* to unranked. Search by conference name or acronym and click through to view the full ranking history across years.</p>
+                        <p class="app-page-intro__body" th:text="#{rankings.core.intro}">Explore CORE conference rankings from A*</p>
                     </div>
                     <div class="app-table-filters">
-                        <h2 class="app-table-filters__title">Filters</h2>
+                        <h2 class="app-table-filters__title" th:text="#{common.filters}">Filters</h2>
                         <div class="app-table-filters__grid">
                             <div class="form-group app-table-filters__field app-table-filters__field--span-5">
-                                <label for="core-search">Search</label>
+                                <label for="core-search" th:text="#{common.search}">Search</label>
                                 <th:block th:replace="~{fragments :: search-input(
                                     id='core-search',
                                     name='q',
-                                    placeholder='Conference, acronym, source ID',
+                                    placeholder=#{rankings.core.search.placeholder},
                                     value='',
                                     kbdHint=null,
                                     clearable=true)}"></th:block>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="core-sort">Sort By</label>
+                                <label for="core-sort" th:text="#{common.sortBy}">Sort By</label>
                                 <select id="core-sort" class="form-control">
-                                    <option value="name">Conference</option>
-                                    <option value="acronym">Acronym</option>
-                                    <option value="rank">Rank</option>
-                                    <option value="year">Edition</option>
+                                    <option value="name" th:text="#{rankings.core.conference}">Conference</option>
+                                    <option value="acronym" th:text="#{rankings.core.acronym}">Acronym</option>
+                                    <option value="rank" th:text="#{rankings.rank}">Rank</option>
+                                    <option value="year" th:text="#{rankings.edition}">Edition</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="core-direction">Direction</label>
+                                <label for="core-direction" th:text="#{common.direction}">Direction</label>
                                 <select id="core-direction" class="form-control">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
+                                    <option value="asc" th:text="#{common.ascending}">Ascending</option>
+                                    <option value="desc" th:text="#{common.descending}">Descending</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="core-size">Page Size</label>
+                                <label for="core-size" th:text="#{common.pageSize}">Page Size</label>
                                 <select id="core-size" class="form-control">
                                     <option value="25">25</option>
                                     <option value="50">50</option>
@@ -122,23 +122,23 @@
                     <div class="app-table-section">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
-                                <h2 class="app-table-section__title">Conference Rankings</h2>
+                                <h2 class="app-table-section__title" th:text="#{rankings.core.section}">Conference Rankings</h2>
                                 <span id="core-total-info" class="app-table-toolbar__meta"></span>
                             </div>
                             <div class="app-table-section__body">
-                                <div id="core-loading" class="app-table-state app-table-state--info" role="status">Loading rankings...</div>
+                                <div id="core-loading" class="app-table-state app-table-state--info" role="status" th:text="#{rankings.core.loading}">Loading rankings...</div>
                                 <div id="core-error" class="app-table-state app-table-state--danger d-none" role="alert"></div>
-                                <div id="core-empty" class="app-table-state app-table-state--warning d-none" role="status">No rankings found for the current filter.</div>
+                                <div id="core-empty" class="app-table-state app-table-state--warning d-none" role="status" th:text="#{rankings.core.empty}">No rankings found.</div>
 
                                 <div class="app-table-scroll">
                                     <table class="table table-bordered app-table" id="core-table" data-detail-base="/core/rankings" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col" data-sort-key="name">Conference</th>
-                                            <th scope="col" data-sort-key="acronym">Acronym</th>
-                                            <th scope="col" data-sort-key="rank" title="CORE rank in the conference's latest ranked edition">Rank</th>
-                                            <th scope="col" data-sort-key="year" title="The latest CORE edition that ranked this conference">Edition</th>
-                                            <th scope="col" title="Rank across the last CORE editions">Rank trend</th>
+                                            <th scope="col" data-sort-key="name" th:text="#{rankings.core.conference}">Conference</th>
+                                            <th scope="col" data-sort-key="acronym" th:text="#{rankings.core.acronym}">Acronym</th>
+                                            <th scope="col" data-sort-key="rank" th:attr="title=#{rankings.core.rank.tooltip}" th:text="#{rankings.rank}">Rank</th>
+                                            <th scope="col" data-sort-key="year" th:attr="title=#{rankings.core.edition.tooltip}" th:text="#{rankings.edition}">Edition</th>
+                                            <th scope="col" th:attr="title=#{rankings.core.rankTrend.tooltip}" th:text="#{rankings.core.rankTrend}">Rank trend</th>
                                         </tr>
                                         </thead>
                                         <tbody id="core-table-body"></tbody>
@@ -146,9 +146,9 @@
                                 </div>
 
                                 <div class="app-table-pager">
-                                    <button id="core-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Previous</button>
+                                    <button id="core-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.previous}">Previous</button>
                                     <span id="core-page-info" class="app-table-pager__info"></span>
-                                    <button id="core-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Next</button>
+                                    <button id="core-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.next}">Next</button>
                                 </div>
                             </div>
                         </div>
@@ -159,40 +159,40 @@
                 <div role="tabpanel" class="app-tab-bar__panel" id="tab-panel-universities"
                      aria-labelledby="tab-trigger-universities" hidden="hidden">
                     <div class="app-page-intro">
-                        <p class="app-page-intro__body">Browse URAP university rankings from institutions across the globe. Search by name and open any entry for a detailed year-by-year score breakdown.</p>
+                        <p class="app-page-intro__body" th:text="#{rankings.urap.intro}">Browse URAP university rankings from ins</p>
                     </div>
                     <div class="app-table-filters">
-                        <h2 class="app-table-filters__title">Filters</h2>
+                        <h2 class="app-table-filters__title" th:text="#{common.filters}">Filters</h2>
                         <div class="app-table-filters__grid">
                             <div class="form-group app-table-filters__field app-table-filters__field--span-5">
-                                <label for="urap-search">Search</label>
+                                <label for="urap-search" th:text="#{common.search}">Search</label>
                                 <th:block th:replace="~{fragments :: search-input(
                                     id='urap-search',
                                     name='q',
-                                    placeholder='University or country',
+                                    placeholder=#{rankings.urap.search.placeholder},
                                     value='',
                                     kbdHint=null,
                                     clearable=true)}"></th:block>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="urap-sort">Sort By</label>
+                                <label for="urap-sort" th:text="#{common.sortBy}">Sort By</label>
                                 <select id="urap-sort" class="form-control">
-                                    <option value="name">University</option>
-                                    <option value="country">Country</option>
-                                    <option value="rank">Rank</option>
-                                    <option value="year">Year</option>
-                                    <option value="total">Total Score</option>
+                                    <option value="name" th:text="#{rankings.urap.university}">University</option>
+                                    <option value="country" th:text="#{common.country}">Country</option>
+                                    <option value="rank" th:text="#{rankings.rank}">Rank</option>
+                                    <option value="year" th:text="#{common.year}">Year</option>
+                                    <option value="total" th:text="#{rankings.totalScore}">Total Score</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="urap-direction">Direction</label>
+                                <label for="urap-direction" th:text="#{common.direction}">Direction</label>
                                 <select id="urap-direction" class="form-control">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
+                                    <option value="asc" th:text="#{common.ascending}">Ascending</option>
+                                    <option value="desc" th:text="#{common.descending}">Descending</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="urap-size">Page Size</label>
+                                <label for="urap-size" th:text="#{common.pageSize}">Page Size</label>
                                 <select id="urap-size" class="form-control">
                                     <option value="25">25</option>
                                     <option value="50">50</option>
@@ -205,7 +205,7 @@
                     <div class="app-table-section">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
-                                <h2 class="app-table-section__title">University Rankings</h2>
+                                <h2 class="app-table-section__title" th:text="#{rankings.urap.section}">University Rankings</h2>
                                 <!-- The trend column plots the selected metric; rank improves downward, so the
                                      sparkline's direction colouring is inverted for it. -->
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Trend metric" id="urap-metric">
@@ -215,20 +215,20 @@
                                 <span id="urap-total-info" class="app-table-toolbar__meta"></span>
                             </div>
                             <div class="app-table-section__body">
-                                <div id="urap-loading" class="app-table-state app-table-state--info" role="status">Loading rankings...</div>
+                                <div id="urap-loading" class="app-table-state app-table-state--info" role="status" th:text="#{rankings.core.loading}">Loading rankings...</div>
                                 <div id="urap-error" class="app-table-state app-table-state--danger d-none" role="alert"></div>
-                                <div id="urap-empty" class="app-table-state app-table-state--warning d-none" role="status">No rankings found for the current filter.</div>
+                                <div id="urap-empty" class="app-table-state app-table-state--warning d-none" role="status" th:text="#{rankings.core.empty}">No rankings found.</div>
 
                                 <div class="app-table-scroll">
                                     <table class="table table-bordered app-table" id="urap-table" data-detail-base="/universities" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col" data-sort-key="rank" title="URAP world rank in the university's latest edition">Rank</th>
-                                            <th scope="col" data-sort-key="name">University</th>
-                                            <th scope="col" data-sort-key="country">Country</th>
-                                            <th scope="col" data-sort-key="year" title="The university's latest URAP edition">Year</th>
-                                            <th scope="col" data-sort-key="total" title="URAP total score in the latest edition">Total Score</th>
-                                            <th scope="col" id="urap-trend-header">Rank trend</th>
+                                            <th scope="col" data-sort-key="rank" th:attr="title=#{rankings.urap.rank.tooltip}" th:text="#{rankings.rank}">Rank</th>
+                                            <th scope="col" data-sort-key="name" th:text="#{rankings.urap.university}">University</th>
+                                            <th scope="col" data-sort-key="country" th:text="#{common.country}">Country</th>
+                                            <th scope="col" data-sort-key="year" th:attr="title=#{rankings.urap.year.tooltip}" th:text="#{common.year}">Year</th>
+                                            <th scope="col" data-sort-key="total" th:attr="title=#{rankings.urap.total.tooltip}" th:text="#{rankings.totalScore}">Total Score</th>
+                                            <th scope="col" id="urap-trend-header" th:text="#{rankings.urap.rankTrend}">Rank trend</th>
                                         </tr>
                                         </thead>
                                         <tbody id="urap-table-body"></tbody>
@@ -236,9 +236,9 @@
                                 </div>
 
                                 <div class="app-table-pager">
-                                    <button id="urap-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Previous</button>
+                                    <button id="urap-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.previous}">Previous</button>
                                     <span id="urap-page-info" class="app-table-pager__info"></span>
-                                    <button id="urap-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Next</button>
+                                    <button id="urap-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.next}">Next</button>
                                 </div>
                             </div>
                         </div>
@@ -249,38 +249,38 @@
                 <div role="tabpanel" class="app-tab-bar__panel" id="tab-panel-events"
                      aria-labelledby="tab-trigger-events" hidden="hidden">
                     <div class="app-page-intro">
-                        <p class="app-page-intro__body">Browse artistic events recognised by the system. Search by name and sort by rank or domain to find relevant entries.</p>
+                        <p class="app-page-intro__body" th:text="#{rankings.events.intro}">Browse artistic events recognised by the</p>
                     </div>
                     <div class="app-table-filters">
-                        <h2 class="app-table-filters__title">Filters</h2>
+                        <h2 class="app-table-filters__title" th:text="#{common.filters}">Filters</h2>
                         <div class="app-table-filters__grid">
                             <div class="form-group app-table-filters__field app-table-filters__field--span-5">
-                                <label for="events-search">Search</label>
+                                <label for="events-search" th:text="#{common.search}">Search</label>
                                 <th:block th:replace="~{fragments :: search-input(
                                     id='events-search',
                                     name='q',
-                                    placeholder='Event name',
+                                    placeholder=#{rankings.events.search.placeholder},
                                     value='',
                                     kbdHint=null,
                                     clearable=true)}"></th:block>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="events-sort">Sort By</label>
+                                <label for="events-sort" th:text="#{common.sortBy}">Sort By</label>
                                 <select id="events-sort" class="form-control">
-                                    <option value="name">Name</option>
-                                    <option value="rank">Rank</option>
-                                    <option value="domainId">Domain</option>
+                                    <option value="name" th:text="#{common.name}">Name</option>
+                                    <option value="rank" th:text="#{rankings.rank}">Rank</option>
+                                    <option value="domainId" th:text="#{rankings.wos.domain}">Domain</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="events-direction">Direction</label>
+                                <label for="events-direction" th:text="#{common.direction}">Direction</label>
                                 <select id="events-direction" class="form-control">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
+                                    <option value="asc" th:text="#{common.ascending}">Ascending</option>
+                                    <option value="desc" th:text="#{common.descending}">Descending</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="events-size">Page Size</label>
+                                <label for="events-size" th:text="#{common.pageSize}">Page Size</label>
                                 <select id="events-size" class="form-control">
                                     <option value="25">25</option>
                                     <option value="50">50</option>
@@ -293,21 +293,21 @@
                     <div class="app-table-section">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
-                                <h2 class="app-table-section__title">Artistic Events Directory</h2>
+                                <h2 class="app-table-section__title" th:text="#{rankings.events.section}">Artistic Events Directory</h2>
                                 <span id="events-total-info" class="app-table-toolbar__meta"></span>
                             </div>
                             <div class="app-table-section__body">
-                                <div id="events-loading" class="app-table-state app-table-state--info" role="status">Loading events...</div>
+                                <div id="events-loading" class="app-table-state app-table-state--info" role="status" th:text="#{rankings.events.loading}">Loading events...</div>
                                 <div id="events-error" class="app-table-state app-table-state--danger d-none" role="alert"></div>
-                                <div id="events-empty" class="app-table-state app-table-state--warning d-none" role="status">No events found for the current filter.</div>
+                                <div id="events-empty" class="app-table-state app-table-state--warning d-none" role="status" th:text="#{rankings.events.empty}">No events found.</div>
 
                                 <div class="app-table-scroll">
                                     <table class="table table-bordered app-table" id="events-table" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col">Event Name</th>
-                                            <th scope="col">Rank</th>
-                                            <th scope="col">Domain</th>
+                                            <th scope="col" th:text="#{rankings.events.eventName}">Event Name</th>
+                                            <th scope="col" th:text="#{rankings.rank}">Rank</th>
+                                            <th scope="col" th:text="#{rankings.wos.domain}">Domain</th>
                                         </tr>
                                         </thead>
                                         <tbody id="events-table-body"></tbody>
@@ -315,9 +315,9 @@
                                 </div>
 
                                 <div class="app-table-pager">
-                                    <button id="events-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Previous</button>
+                                    <button id="events-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.previous}">Previous</button>
                                     <span id="events-page-info" class="app-table-pager__info"></span>
-                                    <button id="events-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Next</button>
+                                    <button id="events-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.next}">Next</button>
                                 </div>
                             </div>
                         </div>
@@ -328,41 +328,41 @@
                      role="tabpanel" class="app-tab-bar__panel" id="tab-panel-wos"
                      aria-labelledby="tab-trigger-wos" hidden="hidden">
                     <div class="app-page-intro">
-                        <p class="app-page-intro__body">Browse Web of Science categories by name, edition, journal coverage, and latest year. Open any category for its linked journal coverage view.</p>
+                        <p class="app-page-intro__body" th:text="#{rankings.wos.intro}">Browse Web of Science categories by name</p>
                     </div>
                     <div class="app-table-filters">
-                        <h2 class="app-table-filters__title">Filters</h2>
+                        <h2 class="app-table-filters__title" th:text="#{common.filters}">Filters</h2>
                         <div class="app-table-filters__grid">
                             <div class="form-group app-table-filters__field app-table-filters__field--span-5">
-                                <label for="wos-categories-search">Search</label>
+                                <label for="wos-categories-search" th:text="#{common.search}">Search</label>
                                 <th:block th:replace="~{fragments :: search-input(
                                     id='wos-categories-search',
                                     name='q',
-                                    placeholder='Category name or edition',
+                                    placeholder=#{rankings.wos.search.placeholder},
                                     value='',
                                     kbdHint=null,
                                     clearable=true)}"></th:block>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="wos-categories-sort">Sort By</label>
+                                <label for="wos-categories-sort" th:text="#{common.sortBy}">Sort By</label>
                                 <select id="wos-categories-sort" class="form-control">
-                                    <option value="categoryName">Category</option>
-                                    <option value="edition">Edition</option>
-                                    <option value="journalCount">Journals</option>
-                                    <option value="year">Year</option>
+                                    <option value="categoryName" th:text="#{common.category}">Category</option>
+                                    <option value="edition" th:text="#{rankings.edition}">Edition</option>
+                                    <option value="journalCount" th:text="#{rankings.wos.journals}">Journals</option>
+                                    <option value="year" th:text="#{common.year}">Year</option>
                                     <option value="avg">Avg</option>
                                     <option value="top">Top</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="wos-categories-direction">Direction</label>
+                                <label for="wos-categories-direction" th:text="#{common.direction}">Direction</label>
                                 <select id="wos-categories-direction" class="form-control">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
+                                    <option value="asc" th:text="#{common.ascending}">Ascending</option>
+                                    <option value="desc" th:text="#{common.descending}">Descending</option>
                                 </select>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                                <label for="wos-categories-size">Page Size</label>
+                                <label for="wos-categories-size" th:text="#{common.pageSize}">Page Size</label>
                                 <select id="wos-categories-size" class="form-control">
                                     <option value="25">25</option>
                                     <option value="50">50</option>
@@ -375,7 +375,7 @@
                     <div class="app-table-section">
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
-                                <h2 class="app-table-section__title">WoS Category Directory</h2>
+                                <h2 class="app-table-section__title" th:text="#{rankings.wos.section}">WoS Category Directory</h2>
                                 <!-- One metric era at a time (mirrors the category detail page): every metric
                                      column below belongs to the selected metric; each category's Year column is
                                      its own latest year for that metric. -->
@@ -386,24 +386,24 @@
                                 <span id="wos-categories-total-info" class="app-table-toolbar__meta"></span>
                             </div>
                             <div class="app-table-section__body">
-                                <div id="wos-categories-loading" class="app-table-state app-table-state--info" role="status">Loading categories...</div>
+                                <div id="wos-categories-loading" class="app-table-state app-table-state--info" role="status" th:text="#{rankings.wos.loading}">Loading categories...</div>
                                 <div id="wos-categories-error" class="app-table-state app-table-state--danger d-none" role="alert"></div>
-                                <div id="wos-categories-empty" class="app-table-state app-table-state--warning d-none" role="status">No WoS categories found for the current filter.</div>
+                                <div id="wos-categories-empty" class="app-table-state app-table-state--warning d-none" role="status" th:text="#{rankings.wos.empty}">No WoS categories found.</div>
 
                                 <div class="app-table-scroll">
                                     <table class="table table-bordered app-table" id="wos-categories-table" data-detail-base="/wos/categories" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
-                                            <th scope="col" data-sort-key="categoryName">Category</th>
-                                            <th scope="col" data-sort-key="edition">Edition</th>
-                                            <th scope="col" data-sort-key="journalCount" title="Journals ranked in the category's latest year for the selected metric">Journals</th>
+                                            <th scope="col" data-sort-key="categoryName" th:text="#{common.category}">Category</th>
+                                            <th scope="col" data-sort-key="edition" th:text="#{rankings.edition}">Edition</th>
+                                            <th scope="col" data-sort-key="journalCount" th:attr="title=#{rankings.wos.journals.tooltip}" th:text="#{rankings.wos.journals}">Journals</th>
                                             <th scope="col" id="wos-categories-year-header" data-sort-key="year"
                                                 title="The category's latest year with data for the selected metric">Year</th>
                                             <th scope="col" id="wos-categories-avg-header" data-sort-key="avg"
                                                 title="Average of the selected metric across the category's journals in its latest year">Avg AIS</th>
                                             <th scope="col" id="wos-categories-top-header" data-sort-key="top"
                                                 title="Highest value of the selected metric in the category's latest year">Top AIS</th>
-                                            <th scope="col" id="wos-categories-trend-header">AIS trend</th>
+                                            <th scope="col" id="wos-categories-trend-header" th:text="#{rankings.wos.aisTrend}">AIS trend</th>
                                         </tr>
                                         </thead>
                                         <tbody id="wos-categories-table-body"></tbody>
@@ -411,9 +411,9 @@
                                 </div>
 
                                 <div class="app-table-pager">
-                                    <button id="wos-categories-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Previous</button>
+                                    <button id="wos-categories-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.previous}">Previous</button>
                                     <span id="wos-categories-page-info" class="app-table-pager__info"></span>
-                                    <button id="wos-categories-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Next</button>
+                                    <button id="wos-categories-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.next}">Next</button>
                                 </div>
                             </div>
                         </div>
@@ -426,7 +426,7 @@
                      role="tabpanel" class="app-tab-bar__panel" id="tab-panel-wos"
                      aria-labelledby="tab-trigger-wos" hidden="hidden">
                     <div class="app-page-intro">
-                        <p class="app-page-intro__body">Web of Science category rankings are available to signed-in members.</p>
+                        <p class="app-page-intro__body" th:text="#{rankings.wos.gated}">Web of Science category rankings are ava</p>
                     </div>
                     <th:block th:replace="~{fragments :: signin-gate(
                         title='Web of Science rankings',

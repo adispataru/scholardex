@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forums — ScholarDex</title>
+    <title th:text="#{forums.meta.title}">Forums</title>
     <meta name="description" content="Browse all canonical academic forums and filter by WoS availability.">
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
@@ -14,49 +14,49 @@
 <main class="app-public-content" id="main-content">
     <div class="app-page-content">
         <div class="app-page-intro">
-            <p class="app-page-intro__body">Search and filter journals and conferences indexed in the ScholarDex catalog. Click any entry to view its full profile, rankings, and publication metrics.</p>
+            <p class="app-page-intro__body" th:text="#{forums.intro}">Search and filter journals and conferenc</p>
         </div>
         <div class="app-table-filters">
-            <h2 class="app-table-filters__title">Filters</h2>
+            <h2 class="app-table-filters__title" th:text="#{common.filters}">Filters</h2>
             <div class="app-table-filters__grid">
                 <div class="form-group app-table-filters__field app-table-filters__field--span-4">
-                    <label for="scholardex-forums-search">Search</label>
+                    <label for="scholardex-forums-search" th:text="#{common.search}">Search</label>
                     <th:block th:replace="~{fragments :: search-input(
                         id='scholardex-forums-search',
                         name='q',
-                        placeholder='Forum, ISSN, eISSN, aggregation type',
+                        placeholder=#{forums.search.placeholder},
                         value='',
                         kbdHint=null,
                         clearable=true)}"></th:block>
                 </div>
                 <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                    <label for="scholardex-forums-sort">Sort By</label>
+                    <label for="scholardex-forums-sort" th:text="#{common.sortBy}">Sort By</label>
                     <select id="scholardex-forums-sort" class="form-control">
-                        <option value="publicationName">Forum</option>
+                        <option value="publicationName" th:text="#{forums.column.forum}">Forum</option>
                         <option value="issn">ISSN</option>
                         <option value="eIssn">eISSN</option>
-                        <option value="aggregationType">Aggregation Type</option>
-                        <option value="wosStatus">WoS Status</option>
+                        <option value="aggregationType" th:text="#{forums.column.aggregationType}">Aggregation Type</option>
+                        <option value="wosStatus" th:text="#{forums.wosStatus}">WoS Status</option>
                     </select>
                 </div>
                 <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                    <label for="scholardex-forums-direction">Direction</label>
+                    <label for="scholardex-forums-direction" th:text="#{common.direction}">Direction</label>
                     <select id="scholardex-forums-direction" class="form-control">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
+                        <option value="asc" th:text="#{common.ascending}">Ascending</option>
+                        <option value="desc" th:text="#{common.descending}">Descending</option>
                     </select>
                 </div>
                 <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                    <label for="scholardex-forums-wos">WoS Status</label>
+                    <label for="scholardex-forums-wos" th:text="#{forums.wosStatus}">WoS Status</label>
                     <select id="scholardex-forums-wos" class="form-control">
-                        <option value="all">All</option>
-                        <option value="indexed">WoS indexed</option>
-                        <option value="not_indexed">Not indexed by WoS</option>
-                        <option value="not_applicable">Not applicable</option>
+                        <option value="all" th:text="#{forums.wos.all}">All</option>
+                        <option value="indexed" th:text="#{forums.wos.indexed}">WoS indexed</option>
+                        <option value="not_indexed" th:text="#{forums.wos.notIndexed}">Not indexed by WoS</option>
+                        <option value="not_applicable" th:text="#{common.notApplicable}">Not applicable</option>
                     </select>
                 </div>
                 <div class="form-group app-table-filters__field app-table-filters__field--span-2">
-                    <label for="scholardex-forums-size">Page Size</label>
+                    <label for="scholardex-forums-size" th:text="#{common.pageSize}">Page Size</label>
                     <select id="scholardex-forums-size" class="form-control">
                         <option value="25">25</option>
                         <option value="50">50</option>
@@ -69,23 +69,23 @@
         <div class="app-table-section">
             <div class="app-table-section__surface">
                 <div class="app-table-section__header app-table-toolbar">
-                    <h2 class="app-table-section__title">Forum Directory</h2>
+                    <h2 class="app-table-section__title" th:text="#{forums.directory}">Forum Directory</h2>
                     <span id="scholardex-forums-total-info" class="app-table-toolbar__meta"></span>
                 </div>
                 <div class="app-table-section__body">
-                    <div id="scholardex-forums-loading" class="app-table-state app-table-state--info" role="status">Loading forums...</div>
+                    <div id="scholardex-forums-loading" class="app-table-state app-table-state--info" role="status" th:text="#{forums.loading}">Loading forums...</div>
                     <div id="scholardex-forums-error" class="app-table-state app-table-state--danger d-none" role="alert"></div>
-                    <div id="scholardex-forums-empty" class="app-table-state app-table-state--warning d-none" role="status">No forums found for the current filter.</div>
+                    <div id="scholardex-forums-empty" class="app-table-state app-table-state--warning d-none" role="status" th:text="#{forums.empty}">No forums found.</div>
 
                     <div class="app-table-scroll">
                         <table class="table table-bordered app-table" id="scholardex-forums-table" width="100%" cellspacing="0">
                             <thead>
                             <tr>
-                                <th>Forum</th>
+                                <th th:text="#{forums.column.forum}">Forum</th>
                                 <th>ISSN</th>
                                 <th>eISSN</th>
-                                <th>Aggregation Type</th>
-                                <th>WoS Status</th>
+                                <th th:text="#{forums.column.aggregationType}">Aggregation Type</th>
+                                <th th:text="#{forums.wosStatus}">WoS Status</th>
                             </tr>
                             </thead>
                             <tbody id="scholardex-forums-table-body"></tbody>
@@ -93,9 +93,9 @@
                     </div>
 
                     <div class="app-table-pager">
-                        <button id="scholardex-forums-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Previous</button>
+                        <button id="scholardex-forums-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.previous}">Previous</button>
                         <span id="scholardex-forums-page-info" class="app-table-pager__info"></span>
-                        <button id="scholardex-forums-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Next</button>
+                        <button id="scholardex-forums-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button" th:text="#{common.next}">Next</button>
                     </div>
                 </div>
             </div>
