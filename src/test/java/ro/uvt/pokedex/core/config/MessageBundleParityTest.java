@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
@@ -48,6 +49,32 @@ class MessageBundleParityTest {
             assertThat(enValue).as("blank value for %s (en)", key).isNotBlank();
             // A {0} present in one language but not the other means one side silently drops the argument.
             assertThat(placeholders(enValue)).as("placeholder mismatch for %s", key).isEqualTo(placeholders(roValue));
+        }
+    }
+
+    /**
+     * H87 S3a: a plural family must be complete in BOTH languages. Romanian selects '.other' from n=20 up, so a
+     * family missing that key renders nothing (or a raw key) exactly when a researcher has 20+ of something —
+     * the case a two-form port silently gets wrong.
+     */
+    @Test
+    void pluralFamiliesAreCompleteInBothBundles() throws IOException {
+        Properties ro = load("messages.properties");
+        Properties en = load("messages_en.properties");
+        Set<String> bases = new TreeSet<>();
+        for (String key : ro.stringPropertyNames()) {
+            for (String suffix : List.of(".one", ".few", ".other")) {
+                if (key.endsWith(suffix)) {
+                    bases.add(key.substring(0, key.length() - suffix.length()));
+                }
+            }
+        }
+        assertThat(bases).as("the fixture should contain at least one plural family").isNotEmpty();
+        for (String base : bases) {
+            for (String suffix : List.of(".one", ".few", ".other")) {
+                assertThat(ro.getProperty(base + suffix)).as("missing %s%s (ro)", base, suffix).isNotBlank();
+                assertThat(en.getProperty(base + suffix)).as("missing %s%s (en)", base, suffix).isNotBlank();
+            }
         }
     }
 

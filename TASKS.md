@@ -46,8 +46,21 @@ Done history moved to `TASKS-done.md`.
     (A*/B/C/Unranked), quartiles, WoS/Scopus/DOAJ/ERIH, h-index — plus `th:text` design-time fallbacks,
     which are placeholders for dynamic data, not copy. Contract assertions that pinned markup shape
     (`<th scope="col" data-sort-key="name">…`) keep the shape and now expect the Romanian label.
-  - **S3 researcher workspace**: user templates + a small `t()` helper in the frontend fed by a JSON
-    bundle exposed per locale; convert the 7 workspace modules.
+  - **S3a DONE locally 2026-07-25** (plumbing + 2 of 4 user templates): CLDR plural rules in BOTH
+    languages — `PluralRules.java` + the JS twin in `modules/shared/i18n.js`. Romanian needs three forms and
+    the third takes a particle ("20 DE publicații"); the old `n !== 1 ? 's' : ''` pattern could not express
+    it, and the S1 landing banner shipped with that defect (now fixed: keys are `.one/.few/.other`, selected
+    server-side via `#{__${pluralKey}__(...)}`). Client copy comes from `window.appI18n`, INLINED into
+    workspace.html by `UiMessageBundleService` (key list read from the base bundle, values resolved through
+    MessageSource) — synchronous, so nothing races the lazy panels. Guardrails: parity test now requires
+    complete plural families in both bundles; `scripts/test-i18n-helper.js` pins the JS categories against
+    the Java table (0/20/101 boundaries) and the contract test pins "21 de noutăți" through the real
+    template. GOTCHA (3rd time): a new controller constructor dep broke every `@WebMvcTest` for that
+    controller until mocked.
+  - **S3a REMAINING**: `user/individual-report-view.html` (29) and `user/individual-report-import.html`
+    (45) — deliberately left for last since report copy borders on standards wording.
+  - **S3b**: the 6 workspace JS modules (~129 strings; publications 60, activities 30, profile 21) now that
+    `t()`/`tPlural()` exist. Replace every `${n} thing${n !== 1 ? 's' : ''}` with a plural family.
   - **S4 supervisor pages** + a sweep for leftovers (a lint that fails on bare text nodes in the
     in-scope templates).
   Open decisions for the user: default locale (RO for uvt.ro users vs browser `Accept-Language`), and

@@ -91,6 +91,8 @@ class ResearcherWorkspaceControllerContractTest {
     private ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade publicationMergeWorkspaceFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
 
     @Test
     void workspaceTemplateUsesSharedSearchInputFragment() throws Exception {
@@ -101,7 +103,9 @@ class ResearcherWorkspaceControllerContractTest {
         assertTrue(template.contains("kbdHint='/ or Ctrl+K'"));
         assertTrue(template.contains("data-tab-goto=\"profile\">Start</button>"));
         assertTrue(template.contains("data-tab-goto=\"publications\">Add</button>"));
-        assertTrue(template.contains("btn btn-link p-0 align-baseline fw-semibold\">Go to Profile &amp; Sync</button>"));
+        // H87 S3a: the label moved into the message bundle; the contract is that the control still exists
+        // with its styling and now resolves its copy from a key rather than hardcoded English.
+        assertTrue(template.contains("btn btn-link p-0 align-baseline fw-semibold\" th:text=\"#{workspace.goToProfile}\""));
         assertTrue(template.contains("aria-describedby=\"ws-citations-modal-pub ws-citations-modal-total\""));
         assertTrue(!template.contains("href=\"#\" data-tab-goto=\"profile\">Start</a>"));
     }

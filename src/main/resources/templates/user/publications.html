@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Publications</title>
+    <title th:text="#{workspace.publications.meta.title}">Publications</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -36,7 +36,7 @@
 
                     <div th:if="${profileAuthor != null}" class="app-summary-panel">
                         <div class="app-summary-panel__header">
-                            <h2 class="app-summary-panel__title">Author Summary</h2>
+                            <h2 class="app-summary-panel__title" th:text="#{workspace.publications.authorSummary}">Author Summary</h2>
                         </div>
                         <div class="app-summary-panel__body">
                             <div class="app-summary-identity">
@@ -61,30 +61,30 @@
                                 </div>
                             </div>
                             <div th:if="${affiliations == null or affiliations.isEmpty()}" class="app-dashboard-empty mt-4">
-                                <h3 class="app-dashboard-empty__title">No affiliations available</h3>
-                                <p class="app-dashboard-empty__body">This profile currently does not include any affiliation metadata.</p>
+                                <h3 class="app-dashboard-empty__title" th:text="#{workspace.publications.noAffiliations}">No affiliations available</h3>
+                                <p class="app-dashboard-empty__body" th:text="#{workspace.publications.noAffiliations.body}">…</p>
                             </div>
                         </div>
                     </div>
 
                     <div class="app-summary-grid">
                         <div class="app-summary-card">
-                            <p class="app-summary-card__label">Publications</p>
+                            <p class="app-summary-card__label" th:text="#{workspace.card.publications}">Publications</p>
                             <p class="app-summary-card__value" th:text="${publications.size()}">0</p>
-                            <p class="app-summary-card__meta">Visible records currently included in this publication workspace.</p>
+                            <p class="app-summary-card__meta" th:text="#{workspace.publications.count.meta}">…</p>
                         </div>
                         <div class="app-summary-card app-summary-card--success">
-                            <p class="app-summary-card__label">Citations</p>
+                            <p class="app-summary-card__label" th:text="#{workspace.card.citations}">Citations</p>
                             <p class="app-summary-card__value" th:text="${numCitations}">0</p>
-                            <p class="app-summary-card__meta">Total citation count reflected by the loaded publication set.</p>
+                            <p class="app-summary-card__meta" th:text="#{workspace.publications.citations.meta}">…</p>
                         </div>
                         <div class="app-summary-card app-summary-card--warning">
-                            <p class="app-summary-card__label">H-Index</p>
+                            <p class="app-summary-card__label" th:text="#{workspace.card.hIndex}">H-Index</p>
                             <p class="app-summary-card__value" th:text="${hIndex}">0</p>
-                            <p class="app-summary-card__meta">Scholardex h-index (all recorded citations) for the active researcher context.</p>
+                            <p class="app-summary-card__meta" th:text="#{workspace.publications.hIndex.meta}">…</p>
                         </div>
                         <div class="app-summary-card app-summary-card--warning">
-                            <p class="app-summary-card__label">Scopus h</p>
+                            <p class="app-summary-card__label" th:text="#{workspace.publications.scopusH}">Scopus h</p>
                             <p class="app-summary-card__value" th:text="${hIndices != null ? hIndices.scopusVenue() : 0}">0</p>
                             <p class="app-summary-card__meta">Indicative — citations from Scopus-indexed venues only; may differ from the official Scopus h-index.</p>
                         </div>

@@ -23,6 +23,7 @@
     "verify-wos-parity-baseline": "node scripts/verify-wos-parity-baseline.js",
     "test-scholardex-forums": "node scripts/test-scholardex-forums.js",
     "test-rankings-core": "node scripts/test-rankings-core.js",
+    "test-i18n-helper": "node scripts/test-i18n-helper.js",
     "test-rankings-categories": "node scripts/test-rankings-categories.js",
     "test-rankings-urap": "node scripts/test-rankings-urap.js",
     "test-h48-guardrails": "node scripts/test-h48-guardrails.js",

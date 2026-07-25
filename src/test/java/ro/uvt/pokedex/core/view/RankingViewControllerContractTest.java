@@ -101,6 +101,27 @@ class RankingViewControllerContractTest {
     }
 
     @org.junit.jupiter.api.Test
+    void landingPageUsesTheRomanianParticleFormFromTwentyUp() throws Exception {
+        // The whole point of the 3-form plural work: Romanian says "21 DE noutăți", not "21 noutăți".
+        ro.uvt.pokedex.core.model.user.User user = new ro.uvt.pokedex.core.model.user.User();
+        user.setEmail("florin.fortis@e-uvt.ro");
+        org.mockito.Mockito.when(welcomeFacade.forUser(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenReturn(new ro.uvt.pokedex.core.service.application.WelcomeFacade.Welcome(
+                        "Florin", "florin.fortis@e-uvt.ro", 21L, true));
+        org.springframework.security.authentication.TestingAuthenticationToken auth =
+                new org.springframework.security.authentication.TestingAuthenticationToken(user, null, "RESEARCHER");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/")
+                        .with(request -> {
+                            request.setUserPrincipal(auth);
+                            org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
+                            return request;
+                        }))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("21 de noutăți de la ultima vizită")));
+    }
+
+    @org.junit.jupiter.api.Test
     void landingPageShowsNoWelcomeBannerForAnonymousVisitors() throws Exception {
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
 

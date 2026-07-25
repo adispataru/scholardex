@@ -72,12 +72,18 @@ public class ResearcherWorkspaceController {
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
     private final ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
     private final ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade publicationMergeWorkspaceFacade;
+    private final ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
     public String showWorkspace(Model model, Authentication authentication) {
         return currentUser(authentication).map(u -> {
             model.addAttribute("workspace", buildWorkspaceViewModel(u));
+            // H87 S3a: the client modules read their copy from an inlined bundle (see workspace.html), so the
+            // lookup is synchronous and cannot race the lazily-loaded panels.
+            java.util.Locale locale = org.springframework.context.i18n.LocaleContextHolder.getLocale();
+            model.addAttribute("i18nBundle", uiMessageBundleService.bundleFor(locale, "workspace.", "common."));
+            model.addAttribute("i18nLocale", locale.getLanguage());
             updateLastVisit(u.getEmail());
             return "user/workspace";
         }).orElse("redirect:/login");

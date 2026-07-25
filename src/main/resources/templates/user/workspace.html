@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Research Workspace</title>
+    <title th:text="#{workspace.meta.title}">Research Workspace</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -48,7 +48,7 @@
                             <div id="ws-notif-panel"
                                  class="app-ws-notif__panel"
                                  role="region"
-                                 aria-label="Notifications"
+                                 th:attr="aria-label=#{workspace.notifications}"
                                  hidden>
                                 <div class="app-ws-notif__panel-header">
                                     <span class="app-ws-notif__panel-title">Notifications</span>
@@ -103,8 +103,8 @@
                                 <!-- ── NEW_USER: Onboarding checklist ──────────────────────── -->
                                 <th:block th:if="${workspace.workspaceState.name() == 'NEW_USER'}">
                                     <div class="app-onboarding-card" id="ws-state-new-user">
-                                        <h2 class="app-onboarding-card__title">Welcome to your Research Workspace</h2>
-                                        <p class="app-onboarding-card__body">Complete the steps below to start tracking your research output.</p>
+                                        <h2 class="app-onboarding-card__title" th:text="#{workspace.onboarding.title}">Welcome</h2>
+                                        <p class="app-onboarding-card__body" th:text="#{workspace.onboarding.body}">Complete the steps below.</p>
                                         <div class="app-onboarding-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Onboarding progress">
                                             <div class="app-onboarding-progress__bar" style="width: 0%"></div>
                                         </div>
@@ -160,7 +160,7 @@
                                                 </div>
                                                 <p class="app-attention-panel__body" style="margin-top: 0.5rem; font-size: 0.86rem;">
                                                     Profile <strong th:text="${workspace.profileCompletenessPercent}">0</strong>% complete —
-                                                    <button type="button" data-tab-goto="profile" class="btn btn-link p-0 align-baseline fw-semibold">Go to Profile &amp; Sync</button>
+                                                    <button type="button" data-tab-goto="profile" class="btn btn-link p-0 align-baseline fw-semibold" th:text="#{workspace.goToProfile}">Go to Profile</button>
                                                 </p>
                                             </div>
                                             <div class="app-summary-panel app-overview-panel"
@@ -169,29 +169,29 @@
                                                     <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
                                                         <i class="fa-solid fa-grip-vertical"></i>
                                                     </span>
-                                                    <h2 class="app-summary-panel__title">Key Metrics</h2>
+                                                    <h2 class="app-summary-panel__title" th:text="#{workspace.panel.keyMetrics}">Key Metrics</h2>
                                                 </div>
                                                 <div class="app-summary-panel__body">
                                                     <div class="app-summary-grid">
                                                         <div class="app-summary-card">
                                                             <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review.">Publications</p>
                                                             <p class="app-summary-card__value" data-ws-publication-count th:text="${workspace.publicationCount}">0</p>
-                                                            <p class="app-summary-card__meta">Excludes rejected. See the Publications tab for the full breakdown.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.publications.meta}">…</p>
                                                         </div>
                                                         <div class="app-summary-card app-summary-card--success">
-                                                            <p class="app-summary-card__label">Citations</p>
+                                                            <p class="app-summary-card__label" th:text="#{workspace.card.citations}">Citations</p>
                                                             <p class="app-summary-card__value" th:text="${workspace.totalCitations}">0</p>
-                                                            <p class="app-summary-card__meta">Total citations across all publications.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.citations.meta}">…</p>
                                                         </div>
                                                         <div class="app-summary-card app-summary-card--warning">
-                                                            <p class="app-summary-card__label">H-Index</p>
+                                                            <p class="app-summary-card__label" th:text="#{workspace.card.hIndex}">H-Index</p>
                                                             <p class="app-summary-card__value" th:text="${workspace.hIndex}">0</p>
-                                                            <p class="app-summary-card__meta">Current h-index for your publication record.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.hIndex.meta}">…</p>
                                                         </div>
                                                         <div class="app-summary-card">
-                                                            <p class="app-summary-card__label">Activities</p>
+                                                            <p class="app-summary-card__label" th:text="#{workspace.card.activities}">Activities</p>
                                                             <p class="app-summary-card__value" th:text="${workspace.activityInstanceCount}">0</p>
-                                                            <p class="app-summary-card__meta">Recorded activity instances.</p>
+                                                            <p class="app-summary-card__meta" th:text="#{workspace.card.activities.meta}">…</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -206,7 +206,7 @@
                                                     <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
                                                         <i class="fa-solid fa-grip-vertical"></i>
                                                     </span>
-                                                    <h2 class="app-summary-panel__title">Researcher Profile</h2>
+                                                    <h2 class="app-summary-panel__title" th:text="#{workspace.panel.profile}">Researcher Profile</h2>
                                                 </div>
                                                 <div class="app-summary-panel__body">
 
@@ -229,7 +229,7 @@
                                                     </th:block>
 
                                                     <!-- Key Metrics -->
-                                                    <p class="app-summary-panel__section-title">Key Metrics</p>
+                                                    <p class="app-summary-panel__section-title" th:text="#{workspace.panel.keyMetrics}">Key Metrics</p>
                                                     <div class="app-summary-grid">
                                                         <div class="app-summary-card">
                                                             <p class="app-summary-card__label" title="Your publications excluding the ones you rejected during authorship review.">Publications</p>
@@ -255,18 +255,18 @@
 
                                                     <!-- Research Trends -->
                                                     <hr class="app-summary-panel__divider">
-                                                    <p class="app-summary-panel__section-title">Research Trends</p>
+                                                    <p class="app-summary-panel__section-title" th:text="#{workspace.panel.researchTrends}">Research Trends</p>
                                                     <div class="app-charts-row">
                                                         <div>
-                                                            <p class="app-mini-chart__label">Publications per year</p>
+                                                            <p class="app-mini-chart__label" th:text="#{workspace.chart.publicationsPerYear}">Publications per year</p>
                                                             <div class="app-mini-chart">
                                                                 <canvas id="ws-chart-pubs" aria-label="Publications per year bar chart"></canvas>
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <p class="app-mini-chart__label">Citations per year</p>
+                                                            <p class="app-mini-chart__label" th:text="#{workspace.chart.citationsPerYear}">Citations per year</p>
                                                             <div class="app-mini-chart">
-                                                                <canvas id="ws-chart-cites" aria-label="Citations per year bar chart"></canvas>
+                                                                <canvas id="ws-chart-cites" th:attr="aria-label=#{workspace.chart.citationsPerYear.aria}"></canvas>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -281,7 +281,7 @@
                                                     <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
                                                         <i class="fa-solid fa-grip-vertical"></i>
                                                     </span>
-                                                    <h2 class="app-summary-panel__title">Quick Actions</h2>
+                                                    <h2 class="app-summary-panel__title" th:text="#{workspace.panel.quickActions}">Quick Actions</h2>
                                                 </div>
                                                 <div class="app-summary-panel__body">
                                                     <div class="app-quick-actions">
@@ -410,7 +410,7 @@
             <div class="modal-footer" style="justify-content:space-between">
                 <span id="ws-citations-modal-total"
                       style="font-size:0.83rem;color:var(--app-color-text-muted)"></span>
-                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal" th:text="#{workspace.close}">Close</button>
             </div>
         </div>
     </div>
@@ -438,6 +438,11 @@
 <script th:inline="javascript">
     // Seed global data BEFORE app.js runs so modules that read these at
     // initialisation time (workspaceOverview.js chart init) find the values ready.
+
+    // H87 S3a: UI copy for the client modules, resolved server-side for the active locale. Inlined rather
+    // than fetched so there is no request to race with the lazy panels and no flash of untranslated text.
+    window.appI18n = /*[[${i18nBundle}]]*/ {};
+    window.appLocale = /*[[${i18nLocale}]]*/ 'ro';
 
     // Initial unread notification count for workspaceNotifications.js (H36.6).
     window.wsNotifCount = /*[[${workspace.unreadNotificationCount}]]*/ 0;

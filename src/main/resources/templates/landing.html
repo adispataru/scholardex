@@ -31,9 +31,11 @@
         <div class="app-landing__welcome-actions">
             <a href="/changelog" class="app-landing__welcome-updates" th:if="${welcome.newUpdates > 0}">
                 <i class="fa-solid fa-bell" aria-hidden="true"></i>
-                <span th:text="${welcome.newUpdates} == 1
-                                 ? #{landing.welcome.updates.one(${welcome.newUpdates})}
-                                 : #{landing.welcome.updates.many(${welcome.newUpdates})}">noutăți</span>
+                <!-- Romanian has three plural forms and the third takes a particle ("20 DE noutăți"),
+                     so the key is chosen by CLDR category, not by a 1-vs-many test. -->
+                <span th:with="pluralKey=${T(ro.uvt.pokedex.core.service.application.PluralRules).key(
+                                   'landing.welcome.updates', #locale, welcome.newUpdates)}"
+                      th:text="#{__${pluralKey}__(${welcome.newUpdates})}">noutăți</span>
             </a>
         </div>
     </section>
