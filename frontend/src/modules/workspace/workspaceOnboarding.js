@@ -11,6 +11,7 @@
  */
 
 import { postJsonHeaders } from '../shared/fetchUtils';
+import { t, tPlural } from '../shared/i18n';
 
 const PROFILE_URL = '/user/workspace/profile';
 const SAVE_URL = '/user/workspace/profile/save';
@@ -22,7 +23,7 @@ const STEPS = [
     { key: 'IDENTITY_IDS', label: 'Identity' },
     { key: 'ORCID', label: 'ORCID' },
     { key: 'AFFILIATIONS', label: 'Affiliations' },
-    { key: 'AUTHOR_MATCH', label: 'Author record' },
+    { key: 'AUTHOR_MATCH', label: t('workspace.onboarding.authorRecord') },
     { key: 'PUBLICATION_CLAIM', label: 'Publications' }
 ];
 const INTERACTIVE = new Set(['IDENTITY_IDS', 'ORCID', 'AFFILIATIONS', 'AUTHOR_MATCH']);
@@ -128,8 +129,8 @@ function _buildIdentityStep() {
       <h6 class="app-onb__panel-title">Your author identifiers</h6>
       <p class="app-onb__panel-help">These link your account to your publications. Scopus ids are often already
         filled in from the staff import — confirm them or add more.</p>
-      ${_idList('scopusId', 'Scopus author ID', _profile.scopusId)}
-      ${_idList('wosId', 'WoS researcher ID', _profile.wosId)}
+      ${_idList('scopusId', t('workspace.onboarding.scopusId'), _profile.scopusId)}
+      ${_idList('wosId', t('workspace.onboarding.wosId'), _profile.wosId)}
     </div>`;
 }
 
@@ -186,7 +187,7 @@ function _buildAffiliationsStep() {
           <div class="app-onb__aff-choice">
             ${_affRadio(id, 'current', 'Current', sel)}
             ${_affRadio(id, 'past', 'Past', sel)}
-            ${_affRadio(id, 'none', 'Not mine', sel)}
+            ${_affRadio(id, 'none', t('workspace.onboarding.notMine'), sel)}
           </div>
         </div>`;
     }).join('');
@@ -322,7 +323,7 @@ function _applyClaim(confirmRecommended) {
             document.dispatchEvent(new CustomEvent('ws-onboarding-updated'));
             if (window.appModal) window.appModal.close(MODAL_ID);
         })
-        .catch((err) => { _busy = false; console.error('claim apply failed', err); _toast('Could not finish — please retry.'); });
+        .catch((err) => { _busy = false; console.error('claim apply failed', err); _toast(t('workspace.onboarding.finishError')); });
 }
 
 function _buildComingSoon(step) {
@@ -338,10 +339,10 @@ function _buildFooter(step) {
     if (step.key === 'PUBLICATION_CLAIM') return _buildClaimFooter();
     const isFirst = _stepIndex === 0;
     const interactive = INTERACTIVE.has(step.key);
-    const nextLabel = step.key === 'AUTHOR_MATCH' ? 'Confirm &amp; continue'
-        : interactive ? 'Save &amp; continue' : 'Done';
+    const nextLabel = step.key === 'AUTHOR_MATCH' ? t('workspace.onboarding.confirmContinue')
+        : interactive ? t('workspace.onboarding.saveContinue') : 'Done';
     return `<div class="app-onb__footer">
-      <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>Finish later</button>
+      <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>${t('workspace.onboarding.finishLater')}</button>
       <div class="app-onb__footer-nav">
         ${isFirst ? '' : '<button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>Back</button>'}
         <button type="button" class="btn btn-primary btn-sm" data-onb-next>${nextLabel}</button>
@@ -351,11 +352,11 @@ function _buildFooter(step) {
 
 function _buildClaimFooter() {
     const count = _recommendations ? (_recommendations.recommendedConfirmIds || []).length : 0;
-    const primaryLabel = count > 0 ? `Confirm ${count} &amp; finish` : 'Finish';
+    const primaryLabel = count > 0 ? tPlural('workspace.onboarding.confirmFinish', count) : 'Finish';
     const skip = count > 0
         ? '<button type="button" class="btn btn-link btn-sm" data-onb-skip-claim>Finish without claiming</button>' : '';
     return `<div class="app-onb__footer">
-      <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>Finish later</button>
+      <button type="button" class="btn btn-link btn-sm app-onb__dismiss" data-onb-dismiss>${t('workspace.onboarding.finishLater')}</button>
       <div class="app-onb__footer-nav">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-onb-back>Back</button>
         ${skip}
@@ -402,7 +403,7 @@ function _next(modal, step) {
     savePromise
         .then(() => _refreshStatus())
         .then(() => { _busy = false; _advance(); })
-        .catch((err) => { _busy = false; console.error('onboarding step save failed', err); _toast('Could not save — please retry.'); });
+        .catch((err) => { _busy = false; console.error('onboarding step save failed', err); _toast(t('workspace.onboarding.saveError')); });
 }
 
 function _captureStep(modal, step) {

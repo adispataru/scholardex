@@ -15,6 +15,7 @@
  */
 
 import { postJsonHeaders } from '../shared/fetchUtils';
+import { t, tPlural } from '../shared/i18n';
 
 const ICON_CONFIG = {
     NEW_CITATION:       { iconClass: 'fa-solid fa-quote-right',        modClass: 'app-ws-notif__item-icon--citation' },
@@ -68,7 +69,7 @@ export function initWorkspaceNotifications() {
                 _updateCount(0);
                 list.innerHTML = _emptyHtml();
                 loaded = true; // prevent stale refetch
-                _announce('All notifications marked as read.');
+                _announce(t('workspace.notif.allRead'));
                 _close();
             })
             .catch(() => {});
@@ -130,7 +131,7 @@ export function initWorkspaceNotifications() {
                 (n.actionUrl ? `<a href="${_esc(n.actionUrl)}" class="app-ws-notif__item-action">View →</a>` : '') +
             `</div>` +
             `<button class="app-ws-notif__dismiss" type="button" ` +
-                    `aria-label="Dismiss: ${_esc(n.title)}">` +
+                    `aria-label="${_esc(t('workspace.notif.dismiss', n.title))}">` +
                 `<i class="fa-solid fa-xmark" aria-hidden="true"></i>` +
             `</button>`;
 
@@ -174,7 +175,7 @@ export function initWorkspaceNotifications() {
     // ── Badge ─────────────────────────────────────────────────────────────
     function _updateCount(n) {
         count = n;
-        btn.setAttribute('aria-label', `Notifications, ${n} unread`);
+        btn.setAttribute('aria-label', tPlural('workspace.notif.ariaUnread', n));
         let badge = document.getElementById('ws-notif-badge');
         if (n > 0) {
             if (!badge) {

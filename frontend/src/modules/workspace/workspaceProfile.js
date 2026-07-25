@@ -3,6 +3,7 @@
  */
 
 import { postJsonHeaders as _postHeaders } from '../shared/fetchUtils';
+import { t, tPlural } from '../shared/i18n';
 
 let _panel = null;
 let _mount = null;
@@ -39,7 +40,7 @@ function _init(panel) {
         })
         .catch((err) => {
             console.error('workspace profile load failed', err);
-            _mount.innerHTML = _buildError(err?.message ?? String(err ?? 'Unknown error'));
+            _mount.innerHTML = _buildError(err?.message ?? String(err ?? t('workspace.profile.unknownError')));
         });
 }
 
@@ -77,7 +78,7 @@ function _renderAll() {
         }
     } catch (err) {
         console.error('workspace profile render failed', err, { data: _data });
-        container.innerHTML = _buildError(err?.message ?? String(err ?? 'Unknown error'));
+        container.innerHTML = _buildError(err?.message ?? String(err ?? t('workspace.profile.unknownError')));
     }
 
     _mount.innerHTML = '';
@@ -97,11 +98,11 @@ function _buildCompletenessCard(researcher, completeness) {
         const pct = Math.min(100, Math.max(0, onboarding.percentComplete ?? 0));
         const done = new Set(onboarding.completedSteps ?? []);
         const steps = [
-            { key: 'IDENTITY_IDS', label: 'Author identifiers' },
+            { key: 'IDENTITY_IDS', label: t('workspace.profile.authorIdentifiers') },
             { key: 'ORCID', label: 'ORCID linked' },
-            { key: 'AFFILIATIONS', label: 'Affiliations confirmed' },
-            { key: 'AUTHOR_MATCH', label: 'Author record matched' },
-            { key: 'PUBLICATION_CLAIM', label: 'Publications reviewed' }
+            { key: 'AFFILIATIONS', label: t('workspace.profile.affiliationsConfirmed') },
+            { key: 'AUTHOR_MATCH', label: t('workspace.profile.authorMatched') },
+            { key: 'PUBLICATION_CLAIM', label: t('workspace.profile.publicationsReviewed') }
         ];
         const items = steps.map((s) => {
             if (done.has(s.key)) {
@@ -306,7 +307,7 @@ function _buildIdEntryRow(field, value) {
     return `<div class="app-ws-prof__id-entry-row" data-id-field="${field}">
       <input class="app-ws-prof__input" type="text"
              name="${field}[]" value="${_esc(value)}"
-             placeholder="${field === 'scopusId' ? 'Scopus author ID' : 'WoS researcher ID'}">
+             placeholder="${field === 'scopusId' ? t('workspace.profile.scopusAuthorId') : t('workspace.profile.wosResearcherId')}">
       <button type="button" class="app-ws-prof__remove-btn" aria-label="Remove" data-remove-id-row>
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -324,7 +325,7 @@ function _buildSyncSection(data) {
         syncRows = `<ul class="app-ws-prof__sync-list">${scopusIds.map((id, idx) => `
           <li class="app-ws-prof__sync-id-row" data-sync-row>
             <span class="app-ws-prof__sync-id-label">${_esc(id)}</span>
-            <div class="app-ws-prof__sync-mode-group" role="radiogroup" aria-label="Sync mode">
+            <div class="app-ws-prof__sync-mode-group" role="radiogroup" aria-label="${t('workspace.profile.syncMode')}">
               <label class="app-ws-prof__sync-mode-opt">
                 <input type="radio" name="sync-mode-${idx}" value="SINCE_LAST_UPDATE" checked> Since last update
               </label>
@@ -353,8 +354,8 @@ function _buildSyncSection(data) {
           </li>`).join('')}</ul>`;
     }
 
-    const pubTable = _buildTaskTable('publication-tasks', data?.pubTasks, ['Scopus ID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
-    const citeTable = _buildTaskTable('citation-tasks', data?.citeTasks, ['Scopus ID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
+    const pubTable = _buildTaskTable('publication-tasks', data?.pubTasks, [t('workspace.profile.scopusId'), 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
+    const citeTable = _buildTaskTable('citation-tasks', data?.citeTasks, [t('workspace.profile.scopusId'), 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
 
     const orcid = (data?.researcher?.orcid ?? '').trim();
     const openAlexTable = _buildTaskTable('openalex-tasks', data?.openAlexTasks, ['ORCID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
@@ -410,7 +411,7 @@ function _buildTaskTable(tableId, tasks, cols) {
 
     const rows = sorted.map((task) => `<tr data-task-id="${_esc(task?.id ?? '')}">
       <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? task?.orcid ?? '—')}</span></td>
-      <td style="font-size:.78rem;white-space:nowrap">${_esc(task?.orcid && !task?.syncMode ? 'Author works' : _modeLabel(task?.syncMode))}</td>
+      <td style="font-size:.78rem;white-space:nowrap">${_esc(task?.orcid && !task?.syncMode ? t('workspace.profile.authorWorks') : _modeLabel(task?.syncMode))}</td>
       <td>${_statusBadge(task?.status)}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task?.initiatedDate))}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task?.executionDate))}</td>
@@ -642,7 +643,7 @@ function _saveProfile() {
     });
 
     if (!firstName || !lastName) {
-        _setFeedback(feedback, 'error', 'First name and last name are required.');
+        _setFeedback(feedback, 'error', t('workspace.profile.nameRequired'));
         return;
     }
 
@@ -675,7 +676,7 @@ function _saveProfile() {
         })
         .catch((err) => {
             if (saveBtn) saveBtn.disabled = false;
-            _setFeedback(feedback, 'error', err?.message ?? 'Save failed. Please try again.');
+            _setFeedback(feedback, 'error', err?.message ?? t('workspace.profile.saveFailed'));
         });
 }
 
@@ -719,22 +720,22 @@ function _triggerOpenAlexSync(btn) {
     const feedback = btn?.parentElement?.querySelector('.app-ws-prof__openalex-feedback');
     const setFeedback = (msg, color) => { if (feedback) { feedback.textContent = msg; feedback.style.cssText = `font-size:.78rem;margin-left:.5rem;color:${color}`; } };
     if (btn) btn.disabled = true;
-    setFeedback('Starting…', 'var(--app-color-text-muted)');
+    setFeedback(t('workspace.profile.starting'), 'var(--app-color-text-muted)');
     fetch('/user/workspace/profile/sync/openalex-authors', { method: 'POST', headers: _postHeaders() })
         .then((r) => {
-            if (r.status === 422) throw new Error('Add a valid ORCID to your profile first.');
+            if (r.status === 422) throw new Error(t('workspace.profile.orcidRequired'));
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.json().catch(() => ({}));
         })
         .then((task) => {
             if (btn) btn.disabled = false;
-            setFeedback('Update started.', 'var(--app-color-success)');
+            setFeedback(t('workspace.profile.updateStarted'), 'var(--app-color-success)');
             // Live row: Queued → Running → Done/Failed, same loop as the Scopus sync history.
             _prependTaskRow('openalex', task, task?.orcid, null);
         })
         .catch((err) => {
             if (btn) btn.disabled = false;
-            setFeedback(err?.message || 'Could not start the update.', 'var(--app-color-danger)');
+            setFeedback(err?.message || t('workspace.profile.updateFailed'), 'var(--app-color-danger)');
         });
 }
 
@@ -745,7 +746,7 @@ function _showSyncError(btn, msg) {
     const el = document.createElement('span');
     el.className = 'app-ws-prof__sync-error';
     el.style.cssText = 'font-size:.78rem;color:var(--app-color-danger);margin-left:.35rem';
-    el.textContent = msg || 'Sync failed';
+    el.textContent = msg || t('workspace.profile.syncFailed');
     btn.insertAdjacentElement('afterend', el);
     setTimeout(() => el.remove(), 4000);
 }
@@ -767,7 +768,7 @@ function _prependTaskRow(type, task, scopusId, syncMode) {
     tr.dataset.taskId = task?.id ?? '';
     tr.innerHTML = `
       <td><span class="app-ws-prof__id-pill">${_esc(task?.scopusId ?? task?.orcid ?? scopusId ?? '—')}</span></td>
-      <td style="font-size:.78rem;white-space:nowrap">${_esc(type === 'openalex' ? 'Author works' : _modeLabel(task?.syncMode ?? syncMode))}</td>
+      <td style="font-size:.78rem;white-space:nowrap">${_esc(type === 'openalex' ? t('workspace.profile.authorWorks') : _modeLabel(task?.syncMode ?? syncMode))}</td>
       <td>${_statusBadge(task?.status)}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task?.initiatedDate))}</td>
       <td style="white-space:nowrap;font-size:.78rem">—</td>
@@ -802,7 +803,7 @@ function _esc(str) {
 function _modeLabel(mode) {
     if (mode === 'FULL') return 'Full';
     if (mode === 'PERIOD') return 'Period';
-    return 'Since last';
+    return t('workspace.profile.sinceLast');
 }
 
 function _fmtDate(iso) {

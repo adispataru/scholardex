@@ -19,27 +19,28 @@
 
 import { postJsonHeaders } from '../shared/fetchUtils';
 import { buildPaginationHtml, wirePaginationClicks } from '../shared/clientPagination';
+import { t, tPlural } from '../shared/i18n';
 
 const PAGE_SIZE = 20;
 
 // Subtype options matching the existing publications-edit.html form
 const SUBTYPE_OPTIONS = [
-    { value: 'ar',        label: 'Article' },
-    { value: 'cp',        label: 'Conference Paper' },
-    { value: 're',        label: 'Review' },
-    { value: 'bk',        label: 'Book' },
-    { value: 'ch',        label: 'Book Chapter' },
-    { value: 'sh',        label: 'Short Survey' },
-    { value: 'le',        label: 'Letter' },
-    { value: 'no',        label: 'Note' },
-    { value: 'ed',        label: 'Editorial' },
-    { value: 'er',        label: 'Erratum' },
-    { value: 'dp',        label: 'Data Paper' },
-    { value: 'tb',        label: 'Tombstone' },
-    { value: 'ab',        label: 'Abstract Report' },
-    { value: 'ip',        label: 'Article in Press' },
-    { value: 'wp',        label: 'Working Paper' },
-    { value: 'undefined', label: 'Undefined' },
+    { value: 'ar',        key: 'workspace.pubs.subtype.ar' },
+    { value: 'cp',        key: 'workspace.pubs.subtype.cp' },
+    { value: 're',        key: 'workspace.pubs.subtype.re' },
+    { value: 'bk',        key: 'workspace.pubs.subtype.bk' },
+    { value: 'ch',        key: 'workspace.pubs.subtype.ch' },
+    { value: 'sh',        key: 'workspace.pubs.subtype.sh' },
+    { value: 'le',        key: 'workspace.pubs.subtype.le' },
+    { value: 'no',        key: 'workspace.pubs.subtype.no' },
+    { value: 'ed',        key: 'workspace.pubs.subtype.ed' },
+    { value: 'er',        key: 'workspace.pubs.subtype.er' },
+    { value: 'dp',        key: 'workspace.pubs.subtype.dp' },
+    { value: 'tb',        key: 'workspace.pubs.subtype.tb' },
+    { value: 'ab',        key: 'workspace.pubs.subtype.ab' },
+    { value: 'ip',        key: 'workspace.pubs.subtype.ip' },
+    { value: 'wp',        key: 'workspace.pubs.subtype.wp' },
+    { value: 'undefined', key: 'workspace.pubs.subtype.undefined' },
 ];
 
 // Maps subtype codes to badge modifier classes
@@ -51,7 +52,16 @@ const SUBTYPE_BADGE_CLASS = {
     ch: 'app-ws-pubs__type-badge--book',
 };
 
-const AGGREGATION_TYPES = ['Journal', 'Conference Proceeding', 'Book Series', 'Book', 'Trade Journal', 'Report'];
+// The VALUE is the canonical aggregationType persisted by the API — only the label is translated, or a
+// Romanian UI would start submitting Romanian venue types.
+const AGGREGATION_TYPES = [
+    { value: 'Journal',               key: 'workspace.pubs.aggregation.journal' },
+    { value: 'Conference Proceeding', key: 'workspace.pubs.aggregation.conference' },
+    { value: 'Book Series',           key: 'workspace.pubs.aggregation.bookSeries' },
+    { value: 'Book',                  key: 'workspace.pubs.aggregation.book' },
+    { value: 'Trade Journal',         key: 'workspace.pubs.aggregation.tradeJournal' },
+    { value: 'Report',                key: 'workspace.pubs.aggregation.report' },
+];
 
 // ── Module state ─────────────────────────────────────────────────────────────
 
@@ -190,7 +200,7 @@ function _renderMergeSuggestions() {
     }).join('');
 
     host.innerHTML = `
-        <div class="app-ws-pubs__review-summary" role="region" aria-label="Possible duplicate publications" style="margin-bottom:0.75rem;">
+        <div class="app-ws-pubs__review-summary" role="region" aria-label="${_esc(t('workspace.pubs.possibleDuplicates'))}" style="margin-bottom:0.75rem;">
           <div style="padding:0.6rem 0.9rem;">
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <i class="fa-solid fa-code-merge" aria-hidden="true"></i>
@@ -225,13 +235,13 @@ function _submitMergeFlag(idA, idB, onError) {
         })
         .then(() => {
             window.appToast?.show({
-                message: 'Merge requested — an admin will review and combine the two records.',
+                message: t('workspace.pubs.mergeRequested'),
                 tone: 'success',
             });
             _fetchMergeState(); // server state is the truth: refresh badges + drop the covered suggestion
         })
         .catch(err => {
-            window.appToast?.show({ message: `Merge request failed: ${err.message}`, tone: 'error' });
+            window.appToast?.show({ message: t('workspace.pubs.mergeFailed', err.message), tone: 'error' });
             onError?.();
         });
 }
@@ -381,7 +391,7 @@ function _renderPage() {
             <th scope="col" class="app-ws-pubs__col-select">
               <input type="checkbox"
                      class="app-ws-pubs__select-all"
-                     aria-label="Select all pending publications on this page"
+                     aria-label="${t('workspace.pubs.selectAllPending')}"
                      data-select-all-pending
                      ${allPageSelected ? 'checked' : ''}
                      ${selectablePagePubs.length === 0 ? 'disabled' : ''}>
@@ -416,7 +426,7 @@ function _renderPage() {
     // Pagination
     if (pages > 1) {
         const paginationEl = document.createElement('div');
-        paginationEl.innerHTML = buildPaginationHtml({ page: _page, total, pageSize: PAGE_SIZE, label: 'Publications pagination' });
+        paginationEl.innerHTML = buildPaginationHtml({ page: _page, total, pageSize: PAGE_SIZE, label: t('workspace.pubs.pagination') });
         wrap.appendChild(paginationEl.firstElementChild);
         wirePaginationClicks(wrap, (newPage) => {
             _page     = newPage;
@@ -590,7 +600,7 @@ function _insertDetailRow(pub, tr) {
     detailTr.querySelector('[data-flag-merge]')?.addEventListener('click', e => {
         const otherId = detailTr.querySelector('[data-merge-other-select]')?.value;
         if (!otherId) {
-            window.appToast?.show({ message: 'Pick the publication this one duplicates first.', tone: 'info' });
+            window.appToast?.show({ message: t('workspace.pubs.pickDuplicateFirst'), tone: 'info' });
             return;
         }
         e.target.disabled = true;
@@ -615,14 +625,14 @@ function _buildDetailPanel(pub) {
         const moreCount = citingIds.length - previewIds.length;
         citationsHtml =
             `<p class="app-ws-pubs__citations-count">` +
-                `<strong>${cites}</strong> citation${cites !== 1 ? 's' : ''}` +
+                `<strong>${cites}</strong> ${_esc(tPlural('workspace.pubs.citations', cites).replace(String(cites), '').trim())}` +
             `</p>` +
             (previewItems ? `<ul class="app-ws-pubs__citations-list">${previewItems}</ul>` : '') +
             (moreCount > 0
                 ? `<span style="font-size:0.8rem;color:var(--app-color-text-muted)">&hellip; and ${moreCount} more</span>`
                 : '') +
             `<button type="button" class="app-ws-pubs__citations-link" data-citations-modal="${_esc(pub.id)}">` +
-                `View all citations →` +
+                `${_esc(t('workspace.pubs.viewAllCitations'))}` +
             `</button>`;
     }
 
@@ -634,7 +644,7 @@ function _buildDetailPanel(pub) {
 
     return `
         <div class="app-ws-pubs__detail-inner">
-          <button class="app-ws-pubs__detail-close" type="button" aria-label="Close details">
+          <button class="app-ws-pubs__detail-close" type="button" aria-label="${t('workspace.pubs.closeDetails')}">
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
           <div class="app-ws-pubs__detail-panel">
@@ -671,7 +681,7 @@ function _buildDetailPanel(pub) {
                     Confirm mine
                   </button>
                   <button class="btn btn-sm ${rejectConfirm ? 'btn-danger' : 'btn-outline-danger'}" type="button" data-reject-authorship="${_esc(pub.id)}">
-                    ${rejectConfirm ? 'Confirm rejection' : 'Reject authorship'}
+                    ${rejectConfirm ? t('workspace.pubs.confirmRejection') : t('workspace.pubs.rejectAuthorship')}
                   </button>
                   <button class="btn btn-sm btn-link px-0" type="button" data-clear-authorship="${_esc(pub.id)}">
                     Clear decision
@@ -727,7 +737,7 @@ async function _routedToOnboarding(res) {
     let body = null;
     try { body = await res.clone().json(); } catch (_) { body = null; }
     if (body?.requiresOnboarding) {
-        window.appToast?.show({ message: 'Finish your onboarding setup to review publications.', tone: 'info' });
+        window.appToast?.show({ message: t('workspace.pubs.onboardingFirst'), tone: 'info' });
         window.appWorkspaceOnboarding?.open();
         return true;
     }
@@ -760,7 +770,7 @@ function _saveAuthorshipDecision(pubId, action, detailTr) {
             _refreshAfterAuthorshipDecision(pubId);
         })
         .catch(() => {
-            _showAuthorshipFeedback(feedback, 'Decision save failed — please try again.', true);
+            _showAuthorshipFeedback(feedback, t('workspace.pubs.decisionSaveFailed'), true);
         });
 }
 
@@ -772,10 +782,10 @@ function _saveAuthorshipDecision(pubId, action, detailTr) {
  */
 function _showDecisionToast(action, pubId) {
     const remaining = _data?.pendingReviewCount ?? 0;
-    const lead = action === 'confirm' ? 'Confirmed' : 'Removed from your list';
+    const lead = action === 'confirm' ? 'Confirmed' : t('workspace.pubs.removedFromList');
     const tail = remaining > 0
-        ? ` — ${remaining} still pending.`
-        : ' — your review queue is clear.';
+        ? ' ' + tPlural('workspace.pubs.stillPending', remaining)
+        : ' ' + t('workspace.pubs.queueClear');
     window.appToast?.show({
         message: lead + tail,
         tone: 'success',
@@ -797,11 +807,11 @@ function _undoAuthorshipDecision(pubId) {
         })
         .then(state => {
             _setReviewState(pubId, state);
-            window.appToast?.show({ message: 'Decision undone — back to pending.', tone: 'info' });
+            window.appToast?.show({ message: t('workspace.pubs.decisionUndone'), tone: 'info' });
             _renderAll();
         })
         .catch(() => {
-            window.appToast?.show({ message: 'Undo failed — please try again.', tone: 'error' });
+            window.appToast?.show({ message: t('workspace.pubs.undoFailed'), tone: 'error' });
         });
 }
 
@@ -827,11 +837,11 @@ function _clearAuthorshipDecision(pubId, detailTr) {
         .then(state => {
             _pendingRejectId = null;
             _setReviewState(pubId, state);
-            window.appToast?.show({ message: 'Decision cleared.', tone: 'success' });
+            window.appToast?.show({ message: t('workspace.pubs.decisionCleared'), tone: 'success' });
             _refreshAfterAuthorshipDecision(pubId);
         })
         .catch(() => {
-            _showAuthorshipFeedback(feedback, 'Decision clear failed — please try again.', true);
+            _showAuthorshipFeedback(feedback, t('workspace.pubs.decisionClearFailed'), true);
         });
 }
 
@@ -864,7 +874,7 @@ function _runBulkAuthorshipDecision(action) {
             const body = await res.json().catch(() => null);
             if (!res.ok) {
                 if (body?.requiresOnboarding) {
-                    window.appToast?.show({ message: 'Finish your onboarding setup to review publications.', tone: 'info' });
+                    window.appToast?.show({ message: t('workspace.pubs.onboardingFirst'), tone: 'info' });
                     window.appWorkspaceOnboarding?.open();
                     return null;
                 }
@@ -895,7 +905,7 @@ function _runBulkAuthorshipDecision(action) {
             _renderAll();
         })
         .catch(err => {
-            window.appToast?.show({ message: err.message ?? 'Bulk review failed.', tone: 'error' });
+            window.appToast?.show({ message: err.message ?? t('workspace.pubs.bulkReviewFailed'), tone: 'error' });
             _renderAll();
         });
 }
@@ -923,7 +933,7 @@ function _setReviewState(pubId, state) {
 
 function _buildReviewBadge(state) {
     const status = state?.status ?? 'PENDING';
-    const text = status === 'CONFIRMED' ? 'Confirmed' : status === 'REJECTED' ? 'Rejected' : 'Pending review';
+    const text = status === 'CONFIRMED' ? 'Confirmed' : status === 'REJECTED' ? 'Rejected' : t('workspace.pubs.pendingReview');
     const cls = status === 'CONFIRMED'
         ? 'app-ws-pubs__review-badge--confirmed'
         : status === 'REJECTED'
@@ -969,13 +979,13 @@ function _buildImportLineage(pub) {
     if (pub?.eid) sources.push('Scopus');
     if (pub?.wosId) sources.push('WoS');
     if (sources.length === 0) {
-        return 'Imported linkage';
+        return t('workspace.pubs.importedLinkage');
     }
     if (sources.length === 1) {
-        return `Imported from ${sources[0]}`;
+        return t('workspace.pubs.importedFrom', sources[0]);
     }
     if (sources.length === 2) {
-        return `Imported from ${sources[0]} and ${sources[1]}`;
+        return t('workspace.pubs.importedFromTwo', sources[0], sources[1]);
     }
     return `Imported from ${sources.slice(0, -1).join(', ')}, and ${sources[sources.length - 1]}`;
 }
@@ -989,7 +999,7 @@ function _formatReviewDate(value) {
 
 function _authorshipBodyText(pubId, state) {
     if (state?.status === 'CONFIRMED') {
-        return 'This publication is confirmed as yours and will count in scoring.';
+        return t('workspace.pubs.confirmedNote');
     }
     if (state?.status === 'REJECTED') {
         return 'This publication is marked as not yours. It stays visible here for review, but will not count in scoring.';
@@ -1072,7 +1082,7 @@ function _buildReviewSummary() {
     const allActive = _publicationFilter === 'all';
     const queueActive = _publicationFilter === 'pending-review';
     const bulkBar = selectedCount > 0
-        ? `<div class="app-ws-pubs__bulk-bar" role="region" aria-label="Bulk authorship review actions">
+        ? `<div class="app-ws-pubs__bulk-bar" role="region" aria-label="${t('workspace.pubs.bulkActions')}">
             <span class="app-ws-pubs__bulk-count">${selectedCount} selected</span>
             <button type="button" class="btn btn-sm btn-outline-success" data-bulk-confirm>Confirm selected</button>
             <button type="button" class="btn btn-sm btn-outline-danger" data-bulk-reject>Reject selected</button>
@@ -1080,8 +1090,8 @@ function _buildReviewSummary() {
           </div>`
         : '';
     return `
-        <section class="app-ws-pubs__triage-bar" aria-label="Authorship review queue">
-          <div class="app-ws-pubs__review-breakdown" aria-label="Authorship review breakdown">
+        <section class="app-ws-pubs__triage-bar" aria-label="${t('workspace.pubs.reviewQueue')}">
+          <div class="app-ws-pubs__review-breakdown" aria-label="${t('workspace.pubs.reviewBreakdown')}">
             <span class="app-ws-pubs__review-stat"><strong>${counts.known}</strong> known</span>
             <span class="app-ws-pubs__review-stat app-ws-pubs__review-stat--confirmed"><strong>${counts.confirmed}</strong> confirmed</span>
             <span class="app-ws-pubs__review-stat app-ws-pubs__review-stat--rejected"><strong>${counts.rejected}</strong> rejected</span>
@@ -1093,7 +1103,7 @@ function _buildReviewSummary() {
             <span class="app-ws-pubs__triage-body">pending publication${pendingCount === 1 ? '' : 's'} need authorship review</span>
             <span class="app-ws-pubs__triage-meta">${suspiciousCount} suspicious, ${recommendedCount} recommended accept</span>
           </div>
-          <div class="app-ws-pubs__triage-filters" role="tablist" aria-label="Publication review filters">
+          <div class="app-ws-pubs__triage-filters" role="tablist" aria-label="${t('workspace.pubs.reviewFilters')}">
             <button type="button" class="app-ws-pubs__triage-filter ${allActive ? 'app-ws-pubs__triage-filter--active' : ''}" data-publication-filter="all" aria-pressed="${allActive}">
               All
             </button>
@@ -1149,7 +1159,7 @@ function _buildSuspiciousDetailSection(state) {
 }
 
 function _formatFlagCode(code) {
-    if (!code) return 'Needs review';
+    if (!code) return t('workspace.pubs.needsReview');
     return code.toLowerCase().split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 }
 
@@ -1371,8 +1381,8 @@ function _closeWizard(force) {
     if (!_wizardOpen) return;
     if (!force && _wizardIsDirty()) {
         window.appConfirmDialog?.open({
-            title: 'Discard changes?',
-            body: 'The wizard has unsaved changes. Discard them and close?',
+            title: t('workspace.pubs.wizard.discardTitle'),
+            body: t('workspace.pubs.wizard.discardBody'),
             confirmLabel: 'Discard',
             tone: 'danger',
             onConfirm: () => _closeWizard(true),
@@ -1403,9 +1413,9 @@ function _renderWizardPanel() {
 
 function _buildWizardShell() {
     const steps = [
-        { label: 'Select Forum' },
-        { label: 'Add Authors' },
-        { label: 'Details' },
+        { label: t('workspace.pubs.wizard.stepForum') },
+        { label: t('workspace.pubs.wizard.stepAuthors') },
+        { label: t('workspace.pubs.wizard.stepDetails') },
     ];
 
     const stepsHtml = steps.map((s, i) => {
@@ -1426,15 +1436,15 @@ function _buildWizardShell() {
     }).join('');
 
     return `
-        <div class="app-ws-pubs__wizard" role="region" aria-label="Add publication wizard">
+        <div class="app-ws-pubs__wizard" role="region" aria-label="${_esc(t('workspace.pubs.wizard.aria'))}">
           <div class="app-ws-pubs__wizard-header">
-            <h2 class="app-ws-pubs__wizard-title">Add Publication</h2>
-            <button class="app-ws-pubs__wizard-close" type="button" aria-label="Close wizard" id="ws-pubs-wiz-close">
+            <h2 class="app-ws-pubs__wizard-title">${_esc(t('workspace.pubs.wizard.heading'))}</h2>
+            <button class="app-ws-pubs__wizard-close" type="button" aria-label="${_esc(t('workspace.pubs.wizard.close'))}" id="ws-pubs-wiz-close">
               <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
           </div>
           <div class="app-ws-pubs__wizard-body">
-            <div class="app-ws-pubs__wizard-steps" role="list" aria-label="Wizard steps">
+            <div class="app-ws-pubs__wizard-steps" role="list" aria-label="${_esc(t('workspace.pubs.wizard.steps'))}">
               ${stepsHtml}
             </div>
             <div id="ws-pubs-wiz-step-body">
@@ -1469,19 +1479,19 @@ function _renderStep1() {
     }).join('');
 
     const emptyNotice = filtered.length === 0
-        ? `<li style="padding:0.5rem;font-size:0.85rem;color:var(--app-color-text-muted)">No forums match — use "Create new forum" below.</li>`
+        ? `<li style="padding:0.5rem;font-size:0.85rem;color:var(--app-color-text-muted)">${_esc(t('workspace.pubs.wizard.noForumMatch'))}</li>`
         : '';
 
     // Prefill new-forum fields if _wNewForum is set
     const nf = _wNewForum ?? {};
 
-    const aggrOptions = AGGREGATION_TYPES.map(t =>
-        `<option value="${_esc(t)}" ${(nf.aggregationType ?? '') === t ? 'selected' : ''}>${_esc(t)}</option>`
+    const aggrOptions = AGGREGATION_TYPES.map(opt =>
+        `<option value="${_esc(opt.value)}" ${(nf.aggregationType ?? '') === opt.value ? 'selected' : ''}>${_esc(t(opt.key))}</option>`
     ).join('');
 
     const newForumHtml = `
         <details class="app-ws-pubs__wiz-new-forum" id="ws-pubs-wiz-new-forum-details" ${_wForumId === null && _wNewForum ? 'open' : ''}>
-          <summary>+ Create new forum (not listed above)</summary>
+          <summary>${_esc(t('workspace.pubs.wizard.createForumSummary'))}</summary>
           <div class="app-ws-pubs__wiz-new-forum-fields">
             <div class="app-ws-pubs__wiz-field">
               <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-forum-name">Publication name</label>
@@ -1516,9 +1526,9 @@ function _renderStep1() {
 
     return `
         <input class="app-ws-pubs__wiz-search-input" id="ws-pubs-wiz-forum-search"
-               type="search" placeholder="Search forums…" value="${_esc(_wForumFilter)}"
-               autocomplete="off" aria-label="Search forums"/>
-        <ul class="app-ws-pubs__wiz-forum-list" role="listbox" aria-label="Forum results" id="ws-pubs-wiz-forum-list">
+               type="search" placeholder="${t('workspace.pubs.wizard.searchForums')}" value="${_esc(_wForumFilter)}"
+               autocomplete="off" aria-label="${t('workspace.pubs.wizard.searchForumsAria')}"/>
+        <ul class="app-ws-pubs__wiz-forum-list" role="listbox" aria-label="${t('workspace.pubs.wizard.forumResults')}" id="ws-pubs-wiz-forum-list">
           ${listItems}${emptyNotice}
         </ul>
         ${newForumHtml}
@@ -1587,7 +1597,7 @@ function _renderStep2() {
 // Step 3: Metadata fields
 function _renderStep3() {
     const subtypeOptions = SUBTYPE_OPTIONS.map(o =>
-        `<option value="${_esc(o.value)}" ${o.value === _wSubtype ? 'selected' : ''}>${_esc(o.label)}</option>`
+        `<option value="${_esc(o.value)}" ${o.value === _wSubtype ? 'selected' : ''}>${_esc(t(o.key))}</option>`
     ).join('');
 
     return `
@@ -1595,7 +1605,7 @@ function _renderStep3() {
           <div class="app-ws-pubs__wiz-field app-ws-pubs__wiz-field--full">
             <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-title">Title</label>
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-title" type="text"
-                   value="${_esc(_wTitle)}" placeholder="Publication title"/>
+                   value="${_esc(_wTitle)}" placeholder="${t('workspace.pubs.wizard.title')}"/>
           </div>
           <div class="app-ws-pubs__wiz-field">
             <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-date">Cover date</label>
@@ -1649,7 +1659,7 @@ function _updateSenseBadge(rawValue) {
             if (!m) { badge.hidden = true; return; }
             badge.innerHTML = m.matched
                 ? `Detected SENSE publisher category: <strong>${_esc(m.rank)}</strong> (${_esc(m.matchedPublisher)})`
-                : 'Publisher not in the SENSE ranking — books/chapters here score as D/E/unlisted.';
+                : t('workspace.pubs.wizard.senseWarning');
             badge.hidden = false;
         })
         .catch(() => { badge.hidden = true; });
@@ -1740,7 +1750,7 @@ function _wizardNext() {
             _wNewForum.publicationName &&
             _wNewForum.aggregationType;
         if (!forumSelected && !newForumValid) {
-            _showWizardError('Please select a forum from the list, or fill in the publication name and type in "Create new forum".');
+            _showWizardError(t('workspace.pubs.wizard.forumRequired'));
             return;
         }
         _clearWizardError();
@@ -1790,9 +1800,9 @@ function _captureStep3() {
 }
 
 function _validateStep3() {
-    if (!_wTitle) return 'Title is required.';
-    if (!_wDate)  return 'Cover date is required.';
-    if (!_wSubtypeDesc) return 'Type description is required.';
+    if (!_wTitle) return t('workspace.pubs.wizard.titleRequired');
+    if (!_wDate)  return t('workspace.pubs.wizard.dateRequired');
+    if (!_wSubtypeDesc) return t('workspace.pubs.wizard.typeRequired');
     return null;
 }
 
@@ -1858,7 +1868,7 @@ function _submitWizard() {
     const submitBtn = document.getElementById('ws-pubs-wiz-submit');
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Submitting…';
+        submitBtn.textContent = t('workspace.pubs.wizard.submitting');
     }
 
     const command = {
@@ -1900,7 +1910,7 @@ function _submitWizard() {
             _init(_panel);
         })
         .catch(err => {
-            _showWizardError(err.message ?? 'Submission failed — please try again.');
+            _showWizardError(err.message ?? t('workspace.pubs.wizard.submitFailed'));
             if (submitBtn) {
                 submitBtn.disabled    = false;
                 submitBtn.textContent = 'Submit';
@@ -1914,7 +1924,7 @@ function _buildToolbar() {
     return `
         <div class="app-ws-pubs__toolbar">
           <a href="#" id="ws-pubs-add-btn" class="btn btn-sm btn-primary">
-            <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Publication
+            <i class="fa-solid fa-plus" aria-hidden="true"></i> ${_esc(t('workspace.pubs.wizard.heading'))}
           </a>
           <a href="/user/publications" class="btn btn-sm btn-outline-secondary">
             <i class="fa-solid fa-file-export" aria-hidden="true"></i> Export CNFIS
@@ -1955,7 +1965,7 @@ function _buildEmpty() {
           <h2 class="app-ws-pubs__empty-title">No publications yet</h2>
           <p class="app-ws-pubs__empty-body">Add your first publication to start tracking your research output.</p>
           <a href="#" id="ws-pubs-add-btn-empty" class="btn btn-sm btn-primary" style="margin-top:0.5rem">
-            <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Publication
+            <i class="fa-solid fa-plus" aria-hidden="true"></i> ${_esc(t('workspace.pubs.wizard.heading'))}
           </a>
         </div>`;
 }

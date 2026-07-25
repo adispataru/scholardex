@@ -59,8 +59,15 @@ Done history moved to `TASKS-done.md`.
     controller until mocked.
   - **S3a REMAINING**: `user/individual-report-view.html` (29) and `user/individual-report-import.html`
     (45) — deliberately left for last since report copy borders on standards wording.
-  - **S3b**: the 6 workspace JS modules (~129 strings; publications 60, activities 30, profile 21) now that
-    `t()`/`tPlural()` exist. Replace every `${n} thing${n !== 1 ? 's' : ''}` with a plural family.
+  - **S3b DONE locally 2026-07-25**: all 6 workspace JS modules converted to `t()`/`tPlural()` (~129
+    strings; bundle now 204 keys). Every `${n} thing${n !== 1 ? 's' : ''}` became a 3-form family, verified
+    live: "1 citare" / "5 citări" / "20 de citări". TRAPS handled: (1) `AGGREGATION_TYPES` were both the
+    label AND the persisted `aggregationType` value — split into {value, key} so a Romanian UI does not
+    start submitting Romanian venue types; (2) the aggregation render used `.map(t => …)`, which would have
+    shadowed the imported translator — parameter renamed; (3) most strings live inside HTML template
+    literals (placeholder/aria-label), not quoted JS, so a naive literal sweep misses them.
+  - **S3 REMAINING**: `user/individual-report-view.html` (29) + `user/individual-report-import.html` (45),
+    left for last because their copy borders on standards wording.
   - **S4 supervisor pages** + a sweep for leftovers (a lint that fails on bare text nodes in the
     in-scope templates).
   Open decisions for the user: default locale (RO for uvt.ro users vs browser `Accept-Language`), and

@@ -22,18 +22,19 @@
 
 import { postJsonHeaders } from '../shared/fetchUtils';
 import { buildPaginationHtml, wirePaginationClicks } from '../shared/clientPagination';
+import { t, tPlural } from '../shared/i18n';
 
 const PAGE_SIZE = 20;
 
 const REF_LABELS = {
-    FORUM_NAME:      'Forum Name',
+    FORUM_NAME:      t('workspace.activities.forumName'),
     FORUM_ISSN:      'ISSN',
     FORUM_EISSN:     'E-ISSN',
     FORUM_ISBN:      'ISBN',
     FORUM_PUBLISHER: 'Publisher',
-    PROJECT_GRANT_ID:'Grant ID',
+    PROJECT_GRANT_ID:t('workspace.activities.grantId'),
     UNIVERSITY_NAME: 'University',
-    EVENT_NAME:      'Event Name',
+    EVENT_NAME:      t('workspace.activities.eventName'),
 };
 
 // ── Module state ─────────────────────────────────────────────────────────────
@@ -215,7 +216,7 @@ function _renderPage() {
 
     if (pages > 1) {
         const paginationEl = document.createElement('div');
-        paginationEl.innerHTML = buildPaginationHtml({ page: _page, total, pageSize: PAGE_SIZE, label: 'Activities pagination' });
+        paginationEl.innerHTML = buildPaginationHtml({ page: _page, total, pageSize: PAGE_SIZE, label: t('workspace.activities.pagination') });
         wrap.appendChild(paginationEl.firstElementChild);
         wirePaginationClicks(wrap, (newPage) => {
             _page = newPage;
@@ -249,12 +250,12 @@ function _appendRow(tbody, inst) {
             // H78 — quick "Link" affordance for a project-supporting activity that isn't linked yet.
             ((_supportsProjectLink(inst) && !_isProjectLinked(inst))
                 ? `<button class="app-ws-acts__action-btn app-ws-acts__link-btn" type="button" ` +
-                        `aria-label="Link to project" data-link-inst="${_esc(inst.id)}">` +
+                        `aria-label="${_esc(t('workspace.activities.linkToProject'))}" data-link-inst="${_esc(inst.id)}">` +
                         `<i class="fa-solid fa-link" aria-hidden="true"></i> Link` +
                     `</button>`
                 : '') +
             `<button class="app-ws-acts__action-btn" type="button" ` +
-                    `aria-label="Details: ${_esc(name)}" aria-expanded="false" ` +
+                    `aria-label="${_esc(t('workspace.activities.details', name))}" aria-expanded="false" ` +
                     `data-detail-btn="${_esc(inst.id)}">` +
                 `<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>` +
             `</button>` +
@@ -338,7 +339,7 @@ function _insertDetailRow(inst, tr) {
             btn.innerHTML =
                 `<span class="app-ws-acts__delete-confirm">` +
                     `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>` +
-                    `Confirm delete?` +
+                    `${_esc(t('workspace.activities.confirmDelete'))}` +
                 `</span>`;
             // Reset after 4s if not clicked again
             setTimeout(() => { delete btn.dataset.confirmed; btn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> Delete'; }, 4000);
@@ -419,13 +420,13 @@ function _importProject(projectId, btn) {
             const title = (body && body.projectTitle) || 'project';
             const msg = body.status === 'EXISTS'
                 ? `“${title}” is already in your activities.`
-                : `Imported “${title}” as a Grant Cercetare activity.`;
+                : t('workspace.activities.imported', title);
             _showMyProjFeedback(feedback, msg, false);
             // Reload so the new instance appears in the table (and the card re-renders).
             _init(_panel);
         })
         .catch(() => {
-            _showMyProjFeedback(feedback, 'Could not import — please try again.', true);
+            _showMyProjFeedback(feedback, t('workspace.activities.importFailed'), true);
             if (btn) btn.disabled = false;
         });
 }
@@ -447,7 +448,7 @@ function _projectPickerFieldHtml(label, dataAttr, currentId) {
         <label class="app-ws-acts__label">${_esc(label)}</label>
         <div class="app-ws-acts__picker">
           <input class="app-ws-acts__input js-project-picker-search" type="text" autocomplete="off"
-                 placeholder="Search project by title, code, funder…"/>
+                 placeholder="${t('workspace.activities.searchProject')}"/>
           <input type="hidden" ${dataAttr}="PROJECT_GRANT_ID" class="js-project-picker-value" value="${_esc(currentId)}"/>
           <ul class="app-ws-acts__picker-results js-project-picker-results" hidden></ul>
         </div>
@@ -523,7 +524,7 @@ function _conferencePickerFieldHtml(label, dataAttr, currentValue) {
         <div class="app-ws-acts__picker">
           <input class="app-ws-acts__input js-conf-picker-input" type="text" autocomplete="off"
                  ${dataAttr}="FORUM_NAME" value="${_esc(currentValue)}"
-                 placeholder="Search by acronym (e.g. SYNASC) or name — free text also accepted"/>
+                 placeholder="${t('workspace.activities.searchConference')}"/>
           <ul class="app-ws-acts__picker-results js-conf-picker-results" hidden></ul>
         </div>
         <div class="app-ws-acts__picker-note js-conf-picker-note" hidden></div>
@@ -542,7 +543,7 @@ function _renderConferenceBadge(note, item) {
         note.innerHTML = `CORE classification: <strong>${_esc(item.latestRank ?? 'unranked')}</strong>${_esc(year)}`;
         note.hidden = false;
     } else {
-        note.textContent = 'Not matched in the CORE ranking — the score is resolved at report time '
+        note.textContent = t('workspace.activities.noCoreMatch')
             + '(category D if no conference is identified).';
         note.hidden = false;
     }
@@ -632,7 +633,7 @@ function _universityPickerFieldHtml(label, dataAttr, currentValue) {
         <div class="app-ws-acts__picker">
           <input class="app-ws-acts__input js-uni-picker-input" type="text" autocomplete="off"
                  ${dataAttr}="UNIVERSITY_NAME" value="${_esc(currentValue)}"
-                 placeholder="Search ranked universities — free text also accepted"/>
+                 placeholder="${t('workspace.activities.searchUniversity')}"/>
           <ul class="app-ws-acts__picker-results js-uni-picker-results" hidden></ul>
         </div>
         <div class="app-ws-acts__picker-note js-uni-picker-note" hidden></div>
@@ -645,7 +646,7 @@ function _renderUniversityBadge(note, item) {
         note.innerHTML = `Rankings for this spelling: <strong>${_esc(item.rankings.join(' \u00b7 '))}</strong>`;
         note.hidden = false;
     } else {
-        note.textContent = 'Not matched in URAP/ARWU/QS — the score is resolved at report time '
+        note.textContent = t('workspace.activities.noUniversityMatch')
             + '(unranked floor if no ranking matches this exact name).';
         note.hidden = false;
     }
@@ -745,7 +746,7 @@ function _openLinkRow(inst, tr) {
         <div class="app-ws-acts__link-title">Link “${_esc(inst.name ?? '')}” to a canonical project</div>
         <div class="app-ws-acts__picker">
             <input class="app-ws-acts__input js-link-search" type="text" autocomplete="off"
-                   placeholder="Search project by title, code, funder…"/>
+                   placeholder="${t('workspace.activities.searchProject')}"/>
             <ul class="app-ws-acts__picker-results js-link-results" hidden></ul>
         </div>
         <p class="app-ws-acts__link-feedback" hidden></p>
@@ -778,7 +779,7 @@ function _toggleParticipantImport() {
         <div class="app-ws-acts__partimport-title">Search a project you participated in</div>
         <div class="app-ws-acts__picker">
             <input class="app-ws-acts__input js-part-search" type="text" autocomplete="off"
-                   placeholder="Search project by title, code, funder…"/>
+                   placeholder="${t('workspace.activities.searchProject')}"/>
             <ul class="app-ws-acts__picker-results js-part-results" hidden></ul>
         </div>
         <p class="app-ws-acts__partimport-feedback" hidden></p>
@@ -816,7 +817,7 @@ function _importParticipantProject(projectId, host) {
             _init(_panel); // reload so the new participant activity appears
         })
         .catch(() => {
-            if (feedback) { feedback.hidden = false; feedback.textContent = 'Could not add — please try again.'; }
+            if (feedback) { feedback.hidden = false; feedback.textContent = t('workspace.activities.addFailed'); }
         });
 }
 
@@ -833,7 +834,7 @@ function _linkProject(instanceId, projectId, container) {
             _init(_panel); // reload so the row reflects the new link
         })
         .catch(() => {
-            if (feedback) { feedback.hidden = false; feedback.textContent = 'Could not link — please try again.'; }
+            if (feedback) { feedback.hidden = false; feedback.textContent = t('workspace.activities.linkFailed'); }
         });
 }
 
@@ -896,7 +897,7 @@ function _buildDetailPanel(inst) {
 
     return `
         <div class="app-ws-acts__detail-inner">
-          <button class="app-ws-acts__detail-close" type="button" aria-label="Close details">
+          <button class="app-ws-acts__detail-close" type="button" aria-label="${t('workspace.activities.closeDetails')}">
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
           <div class="app-ws-acts__detail-grid">
@@ -949,7 +950,7 @@ function _saveInst(id, detailTr) {
             const inst = _instances.find(i => i.id === id);
             if (inst) { inst.fields = fields; inst.referenceFields = refFields; }
             if (feedback) {
-                feedback.textContent = 'Saved.';
+                feedback.textContent = t('workspace.activities.saved');
                 feedback.classList.remove('app-ws-acts__feedback--error');
                 feedback.classList.add('app-ws-acts__feedback--visible');
                 setTimeout(() => feedback.classList.remove('app-ws-acts__feedback--visible'), 2500);
@@ -957,7 +958,7 @@ function _saveInst(id, detailTr) {
         })
         .catch(() => {
             if (feedback) {
-                feedback.textContent = 'Save failed — please try again.';
+                feedback.textContent = t('workspace.activities.saveFailed');
                 feedback.classList.add('app-ws-acts__feedback--error', 'app-ws-acts__feedback--visible');
             }
         })
@@ -1045,7 +1046,7 @@ function _buildCreateShell() {
         <div class="app-ws-acts__create-panel">
           <div class="app-ws-acts__create-header">
             <h3 class="app-ws-acts__create-title">New Activity Instance</h3>
-            <button class="app-ws-acts__create-close" type="button" aria-label="Close create form">
+            <button class="app-ws-acts__create-close" type="button" aria-label="${t('workspace.activities.closeCreateForm')}">
               <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
           </div>
@@ -1060,7 +1061,7 @@ function _buildCreateShell() {
               </div>
               <div class="app-ws-acts__field">
                 <label class="app-ws-acts__label" for="ws-acts-create-name">Name / label</label>
-                <input class="app-ws-acts__input" id="ws-acts-create-name" type="text" placeholder="Optional display name"/>
+                <input class="app-ws-acts__input" id="ws-acts-create-name" type="text" placeholder="${t('workspace.activities.optionalDisplayName')}"/>
               </div>
               <div class="app-ws-acts__field">
                 <label class="app-ws-acts__label" for="ws-acts-create-date">Date *</label>
@@ -1149,8 +1150,8 @@ function _submitCreate(placeholder) {
     const feedback   = document.getElementById('ws-acts-create-feedback');
     const saveBtn    = placeholder.querySelector('[data-create-save]');
 
-    if (!activityId) { _showFeedback(feedback, 'Please select an activity type.', true); return; }
-    if (!date)       { _showFeedback(feedback, 'Please enter a date.', true); return; }
+    if (!activityId) { _showFeedback(feedback, t('workspace.activities.selectType'), true); return; }
+    if (!date)       { _showFeedback(feedback, t('workspace.activities.enterDate'), true); return; }
 
     const fields    = {};
     const refFields = {};
@@ -1182,7 +1183,7 @@ function _submitCreate(placeholder) {
             _renderPage();
         })
         .catch(() => {
-            _showFeedback(feedback, 'Could not save — please try again.', true);
+            _showFeedback(feedback, t('workspace.activities.saveFailed'), true);
             if (saveBtn) saveBtn.disabled = false;
         });
 }
@@ -1273,7 +1274,7 @@ function _buildSummaryCard() {
     }
 
     const distHtml = total > 0
-        ? `<div class="app-ws-acts__dist-bar" role="img" aria-label="Activity type distribution">
+        ? `<div class="app-ws-acts__dist-bar" role="img" aria-label="${t('workspace.activities.typeDistribution')}">
                ${barHtml}
            </div>
            <div class="app-ws-acts__dist-legend">${legendHtml}</div>`

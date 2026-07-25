@@ -10,6 +10,7 @@
 
 import { postJsonHeaders } from '../shared/fetchUtils';
 import { getChartTheme } from '../shared/chartTheme';
+import { t, tPlural } from '../shared/i18n';
 
 export function initWorkspaceOverview() {
     // Keep the overview "Publications" stat (effective = known minus rejected) live when the user confirms/rejects
@@ -105,7 +106,7 @@ function _initCharts() {
 function _renderBarChart(canvas, labels, values, label, colors) {
     if (!canvas) return;
     if (!labels || !labels.length) {
-        _showChartEmpty(canvas, 'No publication data yet.');
+        _showChartEmpty(canvas, t('workspace.overview.noPublicationData'));
         return;
     }
     new window.Chart(canvas, {
@@ -142,7 +143,7 @@ function _renderBarChart(canvas, labels, values, label, colors) {
                 displayColors: false,
                 callbacks: {
                     title: (items) => items[0].xLabel,
-                    label: (item) => `${item.yLabel} publication${item.yLabel !== 1 ? 's' : ''}`
+                    label: (item) => tPlural('workspace.overview.publications', item.yLabel)
                 }
             }
         }
@@ -154,7 +155,7 @@ function _renderBarChart(canvas, labels, values, label, colors) {
 function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
     if (!canvas) return;
     if (!labels || !labels.length) {
-        _showChartEmpty(canvas, 'No citation data yet.');
+        _showChartEmpty(canvas, t('workspace.overview.noCitationData'));
         return;
     }
     const amber = '#f59e0b';
@@ -172,7 +173,7 @@ function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
                     borderRadius: 3,
                 },
                 {
-                    label: 'Self-citations',
+                    label: t('workspace.overview.selfCitations'),
                     data: selfDelta,
                     backgroundColor: amber,
                     borderWidth: 0,
@@ -211,13 +212,13 @@ function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
                     title: (items) => items[0].xLabel,
                     label: (item) => {
                         if (item.datasetIndex === 1) {
-                            return `${item.yLabel} self-citation${item.yLabel !== 1 ? 's' : ''}`;
+                            return tPlural('workspace.overview.selfCitations', item.yLabel);
                         }
-                        return `${item.yLabel} citation${item.yLabel !== 1 ? 's' : ''} (excl. self)`;
+                        return tPlural('workspace.overview.citationsExclSelf', item.yLabel);
                     },
                     footer: (items) => {
                         const total = items.reduce((sum, it) => sum + it.yLabel, 0);
-                        return `Total: ${total}`;
+                        return t('workspace.overview.total', total);
                     }
                 },
                 footerFontColor: colors.muted
@@ -229,7 +230,7 @@ function _renderCitationsChart(canvas, labels, inclSelf, exclSelf, colors) {
 function _renderDoughnutChart(canvas, labels, values, colors) {
     if (!canvas) return;
     if (!labels || !labels.length) {
-        _showChartEmpty(canvas, 'No citation data yet.');
+        _showChartEmpty(canvas, t('workspace.overview.noCitationData'));
         return;
     }
     const palette = [
