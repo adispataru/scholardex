@@ -94,6 +94,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
         boolean lncsBookSeriesCandidate = isLncsBookSeriesCandidate(publication, forum);
         ScholardexForumView acmSignalForum = null;
+        ScholardexForumView originalForumMatch = null;
         // A paper published in a conference-proceeding forum is a conference contribution even when its
         // subtype is the generic "ar" (OpenAlex labels many proceedings papers as plain articles).
         boolean conferenceCandidate = PublicationSubtypeSupport.isSubtype(publication, "cp")
@@ -110,6 +111,29 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                     Score candidate = resolution.score().get();
                     if (resolvedScore == null || candidate.getScore() > resolvedScore.getScore()) {
                         resolvedScore = candidate;
+                    }
+                }
+            }
+            // H89 — DBLP stream forums are named from the `conf/X` acronym, and CORE does not always know that
+            // acronym: DBLP files AAMAS proceedings under conf/atal (the ATAL workshops that BECAME AAMAS), so the
+            // minted forum is called "ATAL", CORE has no ATAL entry, and a CORE-A conference resolves to nothing.
+            // The pre-restamp forum still carries the name Scopus/OpenAlex gave it — usually the full proceedings
+            // title CORE can match — so retry against it before falling through to the LNCS/ACM/D defaults, which
+            // would otherwise hand an A conference a D. Mirrors resolveAcmEptcsSignalForum.
+            if (resolvedScore == null) {
+                ScholardexForumView originalForum = resolveOriginalForum(publication, forum);
+                if (originalForum != null) {
+                    for (int year : allowedYears) {
+                        ConferenceScoreResolution resolution =
+                                resolveConferenceScore(publication, originalForum, year, trace, workshop2026, posterOrDemo);
+                        trace = resolution.trace();
+                        if (resolution.score().isPresent()) {
+                            Score candidate = resolution.score().get();
+                            if (resolvedScore == null || candidate.getScore() > resolvedScore.getScore()) {
+                                resolvedScore = candidate;
+                                originalForumMatch = originalForum;
+                            }
+                        }
                     }
                 }
             }
@@ -166,6 +190,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
         logTrace(trace, scoreResult.bestPoints.get(), scoreResult.bestYear.get(), scoreResult.bestCategory.get(), scoreResult.bestQuarter.get());
         Score score = createScore(scoreResult);
+        if (originalForumMatch != null) {
+            // The CORE rank came from the pre-restamp venue, not the DBLP stream forum the paper now sits on —
+            // surface it so the drilldown shows why an "ATAL"-named forum scored as AAMAS.
+            score.getScoringInfo().put("coreEvidenceVenue", originalForumMatch.getPublicationName());
+        }
         if (acmSignalForum != null && acmSignalForum != forum) {
             // The ACM/EPTCS signal came from the preserved pre-restamp venue, not the assigned stream
             // forum — surface it so the drilldown shows why a "UCC"-named forum floored to C.
@@ -1411,6 +1440,23 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
      * UCC 2011 ("IEEE International Conference …") stays D while 2012+ ("IEEE/ACM …") floors to C.
      * Returns the forum that carries the signal, or null when neither does.
      */
+    /**
+     * H89 — the forum this publication carried BEFORE DBLP conference resolution restamped it onto a
+     * `conf/X` stream forum, or null when there was no restamp (or the id no longer resolves). Used to retry
+     * a CORE match whose failure is an artefact of the stream forum being named from the DBLP acronym.
+     */
+    private ScholardexForumView resolveOriginalForum(ScoringPublicationReadModel publication,
+                                                     ScholardexForumView forum) {
+        String originalForumId = publication == null ? null : publication.getOriginalForumId();
+        if (originalForumId == null || originalForumId.isBlank()) {
+            return null;
+        }
+        if (forum != null && originalForumId.equals(forum.getId())) {
+            return null; // no restamp actually happened — retrying the same forum would just repeat the miss
+        }
+        return lookupPort.getForum(originalForumId);
+    }
+
     private ScholardexForumView resolveAcmEptcsSignalForum(ScoringPublicationReadModel publication,
                                                            ScholardexForumView forum) {
         if (isAcmOrEptcsVenue(forum)) {

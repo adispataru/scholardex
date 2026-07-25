@@ -2718,6 +2718,69 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
     }
 
+    // ---------------------------------------------------------------------------------------------
+    //  H89 — CORE match recovered from the pre-restamp forum
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    void streamStampedPaperRecoversItsCoreRankFromThePreservedOriginalForum() {
+        // The real prod case: DBLP files AAMAS proceedings under conf/atal (the ATAL workshops BECAME AAMAS),
+        // so the minted stream forum is called "ATAL" — a name CORE has no entry for. Without the fallback a
+        // CORE-A conference resolves to nothing and drops to the D default, which is what silently cost
+        // cosmin.bonchis 48 points across the Info_B indicators after a rebuild.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = streamStampedPublication("forum-atal-stream", "forum-aamas-raw", "2020-05-09");
+        when(cacheService.getForum("forum-atal-stream")).thenReturn(conferenceForum("ATAL"));
+        when(cacheService.getForum("forum-aamas-raw")).thenReturn(conferenceForum(
+                "Proceedings of the International Joint Conference on Autonomous Agents and Multiagent Systems, AAMAS"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of(
+                ranking("AAMAS", "International Joint Conference on Autonomous Agents and Multiagent Systems",
+                        CoreConferenceRanking.Rank.A)));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent(),
+                "the A rank must be recovered from the pre-restamp AAMAS forum, not lost to the ATAL stream name");
+        assertEquals(8.0, score.getScore());
+        assertEquals("Proceedings of the International Joint Conference on Autonomous Agents and Multiagent Systems, AAMAS",
+                score.getScoringInfo().get("coreEvidenceVenue"),
+                "the drilldown must name the venue the rank actually came from");
+    }
+
+    @Test
+    void aStreamForumThatMatchesCoreOnItsOwnIgnoresTheOriginalForum() {
+        // The fallback must be a LAST resort: when the assigned stream forum resolves, its rank wins and no
+        // coreEvidenceVenue is stamped (otherwise every restamped paper would claim recovered provenance).
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = streamStampedPublication("forum-agc-stream", "forum-agc-raw", "2023-10-10");
+        when(cacheService.getForum("forum-agc-stream")).thenReturn(conferenceForum("AGC"));
+        when(cacheService.getConferenceRankings(anyString()))
+                .thenReturn(List.of(ranking("AGC", "ACM Great Conference", CoreConferenceRanking.Rank.A)));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        assertNull(score.getScoringInfo().get("coreEvidenceVenue"));
+        // The load-bearing assertion: the pre-restamp forum is not even fetched when the stream forum resolves.
+        org.mockito.Mockito.verify(cacheService, org.mockito.Mockito.never()).getForum("forum-agc-raw");
+    }
+
+    @Test
+    void whenNeitherForumMatchesCoreTheConferenceStillFallsThroughToD() {
+        // The fallback must not swallow the existing D default for a genuinely unrankable conference.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = streamStampedPublication("forum-unknown-stream", "forum-unknown-raw", "2020-05-09");
+        when(cacheService.getForum("forum-unknown-stream")).thenReturn(conferenceForum("ZZZ"));
+        when(cacheService.getForum("forum-unknown-raw")).thenReturn(conferenceForum("Proceedings of Nothing In Particular"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+        assertNull(score.getScoringInfo().get("coreEvidenceVenue"));
+    }
+
     /** H85 durable detection: a DBLP-sweep-stamped pub — assigned to the conf/X stream forum, with the
      *  displaced raw per-year proceedings forum preserved as originalForumId. */
     private ScoringPublication streamStampedPublication(String forumId, String originalForumId, String coverDate) {
