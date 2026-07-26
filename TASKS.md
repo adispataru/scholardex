@@ -257,6 +257,23 @@ Done history moved to `TASKS-done.md`.
     `EUROMICRO`→SEAA, `ICMCS2`→ICMCS, …). Side effect: AAMAS now resolves straight from its evidence and
     no longer depends on the pre-restamp forum surviving — its prod-shape test asserts that with a
     `never()` on the fallback lookup.
+  - **Side effect of the retry, investigated 2026-07-26 after "A*+A went down" — CORRECT, not a break.**
+    florin.fortis's `Info_B (A*, A)` fell 32 → 16. Cause: two Euro-Par **Workshops** papers ("Cloud Patterns
+    for mOSAIC-Enabled Scientific Applications", "Data Security Perspectives in the Framework of Cloud
+    Governance") had been scoring the full main-track CORE-A rank, 8 points each. The DBLP stream forum is
+    named "EUROPAR" for EVERY Euro-Par paper, main track and workshops alike, so it cannot tell them apart;
+    their own DBLP booktitles say `"Euro-Par Workshops (1)"` and `"Euro-Par Workshops"`. Before H90 the
+    composed title `"EUROPAR Euro-Par Workshops (1)"` matched nothing and resolution fell through to the
+    stream forum name → A/8. The retry now matches the bare booktitle via EXACT_ACRONYM_DECORATED (the
+    split-decorated rule merges `euro`+`par` and treats `Workshops`/`(1)` as ignorable suffixes), and
+    because THAT source title contains "Workshops" the existing `isWorkshopVariant` reduction fires → 4
+    points, category C under the 2026 mapping. That is the standard's answer for a workshop of a CORE-A
+    conference, and it is the documented policy ("absent per-paper proof of workshop status, the paper's own
+    record is the default truth"). Pinned by two tests: the workshop shape scores 4/C, and the same stream
+    forum with NO evidence still scores 8/A — the control that makes the first meaningful.
+    **Prod scale: 55 evidence rows are newly workshop-detected this way** (`DEXA Workshops`,
+    `ICPP Workshops`, `Business Process Management Workshops`, `EuroS&P Workshops`, `ASE Workshops`, …).
+    Expect other CS researchers to lose points on workshop papers that were over-credited as main track.
   - **Not a defect — no evidence to reason from. MedFusion-LM (ECML-PKDD workshop volume), the two AINA
     volumes, AD-ZeroNAS.** All are 2025/2026 Springer chapters sitting on `Book Series` forums
     ("Communications in Computer and Information Science", "Lecture Notes on Data Engineering and

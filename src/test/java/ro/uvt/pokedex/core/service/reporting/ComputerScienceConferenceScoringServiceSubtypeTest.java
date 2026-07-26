@@ -3074,6 +3074,63 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertNull(score.getScoringInfo().get("acmEvidenceDoiPrefix"));
     }
 
+    /** The verbatim prod CORE entry for Euro-Par, parenthetical and all. */
+    private CoreConferenceRanking euroParRanking() {
+        return rankingWithYears("EuroPar",
+                "International European Conference on Parallel and Distributed Computing "
+                        + "(was International Conference on Parallel Processing)",
+                Map.of(2008, CoreConferenceRanking.Rank.A, 2013, CoreConferenceRanking.Rank.A,
+                        2014, CoreConferenceRanking.Rank.A, 2017, CoreConferenceRanking.Rank.A,
+                        2020, CoreConferenceRanking.Rank.A, 2021, CoreConferenceRanking.Rank.B,
+                        2023, CoreConferenceRanking.Rank.B));
+    }
+
+    @Test
+    void aEuroParWorkshopPaperIsScoredAsAWorkshopNotAsTheMainConference() {
+        // Prod shape of florin.fortis's "Cloud Patterns for mOSAIC-Enabled Scientific Applications".
+        // The stream forum is named "EUROPAR" for EVERY Euro-Par paper — main track and workshops alike —
+        // so it cannot tell them apart and resolves the full CORE-A rank. The paper's OWN DBLP booktitle
+        // says "Euro-Par Workshops (1)". That per-paper record is the authority, and it makes this a
+        // workshop: 4 points, category C under the 2026 mapping, not 8 points at A.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = dblpStampedPublication(
+                "spub-europar-ws", "forum-europar-stream", "forum-lnai-raw", "2012-01-01");
+        when(cacheService.getForum("forum-europar-stream")).thenReturn(conferenceForum("EUROPAR"));
+        stubEvidence("spub-europar-ws", "conf/europar", "Euro-Par Workshops (1)");
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("EUROPAR")).thenReturn(List.of(euroParRanking()));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        assertEquals(4.0, score.getScore(),
+                "a workshop of a CORE-A conference is worth 4, not the parent's 8. trace="
+                        + service.getLastTraceForTests());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE(WS)", score.getScoringSource());
+    }
+
+    @Test
+    void theSameEuroParStreamForumWithoutEvidenceStillScoresTheFullMainTrackRank() {
+        // The control that makes the test above meaningful: with no per-paper DBLP record, the bare
+        // "EUROPAR" stream forum resolves the main conference at its full A. This is what the workshop
+        // papers ALSO scored before their booktitle was consulted — 8 points at A — which is why fixing
+        // the lookup order moved two of florin.fortis's papers out of the A*+A bucket. Correctly.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = dblpStampedPublication(
+                "spub-europar-main", "forum-europar-stream", null, "2012-01-01");
+        when(cacheService.getForum("forum-europar-stream")).thenReturn(conferenceForum("EUROPAR"));
+        when(dblpEvidenceRepository.findByPublicationId("spub-europar-main")).thenReturn(Optional.empty());
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("EUROPAR")).thenReturn(List.of(euroParRanking()));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        assertEquals(8.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+    }
+
     @Test
     void aNonAcmDoiOnAnUnrankedConferenceStillFallsToD() {
         // Springer/Elsevier/IEEE DOIs must not pick up the ACM floor — the prefix is the whole signal.
