@@ -258,7 +258,19 @@ Done history moved to `TASKS-done.md`.
     no longer depends on the pre-restamp forum surviving — its prod-shape test asserts that with a
     `never()` on the fallback lookup.
   - **Side effect of the retry, investigated 2026-07-26 after "A*+A went down" — CORRECT, not a break.**
-    florin.fortis's `Info_B (A*, A)` fell 32 → 16. Cause: two Euro-Par **Workshops** papers ("Cloud Patterns
+    florin.fortis's `Info_B (A*, A)` fell **26.67 → 16** — and the 26.67 was itself only two days old.
+    The per-run `indicatorScoresByIndicatorId` history (which, unlike the shared `userIndicatorResults`
+    documents, is NOT overwritten in place and is therefore the only durable score timeline) reads:
+    16 from 2026-07-23 through 07-24 14:03 → **+10.67 on 07-24 16:28** → flat at 26.67 → **−10.67 on
+    07-26 14:26**. The rise and the fall are the same magnitude and the same two papers, so today's change
+    returned the indicator to its long-standing baseline rather than cutting into it. The 07-24 jump is
+    consistent with the DBLP sweep re-stamping both papers off the "Lecture Notes In Artificial
+    Intelligence" volume forum (still preserved as their `originalForumId`, where they scored the LNCS C
+    floor) onto the shared EUROPAR stream forum, which resolved them to full CORE-A.
+    Arithmetic confirms the attribution exactly: Info_B divides by `max(N-2,1)`, and
+    "Cloud Patterns" (N=5, divisor 3) contributed 8/3 = 2.667 while "Data Security Perspectives" (N=3,
+    divisor 1) contributed 8/1 = 8.000 — **2.667 + 8.000 = 10.6667**, matching both the jump and the drop
+    to four decimals. No third paper is involved. Cause: two Euro-Par **Workshops** papers ("Cloud Patterns
     for mOSAIC-Enabled Scientific Applications", "Data Security Perspectives in the Framework of Cloud
     Governance") had been scoring the full main-track CORE-A rank, 8 points each. The DBLP stream forum is
     named "EUROPAR" for EVERY Euro-Par paper, main track and workshops alike, so it cannot tell them apart;
