@@ -1,5 +1,45 @@
 [
   {
+    "date": "2026-07-26",
+    "title": "Identificarea conferințelor: acronime ambigue, sigle de arhivă și volume ACM",
+    "body": "Trei situații în care o conferință reală rămânea neidentificată și primea categoria D. (1) Când același acronim aparține mai multor conferințe din lista CORE — CISIS denumește atât «Complex, Intelligent and Software Intensive Systems» (categoria C), cât și o conferință de securitate cu alt punctaj — platforma folosește acum numele complet al volumului, așa cum apare în sursa originală, ca să aleagă conferința potrivită. (2) Când arhiva DBLP păstrează o conferință sub o siglă veche (BDCAT este arhivată sub «bdc»), se consultă și acronimul propriu al conferinței, nu doar sigla seriei. (3) Volumele publicate de ACM sunt recunoscute după prefixul DOI 10.1145, chiar dacă numele locului de publicare nu conține «ACM»; acestea intră în categoria C, conform amendamentului aplicat doar în fișa 2026. Efectul este o creștere pentru lucrările afectate. În detaliile punctajului apare de fiecare dată volumul sau sursa care a decis încadrarea.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "scope": "REPORT",
+    "reports": ["FV Info 2016", "FV Info 2026"],
+    "affects": ["Perspectiva B", "Perspectiva C"]
+  },
+  {
+    "date": "2026-07-26",
+    "title": "Lucrările din volumele de workshop sunt încadrate ca workshop, nu ca ediția principală",
+    "body": "O conferință și workshop-urile ei sunt arhivate sub același nume de serie, așa că numele seriei nu poate face diferența între ele. Din această cauză, unele lucrări de workshop primeau punctajul integral al conferinței-mamă. Acum se folosește titlul volumului din fișa proprie a lucrării: dacă acesta spune «Workshops» — de exemplu «Euro-Par Workshops» — se aplică reducerea prevăzută pentru workshop-uri, adică jumătate din punctajul conferinței-mamă și categoria corespunzătoare. Pentru lucrările încadrate anterior ca ediție principală rezultă o scădere: punctajul anterior era prea mare, nu cel de acum prea mic. Lucrările din ediția principală a aceleiași conferințe nu sunt afectate — distincția se face pentru fiecare lucrare în parte. În detaliile punctajului, aceste lucrări apar cu sursa «DBLP+CORE(WS)».",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "scope": "REPORT",
+    "reports": ["FV Info 2016", "FV Info 2026"],
+    "affects": ["Perspectiva B", "Perspectiva C"]
+  },
+  {
+    "date": "2026-07-26",
+    "title": "O lucrare de conferință nu mai este numărată și ca capitol de carte",
+    "body": "Lucrările apărute în seriile Springer de tip «Lecture Notes on …» puteau fi punctate de două ori: o dată ca lucrare de conferință, la Perspectiva B, și încă o dată ca și capitol de carte, la Perspectiva D și în Total. Cele două componente ale platformei foloseau reguli ușor diferite pentru aceeași familie de serii, iar o lucrare putea trece de amândouă. Regula este acum una singură, comună, așa că fiecare lucrare este numărată exact o dată, la tipul de publicație care i se potrivește. Rezultă o scădere la Perspectiva D și la Total pentru cine are astfel de lucrări; Perspectiva B rămâne neschimbată, acolo încadrarea era deja corectă.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "scope": "REPORT",
+    "reports": ["FV Info 2016", "FV Info 2026"],
+    "affects": ["Perspectiva D", "Total"]
+  },
+  {
+    "date": "2026-07-26",
+    "title": "Evaluatorii pot alege poziția pe raportul consultat",
+    "body": "Când raportul unui cercetător era deschis din tabloul de promovări, selectorul de poziție era ascuns, deși tocmai poziția următoare era întrebarea. Selectorul este acum disponibil și pe rapoartele consultate de evaluatori, iar linkul din tabloul de promovări deschide raportul direct pe poziția vizată; se poate comuta mai departe pentru comparație. Vizualizarea rămâne strict de citire. Tot aici, lucrările afișate la finalul unui indicator pentru că aparțin altui tip de publicație sunt marcate acum «counted elsewhere», ca să fie clar că sunt punctate la indicatorul potrivit, nu că ar fi fost ignorate.",
+    "audience": "ALL",
+    "scoringImpact": false,
+    "scope": "PLATFORM",
+    "reports": [],
+    "affects": ["Rapoarte"]
+  },
+  {
     "date": "2026-07-25",
     "title": "Lucrări duplicate: sugestii automate și unificare la cerere",
     "body": "Aceeași lucrare ajungea uneori de două ori în platformă, pe două trasee (Scopus și OpenAlex), când nu avea DOI și sursele o înregistrau cu date de apariție diferite. Acum, în ecranul Publications, platforma îți sugerează perechile care par duplicate și poți cere unificarea cu un buton; un administrator o aprobă, iar decizia rezistă la reconstrucțiile bazei de date. Atenție la punctaj: după unificare citările nu mai sunt numărate de două ori, deci un total poate scădea — valoarea corectă este cea de după unificare.",
