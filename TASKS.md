@@ -302,10 +302,23 @@ Done history moved to `TASKS-done.md`.
     researchers: **florin.fortis 5 papers (20 points of inflation in Perspectiva D and Total)** and
     **alexandra.fortis 3**. Pinned by a cross-scorer test over four series-name variants asserting the paper
     is claimed by exactly one scorer; negative-controlled (restoring the narrow copy fails it on the "on"
-    name). Note the residual recorded in `LectureNotesSeriesSupport`: Springer's LNICST series matches
-    neither "in " nor "on ", but holds 0 ch/bk publications so it double-counts nothing today — and the same
-    predicate is what denies genuine monograph series ("Lecture Notes in Mathematics/Physics") their book
-    credit, so widening the family is a deliberate decision, not a reflex.
+    name). **Verified corpus-wide after the fix: across all 933 ch/bk publications, conference-admitted and
+    book-admitted partition cleanly — 0 claimed by both.** The surface is closed structurally, not patched.
+  - **Broadening the Lecture-Notes family — ASSESSED 2026-07-26, decided AGAINST.** The instinct is that a
+    wider net is safer; here it is the reverse, because of which way the points move. A gated paper goes to
+    the CONFERENCE scorer and takes the LNCS/Springer C floor (2 points); an ungated `ch` goes to the BOOK
+    scorer and takes Springer's SENSE category B halved for a chapter (4 points). **Adding a series moves
+    its chapters 4 → 2.** Measured: broadening to the usual Springer/IFIP conference families (LNICST, CCIS,
+    AISC, IFIP Advances, Smart Innovation, Studies in Computational Intelligence) would move **56**
+    publications down, of which **0** belong to an onboarded researcher; LNICST alone holds 12 publications
+    and 0 ch/bk, so adding it is a literal no-op. All cost, no benefit. The name is a poor discriminator in
+    principle too — "Lecture Notes in Physics", "Lecture Notes in Educational Technology" and "Studies in
+    Computational Intelligence" each carry BOTH proceedings and monographs, so any series-level rule is
+    wrong for one of them. The real discriminator is per-VOLUME (DBLP evidence naming the conference), the
+    same lever the ECML-PKDD workshop volumes need. Revisit only when a researcher onboards with a chapter
+    on one of these series. Sanity check on the other side: the 3 book-scored chapters that DO belong to
+    onboarded researchers sit on genuine book series (Palgrave Studies in Digital Business, SpringerBriefs,
+    Studies in Big Data) and are correctly scored as books.
   - **Not a defect — no evidence to reason from. MedFusion-LM (ECML-PKDD workshop volume), the two AINA
     volumes, AD-ZeroNAS.** All are 2025/2026 Springer chapters sitting on `Book Series` forums
     ("Communications in Computer and Information Science", "Lecture Notes on Data Engineering and

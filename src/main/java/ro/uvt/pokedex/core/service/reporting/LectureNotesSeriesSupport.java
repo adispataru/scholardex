@@ -29,13 +29,27 @@ import java.util.Locale;
  * the trailing space matters: it keeps "Lecture Notes in …" from matching a title that merely ends with
  * the word "in".
  *
- * <p><b>Known residual, deliberately not covered.</b> Springer's EAI series "Lecture Notes of the
- * Institute for Computer Sciences, Social-Informatics and Telecommunications Engineering, LNICST" is a
- * conference-proceedings series that neither "in " nor "on " matches. It holds 12 publications in
- * production and <b>zero</b> {@code ch}/{@code bk} ones, so it double-counts nothing today; widening the
- * family is a behaviour change beyond repairing the drift, and this predicate is also what denies genuine
- * monograph series ("Lecture Notes in Mathematics", "Lecture Notes in Physics") their book credit — so it
- * should be broadened deliberately, with that trade-off in view, not by reflex.
+ * <p><b>Whether to broaden the family — assessed against production 2026-07-26, answer: no.</b>
+ * The instinct is that a wider net is safer. Here it is the opposite, because of which way the points move:
+ * a gated paper goes to the CONFERENCE scorer and takes the LNCS/Springer C floor (2 points), while an
+ * ungated {@code ch} goes to the BOOK scorer and takes Springer's SENSE category B, halved for a chapter
+ * (4 points). <b>Adding a series to this family moves its chapters 4 → 2.</b> Measured: broadening to the
+ * usual Springer/IFIP conference families (LNICST, CCIS, AISC, IFIP Advances, Smart Innovation, Studies in
+ * Computational Intelligence) would move <b>56</b> publications down, of which <b>0</b> belong to an
+ * onboarded researcher. LNICST specifically holds 12 publications and zero {@code ch}/{@code bk}, so
+ * adding it is a literal no-op. All cost, no benefit.
+ *
+ * <p>The name is also a poor discriminator in principle: "Lecture Notes in Physics", "Lecture Notes in
+ * Educational Technology" and "Studies in Computational Intelligence" each publish BOTH conference
+ * proceedings and monographs, so any series-level rule is necessarily wrong for one of the two. The real
+ * discriminator is per-VOLUME — DBLP evidence naming the actual conference — which is the same lever
+ * already needed for the ECML-PKDD workshop volumes (H90). Revisit this only when a researcher onboards
+ * with a chapter on one of these series, and fix it per volume rather than by widening a string match.
+ *
+ * <p>The boundary is verified where it matters: across all 933 {@code ch}/{@code bk} publications in
+ * production, conference-admitted and book-admitted partition cleanly — <b>0</b> are claimed by both. The
+ * three book-scored chapters that do belong to onboarded researchers sit on genuine book series (Palgrave
+ * Studies in Digital Business, SpringerBriefs, Studies in Big Data) and are correctly scored as books.
  */
 public final class LectureNotesSeriesSupport {
 
