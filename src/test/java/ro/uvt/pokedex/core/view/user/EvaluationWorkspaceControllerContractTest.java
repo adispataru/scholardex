@@ -47,6 +47,10 @@ class EvaluationWorkspaceControllerContractTest {
     @Autowired
     private MockMvc mockMvc;
 
+    // H91: IndividualReportViewModelAssembler is @Import-ed (not mocked), so its constructor deps must
+    // exist in the slice — it now assembles the dashboard's i18n bundle.
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
     @MockitoBean
     private UserService userService;
     @MockitoBean

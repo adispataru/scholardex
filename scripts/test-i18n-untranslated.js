@@ -54,7 +54,14 @@ const TEMPLATE_FILES = [
     'src/main/resources/templates/admin/department-report-visibility.html',
 ];
 const JS_DIRS = ['frontend/src/modules/workspace'];
-const JS_FILES = ['frontend/src/modules/admin/orgUnitReportDashboard.js'];
+// individual-report-dashboard.js is served straight from static/ and is NOT part of the npm bundle, so it
+// sits outside frontend/src and was invisible to this lint while the whole public surface was localised
+// (H91). It renders the researcher's own scoring drilldown — including the sentences explaining why a
+// score moved — so it is squarely in scope even though it lives elsewhere.
+const JS_FILES = [
+    'frontend/src/modules/admin/orgUnitReportDashboard.js',
+    'src/main/resources/static/js/individual-report-dashboard.js',
+];
 
 // Two capitals or a capital + lowercase word, i.e. prose rather than a code/acronym token.
 const ENGLISH_LIKE = /^[A-Z][a-z][A-Za-z0-9 ,&;:/()'’.\-]{2,120}$/;

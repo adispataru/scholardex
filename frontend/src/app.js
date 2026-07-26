@@ -58,6 +58,7 @@ import { initSharedSidebarShell } from './modules/shared/sidebarShell';
 import { initSharedDataTables } from './modules/shared/tableEnhancer';
 import { initThemeShell } from './modules/shared/themeShell';
 import { alphaColor, getChartTheme } from './modules/shared/chartTheme';
+import { t, tPlural } from './modules/shared/i18n';
 import { initErrorPages } from './modules/shared/errorPages';
 import { initWorkspaceTabs } from './modules/shared/workspaceTabs';
 import { initWorkspaceShortcuts } from './modules/shared/workspaceShortcuts';
@@ -75,6 +76,13 @@ window.appChartTheme = {
   alphaColor,
   getChartTheme
 };
+
+// H91: static/js/individual-report-dashboard.js is not part of this bundle (no import possible), but it
+// renders the researcher's own scoring drilldown and needs the same copy. Expose the SHARED lookup rather
+// than letting that file grow its own — a second implementation of one rule is how the Lecture-Notes
+// double count happened.
+window.appT = t;
+window.appTPlural = tPlural;
 
 initSharedDomBehaviors();
 initSubmitLock();

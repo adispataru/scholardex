@@ -37,6 +37,7 @@ public class IndividualReportViewModelAssembler {
 
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final ReportTransferFacade reportTransferFacade;
+    private final ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
 
     public void populate(Model model,
                          User researcher,
@@ -105,6 +106,14 @@ public class IndividualReportViewModelAssembler {
                 }
             }
         }
+
+        // H91: copy for individual-report-dashboard.js, resolved server-side for the active locale and
+        // inlined by the template. That file is not part of the npm bundle, so it reads window.appI18n
+        // through the shared lookup exposed on window.appT. Assembled HERE rather than in the two
+        // controllers so the self and delegated views cannot drift on which keys they ship.
+        java.util.Locale locale = org.springframework.context.i18n.LocaleContextHolder.getLocale();
+        model.addAttribute("i18nBundle", uiMessageBundleService.bundleFor(locale, "report.dash.", "common."));
+        model.addAttribute("i18nLocale", locale.getLanguage());
 
         model.addAttribute("report", report);
         model.addAttribute("allReports", allReports);

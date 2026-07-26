@@ -385,6 +385,12 @@
 /*<![CDATA[*/
 window.evalPriorRuns    = /*[[${priorRuns}]]*/ [];
 window.evalCurrentRunId = /*[[${runMetaId}]]*/ null;
+
+// H91: UI copy for individual-report-dashboard.js, resolved server-side for the active locale. Inlined
+// rather than fetched so there is no request to race the dashboard's own init and no flash of English.
+// `t()` reads this lazily at call time, so assigning it after app.js has already run is fine.
+window.appI18n  = /*[[${i18nBundle}]]*/ {};
+window.appLocale = /*[[${i18nLocale}]]*/ 'ro';
 /*]]>*/
 </script>
 <script src="/js/individual-report-dashboard.js"></script>

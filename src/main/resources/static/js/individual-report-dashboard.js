@@ -1,6 +1,41 @@
 (function () {
   'use strict';
 
+  // ── Localisation ──────────────────────────────────────────────────────────
+
+  /**
+   * Translate a `report.dash.*` key, substituting {0}, {1}, … positionally.
+   *
+   * This file is served from static/js and is NOT part of the npm bundle, so it cannot import the shared
+   * helper. It calls through to the one app.js exposes (`window.appT`) rather than carrying its own copy:
+   * a second implementation of a shared rule is exactly how the Lecture-Notes double count happened.
+   * The bundle itself is inlined by individual-report-view.html before this script runs.
+   *
+   * Falling back to the key (rather than to English) keeps a missing key visible instead of silently
+   * shipping the wrong language — the same contract as the shared helper.
+   */
+  function t(key) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (typeof window.appT === 'function') {
+      return window.appT.apply(null, [key].concat(args));
+    }
+    return key;
+  }
+
+  /**
+   * Pluralised lookup: `base` + '.one' | '.few' | '.other', with the count as {0}.
+   *
+   * Counts here MUST go through this rather than through t(): Romanian has three forms and takes a
+   * particle from twenty up ("20 DE lucrări"), which no amount of "{0} lucrări" gets right.
+   */
+  function tp(base, count) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    if (typeof window.appTPlural === 'function') {
+      return window.appTPlural.apply(null, [base, count].concat(args));
+    }
+    return base;
+  }
+
   // ── Utilities ─────────────────────────────────────────────────────────────
 
   function toNumber(value) {
@@ -61,7 +96,7 @@
   function thresholdByPosition(criterionIndex, position) {
     var entry = _thresholds[criterionIndex];
     if (!entry || !Array.isArray(entry.thresholds) || !position) return null;
-    var match = entry.thresholds.find(function (t) { return t.position === position; });
+    var match = entry.thresholds.find(function (th) { return th.position === position; });
     return match ? toNumber(match.value) : null;
   }
 
@@ -285,7 +320,7 @@
 
   function renderDetailList(items, outputMode, indicatorId) {
     if (!items || items.length === 0) {
-      return '<p class="app-eval-muted mt-2">No scored items found.</p>';
+      return '<p class="app-eval-muted mt-2">' + esc(t('report.dash.noItems')) + '</p>';
     }
     var isActivities = outputMode === 'activities';
     var isCitations  = outputMode === 'citations';
@@ -342,11 +377,11 @@
       // Score on the right
       if (isZeroScored) {
         if (item.zeroReason) {
-          var itemReason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
+          var itemReason = zeroReasonCopy(item.zeroReason);
           html += '<span class="eval-scored-item__zero-flag" title="' + esc(itemReason) + '">' +
             esc(zeroReasonLabel(item)) + '</span>';
         } else {
-          html += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span>';
+          html += '<span class="eval-scored-item__zero-flag" title="' + esc(t('report.dash.formulaCutoffHint')) + '">' + esc(t('report.dash.formulaCutoff')) + '</span>';
         }
       }
       html += '<span class="eval-scored-item__score">' + toNumber(item.authorScore).toFixed(2) + '</span>';
@@ -357,51 +392,48 @@
     return html;
   }
 
-  // Human copy for the backend's zeroReason gate markers.
-  var ZERO_REASON_COPY = {
-    'EXCLUDED_VENUE':       'Venue is on the standards exclusion list — scores 0 by rule.',
-    'NON_RESEARCH_SUBTYPE': 'Not an original research contribution (editorial, note, letter, erratum, preprint, …).',
-    'ROLE_FILTERED':        'Your authorship role on this publication does not match this indicator.',
-    'NOT_IN_TOP_N':         'Outside the top-N selection this indicator counts.',
-    'VENUE_TYPE_MISMATCH':  'Different venue type — this publication is counted by the indicator matching its venue type (journal/conference/book), not this one.',
-    'FEE_JOURNAL':          'Published in an APC/fee (gold open access) journal — excluded by the 2026 standard.',
-    'OVER_PER_FORUM_CAP':   'Above the per-conference-edition cap — only the highest-scoring contributions per edition count.',
-    'SCORED_BY_STRICTER':   'Qualifies under the stricter indicator (I1/I5) — each publication counts once, under its most favorable indicator.',
-    'NOT_TOP_RANKED':       'Below the top A*/A/B rank this indicator counts — excluded by the 2026 standard.',
-    'SELF_CITATION':        'Shares an author with the cited publication — excluded by the self-citation policy.',
-    'SCORE_BELOW_FORMULA_THRESHOLD':
-                            'The venue category’s points are below this indicator’s threshold (e.g. category D where the total counts only A*–C) — listed, but not counted.',
-    'MULTIPLE_GATES':       'Excluded by more than one of the indicator’s conditions at once (e.g. below the top rank AND an APC journal).'
+  // Message-key suffix per backend zeroReason marker. The copy itself lives in messages*.properties
+  // (report.dash.zero.* for the tooltip sentence, report.dash.zeroLabel.* for the pill).
+  var ZERO_REASON_KEY = {
+    'EXCLUDED_VENUE':       'excludedVenue',
+    'NON_RESEARCH_SUBTYPE': 'nonResearchSubtype',
+    'ROLE_FILTERED':        'roleFiltered',
+    'NOT_IN_TOP_N':         'notInTopN',
+    'VENUE_TYPE_MISMATCH':  'venueTypeMismatch',
+    'FEE_JOURNAL':          'feeJournal',
+    'OVER_PER_FORUM_CAP':   'overPerForumCap',
+    'SCORED_BY_STRICTER':   'scoredByStricter',
+    'NOT_TOP_RANKED':       'notTopRanked',
+    'SELF_CITATION':        'selfCitation',
+    'SCORE_BELOW_FORMULA_THRESHOLD': 'belowFormulaThreshold',
+    'MULTIPLE_GATES':       'multipleGates'
   };
 
-  // Short pill label per zeroReason — the full sentence above lives in the tooltip.
-  var ZERO_REASON_LABEL = {
-    'VENUE_TYPE_MISMATCH':  'counted elsewhere',
-    'FEE_JOURNAL':          'APC journal',
-    'NOT_TOP_RANKED':       'below top rank',
-    'SCORED_BY_STRICTER':   'counted under I1/I5',
-    'OVER_PER_FORUM_CAP':   'over edition cap',
-    'NON_RESEARCH_SUBTYPE': 'not original research',
-    'ROLE_FILTERED':        'other author role',
-    'SELF_CITATION':        'self-citation',
-    'SCORE_BELOW_FORMULA_THRESHOLD': 'below threshold',
-    'MULTIPLE_GATES':       'multiple conditions'
-  };
+  /** Full explanatory sentence for a zeroReason; falls back to the raw marker for an unknown code. */
+  function zeroReasonCopy(reason) {
+    var suffix = ZERO_REASON_KEY[reason];
+    return suffix ? t('report.dash.zero.' + suffix) : reason;
+  }
 
   // Pill label for a zeroed item; the threshold reason composes the row's own category
   // ("category D — below threshold") so the generic reason code still reads specifically.
   function zeroReasonLabel(item) {
-    var label = ZERO_REASON_LABEL[item.zeroReason] || 'why?';
+    var suffix = ZERO_REASON_KEY[item.zeroReason];
+    // EXCLUDED_VENUE and NOT_IN_TOP_N have no short pill of their own — they fall through to "why?",
+    // whose tooltip carries the full sentence.
+    var label = (suffix && suffix !== 'excludedVenue' && suffix !== 'notInTopN')
+      ? t('report.dash.zeroLabel.' + suffix)
+      : t('report.dash.zeroLabel.unknown');
     if (item.zeroReason === 'SCORE_BELOW_FORMULA_THRESHOLD') {
       var cat = item.coreRankingEquivalent || item.quarter;
-      if (cat) return 'category ' + (cat === 'A_STAR' ? 'A*' : cat) + ' — ' + label;
+      if (cat) return t('report.dash.zeroLabel.category', cat === 'A_STAR' ? 'A*' : cat, label);
     }
     return label;
   }
 
   // Short label for the forum link: first 10 chars + ellipsis; the full name lives in the tooltip.
   function forumExcerpt(name) {
-    if (!name) return 'forum';
+    if (!name) return t('report.dash.forumFallback');
     var trimmed = String(name).trim();
     return trimmed.length > 11 ? trimmed.slice(0, 10).replace(/[\s,.:;-]+$/, '') + '…' : trimmed;
   }
@@ -420,11 +452,9 @@
       if (toNumber(totalScore) > 0) {
         // Provisional (identity-scored) runs persist correct totals but no per-item breakdown —
         // saying "no items" under a non-zero total reads as a contradiction.
-        return '<p class="app-eval-muted mt-2">Totals-only result (provisional, identity-scored run) — ' +
-          'the per-publication breakdown is not materialized. The itemized view appears once the ' +
-          'researcher completes onboarding and confirms their publications.</p>';
+        return '<p class="app-eval-muted mt-2">' + esc(t('report.dash.totalsOnly')) + '</p>';
       }
-      return '<p class="app-eval-muted mt-2">No scored items found.</p>';
+      return '<p class="app-eval-muted mt-2">' + esc(t('report.dash.noItems')) + '</p>';
     }
     var isCitations = outputMode === 'citations';
 
@@ -468,7 +498,7 @@
       row += '<td class="app-eval-evidence-table__forum">';
       if (item.forumId) {
         var forumLabel = forumExcerpt(item.forumName);
-        var forumTitle = item.forumName ? item.forumName : 'Open forum page';
+        var forumTitle = item.forumName ? item.forumName : t('report.dash.openForum');
         row += '<a href="/forums/' + encodeURIComponent(item.forumId) + '" title="' + esc(forumTitle) + '">' +
           esc(forumLabel) + '</a>';
       } else {
@@ -478,18 +508,19 @@
 
       row += '<td class="app-eval-evidence-table__num">';
       if (item.zeroReason) {
-        var reason = ZERO_REASON_COPY[item.zeroReason] || item.zeroReason;
+        var reason = zeroReasonCopy(item.zeroReason);
         row += '<span class="eval-scored-item__zero-flag" title="' + esc(reason) + '">' + esc(zeroReasonLabel(item)) + ' ' +
           '<i class="fa-solid fa-circle-info fa-xs" aria-hidden="true"></i></span> ';
       } else if (isZeroScored) {
-        row += '<span class="eval-scored-item__zero-flag" title="The scoring formula evaluated to 0 for this item — its venue/rank does not meet the indicator\'s cutoff">formula cutoff</span> ';
+        row += '<span class="eval-scored-item__zero-flag" title="' + esc(t('report.dash.formulaCutoffHint')) + '">' + esc(t('report.dash.formulaCutoff')) + '</span> ';
       }
       row += '<strong>' + toNumber(item.authorScore).toFixed(2) + '</strong></td>';
 
       if (_selfMode) {
         row += '<td class="app-eval-evidence-table__actions">';
         if (item.publicationId && !isCitations) {
-          row += '<a href="/user/workspace#publications" title="Manage in My Publications">manage</a>';
+          row += '<a href="/user/workspace#publications" title="' + esc(t('report.dash.manageHint')) + '">'
+            + esc(t('report.dash.manage')) + '</a>';
         }
         row += '</td>';
       }
@@ -529,19 +560,21 @@
     var html = '';
     if (!isCitations && (zeros.length > 0 || mismatched.length > 0)) {
       html += '<div class="app-eval-evidence-summary">' +
-        counted.length + ' counted' +
-        (mismatched.length > 0 ? ' · ' + mismatched.length + ' counted elsewhere' : '') +
-        (zeros.length > 0 ? ' · ' + zeros.length + ' zero' : '') +
+        esc(tp('report.dash.summary.counted', counted.length)) +
+        (mismatched.length > 0 ? ' · ' + esc(tp('report.dash.summary.elsewhere', mismatched.length)) : '') +
+        (zeros.length > 0 ? ' · ' + esc(tp('report.dash.summary.zero', zeros.length)) : '') +
         '</div>';
     }
 
     html += '<table class="app-eval-evidence-table"><thead><tr>' +
-      '<th scope="col">' + (isCitations ? 'Publication (click for citations)' : 'Publication') + '</th>' +
-      '<th scope="col" data-sort-key="year" tabindex="0" role="button" title="Sort by year">Year</th>' +
-      '<th scope="col">Rank</th>' +
-      '<th scope="col">Forum</th>' +
-      '<th scope="col" class="app-eval-evidence-table__num" data-sort-key="points" tabindex="0" role="button" title="Sort by points">Points</th>' +
-      (_selfMode ? '<th scope="col"><span class="sr-only">Actions</span></th>' : '') +
+      '<th scope="col">' + esc(t(isCitations ? 'report.dash.col.publicationCitations' : 'report.dash.col.publication')) + '</th>' +
+      '<th scope="col" data-sort-key="year" tabindex="0" role="button" title="' + esc(t('report.dash.sortByYear')) + '">'
+        + esc(t('report.dash.col.year')) + '</th>' +
+      '<th scope="col">' + esc(t('report.dash.col.rank')) + '</th>' +
+      '<th scope="col">' + esc(t('report.dash.col.forum')) + '</th>' +
+      '<th scope="col" class="app-eval-evidence-table__num" data-sort-key="points" tabindex="0" role="button" title="'
+        + esc(t('report.dash.sortByPoints')) + '">' + esc(t('report.dash.col.points')) + '</th>' +
+      (_selfMode ? '<th scope="col"><span class="sr-only">' + esc(t('report.dash.col.actions')) + '</span></th>' : '') +
       '</tr></thead><tbody>';
 
     counted.forEach(function (item) { html += buildRow(item, false); });
@@ -554,9 +587,11 @@
       // Name where they went, not just that they differ. A reviewer scanning a conference indicator
       // sees journals at the foot of the list and cannot tell whether they were dropped or moved;
       // "counted under the indicator for their own venue type" answers that without opening a tooltip.
+      // The trailing show/hide verb is a separate key so the toggle handler can swap just that word
+      // without re-deriving the whole sentence — see initMismatchToggle().
       html += '<button type="button" class="app-eval-mismatch-toggle" aria-expanded="false">' +
-        mismatched.length + ' publication' + (mismatched.length !== 1 ? 's are' : ' is') +
-        ' a different venue type, counted under the indicator for that venue — show</button>';
+        esc(tp('report.dash.mismatch', mismatched.length, t('report.dash.mismatch.show'))) +
+        '</button>';
     }
     return html;
   }
@@ -610,7 +645,11 @@
         row.hidden = !show;
       });
       btn.setAttribute('aria-expanded', String(show));
-      btn.textContent = btn.textContent.replace(show ? /show$/ : /hide$/, show ? 'hide' : 'show');
+      // Rebuild the label from the count rather than string-replacing the trailing verb: the old
+      // /show$/ swap only worked because the sentence ended in an English word.
+      var count = table.querySelectorAll('.app-eval-evidence-table__row--mismatch').length;
+      var verb = t(show ? 'report.dash.mismatch.hide' : 'report.dash.mismatch.show');
+      btn.textContent = tp('report.dash.mismatch', count, verb);
     });
   }
 
@@ -784,8 +823,9 @@
             }
           }
           var headerHtml = '<div class="indicator-detail-header">' +
-            '<span class="indicator-detail-total">Total score: <strong>' + toNumber(data.totalScore).toFixed(2) + '</strong>' + indicatorDeltaHtml + '</span>' +
-            '<span class="indicator-detail-updated">Updated: ' + esc(data.updatedAt ? data.updatedAt.substring(0, 10) : '—') + '</span>' +
+            '<span class="indicator-detail-total">' + esc(t('report.dash.indicatorTotal')) + ' <strong>'
+              + toNumber(data.totalScore).toFixed(2) + '</strong>' + indicatorDeltaHtml + '</span>' +
+            '<span class="indicator-detail-updated">' + esc(t('report.dash.updated')) + ' ' + esc(data.updatedAt ? data.updatedAt.substring(0, 10) : '—') + '</span>' +
             '</div>';
           content.innerHTML = headerHtml + renderEvidenceTable(data.items, data.outputMode, data.indicatorId, data.totalScore);
         }
@@ -845,9 +885,16 @@
     'CS_I':       'CS I',
     'CS_II':      'CS II',
     'CS_III':     'CS III',
-    'ASIST_C':    'Asist. Cercetare',
-    'OTHER':      'Other'
+    'ASIST_C':    'Asist. Cercetare'
+    // OTHER is resolved through t() in positionLabel() — the rest are academic titles, identical in
+    // both languages, so they stay literals rather than becoming twenty pass-through keys.
   };
+
+  /** Display label for a position code; OTHER is the only one that differs between languages. */
+  function positionLabel(pos) {
+    if (pos === 'OTHER') return t('report.dash.positionOther');
+    return POSITION_LABELS[pos] || pos;
+  }
 
   /** Returns {met, total} for criteria applicable to the given position (from the thresholds JSON). */
   function computeCriteriaMet(position) {
@@ -882,10 +929,10 @@
     var positions = [];
     _thresholds.forEach(function (entry) {
       if (!entry || !Array.isArray(entry.thresholds)) return;
-      entry.thresholds.forEach(function (t) {
-        if (t.position && !seen[t.position]) {
-          seen[t.position] = true;
-          positions.push(t.position);
+      entry.thresholds.forEach(function (th) {
+        if (th.position && !seen[th.position]) {
+          seen[th.position] = true;
+          positions.push(th.position);
         }
       });
     });
@@ -933,7 +980,7 @@
       seen[pos] = true;
       var opt = document.createElement('option');
       opt.value = pos;
-      opt.textContent = POSITION_LABELS[pos] || pos;
+      opt.textContent = positionLabel(pos);
       if (pos === preferred) opt.selected = true;
       select.appendChild(opt);
     });
@@ -1055,9 +1102,8 @@
       aggEl.className = 'app-eval-aggregate__value app-eval-aggregate__value--sm eval-delta ' + deltaClass(d.delta);
       aggEl.textContent = toNumber(d.before).toFixed(2) + ' → ' + toNumber(d.after).toFixed(2) +
         ' (' + deltaText(d.delta) + ')';
-      aggEl.setAttribute('aria-label',
-        'Score ' + deltaAriaLabel(d.delta) + ': from ' + toNumber(d.before).toFixed(2) +
-        ' to ' + toNumber(d.after).toFixed(2));
+      aggEl.setAttribute('aria-label', t('report.dash.scoreDeltaAria',
+        deltaAriaLabel(d.delta), toNumber(d.before).toFixed(2), toNumber(d.after).toFixed(2)));
     }
     if (aggCell) aggCell.hidden = false;
 
@@ -1277,10 +1323,10 @@
   }
 
   function _saveSnapshot(root, reportId, currentRunId) {
-    var defaultName = 'Snapshot ' + new Date().toLocaleString(undefined, {
+    var defaultName = t('report.dash.snapshot.defaultName', new Date().toLocaleString(undefined, {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-    var name = window.prompt('Name for this snapshot:', defaultName);
+    }));
+    var name = window.prompt(t('report.dash.snapshot.namePrompt'), defaultName);
     if (name === null) return; // cancelled
     if (!name.trim()) name = defaultName;
 
@@ -1300,7 +1346,7 @@
     })
     .then(function (snapshot) {
       if (saveBtn) saveBtn.disabled = false;
-      _showSnapshotFeedback('Snapshot saved: "' + snapshot.name + '"', false);
+      _showSnapshotFeedback(t('report.dash.snapshot.saved', snapshot.name), false);
       var panel = document.getElementById('eval-snapshots-panel');
       if (panel && !panel.hidden) _loadSnapshotList(root, reportId, currentRunId);
       _loadSnapshotsForPicker(reportId);
@@ -1308,9 +1354,9 @@
     .catch(function (err) {
       if (saveBtn) saveBtn.disabled = false;
       if (err.message === 'limit') {
-        _showSnapshotFeedback('Snapshot limit reached (max 50 per report).', true);
+        _showSnapshotFeedback(t('report.dash.snapshot.limit'), true);
       } else {
-        _showSnapshotFeedback('Failed to save snapshot.', true);
+        _showSnapshotFeedback(t('report.dash.snapshot.saveFailed'), true);
       }
     });
   }
@@ -1341,7 +1387,7 @@
     .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
     .then(function (snapshots) { _renderSnapshotList(body, snapshots, root, reportId, currentRunId); })
     .catch(function () {
-      body.innerHTML = '<p class="app-eval-snapshots-panel__empty">Failed to load snapshots.</p>';
+      body.innerHTML = '<p class="app-eval-snapshots-panel__empty">' + esc(t('report.dash.snapshot.loadFailed')) + '</p>';
     });
   }
 
@@ -1393,14 +1439,14 @@
         var snapName = btn.getAttribute('data-snap-name');
         if (window.appConfirmDialog) {
           window.appConfirmDialog.open({
-            title: 'Delete snapshot?',
-            body: 'Delete \u201c' + snapName + '\u201d? This cannot be undone.',
-            confirmLabel: 'Delete',
+            title: t('report.dash.snapshot.deleteTitle'),
+            body: t('report.dash.snapshot.deleteBody', snapName),
+            confirmLabel: t('report.dash.snapshot.deleteConfirm'),
             tone: 'danger',
             onConfirm: function () { _deleteSnapshot(body, snapId, root, reportId, currentRunId); },
           });
         } else {
-          if (!confirm('Delete snapshot \u201c' + snapName + '\u201d? This cannot be undone.')) return;
+          if (!confirm(t('report.dash.snapshot.deleteBody', snapName))) return;
           _deleteSnapshot(body, snapId, root, reportId, currentRunId);
         }
       });
@@ -1427,7 +1473,7 @@
       _loadSnapshotList(root, reportId, currentRunId);
       _loadSnapshotsForPicker(reportId);
     })
-    .catch(function () { _showSnapshotFeedback('Failed to delete snapshot.', true); });
+    .catch(function () { _showSnapshotFeedback(t('report.dash.snapshot.deleteFailed'), true); });
   }
 
   function _loadSnapshotsForPicker(reportId) {
@@ -1448,7 +1494,7 @@
     if (existing) existing.remove();
     if (!snapshots || snapshots.length === 0) return;
     var group = document.createElement('optgroup');
-    group.label = 'Saved Snapshots';
+    group.label = t('report.dash.snapshot.group');
     group.setAttribute('data-snapshots', '');
     snapshots.forEach(function (snap) {
       var opt = document.createElement('option');
