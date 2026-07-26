@@ -135,6 +135,8 @@ Done history moved to `TASKS-done.md`.
     caps the damage; it does not remove it — the key still identifies UVT's account, consumes its quota,
     and works for anyone calling from a subscribing network. Watch the portal's usage stats for the old
     key: unexpected traffic is the signal it is being used.
+    **REQUESTED 2026-07-26** — deactivation asked of Elsevier. Open until they confirm; the key must be
+    assumed live until then. Close this bullet only on their written confirmation, not on the request.
   - **Separate prod key — DONE 2026-07-25, verified.** Production now holds its own key
     (`sha256=fbf72819…`), distinct from the local `.env` (`0dbb2a29…`) and from the exposed one
     (`098dc67c…`) — three different values. Confirmed working: `ScopusSearch` 200 at 17:46 after both pods
