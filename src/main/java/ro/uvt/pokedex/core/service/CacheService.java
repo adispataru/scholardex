@@ -151,7 +151,12 @@ public class CacheService {
         if (ranking == null || ranking.getName() == null || ranking.getName().isBlank()) {
             return;
         }
-        String normalizedTitle = ConferenceTitleNormalizationSupport.normalizeVenueName(ranking.getName());
+        // H92: strip CORE's history qualifier BEFORE indexing. Keying on the raw name puts
+        // "…Applications (was ICOIN)" in the index as "advanced information networking applications was
+        // icoin", which no clean venue or volume title can ever match — the same pollution eb1b882d fixed
+        // at match time, still present at index time.
+        String normalizedTitle = ConferenceTitleNormalizationSupport.normalizeVenueName(
+                ConferenceTitleNormalizationSupport.stripHistoryQualifier(ranking.getName()));
         String normalizedWithoutBoilerplate = ConferenceTitleNormalizationSupport.normalizeWithoutBoilerplate(normalizedTitle);
         registerConferenceTitleKey(normalizedTitle, ranking);
         if (!normalizedWithoutBoilerplate.isBlank() && !normalizedWithoutBoilerplate.equals(normalizedTitle)) {

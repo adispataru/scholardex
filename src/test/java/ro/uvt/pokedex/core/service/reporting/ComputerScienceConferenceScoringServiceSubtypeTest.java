@@ -3011,6 +3011,91 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(2.0, score.getScore());
     }
 
+    // =============================================================================================
+    //  H92 — the Crossref volume title identifies the conference behind a Springer series forum
+    // =============================================================================================
+
+    private void stubVolumeEvidence(String publicationId, String series, String conferenceName, String volumeTitle) {
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId(publicationId);
+        evidence.setSeries(series);
+        evidence.setConferenceName(conferenceName);
+        evidence.setVolumeTitle(volumeTitle);
+        when(dblpEvidenceRepository.findByPublicationId(publicationId)).thenReturn(Optional.of(evidence));
+    }
+
+    @Test
+    void theCrossrefVolumeTitleResolvesAConferenceTheSeriesForumCannotName() {
+        // Prod shape of florin.fortis's "Cognitively Inspired Preprocessing…": a ch on the SERIES forum
+        // "Lecture Notes on Data Engineering and Communications Technologies", which names no conference, so
+        // it takes the LNCS C floor at 2 whatever conference it actually was. Crossref's container-title[1]
+        // is the VOLUME — "Advanced Information Networking and Applications" — which is AINA, CORE B.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = new ScoringPublication(
+                "spub-lndect", null, "forum-lndect", null, null, "2026-01-01", "ch", "ch",
+                List.of("a1"), 1, "https://doi.org/10.1007/978-3-032-23335-6_20", null, null, 0, Set.of(),
+                0, 0, 0, List.of(), null);
+
+        ScholardexForumView series = new ScholardexForumView();
+        series.setPublicationName("Lecture Notes on Data Engineering and Communications Technologies");
+        series.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lndect")).thenReturn(series);
+        stubVolumeEvidence("spub-lndect", null, null, "Advanced Information Networking and Applications");
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        // The real prod CORE entry, parenthetical included.
+        CoreConferenceRanking aina = rankingWithYears("AINA",
+                "International Conference on Advanced Information Networking and Applications (was ICOIN)",
+                Map.of(2023, CoreConferenceRanking.Rank.B, 2026, CoreConferenceRanking.Rank.B));
+        org.mockito.Mockito.lenient().when(cacheService.getConferenceRankings("AINA")).thenReturn(List.of(aina));
+        // A volume title carries no acronym, so it can only be found through the TITLE index. CacheService
+        // keys that index on the boilerplate-stripped name — "advanced information networking applications"
+        // — which is exactly what the volume title reduces to. Stub the port the way the cache builds it.
+        when(cacheService.getConferenceRankingsByNormalizedTitle(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankingsByNormalizedTitle("advanced information networking applications"))
+                .thenReturn(List.of(aina));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent(),
+                "AINA is CORE B; without the volume title this is the LNCS C floor. trace="
+                        + service.getLastTraceForTests());
+        assertEquals(4.0, score.getScore());
+    }
+
+    @Test
+    void aDblpNamedConferenceOutranksTheCrossrefVolumeTitle() {
+        // Ordering matters and must not drift: a conf/X stream is a stronger identification than a title
+        // match, so DBLP is consulted first. Here the two disagree on purpose — DBLP says ISPDC (C), the
+        // volume title says AINA (B). DBLP must win, or a stale/derived title could quietly outrank the
+        // authoritative stream.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = new ScoringPublication(
+                "spub-both", null, "forum-lndect", null, null, "2026-01-01", "ch", "ch",
+                List.of("a1"), 1, "https://doi.org/10.1007/978-3-032-23335-6_99", null, null, 0, Set.of(),
+                0, 0, 0, List.of(), null);
+
+        ScholardexForumView series = new ScholardexForumView();
+        series.setPublicationName("Lecture Notes on Data Engineering and Communications Technologies");
+        series.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lndect")).thenReturn(series);
+        stubVolumeEvidence("spub-both", "conf/ispdc", "ISPDC", "Advanced Information Networking and Applications");
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("ISPDC")).thenReturn(List.of(rankingWithYears("ISPDC",
+                "International Symposium on Parallel and Distributed Computing",
+                Map.of(2023, CoreConferenceRanking.Rank.C, 2026, CoreConferenceRanking.Rank.C))));
+        org.mockito.Mockito.lenient().when(cacheService.getConferenceRankings("AINA")).thenReturn(List.of(
+                rankingWithYears("AINA", "International Conference on Advanced Information Networking and Applications",
+                        Map.of(2023, CoreConferenceRanking.Rank.B, 2026, CoreConferenceRanking.Rank.B))));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent(),
+                "the DBLP conf/X stream must win over a volume title");
+        assertEquals(2.0, score.getScore());
+    }
+
     /** A publication carrying a real DOI, for the DOI-prefix venue signals. */
     private ScoringPublication doiPublication(String forumId, String originalForumId, String coverDate, String doi) {
         return new ScoringPublication(null, null, forumId, null, originalForumId, coverDate, null, "cp",

@@ -401,6 +401,22 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                     }
                     trace = nameResolution.trace();
                 }
+                // H92 — last, the Crossref VOLUME title. A Springer proceedings chapter sits on a forum named
+                // for the SERIES ("Lecture Notes on Data Engineering and Communications Technologies"), which
+                // identifies no conference; Crossref's container-title[1] is the volume, and the volume names
+                // it ("Advanced Information Networking and Applications" = AINA). Tried AFTER everything DBLP
+                // knows, because a conf/X stream is a stronger identification than a title match.
+                String volumeTitle = evidence.get().getVolumeTitle();
+                if (volumeTitle != null && !volumeTitle.isBlank()) {
+                    ConferenceMatch volumeMatch = resolveConferenceMatch(volumeTitle.trim(), trace);
+                    trace = volumeMatch.trace();
+                    ConferenceScoreResolution volumeResolution = scoreResolvedConference(
+                            volumeMatch, year, trace, ResolutionSource.DBLP, workshop2026, posterOrDemo);
+                    if (volumeResolution.score().isPresent()) {
+                        return volumeResolution;
+                    }
+                    trace = volumeResolution.trace();
+                }
             }
         }
 
@@ -1140,11 +1156,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
      * parentheses (DBLP's "AINA (5)" volume markers) that must survive.
      */
     private static String stripCoreNameQualifier(String rawRankingName) {
-        if (rawRankingName == null) {
-            return null;
-        }
-        String stripped = rawRankingName.replaceAll("\\([^)]*\\)", " ").trim();
-        return stripped.isBlank() ? rawRankingName : stripped;
+        return ConferenceTitleNormalizationSupport.stripHistoryQualifier(rawRankingName);
     }
 
     private MatchConfidence scoreMatchConfidence(String normalizedPublicationName, String acronymCandidate, CoreConferenceRanking ranking) {

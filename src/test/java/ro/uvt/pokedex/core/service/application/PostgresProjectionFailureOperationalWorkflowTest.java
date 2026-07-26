@@ -97,7 +97,8 @@ class PostgresProjectionFailureOperationalWorkflowTest {
                 mock(ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService.class),
                 mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService.class),
                 mock(ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService.class),
-                mock(ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService.class)
+                mock(ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService.class),
+                mock(ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService.class)
         );
 
         PostgresOperationalStatusService.PostgresOperationalStatusSnapshot operational = controller.postgresOperationalStatusApi();

@@ -37,6 +37,10 @@ class AdminInitializationSecurityContractTest {
 
     @MockitoBean
     private CustomUserDetailsService userDetailsService;
+    // H92: the controller gained a Crossref sweep dependency; a @WebMvcTest slice fails to load
+    //      its whole context without it, which is a 25-test blast radius, not a targeted failure.
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
     @MockitoBean
     private CacheService cacheService;
     @MockitoBean

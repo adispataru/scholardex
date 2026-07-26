@@ -49,6 +49,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService scopusCanonicalMaterializationService;
     private final ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
+    private final ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
 
     @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.works-file:}")
     private String openAlexWorksFile;
@@ -80,6 +81,39 @@ public class AdminInitializationController {
     @ResponseBody
     public ro.uvt.pokedex.core.service.importing.wos.WosCpciMatchReport wosCpciApply() {
         return wosCpciOnboardingService.apply(true);
+    }
+
+    /**
+     * H92: how many publications the Crossref volume sweep would examine — Springer-ISBN papers sitting on a
+     * SERIES forum whose conference is therefore unnamed. No Crossref calls; sizes a run before starting it.
+     */
+    @PostMapping("/crossref/volumes/count")
+    @ResponseBody
+    public java.util.Map<String, Object> crossrefVolumeCandidates() {
+        return java.util.Map.of("candidates", crossrefVolumeEnrichmentService.countCandidates());
+    }
+
+    /**
+     * H92: dry-run the Crossref volume sweep — performs the lookups and logs what WOULD be stored, writing
+     * nothing. {@code limit} caps the number of candidates (0 = no cap) so a first pass can be sampled.
+     */
+    @PostMapping("/crossref/volumes/dryRun")
+    @ResponseBody
+    public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult crossrefVolumeDryRun(
+            @RequestParam(name = "limit", defaultValue = "0") int limit) {
+        return crossrefVolumeEnrichmentService.sweep(true, limit);
+    }
+
+    /**
+     * H92: apply the sweep — store each resolved volume title as venue evidence. Idempotent (a checked
+     * publication is not re-asked). Scores move only after a report refresh; no projection rebuild is needed
+     * because the evidence is read at scoring time, not projected.
+     */
+    @PostMapping("/crossref/volumes/apply")
+    @ResponseBody
+    public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult crossrefVolumeApply(
+            @RequestParam(name = "limit", defaultValue = "0") int limit) {
+        return crossrefVolumeEnrichmentService.sweep(false, limit);
     }
 
     /**

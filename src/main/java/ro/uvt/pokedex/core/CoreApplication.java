@@ -20,6 +20,8 @@ public class CoreApplication {
     private String openAlexBaseUrl;
     @Value("${dblp.api.base-url:https://dblp.org}")
     private String dblpBaseUrl;
+    @Value("${crossref.api.base-url:https://api.crossref.org}")
+    private String crossrefBaseUrl;
     public static void main(String[] args) {
         SpringApplication.run(CoreApplication.class, args);
     }
@@ -47,6 +49,20 @@ public class CoreApplication {
         return WebClient.builder()
                 .exchangeStrategies(strategies)
                 .baseUrl(openAlexBaseUrl)
+                .build();
+    }
+
+    @Bean
+    public WebClient crossrefWebClient() {
+        // H92 — keyless public REST API; a single /works record is small. Access policy is a User-Agent
+        // carrying a contact address (the "polite pool"), set per-request by CrossrefClient.
+        final int size = (int) DataSize.ofMegabytes(8).toBytes();
+        final ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
+                .build();
+        return WebClient.builder()
+                .exchangeStrategies(strategies)
+                .baseUrl(crossrefBaseUrl)
                 .build();
     }
 

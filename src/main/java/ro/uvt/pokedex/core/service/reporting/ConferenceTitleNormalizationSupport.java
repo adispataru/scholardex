@@ -18,6 +18,29 @@ public final class ConferenceTitleNormalizationSupport {
     private ConferenceTitleNormalizationSupport() {
     }
 
+    /**
+     * Strip CORE's trailing history qualifier from a RANKING name. CORE stores AAMAS as "International Joint
+     * Conference on Autonomous Agents and Multiagent Systems (previously the International Conference on
+     * Multiagent Systems, ICMAS, changed in 2000)" — ~14 tokens of pure noise that sink every similarity
+     * rule, which is how AAMAS papers scored D despite an exact acronym match (fixed at MATCH time in
+     * H89/`eb1b882d`).
+     *
+     * <p>H92 moved it here because the same pollution existed at INDEX time: {@code CacheService} keys the
+     * conference-title lookup on the raw name, so "…Applications (was ICOIN)" indexes as
+     * "advanced information networking applications was icoin" and a clean volume title can never match it.
+     * One definition, used by both — the same lesson as {@link LectureNotesSeriesSupport}.
+     *
+     * <p>RANKING names only. Venue names carry meaningful parentheses (DBLP's "AINA (5)" volume markers)
+     * that must survive.
+     */
+    public static String stripHistoryQualifier(String rawRankingName) {
+        if (rawRankingName == null) {
+            return null;
+        }
+        String stripped = rawRankingName.replaceAll("\\([^)]*\\)", " ").trim();
+        return stripped.isBlank() ? rawRankingName : stripped;
+    }
+
     public static String normalizeVenueName(String value) {
         if (value == null) {
             return "";
