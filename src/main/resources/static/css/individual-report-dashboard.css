@@ -1128,6 +1128,31 @@
   color: var(--app-color-primary);
 }
 
+/* Collapse affordance. The chevron points down when open and right when closed — the direction users
+   already read as "this section is expandable" from the sidebar and the filter panels. */
+.individual-report-dashboard .app-eval-indicator__chevron {
+  font-size: 0.7em;
+  margin-right: 0.4rem;
+  color: var(--app-color-text-muted, currentColor);
+  transition: transform 0.15s ease-in-out;
+}
+
+.individual-report-dashboard .app-eval-indicator.is-collapsed .app-eval-indicator__chevron {
+  transform: rotate(-90deg);
+}
+
+/* The collapsed flag hides the panel WITHOUT touching `hidden`, which selectCriterion owns for the
+   eager load — see setIndicatorCollapsed() in individual-report-dashboard.js. */
+.individual-report-dashboard .app-eval-indicator.is-collapsed .indicator-detail-panel {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .individual-report-dashboard .app-eval-indicator__chevron {
+    transition: none;
+  }
+}
+
 .individual-report-dashboard .app-eval-indicator__header .indicator-row-score {
   font-size: 0.92rem;
   font-weight: 700;

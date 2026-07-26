@@ -100,6 +100,32 @@ class EvaluationWorkspaceControllerContractTest {
     }
 
     @Test
+    void indicatorSectionsAreCollapsibleAndStartExpanded() throws Exception {
+        // A criterion can hold several indicators of sixty-plus rows each, all rendered at once. The
+        // header button is the collapse control; it must carry the ARIA wiring, and it must start
+        // expanded so the change adds a control without altering what an existing user sees first.
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+        String js = Files.readString(Path.of("src/main/resources/static/js/individual-report-dashboard.js"));
+        String css = Files.readString(Path.of("src/main/resources/static/css/individual-report-dashboard.css"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                template.contains("aria-controls=${'indicator-detail-' + indicator.id}"),
+                "the toggle must name the panel it controls");
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("aria-expanded=\"true\""),
+                "indicators start expanded — collapsing is opt-in, not the new default");
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("app-eval-indicator__chevron"),
+                "there must be a visible affordance, not just a clickable name");
+
+        // The collapse flag must NOT be `hidden`: selectCriterion() un-hides every panel in a criterion to
+        // trigger the eager load, so sharing that flag would silently re-expand everything on each switch.
+        org.junit.jupiter.api.Assertions.assertTrue(js.contains("classList.toggle('is-collapsed'"),
+                "collapse state belongs on a class, not on panel.hidden");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                css.contains(".app-eval-indicator.is-collapsed .indicator-detail-panel"),
+                "the class needs a rule, or the toggle does nothing visible");
+    }
+
+    @Test
     void evaluationTemplateShipsTheActionsStrip() throws Exception {
         String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
 

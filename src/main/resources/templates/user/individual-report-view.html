@@ -298,8 +298,11 @@
                                          th:attr="data-indicator-id=${indicator.id}">
                                     <div class="app-eval-indicator__header">
                                         <button type="button" class="app-eval-indicator__name"
-                                                th:attr="data-indicator-id=${indicator.id}"
-                                                th:text="${indicator.name}">Indicator Name</button>
+                                                th:attr="data-indicator-id=${indicator.id},aria-controls=${'indicator-detail-' + indicator.id}"
+                                                aria-expanded="true">
+                                            <i class="fa-solid fa-chevron-down app-eval-indicator__chevron" aria-hidden="true"></i>
+                                            <span th:text="${indicator.name}">Indicator Name</span>
+                                        </button>
                                         <span class="indicator-row-score"
                                               th:text="${indicatorScores[indicator.id] != null ? #numbers.formatDecimal(indicatorScores[indicator.id], 1, 2) : '0.00'}">0.00</span>
                                         <span class="eval-indicator-delta" th:attr="data-indicator-id=${indicator.id}"></span>

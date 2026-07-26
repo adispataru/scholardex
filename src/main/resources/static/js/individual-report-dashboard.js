@@ -798,17 +798,39 @@
       });
   }
 
-  // Indicator sections are always expanded in the workbench; clicking an indicator name just
-  // anchors the URL to it (deep-linkable) and scrolls its section into view.
+  /**
+   * Collapse/expand one indicator's evidence list.
+   *
+   * The collapsed flag lives as a CLASS on the section, not as `hidden` on the panel: `selectCriterion`
+   * owns `panel.hidden` (it un-hides every panel in a criterion to trigger the eager load), so using the
+   * same flag for both would silently re-expand everything on each criterion switch.
+   */
+  function setIndicatorCollapsed(section, collapsed) {
+    if (!section) return;
+    section.classList.toggle('is-collapsed', collapsed);
+    var btn = section.querySelector('.app-eval-indicator__name');
+    if (btn) btn.setAttribute('aria-expanded', String(!collapsed));
+  }
+
+  function expandIndicator(section) {
+    setIndicatorCollapsed(section, false);
+  }
+
+  // Clicking an indicator name collapses/expands its evidence list, anchors the URL to it
+  // (deep-linkable) and — when expanding — scrolls the section into view. A criterion can carry several
+  // indicators of sixty-plus rows each, so "always expanded" made the pane a wall of tables.
   function initIndicatorHashClicks(root) {
     root.addEventListener('click', function (e) {
       var btn = e.target.closest('.app-eval-indicator__name');
       if (!btn) return;
       var indicatorId = btn.getAttribute('data-indicator-id');
       if (!indicatorId) return;
-      history.replaceState(null, '', '#indicator-' + indicatorId);
       var section = btn.closest('.app-eval-indicator');
-      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      var collapsing = btn.getAttribute('aria-expanded') !== 'false';
+      setIndicatorCollapsed(section, collapsing);
+      history.replaceState(null, '', '#indicator-' + indicatorId);
+      // Scrolling a section the user just collapsed would yank the page for no reason.
+      if (!collapsing && section) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }
 
@@ -953,6 +975,8 @@
       if (section) {
         selectCriterion(root, parseInt(section.getAttribute('data-criterion-index'), 10), { updateHash: false });
         var indicator = panel.closest('.app-eval-indicator');
+        // A deep link to an indicator must show it, whatever its collapse state would otherwise be.
+        expandIndicator(indicator);
         if (indicator) indicator.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return true;
       }
