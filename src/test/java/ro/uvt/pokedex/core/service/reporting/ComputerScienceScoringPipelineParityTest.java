@@ -101,6 +101,54 @@ class ComputerScienceScoringPipelineParityTest {
         assertEquals(26.0, result.get("total").getAuthorScore(), 0.0001);
     }
 
+    /**
+     * A Lecture-Notes-family paper must be claimed by EXACTLY ONE of the two scorers. The conference
+     * scorer admits it (perspective b); the book scorer must therefore exclude it (perspective d). While
+     * the two gates were private copies they disagreed about "Lecture Notes ON …", so 22 production
+     * publications were credited under both — 5 of them florin.fortis's, worth 20 points of inflation in
+     * his perspective D and Total. Asserting the two scorers together is the only shape of test that
+     * could have caught it: each one alone was behaving exactly as its own author intended.
+     */
+    @Test
+    void aLectureNotesChapterIsClaimedByExactlyOneScorer() {
+        for (String seriesName : List.of(
+                "Lecture Notes in Computer Science",                                  // the "in" form
+                "Lecture Notes on Data Engineering and Communications Technologies",  // the form that leaked
+                "Lecture Notes on Multidisciplinary Industrial Engineering",
+                "Lecture Notes In Artificial Intelligence")) {                        // capitalisation variant
+
+            ReportingLookupPort lookupPort = mock(ReportingLookupPort.class);
+            org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+            SenseRankingRepository senseRankingRepository = mock(SenseRankingRepository.class);
+
+            // Book Series, NOT "Conference Proceeding" — the other exclusion clause must not do the work,
+            // or this test would pass with the series gate still broken.
+            ScholardexForumView series = forum("Book Series", null, null, seriesName);
+            when(lookupPort.getForum("forum-ln")).thenReturn(series);
+            org.mockito.Mockito.lenient().when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
+
+            ScoringPublication chapter = publication("ln-1", "forum-ln", "2025-06-01",
+                    "conference-paper", "ch", "A Chapter In A Proceedings Volume", List.of("a1"));
+
+            Score bookScore = new ComputerScienceBookService(senseRankingRepository, lookupPort)
+                    .getScore(chapter, bookIndicator());
+
+            assertEquals("VENUE_TYPE_MISMATCH", bookScore.getScoringInfo().get("zeroReason"),
+                    seriesName + ": the book scorer must hand this to the conference indicator, not score it");
+            assertEquals(0.0, bookScore.getScore(), 0.0001,
+                    seriesName + ": a Lecture-Notes proceedings chapter must earn no book-chapter points");
+        }
+    }
+
+    private Indicator bookIndicator() {
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+        return indicator;
+    }
+
     private ScoringPublication publication(String id,
                                            String forumId,
                                            String coverDate,

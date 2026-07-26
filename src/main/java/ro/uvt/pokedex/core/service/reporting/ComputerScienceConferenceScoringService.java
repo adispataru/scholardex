@@ -612,17 +612,13 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     /**
-     * Broad "Lecture Notes …" gate ("Lecture Notes in …" or "Lecture Notes on …"), case-insensitive
-     * because the source data is inconsistent about capitalisation ("in" vs "In"). Used to admit these
-     * book-series papers as conference candidates; the LNCS C fallback is narrower ({@link #isLncsProceedingsForum}).
+     * Broad "Lecture Notes …" gate, used to admit these book-series papers as conference candidates.
+     * Shared with {@link ComputerScienceBookService}, which uses the SAME predicate to exclude them from
+     * book scoring — the two are one decision and must not drift (see {@link LectureNotesSeriesSupport}).
+     * The LNCS C point fallback is a different, narrower question ({@link #isLncsProceedingsForum}).
      */
     private boolean isLectureNotesSeries(ScholardexForumView forum) {
-        String name = forum == null ? null : forum.getPublicationName();
-        if (name == null) {
-            return false;
-        }
-        String normalized = name.toLowerCase(java.util.Locale.ROOT);
-        return normalized.contains("lecture notes in ") || normalized.contains("lecture notes on ");
+        return LectureNotesSeriesSupport.isLectureNotesSeries(forum);
     }
 
     /**

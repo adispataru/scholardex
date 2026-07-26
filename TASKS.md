@@ -286,6 +286,26 @@ Done history moved to `TASKS-done.md`.
     **Prod scale: 55 evidence rows are newly workshop-detected this way** (`DEXA Workshops`,
     `ICPP Workshops`, `Business Process Management Workshops`, `EuroS&P Workshops`, `ASE Workshops`, …).
     Expect other CS researchers to lose points on workshop papers that were over-credited as main track.
+  - **Conference/book-chapter DOUBLE COUNT — found on review request 2026-07-26, FIXED.** The reviewer
+    asked whether any of his papers were counted twice, "especially conference vs book chapter". Five were.
+    A ch/bk paper on a "Lecture Notes **on** …" Book-Series forum passed BOTH scorers: the conference
+    scorer credited it in `Info_B_Conferințe 2026` (Perspectiva B) and the book scorer credited it again in
+    `Info_D_i_2026` (Perspectiva D **and** Total). Cause: the same predicate written twice and drifted —
+    `ComputerScienceConferenceScoringService.isLectureNotesSeries` matched `"lecture notes in "` OR
+    `"lecture notes on "`, while `ComputerScienceBookService.isLectureNotesSeries` matched only
+    `"lecture notes in "`. The book scorer's own comment states the guard exists precisely to stop this
+    ("Excluding them here stops the same paper being counted as both a book chapter (perspective d) and a
+    conference (perspective b)"), and its second clause could not compensate because these forums are typed
+    `Book Series`, not `Conference Proceeding`. Fix: one shared `LectureNotesSeriesSupport`, called by both.
+    **Prod scale: 22 publications** — 21 on "Lecture Notes on Data Engineering and Communications
+    Technologies", 1 on "Lecture Notes on Multidisciplinary Industrial Engineering". Touching onboarded
+    researchers: **florin.fortis 5 papers (20 points of inflation in Perspectiva D and Total)** and
+    **alexandra.fortis 3**. Pinned by a cross-scorer test over four series-name variants asserting the paper
+    is claimed by exactly one scorer; negative-controlled (restoring the narrow copy fails it on the "on"
+    name). Note the residual recorded in `LectureNotesSeriesSupport`: Springer's LNICST series matches
+    neither "in " nor "on ", but holds 0 ch/bk publications so it double-counts nothing today — and the same
+    predicate is what denies genuine monograph series ("Lecture Notes in Mathematics/Physics") their book
+    credit, so widening the family is a deliberate decision, not a reflex.
   - **Not a defect — no evidence to reason from. MedFusion-LM (ECML-PKDD workshop volume), the two AINA
     volumes, AD-ZeroNAS.** All are 2025/2026 Springer chapters sitting on `Book Series` forums
     ("Communications in Computer and Information Science", "Lecture Notes on Data Engineering and

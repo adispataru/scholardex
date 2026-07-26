@@ -39,10 +39,15 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     /*  PUBLICATION-based scoring                                         */
     /* ------------------------------------------------------------------ */
 
-    /** LNCS-family series ("Lecture Notes in …": LNCS/LNAI/LNBIP) — conference proceedings, not a book venue. */
+    /**
+     * Lecture-Notes-family series — conference proceedings, not a book venue. MUST stay identical to the
+     * gate {@link ComputerScienceConferenceScoringService} uses to ADMIT the same papers as conference
+     * candidates, or a paper passes both and is counted twice; that is exactly what happened while this
+     * was a private copy matching only "lecture notes in " against a conference side that also matched
+     * "lecture notes on ". Shared definition and the measured damage: {@link LectureNotesSeriesSupport}.
+     */
     private static boolean isLectureNotesSeries(ScholardexForumView forum) {
-        String name = forum == null ? null : forum.getPublicationName();
-        return name != null && name.toLowerCase(java.util.Locale.ROOT).contains("lecture notes in ");
+        return LectureNotesSeriesSupport.isLectureNotesSeries(forum);
     }
 
     @Override
