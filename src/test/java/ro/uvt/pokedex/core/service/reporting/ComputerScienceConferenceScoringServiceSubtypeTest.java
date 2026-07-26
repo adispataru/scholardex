@@ -3132,6 +3132,32 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void aMainTrackEuroParPaperKeepsTheFullRankEvenThoughItsBooktitleIsVolumeNumbered() {
+        // The discrimination boundary, and the reason the workshop reduction is not just "anything on the
+        // conf/europar stream". DBLP files BOTH under that stream and prod holds both forms: 5 main-track
+        // rows ("Euro-Par", "Euro-Par (1)") against 23 workshop rows ("Euro-Par Workshops", "… (1)",
+        // "… (2)"). The "(1)" is a VOLUME number, not a workshop marker — it is an ignorable suffix, so
+        // this still resolves EXACT_ACRONYM_DECORATED, and with no "Workshops" token the reduction must
+        // NOT fire. Real prod row: conf/europar/MartinassoM11, "A Contention-Aware Performance Model…".
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = dblpStampedPublication(
+                "spub-europar-vol1", "forum-europar-stream", null, "2011-08-29");
+        when(cacheService.getForum("forum-europar-stream")).thenReturn(conferenceForum("EUROPAR"));
+        stubEvidence("spub-europar-vol1", "conf/europar", "Euro-Par (1)");
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("EUROPAR")).thenReturn(List.of(euroParRanking()));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        assertEquals(8.0, score.getScore(),
+                "a volume-numbered MAIN-TRACK booktitle must not trigger the workshop reduction. trace="
+                        + service.getLastTraceForTests());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE", score.getScoringSource(), "no (WS) marker on a main-track paper");
+    }
+
+    @Test
     void aNonAcmDoiOnAnUnrankedConferenceStillFallsToD() {
         // Springer/Elsevier/IEEE DOIs must not pick up the ACM floor — the prefix is the whole signal.
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
