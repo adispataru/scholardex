@@ -372,6 +372,41 @@ Done history moved to `TASKS-done.md`.
   - Not an issue: "Benchmarking Database Systems…" (IETE TR) is correctly a journal; the reviewer confirms
     its DAIT/BNCOD workshop origin does not change the class.
 
+- [ ] `H92` Identify a Springer proceedings volume's conference from Crossref.
+  **FOUND 2026-07-26 on a second pass over florin.fortis's review.** Every remaining item in that email is
+  the same shape: the paper sits on a Springer SERIES forum ("Lecture Notes on Data Engineering and
+  Communications Technologies", "Communications in Computer and Information Science"), the series name says
+  nothing about the conference, and there is no DBLP evidence to name it — so the paper takes the LNCS C
+  floor at 2 points instead of its conference's rank. I had recorded this as unfixable ("no evidence to
+  reason from"). That was wrong: **Crossref carries the volume title**, and it names the conference exactly.
+  Verified against the three DOIs in the email — `container-title[1]` is the volume, `[0]` the series:
+    - `10.1007/978-3-032-23335-6_20` → "Advanced Information Networking and Applications" = **AINA**
+    - `10.1007/978-3-032-19105-2_17` → "Machine Learning and Principles and Practice of Knowledge
+      Discovery in Databases" = **ECML PKDD**
+    - `10.1007/978-3-031-96099-4_3`  → "Complex, Intelligent and Software Intensive Systems" = **CISIS**
+  Each is the reviewer's own answer, from a free public API. Two of the three would match CORE with the
+  matcher we already have: the AINA and CISIS volume titles are substrings of their CORE names
+  (NORMALIZED_CONTAINS), and the CISIS title picks the RIGHT one of the two same-acronym entries by itself.
+  ECML PKDD likely will not — CORE stores it as "European Conference on Machine Learning and Principles and
+  Practice of Knowledge Discovery in Database" (singular "Database", extra leading "European"), so it needs
+  either a stemmed token-overlap path or an alias.
+  **NOT available from what we already hold** — checked: `openalex.publication_facts` carries only
+  `hostVenueName` (the series) and `hostVenueSourceType`="book series"; the canonical fact stores the series
+  volume NUMBER ("299", "2842 CCIS"), never the volume title. So this is a genuinely new source, not a
+  field we forgot to project.
+  **Prod scale: 2,413 Springer-ISBN papers sit on a series forum with no DBLP evidence; 29 of them touch an
+  onboarded researcher, across EIGHT people** — alexandra.fortis (7), florin.fortis (12), ioan.dragan (4),
+  mircea.marin (3), sebastian.stefaniga (3), florin.spataru (2), marc.frincu (2), todor.ivascu (2). This is
+  not a Florin-specific gap and it grows with every onboarding.
+  Shape: a Crossref client (polite pool, DOI → `container-title`), a `volumeTitle` field carried through
+  fact → projection → view (the three-layer dual-path trap — check BOTH canon paths), consulted by
+  `resolveConferenceMatch` after DBLP evidence and before the LNCS floor, plus a backfill sweep. Same
+  architecture as the DBLP evidence side-table, so that is the pattern to copy.
+  Closes three of the four remaining point gaps in the review (MedFusion-LM, and the two AINA volumes, each
+  2 → 4). **EuroMLSys is NOT covered** — its Crossref container is "Proceedings of the 5th Workshop on
+  Machine Learning and Systems", which never mentions EuroSys; that one still needs the curated
+  workshop→parent map (see H90).
+
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**
