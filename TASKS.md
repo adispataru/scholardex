@@ -120,6 +120,21 @@ Done history moved to `TASKS-done.md`.
     rotation did happen; what is missing is REVOCATION at dev.elsevier.com. Rewriting history is secondary
     and unreliable (clones, GitHub caches, archives) — revoking makes the string worthless, which is the
     actual fix. Also consider: any GHCR image built between those two dates baked the key into the jar.
+    **2026-07-26: there is NO self-service revoke.** Confirmed by the user in the portal and against
+    Elsevier's own docs — the developer portal documents key *settings*, not deletion, and publishes no
+    support email. The only route is the Research Product APIs support hub contact form
+    (`https://service.elsevier.com/app/contact/supporthub/researchproductsapis/`): open a ticket asking
+    them to deactivate the key, stating it was published in a public repository and has already been
+    rotated. Elsevier's API Service Agreement reserves their right to deactivate keys, so the ticket is
+    asking for something they already do.
+    **Partial containment, measured 2026-07-26:** prod carries exactly one Elsevier credential —
+    `SCOPUS_API_KEY` in the `scholardex-scopus` secret — and **no InstToken anywhere** (no env var, secret
+    key, or config in either deployment; the only mention in the repo is an optional, unset
+    `PYBLIOMETRICS_INST_TOKEN` in a dev wrapper script). Entitlement is therefore IP-bound, so the exposed
+    key used from an arbitrary address gets non-subscriber access, not UVT's full Scopus entitlement. That
+    caps the damage; it does not remove it — the key still identifies UVT's account, consumes its quota,
+    and works for anyone calling from a subscribing network. Watch the portal's usage stats for the old
+    key: unexpected traffic is the signal it is being used.
   - **Separate prod key — DONE 2026-07-25, verified.** Production now holds its own key
     (`sha256=fbf72819…`), distinct from the local `.env` (`0dbb2a29…`) and from the exposed one
     (`098dc67c…`) — three different values. Confirmed working: `ScopusSearch` 200 at 17:46 after both pods
