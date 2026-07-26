@@ -407,6 +407,37 @@ Done history moved to `TASKS-done.md`.
   Machine Learning and Systems", which never mentions EuroSys; that one still needs the curated
   workshop→parent map (see H90).
 
+- [ ] `H93` Researcher-supplied venue claim (durable across rebuilds).
+  **DECIDED 2026-07-26.** Origin: florin.fortis's `EuroMLSys@EuroSYS` suggestion. Traced through, it does not
+  reduce to a smarter matcher — no source states that link (not DBLP: own stream, no `@`; not Crossref:
+  container never says EuroSys; not OpenAlex), so it reduces to a maintained mapping. The durable answer is
+  to let the person who actually knows supply it.
+  **User decisions:** (1) claims land PENDING and need **admin approval**, like H84 merges — a claim raises
+  the claimant's own score (AINA B = 4 vs the LNCS C floor = 2) and, because publications are shared, every
+  co-author's too; (2) the researcher picks **a CORE conference plus a "was a workshop of it" flag**, which
+  is exactly the EuroMLSys case and applies the half-points ladder rather than the parent's full rank;
+  (3) stored as its own field/collection, never overwriting the canonical venue; (4) re-applied after a
+  full rebuild.
+  **Design.** Separate spared collection `scholardex.publication_venue_claims` holding the human decision
+  and its audit trail. Anchored on the DOI (external, stable) with titleNormalized+year as fallback, NOT on
+  the canonical id alone — H89 measured canonical ids being re-minted at ~0.2%, which would orphan a claim
+  silently.
+  The clean part: an approved claim is written out as a `ScholardexPublicationDblpEvidence` row
+  (`matchMethod=researcher-claim`), i.e. **human-supplied evidence in the same shape DBLP would have
+  provided** — `series=conf/<acronym>`, and `conferenceName=<workshop>@<PARENT>` when the workshop flag is
+  set. That reuses `applyMatch` wholesale (find-or-mint the conference forum, preserve `originalForumId`)
+  and the scorer's existing `isDblpWorkshopVolume` `X@Y` path, so **the scorers need no change at all** and
+  there is no constructor churn across their many test call sites. The re-apply pass runs immediately
+  before `dblpConferenceResolveService.rebuildFromEvidence()` in `ScopusCanonicalMaterializationService`,
+  re-resolving each claim's publication by DOI and refreshing its evidence row — so a rebuild that re-mints
+  the publication still lands the claim.
+  Slices, mirroring H84: **S1** model + service + re-apply hook + tests · **S2** admin approval queue
+  (extend the existing Merges page rather than adding a second thing to watch) · **S3** researcher flow on
+  the workspace publications tab, reusing `CoreConferenceLookupFacade` and the picker already built for
+  activities.
+  Open question deliberately left for S2: a claim naming a venue **absent from CORE** is out of scope for
+  now — the picker constrains the claim to a real CORE entry precisely so a researcher cannot invent one.
+
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**
