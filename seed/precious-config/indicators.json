@@ -1536,18 +1536,18 @@
     },
     "name": "Info_B_Conferințe 2026",
     "acmEptcsCFloor2026": true,
-    "formula": "S > 1 ? S/max(N-2, 1) : 0",
+    "formula": "(Poz == 'CONF_UNIV' || Poz == 'PROF_UNIV' || Poz == 'HABIL') ? (S > 1 ? S/max(N-2,1) : 0) : S/max(N-2,1)",
     "domain": {
       "$ref": "domains",
       "$id": "ALL"
     },
-    "version": 1,
+    "version": 2,
     "kind": {
       "role": "ALL",
       "strategy": "CS_CONFERENCE",
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
     },
-    "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
+    "formulaHash": "0902ba106de6af3d10b2de3f489b5df24cfb8313bf539a918a9a021673394df9",
     "yearRangeSpec": {
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
     },

@@ -1424,7 +1424,10 @@
     "name": "Total",
     "indicatorIndices": [
      {
-      "$numberInt": "0"
+      "$numberInt": "19"
+     },
+     {
+      "$numberInt": "20"
      },
      {
       "$numberInt": "1"

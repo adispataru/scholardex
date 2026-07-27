@@ -2,12 +2,13 @@
   {
     "date": "2026-07-27",
     "title": "Conferințele de categoria D se punctează în funcție de poziția vizată",
-    "body": "În FV Info 2016, lucrările din conferințe de categoria D (1 punct) intră acum în Perspectiva B și în Total pentru pozițiile de Asistent și Lector, dar nu se mai numără pentru Conferențiar și Profesor — exact ca în fișa oficială de verificare. Pagina de evaluare arată scorul potrivit poziției selectate din selector, iar pragurile «îndeplinit / aproape» se calculează pe acel scor. Tot acum, criteriul Total folosește aceiași indicatori separați pe reviste și conferințe ca Perspectiva B (înainte folosea un indicator combinat mai vechi, care număra categoria D pentru toate pozițiile).",
+    "body": "În FV Info 2016 și FV Info 2026, lucrările din conferințe de categoria D (1 punct) intră acum în Perspectiva B și în Total pentru pozițiile de Asistent și Lector, dar nu se mai numără pentru Conferențiar, Profesor și Abilitare — exact ca în fișa oficială de verificare și în standardul de abilitare. Pagina de evaluare arată scorul potrivit poziției selectate din selector, iar pragurile «îndeplinit / aproape» se calculează pe acel scor. Tot acum, criteriul Total folosește aceiași indicatori separați pe reviste și conferințe ca Perspectiva B (înainte folosea un indicator combinat mai vechi, care număra categoria D pentru toate pozițiile).",
     "audience": "RESEARCHER",
     "scoringImpact": true,
     "scope": "REPORT",
     "reports": [
-      "FV Info 2016"
+      "FV Info 2016",
+      "FV Info 2026"
     ],
     "affects": [
       "Rapoarte",
