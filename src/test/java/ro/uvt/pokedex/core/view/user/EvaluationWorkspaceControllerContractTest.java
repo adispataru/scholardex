@@ -104,6 +104,23 @@ class EvaluationWorkspaceControllerContractTest {
     }
 
     @Test
+    void indicatorDescriptionRendersOutsideTheJsOwnedContentDiv() throws Exception {
+        // H94: the description must be a sibling of .indicator-detail-content, not inside it — the
+        // dashboard JS replaces that div's innerHTML on every detail load and would erase it.
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+        // Anchored on the class ATTRIBUTES: a comment naming the content div precedes the element,
+        // and a bare-substring search matched the comment first.
+        int description = template.indexOf("class=\"indicator-description");
+        int content = template.indexOf("class=\"indicator-detail-content");
+        org.junit.jupiter.api.Assertions.assertTrue(description > 0, "the description element must exist");
+        org.junit.jupiter.api.Assertions.assertTrue(description < content,
+                "the description must precede (be a sibling of) the JS-owned content div");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                template.contains("th:if=\"${indicator.description != null"),
+                "an indicator without a description must render nothing, not an empty block");
+    }
+
+    @Test
     void indicatorSectionsAreCollapsibleAndStartExpanded() throws Exception {
         // A criterion can hold several indicators of sixty-plus rows each, all rendered at once. The
         // header button is the collapse control; it must carry the ARIA wiring, and it must start

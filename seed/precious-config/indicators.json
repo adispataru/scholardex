@@ -1,2250 +1,2286 @@
 [
-{
-  "_id": {
-   "$oid": "6654dce7068d032b7e119593"
-  },
-  "name": "Info_C",
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 11,
-  "kind": {
-   "policy": "CANDIDATE_ONLY",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "66564362f349c0670bb68b25"
-  },
-  "name": "Info_B (A*, A, B)",
-  "formula": "(S >= 4) ? (S/max(N-2, 1)) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "d3776b21e558b45429cfbe647ff5f2e3ae091e0c72289c93e4cc82b8b160615f",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6656440ef349c0670bb68b26"
-  },
-  "name": "Info_C (A*, A, B)",
-  "formula": "(S >= 4) ? (S/max(N-2, 1)) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "policy": "CANDIDATE_ONLY",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "d3776b21e558b45429cfbe647ff5f2e3ae091e0c72289c93e4cc82b8b160615f",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "665a40689073a275ec9abba1"
-  },
-  "name": "Info_D_i",
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_SENSE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "665ce9102dbfdf2e0b3caa33"
-  },
-  "name": "Info_B",
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "680f69396f664731f88f814a"
-  },
-  "name": "Mate_C",
-  "formula": "S >= 0.5 ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "policy": "CANDIDATE_ONLY",
-   "strategy": "RIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "7ea678abf0d728dc06e32227fea714fba2c6989dc94b18121863e26c1af6f816",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "from": 2019,
-   "to": 2023,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$Absolute"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "680fa64de3d12644e3045404"
-  },
-  "name": "Mate_S",
-  "formula": "S > 0.5 ? S/N : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "RIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "8960ed89dd0e44ac09a4b4d186f0fb0c54d2adfbed8177f3a18c5ab965ebb74e",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "from": 2019,
-   "to": 2023,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$Absolute"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6816987607ff6c4e2956d5c4"
-  },
-  "name": "Info_D_iv",
-  "formula": "Rol == 'Editor invitat' ? (S == 12 ? 9 : S == 8 ? 6 : S == 4 ? 3 : S == 2 ? 2 : 1) : S * 3",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6816983307ff6c4e2956d5c3"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CS_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "7a1491a17cfa029ab08d6a71bc977ffadc37e972efe77b8fbd250b169f4bf676",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "68191a2f526ce829aca68b34"
-  },
-  "name": "Info_D_viii-a",
-  "formula": "S == 0 ? 1 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820e8bde8421f7500250ab7"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "UNIVERSITY",
-   "strategy": "UNI_RANKING",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "4e5266a4b637caa7044fc91a76c52776358aa2c206371bbfe43a9fb6d14df362",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820cafbfe404029dad193d1"
-  },
-  "name": "Info_D_iii",
-  "formula": "2",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820ca61fe404029dad193d0"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820d3a18a61794835d91b24"
-  },
-  "name": "Info_D_ii",
-  "formula": "(S/max(N_editori-2, 1)) * N_editii",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "681674c0e50b262637be9a86"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "ae57e2ef2277409c6f8f3fe86bca45caa639b346c56a09f7a1ec48e0b11efafa",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820d9bcd7ca817372b6d6f3"
-  },
-  "name": "Info_D_v",
-  "formula": "X = Interval_buget == 0 ? 1 : Interval_buget; Rol == 'Membru' ? X : X * 2",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "66d09cd3c325b4405b312d23"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "2be84c3a63e3a889c59e62fe056a143e3c32a286798d81bebc0ea3610145809b",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a633aa137efb68d2e577b71"
-  },
-  "name": "Info_D_v_2026",
-  "formula": "(Interval_buget >= 2) ? (Rol == 'Membru' ? Interval_buget : Interval_buget * 2) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "66d09cd3c325b4405b312d23"
-   }
-  },
-  "version": 0,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "1f7968b56e41809150fdaa2f4c58fce08ddabeddc5f523e095ed894346b04ddc",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820e0f6b20a79244588e87d"
-  },
-  "name": "Info_D_vi",
-  "formula": "(S/2) * N_editii",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820e32a2654f8388e8d3646"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "57f566f2f9a39e74cd1429c5095e37be8f05d48c153932afacd114f970b71eab",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820e4952654f8388e8d3649"
-  },
-  "name": "Info_D_vii",
-  "formula": "(Rol == 'Membru' ? 1 : 2) * N_editii",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820e43f2654f8388e8d3648"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "6f0a3d5b14b8052fdf7f59d776dc2084625875e21ec9189f48084dd2f2ed0c94",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820e5552654f8388e8d364c"
-  },
-  "name": "Info_D_viii-b",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820e5472654f8388e8d364b"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820eec804e38843635e0ca8"
-  },
-  "name": "Info_D_x",
-  "formula": "X = Nivel == 'International' ? 4 : Nivel == 'National' ? 2 : 1;\n(Rol == 'Lider' && N_membri >= 5) ? X * N_ani : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820ee0804e38843635e0ca7"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "a8ade0a1b9b659acf1c8ffe0f6eafbb8d4ec60ec4067a0071c5357bd46a436ba",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820eff604e38843635e0cab"
-  },
-  "name": "Info_D_xi",
-  "formula": "S == 0 ? 0 : S < 20 ? 6 : S < 100 ? 4 : S < 200 ? 2 : S < 500 ? 1 : 0.5",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820efe104e38843635e0caa"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "UNIVERSITY",
-   "strategy": "UNI_RANKING",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "43b9c5c12961457a6731fb87c600c0526016ebdb0192537a37ddd282e747c052",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820fbd904e38843635e0cae"
-  },
-  "name": "Info_D_xii",
-  "formula": "1",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820fbb704e38843635e0cad"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820fe4104e38843635e0cb2"
-  },
-  "name": "Info_D_xiii",
-  "formula": "12/max(N_autori-2,1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820fe0d04e38843635e0cb1"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "2e2de882d7f935d67cbacae65fdc4fdf4535c1b6f18f60204c61954be09e45dc",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6820ffde04e38843635e0cb5"
-  },
-  "name": "Info_D_xiv",
-  "formula": "2/max(N_autori-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820ff8004e38843635e0cb4"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "aebacd4008cc7458fef27125ab98ed03cbbd2098c1200e9c9564fc38f7e8892d",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "682100ba04e38843635e0cb8"
-  },
-  "name": "Info_D_xv",
-  "formula": "Tip == 'National' ? 2 : 4",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6821007204e38843635e0cb7"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "cc3b8f0f79d88243b221df9a396ba2b4a5093658f80e2f14ebe7ceeb6e435e76",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "68220d212a04a41f93fc7dba"
-  },
-  "name": "Mate_S_recent",
-  "formula": "S > 0.5 ? S/N : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "RIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "8960ed89dd0e44ac09a4b4d186f0fb0c54d2adfbed8177f3a18c5ab965ebb74e",
-  "yearRangeSpec": {
-   "from": 2018,
-   "to": 2025,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
-  },
-  "scoreYearRangeSpec": {
-   "from": 2019,
-   "to": 2023,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$Absolute"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "68230b164652ac0103a9eebd"
-  },
-  "name": "Mate_C1_UVT",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CNCSIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6823194ccf66a42617d2b6c6"
-  },
-  "name": "Arte_exemplu_event",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "68231895cf66a42617d2b6c4"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "EVENT",
-   "strategy": "ART_EVENT",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "682340fe7123387ec34394ae"
-  },
-  "name": "Mate_C2_UVT",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "68233847cf66a42617d2b6c7"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CNCSIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "682342d67123387ec34394b0"
-  },
-  "name": "Mate_C3_UVT",
-  "formula": "Rol == 'Membru' ? 1 : 2",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "66d09cd3c325b4405b312d23"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "934c045d11b412815ffd6f4ea220394c1328a66c039dc8c2c46d334e6f786a37",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "68234a6c7e443769580e906d"
-  },
-  "name": "Mate_C4_UVT",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "GENERIC_COUNT",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6823535fbb926870c1f86fbd"
-  },
-  "name": "Info_D_ix",
-  "formula": "X = S == 0 ? 1 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1;\nX*N_luni",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820ec4904e38843635e0ca5"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "type": "UNIVERSITY",
-   "strategy": "UNI_RANKING",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "faa404ecfa09aee7d621a8542b8f93b8e85d37dcb69add759fc80271dce02ae1",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "maxPoints": 24,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6823a9e6d6df306cd304ded9"
-  },
-  "name": "Psiho_I1",
-  "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + 3 * S) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 3,
-  "kind": {
-   "role": "MAIN",
-   "strategy": "IMPACT_FACTOR",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "0296f4efa740eeecafe27dd0d97f5919df39f37947cc7c6db7b624f514229267",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6823add4dc170c4fea2c3b3c"
-  },
-  "name": "Psiho_I5",
-  "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + (3 * S)/N) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 3,
-  "kind": {
-   "role": "CO",
-   "strategy": "IMPACT_FACTOR",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "40a0f5d26c20730cd13c789b07c27f234049949e5d5b649bc6bb26848d23c2a0",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6823b61df1cde62b43289faf"
-  },
-  "name": "Psiho_I16",
-  "formula": "S > 0 ? 0.5 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 2,
-  "kind": {
-   "policy": "CANDIDATE_ONLY",
-   "strategy": "IMPACT_FACTOR",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "fa93ebb782396daadec17f4c886b52b9628825571fbadee5dc8058d49c90d925",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "683618f381a0fe77d6a1c04c"
-  },
-  "name": "FEEA_P",
-  "formula": "M * (1 - (N-1) * 0.1) * S",
-  "version": 3,
-  "kind": {
-   "role": "ALL",
-   "strategy": "ECONOMICS_JOURNAL_AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "0005456388196dc64050b0a1c70ce1732655b7d8184c3a69320d70de7a353b55",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "n": 10,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "683624c863193d59c7eb2b31"
-  },
-  "name": "FEEA_C",
-  "formula": "Q == 'Q1' ? 1 : Q == 'Q2' ? 0.75 : Q == 'Q3' ? 0.5 : Q == 'Q4' ? 0.25 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "version": 1,
-  "kind": {
-   "policy": "CANDIDATE_ONLY",
-   "strategy": "AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "142a8ea38bc77d5f33a74a6c25f88643719c5d2ef0c25f75062c7b920d208058",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "n": 10,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "698b523ed6449873efdaa9c5"
-  },
-  "name": "grant_TE_FI_Q1",
-  "formula": "Q == 'Q1' ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "b3c1ffe9ec8698579bf1735167a716b078130d12191a0937479a4c8f6ab80406",
-  "yearRangeSpec": {
-   "from": 2015,
-   "to": 2025,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "698b557dd6449873efdaa9c6"
-  },
-  "name": "grant_TE_FI_Q2",
-  "formula": "Q == 'Q2' ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "94ccb45d655bf0094d5b8f10c10242d572f9cbe92ef7818209ba79230b21ceaa",
-  "yearRangeSpec": {
-   "from": 2015,
-   "to": 2025,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "69b0256ad85c553474735e69"
-  },
-  "name": "PD_2026_nr_lucari_WoS",
-  "formula": "Q.contains(\"Q\") ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "740d0c8dcf19fd8e3203f54cddd6459f2c88ee25dd6b0418dcc84a3d363b9dcc",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "69b0257cd85c553474735e6a"
-  },
-  "name": "PD_2026_Q1_Q2",
-  "formula": "Q == \"Q1\" || Q == \"Q2\" ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "1300712c36f69d82a6567b8aae53bfe162fb07a9cb82ad497b5c299534b95918",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "69b02d61d85c553474735e71"
-  },
-  "name": "PD_2026_Q1_Q2 (mentor total)",
-  "formula": "Q == \"Q1\" || Q == \"Q2\" ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "1300712c36f69d82a6567b8aae53bfe162fb07a9cb82ad497b5c299534b95918",
-  "yearRangeSpec": {
-   "from": 2015,
-   "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "69b02d7ad85c553474735e72"
-  },
-  "name": "PD_2026_Q1 (mentor top)",
-  "formula": "Q == \"Q1\" ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "770617268266c60c6e0f5e213f897b39e01df93c461f9674465a52a0a700f6df",
-  "yearRangeSpec": {
-   "from": 2015,
-   "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a049c242e64c65c14f9e01a"
-  },
-  "name": "Info_B_Conferințe",
-  "formula": "S > 1 ? S/max(N-2, 1) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a049c682e64c65c14f9e01b"
-  },
-  "name": "Info_B_Jurnale",
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a30667f5ae41a6b1b60c6ce"
-  },
-  "name": "FEEA_Books",
-  "formula": "S/N",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "FEAA_BOOK",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "n": 10,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a47f17bcb06b11f3b6121f0"
-  },
-  "name": "Info_C_2026",
-  "acmEptcsCFloor2026": true,
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "12"
-  },
-  "kind": {
-   "policy": "ANY_COAUTHOR",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "workshopCategory2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a47f2d27be56ad867b997c2"
-  },
-  "name": "Info_C (A*, A, B) 2026",
-  "acmEptcsCFloor2026": true,
-  "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "2"
-  },
-  "kind": {
-   "policy": "ANY_COAUTHOR",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "6b2c5ba1af072fbecf11488bbdc1e87a626e604ca7d6836f532e1b5abdff48ce",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "workshopCategory2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a47f57bf5f5a3371821fd41"
-  },
-  "name": "Info_B (A*, A)",
-  "acmEptcsCFloor2026": true,
-  "formula": "(S >= 8 && !feeJournal) ? (S/max(N-2, 1)) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "3"
-  },
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "fdeda7f7f1554f0f0b3d1d1423fc5532b470d7fecc3de048b8a20c704bcffcf8",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "workshopCategory2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a47f72a8982d45e2bf2f735"
-  },
-  "name": "Info_D_i_2026",
-  "formula": "(S >= 16) ? (12/max(N-2, 1)) : (S/max(N-2, 1))",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "2"
-  },
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_SENSE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "afd70cd4796c378fb42d5c41a771f01e0823a47b2152b86428891996e830e0b2",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a480678cefa56310d7f8023"
-  },
-  "name": "Info_B (A*, A, B) 2026",
-  "acmEptcsCFloor2026": true,
-  "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "2"
-  },
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "6b2c5ba1af072fbecf11488bbdc1e87a626e604ca7d6836f532e1b5abdff48ce",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "workshopCategory2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a480678cefa56310d7f8024"
-  },
-  "name": "Info_B_Jurnale 2026",
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": {
-   "$numberLong": "2"
-  },
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a481bc682ebdb034bfc8e10"
-  },
-  "name": "Info_B_Conferințe 2026",
-  "acmEptcsCFloor2026": true,
-  "formula": "S > 1 ? S/max(N-2, 1) : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "workshopCategory2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a493be99fe41c33d2883e87"
-  },
-  "name": "Info_D_Proiecte_Director",
-  "formula": "(Rol != 'Membru' && Interval_buget >= 2) ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "66d09cd3c325b4405b312d23"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "4f8a1c81cffa93216cce289e42291db07d56922a4894bb941f62845e1a6d5441",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d063ec4aec775c522d9e0"
-  },
-  "name": "Psiho_I3",
-  "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "MAIN",
-   "strategy": "PSYCH_BOOK",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "b22c48c3545fc790295993e6b09284b16d33d5e8ab9cb3a3d3437369ecfe0efd",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d066bc4aec775c522d9e1"
-  },
-  "name": "Psiho_I4",
-  "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "MAIN",
-   "strategy": "PSYCH_BOOK",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "d3814678cfe398f42987748538af2c91c6b16a87c2490e2f33223a496d583cf2",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d066bc4aec775c522d9e2"
-  },
-  "name": "Psiho_I7",
-  "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S/N : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "CO",
-   "strategy": "PSYCH_BOOK",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "de6464d3174104bfaac70bbb0b0ea722c69542b0fb26c2b797d4984e402e2cf9",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d066bc4aec775c522d9e3"
-  },
-  "name": "Psiho_I8",
-  "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S/N : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "CO",
-   "strategy": "PSYCH_BOOK",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "932fc41b83ad6c4eb103fea47fb08de636cda248720ca10bec92000a537e55cb",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d066bc4aec775c522d9e4"
-  },
-  "name": "Psiho_I9",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "MAIN",
-   "strategy": "INDEXED_PROCEEDINGS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "n": 2,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d066bc4aec775c522d9e5"
-  },
-  "name": "Psiho_I10",
-  "formula": "S/N",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "CO",
-   "strategy": "INDEXED_PROCEEDINGS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "n": 2,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d066bc4aec775c522d9e6"
-  },
-  "name": "Psiho_I12",
-  "formula": "category=='B' && docType=='bk' ? 12*S/N : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "ALL",
-   "strategy": "PSYCH_BOOK",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "ffe3f09d8f1c2b49843b724492798668c8affa1a3d4d07670a6e1674cf72bf1e",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d066bc4aec775c522d9e7"
-  },
-  "name": "Psiho_I13",
-  "formula": "category=='B' && docType=='ch' ? 3*S/N : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "role": "ALL",
-   "strategy": "PSYCH_BOOK",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "d7f9e1bca18bd06f7107a1dd3baf0909acbecdeeac80f9a59748a414037a3099",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d06c2c4aec775c522d9e8"
-  },
-  "name": "Psiho_I17",
-  "formula": "S > 0 ? 0 : 0.1",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 0,
-  "kind": {
-   "policy": "CANDIDATE_ONLY",
-   "strategy": "IMPACT_FACTOR",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
-  },
-  "formulaHash": "038e7b7a27e5a11ed4fce98a8156b8b7d3537e8c26d3aa1232a91cb74f66de6d",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d0724c4aec775c522d9e9"
-  },
-  "name": "Psiho_I2",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 2,
-  "kind": {
-   "role": "MAIN",
-   "strategy": "PSYCH_BDI_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a5d0724c4aec775c522d9ea"
-  },
-  "name": "Psiho_I6",
-  "formula": "S/N",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Psychology"
-  },
-  "version": 2,
-  "kind": {
-   "role": "CO",
-   "strategy": "PSYCH_BDI_JOURNAL",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a626d02a4be38276d5a28d0"
-  },
-  "name": "FEEA_Q4_Article_AIS015",
-  "formula": "M > 0 && S > 0.15 ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "ECONOMICS_JOURNAL_AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "b9d55e5a19e45e39ce8e902b20b77751463d7a8256cfcc2d3b5e61d792b43832",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a626d02a4be38276d5a28d1"
-  },
-  "name": "FEEA_Q4_Article_AIS0075",
-  "formula": "M > 0 && S > 0.075 ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "ECONOMICS_JOURNAL_AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "298a577d6c6f369f54cb0f7231dbce94c9ee6aebe36e0ac2893b330a59a73cf8",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a626d02a4be38276d5a28d2"
-  },
-  "name": "FEEA_Q4_Article_AISNonzero",
-  "formula": "M > 0 && S > 0 ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "ECONOMICS_JOURNAL_AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a626d02a4be38276d5a28d3"
-  },
-  "name": "FEEA_Q5_CoreInfo_Nonzero",
-  "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "ECONOMICS_JOURNAL_AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a626d02a4be38276d5a28d4"
-  },
-  "name": "FEEA_Q5_CoreInfo_0075",
-  "formula": "(M == 10 || M == 8) && S > 0.075 ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "version": 1,
-  "kind": {
-   "role": "ALL",
-   "strategy": "ECONOMICS_JOURNAL_AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "fd3656ecc9e9a46c442f74d99f69c4185ee5ccc2d74ac35ff18445f35b418b89",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a626d02a4be38276d5a28d5"
-  },
-  "name": "FEEA_Grant_Any",
-  "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); excluded ? 0 : 1",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "66d09cd3c325b4405b312d23"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "dc73f249b0190c385e67c8fe8f9e655da690e8cafc0a82e80e2e534d96023cfe",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a626d02a4be38276d5a28d6"
-  },
-  "name": "FEEA_Grant_Director",
-  "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); (!excluded && Rol != \"Membru\") ? 1 : 0",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Economie"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "66d09cd3c325b4405b312d23"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "b849093e542257222dcbc130c0c906091e1f828a2b4f2e45c413e589296c992c",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
-{
-  "_id": {
-   "$oid": "6a629148d8ddfc14de2b6a1c"
-  },
-  "name": "Info_D_xii_2026",
-  "formula": "Rol == 'Conducător' ? 3 : 1",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820fbb704e38843635e0cad"
-   }
-  },
-  "version": 1,
-  "kind": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
-  },
-  "formulaHash": "92f37034c1652cd7e138785dad39fae90cf5b27875c89da52448601dba924c7b",
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
-  "_id": {
-   "$oid": "6a63b59843226fd40f87b942"
-  },
-  "name": "Info_B_2026",
-  "formula": "S/max(N-2, 1)",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "version": 0,
-  "kind": {
-   "role": "ALL",
-   "strategy": "CS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
-  },
-  "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
-  "workshopCategory2026": true,
-  "acmEptcsCFloor2026": true,
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
-  "_id": {
-   "$oid": "6a63b59843226fd40f87b943"
-  },
-  "name": "Info_D_ii_2026",
-  "formula": "(S/max(N_editori-2, 1)) * N_editii",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "681674c0e50b262637be9a86"
-   }
-  },
-  "version": 0,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "ae57e2ef2277409c6f8f3fe86bca45caa639b346c56a09f7a1ec48e0b11efafa",
-  "workshopCategory2026": true,
-  "acmEptcsCFloor2026": true,
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
-  "_id": {
-   "$oid": "6a63b59843226fd40f87b944"
-  },
-  "name": "Info_D_vi_2026",
-  "formula": "(S/2) * N_editii",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820e32a2654f8388e8d3646"
-   }
-  },
-  "version": 0,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "57f566f2f9a39e74cd1429c5095e37be8f05d48c153932afacd114f970b71eab",
-  "workshopCategory2026": true,
-  "acmEptcsCFloor2026": true,
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- },
- {
-  "_id": {
-   "$oid": "6a63b59843226fd40f87b945"
-  },
-  "name": "Info_D_viii-b_2026",
-  "formula": "S",
-  "domain": {
-   "$ref": "domains",
-   "$id": "Computer Science"
-  },
-  "activity": {
-   "$ref": "activities",
-   "$id": {
-    "$oid": "6820e5472654f8388e8d364b"
-   }
-  },
-  "version": 0,
-  "kind": {
-   "type": "FORUM",
-   "strategy": "CS_CONFERENCE",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
-  },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
-  "workshopCategory2026": true,
-  "acmEptcsCFloor2026": true,
-  "yearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
-  },
-  "scoreYearRangeSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
-  },
-  "selectorSpec": {
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
- }
+  {
+    "_id": {
+      "$oid": "6654dce7068d032b7e119593"
+    },
+    "name": "Info_C",
+    "formula": "S/max(N-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 11,
+    "kind": {
+      "policy": "CANDIDATE_ONLY",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Impactul rezultatelor (perspectiva c, fișa 2016): punctajul citărilor primite de publicațiile candidatului, excluzând autocitările (lucrarea care citează nu poate avea candidatul printre autori). Fiecare citare valorează punctajul forumului în care apare lucrarea CARE CITEAZĂ (după regulile perspectivei b), împărțit la max(1, n−2) pentru lucrarea citată; citările din teze, rapoarte sau forumuri din afara listelor valorează 1, iar cele din monografii/cărți 12/8/4/2/1 după categoria SENSE a editurii. De aceea punctajul depinde de unde apar citările, nu doar de numărul lor."
+  },
+  {
+    "_id": {
+      "$oid": "66564362f349c0670bb68b25"
+    },
+    "name": "Info_B (A*, A, B)",
+    "formula": "(S >= 4) ? (S/max(N-2, 1)) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "d3776b21e558b45429cfbe647ff5f2e3ae091e0c72289c93e4cc82b8b160615f",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Pragul A*+A+B al perspectivei b (fișa 2016): suma punctajelor doar pentru publicațiile din forumuri de categoria A*, A sau B. Lucrările C și D sunt listate, dar nu se numără aici. Pragul pentru Conferențiar este A*+A+B ≥ 16, pentru Profesor ≥ 40."
+  },
+  {
+    "_id": {
+      "$oid": "6656440ef349c0670bb68b26"
+    },
+    "name": "Info_C (A*, A, B)",
+    "formula": "(S >= 4) ? (S/max(N-2, 1)) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "policy": "CANDIDATE_ONLY",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "d3776b21e558b45429cfbe647ff5f2e3ae091e0c72289c93e4cc82b8b160615f",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Pragul «Citări de top» (fișa 2016): doar citările provenite din lucrări apărute în forumuri de categoria A*, A sau B. Pragul pentru Conferențiar este A*+A+B ≥ 12, pentru Profesor ≥ 40."
+  },
+  {
+    "_id": {
+      "$oid": "665a40689073a275ec9abba1"
+    },
+    "name": "Info_D_i",
+    "formula": "S/max(N-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_SENSE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(i), fișa 2016: cărți de autor/editate și capitole, punctate după categoria SENSE a editurii — cărți A=16, cărți B/capitole A=8, cărți C/capitole B=4, cărți D-E-nelistate/capitole C=2, capitole D-E-nelistate=1 — împărțite la max(1, n−2), pe volum sau capitol. Volumele de conferință (LNCS și similare) NU se punctează aici, ci ca lucrări de conferință la perspectiva b."
+  },
+  {
+    "_id": {
+      "$oid": "665ce9102dbfdf2e0b3caa33"
+    },
+    "name": "Info_B",
+    "formula": "S/max(N-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Producția științifică (perspectiva b, fișa 2016): suma punctajelor publicațiilor cu rezultate originale apărute în conferințe și reviste clasificate. Fiecare publicație aduce punctajul categoriei forumului (A*=12, A=8, B=4, C=2, D=1) împărțit la max(1, n−2), unde n este numărul de autori. Conferințele urmează lista CORE (categoria C include și LNCS-urile care nu sunt A*/A/B; workshop-urile neclasificate coboară cu o categorie; posterele și demonstrațiile nu se punctează), iar revistele lista UEFISCDI; revistele de pe lista Beall nu se iau în considerare."
+  },
+  {
+    "_id": {
+      "$oid": "680f69396f664731f88f814a"
+    },
+    "name": "Mate_C",
+    "formula": "S >= 0.5 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "policy": "CANDIDATE_ONLY",
+      "strategy": "RIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "7ea678abf0d728dc06e32227fea714fba2c6989dc94b18121863e26c1af6f816",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "from": 2019,
+      "to": 2023,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$Absolute"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "680fa64de3d12644e3045404"
+    },
+    "name": "Mate_S",
+    "formula": "S > 0.5 ? S/N : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "RIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "8960ed89dd0e44ac09a4b4d186f0fb0c54d2adfbed8177f3a18c5ab965ebb74e",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "from": 2019,
+      "to": 2023,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$Absolute"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6816987607ff6c4e2956d5c4"
+    },
+    "name": "Info_D_iv",
+    "formula": "Rol == 'Editor invitat' ? (S == 12 ? 9 : S == 8 ? 6 : S == 4 ? 3 : S == 2 ? 2 : 1) : S * 3",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6816983307ff6c4e2956d5c3"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CS_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "7a1491a17cfa029ab08d6a71bc977ffadc37e972efe77b8fbd250b169f4bf676",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(iv): director/editor/membru în comitetul editorial al unei reviste, punctat după categoria revistei — 36/24/12/6/3 pentru A*/A/B/C/D, pe revistă. În fișa 2026 se punctează și calitatea de guest editor: 9/6/3/2/1 după aceeași scară."
+  },
+  {
+    "_id": {
+      "$oid": "68191a2f526ce829aca68b34"
+    },
+    "name": "Info_D_viii-a",
+    "formula": "S == 0 ? 1 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820e8bde8421f7500250ab7"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "UNIVERSITY",
+      "strategy": "UNI_RANKING",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "4e5266a4b637caa7044fc91a76c52776358aa2c206371bbfe43a9fb6d14df362",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(viii), componenta de evenimente: keynote/invited speaker la evenimente — 12/8/4/2/1 puncte după categoria evenimentului (A*, A, B/școli de vară internaționale, C/școli naționale/conferințe ale Academiei Române, D/evenimente locale), pe eveniment."
+  },
+  {
+    "_id": {
+      "$oid": "6820cafbfe404029dad193d1"
+    },
+    "name": "Info_D_iii",
+    "formula": "2",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820ca61fe404029dad193d0"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(iii): publicarea unui curs universitar în format electronic — 2 puncte pe curs."
+  },
+  {
+    "_id": {
+      "$oid": "6820d3a18a61794835d91b24"
+    },
+    "name": "Info_D_ii",
+    "formula": "(S/max(N_editori-2, 1)) * N_editii",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "681674c0e50b262637be9a86"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "ae57e2ef2277409c6f8f3fe86bca45caa639b346c56a09f7a1ec48e0b11efafa",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(ii), fișa 2016: editor de proceedings la conferințe, punctat după categoria CORE a conferinței — 12/8/4/2/1 pentru A*/A/B/C/D — împărțit la max(1, n−2), pe volum."
+  },
+  {
+    "_id": {
+      "$oid": "6820d9bcd7ca817372b6d6f3"
+    },
+    "name": "Info_D_v",
+    "formula": "X = Interval_buget == 0 ? 1 : Interval_buget; Rol == 'Membru' ? X : X * 2",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "66d09cd3c325b4405b312d23"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "2be84c3a63e3a889c59e62fe056a143e3c32a286798d81bebc0ea3610145809b",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(v), fișa 2016: granturi/proiecte/contracte de cercetare obținute prin competiție, punctate după valoarea intrată în instituție și rol — director|membru: ≥500.000€ 10|5, 200–499.999€ 8|4, 100–199.999€ 6|3, 50–99.999€ 4|2, sub 50.000€ 2|1 — pe grant."
+  },
+  {
+    "_id": {
+      "$oid": "6a633aa137efb68d2e577b71"
+    },
+    "name": "Info_D_v_2026",
+    "formula": "(Interval_buget >= 2) ? (Rol == 'Membru' ? Interval_buget : Interval_buget * 2) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "66d09cd3c325b4405b312d23"
+      }
+    },
+    "version": 0,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "1f7968b56e41809150fdaa2f4c58fce08ddabeddc5f523e095ed894346b04ddc",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(v), fișa 2026: granturi/proiecte/contracte de cercetare-dezvoltare-inovare obținute prin competiție națională/internațională, punctate după valoarea intrată în instituție și rolul candidatului — director|membru: ≥500.000€ 10|5, 200–499.999€ 8|4, 100–199.999€ 6|3, 50–99.999€ 4|2, sub aceste praguri 2|1 — pe grant/proiect."
+  },
+  {
+    "_id": {
+      "$oid": "6820e0f6b20a79244588e87d"
+    },
+    "name": "Info_D_vi",
+    "formula": "(S/2) * N_editii",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820e32a2654f8388e8d3646"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "57f566f2f9a39e74cd1429c5095e37be8f05d48c153932afacd114f970b71eab",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(vi), fișa 2016: membru în comitetul științific (de program) al unor conferințe/simpozioane/workshop-uri — 6/4/2/1/0,5 puncte după categoria CORE a evenimentului (A*/A/B/C/D), pe eveniment."
+  },
+  {
+    "_id": {
+      "$oid": "6820e4952654f8388e8d3649"
+    },
+    "name": "Info_D_vii",
+    "formula": "(Rol == 'Membru' ? 1 : 2) * N_editii",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820e43f2654f8388e8d3648"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "6f0a3d5b14b8052fdf7f59d776dc2084625875e21ec9189f48084dd2f2ed0c94",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(vii): organizarea de evenimente științifice sau școli de vară — 2 puncte ca director, 1 punct ca membru în comitetul de organizare, pe eveniment."
+  },
+  {
+    "_id": {
+      "$oid": "6820e5552654f8388e8d364c"
+    },
+    "name": "Info_D_viii-b",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820e5472654f8388e8d364b"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(viii), componenta de universități (fișa 2016): profesor invitat la universități din topurile internaționale — 12/8/4/2/1 puncte pentru top 20/100/200/500/peste 500, pe vizită."
+  },
+  {
+    "_id": {
+      "$oid": "6820eec804e38843635e0ca8"
+    },
+    "name": "Info_D_x",
+    "formula": "X = Nivel == 'International' ? 4 : Nivel == 'National' ? 2 : 1;\n(Rol == 'Lider' && N_membri >= 5) ? X * N_ani : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820ee0804e38843635e0ca7"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "a8ade0a1b9b659acf1c8ffe0f6eafbb8d4ec60ec4067a0071c5357bd46a436ba",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(x): consolidarea de echipe de cercetare, numai ca lider — 4/2/1 puncte × numărul de ani pentru nivel internațional/național/instituțional (echipe de minimum 5 persoane). Plafonat la maximum 10% din punctajul total al perspectivei d — de aceea punctajul afișat poate fi mai mic decât suma brută."
+  },
+  {
+    "_id": {
+      "$oid": "6820eff604e38843635e0cab"
+    },
+    "name": "Info_D_xi",
+    "formula": "S == 0 ? 0 : S < 20 ? 6 : S < 100 ? 4 : S < 200 ? 2 : S < 500 ? 1 : 0.5",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820efe104e38843635e0caa"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "UNIVERSITY",
+      "strategy": "UNI_RANKING",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "43b9c5c12961457a6731fb87c600c0526016ebdb0192537a37ddd282e747c052",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(xi): membru în comisii de evaluare a tezelor de doctorat la universități din topurile internaționale — 6/4/2/1/0,5 puncte pentru top 20/100/200/500/peste 500, pe teză."
+  },
+  {
+    "_id": {
+      "$oid": "6820fbd904e38843635e0cae"
+    },
+    "name": "Info_D_xii",
+    "formula": "1",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820fbb704e38843635e0cad"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(xii), fișa 2016: membru în comisii de îndrumare a doctoranzilor (dovedit prin decizia școlii doctorale) — 1 punct pe doctorand îndrumat care a obținut titlul de doctor."
+  },
+  {
+    "_id": {
+      "$oid": "6820fe4104e38843635e0cb2"
+    },
+    "name": "Info_D_xiii",
+    "formula": "12/max(N_autori-2,1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820fe0d04e38843635e0cb1"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "2e2de882d7f935d67cbacae65fdc4fdf4535c1b6f18f60204c61954be09e45dc",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(xiii): brevete și invenții active (OSIM, ORDA etc.) — 12 puncte împărțite la max(1, n−2), pe brevet/invenție."
+  },
+  {
+    "_id": {
+      "$oid": "6820ffde04e38843635e0cb5"
+    },
+    "name": "Info_D_xiv",
+    "formula": "2/max(N_autori-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820ff8004e38843635e0cb4"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "aebacd4008cc7458fef27125ab98ed03cbbd2098c1200e9c9564fc38f7e8892d",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(xiv): dezvoltarea de pachete și instrumente software sau de resurse și colecții de date de largă utilitate (probate prin accesări, publicare open source etc.) — 2 puncte împărțite la max(1, n−2), pe produs. Plafonat la maximum 10% din punctajul total al perspectivei d."
+  },
+  {
+    "_id": {
+      "$oid": "682100ba04e38843635e0cb8"
+    },
+    "name": "Info_D_xv",
+    "formula": "Tip == 'National' ? 2 : 4",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6821007204e38843635e0cb7"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "cc3b8f0f79d88243b221df9a396ba2b4a5093658f80e2f14ebe7ceeb6e435e76",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(xv): poziții de conducere în organizații profesionale — 4 puncte pentru organizații internaționale, 2 pentru naționale, pe organizație."
+  },
+  {
+    "_id": {
+      "$oid": "68220d212a04a41f93fc7dba"
+    },
+    "name": "Mate_S_recent",
+    "formula": "S > 0.5 ? S/N : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "RIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "8960ed89dd0e44ac09a4b4d186f0fb0c54d2adfbed8177f3a18c5ab965ebb74e",
+    "yearRangeSpec": {
+      "from": 2018,
+      "to": 2025,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+    },
+    "scoreYearRangeSpec": {
+      "from": 2019,
+      "to": 2023,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$Absolute"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "68230b164652ac0103a9eebd"
+    },
+    "name": "Mate_C1_UVT",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CNCSIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6823194ccf66a42617d2b6c6"
+    },
+    "name": "Arte_exemplu_event",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "68231895cf66a42617d2b6c4"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "EVENT",
+      "strategy": "ART_EVENT",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "682340fe7123387ec34394ae"
+    },
+    "name": "Mate_C2_UVT",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "68233847cf66a42617d2b6c7"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CNCSIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "682342d67123387ec34394b0"
+    },
+    "name": "Mate_C3_UVT",
+    "formula": "Rol == 'Membru' ? 1 : 2",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "66d09cd3c325b4405b312d23"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "934c045d11b412815ffd6f4ea220394c1328a66c039dc8c2c46d334e6f786a37",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "68234a6c7e443769580e906d"
+    },
+    "name": "Mate_C4_UVT",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "GENERIC_COUNT",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6823535fbb926870c1f86fbd"
+    },
+    "name": "Info_D_ix",
+    "formula": "X = S == 0 ? 1 : S < 20 ? 12 : S < 100 ? 8 : S < 200 ? 4 : S < 500 ? 2 : 1;\nX*N_luni",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820ec4904e38843635e0ca5"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "type": "UNIVERSITY",
+      "strategy": "UNI_RANKING",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "faa404ecfa09aee7d621a8542b8f93b8e85d37dcb69add759fc80271dce02ae1",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "maxPoints": 24,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(ix): profesor/cercetător asociat/visiting la o universitate din topurile internaționale — 12/8/4/2/1 puncte × numărul de luni, pentru top 20/100/200/500/peste 500; pentru vizite scurte cu predare intensivă, 1 lună = 16 ore de predare. Indicatorul este plafonat la maximum 24 de puncte."
+  },
+  {
+    "_id": {
+      "$oid": "6823a9e6d6df306cd304ded9"
+    },
+    "name": "Psiho_I1",
+    "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + 3 * S) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 3,
+    "kind": {
+      "role": "MAIN",
+      "strategy": "IMPACT_FACTOR",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "0296f4efa740eeecafe27dd0d97f5919df39f37947cc7c6db7b624f514229267",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6823add4dc170c4fea2c3b3c"
+    },
+    "name": "Psiho_I5",
+    "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + (3 * S)/N) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 3,
+    "kind": {
+      "role": "CO",
+      "strategy": "IMPACT_FACTOR",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "40a0f5d26c20730cd13c789b07c27f234049949e5d5b649bc6bb26848d23c2a0",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6823b61df1cde62b43289faf"
+    },
+    "name": "Psiho_I16",
+    "formula": "S > 0 ? 0.5 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 2,
+    "kind": {
+      "policy": "CANDIDATE_ONLY",
+      "strategy": "IMPACT_FACTOR",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "fa93ebb782396daadec17f4c886b52b9628825571fbadee5dc8058d49c90d925",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "683618f381a0fe77d6a1c04c"
+    },
+    "name": "FEEA_P",
+    "formula": "M * (1 - (N-1) * 0.1) * S",
+    "version": 3,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "0005456388196dc64050b0a1c70ce1732655b7d8184c3a69320d70de7a353b55",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "n": 10,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "683624c863193d59c7eb2b31"
+    },
+    "name": "FEEA_C",
+    "formula": "Q == 'Q1' ? 1 : Q == 'Q2' ? 0.75 : Q == 'Q3' ? 0.5 : Q == 'Q4' ? 0.25 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "version": 1,
+    "kind": {
+      "policy": "CANDIDATE_ONLY",
+      "strategy": "AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "142a8ea38bc77d5f33a74a6c25f88643719c5d2ef0c25f75062c7b920d208058",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "n": 10,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "698b523ed6449873efdaa9c5"
+    },
+    "name": "grant_TE_FI_Q1",
+    "formula": "Q == 'Q1' ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "b3c1ffe9ec8698579bf1735167a716b078130d12191a0937479a4c8f6ab80406",
+    "yearRangeSpec": {
+      "from": 2015,
+      "to": 2025,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "698b557dd6449873efdaa9c6"
+    },
+    "name": "grant_TE_FI_Q2",
+    "formula": "Q == 'Q2' ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "94ccb45d655bf0094d5b8f10c10242d572f9cbe92ef7818209ba79230b21ceaa",
+    "yearRangeSpec": {
+      "from": 2015,
+      "to": 2025,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "69b0256ad85c553474735e69"
+    },
+    "name": "PD_2026_nr_lucari_WoS",
+    "formula": "Q.contains(\"Q\") ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "740d0c8dcf19fd8e3203f54cddd6459f2c88ee25dd6b0418dcc84a3d363b9dcc",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "69b0257cd85c553474735e6a"
+    },
+    "name": "PD_2026_Q1_Q2",
+    "formula": "Q == \"Q1\" || Q == \"Q2\" ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "1300712c36f69d82a6567b8aae53bfe162fb07a9cb82ad497b5c299534b95918",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "69b02d61d85c553474735e71"
+    },
+    "name": "PD_2026_Q1_Q2 (mentor total)",
+    "formula": "Q == \"Q1\" || Q == \"Q2\" ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "1300712c36f69d82a6567b8aae53bfe162fb07a9cb82ad497b5c299534b95918",
+    "yearRangeSpec": {
+      "from": 2015,
+      "to": 2026,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "69b02d7ad85c553474735e72"
+    },
+    "name": "PD_2026_Q1 (mentor top)",
+    "formula": "Q == \"Q1\" ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "770617268266c60c6e0f5e213f897b39e01df93c461f9674465a52a0a700f6df",
+    "yearRangeSpec": {
+      "from": 2015,
+      "to": 2026,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a049c242e64c65c14f9e01a"
+    },
+    "name": "Info_B_Conferințe",
+    "formula": "S > 1 ? S/max(N-2, 1) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Componenta de conferințe a perspectivei b (fișa 2016): doar lucrările apărute în conferințe. Categoriile vin din lista CORE a anului publicării: A*=12, A=8, B=4, C=2, D=1 puncte, împărțite la max(1, n−2). Amendamentele 2016: LNCS-urile care nu sunt A*/A/B intră la categoria C; workshop-urile neclasificate de CORE coboară cu o categorie față de conferința-mamă; posterele și demonstrațiile de sisteme nu se iau în considerare."
+  },
+  {
+    "_id": {
+      "$oid": "6a049c682e64c65c14f9e01b"
+    },
+    "name": "Info_B_Jurnale",
+    "formula": "S/max(N-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Componenta de reviste a perspectivei b (fișa 2016): doar articolele din reviste. Categoriile vin din lista UEFISCDI a anului publicării (zona roșie → A*/A, galbenă → B, albă → C, plus revistele SCOPUS la C; restul D), cu punctaje 12/8/4/2/1 împărțite la max(1, n−2). Revistele de pe lista Beall (edituri prădătoare) nu se iau în considerare."
+  },
+  {
+    "_id": {
+      "$oid": "6a30667f5ae41a6b1b60c6ce"
+    },
+    "name": "FEEA_Books",
+    "formula": "S/N",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "FEAA_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "n": 10,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a47f17bcb06b11f3b6121f0"
+    },
+    "name": "Info_C_2026",
+    "acmEptcsCFloor2026": true,
+    "formula": "S/max(N-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": {
+      "$numberLong": "12"
+    },
+    "kind": {
+      "policy": "ANY_COAUTHOR",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "workshopCategory2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Impactul rezultatelor (perspectiva c, fișa 2026): punctajul citărilor primite de orice publicație a candidatului, excluzând autocitările. Fiecare citare valorează punctajul forumului lucrării CARE CITEAZĂ, calculat după regulile perspectivei b (inclusiv reducerile și excluderile 2026 — de ex. o citare dintr-o revistă cu taxă sau dintr-un forum exclus valorează mai puțin sau deloc), împărțit la max(1, n−2) pentru lucrarea citată; citările din teze/rapoarte valorează 1, cele din monografii 12/8/4/2 după clasamentul SENSE al editurii."
+  },
+  {
+    "_id": {
+      "$oid": "6a47f2d27be56ad867b997c2"
+    },
+    "name": "Info_C (A*, A, B) 2026",
+    "acmEptcsCFloor2026": true,
+    "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": {
+      "$numberLong": "2"
+    },
+    "kind": {
+      "policy": "ANY_COAUTHOR",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "6b2c5ba1af072fbecf11488bbdc1e87a626e604ca7d6836f532e1b5abdff48ce",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "workshopCategory2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Pragul «Citări de top» (fișa 2026): doar citările provenite din lucrări apărute în forumuri de categoria A*, A sau B, după clasificările 2026. Citările din forumuri C/D sau din afara listelor sunt listate, dar nu se numără aici."
+  },
+  {
+    "_id": {
+      "$oid": "6a47f57bf5f5a3371821fd41"
+    },
+    "name": "Info_B (A*, A)",
+    "acmEptcsCFloor2026": true,
+    "formula": "(S >= 8 && !feeJournal) ? (S/max(N-2, 1)) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": {
+      "$numberLong": "3"
+    },
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "fdeda7f7f1554f0f0b3d1d1423fc5532b470d7fecc3de048b8a20c704bcffcf8",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "workshopCategory2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Pragul «Publicații A*+A»: suma punctajelor doar pentru publicațiile din forumuri de categoria A* sau A, cu aceeași formulă (punctaj categorie împărțit la max(1, n−2)). Lucrările de categorie B, C sau D apar în listă, dar nu contribuie la acest total — este pragul care cere publicații în forumurile de top."
+  },
+  {
+    "_id": {
+      "$oid": "6a47f72a8982d45e2bf2f735"
+    },
+    "name": "Info_D_i_2026",
+    "formula": "(S >= 16) ? (12/max(N-2, 1)) : (S/max(N-2, 1))",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": {
+      "$numberLong": "2"
+    },
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_SENSE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "afd70cd4796c378fb42d5c41a771f01e0823a47b2152b86428891996e830e0b2",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(i), fișa 2026: cărți de autor/editate și capitole, punctate după categoria SENSE a editurii — cărți A=12, cărți B/capitole A=8, cărți C/capitole B=4, cărți D-E-nelistate/capitole C=2, capitole D-E-nelistate=1 — împărțite la max(1, n−2), pe volum sau capitol. Volumele de conferință (LNCS și seriile Springer de proceedings) NU se punctează aici, ci ca lucrări de conferință la perspectiva b — o lucrare nu poate fi numărată de două ori."
+  },
+  {
+    "_id": {
+      "$oid": "6a480678cefa56310d7f8023"
+    },
+    "name": "Info_B (A*, A, B) 2026",
+    "acmEptcsCFloor2026": true,
+    "formula": "(topAB && !feeJournal) ? (S/max(N-2, 1)) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": {
+      "$numberLong": "2"
+    },
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "6b2c5ba1af072fbecf11488bbdc1e87a626e604ca7d6836f532e1b5abdff48ce",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "workshopCategory2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Pragul A*+A+B al perspectivei b (fișa 2026): suma punctajelor doar pentru publicațiile din forumuri de categoria A*, A sau B, după clasificările și amendamentele 2026 (inclusiv reducerea workshop-urilor). Lucrările C și D sunt listate, dar nu se numără aici."
+  },
+  {
+    "_id": {
+      "$oid": "6a480678cefa56310d7f8024"
+    },
+    "name": "Info_B_Jurnale 2026",
+    "formula": "S/max(N-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": {
+      "$numberLong": "2"
+    },
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Componenta de reviste a perspectivei b (fișa 2026): doar articolele din reviste. Categoriile vin din lista WoS (Journal Citation Report) a anului publicării, pe quartile IF sau AIS — se folosește cea mai favorabilă: A* = primele 20% din Q1, A = restul Q1 + începutul Q2, B = restul Q2 + începutul Q3, C = restul Q3 + Q4 + revistele doar-SCOPUS, D = restul. Punctajele 12/8/4/2/1 se împart la max(1, n−2). Revistele de pe lista Beall și cele care condiționează publicarea de o taxă nu se punctează."
+  },
+  {
+    "_id": {
+      "$oid": "6a481bc682ebdb034bfc8e10"
+    },
+    "name": "Info_B_Conferințe 2026",
+    "acmEptcsCFloor2026": true,
+    "formula": "S > 1 ? S/max(N-2, 1) : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "workshopCategory2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Componenta de conferințe a perspectivei b (fișa 2026): doar lucrările apărute în conferințe, punctate după lista CORE a anului publicării (A*=12, A=8, B=4, C=2, D=1, împărțite la max(1, n−2)). Amendamentele 2026: ACM, EPTCS și LNCS neclasificate A*/A/B intră la categoria C; workshop-urile conferințelor A*/A/B sunt categoria C, ale conferințelor C sunt D (punctaje 6/4/2/1) — de aceea o lucrare de workshop primește jumătate din punctajul conferinței-mamă; conferințele CORE naționale/regionale sunt C. Forumurile de tip WSEAS/IAENG/DAAAM sau doar arXiv nu se punctează."
+  },
+  {
+    "_id": {
+      "$oid": "6a493be99fe41c33d2883e87"
+    },
+    "name": "Info_D_Proiecte_Director",
+    "formula": "(Rol != 'Membru' && Interval_buget >= 2) ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "66d09cd3c325b4405b312d23"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "4f8a1c81cffa93216cce289e42291db07d56922a4894bb941f62845e1a6d5441",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Varianta «doar ca director» a indicatorului D(v): numai granturile/proiectele conduse de candidat, punctate după tranșele de valoare ale standardului (10/8/6/4/2 pe proiect, după valoarea intrată în instituție)."
+  },
+  {
+    "_id": {
+      "$oid": "6a5d063ec4aec775c522d9e0"
+    },
+    "name": "Psiho_I3",
+    "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "MAIN",
+      "strategy": "PSYCH_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "b22c48c3545fc790295993e6b09284b16d33d5e8ab9cb3a3d3437369ecfe0efd",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d066bc4aec775c522d9e1"
+    },
+    "name": "Psiho_I4",
+    "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "MAIN",
+      "strategy": "PSYCH_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "d3814678cfe398f42987748538af2c91c6b16a87c2490e2f33223a496d583cf2",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d066bc4aec775c522d9e2"
+    },
+    "name": "Psiho_I7",
+    "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S/N : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "CO",
+      "strategy": "PSYCH_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "de6464d3174104bfaac70bbb0b0ea722c69542b0fb26c2b797d4984e402e2cf9",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d066bc4aec775c522d9e3"
+    },
+    "name": "Psiho_I8",
+    "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S/N : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "CO",
+      "strategy": "PSYCH_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "932fc41b83ad6c4eb103fea47fb08de636cda248720ca10bec92000a537e55cb",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d066bc4aec775c522d9e4"
+    },
+    "name": "Psiho_I9",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "MAIN",
+      "strategy": "INDEXED_PROCEEDINGS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "n": 2,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d066bc4aec775c522d9e5"
+    },
+    "name": "Psiho_I10",
+    "formula": "S/N",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "CO",
+      "strategy": "INDEXED_PROCEEDINGS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "n": 2,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d066bc4aec775c522d9e6"
+    },
+    "name": "Psiho_I12",
+    "formula": "category=='B' && docType=='bk' ? 12*S/N : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "ALL",
+      "strategy": "PSYCH_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "ffe3f09d8f1c2b49843b724492798668c8affa1a3d4d07670a6e1674cf72bf1e",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d066bc4aec775c522d9e7"
+    },
+    "name": "Psiho_I13",
+    "formula": "category=='B' && docType=='ch' ? 3*S/N : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "role": "ALL",
+      "strategy": "PSYCH_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "d7f9e1bca18bd06f7107a1dd3baf0909acbecdeeac80f9a59748a414037a3099",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d06c2c4aec775c522d9e8"
+    },
+    "name": "Psiho_I17",
+    "formula": "S > 0 ? 0 : 0.1",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 0,
+    "kind": {
+      "policy": "CANDIDATE_ONLY",
+      "strategy": "IMPACT_FACTOR",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "038e7b7a27e5a11ed4fce98a8156b8b7d3537e8c26d3aa1232a91cb74f66de6d",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d0724c4aec775c522d9e9"
+    },
+    "name": "Psiho_I2",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 2,
+    "kind": {
+      "role": "MAIN",
+      "strategy": "PSYCH_BDI_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a5d0724c4aec775c522d9ea"
+    },
+    "name": "Psiho_I6",
+    "formula": "S/N",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Psychology"
+    },
+    "version": 2,
+    "kind": {
+      "role": "CO",
+      "strategy": "PSYCH_BDI_JOURNAL",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a626d02a4be38276d5a28d0"
+    },
+    "name": "FEEA_Q4_Article_AIS015",
+    "formula": "M > 0 && S > 0.15 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "b9d55e5a19e45e39ce8e902b20b77751463d7a8256cfcc2d3b5e61d792b43832",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a626d02a4be38276d5a28d1"
+    },
+    "name": "FEEA_Q4_Article_AIS0075",
+    "formula": "M > 0 && S > 0.075 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "298a577d6c6f369f54cb0f7231dbce94c9ee6aebe36e0ac2893b330a59a73cf8",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a626d02a4be38276d5a28d2"
+    },
+    "name": "FEEA_Q4_Article_AISNonzero",
+    "formula": "M > 0 && S > 0 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a626d02a4be38276d5a28d3"
+    },
+    "name": "FEEA_Q5_CoreInfo_Nonzero",
+    "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a626d02a4be38276d5a28d4"
+    },
+    "name": "FEEA_Q5_CoreInfo_0075",
+    "formula": "(M == 10 || M == 8) && S > 0.075 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "fd3656ecc9e9a46c442f74d99f69c4185ee5ccc2d74ac35ff18445f35b418b89",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a626d02a4be38276d5a28d5"
+    },
+    "name": "FEEA_Grant_Any",
+    "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); excluded ? 0 : 1",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "66d09cd3c325b4405b312d23"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "dc73f249b0190c385e67c8fe8f9e655da690e8cafc0a82e80e2e534d96023cfe",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a626d02a4be38276d5a28d6"
+    },
+    "name": "FEEA_Grant_Director",
+    "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); (!excluded && Rol != \"Membru\") ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Economie"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "66d09cd3c325b4405b312d23"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "b849093e542257222dcbc130c0c906091e1f828a2b4f2e45c413e589296c992c",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a629148d8ddfc14de2b6a1c"
+    },
+    "name": "Info_D_xii_2026",
+    "formula": "Rol == 'Conducător' ? 3 : 1",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820fbb704e38843635e0cad"
+      }
+    },
+    "version": 1,
+    "kind": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+    },
+    "formulaHash": "92f37034c1652cd7e138785dad39fae90cf5b27875c89da52448601dba924c7b",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(xii), fișa 2026: îndrumarea doctoranzilor care au obținut titlul de doctor — 3 puncte ca CONDUCĂTOR de doctorat, 1 punct ca membru în comisia de îndrumare, pe doctorand (dovedit prin decizia școlii doctorale)."
+  },
+  {
+    "_id": {
+      "$oid": "6a63b59843226fd40f87b942"
+    },
+    "name": "Info_B_2026",
+    "formula": "S/max(N-2, 1)",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 0,
+    "kind": {
+      "role": "ALL",
+      "strategy": "CS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "28ae4c462ff8a095921ff7b4e0cb440861de2f09bd700f545bc5e889ea6e5ef7",
+    "workshopCategory2026": true,
+    "acmEptcsCFloor2026": true,
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "Producția științifică (perspectiva b, fișa 2026): suma punctajelor publicațiilor cu rezultate originale din forumuri clasificate A*–C. Punctajul unei publicații este cel al categoriei forumului (A*=12, A=8, B=4, C=2) împărțit la max(1, n−2), n fiind numărul de autori. Conferințele urmează lista CORE cu amendamentele 2026 (ACM, EPTCS și LNCS care nu sunt A*/A/B intră la C; workshop-urile conferințelor A*/A/B sunt C, ale celor C sunt D, cu punctaje 6/4/2/1; posterele și demonstrațiile se reduc la fel), revistele lista WoS pe quartile IF/AIS (cea mai favorabilă). Revistele de pe lista Beall și cele cu taxă de publicare (gold open access) nu se punctează."
+  },
+  {
+    "_id": {
+      "$oid": "6a63b59843226fd40f87b943"
+    },
+    "name": "Info_D_ii_2026",
+    "formula": "(S/max(N_editori-2, 1)) * N_editii",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "681674c0e50b262637be9a86"
+      }
+    },
+    "version": 0,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "ae57e2ef2277409c6f8f3fe86bca45caa639b346c56a09f7a1ec48e0b11efafa",
+    "workshopCategory2026": true,
+    "acmEptcsCFloor2026": true,
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(ii), fișa 2026: editor de proceedings la conferințe, punctat după categoria CORE a conferinței — 12/8/4/2/1 pentru A*/A/B/C/D — împărțit la max(1, n−2), pe volum. Se aplică amendamentele 2026 asupra categoriilor (de ex. pragul C pentru volumele ACM/EPTCS/LNCS)."
+  },
+  {
+    "_id": {
+      "$oid": "6a63b59843226fd40f87b944"
+    },
+    "name": "Info_D_vi_2026",
+    "formula": "(S/2) * N_editii",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820e32a2654f8388e8d3646"
+      }
+    },
+    "version": 0,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "57f566f2f9a39e74cd1429c5095e37be8f05d48c153932afacd114f970b71eab",
+    "workshopCategory2026": true,
+    "acmEptcsCFloor2026": true,
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(vi), fișa 2026: membru în comitetul științific (de program) al unor conferințe/simpozioane/workshop-uri — 6/4/2/1/0,5 puncte după categoria CORE a evenimentului (A*/A/B/C/D), pe eveniment, cu amendamentele 2026 asupra categoriilor."
+  },
+  {
+    "_id": {
+      "$oid": "6a63b59843226fd40f87b945"
+    },
+    "name": "Info_D_viii-b_2026",
+    "formula": "S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "Computer Science"
+    },
+    "activity": {
+      "$ref": "activities",
+      "$id": {
+        "$oid": "6820e5472654f8388e8d364b"
+      }
+    },
+    "version": 0,
+    "kind": {
+      "type": "FORUM",
+      "strategy": "CS_CONFERENCE",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Activity"
+    },
+    "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+    "workshopCategory2026": true,
+    "acmEptcsCFloor2026": true,
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "description": "D(viii), componenta de universități (fișa 2026): profesor invitat la universități din topurile internaționale (QS, URAP, Shanghai — cea mai bună clasare) — 12/8/4/2/1 puncte pentru top 20/100/200/500/peste 500, pe vizită."
+  }
 ]

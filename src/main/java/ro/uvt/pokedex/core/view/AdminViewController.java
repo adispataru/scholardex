@@ -427,6 +427,8 @@ public class AdminViewController {
     public static class IndicatorForm {
         private String id;
         private String name;
+        /** H94 — the standards-text description; MUST round-trip or every edit wipes it (see the flag comment below). */
+        private String description;
         private String formula;
         private Domain domain;
         private Activity activity;
@@ -457,6 +459,7 @@ public class AdminViewController {
             IndicatorForm form = new IndicatorForm();
             form.id = indicator.getId();
             form.name = indicator.getName();
+            form.description = indicator.getDescription();
             form.formula = indicator.getFormula();
             form.domain = indicator.getDomain();
             form.activity = indicator.getActivity();
@@ -478,6 +481,7 @@ public class AdminViewController {
             Indicator indicator = new Indicator();
             indicator.setId(id);
             indicator.setName(name);
+            indicator.setDescription(description == null || description.isBlank() ? null : description.trim());
             indicator.setFormula(formula);
             indicator.setDomain(domain);
             indicator.setActivity(activity);

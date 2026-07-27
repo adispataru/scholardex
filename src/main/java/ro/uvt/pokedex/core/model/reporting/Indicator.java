@@ -15,6 +15,12 @@ public class Indicator {
     @Id
     private String id;
     private String name;
+    /**
+     * H94 — what this indicator measures, in the reader's terms, grounded in the standard's own text
+     * (categories, formula shape, the gates that commonly explain a surprising score). Rendered under the
+     * indicator header in the report drilldown. Romanian by the H87 decision (reports/indicators stay RO).
+     */
+    private String description;
     private String formula;
 
     @DBRef

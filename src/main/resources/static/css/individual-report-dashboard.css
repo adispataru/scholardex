@@ -1427,3 +1427,13 @@
   width: auto;
   min-width: 8rem;
 }
+
+/* H94: the indicator's standards-text description — quiet, readable, clearly not data. */
+.individual-report-dashboard .indicator-description {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 0.25rem 0 0.5rem;
+  max-width: 62rem;
+  border-left: 2px solid var(--app-color-border, #ddd);
+  padding-left: 0.6rem;
+}

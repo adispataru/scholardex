@@ -250,6 +250,25 @@ Done history moved to `TASKS-done.md`.
   evidence row or a workshop ladder, and a venue we do not hold at all goes through the existing
   admin-moderated forum submission first.
 
+- [ ] `H94` Indicator descriptions from the standards text.
+  **RAISED + S1 DONE locally 2026-07-27 (user ask).** A researcher opening the drilldown saw an indicator
+  NAME and a number; everything explaining the rule lived in the OM PDF. Now `Indicator.description`
+  renders under the indicator header — static and server-side, deliberately a SIBLING of the JS-owned
+  `.indicator-detail-content` (the dashboard replaces that div's innerHTML on every detail load; pinned by
+  a contract test that anchors on class attributes after a first version matched its own comment).
+  Round-tripped through the admin `IndicatorForm` (the persisted-only-fields wipe trap the form itself
+  documents) with an edit textarea. Content: **36 FV Info descriptions** (both fișe), grounded in the
+  actual standards text — `data/standards/2026/standarde-conf-2025.html` for 2026, the 2016 PDF for 2016 —
+  covering categories/points, the max(1, n−2) divisor, and the gates that most often explain a surprising
+  score (workshop reduction, fee-journal exclusion, the D(ix) 24-point and D(x)/D(xiv) 10% caps; 2016 vs
+  2026 differences kept distinct: LNCS-only vs ACM/EPTCS/LNCS, one-category-lower vs C-mapping for
+  workshops, UEFISCDI zones vs WoS quartiles, books A=16 vs 12). Shipped as committed
+  `indicator-descriptions/info.json` + `POST /admin/indicators/descriptions/apply?dryRun=` (data-after-code,
+  own controller to dodge the constructor-arg slice trap); unmatched names on either side are REPORTED.
+  Applied + verified live on agent-dev (36/36 matched; renders under the header; collapse hides/restores
+  it). Seed synced (36 of 74). **Remaining:** descriptions for the other domains' 45 indicators
+  (FEAA/Mate/Fizica/Psiho/Arte) — same mechanism, content only; and the prod apply after deploy.
+
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**

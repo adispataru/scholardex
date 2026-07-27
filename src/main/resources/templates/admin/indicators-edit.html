@@ -51,6 +51,11 @@
                                     <label for="criterionName">Name</label>
                                     <input type="text" class="form-control" id="criterionName" th:field="*{name}" required>
                                 </div>
+                                <div class="form-group">
+                                    <label for="indicatorDescription">Description (shown to researchers in the report drilldown)</label>
+                                    <textarea class="form-control" id="indicatorDescription" th:field="*{description}" rows="4"
+                                              placeholder="Ce măsoară indicatorul, în termenii standardului — categorii, formulă, condițiile care explică un punctaj surprinzător."></textarea>
+                                </div>
                                 <div class="form-group app-form-field">
                                     <label for="domain">Domain</label>
                                     <select class="form-control" id="domain" th:field="*{domain}" required>

@@ -318,6 +318,13 @@
                                          th:id="${'indicator-detail-' + indicator.id}"
                                          th:attr="data-indicator-id=${indicator.id}"
                                          hidden>
+                                        <!-- H94: the standard's own words on what this indicator measures. Static and
+                                             server-rendered, deliberately OUTSIDE .indicator-detail-content — the
+                                             dashboard JS replaces that div's innerHTML on every detail load, and this
+                                             must survive it. Collapsing the indicator hides it with the panel. -->
+                                        <p class="indicator-description app-eval-muted"
+                                           th:if="${indicator.description != null && !#strings.isEmpty(indicator.description)}"
+                                           th:text="${indicator.description}"></p>
                                         <div class="indicator-detail-skeleton" hidden>
                                             <div class="app-skeleton-block" style="height:1.5rem;width:60%;margin-bottom:0.5rem;"></div>
                                             <div class="app-skeleton-block" style="height:1rem;width:100%;margin-bottom:0.35rem;"></div>
