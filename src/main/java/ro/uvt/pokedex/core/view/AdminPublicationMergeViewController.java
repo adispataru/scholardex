@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.PublicationMergeAdminFacade;
+import ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade;
 
 import java.security.Principal;
 
@@ -25,11 +26,64 @@ import java.security.Principal;
 public class AdminPublicationMergeViewController {
 
     private final PublicationMergeAdminFacade publicationMergeAdminFacade;
+    private final PublicationVenueClaimAdminFacade venueClaimAdminFacade;
 
     @GetMapping
     public String showQueue(Model model) {
         model.addAttribute("queue", publicationMergeAdminFacade.queue());
+        // H93 S2: the venue-claims half of the same page — one review surface, not a second thing to watch.
+        model.addAttribute("claimQueue", venueClaimAdminFacade.queue());
         return "admin/publication-merges";
+    }
+
+    /* ── H93: venue-claim actions (the claims half of this page) ─────────────── */
+
+    @PostMapping("/venue-claim")
+    public String directVenueClaim(@RequestParam String publicationId,
+                                   @RequestParam String forumId,
+                                   @RequestParam(defaultValue = "false") boolean workshopOf,
+                                   @RequestParam(required = false) String workshopLabel,
+                                   @RequestParam(required = false) String note,
+                                   @RequestParam(defaultValue = "false") boolean rebuildNow,
+                                   Principal principal,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            flash(redirectAttributes, venueClaimAdminFacade.directClaim(
+                    publicationId.trim(), forumId.trim(), workshopOf, workshopLabel,
+                    principalName(principal), note, rebuildNow));
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/publication-merges";
+    }
+
+    @PostMapping("/venue-claims/{id}/approve")
+    public String approveVenueClaim(@PathVariable String id,
+                                    @RequestParam(required = false) String note,
+                                    @RequestParam(defaultValue = "false") boolean rebuildNow,
+                                    Principal principal,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            flash(redirectAttributes, venueClaimAdminFacade.approve(id, principalName(principal), note, rebuildNow));
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/publication-merges";
+    }
+
+    @PostMapping("/venue-claims/{id}/reject")
+    public String rejectVenueClaim(@PathVariable String id,
+                                   @RequestParam(required = false) String note,
+                                   Principal principal,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            venueClaimAdminFacade.reject(id, principalName(principal), note);
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Claim rejected — anything it had applied has been reverted.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/publication-merges";
     }
 
     @PostMapping("/merge")
@@ -81,6 +135,11 @@ public class AdminPublicationMergeViewController {
 
     private static void flash(RedirectAttributes redirectAttributes,
                               PublicationMergeAdminFacade.OperationResult result) {
+        redirectAttributes.addFlashAttribute(result.success() ? "successMessage" : "errorMessage", result.message());
+    }
+
+    private static void flash(RedirectAttributes redirectAttributes,
+                              PublicationVenueClaimAdminFacade.OperationResult result) {
         redirectAttributes.addFlashAttribute(result.success() ? "successMessage" : "errorMessage", result.message());
     }
 

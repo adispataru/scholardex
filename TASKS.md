@@ -222,6 +222,16 @@ Done history moved to `TASKS-done.md`.
   reject-not-unstamping-newer-forum), scorer acceptance (claim-shaped `EuroMLSys@EUROSYS` row scores C/4
   via the untouched X@Y path), 4 endpoint contract tests, materialization mocks updated (the constructor-arg
   trap, caught proactively this time).
+  **S2 DONE locally 2026-07-27.** The venue-claims half of the `/admin/publication-merges` page (one review
+  surface, per the recorded decision): `PublicationVenueClaimAdminFacade` (queue rows + flash-message
+  wrappers with the same rebuild-now semantics as merges), view-controller actions
+  (`/venue-claim`, `/venue-claims/{id}/approve|reject`), template sections (direct form, pending queue with
+  approve/reject, decided list), and a **Revoke button on approved rows** — added when live verification
+  surfaced the gap; unlike a merge, revoking a claim is cheap and exact, so the affordance belongs on the
+  page. Verified live on agent-dev against the REAL EuroMLSys paper: queued PENDING via the endpoint,
+  approved through the page form (forum stamped, displaced captured the machine's `conf/euromlsys`
+  dump-doi evidence — claim-beats-DBLP observed live), then revoked through the page (forum and evidence
+  restored byte-for-byte). 8 view contract tests incl. the revoke pin.
   Open question from the first cut — a claim naming a venue **absent from CORE** — is CLOSED by the
   forum-target revision above: such a venue is claimable, it simply gets the forum stamp without an
   evidence row or a workshop ladder, and a venue we do not hold at all goes through the existing

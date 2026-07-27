@@ -35,6 +35,17 @@ class AdminPublicationMergeViewControllerContractTest {
 
     @MockitoBean
     private PublicationMergeAdminFacade publicationMergeAdminFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade venueClaimAdminFacade;
+
+    @org.junit.jupiter.api.BeforeEach
+    void emptyClaimQueueByDefault() {
+        // The template renders the claims half unconditionally; without this every render test 500s on a
+        // null claimQueue. Individual tests override with content when they assert on it.
+        org.mockito.Mockito.lenient().when(venueClaimAdminFacade.queue()).thenReturn(
+                new ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.ClaimQueueView(
+                        java.util.List.of(), java.util.List.of(), java.util.List.of()));
+    }
 
     private static PublicationMergeAdminFacade.Row row(String id, String status, boolean duplicateExists) {
         return new PublicationMergeAdminFacade.Row(
@@ -138,5 +149,75 @@ class AdminPublicationMergeViewControllerContractTest {
                         .param("duplicateId", "spub_y"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("errorMessage", "survivor publication not found: spub_x"));
+    }
+
+    /* ── H93 S2: the venue-claims half of the page ─────────────────────────── */
+
+    private static ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.Row claimRow(String id) {
+        return new ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.Row(
+                id, "PENDING", "spub_claim", "Hybrid Task Scheduling for Constrained Systems",
+                "EuroMLSys @ EUROSYS", true, "florin@test · 2026-07-27 10:00", "—", "—",
+                "workshop of EuroSys", null);
+    }
+
+    @Test
+    void queuePageRendersTheClaimsSectionsAndTheirActionEndpoints() throws Exception {
+        when(publicationMergeAdminFacade.queue()).thenReturn(
+                new PublicationMergeAdminFacade.MergeQueueView(List.of(), List.of(), List.of()));
+        ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.Row approvedRow =
+                new ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.Row(
+                        "claim2", "APPROVED", "spub_other", "Some Approved Paper", "AINA", false,
+                        "florin@test · 2026-07-27 10:00", "admin · 2026-07-27 10:05", "2026-07-27 10:05",
+                        null, null);
+        when(venueClaimAdminFacade.queue()).thenReturn(
+                new ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.ClaimQueueView(
+                        List.of(claimRow("claim1")), List.of(approvedRow), List.of()));
+
+        mockMvc.perform(get("/admin/publication-merges"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Direct venue claim")))
+                .andExpect(content().string(containsString("Pending venue claims")))
+                .andExpect(content().string(containsString("Hybrid Task Scheduling for Constrained Systems")))
+                .andExpect(content().string(containsString("EuroMLSys @ EUROSYS")))
+                .andExpect(content().string(containsString("/admin/publication-merges/venue-claim")))
+                .andExpect(content().string(containsString("/admin/publication-merges/venue-claims/claim1/approve")))
+                .andExpect(content().string(containsString("/admin/publication-merges/venue-claims/claim1/reject")))
+                // An APPROVED claim is revocable from the page — unlike a merge, the revert is cheap and
+                // exact (displaced venue + evidence restored), so the affordance belongs here.
+                .andExpect(content().string(containsString("Decided venue claims")))
+                .andExpect(content().string(containsString("/admin/publication-merges/venue-claims/claim2/reject")))
+                .andExpect(content().string(containsString("Revoke")));
+    }
+
+    @Test
+    void claimApproveAndRejectDelegateWithTheClaimId() throws Exception {
+        when(venueClaimAdminFacade.approve("claim1", "admin", "ok", false)).thenReturn(
+                new ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.OperationResult(
+                        true, "Venue claim applied to spub_claim; projections marked dirty."));
+
+        mockMvc.perform(post("/admin/publication-merges/venue-claims/claim1/approve").param("note", "ok"))
+                .andExpect(status().is3xxRedirection());
+        org.mockito.Mockito.verify(venueClaimAdminFacade).approve("claim1", "admin", "ok", false);
+
+        mockMvc.perform(post("/admin/publication-merges/venue-claims/claim1/reject").param("note", "no"))
+                .andExpect(status().is3xxRedirection());
+        org.mockito.Mockito.verify(venueClaimAdminFacade).reject("claim1", "admin", "no");
+    }
+
+    @Test
+    void directVenueClaimDelegatesTrimmedIdsAndTheWorkshopFlag() throws Exception {
+        when(venueClaimAdminFacade.directClaim("spub_claim", "sforum_eurosys", true, "EuroMLSys",
+                "admin", null, false)).thenReturn(
+                new ro.uvt.pokedex.core.service.application.PublicationVenueClaimAdminFacade.OperationResult(
+                        true, "Venue claim applied to spub_claim."));
+
+        mockMvc.perform(post("/admin/publication-merges/venue-claim")
+                        .param("publicationId", " spub_claim ")
+                        .param("forumId", " sforum_eurosys ")
+                        .param("workshopOf", "true")
+                        .param("workshopLabel", "EuroMLSys"))
+                .andExpect(status().is3xxRedirection());
+        org.mockito.Mockito.verify(venueClaimAdminFacade)
+                .directClaim("spub_claim", "sforum_eurosys", true, "EuroMLSys", "admin", null, false);
     }
 }

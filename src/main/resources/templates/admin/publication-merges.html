@@ -175,6 +175,179 @@
                         </div>
                     </div>
 
+                    <!-- ═══ H93: Venue claims — the second half of this review page ═══ -->
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">Direct venue claim</h6>
+                            </div>
+                            <div class="app-table-section__body" style="padding:0.75rem 1rem;">
+                                <form method="post" th:action="@{/admin/publication-merges/venue-claim}" class="form-inline" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+                                    <input type="text" class="form-control form-control-sm" name="publicationId"
+                                           placeholder="Publication canonical id (spub_…)" style="min-width:18rem;" required>
+                                    <input type="text" class="form-control form-control-sm" name="forumId"
+                                           placeholder="Claimed forum id (sforum_…)" style="min-width:16rem;" required>
+                                    <label class="text-muted" style="font-size:0.82rem; margin:0;">
+                                        <input type="checkbox" name="workshopOf" value="true">
+                                        workshop of that conference (half points off its CORE rank)
+                                    </label>
+                                    <input type="text" class="form-control form-control-sm" name="workshopLabel"
+                                           placeholder="Workshop name (optional)" style="min-width:11rem;">
+                                    <input type="text" class="form-control form-control-sm" name="note"
+                                           placeholder="Note (optional)" style="min-width:12rem;">
+                                    <label class="text-muted" style="font-size:0.82rem; margin:0;">
+                                        <input type="checkbox" name="rebuildNow" value="true">
+                                        rebuild projections now (may take minutes)
+                                    </label>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fa-solid fa-location-dot fa-xs"></i> Claim venue
+                                    </button>
+                                </form>
+                                <small class="text-muted">
+                                    Points the publication at the claimed forum (the displaced venue is preserved). When the
+                                    forum is a DBLP conference stream, venue evidence is written so the scorer resolves its
+                                    CORE rank — with the workshop reduction when flagged. The claim is durable: full rebuilds
+                                    re-apply it, and rejecting it later reverts exactly what it changed.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Pending venue claims ── -->
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">
+                                    Pending venue claims
+                                    <span class="text-muted" style="font-weight:400; font-size:0.82rem;"
+                                          th:text="'(' + ${#lists.size(claimQueue.pending)} + ')'"></span>
+                                </h6>
+                            </div>
+                            <div class="app-table-section__body">
+                                <div class="app-table-scroll">
+                                    <table class="table table-sm app-table">
+                                        <thead>
+                                        <tr>
+                                            <th data-col="requested">Requested</th>
+                                            <th data-col="claim">Publication → claimed venue</th>
+                                            <th data-col="actions" style="min-width:16rem">Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="crow : ${claimQueue.pending}">
+                                            <td data-col="requested" style="max-width:14rem">
+                                                <div th:text="${crow.requestedInfo}"></div>
+                                                <small class="text-muted" th:if="${crow.requestNote}" th:text="${crow.requestNote}"></small>
+                                            </td>
+                                            <td data-col="claim">
+                                                <div th:text="${crow.publicationTitle != null ? crow.publicationTitle : crow.publicationId}"></div>
+                                                <small class="text-muted">
+                                                    → <span th:text="${crow.claimSummary}"></span>
+                                                    <span th:if="${crow.workshopOf}" class="app-queue-badge app-queue-badge--open">workshop</span>
+                                                </small>
+                                            </td>
+                                            <td data-col="actions">
+                                                <form method="post" th:action="@{'/admin/publication-merges/venue-claims/' + ${crow.id} + '/approve'}"
+                                                      style="display:flex; flex-direction:column; gap:0.25rem; margin-bottom:0.4rem;">
+                                                    <input type="text" class="form-control form-control-sm" name="note" placeholder="Decision note (optional)">
+                                                    <label class="text-muted" style="font-size:0.78rem; margin:0;">
+                                                        <input type="checkbox" name="rebuildNow" value="true"> rebuild projections now
+                                                    </label>
+                                                    <button type="submit" class="btn btn-success btn-sm">
+                                                        <i class="fa-solid fa-check fa-xs"></i> Approve &amp; apply
+                                                    </button>
+                                                </form>
+                                                <form method="post" th:action="@{'/admin/publication-merges/venue-claims/' + ${crow.id} + '/reject'}"
+                                                      style="display:flex; gap:0.25rem;">
+                                                    <input type="text" class="form-control form-control-sm" name="note" placeholder="Reject reason (optional)">
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                                        <i class="fa-solid fa-ban fa-xs"></i> Reject
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${claimQueue.pending.isEmpty()}" class="app-admin-empty-row">
+                                            <td colspan="3">
+                                                <th:block th:replace="~{fragments :: admin-empty-state(
+                                                    'No pending venue claims',
+                                                    'Researcher-flagged venue corrections land here for review before they change any score.',
+                                                    null, null)}"></th:block>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Decided venue claims ── -->
+                    <div class="app-table-section" th:if="${!claimQueue.approved.isEmpty() || !claimQueue.rejected.isEmpty()}">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">
+                                    Decided venue claims
+                                    <span class="text-muted" style="font-weight:400; font-size:0.82rem;"
+                                          th:text="'(' + ${#lists.size(claimQueue.approved)} + ' approved, ' + ${#lists.size(claimQueue.rejected)} + ' rejected)'"></span>
+                                </h6>
+                            </div>
+                            <div class="app-table-section__body">
+                                <div class="app-table-scroll">
+                                    <table class="table table-sm app-table">
+                                        <thead>
+                                        <tr>
+                                            <th data-col="claim">Publication → claimed venue</th>
+                                            <th data-col="status">Status</th>
+                                            <th data-col="decided">Decided</th>
+                                            <th data-col="applied">Last applied</th>
+                                            <th data-col="revoke"></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="crow : ${claimQueue.approved}">
+                                            <td data-col="claim">
+                                                <div th:text="${crow.publicationTitle != null ? crow.publicationTitle : crow.publicationId}"></div>
+                                                <small class="text-muted" th:text="${'→ ' + crow.claimSummary}"></small>
+                                            </td>
+                                            <td data-col="status"><span class="app-queue-badge app-queue-badge--resolved">approved</span></td>
+                                            <td data-col="decided" style="max-width:12rem">
+                                                <div th:text="${crow.decidedInfo}"></div>
+                                                <small class="text-muted" th:if="${crow.decisionNote}" th:text="${crow.decisionNote}"></small>
+                                            </td>
+                                            <td data-col="applied" th:text="${crow.lastAppliedAt}"></td>
+                                            <td data-col="revoke">
+                                                <!-- Unlike a merge, revoking a claim is CHEAP: the displaced venue and
+                                                     evidence were captured on first apply and come back exactly. -->
+                                                <form method="post" th:action="@{'/admin/publication-merges/venue-claims/' + ${crow.id} + '/reject'}"
+                                                      style="display:flex; gap:0.25rem;">
+                                                    <input type="text" class="form-control form-control-sm" name="note" placeholder="Revoke reason (optional)">
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                                            title="Reverts the claim: the displaced venue and evidence are restored exactly.">
+                                                        <i class="fa-solid fa-rotate-left fa-xs"></i> Revoke
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        <tr th:each="crow : ${claimQueue.rejected}">
+                                            <td data-col="claim">
+                                                <div th:text="${crow.publicationTitle != null ? crow.publicationTitle : crow.publicationId}"></div>
+                                                <small class="text-muted" th:text="${'→ ' + crow.claimSummary}"></small>
+                                            </td>
+                                            <td data-col="status"><span class="app-queue-badge app-queue-badge--open">rejected</span></td>
+                                            <td data-col="decided" style="max-width:12rem">
+                                                <div th:text="${crow.decidedInfo}"></div>
+                                                <small class="text-muted" th:if="${crow.decisionNote}" th:text="${crow.decisionNote}"></small>
+                                            </td>
+                                            <td data-col="applied" th:text="${crow.lastAppliedAt}"></td>
+                                            <td data-col="revoke"></td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- ── Rejected requests ── -->
                     <div class="app-table-section" th:if="${!queue.rejected.isEmpty()}">
                         <div class="app-table-section__surface">
