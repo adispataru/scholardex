@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.crossref;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -33,19 +35,24 @@ import java.util.Optional;
 public class CrossrefClient {
 
     private static final Logger log = LoggerFactory.getLogger(CrossrefClient.class);
+    /** Static on purpose — a JSON parser, not a bean; same pattern as the thresholds mapper (H68). */
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final WebClient crossrefWebClient;
     private final String userAgent;
     private final long minIntervalMs;
+    private final Duration timeout;
     private long lastRequestAt = 0L;
 
     public CrossrefClient(
             @Qualifier("crossrefWebClient") WebClient crossrefWebClient,
             @Value("${crossref.api.user-agent:scholardex/1.0 (https://github.com/adispataru/scholardex)}") String userAgent,
-            @Value("${crossref.api.min-interval-ms:200}") long minIntervalMs) {
+            @Value("${crossref.api.min-interval-ms:200}") long minIntervalMs,
+            @Value("${crossref.api.timeout-ms:10000}") long timeoutMs) {
         this.crossrefWebClient = crossrefWebClient;
         this.userAgent = userAgent;
         this.minIntervalMs = Math.max(0, minIntervalMs);
+        this.timeout = Duration.ofMillis(Math.max(1000, timeoutMs));
     }
 
     /**
@@ -80,13 +87,31 @@ public class CrossrefClient {
                     .uri("/works/{doi}", normalized)
                     .header("User-Agent", userAgent)
                     .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block()
-                    .path("message");
-        } catch (Exception e) {
-            // 404 is the common, uninteresting case (not every DOI is registered with Crossref).
-            log.debug("Crossref lookup failed for {}: {}", normalized, e.toString());
+                    // Decoded as a STRING and parsed with the Jackson 2 mapper: Spring Boot 4's WebClient
+                    // codecs are Jackson 3, and asking them for a com.fasterxml JsonNode fails on EVERY
+                    // response with a CodecException — which the old debug-level catch turned into a silent
+                    // 0% resolve rate in the first prod sweep.
+                    .bodyToMono(String.class)
+                    // A hard deadline, not a nicety: block() without one waits forever on a dead peer.
+                    .timeout(timeout)
+                    .map(this::parseMessage)
+                    .block();
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException.NotFound e) {
+            // The common, uninteresting case — not every DOI is registered with Crossref.
+            log.debug("Crossref has no record for {}", normalized);
             return null;
+        } catch (Exception e) {
+            // Anything else (DNS, timeout, 5xx) is operational signal, not noise — visible at default level.
+            log.warn("Crossref lookup failed for {}: {}", normalized, e.toString());
+            return null;
+        }
+    }
+
+    private JsonNode parseMessage(String body) {
+        try {
+            return JSON.readTree(body).path("message");
+        } catch (Exception e) {
+            throw new IllegalStateException("unparseable Crossref response", e);
         }
     }
 

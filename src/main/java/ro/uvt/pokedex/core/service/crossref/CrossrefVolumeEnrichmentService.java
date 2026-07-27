@@ -70,6 +70,9 @@ public class CrossrefVolumeEnrichmentService {
      * @param limit 0 or negative for "no cap"; otherwise stop after that many candidates (for a first pass).
      */
     public ImportProcessingResult sweep(boolean dryRun, int limit) {
+        // Logged BEFORE any work: the first prod run left zero trace when it never got this far, and
+        // "did the method even run" should never again require a thread dump to answer.
+        log.info("Crossref volume sweep starting: dryRun={} limit={}", dryRun, limit);
         ImportProcessingResult result = new ImportProcessingResult(30);
         Map<String, ScholardexForumFact> forums = seriesForumsById();
         Instant now = Instant.now();
