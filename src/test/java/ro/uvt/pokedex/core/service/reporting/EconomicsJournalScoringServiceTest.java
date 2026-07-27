@@ -227,6 +227,36 @@ class EconomicsJournalScoringServiceTest {
         assertEquals(10, score.getMultiplier());
     }
 
+    // ── FEAA 2026 M table (economicsM2026 flag) ──
+
+    private Indicator indicator2026() {
+        Indicator i = indicator("IY");
+        i.setEconomicsM2026(true);
+        return i;
+    }
+
+    @Test
+    void m2026MovesOperationsResearchIntoCoreEconomics() {
+        EconomicsJournalScoringService service = new EconomicsJournalScoringService(lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forum("1111-1111"));
+        when(lookupPort.getRankingsByIssn("1111-1111")).thenReturn(
+                List.of(ranking("OPERATIONS RESEARCH & MANAGEMENT SCIENCE - SCIE", 2023, 1.5, WoSRanking.Quarter.Q2)));
+
+        assertEquals(8, service.getScore(publication("ar"), indicator("IY")).getMultiplier()); // 2016: Infoeconomics
+        assertEquals(10, service.getScore(publication("ar"), indicator2026()).getMultiplier()); // 2026: Core
+    }
+
+    @Test
+    void m2026ResidualTierIsThreeNotSix() {
+        EconomicsJournalScoringService service = new EconomicsJournalScoringService(lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forum("1111-1111"));
+        when(lookupPort.getRankingsByIssn("1111-1111")).thenReturn(
+                List.of(ranking("SOCIOLOGY - SSCI", 2023, 1.0, WoSRanking.Quarter.Q3)));
+
+        assertEquals(6, service.getScore(publication("ar"), indicator("IY")).getMultiplier());
+        assertEquals(3, service.getScore(publication("ar"), indicator2026()).getMultiplier());
+    }
+
     private WoSRanking ranking(String category, int year, double ais, WoSRanking.Quarter quarter) {
         WoSRanking.Score score = new WoSRanking.Score();
         score.setAis(Map.of(year, ais));

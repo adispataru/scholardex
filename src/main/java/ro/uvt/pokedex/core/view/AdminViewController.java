@@ -454,6 +454,10 @@ public class AdminViewController {
         private Boolean workshopCategory2026;
         /** H85 — 2026 ACM/EPTCS→C amendment flag; hidden-input round-trip like {@link #workshopCategory2026}. */
         private Boolean acmEptcsCFloor2026;
+        /** FEAA 2026 — economics M-table flag; hidden-input round-trip like {@link #workshopCategory2026}. */
+        private Boolean economicsM2026;
+        /** FEAA 2026 — five-tier book coefficients flag; hidden-input round-trip like {@link #workshopCategory2026}. */
+        private Boolean feaaBookTiers2026;
 
         static IndicatorForm fromIndicator(Indicator indicator) {
             IndicatorForm form = new IndicatorForm();
@@ -474,6 +478,8 @@ public class AdminViewController {
             form.maxPoints = indicator.getMaxPoints();
             form.workshopCategory2026 = indicator.getWorkshopCategory2026();
             form.acmEptcsCFloor2026 = indicator.getAcmEptcsCFloor2026();
+            form.economicsM2026 = indicator.getEconomicsM2026();
+            form.feaaBookTiers2026 = indicator.getFeaaBookTiers2026();
             return form;
         }
 
@@ -493,6 +499,8 @@ public class AdminViewController {
             indicator.setMaxPoints(maxPoints);
             indicator.setWorkshopCategory2026(workshopCategory2026);
             indicator.setAcmEptcsCFloor2026(acmEptcsCFloor2026);
+            indicator.setEconomicsM2026(economicsM2026);
+            indicator.setFeaaBookTiers2026(feaaBookTiers2026);
             return indicator;
         }
     }

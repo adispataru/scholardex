@@ -18,8 +18,15 @@ class FeaaBookScoringServiceTest {
 
     private final ReportingLookupPort lookupPort = mock(ReportingLookupPort.class);
     private final FeaaAnexa1PublisherService anexa1 = mock(FeaaAnexa1PublisherService.class);
-    private final FeaaBookScoringService service = new FeaaBookScoringService(lookupPort, anexa1);
+    private final FeaaNationalPublisherService national = mock(FeaaNationalPublisherService.class);
+    private final FeaaBookScoringService service = new FeaaBookScoringService(lookupPort, anexa1, national);
     private final Indicator indicator = new Indicator();
+
+    private Indicator indicator2026() {
+        Indicator i = new Indicator();
+        i.setFeaaBookTiers2026(true);
+        return i;
+    }
 
     private ScoringPublicationReadModel pub(String subtype, String publisher, boolean prestige) {
         ScholardexForumView forum = new ScholardexForumView();
@@ -82,5 +89,41 @@ class FeaaBookScoringServiceTest {
     void journalArticleGetsNoBookScore() {
         // 'ar' (article) is scored by ECONOMICS_JOURNAL_AIS, not here → base score stays 0.
         assertEquals(0.0, service.getScore(pub("ar", "Elsevier", true), indicator).getScore());
+    }
+
+    // ── FEAA 2026 five-tier coefficients (feaaBookTiers2026 flag) ──
+
+    private ScoringPublicationReadModel pub2026(String subtype, String publisher, boolean prestige, boolean nationalHit) {
+        ScoringPublicationReadModel p = pub(subtype, publisher, prestige);
+        when(national.isRecognized(publisher)).thenReturn(nationalHit);
+        return p;
+    }
+
+    @Test
+    void tiers2026IntlBookAndChapter() {
+        assertEquals(0.5, service.getScore(pub2026("bk", "Elsevier", true, false), indicator2026()).getScore());
+        assertEquals(0.3, service.getScore(pub2026("ch", "Springer", true, false), indicator2026()).getScore());
+    }
+
+    @Test
+    void tiers2026NationalRecognizedBookAndChapter() {
+        assertEquals(0.25, service.getScore(pub2026("bk", "Editura ASE", false, true), indicator2026()).getScore());
+        assertEquals(0.15, service.getScore(pub2026("ch", "Editura ASE", false, true), indicator2026()).getScore());
+        assertEquals("FEAA_BOOK_NATIONAL",
+                service.getScore(pub2026("bk", "Editura ASE", false, true), indicator2026()).getCoreRankingEquivalent());
+    }
+
+    @Test
+    void tiers2026UnlistedPublisherAndProceedingsDropToPointOne() {
+        // 2026 change vs 2016: an unlisted-publisher BOOK is 0.1 (2016 gave 0.2 to any non-Anexa1 book).
+        assertEquals(0.1, service.getScore(pub2026("bk", "Complet Necunoscuta", false, false), indicator2026()).getScore());
+        assertEquals(0.1, service.getScore(pub2026("ch", "Complet Necunoscuta", false, false), indicator2026()).getScore());
+        assertEquals(0.1, service.getScore(pub2026("cp", "Some Conf", false, false), indicator2026()).getScore());
+    }
+
+    @Test
+    void legacyIndicatorKeeps2016Coefficients() {
+        // No flag → the 2016 four-slot table, even when the national register would match.
+        assertEquals(0.2, service.getScore(pub2026("bk", "Editura ASE", false, true), indicator).getScore());
     }
 }

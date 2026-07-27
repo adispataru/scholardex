@@ -2282,5 +2282,95 @@
     },
     "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
     "description": "D(viii), componenta de universități (fișa 2026): profesor invitat la universități din topurile internaționale (QS, URAP, Shanghai — cea mai bună clasare) — 12/8/4/2/1 puncte pentru top 20/100/200/500/peste 500, pe vizită."
+  },
+  {
+    "_id": {
+      "$oid": "6a67b4a35dc7f48abc80a6ff"
+    },
+    "name": "FEEA_P_2026",
+    "formula": "M * (1 - (N-1) * 0.1) * S",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "0005456388196dc64050b0a1c70ce1732655b7d8184c3a69320d70de7a353b55",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "topN": 10,
+      "perForumYearCap": 1,
+      "exemptMultiplierMin": 8,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopNPerForumYear"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "economicsM2026": true
+  },
+  {
+    "_id": {
+      "$oid": "6a67b4a35dc7f48abc80a700"
+    },
+    "name": "FEEA_C_2026",
+    "formula": "Q == 'Q1' ? 1 : Q == 'Q2' ? 0.75 : Q == 'Q3' ? 0.5 : Q == 'Q4' ? 0.25 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "strategy": "AIS",
+      "policy": "ANY_COAUTHOR",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+    },
+    "formulaHash": "142a8ea38bc77d5f33a74a6c25f88643719c5d2ef0c25f75062c7b920d208058",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "n": 10,
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a67b4a35dc7f48abc80a701"
+    },
+    "name": "FEEA_Books_2026",
+    "formula": "S/N",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "FEAA_BOOK",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+    "feaaBookTiers2026": true
   }
 ]

@@ -24,11 +24,14 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 public class FeaaBookScoringService extends AbstractForumScoringService {
 
     private final FeaaAnexa1PublisherService anexa1PublisherService;
+    private final FeaaNationalPublisherService nationalPublisherLookup;
 
     public FeaaBookScoringService(ReportingLookupPort lookupPort,
-                                  FeaaAnexa1PublisherService anexa1PublisherService) {
+                                  FeaaAnexa1PublisherService anexa1PublisherService,
+                                  FeaaNationalPublisherService nationalPublisherLookup) {
         super(lookupPort);
         this.anexa1PublisherService = anexa1PublisherService;
+        this.nationalPublisherLookup = nationalPublisherLookup;
     }
 
     @Override
@@ -43,13 +46,16 @@ public class FeaaBookScoringService extends AbstractForumScoringService {
             return score;
         }
         String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
-        Double coefficient = coefficientFor(subtype, publication);
+        boolean tiers2026 = indicator != null && indicator.usesFeaaBookTiers2026();
+        Double coefficient = tiers2026
+                ? coefficientFor2026(subtype, publication)
+                : coefficientFor(subtype, publication);
         if (coefficient == null) {
             return score; // not a book/chapter/proceedings → no FEAA book points
         }
         score.setScore(coefficient);
         score.setScoringSource(strategy().name());
-        score.setCoreRankingEquivalent(slotLabel(coefficient));
+        score.setCoreRankingEquivalent(tiers2026 ? slotLabel2026(subtype, coefficient) : slotLabel(coefficient));
         return score;
     }
 
@@ -103,5 +109,37 @@ public class FeaaBookScoringService extends AbstractForumScoringService {
         if (coefficient == 0.25) return "FEAA_CHAPTER_INTL";
         if (coefficient == 0.2) return "FEAA_BOOK_NATIONAL";
         return "FEAA_CHAPTER_OR_PROCEEDINGS";
+    }
+
+    /**
+     * COMISIA 27 2026 five-slot coefficients: international Anexa 1 book 0.5 / chapter 0.3; national
+     * recognized-publisher book 0.25 / chapter 0.15 (the CNCSIS register stands in for the CNATDCU
+     * "lista A2" until that list is sourced — flagged approximation); anything else, including an ISI
+     * Proceedings paper, 0.1.
+     */
+    private Double coefficientFor2026(String subtype, ScoringPublicationReadModel publication) {
+        if (subtype == null) {
+            return null;
+        }
+        return switch (subtype) {
+            case "bk" -> isPrestige(publication) ? 0.5 : isNationalRecognized(publication) ? 0.25 : 0.1;
+            case "ch" -> isPrestige(publication) ? 0.3 : isNationalRecognized(publication) ? 0.15 : 0.1;
+            case "cp" -> 0.1;
+            default -> null;
+        };
+    }
+
+    /** 2026 coefficients overlap the 2016 ones with different meanings (0.25 = national BOOK now), so the
+     *  slot label resolves from subtype + coefficient instead of coefficient alone. */
+    private static String slotLabel2026(String subtype, double coefficient) {
+        if (coefficient == 0.5) return "FEAA_BOOK_INTL";
+        if (coefficient == 0.3) return "FEAA_CHAPTER_INTL";
+        if (coefficient == 0.25) return "FEAA_BOOK_NATIONAL";
+        if (coefficient == 0.15) return "FEAA_CHAPTER_NATIONAL";
+        return "FEAA_CHAPTER_OR_PROCEEDINGS";
+    }
+
+    private boolean isNationalRecognized(ScoringPublicationReadModel publication) {
+        return nationalPublisherLookup.isRecognized(resolvePublisher(publication));
     }
 }

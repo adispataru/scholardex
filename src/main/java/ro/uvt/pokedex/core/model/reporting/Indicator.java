@@ -92,6 +92,32 @@ public class Indicator {
     }
 
     /**
+     * FEAA 2026 — opt into the 2026 economics M table (COMISIA 27): Operations Research &amp; Management
+     * Science moves from Infoeconomics (M=8) into Core Economics (M=10), and the residual tier drops
+     * from 6 to 3 ("Social Science &amp; Science — toate cu excepția celor menționate anterior: 3").
+     * {@code null}/false keeps the frozen 2016 Anexa 27 table. Nullable-only like the other 2026 flags.
+     */
+    private Boolean economicsM2026;
+
+    /** True when this indicator resolves M with the 2026 COMISIA 27 table. */
+    public boolean usesEconomicsM2026() {
+        return Boolean.TRUE.equals(economicsM2026);
+    }
+
+    /**
+     * FEAA 2026 — opt into the 2026 book/chapter coefficient tiers (5 slots): international Anexa 1
+     * book 0.5 / chapter 0.3; NATIONAL recognized-publisher book 0.25 / chapter 0.15 (a tier the 2016
+     * fišă did not have); everything else (unlisted publisher, ISI Proceedings paper) 0.1.
+     * {@code null}/false keeps the 2016 four-slot coefficients (0.5/0.25/0.2/0.1).
+     */
+    private Boolean feaaBookTiers2026;
+
+    /** True when this indicator scores books/chapters with the 2026 five-tier coefficients. */
+    public boolean usesFeaaBookTiers2026() {
+        return Boolean.TRUE.equals(feaaBookTiers2026);
+    }
+
+    /**
      * RETIRED (2026-07-24): best-of-AIS/JIF journal classification is now universal in
      * {@code ComputerScienceJournalScoringService} — the 2016 standard's AIS-only regime applied to too
      * few years to be worth keeping distinguishable. The field stays only so persisted documents that
@@ -281,6 +307,20 @@ public class Indicator {
      */
     public boolean isDistinctForumsSelector() {
         return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.DistinctForums;
+    }
+
+    /**
+     * True iff the effective selector is a {@link ro.uvt.pokedex.core.model.reporting.scoring.Selector.TopNPerForumYear}:
+     * FEAA 2026 articles — max 1 per journal-year (Core/Info exempt), then global top 10.
+     */
+    public boolean isTopNPerForumYearSelector() {
+        return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.TopNPerForumYear;
+    }
+
+    /** The {@code TopNPerForumYear} selector, or {@code null} when the indicator carries a different one. */
+    public ro.uvt.pokedex.core.model.reporting.scoring.Selector.TopNPerForumYear topNPerForumYearSelector() {
+        return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.TopNPerForumYear f
+                ? f : null;
     }
 
     /**

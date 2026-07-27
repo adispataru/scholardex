@@ -202,6 +202,55 @@ public class ScientificProductionService {
                     excluded.put(publication.getTitle(), score);
                 }
             }
+        } else if (indicator.isTopNPerForumYearSelector()) {
+            // FEAA 2026 articles: at most perForumYearCap per (journal, publication-year) — Core/Info
+            // articles (typed multiplier M >= exemptMultiplierMin) are exempt from the per-journal cap —
+            // then the global top-N by author score. Highest-scoring items win both cuts.
+            var spec = indicator.topNPerForumYearSelector();
+            totalScore = 0.0;
+            List<ScoringPublicationReadModel> positives = new ArrayList<>();
+            for (ScoringPublicationReadModel publication : publications) {
+                Score score = interResult.get(publication.getTitle());
+                if (score != null && score.getAuthorScore() > 0) {
+                    positives.add(publication);
+                }
+            }
+            positives.sort((p1, p2) -> Double.compare(
+                    interResult.get(p2.getTitle()).getAuthorScore(),
+                    interResult.get(p1.getTitle()).getAuthorScore()));
+            Map<String, Integer> keptPerForumYear = new HashMap<>();
+            int keptCount = 0;
+            for (ScoringPublicationReadModel publication : positives) {
+                Score score = interResult.get(publication.getTitle());
+                boolean exempt = score.getMultiplier() != null
+                        && score.getMultiplier() >= spec.exemptMultiplierMin();
+                String bucket = (publication.getForumId() != null
+                        ? publication.getForumId() : "__no_forum__" + publication.getTitle())
+                        + "@" + score.getYear();
+                if (!exempt && keptPerForumYear.getOrDefault(bucket, 0) >= spec.perForumYearCap()) {
+                    score.getScoringInfo().put("zeroReason", "OVER_PER_FORUM_CAP");
+                    excluded.put(publication.getTitle(), score);
+                    continue;
+                }
+                if (keptCount >= spec.topN()) {
+                    score.getScoringInfo().put("zeroReason", "NOT_IN_TOP_N");
+                    excluded.put(publication.getTitle(), score);
+                    continue;
+                }
+                result.put(publication.getTitle(), score);
+                totalScore += score.getAuthorScore();
+                keptCount++;
+                if (!exempt) {
+                    keptPerForumYear.merge(bucket, 1, Integer::sum);
+                }
+            }
+            // Parity with the TopN branch: interResult entries that weren't kept (e.g. authorScore == 0
+            // gate survivors) are reported through the excluded map, reason intact.
+            for (Map.Entry<String, Score> entry : interResult.entrySet()) {
+                if (!result.containsKey(entry.getKey()) && !excluded.containsKey(entry.getKey())) {
+                    excluded.put(entry.getKey(), entry.getValue());
+                }
+            }
         }else{
             result = interResult;
         }

@@ -1809,5 +1809,112 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
- }
+ },
+{
+ "_id": {
+  "$oid": "6a67b4a35dc7f48abc80a702"
+ },
+ "individualAffiliation": {
+  "$ref": "institutions",
+  "$id": "ANY"
+ },
+ "title": "FEAA 2026",
+ "description": "COMISIA 27 (2026): S = P + C din max 10 articole WoS cu AIS nenul (max 1/revistă/an, exceptând Core/Infoeconomics) și max 10 citări (fără autocitări și semi-autocitări). Cărțile/capitolele substituie articole, plafonat la 25% din P minim.",
+ "indicators": [
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a67b4a35dc7f48abc80a700"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a67b4a35dc7f48abc80a6ff"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a67b4a35dc7f48abc80a701"
+   }
+  }
+ ],
+ "criteria": [
+  {
+   "name": "C — citări",
+   "indicatorIndices": [
+    0
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 0.75
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 2.0
+    }
+   ]
+  },
+  {
+   "name": "P — articole (+ cărți plafonate)",
+   "indicatorIndices": [
+    1
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 1.25
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 3.0
+    }
+   ],
+   "thresholdCapAdditions": [
+    {
+     "indicatorIndex": 2,
+     "percent": 25.0
+    }
+   ]
+  },
+  {
+   "name": "S = P + C",
+   "indicatorIndices": [
+    0,
+    1
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 2.25
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 6.0
+    }
+   ],
+   "thresholdCapAdditions": [
+    {
+     "indicatorIndex": 2,
+     "percent": 25.0,
+     "thresholdCriterionIndex": 1
+    }
+   ]
+  },
+  {
+   "name": "Cărți/Capitole (substituie articole, max 25% din P minim)",
+   "indicatorIndices": [
+    2
+   ],
+   "contributesToTotal": false,
+   "thresholds": []
+  }
+ ],
+ "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+}
 ]

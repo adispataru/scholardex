@@ -10,7 +10,8 @@ package ro.uvt.pokedex.core.model.reporting.scoring;
  * The {@code n} parameter on {@link TopN} is parameterised in v1 so the future "TOP_5" or
  * "TOP_20" methodology change is a data update, not a code change.
  */
-public sealed interface Selector permits Selector.All, Selector.TopN, Selector.DistinctForums, Selector.PerForumCap {
+public sealed interface Selector permits Selector.All, Selector.TopN, Selector.DistinctForums, Selector.PerForumCap,
+        Selector.TopNPerForumYear {
 
     record All() implements Selector {}
 
@@ -34,6 +35,20 @@ public sealed interface Selector permits Selector.All, Selector.TopN, Selector.D
     }
 
     /**
+     * FEAA 2026 article rule: keep at most {@code perForumYearCap} positively-scored items per
+     * (forum, publication-year) — "maxim 1 articol publicat în aceeași revistă într-un an" — EXCEPT
+     * items whose typed multiplier M is at least {@code exemptMultiplierMin} (Core Economics M=10 /
+     * Infoeconomics M=8 articles are exempt from the per-journal cap); then keep the global top
+     * {@code topN} by author score. Highest-scoring items win both cuts.
+     */
+    record TopNPerForumYear(int topN, int perForumYearCap, int exemptMultiplierMin) implements Selector {
+        public TopNPerForumYear {
+            if (topN < 1) throw new IllegalArgumentException("topN must be >= 1; got " + topN);
+            if (perForumYearCap < 1) throw new IllegalArgumentException("perForumYearCap must be >= 1; got " + perForumYearCap);
+        }
+    }
+
+    /**
      * PD 2026 (mentor Q2-diversity rule): every positively-scored item stays in the map, but the
      * indicator TOTAL is the number of <em>distinct forums</em> among them rather than the sum —
      * "minimum 2 dintre aceste articole trebuie să fie din reviste diferite" counts venues, not works.
@@ -53,6 +68,8 @@ public sealed interface Selector permits Selector.All, Selector.TopN, Selector.D
             case "TOP_10"          -> new TopN(10);
             case "DISTINCT_FORUMS" -> new DistinctForums();
             case "PER_FORUM_CAP_2" -> new PerForumCap(2);
+            // FEAA 2026: top 10 articles, max 1 per journal-year, Core/Info (M>=8) exempt from the cap.
+            case "TOP_10_PER_FORUM_YEAR_1_EXEMPT_M8" -> new TopNPerForumYear(10, 1, 8);
             default -> throw new IllegalArgumentException("Unknown selector name: " + legacyName);
         };
     }
@@ -74,6 +91,13 @@ public sealed interface Selector permits Selector.All, Selector.TopN, Selector.D
             case PerForumCap cap -> {
                 if (cap.n() == 2) yield "PER_FORUM_CAP_2";
                 throw new IllegalStateException("PerForumCap.n=" + cap.n() + " has no legacy representation");
+            }
+            case TopNPerForumYear f -> {
+                if (f.topN() == 10 && f.perForumYearCap() == 1 && f.exemptMultiplierMin() == 8) {
+                    yield "TOP_10_PER_FORUM_YEAR_1_EXEMPT_M8";
+                }
+                throw new IllegalStateException("TopNPerForumYear(" + f.topN() + "," + f.perForumYearCap()
+                        + "," + f.exemptMultiplierMin() + ") has no legacy representation");
             }
         };
     }

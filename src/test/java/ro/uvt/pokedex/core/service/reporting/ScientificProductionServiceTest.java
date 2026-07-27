@@ -1364,6 +1364,74 @@ class ScientificProductionServiceTest {
         return score;
     }
 
+    // ── FEAA 2026: TopNPerForumYear selector (max 1/journal-year, Core/Info exempt, then top N) ──
+
+    @Test
+    void topNPerForumYearCapsPerJournalYearWithCoreInfoExemption() {
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "ECONOMICS_JOURNAL_AIS");
+        indicator.setSelectorSpec(new ro.uvt.pokedex.core.model.reporting.scoring.Selector.TopNPerForumYear(10, 1, 8));
+
+        // Same journal, same year: two Social-Science articles (M=3, capped at 1) + two Core articles
+        // (M=10, exempt). Different year on the same journal: its own bucket.
+        ScoringPublication socialA = publication("p-s1", "f-j1", "2023-05-01", "ar", "ar", "Social A", List.of("a1"));
+        ScoringPublication socialB = publication("p-s2", "f-j1", "2023-09-01", "ar", "ar", "Social B", List.of("a1"));
+        ScoringPublication socialOtherYear = publication("p-s3", "f-j1", "2022-01-01", "ar", "ar", "Social 2022", List.of("a1"));
+        ScoringPublication coreA = publication("p-c1", "f-j1", "2023-02-01", "ar", "ar", "Core A", List.of("a1"));
+        ScoringPublication coreB = publication("p-c2", "f-j1", "2023-08-01", "ar", "ar", "Core B", List.of("a1"));
+        when(scoringFactoryService.getScoringService("ECONOMICS_JOURNAL_AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(socialA, indicator)).thenReturn(scoreWithYearAndMultiplier(2.0, 2023, 3));
+        when(scoringService.getScore(socialB, indicator)).thenReturn(scoreWithYearAndMultiplier(1.5, 2023, 3));
+        when(scoringService.getScore(socialOtherYear, indicator)).thenReturn(scoreWithYearAndMultiplier(1.0, 2022, 3));
+        when(scoringService.getScore(coreA, indicator)).thenReturn(scoreWithYearAndMultiplier(3.0, 2023, 10));
+        when(scoringService.getScore(coreB, indicator)).thenReturn(scoreWithYearAndMultiplier(2.5, 2023, 10));
+
+        ScientificProductionService.ScoredProductionResult result =
+                scientificProductionService.calculateScientificProductionScoreDetailed(
+                        List.of(socialA, socialB, socialOtherYear, coreA, coreB), indicator);
+
+        // Kept: both Core (exempt), Social A (best of the 2023 bucket), Social 2022 (own bucket).
+        assertEquals(3.0 + 2.5 + 2.0 + 1.0, result.scores().get("total").getAuthorScore(), 0.0001);
+        assertTrue(result.scores().containsKey("Core A"));
+        assertTrue(result.scores().containsKey("Core B"));
+        assertTrue(result.scores().containsKey("Social A"));
+        assertTrue(result.scores().containsKey("Social 2022"));
+        // Social B lost the 2023 bucket to the higher-scoring Social A.
+        assertEquals("OVER_PER_FORUM_CAP",
+                result.excluded().get("Social B").getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void topNPerForumYearAppliesGlobalTopNAfterTheJournalCap() {
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "ECONOMICS_JOURNAL_AIS");
+        indicator.setSelectorSpec(new ro.uvt.pokedex.core.model.reporting.scoring.Selector.TopNPerForumYear(2, 1, 8));
+
+        ScoringPublication a = publication("p-a", "f-1", "2023-01-01", "ar", "ar", "A", List.of("a1"));
+        ScoringPublication b = publication("p-b", "f-2", "2023-01-01", "ar", "ar", "B", List.of("a1"));
+        ScoringPublication c = publication("p-c", "f-3", "2023-01-01", "ar", "ar", "C", List.of("a1"));
+        when(scoringFactoryService.getScoringService("ECONOMICS_JOURNAL_AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(a, indicator)).thenReturn(scoreWithYearAndMultiplier(3.0, 2023, 3));
+        when(scoringService.getScore(b, indicator)).thenReturn(scoreWithYearAndMultiplier(2.0, 2023, 3));
+        when(scoringService.getScore(c, indicator)).thenReturn(scoreWithYearAndMultiplier(1.0, 2023, 3));
+
+        ScientificProductionService.ScoredProductionResult result =
+                scientificProductionService.calculateScientificProductionScoreDetailed(
+                        List.of(a, b, c), indicator);
+
+        assertEquals(5.0, result.scores().get("total").getAuthorScore(), 0.0001); // top 2 of 3
+        assertEquals("NOT_IN_TOP_N", result.excluded().get("C").getScoringInfo().get("zeroReason"));
+    }
+
+    private Score scoreWithYearAndMultiplier(double authorAndBase, int year, int multiplier) {
+        Score score = new Score();
+        score.setScore(authorAndBase);
+        score.setAuthorScore(0.0);
+        score.setYear(year);
+        score.setMultiplier(multiplier);
+        return score;
+    }
+
     // ── S2: Poz formula variable — per-position item scores and totals ──
 
     @Test

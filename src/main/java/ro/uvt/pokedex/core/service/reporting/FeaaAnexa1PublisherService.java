@@ -71,9 +71,10 @@ public class FeaaAnexa1PublisherService {
             return;
         }
         try {
-            if (repository.count() == 0) {
-                seedFromFixture();
-            }
+            // Reconcile instead of seed-only-when-empty: a fixture row missing from the collection
+            // (e.g. De Gruyter, added by the 2026 Anexa 1) is inserted on every load, so already-seeded
+            // databases — including prod — pick up list growth without a manual import. Never deletes.
+            reconcileFixture();
             reloadCache();
             loaded.set(true);
         } catch (org.springframework.dao.DataAccessException e) {
@@ -94,9 +95,13 @@ public class FeaaAnexa1PublisherService {
         log.info("FEAA Anexa 1 publisher list loaded: {} publishers", names.size());
     }
 
-    private void seedFromFixture() {
+    private void reconcileFixture() {
         try (InputStream in = new ClassPathResource(FIXTURE).getInputStream();
              BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            Set<String> existing = new HashSet<>();
+            for (FeaaAnexa1Publisher p : repository.findAll()) {
+                existing.add(normalize(p.getName()));
+            }
             List<FeaaAnexa1Publisher> batch = new ArrayList<>();
             String line;
             boolean header = true;
@@ -109,12 +114,16 @@ public class FeaaAnexa1PublisherService {
                 String nr = line.substring(0, comma).trim();
                 try { p.setNr(Integer.parseInt(nr)); } catch (NumberFormatException ignored) { }
                 p.setName(stripQuotes(line.substring(comma + 1).trim()));
-                batch.add(p);
+                if (!existing.contains(normalize(p.getName()))) {
+                    batch.add(p);
+                }
             }
-            repository.saveAll(batch);
-            log.info("Seeded FEAA Anexa 1 publisher list from {}: {} rows", FIXTURE, batch.size());
+            if (!batch.isEmpty()) {
+                repository.saveAll(batch);
+                log.info("Reconciled FEAA Anexa 1 publisher list from {}: {} new rows", FIXTURE, batch.size());
+            }
         } catch (IOException e) {
-            log.error("Failed to seed FEAA Anexa 1 publisher list from {}", FIXTURE, e);
+            log.error("Failed to reconcile FEAA Anexa 1 publisher list from {}", FIXTURE, e);
         }
     }
 

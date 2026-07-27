@@ -46,6 +46,8 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     private static final int CORE_ECONOMICS_MULTIPLIER = 10;
     private static final int INFOECONOMICS_MULTIPLIER = 8;
     private static final int OTHER_ECONOMICS_MULTIPLIER = 6;
+    /** 2026 COMISIA 27 residual tier ("Social Science & Science — toate cu excepția celor menționate"). */
+    private static final int OTHER_ECONOMICS_MULTIPLIER_2026 = 3;
 
     @Autowired
     public EconomicsJournalScoringService(ReportingLookupPort lookupPort) {
@@ -65,12 +67,13 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
 
         if (isArticleOrReview(publication)) {
+            final boolean m2026 = indicator.usesEconomicsM2026();
             computeScores(
                     domain,
                     forum,
                     allowedYears,
                     scoreResult,
-                    this::computeEconomicsScore,
+                    (ranking, year, category, rank) -> computeEconomicsScore(ranking, year, category, rank, m2026),
                     this::compareScoresByPointsAndMultiplier
             );
         }
@@ -113,15 +116,16 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
         ScholardexForumView forum = getForumFromActivity(activity);
 
         ScoreResult scoreResult = initializeScoreResult();
-        List<Integer> allowedYears = 
+        List<Integer> allowedYears =
                 indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
+        final boolean m2026 = indicator.usesEconomicsM2026();
         computeScores(
                 domain,
                 forum,
                 allowedYears,
                 scoreResult,
-                this::computeEconomicsScore,
+                (ranking, year, category, rank) -> computeEconomicsScore(ranking, year, category, rank, m2026),
                 this::compareScoresByPointsAndMultiplier
         );
 
@@ -132,7 +136,12 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     /*  CS-specific scoring logic                                        */
     /* ------------------------------------------------------------------ */
 
-    private Optional<Score> computeEconomicsScore(WoSRanking ranking, int year, String category, WoSRanking.Rank rank) {
+    /**
+     * {@code m2026} selects the COMISIA 27 2026 M table (OR&MS in Core, residual 3) over the frozen
+     * 2016 Anexa 27 one — threaded from {@link Indicator#usesEconomicsM2026()} by the getScore lambdas.
+     */
+    private Optional<Score> computeEconomicsScore(WoSRanking ranking, int year, String category,
+                                                  WoSRanking.Rank rank, boolean m2026) {
 
         Score returnScore = new Score();
         if( ranking.getScore() == null || ranking.getScore().getAis() == null || ranking.getScore().getAis().get(year) == null) {
@@ -142,7 +151,7 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
 
         String cat = ScoringCategorySupport.extractCategoryName(category);
         String index = ScoringCategorySupport.extractCategoryIndex(category);
-        int multiplier = resolveMultiplier(cat, index);
+        int multiplier = resolveMultiplier(cat, index, m2026);
         WoSRanking.Quarter qAis = rank.getQAis() != null ? rank.getQAis().get(year) : null;
         String quarterStr = qAis != null ? qAis.toString() : null;
         if(multiplier > 0) {
@@ -158,7 +167,7 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
         return Optional.of(returnScore);
     }
 
-    private int resolveMultiplier(String categoryName, String categoryIndex) {
+    private int resolveMultiplier(String categoryName, String categoryIndex, boolean m2026) {
         // The FEAA standard's Table 1 ("revistelor ISI ... conform JCR") lives entirely inside the
         // SCIE/SSCI universe — its residual tier is literally named "Social Science & Science". The named
         // Core-Economics/Infoeconomics tiers are subsets OF that universe, so an ESCI placement in e.g.
@@ -167,13 +176,18 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
         if (!othersIndices.contains(categoryIndex)) {
             return 0;
         }
+        // 2026 COMISIA 27 table: OR&MS is listed under Core Economics (it sits in the 2016 Infoeconomics
+        // list below), and the residual "Social Science & Science" tier drops from 6 to 3.
+        if (m2026 && "OPERATIONS RESEARCH & MANAGEMENT SCIENCE".equals(categoryName)) {
+            return CORE_ECONOMICS_MULTIPLIER;
+        }
         if(CORE_ECONOMICS.contains(categoryName)) {
             return CORE_ECONOMICS_MULTIPLIER;
         }
         if (INFOECONOMICS.contains(categoryName)) {
             return INFOECONOMICS_MULTIPLIER;
         }
-        return OTHER_ECONOMICS_MULTIPLIER;
+        return m2026 ? OTHER_ECONOMICS_MULTIPLIER_2026 : OTHER_ECONOMICS_MULTIPLIER;
     }
 
     /* ------------------------------------------------------------------ */
