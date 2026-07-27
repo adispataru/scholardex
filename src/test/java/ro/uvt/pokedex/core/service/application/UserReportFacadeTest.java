@@ -1553,10 +1553,12 @@ class UserReportFacadeTest {
         when(scientificProductionService.calculateScientificImpactScore(any(ScoringPublicationReadModel.class), anyList(), eq(citationIndicator), anyMap()))
                 .thenReturn(Map.of("CP1", totalScore(2.0), "total", totalScore(2.0)));
 
-        double publicationScore = (double) invokePrivate(
-                "calculatePublicationScore",
+        // S2: the helper returns the synthetic total Score (per-position divergences ride in its
+        // scoringInfo); the indicator total is its authorScore.
+        double publicationScore = ((ro.uvt.pokedex.core.service.reporting.Score) invokePrivate(
+                "calculatePublicationTotal",
                 new Class[]{Indicator.class, List.class, List.class},
-                publicationIndicator, List.of(author), List.of(pub));
+                publicationIndicator, List.of(author), List.of(pub))).getAuthorScore();
         double citationScore = (double) invokePrivate(
                 "calculateCitationScore",
                 new Class[]{Indicator.class, List.class, List.class},
