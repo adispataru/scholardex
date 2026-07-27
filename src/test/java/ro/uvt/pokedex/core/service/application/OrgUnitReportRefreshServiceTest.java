@@ -287,7 +287,7 @@ class OrgUnitReportRefreshServiceTest {
 
     private static ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto runDto() {
         return new ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto(
-                "run-1", "rep-1", java.util.List.of(), java.util.Map.of(), java.util.Map.of(),
+                "run-1", "rep-1", java.util.List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
                 Instant.parse("2026-07-07T10:00:00Z"),
                 ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto.Source.ADMIN_PROVISIONAL,
                 "admin@uvt.ro");

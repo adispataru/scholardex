@@ -9,6 +9,8 @@ public record IndividualReportRunDto(
         String reportDefinitionId,
         List<IndicatorApplyResultDto> indicatorResults,
         Map<String, Double> indicatorScoresByIndicatorId,
+        /** S2: per-position indicator totals (indicatorId → position → total); empty when no formula diverges. */
+        Map<String, Map<String, Double>> indicatorScoresByPositionByIndicatorId,
         Map<Integer, Double> criteriaScores,
         Instant createdAt,
         Source source,

@@ -1363,4 +1363,65 @@ class ScientificProductionServiceTest {
         score.setAuthorScore(0.0);
         return score;
     }
+
+    // ── S2: Poz formula variable — per-position item scores and totals ──
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void pozFormulaStampsPerPositionDivergencesOnItemsAndTotal() {
+        // The FV Info 2016 ruling: category-D conference points (S=1) count canonically and for
+        // Asist/Lect; they are cut only when the target position is CONF_UNIV/PROF_UNIV.
+        Indicator indicator = indicator("PUBLICATIONS",
+                "(Poz == 'CONF_UNIV' || Poz == 'PROF_UNIV') ? (S > 1 ? S/max(N-2,1) : 0) : S/max(N-2,1)");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication rankedB = publication("p-b", "f-b", "2022-01-01", "ar", "ar",
+                "Ranked B Paper", List.of("a1"));
+        ScoringPublication rankedD = publication("p-d", "f-d", "2021-01-01", "ar", "ar",
+                "Ranked D Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(rankedB, indicator)).thenReturn(score(4.0));
+        when(scoringService.getScore(rankedD, indicator)).thenReturn(score(1.0));
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(rankedB, rankedD), indicator);
+
+        // Canonical (Poz = "") counts D: total 4 + 1 = 5.
+        assertEquals(5.0, result.get("total").getAuthorScore(), 0.0001);
+        // The D item diverges ONLY for Conf/Prof (cut to 0); Asist/Lect equal canonical → absent.
+        Map<String, Double> dByPosition = (Map<String, Double>)
+                result.get("Ranked D Paper").getScoringInfo()
+                        .get(ScientificProductionService.AUTHOR_SCORE_BY_POSITION);
+        assertEquals(0.0, dByPosition.get("CONF_UNIV"), 0.0001);
+        assertEquals(0.0, dByPosition.get("PROF_UNIV"), 0.0001);
+        org.junit.jupiter.api.Assertions.assertFalse(dByPosition.containsKey("ASIST_UNIV"));
+        org.junit.jupiter.api.Assertions.assertFalse(dByPosition.containsKey("LECT_UNIV"));
+        // The B item never diverges → no map at all.
+        org.junit.jupiter.api.Assertions.assertNull(result.get("Ranked B Paper").getScoringInfo()
+                .get(ScientificProductionService.AUTHOR_SCORE_BY_POSITION));
+        // The total carries only the diverging positions: Conf/Prof = 4 (D cut).
+        Map<String, Double> totalByPosition = (Map<String, Double>)
+                result.get("total").getScoringInfo()
+                        .get(ScientificProductionService.AUTHOR_SCORE_BY_POSITION);
+        assertEquals(4.0, totalByPosition.get("CONF_UNIV"), 0.0001);
+        assertEquals(4.0, totalByPosition.get("PROF_UNIV"), 0.0001);
+        org.junit.jupiter.api.Assertions.assertFalse(totalByPosition.containsKey("ASIST_UNIV"));
+    }
+
+    @Test
+    void nonPozFormulaStampsNothing() {
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2,1)");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication paper = publication("p-1", "f-1", "2022-01-01", "ar", "ar",
+                "A Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(paper, indicator)).thenReturn(score(4.0));
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(paper), indicator);
+
+        org.junit.jupiter.api.Assertions.assertNull(result.get("A Paper").getScoringInfo()
+                .get(ScientificProductionService.AUTHOR_SCORE_BY_POSITION));
+        org.junit.jupiter.api.Assertions.assertNull(result.get("total").getScoringInfo()
+                .get(ScientificProductionService.AUTHOR_SCORE_BY_POSITION));
+    }
 }

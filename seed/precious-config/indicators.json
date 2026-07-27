@@ -1254,18 +1254,18 @@
       "$oid": "6a049c242e64c65c14f9e01a"
     },
     "name": "Info_B_Conferințe",
-    "formula": "S > 1 ? S/max(N-2, 1) : 0",
+    "formula": "(Poz == 'CONF_UNIV' || Poz == 'PROF_UNIV') ? (S > 1 ? S/max(N-2,1) : 0) : S/max(N-2,1)",
     "domain": {
       "$ref": "domains",
       "$id": "ALL"
     },
-    "version": 1,
+    "version": 2,
     "kind": {
       "role": "ALL",
       "strategy": "CS_CONFERENCE",
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
     },
-    "formulaHash": "fb04dcabc8fd40cca4385d9a35478f1922a0e1193bf5a8a5e20f04c9d5739a27",
+    "formulaHash": "39eb87a7ebb9bc0a0b45dd3fd7f6ac9e45f725b79f3a189768550051a260a772",
     "yearRangeSpec": {
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
     },

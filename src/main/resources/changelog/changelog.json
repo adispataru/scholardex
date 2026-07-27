@@ -1,6 +1,21 @@
 [
   {
     "date": "2026-07-27",
+    "title": "Conferințele de categoria D se punctează în funcție de poziția vizată",
+    "body": "În FV Info 2016, lucrările din conferințe de categoria D (1 punct) intră acum în Perspectiva B și în Total pentru pozițiile de Asistent și Lector, dar nu se mai numără pentru Conferențiar și Profesor — exact ca în fișa oficială de verificare. Pagina de evaluare arată scorul potrivit poziției selectate din selector, iar pragurile «îndeplinit / aproape» se calculează pe acel scor. Tot acum, criteriul Total folosește aceiași indicatori separați pe reviste și conferințe ca Perspectiva B (înainte folosea un indicator combinat mai vechi, care număra categoria D pentru toate pozițiile).",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "scope": "REPORT",
+    "reports": [
+      "FV Info 2016"
+    ],
+    "affects": [
+      "Rapoarte",
+      "Punctaje"
+    ]
+  },
+  {
+    "date": "2026-07-27",
     "title": "Fiecare indicator își explică regula, cu textul standardului",
     "body": "În raportul individual, fiecare indicator din fișele de Informatică are acum o descriere scurtă preluată din textul standardului: ce se punctează, care sunt categoriile și punctajele, cum se împarte punctajul la numărul de autori și care sunt condițiile care explică cel mai des un punctaj surprinzător (reducerea pentru workshop-uri, excluderea revistelor cu taxă, plafoanele unor indicatori). Descrierea apare sub numele indicatorului, deasupra listei de lucrări, ca să nu mai fie nevoie de deschis documentul oficial pentru o verificare rapidă.",
     "audience": "RESEARCHER",

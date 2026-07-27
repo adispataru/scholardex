@@ -938,7 +938,8 @@
    {
     "name": "Total",
     "indicatorIndices": [
-     0,
+     19,
+     20,
      1,
      4,
      5,

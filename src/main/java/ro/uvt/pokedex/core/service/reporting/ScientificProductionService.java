@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
@@ -56,6 +57,27 @@ public class ScientificProductionService {
 
     /** The scores map plus the publications that were dropped from it, keyed by title, with their zero {@link Score}s. */
     public record ScoredProductionResult(Map<String, Score> scores, Map<String, Score> excluded) {}
+
+    /**
+     * S2 position-aware scoring: scoringInfo key under which a per-item score (and the synthetic "total"
+     * Score) carries a {@code Map<String position, Double>} of values that DIFFER from the canonical
+     * authorScore. Absent when the indicator's formula never references {@code Poz} or no position diverges.
+     */
+    public static final String AUTHOR_SCORE_BY_POSITION = "authorScoreByPosition";
+
+    /** Compiled-once "does this formula reference Poz" check, cached per formula string. */
+    private static final Map<String, Boolean> FORMULA_REFERENCES_POZ =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static boolean formulaReferencesPoz(String formula) {
+        if (formula == null || formula.isBlank()) {
+            return false;
+        }
+        return FORMULA_REFERENCES_POZ.computeIfAbsent(formula, f ->
+                ro.uvt.pokedex.core.service.reporting.formula.FormulaTokenizer.tokenize(f).stream()
+                        .anyMatch(t -> t.type() == ro.uvt.pokedex.core.service.reporting.formula.FormulaTokenizer.Type.IDENT
+                                && "Poz".equals(t.text())));
+    }
 
     public Map<String, Score> calculateScientificProductionScore(List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
         return calculateScientificProductionScoreDetailed(publications, indicator).scores();
@@ -185,9 +207,57 @@ public class ScientificProductionService {
         }
         Score total = new Score();
         total.setAuthorScore(totalScore);
+        stampTotalsByPosition(indicator, result, total);
         result.put("total", total);
 
         return new ScoredProductionResult(result, excluded);
+    }
+
+    /**
+     * S2 position-aware scoring: sums the kept items' per-position values (falling back to each item's
+     * canonical authorScore) into the synthetic total Score, storing only positions whose sum differs
+     * from the canonical total. The kept set itself is the CANONICAL selection — for {@code TopN} the
+     * position variants are summed over the canonical top-N, not a per-position re-selection (documented
+     * approximation). {@code DistinctForums} totals count venues, not points, so per-position sums do not
+     * apply and nothing is stamped.
+     */
+    private static void stampTotalsByPosition(Indicator indicator, Map<String, Score> keptScores, Score total) {
+        if (indicator.isDistinctForumsSelector()) {
+            return;
+        }
+        List<Map<String, Double>> divergentItems = new ArrayList<>();
+        for (Score score : keptScores.values()) {
+            Object byPosition = score.getScoringInfo().get(AUTHOR_SCORE_BY_POSITION);
+            if (byPosition instanceof Map<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> typed = (Map<String, Double>) byPosition;
+                divergentItems.add(typed);
+            }
+        }
+        if (divergentItems.isEmpty()) {
+            return;
+        }
+        Map<String, Double> totalsByPosition = new LinkedHashMap<>();
+        for (Position position : Position.values()) {
+            double sum = 0.0;
+            // Canonical reference accumulated over the SAME items in the SAME order — the selector pass
+            // sums in a different iteration order, so comparing against total.getAuthorScore() directly
+            // produced float-drift false divergences (entries equal to canonical up to rounding).
+            double canonicalSum = 0.0;
+            for (Score score : keptScores.values()) {
+                Object byPosition = score.getScoringInfo().get(AUTHOR_SCORE_BY_POSITION);
+                Double positionValue = byPosition instanceof Map<?, ?> map
+                        ? (Double) ((Map<?, ?>) map).get(position.name()) : null;
+                sum += positionValue != null ? positionValue : score.getAuthorScore();
+                canonicalSum += score.getAuthorScore();
+            }
+            if (sum != canonicalSum) {
+                totalsByPosition.put(position.name(), sum);
+            }
+        }
+        if (!totalsByPosition.isEmpty()) {
+            total.getScoringInfo().put(AUTHOR_SCORE_BY_POSITION, totalsByPosition);
+        }
     }
 
     public Map<String, Score> calculateScientificImpactScore(
@@ -379,7 +449,12 @@ public class ScientificProductionService {
                             ? PublicationSubtypeSupport.resolveSubtype(citing) : "")
                     // PD 2026: the scorer's category label ("A*"/"A"/… for CORE conferences) — lets the CORE A/A*
                     // equivalence formula gate on the exact class instead of the topAB {A*,A,B} proxy.
-                    .put("category", result.getCoreRankingEquivalent() != null ? result.getCoreRankingEquivalent() : "");
+                    .put("category", result.getCoreRankingEquivalent() != null ? result.getCoreRankingEquivalent() : "")
+                    // S2 position-aware scoring: the target position under evaluation ("CONF_UNIV"/…), or "" on
+                    // the canonical pass — so a formula's non-position branch defines the canonical score (the
+                    // FV Info 2016 ruling: category-D conference points count canonically and for Asist/Lect,
+                    // and are cut only when Poz is CONF_UNIV/PROF_UNIV). Existing formulas never reference it.
+                    .put("Poz", "");
             if (result.getMultiplier() != null) {
                 builder.put("M", result.getMultiplier());
             }
@@ -396,6 +471,27 @@ public class ScientificProductionService {
             // so the remaining valid publications still sum correctly. Surfaced by H77 provisional scoring (a RIS
             // forum metric projected as Infinity made whole-department reports show ∞).
             result.setAuthorScore(Double.isFinite(finalScore) ? finalScore : 0.0);
+
+            // S2 position-aware scoring: a formula referencing Poz gets re-evaluated once per position (a
+            // compiled-formula-cache MVEL run each — the expensive base-score pipeline above ran once).
+            // Only positions whose value DIFFERS from the canonical score are stored, so items and totals
+            // without position divergence carry nothing and downstream falls back to the canonical value.
+            if (formulaReferencesPoz(indicator.getFormula())) {
+                Map<String, Double> byPosition = new LinkedHashMap<>();
+                for (Position position : Position.values()) {
+                    FormulaContext.Builder positionBuilder = FormulaContext.builder();
+                    ctx.variables().forEach((k, v) ->
+                            positionBuilder.put(k, "Poz".equals(k) ? position.name() : v));
+                    double positionScore = formulaEvaluator.eval(indicator.getFormula(), positionBuilder.build());
+                    positionScore = Double.isFinite(positionScore) ? positionScore : 0.0;
+                    if (positionScore != result.getAuthorScore()) {
+                        byPosition.put(position.name(), positionScore);
+                    }
+                }
+                if (!byPosition.isEmpty()) {
+                    result.getScoringInfo().put(AUTHOR_SCORE_BY_POSITION, byPosition);
+                }
+            }
 
             // Counterfactual gate diagnosis: a categorized item (positive venue score) the formula
             // zeroed gets probed against the gate table so the drilldown can explain WHY instead of

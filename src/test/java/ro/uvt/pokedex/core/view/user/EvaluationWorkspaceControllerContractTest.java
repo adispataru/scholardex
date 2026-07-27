@@ -232,6 +232,7 @@ class EvaluationWorkspaceControllerContractTest {
                 .thenReturn(Optional.of(new IndividualReportRunDto(
                         "run-1", "rep-1", List.of(),
                         Map.of("ind-articles", 1.0, "ind-books", 0.9),
+                        Map.of(),
                         Map.of(0, 1.0),
                         Instant.parse("2026-04-16T12:00:00Z"),
                         IndividualReportRunDto.Source.BUILT,
@@ -614,6 +615,7 @@ class EvaluationWorkspaceControllerContractTest {
                 id,
                 "rep-1",
                 List.of(),
+                Map.of(),
                 Map.of(),
                 Map.of(),
                 Instant.parse("2026-04-16T12:00:00Z"),

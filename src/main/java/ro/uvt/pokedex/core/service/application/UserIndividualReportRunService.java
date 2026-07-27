@@ -195,6 +195,8 @@ public class UserIndividualReportRunService {
 
         run.setIndicatorResultIds(indicatorResultIds);
         run.setIndicatorScoresByIndicatorId(indicatorScoresByIndicatorId);
+        run.setIndicatorScoresByPositionByIndicatorId(computation.indicatorScoresByPositionByIndicatorId() == null
+                ? new HashMap<>() : new HashMap<>(computation.indicatorScoresByPositionByIndicatorId()));
         run.setCriteriaScores(new HashMap<>(computation.criterionScores()));
         run.setBuildErrors(errors);
         if (!errors.isEmpty()) {
@@ -275,6 +277,8 @@ public class UserIndividualReportRunService {
 
         run.setIndicatorResultIds(indicatorResultIds);
         run.setIndicatorScoresByIndicatorId(new HashMap<>(computation.indicatorScoresByIndicatorId()));
+        run.setIndicatorScoresByPositionByIndicatorId(computation.indicatorScoresByPositionByIndicatorId() == null
+                ? new HashMap<>() : new HashMap<>(computation.indicatorScoresByPositionByIndicatorId()));
         run.setCriteriaScores(new HashMap<>(computation.criterionScores()));
         run.setBuildErrors(errors);
         if (!errors.isEmpty()) {
@@ -301,6 +305,8 @@ public class UserIndividualReportRunService {
                 run.getReportDefinitionId(),
                 indicatorResults,
                 run.getIndicatorScoresByIndicatorId() == null ? Map.of() : run.getIndicatorScoresByIndicatorId(),
+                run.getIndicatorScoresByPositionByIndicatorId() == null
+                        ? Map.of() : run.getIndicatorScoresByPositionByIndicatorId(),
                 run.getCriteriaScores() == null ? Map.of() : run.getCriteriaScores(),
                 run.getCreatedAt(),
                 effectiveSource,

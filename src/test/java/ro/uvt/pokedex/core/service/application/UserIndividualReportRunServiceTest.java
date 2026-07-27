@@ -103,7 +103,8 @@ class UserIndividualReportRunServiceTest {
                                 null,
                                 null,
                                 0
-                        ))
+                        )),
+                        Map.of()
                 )));
 
         UserIndicatorResult snapshot = new UserIndicatorResult();
@@ -174,7 +175,8 @@ class UserIndividualReportRunServiceTest {
                                         null,
                                         0
                                 )
-                        )
+                        ),
+                        Map.of()
                 )));
 
         UserIndicatorResult snapshot1 = new UserIndicatorResult();

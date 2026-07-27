@@ -52,7 +52,7 @@ class ProvisionalDepartmentReportServiceTest {
                 eq(List.of("sauth_adina")), eq("admin@uvt.ro")))
                 .thenReturn(Optional.of(new IndividualReportRunDto(
                         "run-1", "rep-math", List.of(),
-                        Map.of("ind-a", 12.0, "ind-b", 3.0), Map.of(1, 15.0),
+                        Map.of("ind-a", 12.0, "ind-b", 3.0), Map.of(), Map.of(1, 15.0),
                         Instant.now(), IndividualReportRunDto.Source.ADMIN_PROVISIONAL, "admin@uvt.ro")));
 
         var report = service.run("dept-math", "rep-math", "admin@uvt.ro");

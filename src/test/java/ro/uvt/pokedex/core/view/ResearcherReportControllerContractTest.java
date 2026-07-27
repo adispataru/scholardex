@@ -124,7 +124,7 @@ class ResearcherReportControllerContractTest {
         IndividualReport report = report();
         IndividualReportRunDto run = new IndividualReportRunDto(
                 "run-1", "rep-1", List.of(),
-                Map.of("ind-1", 12.5), Map.of(0, 12.5),
+                Map.of("ind-1", 12.5), Map.of(), Map.of(0, 12.5),
                 Instant.now(), IndividualReportRunDto.Source.PERSISTED, "admin@e-uvt.ro");
 
         when(userService.getUserByEmail(EMAIL)).thenReturn(Optional.of(researcher()));
@@ -303,7 +303,7 @@ class ResearcherReportControllerContractTest {
         IndividualReport report = report();
         IndividualReportRunDto run = new IndividualReportRunDto(
                 "run-1", "rep-1", List.of(),
-                Map.of("ind-1", 12.5), Map.of(0, 12.5),
+                Map.of("ind-1", 12.5), Map.of(), Map.of(0, 12.5),
                 Instant.now(), IndividualReportRunDto.Source.PERSISTED, "admin@e-uvt.ro");
         when(userService.getUserByEmail(EMAIL)).thenReturn(Optional.of(researcher()));
         when(userService.findDisplayLabels(List.of(EMAIL))).thenReturn(Map.of(EMAIL, "Florin S"));

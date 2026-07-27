@@ -25,6 +25,13 @@ public class UserIndividualReportRun {
 
     private List<String> indicatorResultIds = new ArrayList<>();
     private Map<String, Double> indicatorScoresByIndicatorId = new HashMap<>();
+    /**
+     * S2 position-aware scoring: per-position indicator totals (indicatorId → position name → total) for
+     * indicators whose formula references {@code Poz} and diverges from the canonical value. Additive field —
+     * null/empty on every pre-S2 run and for reports without position-dependent formulas; readers fall back to
+     * {@link #indicatorScoresByIndicatorId}. The canonical maps stay position-blind by design.
+     */
+    private Map<String, Map<String, Double>> indicatorScoresByPositionByIndicatorId = new HashMap<>();
     private Map<Integer, Double> criteriaScores = new HashMap<>();
 
     private Instant createdAt;

@@ -212,7 +212,7 @@ class ReportComparisonFacadeTest {
 
     private IndividualReportRunDto run(String reportId, Map<Integer, Double> criteriaScores) {
         return new IndividualReportRunDto(
-                "run-" + reportId, reportId, List.of(), Map.of(), criteriaScores,
+                "run-" + reportId, reportId, List.of(), Map.of(), Map.of(), criteriaScores,
                 java.time.Instant.now(), IndividualReportRunDto.Source.PERSISTED, "r@example.com");
     }
 }

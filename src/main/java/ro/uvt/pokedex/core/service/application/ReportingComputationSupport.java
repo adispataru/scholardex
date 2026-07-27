@@ -401,12 +401,40 @@ public final class ReportingComputationSupport {
             List<Indicator> indicators,
             Map<String, Double> indicatorScoresByIndicatorId,
             Map<Integer, Double> criterionScores) {
+        return computePositionEffectiveScores(criteria, indicators, indicatorScoresByIndicatorId,
+                criterionScores, Map.of());
+    }
+
+    /**
+     * S2 overload: also composes per-position indicator totals (indicatorId → position → total, from
+     * {@code Poz}-referencing formulas). A criterion's effective score for a position is
+     * {@code canonical + Σ w_i·(perPos_i − canonical_i)} over its own indicators, plus the threshold-cap
+     * additions — a delta composition, so H68 weights apply while the canonical maxTotal / percent-cap
+     * clamps are NOT re-run on the per-position value (no current report combines them with
+     * position-dependent formulas).
+     */
+    public static Map<Integer, Map<String, Double>> computePositionEffectiveScores(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            Map<String, Double> indicatorScoresByIndicatorId,
+            Map<Integer, Double> criterionScores,
+            Map<String, Map<String, Double>> indicatorScoresByPositionByIndicatorId) {
         Map<Integer, Map<String, Double>> result = new HashMap<>();
         List<AbstractReport.Criterion> safeCriteria = criteria == null ? List.of() : criteria;
         List<Indicator> safeIndicators = indicators == null ? List.of() : indicators;
+        Map<String, Map<String, Double>> perPosition = indicatorScoresByPositionByIndicatorId == null
+                ? Map.of() : indicatorScoresByPositionByIndicatorId;
         for (int c = 0; c < safeCriteria.size(); c++) {
             AbstractReport.Criterion criterion = safeCriteria.get(c);
-            if (criterion.getThresholdCapAdditions() == null || criterion.getThresholdCapAdditions().isEmpty()) {
+            boolean hasAdditions = criterion.getThresholdCapAdditions() != null
+                    && !criterion.getThresholdCapAdditions().isEmpty();
+            boolean hasPositionIndicators = !perPosition.isEmpty() && criterion.getIndicatorIndices() != null
+                    && criterion.getIndicatorIndices().stream().anyMatch(idx ->
+                            idx != null && idx >= 0 && idx < safeIndicators.size()
+                                    && safeIndicators.get(idx) != null
+                                    && safeIndicators.get(idx).getId() != null
+                                    && perPosition.containsKey(safeIndicators.get(idx).getId()));
+            if (!hasAdditions && !hasPositionIndicators) {
                 continue;
             }
             // Positions come from the criterion's own thresholds — an effective score is only meaningful
@@ -422,9 +450,29 @@ public final class ReportingComputationSupport {
                 }
                 String position = ownThreshold.getPosition().name();
                 double effective = base;
-                for (AbstractReport.ThresholdCapAddition addition : criterion.getThresholdCapAdditions()) {
-                    effective += additionValue(addition, c, criterion, safeCriteria, safeIndicators,
-                            indicatorScoresByIndicatorId, position);
+                if (hasPositionIndicators) {
+                    for (Integer idx : criterion.getIndicatorIndices()) {
+                        if (idx == null || idx < 0 || idx >= safeIndicators.size()
+                                || safeIndicators.get(idx) == null || safeIndicators.get(idx).getId() == null) {
+                            continue;
+                        }
+                        Map<String, Double> indicatorByPosition = perPosition.get(safeIndicators.get(idx).getId());
+                        Double positionValue = indicatorByPosition == null ? null : indicatorByPosition.get(position);
+                        if (positionValue == null) {
+                            continue; // no divergence for this position — canonical already counted
+                        }
+                        double canonical = indicatorScoresByIndicatorId == null ? 0.0
+                                : indicatorScoresByIndicatorId.getOrDefault(safeIndicators.get(idx).getId(), 0.0);
+                        double weight = criterion.getWeights() == null
+                                ? 1.0 : criterion.getWeights().getOrDefault(idx, 1.0);
+                        effective += weight * (positionValue - canonical);
+                    }
+                }
+                if (hasAdditions) {
+                    for (AbstractReport.ThresholdCapAddition addition : criterion.getThresholdCapAdditions()) {
+                        effective += additionValue(addition, c, criterion, safeCriteria, safeIndicators,
+                                indicatorScoresByIndicatorId, position);
+                    }
                 }
                 byPosition.put(position, effective);
             }

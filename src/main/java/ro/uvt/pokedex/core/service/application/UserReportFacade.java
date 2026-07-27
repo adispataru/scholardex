@@ -357,7 +357,8 @@ public class UserReportFacade {
         // (IndividualReportViewModelAssembler) computes, so the two surfaces cannot drift.
         attrs.put("positionEffectiveScores", ReportingComputationSupport.computePositionEffectiveScores(
                 report.getCriteria(), report.getIndicators(),
-                computation.indicatorScoresByIndicatorId(), computation.criterionScores()));
+                computation.indicatorScoresByIndicatorId(), computation.criterionScores(),
+                computation.indicatorScoresByPositionByIndicatorId()));
         attrs.put("thresholdCapNotes", ReportingComputationSupport.buildThresholdCapNotes(
                 report.getCriteria(), report.getIndicators(), computation.indicatorScoresByIndicatorId()));
 
@@ -438,6 +439,7 @@ public class UserReportFacade {
         List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
         Map<Indicator, Double> indicatorScores = new HashMap<>();
         Map<String, Double> indicatorScoresByIndicatorId = new HashMap<>();
+        Map<String, Map<String, Double>> indicatorScoresByPositionByIndicatorId = new HashMap<>();
         Map<String, IndicatorApplyResultDto> reportScopedIndicatorResultsByIndicatorId = new HashMap<>();
 
         boolean hasCitationIndicators = indicators.stream()
@@ -466,7 +468,21 @@ public class UserReportFacade {
                         .getAuthorScore();
             }
             if (indicator != null && indicator.isPublicationOutput()) {
-                indicatorScore = calculatePublicationScore(indicator, authors, publications);
+                Score publicationTotal = calculatePublicationTotal(indicator, authors, publications);
+                indicatorScore = publicationTotal.getAuthorScore();
+                // S2 position-aware scoring: a Poz-referencing formula's total carries per-position
+                // divergences on the synthetic total Score; surface them so runs persist and the
+                // eligibility view can compose per-position criterion scores.
+                Object byPosition = publicationTotal.getScoringInfo()
+                        .get(ScientificProductionService.AUTHOR_SCORE_BY_POSITION);
+                if (byPosition instanceof Map<?, ?>) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Double> typed = (Map<String, Double>) byPosition;
+                    // Same per-indicator absolute cap the canonical total gets below.
+                    Map<String, Double> capped = new HashMap<>();
+                    typed.forEach((position, value) -> capped.put(position, indicator.applyPointsCap(value)));
+                    indicatorScoresByPositionByIndicatorId.put(indicator.getId(), capped);
+                }
             } else if (indicator != null && indicator.isCitationsOutput()) {
                 indicatorScore = ReportScopedIndicatorScoringSupport.calculateCitationScore(
                                 indicator,
@@ -516,7 +532,8 @@ public class UserReportFacade {
                 indicatorScores,
                 indicatorScoresByIndicatorId,
                 criterionScores,
-                reportScopedIndicatorResultsByIndicatorId
+                reportScopedIndicatorResultsByIndicatorId,
+                indicatorScoresByPositionByIndicatorId
         );
     }
 
@@ -994,10 +1011,11 @@ public class UserReportFacade {
         return normalized;
     }
 
-    private double calculatePublicationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
+    /** The synthetic "total" Score — authorScore is the indicator total; scoringInfo may carry S2 per-position divergences. */
+    private Score calculatePublicationTotal(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
         List<ScholardexPublicationView> filtered =
                 ReportingComputationSupport.filterByAuthorRole(indicator, authors, publications);
-        return scoredPublicationMap(indicator, filtered).get("total").getAuthorScore();
+        return scoredPublicationMap(indicator, filtered).get("total");
     }
 
     /**

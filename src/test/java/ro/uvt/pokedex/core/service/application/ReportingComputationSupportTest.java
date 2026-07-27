@@ -597,6 +597,49 @@ class ReportingComputationSupportTest {
     }
 
     @Test
+    void positionEffectiveScoresComposePerPositionIndicatorTotals() {
+        // S2 (FV Info 2016 D-gate): the Conferințe indicator's Poz formula diverges for Conf/Prof
+        // (D points cut); the criterion's effective score shifts by the weighted delta, canonical stays.
+        Indicator conferences = new Indicator();
+        conferences.setId("conf");
+        conferences.setName("Info_B_Conferințe");
+        Indicator journals = new Indicator();
+        journals.setId("jour");
+        journals.setName("Info_B_Jurnale");
+        List<Indicator> indicators = List.of(conferences, journals);
+
+        AbstractReport.Criterion b = new AbstractReport.Criterion();
+        b.setIndicatorIndices(new ArrayList<>(List.of(0, 1)));
+        b.setThresholds(new ArrayList<>(List.of(
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.LECT_UNIV, 12.0),
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 32.0))));
+
+        Map<Integer, Map<String, Double>> out = ReportingComputationSupport.computePositionEffectiveScores(
+                List.of(b), indicators,
+                Map.of("conf", 5.0, "jour", 30.0),   // canonical: D counted → criterion 35
+                Map.of(0, 35.0),
+                Map.of("conf", Map.of("CONF_UNIV", 4.0))); // Conf diverges: D (1 point) cut
+
+        assertEquals(34.0, out.get(0).get("CONF_UNIV"), 0.0001); // 35 + (4 − 5)
+        assertEquals(35.0, out.get(0).get("LECT_UNIV"), 0.0001); // no divergence → canonical
+    }
+
+    @Test
+    void positionEffectiveScoresAbsentWithoutAdditionsOrPerPositionTotals() {
+        Indicator plain = new Indicator();
+        plain.setId("p");
+        AbstractReport.Criterion c = new AbstractReport.Criterion();
+        c.setIndicatorIndices(new ArrayList<>(List.of(0)));
+        c.setThresholds(new ArrayList<>(List.of(
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 1.0))));
+
+        Map<Integer, Map<String, Double>> out = ReportingComputationSupport.computePositionEffectiveScores(
+                List.of(c), List.of(plain), Map.of("p", 2.0), Map.of(0, 2.0), Map.of());
+
+        assertTrue(out.isEmpty());
+    }
+
+    @Test
     void thresholdCapNotesOnlyForPositiveRawValues() {
         Map<Integer, Map<String, List<String>>> notes = ReportingComputationSupport.buildThresholdCapNotes(
                 feaaShapedCriteria(0), capAdditionIndicators(),

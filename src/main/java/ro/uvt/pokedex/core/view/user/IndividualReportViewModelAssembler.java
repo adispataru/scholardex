@@ -72,11 +72,12 @@ public class IndividualReportViewModelAssembler {
 
         Map<Integer, Double> criterionScores = run.criteriaScores() != null ? run.criteriaScores() : Map.of();
 
-        // Stage 1 position-aware eligibility: render-time effective scores (canonical + threshold-capped
-        // additions) for criteria that declare them; empty for every legacy report.
+        // Stage 1 + S2 position-aware eligibility: render-time effective scores — canonical plus
+        // threshold-capped additions plus per-position Poz-formula divergences; empty for every legacy report.
         Map<Integer, Map<String, Double>> positionEffectiveScores =
                 ro.uvt.pokedex.core.service.application.ReportingComputationSupport.computePositionEffectiveScores(
-                        report.getCriteria(), report.getIndicators(), indicatorScores, criterionScores);
+                        report.getCriteria(), report.getIndicators(), indicatorScores, criterionScores,
+                        run.indicatorScoresByPositionByIndicatorId());
 
         // Criteria-met count: only count criteria that have a threshold for the researcher's position.
         // Criteria with no threshold for the current position are not applicable and excluded from both

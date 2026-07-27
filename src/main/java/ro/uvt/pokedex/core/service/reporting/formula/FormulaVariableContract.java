@@ -134,6 +134,13 @@ public final class FormulaVariableContract {
         // A/A* equivalence gate. Both bound on every publication/citation score; ignored by existing formulas.
         allowed.add("docType");
         allowed.add("category");
+        // S2 position-aware scoring: Poz (string) — the target position under evaluation ("CONF_UNIV"/…),
+        // "" on the canonical pass. Publications kinds only: the per-position TOTAL aggregation lives in
+        // calculateScientificProductionScoreDetailed's selector pass, which the citations paths do not
+        // share — allowing Poz there would evaluate per-position item scores that never reach a total.
+        if (kind instanceof IndicatorKind.Publications) {
+            allowed.add("Poz");
+        }
         if (kind.strategy() == ScoringStrategy.ECONOMICS_JOURNAL_AIS) {
             allowed.add("M");
         }

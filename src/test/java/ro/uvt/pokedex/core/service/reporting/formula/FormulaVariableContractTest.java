@@ -90,6 +90,16 @@ class FormulaVariableContractTest {
     }
 
     @Test
+    void acceptsPozOnPublicationKindOnly() {
+        // S2 position-aware scoring: Poz is bound for Publications kinds; citations paths do not
+        // aggregate per-position totals, so Poz there is rejected at save time.
+        String pozFormula = "(Poz == 'CONF_UNIV' || Poz == 'PROF_UNIV') ? (S > 1 ? S/max(N-2,1) : 0) : S/max(N-2,1)";
+        FormulaVariableContract.assertVariablesDeclared(pub(ScoringStrategy.CS, pozFormula));
+        assertThrows(FormulaVariableException.class,
+                () -> FormulaVariableContract.assertVariablesDeclared(citations(ScoringStrategy.CS, pozFormula)));
+    }
+
+    @Test
     void rejectsMultiplierOnNonEconomicsKind() {
         // M is only bound for economics. A CS publication referencing M is a bug.
         Indicator ind = pub(ScoringStrategy.CS, "M * S");
