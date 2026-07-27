@@ -12,6 +12,9 @@ import java.util.stream.Collectors;
 
 public final class ReportingComputationSupport {
 
+    private static final org.slf4j.Logger logger =
+            org.slf4j.LoggerFactory.getLogger(ReportingComputationSupport.class);
+
     private ReportingComputationSupport() {}
 
     /**
@@ -381,6 +384,143 @@ public final class ReportingComputationSupport {
             effective.put(k, Math.min(contributions.get(k), flaggedFractions.get(k) * finalCapBase));
         }
         return effective;
+    }
+
+    /**
+     * Stage 1 position-aware eligibility (FEAA 2026 book cap): per-position EFFECTIVE criterion scores for
+     * criteria declaring {@link AbstractReport.ThresholdCapAddition}s —
+     * {@code effective(pos) = canonicalScore + Σ min(rawIndicator, percent/100 · threshold(refCriterion, pos))}.
+     * Render-time only: the persisted canonical {@code criteriaScores} (run compare, org-unit roll-ups, history)
+     * never include these additions. Criteria without additions are absent from the result, so legacy reports
+     * contribute nothing. An addition whose indicator already sits in the criterion's {@code indicatorIndices}
+     * is skipped (it is already summed — adding it again would double-count); positions without a threshold in
+     * the referenced criterion contribute 0 for that addition.
+     */
+    public static Map<Integer, Map<String, Double>> computePositionEffectiveScores(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            Map<String, Double> indicatorScoresByIndicatorId,
+            Map<Integer, Double> criterionScores) {
+        Map<Integer, Map<String, Double>> result = new HashMap<>();
+        List<AbstractReport.Criterion> safeCriteria = criteria == null ? List.of() : criteria;
+        List<Indicator> safeIndicators = indicators == null ? List.of() : indicators;
+        for (int c = 0; c < safeCriteria.size(); c++) {
+            AbstractReport.Criterion criterion = safeCriteria.get(c);
+            if (criterion.getThresholdCapAdditions() == null || criterion.getThresholdCapAdditions().isEmpty()) {
+                continue;
+            }
+            // Positions come from the criterion's own thresholds — an effective score is only meaningful
+            // where there is a threshold to compare it against.
+            if (criterion.getThresholds() == null || criterion.getThresholds().isEmpty()) {
+                continue;
+            }
+            double base = criterionScores == null ? 0.0 : criterionScores.getOrDefault(c, 0.0);
+            Map<String, Double> byPosition = new HashMap<>();
+            for (AbstractReport.Threshold ownThreshold : criterion.getThresholds()) {
+                if (ownThreshold.getPosition() == null) {
+                    continue;
+                }
+                String position = ownThreshold.getPosition().name();
+                double effective = base;
+                for (AbstractReport.ThresholdCapAddition addition : criterion.getThresholdCapAdditions()) {
+                    effective += additionValue(addition, c, criterion, safeCriteria, safeIndicators,
+                            indicatorScoresByIndicatorId, position);
+                }
+                byPosition.put(position, effective);
+            }
+            if (!byPosition.isEmpty()) {
+                result.put(c, byPosition);
+            }
+        }
+        return result;
+    }
+
+    /** One addition's capped contribution for one position; 0 when misconfigured or no threshold exists. */
+    private static double additionValue(
+            AbstractReport.ThresholdCapAddition addition,
+            int declaringIndex,
+            AbstractReport.Criterion declaringCriterion,
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            Map<String, Double> indicatorScoresByIndicatorId,
+            String position) {
+        Integer idx = addition.getIndicatorIndex();
+        if (idx == null || idx < 0 || idx >= indicators.size() || indicators.get(idx) == null
+                || addition.getPercent() == null || addition.getPercent() <= 0) {
+            return 0.0;
+        }
+        if (declaringCriterion.getIndicatorIndices() != null && declaringCriterion.getIndicatorIndices().contains(idx)) {
+            logger.warn("thresholdCapAdditions indicator index {} is already summed into criterion {} — skipping "
+                    + "the addition to avoid double-counting", idx, declaringIndex);
+            return 0.0;
+        }
+        Integer refIndex = addition.getThresholdCriterionIndex() == null
+                ? declaringIndex : addition.getThresholdCriterionIndex();
+        if (refIndex < 0 || refIndex >= criteria.size() || criteria.get(refIndex) == null) {
+            return 0.0;
+        }
+        Double thresholdValue = null;
+        if (criteria.get(refIndex).getThresholds() != null) {
+            for (AbstractReport.Threshold t : criteria.get(refIndex).getThresholds()) {
+                if (t.getPosition() != null && t.getPosition().name().equals(position) && t.getValue() != null) {
+                    thresholdValue = t.getValue();
+                    break;
+                }
+            }
+        }
+        if (thresholdValue == null) {
+            return 0.0;
+        }
+        String indicatorId = indicators.get(idx).getId();
+        double raw = indicatorId == null || indicatorScoresByIndicatorId == null
+                ? 0.0 : indicatorScoresByIndicatorId.getOrDefault(indicatorId, 0.0);
+        return Math.min(raw, addition.getPercent() / 100.0 * thresholdValue);
+    }
+
+    /**
+     * Per-criterion, per-position "counts as" notes for threshold-cap additions, mirroring
+     * {@link #buildPercentCapNotes}. Only additions that actually alter the criterion score produce entries
+     * (raw > 0), so legacy reports and empty indicators render nothing.
+     */
+    public static Map<Integer, Map<String, List<String>>> buildThresholdCapNotes(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            Map<String, Double> indicatorScoresByIndicatorId) {
+        Map<Integer, Map<String, List<String>>> notes = new HashMap<>();
+        List<AbstractReport.Criterion> safeCriteria = criteria == null ? List.of() : criteria;
+        List<Indicator> safeIndicators = indicators == null ? List.of() : indicators;
+        for (int c = 0; c < safeCriteria.size(); c++) {
+            AbstractReport.Criterion criterion = safeCriteria.get(c);
+            if (criterion.getThresholdCapAdditions() == null || criterion.getThresholdCapAdditions().isEmpty()
+                    || criterion.getThresholds() == null) {
+                continue;
+            }
+            for (AbstractReport.Threshold ownThreshold : criterion.getThresholds()) {
+                if (ownThreshold.getPosition() == null) {
+                    continue;
+                }
+                String position = ownThreshold.getPosition().name();
+                for (AbstractReport.ThresholdCapAddition addition : criterion.getThresholdCapAdditions()) {
+                    Integer idx = addition.getIndicatorIndex();
+                    if (idx == null || idx < 0 || idx >= safeIndicators.size() || safeIndicators.get(idx) == null) {
+                        continue;
+                    }
+                    String indicatorId = safeIndicators.get(idx).getId();
+                    double raw = indicatorId == null || indicatorScoresByIndicatorId == null
+                            ? 0.0 : indicatorScoresByIndicatorId.getOrDefault(indicatorId, 0.0);
+                    if (raw <= 0.0) {
+                        continue;
+                    }
+                    double counted = additionValue(addition, c, criterion, safeCriteria, safeIndicators,
+                            indicatorScoresByIndicatorId, position);
+                    notes.computeIfAbsent(c, k -> new HashMap<>())
+                            .computeIfAbsent(position, k -> new java.util.ArrayList<>())
+                            .add(String.format(java.util.Locale.ROOT, "%s: %.2f → +%.2f",
+                                    safeIndicators.get(idx).getName(), raw, counted));
+                }
+            }
+        }
+        return notes;
     }
 
     private static String firstAuthorId(ScholardexPublicationView publication) {

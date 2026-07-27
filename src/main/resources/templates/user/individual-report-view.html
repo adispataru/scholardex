@@ -262,7 +262,7 @@
                                 class="app-eval-rail__tile"
                                 th:attr="data-criterion-index=${critIndex.index},data-criterion-score=${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)},id=${'criterion-' + critIndex.index}">
                             <span class="app-eval-rail__name"
-                                  th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : #messages.msgWithParams('report.view.criterionNumbered', new Object[]{critIndex.index + 1})}" >Criterion</span>
+                                  th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name))} ? ${criterion.name} : #{report.view.criterionNumbered(${critIndex.index + 1})}" >Criterion</span>
                             <span class="app-eval-rail__ratio"
                                   th:text="${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)}">0.00</span>
                             <span class="app-eval-rail__chip" hidden></span>
@@ -277,7 +277,7 @@
                                  hidden>
                             <header class="app-eval-evidence__header">
                                 <h2 class="app-eval-evidence__title"
-                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : #messages.msgWithParams('report.view.criterionNumbered', new Object[]{critIndex.index + 1})}" >Criterion</h2>
+                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name))} ? ${criterion.name} : #{report.view.criterionNumbered(${critIndex.index + 1})}" >Criterion</h2>
                                 <span class="app-eval-evidence__ratio"></span>
                                 <span class="app-eval-evidence__chip" hidden></span>
                                 <span class="eval-trend" th:attr="data-criterion-index=${critIndex.index}"></span>

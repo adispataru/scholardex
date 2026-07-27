@@ -190,6 +190,66 @@ class EvaluationWorkspaceControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("\"name\":\"Articles\""));
         org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("\"position\":\"PROF_UNIV\""));
         org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("\"value\":5.0"));
+        // Stage 1: no threshold-cap additions → the per-position keys must be ABSENT, so the dashboard
+        // JS keeps its legacy single-score path for every existing report.
+        org.junit.jupiter.api.Assertions.assertFalse(thresholdsJson.contains("scoreByPosition"));
+        org.junit.jupiter.api.Assertions.assertFalse(thresholdsJson.contains("capNotesByPosition"));
+    }
+
+    @Test
+    void showEvaluationExposesPositionEffectiveScoresForThresholdCapAdditions() throws Exception {
+        // Stage 1 position-aware eligibility (FEAA 2026 book cap): a criterion declaring a
+        // thresholdCapAddition ships per-position effective scores + "counted, capped" notes in the
+        // thresholds JSON; the canonical "score" stays the raw criteriaScores value.
+        User user = userPrincipal("u@uvt.ro");
+        Indicator articles = publicationIndicator("ind-articles");
+        articles.setName("FEEA_P");
+        Indicator books = publicationIndicator("ind-books");
+        books.setName("FEEA_Books");
+        IndividualReport report = report("rep-1", articles);
+        report.setIndicators(List.of(articles, books));
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion criterion =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        criterion.setName("P");
+        criterion.setIndicatorIndices(List.of(0));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold threshold =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        threshold.setPosition(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
+        threshold.setValue(1.25);
+        criterion.setThresholds(List.of(threshold));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.ThresholdCapAddition addition =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.ThresholdCapAddition();
+        addition.setIndicatorIndex(1);
+        addition.setPercent(25.0);
+        criterion.setThresholdCapAdditions(List.of(addition));
+        report.setCriteria(List.of(criterion));
+
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(report)));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(new IndividualReportRunDto(
+                        "run-1", "rep-1", List.of(),
+                        Map.of("ind-articles", 1.0, "ind-books", 0.9),
+                        Map.of(0, 1.0),
+                        Instant.parse("2026-04-16T12:00:00Z"),
+                        IndividualReportRunDto.Source.BUILT,
+                        "user@uvt.ro")));
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-1"))
+                .thenReturn(List.of());
+
+        String thresholdsJson = (String) mockMvc.perform(
+                        get("/user/evaluation").param("report", "rep-1").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andReturn().getModelAndView().getModel().get("thresholdsJson");
+
+        // Canonical score untouched; effective CONF score = 1.0 + min(0.9, 25%·1.25) = 1.3125.
+        org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("\"score\":1.0"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                thresholdsJson.contains("\"scoreByPosition\":{\"CONF_UNIV\":1.3125}"));
+        org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("capNotesByPosition"));
+        org.junit.jupiter.api.Assertions.assertTrue(thresholdsJson.contains("FEEA_Books"));
     }
 
     @Test

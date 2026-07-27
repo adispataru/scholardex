@@ -353,6 +353,13 @@ public class UserReportFacade {
         attrs.put("criterionScores", computation.criterionScores());
         attrs.put("percentCapNotes", ReportingComputationSupport.buildPercentCapNotes(
                 report.getCriteria(), report.getIndicators(), computation.indicatorScoresByIndicatorId()));
+        // Stage 1 position-aware eligibility: same render-time effective scores the run-sourced page
+        // (IndividualReportViewModelAssembler) computes, so the two surfaces cannot drift.
+        attrs.put("positionEffectiveScores", ReportingComputationSupport.computePositionEffectiveScores(
+                report.getCriteria(), report.getIndicators(),
+                computation.indicatorScoresByIndicatorId(), computation.criterionScores()));
+        attrs.put("thresholdCapNotes", ReportingComputationSupport.buildThresholdCapNotes(
+                report.getCriteria(), report.getIndicators(), computation.indicatorScoresByIndicatorId()));
 
         return new UserIndividualReportViewModel(null, attrs);
     }

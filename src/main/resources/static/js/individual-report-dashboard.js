@@ -100,9 +100,26 @@
     return match ? toNumber(match.value) : null;
   }
 
-  function criterionScore(criterionIndex) {
+  /**
+   * The criterion's obtained value for threshold comparison. Criteria with threshold-cap additions
+   * (FEAA 2026 books-into-P) carry a per-position effective score in `scoreByPosition`; everything
+   * else — and any position without an entry — falls back to the canonical `score`.
+   */
+  function criterionScore(criterionIndex, position) {
     var entry = _thresholds[criterionIndex];
-    return entry ? toNumber(entry.score) : 0;
+    if (!entry) return 0;
+    if (position && entry.scoreByPosition && typeof entry.scoreByPosition[position] === 'number') {
+      return toNumber(entry.scoreByPosition[position]);
+    }
+    return toNumber(entry.score);
+  }
+
+  /** Preformatted "indicator: raw → +counted" note lines for the position; empty array when none. */
+  function capNotes(criterionIndex, position) {
+    var entry = _thresholds[criterionIndex];
+    if (!entry || !position || !entry.capNotesByPosition) return [];
+    var notes = entry.capNotesByPosition[position];
+    return Array.isArray(notes) ? notes : [];
   }
 
   /** met / near (within 20% below) / below; null when no threshold applies. */
@@ -133,7 +150,7 @@
   function renderRail(root, position) {
     root.querySelectorAll('.app-eval-rail__tile').forEach(function (tile) {
       var idx = parseInt(tile.getAttribute('data-criterion-index'), 10);
-      var score = criterionScore(idx);
+      var score = criterionScore(idx, position);
       var threshold = thresholdByPosition(idx, position);
       var ratio = tile.querySelector('.app-eval-rail__ratio');
       if (ratio) ratio.textContent = ratioText(score, threshold);
@@ -144,11 +161,39 @@
   function updateEvidenceHeader(root, idx, position) {
     var section = root.querySelector('.app-eval-evidence__criterion[data-criterion-index="' + idx + '"]');
     if (!section) return;
-    var score = criterionScore(idx);
+    var score = criterionScore(idx, position);
     var threshold = thresholdByPosition(idx, position);
     var ratio = section.querySelector('.app-eval-evidence__ratio');
     if (ratio) ratio.textContent = ratioText(score, threshold);
     applyChip(section.querySelector('.app-eval-evidence__chip'), score, threshold);
+    renderThresholdCapNotes(section, idx, position);
+  }
+
+  /**
+   * Position-scoped "counted toward this threshold" lines for threshold-cap additions. Managed here
+   * (not server-rendered like the percent-cap notes) because the text changes with the position
+   * selector. The mount is created on demand right after the header and reused on re-render.
+   */
+  function renderThresholdCapNotes(section, idx, position) {
+    var mount = section.querySelector('.app-eval-evidence__threshold-cap-notes');
+    var notes = capNotes(idx, position);
+    if (notes.length === 0) {
+      if (mount) mount.remove();
+      return;
+    }
+    if (!mount) {
+      mount = document.createElement('div');
+      mount.className = 'app-eval-evidence__threshold-cap-notes';
+      var header = section.querySelector('.app-eval-evidence__header');
+      if (header && header.parentNode) header.parentNode.insertBefore(mount, header.nextSibling);
+      else section.insertBefore(mount, section.firstChild);
+    }
+    var html = '';
+    notes.forEach(function (note) {
+      html += '<p class="app-eval-evidence__cap-note">' +
+        esc(t('report.dash.thresholdCapNote', note)) + '</p>';
+    });
+    mount.innerHTML = html;
   }
 
   function selectCriterion(root, idx, opts) {
@@ -202,7 +247,7 @@
       if (!entry) return;
       var threshold = thresholdByPosition(entry.index, position);
       if (threshold == null || threshold <= 0) return;
-      var score = toNumber(entry.score);
+      var score = criterionScore(entry.index, position);
       if (score < threshold && score >= 0.8 * threshold) {
         misses.push({ index: entry.index, name: entry.name, gap: threshold - score });
       }
@@ -904,7 +949,7 @@
       var threshold = thresholdByPosition(entry.index, position);
       if (threshold == null) return; // no threshold for this position — criterion not applicable
       total++;
-      if (toNumber(entry.score) >= threshold) met++;
+      if (criterionScore(entry.index, position) >= threshold) met++;
     });
     return { met: met, total: total };
   }

@@ -477,6 +477,141 @@ class ReportingComputationSupportTest {
         assertTrue(errors.stream().anyMatch(e -> e.contains("Invalid indicator index 5")));
     }
 
+    // ── Stage 1: threshold-cap additions (position-aware eligibility, FEAA 2026 book cap) ──
+
+    /** FEAA-2026-shaped fixture: P (articles), C (citations), Books (outside every criterion), S = P+C. */
+    private static List<Indicator> capAdditionIndicators() {
+        Indicator p = new Indicator();
+        p.setId("P");
+        p.setName("FEEA_P");
+        Indicator c = new Indicator();
+        c.setId("C");
+        c.setName("FEEA_C");
+        Indicator books = new Indicator();
+        books.setId("Books");
+        books.setName("FEEA_Books");
+        return List.of(p, c, books);
+    }
+
+    private static AbstractReport.Threshold threshold(ro.uvt.pokedex.core.model.reporting.Position position,
+                                                      double value) {
+        AbstractReport.Threshold t = new AbstractReport.Threshold();
+        t.setPosition(position);
+        t.setValue(value);
+        return t;
+    }
+
+    private static AbstractReport.ThresholdCapAddition addition(int indicatorIndex, double percent,
+                                                                Integer thresholdCriterionIndex) {
+        AbstractReport.ThresholdCapAddition a = new AbstractReport.ThresholdCapAddition();
+        a.setIndicatorIndex(indicatorIndex);
+        a.setPercent(percent);
+        a.setThresholdCriterionIndex(thresholdCriterionIndex);
+        return a;
+    }
+
+    /** P criterion (index 0) with per-position thresholds 1.25 (CONF) / 3.0 (PROF) and the books addition. */
+    private static List<AbstractReport.Criterion> feaaShapedCriteria(Integer refIndexOnS) {
+        AbstractReport.Criterion p = new AbstractReport.Criterion();
+        p.setIndicatorIndices(new ArrayList<>(List.of(0)));
+        p.setThresholds(new ArrayList<>(List.of(
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 1.25),
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 3.0))));
+        p.setThresholdCapAdditions(new ArrayList<>(List.of(addition(2, 25.0, null))));
+
+        AbstractReport.Criterion s = new AbstractReport.Criterion();
+        s.setIndicatorIndices(new ArrayList<>(List.of(0, 1)));
+        s.setThresholds(new ArrayList<>(List.of(
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 2.25),
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 6.0))));
+        s.setThresholdCapAdditions(new ArrayList<>(List.of(addition(2, 25.0, refIndexOnS))));
+        return List.of(p, s);
+    }
+
+    @Test
+    void positionEffectiveScoresCapAdditionAtPercentOfOwnThreshold() {
+        // Books raw 0.9 exceeds both caps: CONF 25%·1.25=0.3125, PROF 25%·3=0.75.
+        Map<Integer, Map<String, Double>> out = ReportingComputationSupport.computePositionEffectiveScores(
+                feaaShapedCriteria(0), capAdditionIndicators(),
+                Map.of("P", 1.0, "C", 0.5, "Books", 0.9),
+                Map.of(0, 1.0, 1, 1.5));
+
+        assertEquals(1.0 + 0.3125, out.get(0).get("CONF_UNIV"), 0.0001);
+        assertEquals(1.0 + 0.75, out.get(0).get("PROF_UNIV"), 0.0001);
+    }
+
+    @Test
+    void positionEffectiveScoresCrossCriterionReferenceUsesReferencedThreshold() {
+        // The S criterion's addition is capped by P's threshold (index 0), not S's own — the FEAA shape.
+        Map<Integer, Map<String, Double>> out = ReportingComputationSupport.computePositionEffectiveScores(
+                feaaShapedCriteria(0), capAdditionIndicators(),
+                Map.of("P", 1.0, "C", 0.5, "Books", 0.9),
+                Map.of(0, 1.0, 1, 1.5));
+
+        assertEquals(1.5 + 0.3125, out.get(1).get("CONF_UNIV"), 0.0001); // 25% of P's 1.25, NOT of S's 2.25
+        assertEquals(1.5 + 0.75, out.get(1).get("PROF_UNIV"), 0.0001);
+    }
+
+    @Test
+    void positionEffectiveScoresNonBindingAdditionAddsRawValue() {
+        Map<Integer, Map<String, Double>> out = ReportingComputationSupport.computePositionEffectiveScores(
+                feaaShapedCriteria(0), capAdditionIndicators(),
+                Map.of("P", 1.0, "C", 0.5, "Books", 0.2), // 0.2 < both caps
+                Map.of(0, 1.0, 1, 1.5));
+
+        assertEquals(1.2, out.get(0).get("CONF_UNIV"), 0.0001);
+        assertEquals(1.2, out.get(0).get("PROF_UNIV"), 0.0001);
+    }
+
+    @Test
+    void positionEffectiveScoresSkipAdditionAlreadySummedIntoCriterion() {
+        // Misconfiguration guard: indicator 0 is inside the criterion — adding it again would double-count.
+        AbstractReport.Criterion c = new AbstractReport.Criterion();
+        c.setIndicatorIndices(new ArrayList<>(List.of(0)));
+        c.setThresholds(new ArrayList<>(List.of(
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 1.25))));
+        c.setThresholdCapAdditions(new ArrayList<>(List.of(addition(0, 25.0, null))));
+
+        Map<Integer, Map<String, Double>> out = ReportingComputationSupport.computePositionEffectiveScores(
+                List.of(c), capAdditionIndicators(), Map.of("P", 1.0), Map.of(0, 1.0));
+
+        assertEquals(1.0, out.get(0).get("CONF_UNIV"), 0.0001); // unchanged — addition skipped
+    }
+
+    @Test
+    void positionEffectiveScoresAbsentForCriteriaWithoutAdditionsAndForMissingPositions() {
+        List<AbstractReport.Criterion> criteria = feaaShapedCriteria(0);
+        AbstractReport.Criterion legacy = new AbstractReport.Criterion();
+        legacy.setIndicatorIndices(new ArrayList<>(List.of(1)));
+        legacy.setThresholds(new ArrayList<>(List.of(
+                threshold(ro.uvt.pokedex.core.model.reporting.Position.LECT_UNIV, 0.4))));
+        List<AbstractReport.Criterion> all = new ArrayList<>(criteria);
+        all.add(legacy);
+
+        Map<Integer, Map<String, Double>> out = ReportingComputationSupport.computePositionEffectiveScores(
+                all, capAdditionIndicators(), Map.of("P", 1.0, "C", 0.5, "Books", 0.9),
+                Map.of(0, 1.0, 1, 1.5, 2, 0.4));
+
+        assertFalse(out.containsKey(2)); // legacy criterion: no additions → absent
+        assertFalse(out.get(0).containsKey("LECT_UNIV")); // no LECT threshold on P → no entry
+    }
+
+    @Test
+    void thresholdCapNotesOnlyForPositiveRawValues() {
+        Map<Integer, Map<String, List<String>>> notes = ReportingComputationSupport.buildThresholdCapNotes(
+                feaaShapedCriteria(0), capAdditionIndicators(),
+                Map.of("P", 1.0, "C", 0.5, "Books", 0.9));
+
+        assertTrue(notes.get(0).get("CONF_UNIV").get(0).contains("FEEA_Books"));
+        assertTrue(notes.get(0).get("CONF_UNIV").get(0).contains("+0.31"));
+        assertTrue(notes.get(0).get("PROF_UNIV").get(0).contains("+0.75"));
+
+        Map<Integer, Map<String, List<String>>> silent = ReportingComputationSupport.buildThresholdCapNotes(
+                feaaShapedCriteria(0), capAdditionIndicators(),
+                Map.of("P", 1.0, "C", 0.5, "Books", 0.0));
+        assertTrue(silent.isEmpty()); // zero raw → nothing to annotate
+    }
+
     private static Score totalScore(double value) {
         Score score = new Score();
         score.setAuthorScore(value);

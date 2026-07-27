@@ -72,6 +72,12 @@ public class IndividualReportViewModelAssembler {
 
         Map<Integer, Double> criterionScores = run.criteriaScores() != null ? run.criteriaScores() : Map.of();
 
+        // Stage 1 position-aware eligibility: render-time effective scores (canonical + threshold-capped
+        // additions) for criteria that declare them; empty for every legacy report.
+        Map<Integer, Map<String, Double>> positionEffectiveScores =
+                ro.uvt.pokedex.core.service.application.ReportingComputationSupport.computePositionEffectiveScores(
+                        report.getCriteria(), report.getIndicators(), indicatorScores, criterionScores);
+
         // Criteria-met count: only count criteria that have a threshold for the researcher's position.
         // Criteria with no threshold for the current position are not applicable and excluded from both
         // numerator and denominator.
@@ -86,7 +92,10 @@ public class IndividualReportViewModelAssembler {
                         .anyMatch(t -> t.getPosition() != null && t.getPosition().name().equals(pos));
                 if (!hasThresholdForPosition) continue;
                 criteriaTotal++;
-                double cScore = criterionScores.getOrDefault(i, 0.0);
+                double cScore = positionEffectiveScores.containsKey(i)
+                        && positionEffectiveScores.get(i).containsKey(pos)
+                        ? positionEffectiveScores.get(i).get(pos)
+                        : criterionScores.getOrDefault(i, 0.0);
                 boolean met = crit.getThresholds().stream()
                         .filter(t -> t.getPosition() != null && t.getPosition().name().equals(pos))
                         .anyMatch(t -> cScore >= t.getValue());
@@ -136,7 +145,9 @@ public class IndividualReportViewModelAssembler {
         model.addAttribute("runMetaTriggeredBy", run.triggeredByEmail());
         model.addAttribute("priorRuns", priorRuns);
         model.addAttribute("user", researcher);
-        model.addAttribute("thresholdsJson", thresholdsJson(report, criterionScores));
+        model.addAttribute("thresholdsJson", thresholdsJson(report, criterionScores, positionEffectiveScores,
+                ro.uvt.pokedex.core.service.application.ReportingComputationSupport.buildThresholdCapNotes(
+                        report.getCriteria(), report.getIndicators(), indicatorScores)));
 
         // Export format the report type drives (XLSX → "Excel", DOCX → "Word"), so the export
         // action labels/links correctly instead of hardcoding xlsx.
@@ -150,7 +161,9 @@ public class IndividualReportViewModelAssembler {
      * workbench JS renders the rail, criteria-met count, and position selector from. Shape:
      * {@code [{index, name, score, contributesToTotal, thresholds:[{position, value}]}]}.
      */
-    private String thresholdsJson(IndividualReport report, Map<Integer, Double> criterionScores) {
+    private String thresholdsJson(IndividualReport report, Map<Integer, Double> criterionScores,
+                                  Map<Integer, Map<String, Double>> positionEffectiveScores,
+                                  Map<Integer, Map<String, List<String>>> thresholdCapNotes) {
         List<Map<String, Object>> criteria = new java.util.ArrayList<>();
         List<AbstractReport.Criterion> reportCriteria = report.getCriteria() == null ? List.of() : report.getCriteria();
         for (int i = 0; i < reportCriteria.size(); i++) {
@@ -170,6 +183,14 @@ public class IndividualReportViewModelAssembler {
             entry.put("score", criterionScores.getOrDefault(i, 0.0));
             entry.put("contributesToTotal", crit.isContributesToTotal());
             entry.put("thresholds", thresholds);
+            // Stage 1 position-aware eligibility: only criteria with threshold-cap additions carry these,
+            // so the JSON (and the dashboard JS reading it) is unchanged for every legacy report.
+            if (positionEffectiveScores != null && positionEffectiveScores.containsKey(i)) {
+                entry.put("scoreByPosition", positionEffectiveScores.get(i));
+            }
+            if (thresholdCapNotes != null && thresholdCapNotes.containsKey(i)) {
+                entry.put("capNotesByPosition", thresholdCapNotes.get(i));
+            }
             criteria.add(entry);
         }
         try {
