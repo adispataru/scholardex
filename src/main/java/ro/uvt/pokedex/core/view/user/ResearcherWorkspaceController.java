@@ -72,6 +72,7 @@ public class ResearcherWorkspaceController {
     private final ro.uvt.pokedex.core.service.application.onboarding.OnboardingClaimRecommendationService onboardingClaimRecommendationService;
     private final ro.uvt.pokedex.core.service.application.NudgeService nudgeService;
     private final ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade publicationMergeWorkspaceFacade;
+    private final ro.uvt.pokedex.core.service.application.PublicationVenueClaimWorkspaceFacade venueClaimWorkspaceFacade;
     private final ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
     private final org.springframework.context.MessageSource messageSource;
 
@@ -138,6 +139,48 @@ public class ResearcherWorkspaceController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", ex.getMessage()));
         }
+    }
+
+    // ── JSON: venue claims (H93 S3) ───────────────────────────────────────
+    @GetMapping("/publications/venue-claim-state")
+    @ResponseBody
+    public ResponseEntity<ro.uvt.pokedex.core.service.application.PublicationVenueClaimWorkspaceFacade.ClaimWorkspaceView>
+            getVenueClaimState(Authentication authentication) {
+        return currentUser(authentication)
+                .map(u -> ResponseEntity.ok(venueClaimWorkspaceFacade.claimState(u.getEmail())))
+                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    @PostMapping("/publications/venue-claims")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, String>> requestVenueClaim(
+            @RequestBody VenueClaimRequest request,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            var claim = venueClaimWorkspaceFacade.requestClaim(
+                    userOpt.get().getEmail(), null,
+                    request.publicationId(), request.forumId(),
+                    request.workshopOf(), request.workshopLabel(), request.note());
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", claim.getStatus().name(),
+                    "claimedForumId", claim.getClaimedForumId()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", ex.getMessage()));
+        }
+    }
+
+    /** Forum search for the claim picker — ranked so Book-Series forums come last (see facade). */
+    @GetMapping("/forums/search")
+    @ResponseBody
+    public ResponseEntity<java.util.List<ro.uvt.pokedex.core.service.application.PublicationVenueClaimWorkspaceFacade.ForumOption>>
+            searchForums(@RequestParam(name = "q") String query, Authentication authentication) {
+        return currentUser(authentication)
+                .map(u -> ResponseEntity.ok(venueClaimWorkspaceFacade.searchForums(query)))
+                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
     // ── JSON: activities ──────────────────────────────────────────────────
@@ -1146,6 +1189,7 @@ public class ResearcherWorkspaceController {
     record WorkspacePreferencesRequest(List<String> cardOrder) {}
     record AuthorshipDecisionRequest(String reason) {}
     record MergeFlagRequest(String publicationIdA, String publicationIdB, String note) {}
+    record VenueClaimRequest(String publicationId, String forumId, boolean workshopOf, String workshopLabel, String note) {}
     record BulkAuthorshipDecisionRequest(List<String> publicationIds,
                                          BulkAuthorshipAction action,
                                          String reason) {}

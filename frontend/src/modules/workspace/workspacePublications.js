@@ -96,6 +96,8 @@ let _selectedPendingIds = new Set();
 // H84 S3: duplicate-merge state — { suggestions: [{survivor, duplicate}], mergeStateByPublicationId: {id: 'PENDING'} }.
 // Loaded lazily after the list; null until fetched (badges/banner simply don't render).
 let _mergeState = null;
+// H93 S3: venue-claim state — { claimStateByPublicationId: {id: 'PENDING'|'APPROVED'|'REJECTED'} }.
+let _claimState = null;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -163,6 +165,20 @@ function _fetchMergeState() {
             _renderPage(); // repaint rows so "merge requested" badges appear
         })
         .catch(() => { /* merge hints are progressive enhancement — the list works without them */ });
+    // H93 S3: venue-claim states ride the same lazy load; same progressive-enhancement contract.
+    _claimState = null;
+    fetch('/user/workspace/publications/venue-claim-state', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => (res.ok ? res.json() : null))
+        .then(state => {
+            if (!state) return;
+            _claimState = state;
+            _renderPage();
+        })
+        .catch(() => { /* ditto */ });
+}
+
+function _venueClaimStatus(pubId) {
+    return _claimState?.claimStateByPublicationId?.[pubId] ?? null;
 }
 
 function _mergeRequestState(pubId) {
@@ -596,6 +612,9 @@ function _insertDetailRow(pub, tr) {
         _clearAuthorshipDecision(pub.id, detailTr);
     });
 
+    // H93 S3: venue-claim picker
+    _wireVenueClaimSection(pub, detailTr);
+
     // H84 S3: manual duplicate flag
     detailTr.querySelector('[data-flag-merge]')?.addEventListener('click', e => {
         const otherId = detailTr.querySelector('[data-merge-other-select]')?.value;
@@ -690,6 +709,7 @@ function _buildDetailPanel(pub) {
                 <span class="app-ws-pubs__authorship-feedback" role="status" aria-live="polite"></span>
               </div>
               ${_buildMergeFlagSection(pub)}
+              ${_buildVenueClaimSection(pub)}
             </div>
 
           </div>
@@ -726,6 +746,127 @@ function _buildMergeFlagSection(pub) {
         <p class="text-muted" style="font-size:0.75rem; margin:0.25rem 0 0;">
           ${t('workspace.pubs.mergeExplainer')}
         </p>`;
+}
+
+/** H93 S3: "wrong venue?" — a searchable forum picker; the claim lands PENDING in the admin queue.
+ *  The search endpoint ranks conference streams first and Book-Series forums LAST: a series forum is the
+ *  very state this flow exists to fix, so it must never be the easy pick. */
+function _buildVenueClaimSection(pub) {
+    const status = _venueClaimStatus(pub.id);
+    const title = `<p class="app-ws-pubs__detail-section-title" style="margin-top:0.75rem;">${t('workspace.pubs.venueClaim.title')}</p>`;
+    if (status === 'PENDING') {
+        return `${title}<p style="font-size:0.8rem;" class="text-muted">${t('workspace.pubs.venueClaim.pending')}</p>`;
+    }
+    if (status === 'APPROVED') {
+        return `${title}<p style="font-size:0.8rem;" class="text-muted">${t('workspace.pubs.venueClaim.approved')}</p>`;
+    }
+    if (status === 'REJECTED') {
+        return `${title}<p style="font-size:0.8rem;" class="text-muted">${t('workspace.pubs.venueClaim.rejected')}</p>`;
+    }
+    return `
+        ${title}
+        <div data-venue-claim-root="${_esc(pub.id)}">
+          <input type="text" class="form-control form-control-sm" data-venue-claim-search
+                 placeholder="${t('workspace.pubs.venueClaim.searchPlaceholder')}" style="max-width:24rem;" autocomplete="off">
+          <div data-venue-claim-results style="max-width:24rem;"></div>
+          <div data-venue-claim-selected hidden style="margin-top:0.35rem; font-size:0.8rem;"></div>
+          <label class="text-muted" style="display:block; font-size:0.78rem; margin:0.35rem 0 0;">
+            <input type="checkbox" data-venue-claim-workshop> ${t('workspace.pubs.venueClaim.workshopOf')}
+          </label>
+          <input type="text" class="form-control form-control-sm" data-venue-claim-label hidden
+                 placeholder="${t('workspace.pubs.venueClaim.workshopLabel')}" style="max-width:16rem; margin-top:0.25rem;">
+          <div style="display:flex; gap:0.4rem; margin-top:0.4rem; align-items:center;">
+            <input type="text" class="form-control form-control-sm" data-venue-claim-note
+                   placeholder="${t('workspace.pubs.venueClaim.notePlaceholder')}" style="max-width:16rem;">
+            <button type="button" class="btn btn-sm btn-outline-primary" data-venue-claim-submit disabled>
+              ${t('workspace.pubs.venueClaim.submit')}
+            </button>
+          </div>
+          <p class="text-muted" style="font-size:0.75rem; margin:0.25rem 0 0;">
+            ${t('workspace.pubs.venueClaim.explainer')}
+          </p>
+        </div>`;
+}
+
+function _wireVenueClaimSection(pub, detailTr) {
+    const root = detailTr.querySelector(`[data-venue-claim-root="${CSS.escape(pub.id)}"]`);
+    if (!root) return;
+    const search = root.querySelector('[data-venue-claim-search]');
+    const results = root.querySelector('[data-venue-claim-results]');
+    const selected = root.querySelector('[data-venue-claim-selected]');
+    const workshop = root.querySelector('[data-venue-claim-workshop]');
+    const label = root.querySelector('[data-venue-claim-label]');
+    const note = root.querySelector('[data-venue-claim-note]');
+    const submit = root.querySelector('[data-venue-claim-submit]');
+    let chosen = null;
+    let debounce = null;
+
+    search.addEventListener('input', () => {
+        clearTimeout(debounce);
+        const q = search.value.trim();
+        if (q.length < 2) { results.innerHTML = ''; return; }
+        debounce = setTimeout(() => {
+            fetch(`/user/workspace/forums/search?q=${encodeURIComponent(q)}`,
+                  { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(res => (res.ok ? res.json() : []))
+                .then(options => {
+                    results.innerHTML = options.map(o => `
+                        <button type="button" class="btn btn-sm btn-link px-0" style="display:block; text-align:left;"
+                                data-venue-option="${_esc(o.id)}" data-venue-option-name="${_esc(o.name ?? o.id)}">
+                          ${_esc(o.name ?? o.id)}
+                          <span class="text-muted" style="font-size:0.72rem;">
+                            ${_esc(o.aggregationType ?? '')}${o.conferenceStream ? ' · DBLP' : ''}
+                          </span>
+                        </button>`).join('');
+                    results.querySelectorAll('[data-venue-option]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            chosen = { id: btn.dataset.venueOption, name: btn.dataset.venueOptionName };
+                            selected.hidden = false;
+                            selected.textContent = t('workspace.pubs.venueClaim.selected', chosen.name);
+                            results.innerHTML = '';
+                            search.value = chosen.name;
+                            submit.disabled = false;
+                        });
+                    });
+                })
+                .catch(() => { results.innerHTML = ''; });
+        }, 250);
+    });
+
+    workshop.addEventListener('change', () => { label.hidden = !workshop.checked; });
+
+    submit.addEventListener('click', () => {
+        if (!chosen) return;
+        submit.disabled = true;
+        fetch('/user/workspace/publications/venue-claims', {
+            method: 'POST',
+            headers: postJsonHeaders(),
+            body: JSON.stringify({
+                publicationId: pub.id,
+                forumId: chosen.id,
+                workshopOf: workshop.checked,
+                workshopLabel: workshop.checked ? (label.value.trim() || null) : null,
+                note: note.value.trim() || null,
+            }),
+        })
+            .then(async res => {
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error ?? `HTTP ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(() => {
+                _claimState = _claimState ?? { claimStateByPublicationId: {} };
+                _claimState.claimStateByPublicationId[pub.id] = 'PENDING';
+                window.appToast?.show({ message: t('workspace.pubs.venueClaim.requested'), tone: 'success' });
+                _renderPage();
+            })
+            .catch(err => {
+                submit.disabled = false;
+                window.appToast?.show({ message: t('workspace.pubs.venueClaim.failed', err.message), tone: 'error' });
+            });
+    });
 }
 
 /**

@@ -15,6 +15,9 @@ public interface ScholardexForumFactRepository extends MongoRepository<Scholarde
     /** H66B Phase 4b: resolve a DBLP conference-series stream key (conf/X) to its canonical forum (dblpIds is unique). */
     Optional<ScholardexForumFact> findByDblpIdsContaining(String dblpStreamKey);
 
+    /** H93 S3: the venue-claim picker's search. Bounded — ranking happens in the facade. */
+    List<ScholardexForumFact> findTop100ByNameContainingIgnoreCase(String namePart);
+
     /** All DBLP-stamped stream forums — the set whose ids the Scopus merge must never re-point away from. */
     List<ScholardexForumFact> findByDblpIdsNotNull();
 }

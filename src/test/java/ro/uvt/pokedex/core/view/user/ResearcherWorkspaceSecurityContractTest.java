@@ -91,6 +91,8 @@ class ResearcherWorkspaceSecurityContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.PublicationMergeWorkspaceFacade publicationMergeWorkspaceFacade;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PublicationVenueClaimWorkspaceFacade venueClaimWorkspaceFacade;
+    @MockitoBean
     private ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
 
     private User researcher;

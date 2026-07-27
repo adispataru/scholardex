@@ -232,6 +232,19 @@ Done history moved to `TASKS-done.md`.
   approved through the page form (forum stamped, displaced captured the machine's `conf/euromlsys`
   dump-doi evidence — claim-beats-DBLP observed live), then revoked through the page (forum and evidence
   restored byte-for-byte). 8 view contract tests incl. the revoke pin.
+  **S3 DONE locally 2026-07-27.** Researcher flow on the workspace publications tab:
+  `PublicationVenueClaimWorkspaceFacade` (ownership-enforced requestClaim — the ONLY thing between an
+  arbitrary publication and the admin queue, unit-pinned; per-pub claim state for the panel; forum search
+  RANKED conference-streams → proceedings → journals → **Book Series LAST**, the design caution made
+  executable and unit-pinned), workspace endpoints (`venue-claim-state`, `venue-claims`, `forums/search`),
+  and a "Venue greșit?" detail-panel section in `workspacePublications.js` (debounced search picker,
+  workshop checkbox revealing the label field, PENDING/APPROVED/REJECTED states) — 14 `workspace.pubs.
+  venueClaim.*` keys RO/EN, bundle rebuilt, lints green. Verified live on agent-dev: ownership refusal
+  (400) on a foreign publication via API, and the full positive arc through the real UI — typed "eurosys",
+  the conf/eurosys stream ranked first, picked it, workshop flag + label, submitted; claim landed PENDING
+  with every field correct and the section re-rendered without a reload. **H93 feature-complete pending
+  deploy**; after deploy, Florin can file the MedFusion-LM and EuroMLSys claims himself, closing his
+  review's last item.
   Open question from the first cut — a claim naming a venue **absent from CORE** — is CLOSED by the
   forum-target revision above: such a venue is claimable, it simply gets the forum stamp without an
   evidence row or a workshop ladder, and a venue we do not hold at all goes through the existing
