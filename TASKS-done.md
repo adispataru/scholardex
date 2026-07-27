@@ -2,6 +2,296 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H92 Springer volume→conference identification via Crossref (archived 2026-07-27)
+
+Archived from `TASKS.md`. Live end to end: keyless CrossrefClient (hard timeout, warn-level failures),
+sweep with count/dryRun/apply admin endpoints, volume titles stored on the shared evidence row
+(`crossref-volume`), scorer consults them after everything DBLP knows. Prod apply: 2,413 candidates,
+2,348 resolved (97%) in 8.5 min; verified movements exactly as the review predicted (AINA ×2 → B/4,
+AD-ZeroNAS correctly CISIS). Two follow-on fixes shipped under the same flag: the CORE title index now
+strips history qualifiers (`stripHistoryQualifier` shared between index build and match), and the
+LNCS/ACM floors became MINIMUMS (`55cbc6c6`) after the sweep exposed identified-D papers undercutting
+them — user ruling: always the best category possible; verified up-only (+1.00 flavia.micota, +0.14 ×2,
+0 decreases). Two incidents recorded in the entry: the Jackson-2-JsonNode-on-Jackson-3-codecs decode
+failure (`810e3c69`) and the boundary-lint javadoc rewording (`7a60312c`).
+Residuals, dormant: 65 unresolved volume titles (2.7%); widening beyond Springer `10.1007/978` only on
+evidence that other publishers use container-title[1] the same way.
+
+- [x] `H92` Identify a Springer proceedings volume's conference from Crossref.
+  **FOUND 2026-07-26 on a second pass over florin.fortis's review.** Every remaining item in that email is
+  the same shape: the paper sits on a Springer SERIES forum ("Lecture Notes on Data Engineering and
+  Communications Technologies", "Communications in Computer and Information Science"), the series name says
+  nothing about the conference, and there is no DBLP evidence to name it — so the paper takes the LNCS C
+  floor at 2 points instead of its conference's rank. I had recorded this as unfixable ("no evidence to
+  reason from"). That was wrong: **Crossref carries the volume title**, and it names the conference exactly.
+  Verified against the three DOIs in the email — `container-title[1]` is the volume, `[0]` the series:
+    - `10.1007/978-3-032-23335-6_20` → "Advanced Information Networking and Applications" = **AINA**
+    - `10.1007/978-3-032-19105-2_17` → "Machine Learning and Principles and Practice of Knowledge
+      Discovery in Databases" = **ECML PKDD**
+    - `10.1007/978-3-031-96099-4_3`  → "Complex, Intelligent and Software Intensive Systems" = **CISIS**
+  Each is the reviewer's own answer, from a free public API. Two of the three would match CORE with the
+  matcher we already have: the AINA and CISIS volume titles are substrings of their CORE names
+  (NORMALIZED_CONTAINS), and the CISIS title picks the RIGHT one of the two same-acronym entries by itself.
+  ECML PKDD likely will not — CORE stores it as "European Conference on Machine Learning and Principles and
+  Practice of Knowledge Discovery in Database" (singular "Database", extra leading "European"), so it needs
+  either a stemmed token-overlap path or an alias.
+  **NOT available from what we already hold** — checked: `openalex.publication_facts` carries only
+  `hostVenueName` (the series) and `hostVenueSourceType`="book series"; the canonical fact stores the series
+  volume NUMBER ("299", "2842 CCIS"), never the volume title. So this is a genuinely new source, not a
+  field we forgot to project.
+  **Prod scale: 2,413 Springer-ISBN papers sit on a series forum with no DBLP evidence; 29 of them touch an
+  onboarded researcher, across EIGHT people** — alexandra.fortis (7), florin.fortis (12), ioan.dragan (4),
+  mircea.marin (3), sebastian.stefaniga (3), florin.spataru (2), marc.frincu (2), todor.ivascu (2). This is
+  not a Florin-specific gap and it grows with every onboarding.
+  Shape: a Crossref client (polite pool, DOI → `container-title`), a `volumeTitle` field carried through
+  fact → projection → view (the three-layer dual-path trap — check BOTH canon paths), consulted by
+  `resolveConferenceMatch` after DBLP evidence and before the LNCS floor, plus a backfill sweep. Same
+  architecture as the DBLP evidence side-table, so that is the pattern to copy.
+  Closes three of the four remaining point gaps in the review (MedFusion-LM, and the two AINA volumes, each
+  2 → 4). **EuroMLSys is NOT covered** — its Crossref container is "Proceedings of the 5th Workshop on
+  Machine Learning and Systems", which never mentions EuroSys; that one still needs the curated
+  workshop→parent map (see H90).
+
+## H91 Report-dashboard UX: collapsible indicators + localization (archived 2026-07-27)
+
+Recorded directly (never had a TASKS.md entry; the id appears in commits/comments). Two slices, both
+live: collapsible indicator sections in the individual report (`32a9e78d` — class-based flag so
+selectCriterion's eager-load `hidden` handling is untouched; default stays expanded; verified in the
+browser) and full localization of `static/js/individual-report-dashboard.js` (`a4a666d4` — 65
+`report.dash.*` keys, shared `t()/tPlural()` exposed on window, bundle inlined via the shared
+IndividualReportViewModelAssembler, untranslated-lint now covers the file by path). Also the supervisor
+position picker + promotion-board deep link (`805fe637`).
+
+## H90 Reviewer-reported conference mis-identification — florin.fortis review (archived 2026-07-27)
+
+Archived from `TASKS.md`. Thirteen of the fourteen review items resolved as the reviewer described and
+verified in his refreshed prod report: CISIS ×5 (H89 fallback), BDCAT (`5f83ac2f` conferenceName retry),
+EuroMLSys (ACM-DOI floor, `fd93b94c`), Euro-Par workshop reductions (correct — return to baseline),
+conference/book double count (`22b50e75` shared Lecture-Notes predicate, corpus-wide 0 double-claims),
+and the "counted elsewhere" relabel. The fourteenth (MedFusion-LM at C/2 instead of C/4) is carried by
+H93 on purpose — a naive ECML-PKDD alias would over-credit the workshop paper to A/8. Residual: two 2026
+Springer chapters DBLP has never indexed (nothing to import until DBLP does).
+
+- [x] `H90` Reviewer-reported conference mis-identification (florin.fortis, 2026-07-26).
+  Fourteen flagged publications, checked one by one against prod. They split into three groups, and only
+  one of them was a code defect.
+  - **Already fixed by H89, report simply predates the deploy — CISIS ×5.** CORE holds TWO conferences under
+    the acronym CISIS ("Complex, Intelligent and Software Intensive Systems", C in every edition, and
+    "Computational Intelligence in Security for Information Systems", B→National), so the DBLP stream forum
+    named "CISIS" is ambiguous by construction and resolves to neither — correctly. The pre-restamp forum
+    ("Proceedings - 2014 8th International Conference on Complex, Intelligent and Software Intensive
+    Systems, CISIS 2014") names which one it is, and the H89 `originalForumId` fallback reads it. Pinned
+    with a verbatim-prod test; it passed on first run. **These need only a report refresh, no code.**
+    63 CORE acronyms are held by more than one conference, so this shape is not rare.
+  - **Real defect — DBLP's stream key can hide the conference's own acronym. FIXED (`H90`).**
+    `resolveDblpConferenceTitle` composes `"<stream acronym> <conferenceName>"` to seed the acronym CORE
+    keys on. That is right when `conferenceName` is a full title; when `conferenceName` is ITSELF an
+    acronym that differs from the stream key it fabricates a string that matches nothing: BDCAT is filed
+    under `conf/bdc`, so the composed name is `"BDC BDCAT"`, which neither contains nor token-overlaps
+    CORE's "IEEE/ACM International Conference on Big Data Computing, Applications and Technologies" — the
+    exact BDCAT acronym match scores NONE and a CORE-C conference falls to D. Same failure class as the
+    `eb1b882d` CORE-qualifier bug: an exact acronym match sunk by name dissimilarity. Fix retries the
+    evidence's own `conferenceName` alone after the composed attempt misses; it can only resolve via
+    EXACT_ACRONYM_ONLY, which demands the whole name equal a CORE acronym AND a single CORE entry to hold
+    it — so an ambiguous acronym (CISIS) still resolves to nothing, as it must.
+    **Measured in prod: 337 evidence rows carry the mismatch; 58 already resolve on the stream acronym,
+    41 are ambiguous and stay unresolved, 115 are recovered** (`IEEEANTS`→ANTS, `ERCIMDL`→TPDL,
+    `EUROMICRO`→SEAA, `ICMCS2`→ICMCS, …). Side effect: AAMAS now resolves straight from its evidence and
+    no longer depends on the pre-restamp forum surviving — its prod-shape test asserts that with a
+    `never()` on the fallback lookup.
+  - **Side effect of the retry, investigated 2026-07-26 after "A*+A went down" — CORRECT, not a break.**
+    florin.fortis's `Info_B (A*, A)` fell **26.67 → 16** — and the 26.67 was itself only two days old.
+    The per-run `indicatorScoresByIndicatorId` history (which, unlike the shared `userIndicatorResults`
+    documents, is NOT overwritten in place and is therefore the only durable score timeline) reads:
+    16 from 2026-07-23 through 07-24 14:03 → **+10.67 on 07-24 16:28** → flat at 26.67 → **−10.67 on
+    07-26 14:26**. The rise and the fall are the same magnitude and the same two papers, so today's change
+    returned the indicator to its long-standing baseline rather than cutting into it. The 07-24 jump is
+    consistent with the DBLP sweep re-stamping both papers off the "Lecture Notes In Artificial
+    Intelligence" volume forum (still preserved as their `originalForumId`, where they scored the LNCS C
+    floor) onto the shared EUROPAR stream forum, which resolved them to full CORE-A.
+    Arithmetic confirms the attribution exactly: Info_B divides by `max(N-2,1)`, and
+    "Cloud Patterns" (N=5, divisor 3) contributed 8/3 = 2.667 while "Data Security Perspectives" (N=3,
+    divisor 1) contributed 8/1 = 8.000 — **2.667 + 8.000 = 10.6667**, matching both the jump and the drop
+    to four decimals. No third paper is involved. Cause: two Euro-Par **Workshops** papers ("Cloud Patterns
+    for mOSAIC-Enabled Scientific Applications", "Data Security Perspectives in the Framework of Cloud
+    Governance") had been scoring the full main-track CORE-A rank, 8 points each. The DBLP stream forum is
+    named "EUROPAR" for EVERY Euro-Par paper, main track and workshops alike, so it cannot tell them apart;
+    their own DBLP booktitles say `"Euro-Par Workshops (1)"` and `"Euro-Par Workshops"`. Before H90 the
+    composed title `"EUROPAR Euro-Par Workshops (1)"` matched nothing and resolution fell through to the
+    stream forum name → A/8. The retry now matches the bare booktitle via EXACT_ACRONYM_DECORATED (the
+    split-decorated rule merges `euro`+`par` and treats `Workshops`/`(1)` as ignorable suffixes), and
+    because THAT source title contains "Workshops" the existing `isWorkshopVariant` reduction fires → 4
+    points, category C under the 2026 mapping. That is the standard's answer for a workshop of a CORE-A
+    conference, and it is the documented policy ("absent per-paper proof of workshop status, the paper's own
+    record is the default truth"). Pinned by two tests: the workshop shape scores 4/C, and the same stream
+    forum with NO evidence still scores 8/A — the control that makes the first meaningful.
+    **Prod scale: 55 evidence rows are newly workshop-detected this way** (`DEXA Workshops`,
+    `ICPP Workshops`, `Business Process Management Workshops`, `EuroS&P Workshops`, `ASE Workshops`, …).
+    Expect other CS researchers to lose points on workshop papers that were over-credited as main track.
+  - **Conference/book-chapter DOUBLE COUNT — found on review request 2026-07-26, FIXED.** The reviewer
+    asked whether any of his papers were counted twice, "especially conference vs book chapter". Five were.
+    A ch/bk paper on a "Lecture Notes **on** …" Book-Series forum passed BOTH scorers: the conference
+    scorer credited it in `Info_B_Conferințe 2026` (Perspectiva B) and the book scorer credited it again in
+    `Info_D_i_2026` (Perspectiva D **and** Total). Cause: the same predicate written twice and drifted —
+    `ComputerScienceConferenceScoringService.isLectureNotesSeries` matched `"lecture notes in "` OR
+    `"lecture notes on "`, while `ComputerScienceBookService.isLectureNotesSeries` matched only
+    `"lecture notes in "`. The book scorer's own comment states the guard exists precisely to stop this
+    ("Excluding them here stops the same paper being counted as both a book chapter (perspective d) and a
+    conference (perspective b)"), and its second clause could not compensate because these forums are typed
+    `Book Series`, not `Conference Proceeding`. Fix: one shared `LectureNotesSeriesSupport`, called by both.
+    **Prod scale: 22 publications** — 21 on "Lecture Notes on Data Engineering and Communications
+    Technologies", 1 on "Lecture Notes on Multidisciplinary Industrial Engineering". Touching onboarded
+    researchers: **florin.fortis 5 papers (20 points of inflation in Perspectiva D and Total)** and
+    **alexandra.fortis 3**. Pinned by a cross-scorer test over four series-name variants asserting the paper
+    is claimed by exactly one scorer; negative-controlled (restoring the narrow copy fails it on the "on"
+    name). **Verified corpus-wide after the fix: across all 933 ch/bk publications, conference-admitted and
+    book-admitted partition cleanly — 0 claimed by both.** The surface is closed structurally, not patched.
+  - **Broadening the Lecture-Notes family — ASSESSED 2026-07-26, decided AGAINST.** The instinct is that a
+    wider net is safer; here it is the reverse, because of which way the points move. A gated paper goes to
+    the CONFERENCE scorer and takes the LNCS/Springer C floor (2 points); an ungated `ch` goes to the BOOK
+    scorer and takes Springer's SENSE category B halved for a chapter (4 points). **Adding a series moves
+    its chapters 4 → 2.** Measured: broadening to the usual Springer/IFIP conference families (LNICST, CCIS,
+    AISC, IFIP Advances, Smart Innovation, Studies in Computational Intelligence) would move **56**
+    publications down, of which **0** belong to an onboarded researcher; LNICST alone holds 12 publications
+    and 0 ch/bk, so adding it is a literal no-op. All cost, no benefit. The name is a poor discriminator in
+    principle too — "Lecture Notes in Physics", "Lecture Notes in Educational Technology" and "Studies in
+    Computational Intelligence" each carry BOTH proceedings and monographs, so any series-level rule is
+    wrong for one of them. The real discriminator is per-VOLUME (DBLP evidence naming the conference), the
+    same lever the ECML-PKDD workshop volumes need. Revisit only when a researcher onboards with a chapter
+    on one of these series. Sanity check on the other side: the 3 book-scored chapters that DO belong to
+    onboarded researchers sit on genuine book series (Palgrave Studies in Digital Business, SpringerBriefs,
+    Studies in Big Data) and are correctly scored as books.
+  - **Not a defect — no evidence to reason from. MedFusion-LM (ECML-PKDD workshop volume), the two AINA
+    volumes, AD-ZeroNAS.** All are 2025/2026 Springer chapters sitting on `Book Series` forums
+    ("Communications in Computer and Information Science", "Lecture Notes on Data Engineering and
+    Communications Technologies") with **no DBLP evidence row at all**. Nothing in our data says which
+    conference the volume belongs to; the reviewer knew from outside knowledge. **DBLP evidence covers only
+    6–20% of conference publications** (2025: 10 of 61; 2026: 1 of 16) — the local dump sweep is the
+    bottleneck, not the matcher. **Action is an ops one: refresh the DBLP dump and re-run
+    `/general/dblpLnChapterEnrichment` → `sweep()`, then a derive-only rebuild.** Two of these four are
+    cosmetic anyway — the reviewer notes AD-ZeroNAS "can stay Springer, no point difference" (LNCS floor C
+    == CISIS C), as with ISPDC and "Exploring Streaming…", where only the displayed venue name is ugly.
+  - **The "refresh the dump to populate booktitle" idea — CHECKED 2026-07-26 AND WRONG ON BOTH HALVES.**
+    (a) `booktitle` is null on all 3,094 evidence rows not because the dump lacks it but because
+    `DblpConferenceResolveService.writeEvidence` never sets the field — the sweep DOES parse `<booktitle>`
+    and passes it into the `conferenceName` slot. So **`conferenceName` already IS the dump's booktitle**
+    and a refresh cannot change what is stored there. (The unused `booktitle` field makes
+    `isDblpWorkshopVolume`'s `getBooktitle()` fallback dead code; harmless, worth deleting or filling.)
+    (b) The dump is `2026.03.01` — four months old, not stale. Verified directly against DBLP:
+    `conf/euromlsys/BabucF25` has `<booktitle>EuroMLSys</booktitle>`, **not** `EuroMLSys@EuroSys`, and the
+    crossref'd proceedings record (`conf/euromlsys/2025`) names only "5th Workshop on Machine Learning and
+    Systems" — DBLP records no EuroSys link anywhere. 58 evidence rows DO carry the `@` marker
+    (`SecSE@ESORICS`, `MTD@CCS`, `SEAMS@ICSE`, `WORKS@SC`, …), so the mechanism works; EuroMLSys just is
+    not filed that way. A workshop→parent map remains the only route to the 4-point workshop-of-EuroSys
+    ladder, and it is curated reference data, not a matcher change.
+  - **EuroMLSys reaches C anyway — FIXED via the ACM DOI prefix.** The 2026 amendment already floors
+    CORE-unranked ACM venues to C (H85), which is the category the reviewer asked for; only detection was
+    failing, because `isAcmOrEptcsVenue` reads the venue NAME and neither "EUROMLSYS" nor "Euromlsys 2025
+    Proceedings of the 2025 5th Workshop on Machine Learning and Systems" contains "ACM" — though the DBLP
+    proceedings record lists `<publisher>ACM</publisher>`. Added `DoiVenueSupport.isAcmPublished`
+    (`10.1145`), consulted only inside the already-conference-gated floor: ACM registers journals and
+    proceedings under the same prefix, so it says nothing about venue TYPE, but the type is settled by the
+    time the floor runs. Stamps `acmEvidenceDoiPrefix` so the drilldown does not show an unexplained C next
+    to a forum called EUROMLSYS. Still 2026-only — a negative-control test pins FV Info 2016 at D.
+    **Prod scale: 701 publications carry a 10.1145 DOI, 272 already floor on a name, 429 are newly reachable
+    — but the floor only fires when CORE ranks nothing, and most of the 429 are CORE-ranked (OOPSLA, ICSE,
+    GECCO, CIKM). Approximate upper bound on actual D→C movement: 325.** Larger than the rest of H90 put
+    together; it is the same policy, only detected properly, but worth knowing before the refresh.
+  - **MedFusion-LM would need TWO things, and a dump refresh only supplies one.** DBLP does have it
+    (`conf/pkdd/BabucF25`, venue "PKDD/ECML Workshops", year 2025 — note DBLP says 2025, our OpenAlex
+    record says 2026), so a refresh would attach evidence. But CORE's matching entry has the acronym
+    **"ECML PKDD" — with a space** — while the bare `ECML` entry stops at 2014, so `getClosestYear(2025)`
+    returns null and the acronym candidates (PKDD, ECML) reach neither. Would still need a curated alias.
+    Related measurement worth keeping: **480 of 2,270 CORE entries were last ranked before 2017**, so any
+    recent paper at those venues silently yields `NO_CLOSEST_YEAR`.
+  - **The other two Springer volumes cannot be fixed at all right now** — "Cognitively Inspired
+    Preprocessing…" and "AD-ZeroNAS…" return **0 hits** from DBLP's live search today, not just in our
+    dump. There is no evidence to import.
+  - **UX — "other venue type" relabelled to "counted elsewhere".** Journals appear at the foot of a
+    conference indicator's list, already collapsed behind a toggle; the reviewer's point is that the label
+    does not say where they went, so a reader cannot tell whether they were dropped. Toggle now reads
+    "… a different venue type, counted under the indicator for that venue".
+  - Not an issue: "Benchmarking Database Systems…" (IETE TR) is correctly a journal; the reviewer confirms
+    its DAIT/BNCOD workshop origin does not change the class.
+
+## H89 Conference CORE-rank losses + WoS sentinel + rebuild safety (archived 2026-07-27)
+
+Archived from `TASKS.md`. All four score-affecting findings fixed and verified in prod: the DBLP
+stream-forum CORE-rank loss (originalForumId fallback + history-qualifier strip, `844d144f`/`eb1b882d`),
+the WoS +999 sentinel (symmetric parser guard + prod repair, Q1-1998 cohort 2808→2719), and the
+rebuild-safety audit (read-only integrity script, ~0.2% standing orphan rate, auto-reconciler declined).
+Residuals, deliberately dormant: the original RIS `Infinity` bare-`N` formula was never identified (no
+non-finite values exist in prod; the clamp holds), and ~480 of 2,270 CORE entries were last ranked
+before 2017, so recent papers at those venues yield `NO_CLOSEST_YEAR` silently.
+
+- [x] `H89` Conference CORE-rank losses + non-finite metric root cause.
+  **RENAMED + REFOCUSED 2026-07-25.** Opened for the RIS `Infinity` note; investigating it turned up a much
+  larger, live scoring bug that now leads the entry.
+  - **DBLP stream forums lose a conference's CORE rank — FIXED 2026-07-25 (`844d144f`).** DBLP files AAMAS
+    proceedings under `conf/atal` (the ATAL workshops that BECAME AAMAS), so the minted stream forum is named
+    "ATAL", CORE has no such entry, and a CORE-A conference fell through to the D default. Cost
+    cosmin.bonchis 48 points across the Info_B indicators (`Info_B (A*, A)` 56 → 8 = 3 papers × 16) after the
+    rebuild. **I first blamed the publication merges, which landed in the same refresh — wrong; the papers
+    were correctly scored before and simply stopped being A-ranked.** Fix: when the assigned stream forum
+    yields no CORE match, retry against `originalForumId` (preserved by H85) before the LNCS/ACM/D defaults,
+    stamping `coreEvidenceVenue`. Not only AAMAS — IEEECLOUD, 3PGCIC, ISGTEUROPE, ICCCNT, LCTRTS, INCOS all
+    show the same acronym-vs-CORE-name mismatch. **Needs a deploy + a report refresh to take effect.**
+  - **Complementary "add the DBLP booktitle as an alias" — MEASURED AND DECLINED 2026-07-25.** My first
+    suggestion was to name stream forums from the booktitle; that is WRONG and `DblpConferenceResolveService`
+    says so explicitly — a volume title on a stream forum re-creates the "AINA Workshops" mint accident and
+    even mis-triggers the scorer's workshop reduction. The user's correction (ADD an alias, never rewrite
+    `name`/`nameNormalized`) was the right shape. Measured before building:
+    1,082 stream forums (421 CORE-matchable) · 3,092 publications on them · 1,318 on unmatchable forums ·
+    **1,086 carry `originalForumId` and are already covered by the fix above** · **232 do not — the
+    alias-only population — of which exactly 1 is CONFIRMED by a UVT researcher.**
+    That one is florin.fortis's 2025 paper on forum "BDC" (`conf/bdc`), and CORE has NO BDC entry — the
+    nearest is BDCAT, a different conference, so an alias would either find nothing or attach a wrong A.
+    Cost would be a new field across fact + projection + view + widening `resolveConferenceMatch` (the
+    three-layer dual-path trap) plus a stricter match confidence. **Not worth it.** Revisit only if the
+    confirmed-population count grows materially as more researchers onboard.
+    **CORRECTION 2026-07-26 (see H90).** The premise above was wrong on the data. BDCAT is not "a different
+    conference" — `conf/bdc` IS BDCAT's DBLP stream (the conference was Big Data Computing before the
+    rename), and the paper's own evidence row already carries `conferenceName = "BDCAT"`, which CORE ranks C.
+    No alias field was ever needed: the identity was in hand and being thrown away. Fixed in H90.
+  - **RIS/`Infinity` — original symptom, still unexplained.** No non-finite values in prod today (0 across
+    AIS 341k / RIS 95k / IF 340k rows). `ScientificProductionService:398` clamps a non-finite score to 0.0,
+    so nothing renders ∞ — but a real metric silently reads 0. **549 publications have `author_count = 0`**,
+    the divisor the guard's comment names; note the Info_B/C formulas use `max(N-2,1)`, which floors at 1 and
+    CANNOT go infinite, so the offending bare-`N` formula is still unidentified.
+  - **WoS ±999 sentinel ingested as a real metric — FIXED 2026-07-25.** `AbstractWosImportEventParser`
+    rejected only the NEGATIVE sentinel (`parsed <= -999.0`), so `journalImpactFactor=999.999` rode in as a
+    genuine Impact Factor. Root cause traced to the extracts themselves: `journals-SCIE-year-1998.json` (50
+    rows) and `journals-SSCI-year-1998.json` (6) — an identical three-decimal value shared across a whole
+    year, in both editions, is not data. Guard is now symmetric (`>= 999.0` too); the bound is safe for every
+    metric the parser handles (highest real IF ~685 for CA-A Cancer Journal, AIS peaks ~108, RIS ~126) and
+    all WoS parsing goes through this one helper, verified by grep. Two tests: the sentinel is dropped, and
+    a genuinely high IF still ingests. **Prod data repair pending** —
+    `scripts/ops/clear-wos-metric-sentinels.sh` nulls the stored values (matching what a re-ingest now
+    produces, so the two converge) with a restorable copy in `app_migrations`; a projection rebuild and a
+    refresh of any run scoring a 1998 journal are needed afterwards.
+  - **Rebuild safety — user data is NOT deleted, but it CAN be orphaned (checked 2026-07-25).** Every
+    deletion in `ScopusBigBangMigrationService`'s reset is scoped: the five unscoped `deleteAll()` calls are
+    on `Scopus*FactRepository` (the source layer, re-ingested), canonical facts go only where
+    `source ^SCOPUS` (`findCanonicalIdsBySource`), source-links and identity conflicts likewise. No user
+    collection appears in the reset at all. The real exposure is quieter: canonical ids are deterministic
+    hashes of identity inputs (titleNormalized + coverDate + creator), so a rebuild that shifts any of those
+    re-mints the publication under a NEW id and leaves user rows keyed on the old one dangling — nothing is
+    deleted, a confirmed claim just silently stops counting. Standing rate in prod: **1 of 423** authorship
+    refs (~0.2%), 1 of 3,094 DBLP evidence refs, 0 actionable merge survivors (the 1 that dangles is a
+    REJECTED incident decision, benign — `reapplyApproved` only reads APPROVED). The one orphaned claim
+    (florin.spataru, "Decentralized and Fault Tolerant Cloud Service Orchestration") had already self-healed:
+    the paper exists as `spub_71adaeb352fb9ecdbf97fd39` and carries its own CONFIRMED decision.
+    `scripts/ops/check-user-data-integrity.sh` snapshots all of this and diffs before/after, exiting non-zero
+    when any `*_dangling` count RISES. Read-only. Negative-control tested (exit 1 on a synthetic regression,
+    0 on a clean run). **An auto-reconciler for orphaned claims was considered and NOT built** — 0.2% and
+    self-healing does not justify it, and re-pointing a user's CONFIRMED claim by fuzzy identity match is the
+    same shape of automated decision that caused the mis-merge. If the rate ever jumps (an identity-input
+    change like the coverDate precedence class would do it), build it as a REVIEW QUEUE, not a silent fix.
+  - **(superseded note) 56 forums carried `IF = 999.999`, all year 1998** — a source sentinel ingested
+    as a real Impact Factor (Journal Of Sociology, Journal Of Porous Media, International Review Of
+    Hydrobiology, …). Nothing clamps it because 999.999 is perfectly finite; any 1998 publication in those
+    venues scores against it. Arguably worse than the bug this entry was opened for.
+
 ## Deploy-debt audit (2026-07-25)
 
 The three "code done, data/deploy pending" footnotes buried inside the H68 and H80 entries were verified
