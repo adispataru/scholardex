@@ -59,6 +59,9 @@
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.9rem;
+  /* When the topbar squeezes, whole links flex-wrap to the next line; a link must never break
+     internally ("Journals & / conferences"). */
+  white-space: nowrap;
   color: var(--app-color-text-muted, var(--app-color-text-strong));
   text-decoration: none;
   transition: background-color 140ms ease, color 140ms ease;
@@ -131,6 +134,10 @@
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1;
+  /* Two-word labels ("Switch Workspace", "Schimbă spațiul") must never stack into two rows when the
+     nav squeezes the utilities at desktop widths; below 960px the labels are hidden entirely, so
+     nowrap carries no overflow risk. */
+  white-space: nowrap;
 }
 
 .app-shell-theme-toggle:hover,
@@ -144,6 +151,10 @@
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1;
+  /* Two-word labels ("Switch Workspace", "Schimbă spațiul") must never stack into two rows when the
+     nav squeezes the utilities at desktop widths; below 960px the labels are hidden entirely, so
+     nowrap carries no overflow risk. */
+  white-space: nowrap;
 }
 
 .app-shell-workspace-switcher {
@@ -174,6 +185,10 @@
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1;
+  /* Two-word labels ("Switch Workspace", "Schimbă spațiul") must never stack into two rows when the
+     nav squeezes the utilities at desktop widths; below 960px the labels are hidden entirely, so
+     nowrap carries no overflow risk. */
+  white-space: nowrap;
 }
 
 .app-shell-workspace-switcher__menu {
