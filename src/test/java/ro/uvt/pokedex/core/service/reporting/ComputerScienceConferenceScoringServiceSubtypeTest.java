@@ -3097,6 +3097,36 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     // =============================================================================================
+    //  H93 — a claim-written evidence row scores through the existing X@Y path unchanged
+    // =============================================================================================
+
+    @Test
+    void aVenueClaimShapedEvidenceRowScoresAsAWorkshopOfTheClaimedConference() {
+        // The H93 acceptance case (florin.fortis's EuroMLSys ask): an approved claim writes evidence in the
+        // shape DBLP would have provided — series=conf/eurosys, conferenceName="EuroMLSys@EUROSYS" — and the
+        // scorer's existing @-marker path must produce the workshop ladder off EuroSys's CORE A: category C
+        // at 4 points under the 2026 mapping, with NO scorer change. matchMethod is deliberately irrelevant.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = dblpStampedPublication(
+                "spub-euromlsys-claim", "forum-eurosys-stream", null, "2025-04-01");
+        when(cacheService.getForum("forum-eurosys-stream")).thenReturn(conferenceForum("EUROSYS"));
+        stubEvidence("spub-euromlsys-claim", "conf/eurosys", "EuroMLSys@EUROSYS");
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("EUROSYS")).thenReturn(List.of(rankingWithYears(
+                "EuroSys", "Eurosys Conference",
+                Map.of(2023, CoreConferenceRanking.Rank.A, 2026, CoreConferenceRanking.Rank.A))));
+
+        Score score = service.getScore(publication, indicator2026("IY"));
+
+        assertEquals(4.0, score.getScore(),
+                "a workshop of CORE-A EuroSys is worth half its points. trace=" + service.getLastTraceForTests());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE(WS)", score.getScoringSource(),
+                "the drilldown must show the workshop reduction was applied");
+    }
+
+    // =============================================================================================
     //  Floors are minimums: an identified-but-lower conference must not undercut them
     // =============================================================================================
 

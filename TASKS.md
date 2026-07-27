@@ -207,6 +207,21 @@ Done history moved to `TASKS-done.md`.
   (extend the existing Merges page rather than adding a second thing to watch) · **S3** researcher flow on
   the workspace publications tab, reusing `CoreConferenceLookupFacade` and the picker already built for
   activities.
+  **S1 DONE locally 2026-07-27.** `PublicationVenueClaim` (spared collection, unique per publication,
+  DOI + titleNormalized+year anchors) + `PublicationVenueClaimService` (request/approve/direct/reject,
+  reject-after-approve REVERTS from the once-captured `Displaced`) + `AdminVenueClaimController`
+  (`/admin/publications/venueClaim[s]`, queue path applies nothing) + re-apply chained into
+  `ScopusCanonicalMaterializationService` AFTER `rebuildFromEvidence()` and the merge re-apply.
+  **Two design corrections found while building, both recorded here over the original text:** the re-apply
+  runs AFTER the DBLP re-link, not before (human writes last, or the auto-stamp overwrites the decision
+  moments later), and the dedicated pass is smaller than designed — a CORE-conference claim's evidence row
+  rides `rebuildFromEvidence()` for free, so the pass only re-anchors re-minted ids (by DOI) and re-stamps
+  forum-only claims. Claim-beats-DBLP includes CLEARING a DBLP series on a non-conference claim (displaced,
+  revertable) — leaving it would let the next rebuild re-stamp the machine's forum over the human's.
+  Tests: 3 real-Mongo integration (EuroMLSys workshop arc + revert; claim-beats-DBLP + re-mint re-anchor;
+  reject-not-unstamping-newer-forum), scorer acceptance (claim-shaped `EuroMLSys@EUROSYS` row scores C/4
+  via the untouched X@Y path), 4 endpoint contract tests, materialization mocks updated (the constructor-arg
+  trap, caught proactively this time).
   Open question from the first cut — a claim naming a venue **absent from CORE** — is CLOSED by the
   forum-target revision above: such a venue is claimable, it simply gets the forum stamp without an
   evidence row or a workshop ladder, and a venue we do not hold at all goes through the existing
