@@ -3096,6 +3096,112 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         assertEquals(2.0, score.getScore());
     }
 
+    // =============================================================================================
+    //  Floors are minimums: an identified-but-lower conference must not undercut them
+    // =============================================================================================
+
+    @Test
+    void anLncsPaperIdentifiedAsACoreDConferenceStillGetsTheCFloor() {
+        // The flavia.micota shape: an LNCS-series chapter whose Crossref volume title resolved to a
+        // CORE-D conference scored D/1, undercutting the amendment's C floor — the old gate treated the
+        // floor as a fallback of last resort instead of a minimum. Identification must never pay worse
+        // than staying anonymous.
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = new ScoringPublication(
+                "spub-lncs-d", null, "forum-lncs", null, null, "2023-06-01", "ch", "ch",
+                List.of("a1"), 1, "https://doi.org/10.1007/978-3-030-00000-0_1", null, null, 0, Set.of(),
+                0, 0, 0, List.of(), null);
+        ScholardexForumView lncs = new ScholardexForumView();
+        lncs.setPublicationName("Lecture Notes in Computer Science");
+        lncs.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lncs")).thenReturn(lncs);
+        stubVolumeEvidence("spub-lncs-d", null, null, "Some Provincial Symposium on Things");
+        // No acronym-shaped token appears in any consulted name, so the acronym lookup is never hit.
+        when(cacheService.getConferenceRankingsByNormalizedTitle(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankingsByNormalizedTitle("some provincial symposium on things"))
+                .thenReturn(List.of(rankingWithYears("SPST", "Some Provincial Symposium on Things",
+                        Map.of(2023, CoreConferenceRanking.Rank.D))));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent(),
+                "an LNCS paper identified as CORE D must still take the C floor. trace="
+                        + service.getLastTraceForTests());
+        assertEquals(2.0, score.getScore());
+        assertEquals(WoSRanking.Quarter.LNCS.toString(), score.getQuarter());
+    }
+
+    @Test
+    void anLncsPaperIdentifiedAboveTheFloorKeepsItsOwnRankAndProvenance() {
+        // The floor must never relabel an equal-or-better match — the H92 AINA papers (B/4 on an LNCS-family
+        // series) are exactly this case and must not become anonymous C/2 "LNCS".
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+        ScoringPublication publication = new ScoringPublication(
+                "spub-lncs-b", null, "forum-lncs", null, null, "2023-06-01", "ch", "ch",
+                List.of("a1"), 1, "https://doi.org/10.1007/978-3-030-00000-0_2", null, null, 0, Set.of(),
+                0, 0, 0, List.of(), null);
+        ScholardexForumView lncs = new ScholardexForumView();
+        lncs.setPublicationName("Lecture Notes in Computer Science");
+        lncs.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lncs")).thenReturn(lncs);
+        stubVolumeEvidence("spub-lncs-b", null, null, "Advanced Information Networking and Applications");
+        when(cacheService.getConferenceRankingsByNormalizedTitle(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankingsByNormalizedTitle("advanced information networking applications"))
+                .thenReturn(List.of(rankingWithYears("AINA", "International Conference on Advanced Information Networking and Applications",
+                        Map.of(2023, CoreConferenceRanking.Rank.B))));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
+        assertEquals(4.0, score.getScore());
+        assertEquals("DBLP+CORE", score.getScoringSource(), "identified provenance must survive the floor check");
+    }
+
+    @Test
+    void anIdentifiedDConferenceWithNoFloorStaysD() {
+        // The boundary that keeps this honest: D is a real category. A plain conference-proceeding venue
+        // with no LNCS/ACM signal that identifies as CORE D earns D/1 — floors lift, they do not spread.
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+        ScoringPublication publication = conferencePublication("forum-plain", "2023-06-01");
+        when(cacheService.getForum("forum-plain")).thenReturn(conferenceForum(
+                "Proceedings of Some Provincial Symposium on Things, SPST 2023"));
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getConferenceRankings("SPST")).thenReturn(List.of(rankingWithYears(
+                "SPST", "Some Provincial Symposium on Things", Map.of(2023, CoreConferenceRanking.Rank.D))));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+        assertEquals(1.0, score.getScore());
+    }
+
+    @Test
+    void anAcmVenueIdentifiedAsCoreDFloorsToCOnlyUnderThe2026Flag() {
+        // Same minimum-not-fallback rule on the ACM side, and it must stay 2026-gated: the 2016 standard
+        // has no ACM amendment, so the same identified-D paper keeps its D there.
+        for (boolean flag2026 : new boolean[]{true, false}) {
+            ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+            ScoringPublication publication = conferencePublication("forum-acm-d", "2023-06-01");
+            when(cacheService.getForum("forum-acm-d")).thenReturn(conferenceForum(
+                    "Proceedings of the ACM Provincial Symposium on Things, SPST 2023"));
+            when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+            when(cacheService.getConferenceRankings("SPST")).thenReturn(List.of(rankingWithYears(
+                    "SPST", "ACM Provincial Symposium on Things", Map.of(2023, CoreConferenceRanking.Rank.D))));
+
+            Score score = service.getScore(publication, flag2026 ? acmFloorIndicator2026() : new Indicator());
+
+            if (flag2026) {
+                assertEquals(2.0, score.getScore(), "identified D at an ACM venue floors to C under 2026");
+                assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
+            } else {
+                assertEquals(1.0, score.getScore(), "the 2016 standard has no ACM floor — D stays D");
+                assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
+            }
+        }
+    }
+
     /** A publication carrying a real DOI, for the DOI-prefix venue signals. */
     private ScoringPublication doiPublication(String forumId, String originalForumId, String coverDate, String doi) {
         return new ScoringPublication(null, null, forumId, null, originalForumId, coverDate, null, "cp",

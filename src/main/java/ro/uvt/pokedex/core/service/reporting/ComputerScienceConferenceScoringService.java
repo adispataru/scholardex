@@ -147,7 +147,14 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.CORE);
                 copyProvenance(resolvedScore, scoreResult);
             }
-            if(scoreResult.bestPoints.get() == 0
+            // The floors below are MINIMUMS, not fallbacks of last resort (`< 2.0`, not `== 0`). The old
+            // `== 0` gate let an IDENTIFIED conference undercut a floor its venue qualifies for: an
+            // LNCS-published paper whose volume title resolved to a CORE-D conference scored D/1 instead
+            // of the amendment's C/2 (caught live on flavia.micota after the H92 sweep identified more
+            // venues). The OM text reads the same way — LNCS/ACM papers "care nu sunt în categoriile
+            // A*, A și B" are category C, which includes identified-but-lower ones. A resolution AT or
+            // ABOVE C keeps its own rank and provenance; the floor never relabels an equal-or-better match.
+            if(scoreResult.bestPoints.get() < 2.0
                     && (isLncsProceedingsForum(forum) || DoiVenueSupport.isSpringerBookSeriesProceedings(publication))) {
                 // Special case for LNCS chapters
                 scoreResult.bestPoints.set(2.0);
@@ -160,7 +167,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             // H85 — 2026 OM amendment: CORE-unranked ACM/EPTCS venues floor to C (the 2016 standard's
             // amendment is LNCS-only, so the flag lives on 2026 indicators exclusively). Mirrors the LNCS
             // special case; the predatory gate has already zeroed excluded venues before this point.
-            if (scoreResult.bestPoints.get() == 0 && indicator != null && indicator.usesAcmEptcsCFloor2026()) {
+            if (scoreResult.bestPoints.get() < 2.0 && indicator != null && indicator.usesAcmEptcsCFloor2026()) {
                 acmSignalForum = resolveAcmEptcsSignalForum(publication, forum);
                 // H90 — neither forum name need mention ACM. A DBLP-restamped stream forum carries the bare
                 // acronym ("EUROMLSYS") and the pre-restamp proceedings title often omits the publisher, so
@@ -260,14 +267,18 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             copyProvenance(resolvedScore, scoreResult);
         }
 
-        // Handle LNCS and SCOPUS cases similar to publication scoring
-        if (scoreResult.bestPoints.get() == 0 && forum != null) {
+        // Handle LNCS and SCOPUS cases similar to publication scoring. The floors are MINIMUMS (`< 2.0`),
+        // matching the publication path: an identified-but-lower conference must not undercut a floor its
+        // venue qualifies for. Only the D default stays strictly for the nothing-resolved case — an
+        // identified D at a venue with no floor is a real D, not a gap to paper over.
+        if (scoreResult.bestPoints.get() < 2.0 && forum != null) {
             if (isLncsProceedingsForum(forum)) {
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.LNCS);
                 trace = trace.withFallbackReason(FallbackReason.LNCS_SPECIAL_CASE);
                 applyTraceProvenance(scoreResult, trace, "SCOPUS");
+                scoreResult.bestYear.set(LAST_CORE_YEAR);
             } else if (indicator != null && indicator.usesAcmEptcsCFloor2026() && isAcmOrEptcsVenue(forum)) {
                 // H85 — 2026 OM ACM/EPTCS -> C amendment, activity flavor (Editor Proceedings, PC member
                 // at an ACM venue). Same floor as the publication path.
@@ -276,7 +287,8 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.ACM);
                 trace = trace.withFallbackReason(FallbackReason.ACM_EPTCS_SPECIAL_CASE);
                 applyTraceProvenance(scoreResult, trace, "SCOPUS");
-            } else {
+                scoreResult.bestYear.set(LAST_CORE_YEAR);
+            } else if (scoreResult.bestPoints.get() == 0) {
                 scoreResult.bestPoints.set(1.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.D);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
@@ -284,8 +296,8 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                     trace = trace.withFallbackReason(FallbackReason.SCOPUS_FALLBACK);
                 }
                 applyTraceProvenance(scoreResult, trace, "SCOPUS");
+                scoreResult.bestYear.set(LAST_CORE_YEAR);
             }
-            scoreResult.bestYear.set(LAST_CORE_YEAR);
         }
 
         logTrace(trace, scoreResult.bestPoints.get(), scoreResult.bestYear.get(), scoreResult.bestCategory.get(), scoreResult.bestQuarter.get());

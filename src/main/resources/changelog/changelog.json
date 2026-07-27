@@ -1,5 +1,15 @@
 [
   {
+    "date": "2026-07-27",
+    "title": "Volumele Springer își recunosc conferința; pragurile LNCS/ACM devin minime garantate",
+    "body": "Două schimbări legate. (1) Pentru lucrările publicate în seriile Springer (de ex. «Lecture Notes on Data Engineering and Communications Technologies»), numele seriei nu spune la ce conferință a apărut lucrarea, așa că multe primeau doar încadrarea minimă LNCS. Platforma citește acum titlul volumului din registrul public Crossref, care numește conferința — aproximativ 2.350 de lucrări au fost identificate astfel, iar cele ale căror conferințe sunt clasificate CORE au urcat la categoria reală (de ex. AINA, categoria B). (2) Pragurile LNCS și ACM sunt acum minime garantate: dacă o conferință identificată are o categorie mai mică decât pragul la care venue-ul are dreptul, se aplică pragul — identificarea unei lucrări nu poate să îi scadă punctajul față de situația în care conferința rămânea necunoscută. În detaliile punctajului apare de fiecare dată sursa încadrării.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "scope": "REPORT",
+    "reports": ["FV Info 2016", "FV Info 2026"],
+    "affects": ["Perspectiva B", "Perspectiva C"]
+  },
+  {
     "date": "2026-07-26",
     "title": "Identificarea conferințelor: acronime ambigue, sigle de arhivă și volume ACM",
     "body": "Trei situații în care o conferință reală rămânea neidentificată și primea categoria D. (1) Când același acronim aparține mai multor conferințe din lista CORE — CISIS denumește atât «Complex, Intelligent and Software Intensive Systems» (categoria C), cât și o conferință de securitate cu alt punctaj — platforma folosește acum numele complet al volumului, așa cum apare în sursa originală, ca să aleagă conferința potrivită. (2) Când arhiva DBLP păstrează o conferință sub o siglă veche (BDCAT este arhivată sub «bdc»), se consultă și acronimul propriu al conferinței, nu doar sigla seriei. (3) Volumele publicate de ACM sunt recunoscute după prefixul DOI 10.1145, chiar dacă numele locului de publicare nu conține «ACM»; acestea intră în categoria C, conform amendamentului aplicat doar în fișa 2026. Efectul este o creștere pentru lucrările afectate. În detaliile punctajului apare de fiecare dată volumul sau sursa care a decis încadrarea.",
