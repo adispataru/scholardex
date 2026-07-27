@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-07-27",
+    "title": "Corectarea venue-ului: spui tu unde a apărut lucrarea, un administrator aprobă",
+    "body": "Uneori platforma nu poate identifica singură conferința sau revista unei lucrări — de exemplu un volum de workshop publicat într-o serie Springer al cărei nume nu spune nimic despre conferință. Acum poți corecta chiar tu: în ecranul Publications, la detaliile unei lucrări proprii, secțiunea «Venue greșit?» îți permite să cauți conferința sau revista corectă și, dacă e cazul, să marchezi că lucrarea a apărut într-un workshop al acelei conferințe (workshop-urile primesc jumătate din punctajul conferinței-mamă, conform standardului). Cererea nu schimbă nimic pe loc: ajunge la un administrator, iar punctajul se modifică doar după aprobare — pentru toți coautorii lucrării, motiv pentru care există pasul de verificare. Corectarea aprobată este durabilă: reconstruirile bazei de date o re-aplică automat, iar dacă se dovedește greșită, respingerea ei restaurează exact starea anterioară.",
+    "audience": "RESEARCHER",
+    "scoringImpact": true,
+    "scope": "PLATFORM",
+    "reports": [],
+    "affects": ["Publicații"]
+  },
+  {
+    "date": "2026-07-27",
     "title": "Volumele Springer își recunosc conferința; pragurile LNCS/ACM devin minime garantate",
     "body": "Două schimbări legate. (1) Pentru lucrările publicate în seriile Springer (de ex. «Lecture Notes on Data Engineering and Communications Technologies»), numele seriei nu spune la ce conferință a apărut lucrarea, așa că multe primeau doar încadrarea minimă LNCS. Platforma citește acum titlul volumului din registrul public Crossref, care numește conferința — aproximativ 2.350 de lucrări au fost identificate astfel, iar cele ale căror conferințe sunt clasificate CORE au urcat la categoria reală (de ex. AINA, categoria B). (2) Pragurile LNCS și ACM sunt acum minime garantate: dacă o conferință identificată are o categorie mai mică decât pragul la care venue-ul are dreptul, se aplică pragul — identificarea unei lucrări nu poate să îi scadă punctajul față de situația în care conferința rămânea necunoscută. În detaliile punctajului apare de fiecare dată sursa încadrării.",
     "audience": "RESEARCHER",
