@@ -2288,7 +2288,7 @@
       "$oid": "6a67b4a35dc7f48abc80a6ff"
     },
     "name": "FEEA_P_2026",
-    "formula": "M * (1 - (N-1) * 0.1) * S",
+    "formula": "M * (1 - (N_ro-1) * 0.1) * S",
     "domain": {
       "$ref": "domains",
       "$id": "ALL"
@@ -2299,12 +2299,12 @@
       "strategy": "ECONOMICS_JOURNAL_AIS",
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
     },
-    "formulaHash": "0005456388196dc64050b0a1c70ce1732655b7d8184c3a69320d70de7a353b55",
+    "formulaHash": "173902565b56d1da4fb465aba088da8d2e779cee514a9690f3d60641a38ac5f5",
     "yearRangeSpec": {
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
     },
     "scoreYearRangeSpec": {
-      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
     },
     "selectorSpec": {
       "topN": 10,
@@ -2336,7 +2336,7 @@
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
     },
     "scoreYearRangeSpec": {
-      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
     },
     "selectorSpec": {
       "n": 10,

@@ -140,6 +140,9 @@ public final class FormulaVariableContract {
         // share — allowing Poz there would evaluate per-position item scores that never reach a total.
         if (kind instanceof IndicatorKind.Publications) {
             allowed.add("Poz");
+            // FEAA point 6: author count restricted to Romania-affiliated authors, bound lazily by
+            // ScientificProductionService only when the formula references it.
+            allowed.add("N_ro");
         }
         if (kind.strategy() == ScoringStrategy.ECONOMICS_JOURNAL_AIS) {
             allowed.add("M");

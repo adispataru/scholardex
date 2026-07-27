@@ -23,7 +23,8 @@ class ScientificProductionYearInclusionTest {
 
     private final ScientificProductionService service = new ScientificProductionService(
             Mockito.mock(ScoringFactoryService.class), Mockito.mock(FormulaEvaluator.class),
-            Mockito.mock(ReportingLookupPort.class));
+            Mockito.mock(ReportingLookupPort.class),
+            Mockito.mock(PublicationCountryAuthorCountService.class));
 
     private static ScoringPublication pub(String id, int year) {
         return new ScoringPublication(id, null, null, year + "-06-01", "ar", null,

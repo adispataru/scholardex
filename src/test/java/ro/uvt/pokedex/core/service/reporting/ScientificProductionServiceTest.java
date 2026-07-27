@@ -49,6 +49,8 @@ class ScientificProductionServiceTest {
     private ScholardexPublicationDblpEvidenceRepository dblpEvidenceRepository;
     @Mock
     private ReportingLookupPort reportingLookupPort;
+    @Mock
+    private PublicationCountryAuthorCountService publicationCountryAuthorCountService;
 
     // Real evaluator (no MVEL behavior to mock) — @InjectMocks picks it up via the
     // constructor signature.
@@ -1430,6 +1432,41 @@ class ScientificProductionServiceTest {
         score.setYear(year);
         score.setMultiplier(multiplier);
         return score;
+    }
+
+    // ── FEAA point 6: N_ro formula variable (RO-affiliated author count) ──
+
+    @Test
+    void nRoFormulaBindsCountryRestrictedAuthorCountLazily() {
+        // Formula references N_ro → the helper is consulted; N stays the full count alongside.
+        Indicator indicator = indicator("PUBLICATIONS", "S * (1 - (N_ro-1) * 0.1)");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication paper = publication("p-1", "f-1", "2023-01-01", "ar", "ar",
+                "Paper", List.of("a1", "a2", "a3", "a4"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(paper, indicator)).thenReturn(score(2.0));
+        when(publicationCountryAuthorCountService.authorCountForCountry(paper, "Romania")).thenReturn(2);
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(paper), indicator);
+
+        // 2.0 * (1 - (2-1)*0.1) = 1.8 — the RO count (2), not the total (4, which would give 1.4).
+        assertEquals(1.8, result.get("Paper").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void nonNRoFormulaNeverTouchesTheAffiliationHelper() {
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2,1)");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication paper = publication("p-2", "f-1", "2023-01-01", "ar", "ar",
+                "Other", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(paper, indicator)).thenReturn(score(2.0));
+
+        scientificProductionService.calculateScientificProductionScore(List.of(paper), indicator);
+
+        verify(publicationCountryAuthorCountService, never())
+                .authorCountForCountry(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     // ── S2: Poz formula variable — per-position item scores and totals ──
