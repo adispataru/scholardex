@@ -1238,12 +1238,15 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* …but the chip sits whole on its own line above the number (also keeps the column's
-   preferred width down to max(chip, number), giving the freed space to the title). */
+/* …with the chip on its own line above the number. The table is fixed-layout (~8rem points
+   column), so a long label ("CATEGORIA D — SUB PRAG") must WRAP inside the cell — nowrap +
+   max-content made it overflow into the neighboring actions column ("administrează" overlap). */
 .individual-report-dashboard .app-eval-evidence-table__num .eval-scored-item__zero-flag {
-  white-space: nowrap;
+  white-space: normal;
   display: block;
-  width: max-content;
+  width: fit-content;
+  max-width: 100%;
+  text-align: right;
   margin-left: auto;
   margin-bottom: 0.15rem;
 }
