@@ -25,10 +25,11 @@ public final class ConferenceTitleNormalizationSupport {
      * rule, which is how AAMAS papers scored D despite an exact acronym match (fixed at MATCH time in
      * H89/`eb1b882d`).
      *
-     * <p>H92 moved it here because the same pollution existed at INDEX time: {@code CacheService} keys the
-     * conference-title lookup on the raw name, so "…Applications (was ICOIN)" indexes as
-     * "advanced information networking applications was icoin" and a clean volume title can never match it.
-     * One definition, used by both — the same lesson as {@link LectureNotesSeriesSupport}.
+     * <p>H92 moved it here because the same pollution existed at INDEX time: the conference-title lookup
+     * behind {@link ReportingLookupPort#getConferenceRankingsByNormalizedTitle} was keyed on the raw name,
+     * so "…Applications (was ICOIN)" indexed as "advanced information networking applications was icoin"
+     * and a clean volume title could never match it. One definition, used by both the index build and the
+     * match — the same lesson as {@link LectureNotesSeriesSupport}.
      *
      * <p>RANKING names only. Venue names carry meaningful parentheses (DBLP's "AINA (5)" volume markers)
      * that must survive.
