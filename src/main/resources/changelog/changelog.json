@@ -1,5 +1,20 @@
 [
   {
+    "date": "2026-07-28",
+    "title": "Fișele Info sunt organizate pe Perspective, cu verdict DA/NU",
+    "body": "În FV Info 2016 și FV Info 2026, criteriile sunt acum grupate în Perspectivele fișei oficiale: Perspectiva B reunește punctajul total și pragurile «din care» (A*+A+B, iar în 2026 și A*+A), Perspectivele C și D își grupează rândurile, iar «Total — verdict» răspunde exact ca fișa de verificare: DA doar când toate perspectivele sunt îndeplinite și punctajul cumulat depășește pragul. Fiecare grup afișează verdictul DA/NU pentru poziția selectată, iar contorul «criterii îndeplinite» numără acum perspectivele, nu rândurile individuale — de aceea numitorul este mai mic decât înainte (de exemplu 4 în loc de 6), fără nicio schimbare de punctaj.",
+    "audience": "RESEARCHER",
+    "scoringImpact": false,
+    "scope": "REPORT",
+    "reports": [
+      "FV Info 2016",
+      "FV Info 2026"
+    ],
+    "affects": [
+      "Rapoarte"
+    ]
+  },
+  {
     "date": "2026-07-27",
     "title": "Conferințele de categoria D se punctează în funcție de poziția vizată",
     "body": "În FV Info 2016 și FV Info 2026, lucrările din conferințe de categoria D (1 punct) intră acum în Perspectiva B și în Total pentru pozițiile de Asistent și Lector, dar nu se mai numără pentru Conferențiar, Profesor și Abilitare — exact ca în fișa oficială de verificare și în standardul de abilitare. Pagina de evaluare arată scorul potrivit poziției selectate din selector, iar pragurile «îndeplinit / aproape» se calculează pe acel scor. Tot acum, criteriul Total folosește aceiași indicatori separați pe reviste și conferințe ca Perspectiva B (înainte folosea un indicator combinat mai vechi, care număra categoria D pentru toate pozițiile).",

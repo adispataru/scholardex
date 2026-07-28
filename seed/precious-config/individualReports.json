@@ -1,11 +1,27 @@
 [
-{
+ {
   "_id": {
    "$oid": "68234d659ab8db33ac93b78c"
   },
-  "individualAffiliation": {
-   "$ref": "institutions",
-   "$id": "ANY"
+  "reportTypeKey": "matematica-2016",
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {
+   "682342d67123387ec34394b0": "indicatori-suplimentari-uvt",
+   "68234a6c7e443769580e906d": "indicatori-suplimentari-uvt",
+   "68220d212a04a41f93fc7dba": "journal-publications-recent",
+   "68230b164652ac0103a9eebd": "indicatori-suplimentari-uvt",
+   "680f69396f664731f88f814a": "citations-per-publication",
+   "682340fe7123387ec34394ae": "indicatori-suplimentari-uvt",
+   "680fa64de3d12644e3045404": "journal-publications"
+  },
+  "blockByIndicatorId": {
+   "682342d67123387ec34394b0": "C3_UVT",
+   "68234a6c7e443769580e906d": "C4_UVT",
+   "68220d212a04a41f93fc7dba": "__not_exported__",
+   "68230b164652ac0103a9eebd": "C1_UVT",
+   "680f69396f664731f88f814a": "__not_exported__",
+   "682340fe7123387ec34394ae": "C2_UVT",
+   "680fa64de3d12644e3045404": "__not_exported__"
   },
   "title": "FV Matematică",
   "description": "Bazat pe https://cariere.uvt.ro/wp-content/uploads/2025/03/Standarde-minimale-FMI.pdf",
@@ -55,6 +71,7 @@
   ],
   "criteria": [
    {
+    "name": "",
     "indicatorIndices": [
      0
     ],
@@ -75,9 +92,11 @@
       "position": "PROF_UNIV",
       "value": 5
      }
-    ]
+    ],
+    "contributesToTotal": false
    },
    {
+    "name": "",
     "indicatorIndices": [
      1
     ],
@@ -90,9 +109,11 @@
       "position": "PROF_UNIV",
       "value": 2.5
      }
-    ]
+    ],
+    "contributesToTotal": false
    },
    {
+    "name": "",
     "indicatorIndices": [
      2
     ],
@@ -105,9 +126,11 @@
       "position": "PROF_UNIV",
       "value": 12
      }
-    ]
+    ],
+    "contributesToTotal": false
    },
    {
+    "name": "",
     "indicatorIndices": [
      3
     ],
@@ -120,9 +143,11 @@
       "position": "PROF_UNIV",
       "value": 2
      }
-    ]
+    ],
+    "contributesToTotal": false
    },
    {
+    "name": "",
     "indicatorIndices": [
      4
     ],
@@ -135,9 +160,11 @@
       "position": "PROF_UNIV",
       "value": 1
      }
-    ]
+    ],
+    "contributesToTotal": false
    },
    {
+    "name": "",
     "indicatorIndices": [
      5
     ],
@@ -150,9 +177,11 @@
       "position": "PROF_UNIV",
       "value": 4
      }
-    ]
+    ],
+    "contributesToTotal": false
    },
    {
+    "name": "",
     "indicatorIndices": [
      6
     ],
@@ -165,12 +194,13 @@
       "position": "LECT_UNIV",
       "value": 5
      }
-    ]
+    ],
+    "contributesToTotal": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
-{
+ {
   "_id": {
    "$oid": "6849fb3d97a94f22948f9430"
   },
@@ -180,12 +210,6 @@
   },
   "title": "FEAA 2016",
   "description": "top",
-  "reportTypeKey": "feaa-2024",
-  "indicatorRolesByIndicatorId": {
-   "683624c863193d59c7eb2b31": "citations-per-publication",
-   "683618f381a0fe77d6a1c04c": "journal-publications",
-   "6a30667f5ae41a6b1b60c6ce": "book-publications"
-  },
   "indicators": [
    {
     "$ref": "indicators",
@@ -449,9 +473,15 @@
     "contributesToTotal": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "indicatorRolesByIndicatorId": {
+   "683618f381a0fe77d6a1c04c": "journal-publications",
+   "683624c863193d59c7eb2b31": "citations-per-publication",
+   "6a30667f5ae41a6b1b60c6ce": "book-publications"
+  },
+  "reportTypeKey": "feaa-2024"
  },
-{
+ {
   "_id": {
    "$oid": "698b51a2d6449873efdaa9c4"
   },
@@ -503,7 +533,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
-{
+ {
   "_id": {
    "$oid": "69b025ccd85c553474735e6b"
   },
@@ -615,7 +645,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
-{
+ {
   "_id": {
    "$oid": "6a049bf02e64c65c14f9e019"
   },
@@ -633,41 +663,41 @@
    "6654dce7068d032b7e119593": "citations-per-publication",
    "6816987607ff6c4e2956d5c4": "activities-perspectiva-d",
    "6820fbd904e38843635e0cae": "activities-perspectiva-d",
-   "66564362f349c0670bb68b25": "",
+   "66564362f349c0670bb68b25": "__not_exported__",
    "6820d9bcd7ca817372b6d6f3": "activities-perspectiva-d",
    "6823535fbb926870c1f86fbd": "activities-perspectiva-d",
-   "665ce9102dbfdf2e0b3caa33": "",
+   "665ce9102dbfdf2e0b3caa33": "__not_exported__",
    "6a049c682e64c65c14f9e01b": "journal-publications",
    "6820eff604e38843635e0cab": "activities-perspectiva-d",
    "6820e0f6b20a79244588e87d": "activities-perspectiva-d",
    "6820eec804e38843635e0ca8": "activities-perspectiva-d",
    "682100ba04e38843635e0cb8": "activities-perspectiva-d",
    "6820e5552654f8388e8d364c": "activities-perspectiva-d",
-   "6656440ef349c0670bb68b26": ""
+   "6656440ef349c0670bb68b26": "__not_exported__"
   },
   "blockByIndicatorId": {
    "665a40689073a275ec9abba1": "Carti/Capitole",
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
    "6820fe4104e38843635e0cb2": "Carti/Capitole",
-   "6a049c242e64c65c14f9e01a": "",
+   "6a049c242e64c65c14f9e01a": "__not_exported__",
    "6820d3a18a61794835d91b24": "Editor proceedings",
    "68191a2f526ce829aca68b34": "Keynote/invited speaker",
    "6820cafbfe404029dad193d1": "Curs in format electronic",
    "6820e4952654f8388e8d3649": "Organizare evenimente",
-   "6654dce7068d032b7e119593": "",
+   "6654dce7068d032b7e119593": "__not_exported__",
    "6816987607ff6c4e2956d5c4": "Director/editor revista",
    "6820fbd904e38843635e0cae": "Comisii doctorat",
-   "66564362f349c0670bb68b25": "",
-   "6820d9bcd7ca817372b6d6f3": "Grant Cercetare",
+   "66564362f349c0670bb68b25": "__not_exported__",
+   "6820d9bcd7ca817372b6d6f3": "Granturi",
    "6823535fbb926870c1f86fbd": "Keynote/invited speaker",
-   "665ce9102dbfdf2e0b3caa33": "",
-   "6a049c682e64c65c14f9e01b": "",
+   "665ce9102dbfdf2e0b3caa33": "__not_exported__",
+   "6a049c682e64c65c14f9e01b": "__not_exported__",
    "6820eff604e38843635e0cab": "Comisii doctorat",
    "6820e0f6b20a79244588e87d": "Membru comitet stiintific",
    "6820eec804e38843635e0ca8": "Consolidarea de echipe",
    "682100ba04e38843635e0cb8": "Pozitii de conducere",
    "6820e5552654f8388e8d364c": "Keynote/invited speaker",
-   "6656440ef349c0670bb68b26": ""
+   "6656440ef349c0670bb68b26": "__not_exported__"
   },
   "title": "FV Info 2016",
   "description": "FV Info",
@@ -893,10 +923,6 @@
    },
    {
     "name": "Perspectiva D",
-    "maxPercentOfTotal": {
-     "13": 10,
-     "17": 10
-    },
     "indicatorIndices": [
      4,
      5,
@@ -933,7 +959,11 @@
       "value": 60
      }
     ],
-    "contributesToTotal": true
+    "contributesToTotal": true,
+    "maxPercentOfTotal": {
+     "13": 10,
+     "17": 10
+    }
    },
    {
     "name": "Total",
@@ -979,9 +1009,66 @@
     "contributesToTotal": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "perspectives": [
+   {
+    "name": "Perspectiva B",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 2
+      }
+     ]
+    }
+   },
+   {
+    "name": "Perspectiva C",
+    "composition": {
+     "all": [
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 3
+      }
+     ]
+    }
+   },
+   {
+    "name": "Perspectiva D",
+    "composition": {
+     "all": [
+      {
+       "criterion": 4
+      }
+     ]
+    }
+   },
+   {
+    "name": "Total — verdict",
+    "composition": {
+     "all": [
+      {
+       "perspective": 0
+      },
+      {
+       "perspective": 1
+      },
+      {
+       "perspective": 2
+      },
+      {
+       "criterion": 5
+      }
+     ]
+    }
+   }
+  ]
  },
-{
+ {
   "_id": {
    "$oid": "6a47f44686ec3f1107f927bb"
   },
@@ -990,20 +1077,14 @@
   "indicatorRolesByIndicatorId": {
    "6820ffde04e38843635e0cb5": "activities-perspectiva-d",
    "6820fe4104e38843635e0cb2": "activities-perspectiva-d",
-   "6a63b59843226fd40f87b943": "activities-perspectiva-d",
    "68191a2f526ce829aca68b34": "activities-perspectiva-d",
    "6820cafbfe404029dad193d1": "activities-perspectiva-d",
    "6820e4952654f8388e8d3649": "activities-perspectiva-d",
    "6816987607ff6c4e2956d5c4": "activities-perspectiva-d",
-   "6a629148d8ddfc14de2b6a1c": "activities-perspectiva-d",
-   "6a633aa137efb68d2e577b71": "activities-perspectiva-d",
    "6823535fbb926870c1f86fbd": "activities-perspectiva-d",
-   "6a63b59843226fd40f87b942": "__not_exported__",
    "6820eff604e38843635e0cab": "activities-perspectiva-d",
-   "6a63b59843226fd40f87b944": "activities-perspectiva-d",
    "6820eec804e38843635e0ca8": "activities-perspectiva-d",
    "682100ba04e38843635e0cb8": "activities-perspectiva-d",
-   "6a63b59843226fd40f87b945": "activities-perspectiva-d",
    "6a47f17bcb06b11f3b6121f0": "citations-per-publication",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
@@ -1011,32 +1092,38 @@
    "6a480678cefa56310d7f8023": "__not_exported__",
    "6a480678cefa56310d7f8024": "journal-publications",
    "6a481bc682ebdb034bfc8e10": "conference-publications",
-   "6a493be99fe41c33d2883e87": "perspectiva-d-director-count"
+   "6a493be99fe41c33d2883e87": "perspectiva-d-director-count",
+   "6a629148d8ddfc14de2b6a1c": "activities-perspectiva-d",
+   "6a633aa137efb68d2e577b71": "activities-perspectiva-d",
+   "6a63b59843226fd40f87b942": "__not_exported__",
+   "6a63b59843226fd40f87b943": "activities-perspectiva-d",
+   "6a63b59843226fd40f87b944": "activities-perspectiva-d",
+   "6a63b59843226fd40f87b945": "activities-perspectiva-d"
   },
   "blockByIndicatorId": {
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
    "6820fe4104e38843635e0cb2": "Carti/Capitole",
-   "6a63b59843226fd40f87b943": "Editor proceedings",
    "68191a2f526ce829aca68b34": "Keynote/invited speaker",
    "6820cafbfe404029dad193d1": "Curs in format electronic",
    "6820e4952654f8388e8d3649": "Organizare evenimente",
    "6816987607ff6c4e2956d5c4": "Director/editor revista",
-   "6a629148d8ddfc14de2b6a1c": "Comisii doctorat",
-   "6a633aa137efb68d2e577b71": "Granturi",
    "6823535fbb926870c1f86fbd": "Keynote/invited speaker",
-   "6a63b59843226fd40f87b942": "__not_exported__",
    "6820eff604e38843635e0cab": "Comisii doctorat",
-   "6a63b59843226fd40f87b944": "Membru comitet stiintific",
    "6820eec804e38843635e0ca8": "Consolidarea de echipe",
    "682100ba04e38843635e0cb8": "Pozitii de conducere",
-   "6a63b59843226fd40f87b945": "Keynote/invited speaker",
    "6a47f17bcb06b11f3b6121f0": "__not_exported__",
    "6a47f2d27be56ad867b997c2": "__not_exported__",
    "6a47f57bf5f5a3371821fd41": "__not_exported__",
    "6a47f72a8982d45e2bf2f735": "Carti/Capitole",
    "6a480678cefa56310d7f8023": "__not_exported__",
    "6a480678cefa56310d7f8024": "__not_exported__",
-   "6a481bc682ebdb034bfc8e10": "__not_exported__"
+   "6a481bc682ebdb034bfc8e10": "__not_exported__",
+   "6a629148d8ddfc14de2b6a1c": "Comisii doctorat",
+   "6a633aa137efb68d2e577b71": "Granturi",
+   "6a63b59843226fd40f87b942": "__not_exported__",
+   "6a63b59843226fd40f87b943": "Editor proceedings",
+   "6a63b59843226fd40f87b944": "Membru comitet stiintific",
+   "6a63b59843226fd40f87b945": "Keynote/invited speaker"
   },
   "title": "FV Info 2026",
   "description": "FV Info",
@@ -1190,43 +1277,29 @@
    {
     "name": "Perspectiva B",
     "indicatorIndices": [
-     {
-      "$numberInt": "19"
-     },
-     {
-      "$numberInt": "20"
-     }
+     19,
+     20
     ],
     "thresholds": [
      {
       "position": "ASIST_UNIV",
-      "value": {
-       "$numberInt": "2"
-      }
+      "value": 2
      },
      {
       "position": "LECT_UNIV",
-      "value": {
-       "$numberInt": "12"
-      }
+      "value": 12
      },
      {
       "position": "CONF_UNIV",
-      "value": {
-       "$numberInt": "32"
-      }
+      "value": 32
      },
      {
       "position": "PROF_UNIV",
-      "value": {
-       "$numberInt": "56"
-      }
+      "value": 56
      },
      {
       "position": "HABIL",
-      "value": {
-       "$numberInt": "44"
-      }
+      "value": 44
      }
     ],
     "contributesToTotal": true
@@ -1234,40 +1307,28 @@
    {
     "name": "Perspectiva C",
     "indicatorIndices": [
-     {
-      "$numberInt": "1"
-     }
+     1
     ],
     "thresholds": [
      {
       "position": "ASIST_UNIV",
-      "value": {
-       "$numberInt": "0"
-      }
+      "value": 0
      },
      {
       "position": "LECT_UNIV",
-      "value": {
-       "$numberInt": "10"
-      }
+      "value": 10
      },
      {
       "position": "CONF_UNIV",
-      "value": {
-       "$numberInt": "48"
-      }
+      "value": 48
      },
      {
       "position": "PROF_UNIV",
-      "value": {
-       "$numberInt": "120"
-      }
+      "value": 120
      },
      {
       "position": "HABIL",
-      "value": {
-       "$numberInt": "84"
-      }
+      "value": 84
      }
     ],
     "contributesToTotal": true
@@ -1275,28 +1336,20 @@
    {
     "name": "Publicații de top",
     "indicatorIndices": [
-     {
-      "$numberInt": "2"
-     }
+     2
     ],
     "thresholds": [
      {
       "position": "CONF_UNIV",
-      "value": {
-       "$numberInt": "16"
-      }
+      "value": 16
      },
      {
       "position": "PROF_UNIV",
-      "value": {
-       "$numberInt": "40"
-      }
+      "value": 40
      },
      {
       "position": "HABIL",
-      "value": {
-       "$numberInt": "28"
-      }
+      "value": 28
      }
     ],
     "contributesToTotal": false
@@ -1304,207 +1357,111 @@
    {
     "name": "Citări de top",
     "indicatorIndices": [
-     {
-      "$numberInt": "3"
-     }
+     3
     ],
     "thresholds": [
      {
       "position": "CONF_UNIV",
-      "value": {
-       "$numberInt": "12"
-      }
+      "value": 12
      },
      {
       "position": "PROF_UNIV",
-      "value": {
-       "$numberInt": "40"
-      }
+      "value": 40
      },
      {
       "position": "HABIL",
-      "value": {
-       "$numberInt": "26"
-      }
+      "value": 26
      }
     ],
     "contributesToTotal": false
    },
    {
     "name": "Perspectiva D",
-    "maxPercentOfTotal": {
-     "13": 10,
-     "17": 10
-    },
     "indicatorIndices": [
-     {
-      "$numberInt": "4"
-     },
-     {
-      "$numberInt": "5"
-     },
-     {
-      "$numberInt": "6"
-     },
-     {
-      "$numberInt": "7"
-     },
-     {
-      "$numberInt": "8"
-     },
-     {
-      "$numberInt": "9"
-     },
-     {
-      "$numberInt": "10"
-     },
-     {
-      "$numberInt": "11"
-     },
-     {
-      "$numberInt": "12"
-     },
-     {
-      "$numberInt": "13"
-     },
-     {
-      "$numberInt": "14"
-     },
-     {
-      "$numberInt": "15"
-     },
-     {
-      "$numberInt": "16"
-     },
-     {
-      "$numberInt": "17"
-     },
-     {
-      "$numberInt": "18"
-     },
-     {
-      "$numberInt": "21"
-     }
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     21
     ],
     "thresholds": [
      {
       "position": "ASIST_UNIV",
-      "value": {
-       "$numberInt": "0"
-      }
+      "value": 0
      },
      {
       "position": "LECT_UNIV",
-      "value": {
-       "$numberInt": "4"
-      }
+      "value": 4
      },
      {
       "position": "CONF_UNIV",
-      "value": {
-       "$numberInt": "36"
-      }
+      "value": 36
      },
      {
       "position": "PROF_UNIV",
-      "value": {
-       "$numberInt": "60"
-      }
+      "value": 60
      },
      {
       "position": "HABIL",
-      "value": {
-       "$numberInt": "48"
-      }
+      "value": 48
      }
     ],
-    "contributesToTotal": true
+    "contributesToTotal": true,
+    "maxPercentOfTotal": {
+     "13": 10,
+     "17": 10
+    }
    },
    {
     "name": "Total",
     "indicatorIndices": [
-     {
-      "$numberInt": "19"
-     },
-     {
-      "$numberInt": "20"
-     },
-     {
-      "$numberInt": "1"
-     },
-     {
-      "$numberInt": "4"
-     },
-     {
-      "$numberInt": "5"
-     },
-     {
-      "$numberInt": "6"
-     },
-     {
-      "$numberInt": "7"
-     },
-     {
-      "$numberInt": "8"
-     },
-     {
-      "$numberInt": "9"
-     },
-     {
-      "$numberInt": "10"
-     },
-     {
-      "$numberInt": "11"
-     },
-     {
-      "$numberInt": "12"
-     },
-     {
-      "$numberInt": "13"
-     },
-     {
-      "$numberInt": "14"
-     },
-     {
-      "$numberInt": "15"
-     },
-     {
-      "$numberInt": "16"
-     },
-     {
-      "$numberInt": "17"
-     },
-     {
-      "$numberInt": "18"
-     },
-   {
-    "$numberInt": "21"
-   }
-  ],
+     19,
+     20,
+     1,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     21
+    ],
     "thresholds": [
      {
       "position": "ASIST_UNIV",
-      "value": {
-       "$numberInt": "2"
-      }
+      "value": 2
      },
      {
       "position": "LECT_UNIV",
-      "value": {
-       "$numberInt": "26"
-      }
+      "value": 26
      },
      {
       "position": "CONF_UNIV",
-      "value": {
-       "$numberInt": "116"
-      }
+      "value": 116
      },
      {
       "position": "PROF_UNIV",
-      "value": {
-       "$numberInt": "236"
-      }
+      "value": 236
      }
     ],
     "contributesToTotal": false
@@ -1512,22 +1469,308 @@
    {
     "name": "Publicații A*+A",
     "indicatorIndices": [
-     {
-      "$numberInt": "22"
-     }
+     22
     ],
     "thresholds": [
      {
       "position": "PROF_UNIV",
-      "value": {
-       "$numberInt": "24"
-      }
+      "value": 24
      },
      {
       "position": "HABIL",
-      "value": {
-       "$numberInt": "12"
+      "value": 12
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "perspectives": [
+   {
+    "name": "Perspectiva B",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 2
+      },
+      {
+       "criterion": 6
       }
+     ]
+    }
+   },
+   {
+    "name": "Perspectiva C",
+    "composition": {
+     "all": [
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 3
+      }
+     ]
+    }
+   },
+   {
+    "name": "Perspectiva D",
+    "composition": {
+     "all": [
+      {
+       "criterion": 4
+      }
+     ]
+    }
+   },
+   {
+    "name": "Total — verdict",
+    "composition": {
+     "all": [
+      {
+       "perspective": 0
+      },
+      {
+       "perspective": 1
+      },
+      {
+       "perspective": 2
+      },
+      {
+       "criterion": 5
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "_id": {
+   "$oid": "6a4e40627c184d3e2d35ea67"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "Eligibilitate PD 2026",
+  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (Anexa 2) — Informatică. Director: fereastra 2016-2026 aproximează 'după admiterea la doctorat' (limita reală: 8 ani de la primul titlu de doctor — verificați cazurile-limită). Mentor: 2015-2026. Doar reviste SCIE/SSCI/AHCI (ESCI nu se punctează); cuartile AIS conform JCR-ului anului publicării (2025-2026 → JCR-2024).",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea60"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea61"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea62"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea63"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea64"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea65"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea66"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "Director: lucrări WoS (article/review)",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 3
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 3
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "HABIL",
+      "value": 3
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Director: Q1/Q2 (AIS) sau CORE A/A*",
+    "indicatorIndices": [
+     1,
+     2
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 1
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 1
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: top 50% AIS",
+    "indicatorIndices": [
+     3
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 5
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 5
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "HABIL",
+      "value": 5
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: Q1 (AIS)",
+    "indicatorIndices": [
+     4
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 2
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 2
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: reviste Q2 distincte",
+    "indicatorIndices": [
+     5
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 2
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 2
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: tip article",
+    "indicatorIndices": [
+     6
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 3
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 3
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "HABIL",
+      "value": 3
      }
     ],
     "contributesToTotal": false
@@ -1535,7 +1778,7 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
-{
+ {
   "_id": {
    "$oid": "6a5d075cc4aec775c522d9eb"
   },
@@ -1810,479 +2053,376 @@
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
-{
- "_id": {
-  "$oid": "6a67b4a35dc7f48abc80a702"
- },
- "individualAffiliation": {
- "_id": {
-  "$oid": "6a67b4a35dc7f48abc80a702"
- },
- "individualAffiliation": {
-  "$ref": "institutions",
-  "$id": "ANY"
- },
- "title": "FEAA 2026",
- "description": "COMISIA 27 (2026): S = P + C din max 10 articole WoS cu AIS nenul (max 1/revistă/an, exceptând Core/Infoeconomics) și max 10 citări (fără autocitări și semi-autocitări). Cărțile/capitolele substituie articole, plafonat la 25% din P minim.",
- "indicators": [
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a67b4a35dc7f48abc80a700"
+ {
+  "_id": {
+   "$oid": "6a67b4a35dc7f48abc80a702"
+  },
+  "title": "FEAA 2026",
+  "description": "COMISIA 27 (2026): S = P + C din max 10 articole WoS cu AIS nenul (max 1/revistă/an, exceptând Core/Infoeconomics) și max 10 citări (fără autocitări și semi-autocitări). Cărțile/capitolele substituie articole, plafonat la 25% din P minim.",
+  "individualAffiliation": {
+   "$ref": "institutions",
+   "$id": "ANY"
+  },
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a67b4a35dc7f48abc80a700"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a67b4a35dc7f48abc80a6ff"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a67b4a35dc7f48abc80a701"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a68feca2d8c50428a37cf34"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a68feca2d8c50428a37cf35"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a68feca2d8c50428a37cf36"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a68feca2d8c50428a37cf37"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a68feca2d8c50428a37cf38"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d5"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a626d02a4be38276d5a28d6"
+    }
    }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a67b4a35dc7f48abc80a6ff"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a67b4a35dc7f48abc80a701"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a68feca2d8c50428a37cf34"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a68feca2d8c50428a37cf35"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a68feca2d8c50428a37cf36"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a68feca2d8c50428a37cf37"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a68feca2d8c50428a37cf38"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a626d02a4be38276d5a28d5"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a626d02a4be38276d5a28d6"
-   }
-  }
- ],
- "criteria": [
-  {
-   "name": "C — citări",
-   "indicatorIndices": [
-    0
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 0.75
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 2.0
-    }
-   ]
-  },
-  {
-   "name": "P — articole (+ cărți plafonate)",
-   "indicatorIndices": [
-    1
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 1.25
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 3.0
-    }
-   ],
-   "thresholdCapAdditions": [
-    {
-     "indicatorIndex": 2,
-     "percent": 25.0
-    }
-   ]
-  },
-  {
-   "name": "S = P + C",
-   "indicatorIndices": [
-    0,
-    1
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 2.25
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 6.0
-    }
-   ],
-   "thresholdCapAdditions": [
-    {
-     "indicatorIndex": 2,
-     "percent": 25.0,
-     "thresholdCriterionIndex": 1
-    }
-   ]
-  },
-  {
-   "name": "Cărți/Capitole (substituie articole, max 25% din P minim)",
-   "indicatorIndices": [
-    2
-   ],
-   "contributesToTotal": false,
-   "thresholds": []
-  },
-  {
-   "name": "Articole cu AIS > 0,15",
-   "indicatorIndices": [
-    3
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 1.0
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 3.0
-    }
-   ]
-  },
-  {
-   "name": "Articole cu AIS > 0,15 (≥2, ruta c)",
-   "indicatorIndices": [
-    3
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "PROF_UNIV",
-     "value": 2.0
-    }
-   ]
-  },
-  {
-   "name": "Articole cu AIS > 0,15 (≥1, ruta d)",
-   "indicatorIndices": [
-    3
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "PROF_UNIV",
-     "value": 1.0
-    }
-   ]
-  },
-  {
-   "name": "Granturi câștigate în competiții",
-   "indicatorIndices": [
-    8
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 1.0
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 3.0
-    }
-   ]
-  },
-  {
-   "name": "Granturi director/responsabil (≥2)",
-   "indicatorIndices": [
-    9
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "PROF_UNIV",
-     "value": 2.0
-    }
-   ]
-  },
-  {
-   "name": "Granturi director/responsabil (≥1, ruta c)",
-   "indicatorIndices": [
-    9
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "PROF_UNIV",
-     "value": 1.0
-    }
-   ]
-  },
-  {
-   "name": "Articole WoS cu AIS nenul",
-   "indicatorIndices": [
-    4
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 3.0
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 5.0
-    }
-   ]
-  },
-  {
-   "name": "Reviste distincte (AIS nenul)",
-   "indicatorIndices": [
-    6
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "PROF_UNIV",
-     "value": 3.0
-    }
-   ]
-  },
-  {
-   "name": "Din care Core Economics / Infoeconomics",
-   "indicatorIndices": [
-    5
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 1.0
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 3.0
-    }
-   ]
-  },
-  {
-   "name": "Reviste distincte Core/Infoeconomics",
-   "indicatorIndices": [
-    7
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "PROF_UNIV",
-     "value": 2.0
-    }
-   ]
-  }
- ],
- "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
- "perspectives": [
-  {
-   "name": "Scor minimal (S = P + C)",
-   "composition": {
-    "all": [
+  ],
+  "criteria": [
+   {
+    "name": "C — citări",
+    "indicatorIndices": [
+     0
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
      {
-      "criterion": 0
+      "position": "CONF_UNIV",
+      "value": 0.75
      },
      {
-      "criterion": 1
+      "position": "PROF_UNIV",
+      "value": 2
+     }
+    ]
+   },
+   {
+    "name": "P — articole (+ cărți plafonate)",
+    "indicatorIndices": [
+     1
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1.25
      },
      {
-      "criterion": 2
+      "position": "PROF_UNIV",
+      "value": 3
+     }
+    ],
+    "thresholdCapAdditions": [
+     {
+      "indicatorIndex": 2,
+      "percent": 25
+     }
+    ]
+   },
+   {
+    "name": "S = P + C",
+    "indicatorIndices": [
+     0,
+     1
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 2.25
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 6
+     }
+    ],
+    "thresholdCapAdditions": [
+     {
+      "indicatorIndex": 2,
+      "percent": 25,
+      "thresholdCriterionIndex": 1
+     }
+    ]
+   },
+   {
+    "name": "Cărți/Capitole (substituie articole, max 25% din P minim)",
+    "indicatorIndices": [
+     2
+    ],
+    "contributesToTotal": false,
+    "thresholds": []
+   },
+   {
+    "name": "Articole cu AIS > 0,15",
+    "indicatorIndices": [
+     3
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     }
+    ]
+   },
+   {
+    "name": "Articole cu AIS > 0,15 (≥2, ruta c)",
+    "indicatorIndices": [
+     3
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     }
+    ]
+   },
+   {
+    "name": "Articole cu AIS > 0,15 (≥1, ruta d)",
+    "indicatorIndices": [
+     3
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "name": "Granturi câștigate în competiții",
+    "indicatorIndices": [
+     8
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     }
+    ]
+   },
+   {
+    "name": "Granturi director/responsabil (≥2)",
+    "indicatorIndices": [
+     9
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     }
+    ]
+   },
+   {
+    "name": "Granturi director/responsabil (≥1, ruta c)",
+    "indicatorIndices": [
+     9
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "name": "Articole WoS cu AIS nenul",
+    "indicatorIndices": [
+     4
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 5
+     }
+    ]
+   },
+   {
+    "name": "Reviste distincte (AIS nenul)",
+    "indicatorIndices": [
+     6
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     }
+    ]
+   },
+   {
+    "name": "Din care Core Economics / Infoeconomics",
+    "indicatorIndices": [
+     5
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     }
+    ]
+   },
+   {
+    "name": "Reviste distincte Core/Infoeconomics",
+    "indicatorIndices": [
+     7
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 2
      }
     ]
    }
-  },
-  {
-   "name": "Punctul 4 — articol de impact sau granturi",
-   "composition": {
-    "any": [
-     {
-      "criterion": 4
-     },
-     {
-      "all": [
-       {
-        "criterion": 7
-       },
-       {
-        "criterion": 8
-       }
-      ]
-     },
-     {
-      "all": [
-       {
-        "criterion": 5
-       },
-       {
-        "criterion": 9
-       }
-      ]
-     },
-     {
-      "all": [
-       {
-        "criterion": 6
-       },
-       {
-        "criterion": 8
-       }
-      ]
-     }
-    ]
-   }
-  },
-  {
-   "name": "Punctul 5 — număr minim de articole",
-   "composition": {
-    "all": [
-     {
-      "criterion": 10
-     },
-     {
-      "criterion": 11
-     },
-     {
-      "criterion": 12
-     },
-     {
-      "criterion": 13
-     }
-    ]
-   }
-  }
- ]
-},
- "title": "FEAA 2026",
- "description": "COMISIA 27 (2026): S = P + C din max 10 articole WoS cu AIS nenul (max 1/revistă/an, exceptând Core/Infoeconomics) și max 10 citări (fără autocitări și semi-autocitări). Cărțile/capitolele substituie articole, plafonat la 25% din P minim.",
- "indicators": [
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a67b4a35dc7f48abc80a700"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a67b4a35dc7f48abc80a6ff"
-   }
-  },
-  {
-   "$ref": "indicators",
-   "$id": {
-    "$oid": "6a67b4a35dc7f48abc80a701"
-   }
-  }
- ],
- "criteria": [
-  {
-   "name": "C — citări",
-   "indicatorIndices": [
-    0
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 0.75
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 2.0
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "perspectives": [
+   {
+    "name": "Scor minimal (S = P + C)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 2
+      }
+     ]
     }
-   ]
-  },
-  {
-   "name": "P — articole (+ cărți plafonate)",
-   "indicatorIndices": [
-    1
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 1.25
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 3.0
+   },
+   {
+    "name": "Punctul 4 — articol de impact sau granturi",
+    "composition": {
+     "any": [
+      {
+       "criterion": 4
+      },
+      {
+       "all": [
+        {
+         "criterion": 7
+        },
+        {
+         "criterion": 8
+        }
+       ]
+      },
+      {
+       "all": [
+        {
+         "criterion": 5
+        },
+        {
+         "criterion": 9
+        }
+       ]
+      },
+      {
+       "all": [
+        {
+         "criterion": 6
+        },
+        {
+         "criterion": 8
+        }
+       ]
+      }
+     ]
     }
-   ],
-   "thresholdCapAdditions": [
-    {
-     "indicatorIndex": 2,
-     "percent": 25.0
+   },
+   {
+    "name": "Punctul 5 — număr minim de articole",
+    "composition": {
+     "all": [
+      {
+       "criterion": 10
+      },
+      {
+       "criterion": 11
+      },
+      {
+       "criterion": 12
+      },
+      {
+       "criterion": 13
+      }
+     ]
     }
-   ]
-  },
-  {
-   "name": "S = P + C",
-   "indicatorIndices": [
-    0,
-    1
-   ],
-   "contributesToTotal": false,
-   "thresholds": [
-    {
-     "position": "CONF_UNIV",
-     "value": 2.25
-    },
-    {
-     "position": "PROF_UNIV",
-     "value": 6.0
-    }
-   ],
-   "thresholdCapAdditions": [
-    {
-     "indicatorIndex": 2,
-     "percent": 25.0,
-     "thresholdCriterionIndex": 1
-    }
-   ]
-  },
-  {
-   "name": "Cărți/Capitole (substituie articole, max 25% din P minim)",
-   "indicatorIndices": [
-    2
-   ],
-   "contributesToTotal": false,
-   "thresholds": []
-  }
- ],
- "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
-}
+   }
+  ]
+ }
 ]
