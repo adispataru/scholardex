@@ -302,7 +302,7 @@ Done history moved to `TASKS-done.md`.
     rail with DA/NU chips, top-level met count; verified live with a temporary Scor perspective on
     FEAA 2026 (reverted). Pinned in tests: all/any skip semantics, earlier-perspective refs,
     effective-score leaves, malformed-tree isolation.
-  - [ ] **S2 — FEAA 2026 eligibility gates** (the blocking consumer): new 2026 count indicators
+  - [x] **S2 — FEAA 2026 eligibility gates — DONE 2026-07-28 (`489de762`)**: new 2026 count indicators
     (articles AIS>0.15, AIS-nonzero count, Core/Info count, distinct-journal counts ×2 via
     DistinctForums; `FEEA_Grant_Any`/`_Director` reused — exclusion list already matches 2026) as plain
     criteria with per-position thresholds, bundled into perspectives: "Punctul 4" conf
