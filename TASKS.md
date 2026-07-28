@@ -273,39 +273,47 @@ Done history moved to `TASKS-done.md`.
   it). Seed synced (36 of 74). **Remaining:** descriptions for the other domains' 45 indicators
   (FEAA/Mate/Fizica/Psiho/Arte) — same mechanism, content only; and the prod apply after deploy.
 
-- [ ] `H95` Composite criteria — AND/OR verdicts over criteria (the Centralizator "E column").
-  **RAISED 2026-07-28 (user + Florin Fortis).** The standards' own grammar combines named threshold
-  conditions with "cumulativ" (AND) and "una din următoarele condiții" (OR), and the FV Info excel's
-  verdict column does exactly that (`E9 = total≥32 AND topAB≥16`; `E21 = AND(B, C, D, sum≥116)`). Our
-  model has the atoms — criteria with per-position thresholds — but no combinator, which is why FV Info
-  shows independent rows ("criteria met 3/6") and the FEAA 2016 gates degenerated into sum-tricks and
-  row-per-condition spam. Florin's reading: Perspectiva B *is* three criteria (A*+A, A*+A+B, total) under
-  one verdict.
-  Mechanism: optional `Criterion.composition` — a declarative AND/OR tree over other criteria's met-ness
-  (`{all/any: [{criterion: idx} | nested]}`). Deliberately NOT a formula engine: no MVEL over raw values,
-  no new variable binding; operands are the per-position met booleans already derived from
-  `criteriaScores` vs thresholds, so composites inherit Stage-1/S2 position-effective scores for free.
-  Evaluation rules (pinned): a member with no threshold for the position is SKIPPED (vacuously true —
-  matches the excel: conf's B verdict has no A*+A gate); a composite with no applicable member at a
-  position is itself not applicable; validation rejects out-of-range refs, self-reference, and cycles.
-  **Criteria-met counts TOP-LEVEL only** (composites + atoms not referenced by any composition — decided
-  2026-07-28); member atoms nest under their composite in the rail. Render-time only — no persisted-shape
-  changes; run compare/org-unit roll-ups untouched (composites carry no score).
-  - [ ] **S1 — mechanism**: model field + met-tree evaluator in `ReportingComputationSupport` +
-    validation + assembler/facade attrs + thresholds-JSON/dashboard-JS (DA/NU composite tiles, nested
-    members, top-level criteriaMet) + tests.
+- [ ] `H95` Perspectives — a report-level grouping concept with logical verdicts over criteria.
+  **RAISED 2026-07-28 (user + Florin Fortis; reframed same day from a composite-criterion draft to a
+  proper higher-level concept — criteria stay exactly as they are.)** The standards' own grammar defines
+  named threshold conditions and combines them at SECTION level with "cumulativ" (AND) and "una din
+  următoarele condiții" (OR); the FV Info excel's verdict column does exactly that
+  (`E9 = total≥32 AND topAB≥16`; `E21 = AND(E-B, E-C, E-D, sum≥116)`). Our model has the atoms —
+  criteria with per-position thresholds — but no section layer, which is why FV Info shows independent
+  rows ("criteria met 3/6") and the FEAA 2016 gates degenerated into sum-tricks and row spam. Florin's
+  reading: Perspectiva B remains its three criteria (total, A*+A+B, A*+A) — they just BELONG to a
+  Perspectiva whose verdict is a proposition over them.
+  Mechanism: new `AbstractReport.Perspective {name, composition}` list on the report — a declarative
+  AND/OR tree whose leaves reference criteria by index (and, for the Total verdict, earlier perspectives
+  by index: `{all/any: [{criterion: i} | {perspective: j<this} | nested]}`). Deliberately NOT a formula
+  engine: no MVEL over raw values; leaf truth = the per-position met booleans already derived from
+  `criteriaScores` vs thresholds, so verdicts inherit Stage-1/S2 position-effective scores for free.
+  Evaluation rules (pinned): a leaf criterion with no threshold for the position is SKIPPED (vacuously
+  true — matches the excel: conf's B verdict has no A*+A gate); a perspective with no applicable leaf at
+  a position is itself not applicable; validation rejects out-of-range refs and forward/self perspective
+  references (ordering forbids cycles by construction).
+  Display: the criteria rail GROUPS member criteria under their perspective heading (criteria render
+  unchanged — nothing is nested away or hidden); the heading carries the DA/NU verdict per selected
+  position; unbundled criteria render ungrouped as today. The summary "met" count becomes TOP-LEVEL
+  units: perspectives + criteria not bundled in any perspective (decided 2026-07-28). Render-time only —
+  no persisted-shape changes; run compare/org-unit roll-ups untouched (perspectives carry no score).
+  - [ ] **S1 — mechanism**: `Perspective` model + verdict evaluator in `ReportingComputationSupport` +
+    validation + assembler/facade attrs + thresholds-JSON/dashboard-JS (perspective group headers with
+    DA/NU, top-level met count) + tests.
   - [ ] **S2 — FEAA 2026 eligibility gates** (the blocking consumer): new 2026 count indicators
     (articles AIS>0.15, AIS-nonzero count, Core/Info count, distinct-journal counts ×2 via
-    DistinctForums; `FEEA_Grant_Any`/`_Director` reused — exclusion list already matches 2026) as atom
-    criteria with per-position thresholds, then composites: P4 conf `any[art≥1, grant≥1]`, P4 prof
-    `any[a≥3, all[total≥3, dir≥2], all[a≥2, dir≥1], all[a≥1, dir≥2]]`, P5 conf `all[arts≥3, ci≥1]`,
-    P5 prof `all[arts≥5, journals≥3, ci≥3, ciJournals≥2]`. Note: "din cele maxim 10 articole" read
-    candidate-favorably (count over all articles; the candidate picks their 10). Local + seeds + prod
-    script; verify via provisional CS-department sweep.
-  - [ ] **S3 — FV Info restructure per Florin** (pure data, both fișe): composite "Perspectiva B" over
-    {total, Publicații de top A*+A+B, (2026: Publicații A*+A)} and composite "Total (verdict)" =
-    `all[B, C, D, sum≥threshold]` mirroring E19–E22. Changelog entry — the criteria-met denominator
-    changes for restructured reports. Prod apply after deploy.
+    DistinctForums; `FEEA_Grant_Any`/`_Director` reused — exclusion list already matches 2026) as plain
+    criteria with per-position thresholds, bundled into perspectives: "Punctul 4" conf
+    `any[art≥1, grant≥1]` / prof `any[a≥3, all[total≥3, dir≥2], all[a≥2, dir≥1], all[a≥1, dir≥2]]`;
+    "Punctul 5" conf `all[arts≥3, ci≥1]` / prof `all[arts≥5, journals≥3, ci≥3, ciJournals≥2]`; plus
+    "Scor" bundling C/P/S. Note: "din cele maxim 10 articole" read candidate-favorably (count over all
+    articles; the candidate picks their 10). Local + seeds + prod script; verify via provisional
+    CS-department sweep.
+  - [ ] **S3 — FV Info restructure per Florin** (pure data, both fișe): perspective "Perspectiva B" over
+    {total, Publicații de top A*+A+B, (2026: Publicații A*+A)}, perspectives C and D over their rows,
+    and "Total (verdict)" = `all[persp B, persp C, persp D, criterion sum≥threshold]` mirroring E19–E22.
+    Changelog entry — the summary met-denominator changes for restructured reports. Prod apply after
+    deploy.
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
