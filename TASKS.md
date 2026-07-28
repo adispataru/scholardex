@@ -297,9 +297,11 @@ Done history moved to `TASKS-done.md`.
   position; unbundled criteria render ungrouped as today. The summary "met" count becomes TOP-LEVEL
   units: perspectives + criteria not bundled in any perspective (decided 2026-07-28). Render-time only —
   no persisted-shape changes; run compare/org-unit roll-ups untouched (perspectives carry no score).
-  - [ ] **S1 — mechanism**: `Perspective` model + verdict evaluator in `ReportingComputationSupport` +
-    validation + assembler/facade attrs + thresholds-JSON/dashboard-JS (perspective group headers with
-    DA/NU, top-level met count) + tests.
+  - [x] **S1 — mechanism — DONE 2026-07-28 (`cd01dcbd`).** `Perspective {name, composition}` +
+    `computePerspectiveVerdicts`/`bundledCriterionIndices`, `#eval-perspectives-data` payload, grouped
+    rail with DA/NU chips, top-level met count; verified live with a temporary Scor perspective on
+    FEAA 2026 (reverted). Pinned in tests: all/any skip semantics, earlier-perspective refs,
+    effective-score leaves, malformed-tree isolation.
   - [ ] **S2 — FEAA 2026 eligibility gates** (the blocking consumer): new 2026 count indicators
     (articles AIS>0.15, AIS-nonzero count, Core/Info count, distinct-journal counts ×2 via
     DistinctForums; `FEEA_Grant_Any`/`_Director` reused — exclusion list already matches 2026) as plain
