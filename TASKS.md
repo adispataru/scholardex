@@ -326,8 +326,24 @@ Done history moved to `TASKS-done.md`.
     Optional `CompositionNode.label` ("Ruta a"…; i18n "Varianta {n}" fallback); rail also reordered —
     unbundled criteria (books cap) now render BELOW perspective groups. Labels in local data + seeds
     + the pending prod script (label backfill made idempotent).
-
-- [ ] `H50` Individual report export / read-only score-verification import.
+  - [ ] **S5 — FEAA 2026 standards-sweep gaps (found 2026-07-29, full COMISIA 27 conf+prof+abilitare
+    read-through).** Two REAL misses, both data-only:
+    (1) Punctul 5 prof sub-condition — "din cele 3 articole Core/Info, minim unul cu AIS > 0,15":
+    new indicator `FEEA_Q5_CoreInfo_AIS015_2026` (`(M == 10 || M == 8) && S > 0.15 ? 1 : 0`, same
+    ECONOMICS_JOURNAL_AIS/m2026/IY_OR_LATEST shape), criterion PROF ≥ 1, add as a 5th leaf of the
+    "Punctul 5" perspective.
+    (2) Punctul 8 prof — "publicarea cel puțin a unei cărți de specialitate": count indicator over
+    FEAA_BOOK-scored items with `docType == 'bk' && S > 0 ? 1 : 0` (any publisher tier; domain
+    fit stays human judgment), criterion PROF ≥ 1, unbundled (its own top-level gate).
+    Everything else verified in place: P/C formulas + N_ro, 2026 M table with SSCI/SCIE-only gate
+    (no ESCI), article/review docType gate, top-10 + per-journal-year cap w/ Core/Info exemption,
+    ANY_COAUTHOR semi-self-citation exclusion, book tiers incl. ISI-proceedings 0.1 + 25%-of-P-min
+    cap (0.3125/0.75), Anexa 1 fixture (51 intl publishers), grant program exclusions, conf gates,
+    thresholds (conf 2.25/1.25/0.75, prof=abilitare 6/3/2; abilitare has NO Punctul 8 and is not a
+    report position today). Documented candidate-favorable approximations (no action): books don't
+    consume article slots; points 4a/5 count over ALL articles not "din cele 10"; IY_OR_LATEST skips
+    the "AIS nenul at deposit" condition; citations FROM Anexa-1 books (=Q4) not counted (no book
+    citation edges in canon); national publisher list = CNCSIS register until CNATDCU A2 sourced.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**
   Goal: enable users to export a `UserIndividualReportRun` to a per-report-type template and to upload a corrected file for a transient, read-only score verification (file scores vs the persisted run; never writes, never auto-creates a run). The original 4-bucket reconcile/commit design was superseded (2026-05-19) and its dead code removed (2026-06-14).
