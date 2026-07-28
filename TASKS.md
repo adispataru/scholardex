@@ -311,7 +311,9 @@ Done history moved to `TASKS-done.md`.
     "Scor" bundling C/P/S. Note: "din cele maxim 10 articole" read candidate-favorably (count over all
     articles; the candidate picks their 10). Local + seeds + prod script; verify via provisional
     CS-department sweep.
-  - [ ] **S3 — FV Info restructure per Florin** (pure data, both fișe): perspective "Perspectiva B" over
+  - [x] **S3 — FV Info restructure per Florin — DONE 2026-07-28 (`01076381`)** (pure data, both fișe;
+    the seed files were resnapshotted with scripts/h54-1-snapshot-precious.js after the hand-splice
+    incident — seed edits go through that script from now on): perspective "Perspectiva B" over
     {total, Publicații de top A*+A+B, (2026: Publicații A*+A)}, perspectives C and D over their rows,
     and "Total (verdict)" = `all[persp B, persp C, persp D, criterion sum≥threshold]` mirroring E19–E22.
     Changelog entry — the summary met-denominator changes for restructured reports. Prod apply after
