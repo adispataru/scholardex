@@ -98,7 +98,9 @@ Done history moved to `TASKS-done.md`.
   **Data change VERIFIED IN PROD 2026-07-25** — both FV Info 2016 and 2026 carry
   `Perspectiva D.maxPercentOfTotal = {13: 10, 17: 10}`. Nothing pending here.
 
-- [ ] `H88` Production readiness / launch checklist (operational, not feature work).
+- [x] `H88` Production readiness / launch checklist (operational, not feature work). **CLOSED 2026-07-28 —
+  the last open bullet (exposed-key deactivation) got Elsevier's written confirmation; every other bullet
+  was already done and verified.**
   **RAISED + AUDITED 2026-07-25.** These existed only in session memory, in neither task file. Audited
   against production the same day; two were already done and my initial reading of a third was WRONG.
   - **Keycloak decision — DONE 2026-07-18 (`c8350488`).** OIDC-only through the Keycloak realm; `formLogin`
@@ -135,8 +137,10 @@ Done history moved to `TASKS-done.md`.
     caps the damage; it does not remove it — the key still identifies UVT's account, consumes its quota,
     and works for anyone calling from a subscribing network. Watch the portal's usage stats for the old
     key: unexpected traffic is the signal it is being used.
-    **REQUESTED 2026-07-26** — deactivation asked of Elsevier. Open until they confirm; the key must be
-    assumed live until then. Close this bullet only on their written confirmation, not on the request.
+    **DONE 2026-07-28 — Elsevier confirmed in writing.** Customer Service reply: "The API key has already
+    been deactivated and will no longer be functional when used. However, it will still be visible on your
+    'My API Key' page." The exposed string is now worthless; the key remaining visible in the portal is
+    expected and harmless. No further action — history rewriting stays not-worth-it (the value is dead).
   - **Separate prod key — DONE 2026-07-25, verified.** Production now holds its own key
     (`sha256=fbf72819…`), distinct from the local `.env` (`0dbb2a29…`) and from the exposed one
     (`098dc67c…`) — three different values. Confirmed working: `ScopusSearch` 200 at 17:46 after both pods
