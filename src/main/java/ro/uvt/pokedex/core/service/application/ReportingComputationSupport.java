@@ -589,15 +589,7 @@ public final class ReportingComputationSupport {
             return verdicts;
         }
         List<AbstractReport.Criterion> safeCriteria = criteria == null ? List.of() : criteria;
-        Set<String> positions = new java.util.LinkedHashSet<>();
-        for (AbstractReport.Criterion criterion : safeCriteria) {
-            if (criterion.getThresholds() == null) continue;
-            for (AbstractReport.Threshold t : criterion.getThresholds()) {
-                if (t.getPosition() != null && t.getValue() != null) {
-                    positions.add(t.getPosition().name());
-                }
-            }
-        }
+        Set<String> positions = thresholdPositions(safeCriteria);
         for (int p = 0; p < perspectives.size(); p++) {
             AbstractReport.Perspective perspective = perspectives.get(p);
             if (perspective == null || perspective.getComposition() == null) {
@@ -620,6 +612,80 @@ public final class ReportingComputationSupport {
             }
         }
         return verdicts;
+    }
+
+    private static Set<String> thresholdPositions(List<AbstractReport.Criterion> criteria) {
+        Set<String> positions = new java.util.LinkedHashSet<>();
+        for (AbstractReport.Criterion criterion : criteria) {
+            if (criterion.getThresholds() == null) continue;
+            for (AbstractReport.Threshold t : criterion.getThresholds()) {
+                if (t.getPosition() != null && t.getValue() != null) {
+                    positions.add(t.getPosition().name());
+                }
+            }
+        }
+        return positions;
+    }
+
+    /** One alternative route of an any-rooted perspective — label may be null (client falls back). */
+    public record PerspectiveRoute(String label, List<Integer> members, Map<String, Boolean> verdictByPosition) {}
+
+    /**
+     * H95 routes: per-child verdicts for perspectives whose composition root is an {@code any} with
+     * two or more children — the FEAA point-4 "ruta a/b/c/d" shape. Routes may SHARE criteria
+     * (FEAA's "director grants ≥2" sits in routes b and d), which is why the UI renders them as a
+     * legend over the flat tiles rather than as sub-groups. Verdicts reuse {@link #evaluateNode}'s
+     * per-position vacuity rules, so route chips can never disagree with the group verdict. Empty
+     * for all-rooted perspectives, single-child roots, and malformed trees.
+     */
+    public static Map<Integer, List<PerspectiveRoute>> computePerspectiveRoutes(
+            List<AbstractReport.Perspective> perspectives,
+            List<AbstractReport.Criterion> criteria,
+            Map<Integer, Double> criterionScores,
+            Map<Integer, Map<String, Double>> positionEffectiveScores) {
+        Map<Integer, List<PerspectiveRoute>> routes = new HashMap<>();
+        if (perspectives == null || perspectives.isEmpty()) {
+            return routes;
+        }
+        List<AbstractReport.Criterion> safeCriteria = criteria == null ? List.of() : criteria;
+        Map<Integer, Map<String, Boolean>> verdicts =
+                computePerspectiveVerdicts(perspectives, safeCriteria, criterionScores, positionEffectiveScores);
+        Set<String> positions = thresholdPositions(safeCriteria);
+        for (int p = 0; p < perspectives.size(); p++) {
+            AbstractReport.Perspective perspective = perspectives.get(p);
+            if (perspective == null || perspective.getComposition() == null || !verdicts.containsKey(p)) {
+                continue; // malformed or inapplicable perspectives ship no routes either
+            }
+            List<AbstractReport.CompositionNode> children = perspective.getComposition().getAny();
+            if (children == null || children.size() < 2) {
+                continue;
+            }
+            List<PerspectiveRoute> out = new java.util.ArrayList<>();
+            for (AbstractReport.CompositionNode child : children) {
+                Set<Integer> members = new java.util.LinkedHashSet<>();
+                collectCriterionRefs(child, members);
+                Map<String, Boolean> byPosition = new HashMap<>();
+                for (String position : positions) {
+                    NodeResult result = evaluateNode(child, p, position, safeCriteria,
+                            criterionScores, positionEffectiveScores, verdicts);
+                    if (result == null) {
+                        out = null; // unreachable in practice (verdict pass already dropped malformed trees)
+                        break;
+                    }
+                    if (result.applicable()) {
+                        byPosition.put(position, result.met());
+                    }
+                }
+                if (out == null) {
+                    break;
+                }
+                out.add(new PerspectiveRoute(child.getLabel(), List.copyOf(members), byPosition));
+            }
+            if (out != null && !out.isEmpty()) {
+                routes.put(p, out);
+            }
+        }
+        return routes;
     }
 
     /** (applicable, met) for one node at one position; null signals a malformed tree. */

@@ -102,6 +102,12 @@ public abstract class AbstractReport {
         private List<CompositionNode> any;
         private Integer criterion;
         private Integer perspective;
+        /**
+         * Optional display name for this node when it is surfaced as an alternative route (a direct
+         * child of an {@code any} root — FEAA's "Ruta a".."Ruta d"). Purely presentational: never
+         * consulted by verdict evaluation, and absent labels fall back to a numbered i18n label.
+         */
+        private String label;
     }
 
 }

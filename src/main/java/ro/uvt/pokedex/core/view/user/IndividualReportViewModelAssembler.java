@@ -84,6 +84,11 @@ public class IndividualReportViewModelAssembler {
         Map<Integer, Map<String, Boolean>> perspectiveVerdicts =
                 ro.uvt.pokedex.core.service.application.ReportingComputationSupport.computePerspectiveVerdicts(
                         report.getPerspectives(), report.getCriteria(), criterionScores, positionEffectiveScores);
+        // H95 routes: per-alternative verdicts for any-rooted perspectives (FEAA point 4's rutele a–d).
+        Map<Integer, List<ro.uvt.pokedex.core.service.application.ReportingComputationSupport.PerspectiveRoute>>
+                perspectiveRoutes = ro.uvt.pokedex.core.service.application.ReportingComputationSupport
+                        .computePerspectiveRoutes(report.getPerspectives(), report.getCriteria(),
+                                criterionScores, positionEffectiveScores);
         java.util.Set<Integer> bundledCriteria =
                 ro.uvt.pokedex.core.service.application.ReportingComputationSupport.bundledCriterionIndices(
                         report.getPerspectives());
@@ -166,7 +171,7 @@ public class IndividualReportViewModelAssembler {
         model.addAttribute("thresholdsJson", thresholdsJson(report, criterionScores, positionEffectiveScores,
                 ro.uvt.pokedex.core.service.application.ReportingComputationSupport.buildThresholdCapNotes(
                         report.getCriteria(), report.getIndicators(), indicatorScores)));
-        model.addAttribute("perspectivesJson", perspectivesJson(report, perspectiveVerdicts));
+        model.addAttribute("perspectivesJson", perspectivesJson(report, perspectiveVerdicts, perspectiveRoutes));
 
         // Export format the report type drives (XLSX → "Excel", DOCX → "Word"), so the export
         // action labels/links correctly instead of hardcoding xlsx.
@@ -222,12 +227,16 @@ public class IndividualReportViewModelAssembler {
 
     /**
      * H95: the perspectives payload for the dashboard JS (script tag {@code #eval-perspectives-data}) —
-     * {@code [{index, name, members:[criterionIdx…], verdictByPosition:{POS: bool}}]}. Members are the
-     * perspective's OWN direct criterion refs (a referenced earlier perspective groups its own members);
-     * empty array for reports without perspectives, so legacy pages ship an inert {@code []}.
+     * {@code [{index, name, members:[criterionIdx…], verdictByPosition:{POS: bool}, routes?:[…]}]}.
+     * Members are the perspective's OWN direct criterion refs (a referenced earlier perspective groups
+     * its own members); empty array for reports without perspectives, so legacy pages ship an inert
+     * {@code []}. {@code routes} ({@code [{label?, members, verdictByPosition}]}) appears only for
+     * any-rooted perspectives with ≥2 children — the rail renders them as a legend of alternatives.
      */
     private String perspectivesJson(IndividualReport report,
-                                    Map<Integer, Map<String, Boolean>> perspectiveVerdicts) {
+                                    Map<Integer, Map<String, Boolean>> perspectiveVerdicts,
+                                    Map<Integer, List<ro.uvt.pokedex.core.service.application
+                                            .ReportingComputationSupport.PerspectiveRoute>> perspectiveRoutes) {
         List<Map<String, Object>> out = new java.util.ArrayList<>();
         List<AbstractReport.Perspective> perspectives = report.getPerspectives() == null
                 ? List.of() : report.getPerspectives();
@@ -243,6 +252,21 @@ public class IndividualReportViewModelAssembler {
             entry.put("members", ro.uvt.pokedex.core.service.application.ReportingComputationSupport
                     .bundledCriterionIndices(List.of(perspective)));
             entry.put("verdictByPosition", perspectiveVerdicts.get(i));
+            List<ro.uvt.pokedex.core.service.application.ReportingComputationSupport.PerspectiveRoute> routes =
+                    perspectiveRoutes.get(i);
+            if (routes != null && !routes.isEmpty()) {
+                List<Map<String, Object>> routeList = new java.util.ArrayList<>();
+                for (var route : routes) {
+                    Map<String, Object> r = new java.util.LinkedHashMap<>();
+                    if (route.label() != null && !route.label().isBlank()) {
+                        r.put("label", route.label().trim());
+                    }
+                    r.put("members", route.members());
+                    r.put("verdictByPosition", route.verdictByPosition());
+                    routeList.add(r);
+                }
+                entry.put("routes", routeList);
+            }
             out.add(entry);
         }
         try {

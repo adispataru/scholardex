@@ -141,6 +141,7 @@
         '<span class="app-eval-rail__group-verdict app-eval-chip" hidden></span>';
       header.querySelector('.app-eval-rail__group-name').textContent = entry.name;
       group.appendChild(header);
+      appendRouteLegend(group, entry);
       var moved = 0;
       (entry.members || []).forEach(function (idx) {
         var tile = rail.querySelector('.app-eval-rail__tile[data-criterion-index="' + idx + '"]');
@@ -155,22 +156,79 @@
     }
   }
 
+  /**
+   * H95 routes: a legend of alternative routes under an any-rooted perspective's header (FEAA point
+   * 4's rutele a–d). Routes may SHARE criteria, so tiles stay flat in the group and hovering a route
+   * highlights its member tiles instead of partitioning them. Verdicts come from the server (same
+   * evaluator as the group chip) and re-render on position change.
+   */
+  function appendRouteLegend(group, entry) {
+    var routes = entry.routes;
+    if (!Array.isArray(routes) || routes.length < 2) return;
+    var box = document.createElement('div');
+    box.className = 'app-eval-rail__routes';
+    routes.forEach(function (route, ri) {
+      var row = document.createElement('div');
+      row.className = 'app-eval-rail__route';
+      row.setAttribute('data-route-index', String(ri));
+      var name = document.createElement('span');
+      name.className = 'app-eval-rail__route-name';
+      name.textContent = route.label || t('report.dash.routeFallback', ri + 1);
+      var chip = document.createElement('span');
+      chip.className = 'app-eval-rail__route-verdict app-eval-chip';
+      chip.hidden = true;
+      row.appendChild(name);
+      row.appendChild(chip);
+      row.addEventListener('mouseenter', function () { toggleRouteHint(group, route, true); });
+      row.addEventListener('mouseleave', function () { toggleRouteHint(group, route, false); });
+      box.appendChild(row);
+    });
+    group.appendChild(box);
+  }
+
+  function toggleRouteHint(group, route, on) {
+    (route.members || []).forEach(function (idx) {
+      var tile = group.querySelector('.app-eval-rail__tile[data-criterion-index="' + idx + '"]');
+      if (tile) tile.classList.toggle('is-route-hint', on);
+    });
+  }
+
   function renderPerspectiveVerdicts(root, position) {
     _perspectives.forEach(function (entry) {
-      var el = root.querySelector('.app-eval-rail__group[data-perspective-index="' + entry.index + '"] ' +
-        '.app-eval-rail__group-verdict');
-      if (!el) return;
-      var verdict = perspectiveVerdict(entry, position);
-      if (verdict === null) {
-        el.hidden = true;
-        el.textContent = '';
-        el.className = 'app-eval-rail__group-verdict app-eval-chip';
-        return;
+      var group = root.querySelector('.app-eval-rail__group[data-perspective-index="' + entry.index + '"]');
+      if (!group) return;
+      var el = group.querySelector('.app-eval-rail__group-verdict');
+      if (el) {
+        var verdict = perspectiveVerdict(entry, position);
+        if (verdict === null) {
+          el.hidden = true;
+          el.textContent = '';
+          el.className = 'app-eval-rail__group-verdict app-eval-chip';
+        } else {
+          el.hidden = false;
+          el.textContent = verdict ? t('report.dash.verdictYes') : t('report.dash.verdictNo');
+          el.className = 'app-eval-rail__group-verdict app-eval-chip ' +
+            (verdict ? 'app-eval-chip--met' : 'app-eval-chip--below');
+        }
       }
-      el.hidden = false;
-      el.textContent = verdict ? t('report.dash.verdictYes') : t('report.dash.verdictNo');
-      el.className = 'app-eval-rail__group-verdict app-eval-chip ' +
-        (verdict ? 'app-eval-chip--met' : 'app-eval-chip--below');
+      group.querySelectorAll('.app-eval-rail__route').forEach(function (row) {
+        var route = (entry.routes || [])[parseInt(row.getAttribute('data-route-index'), 10)];
+        var chip = row.querySelector('.app-eval-rail__route-verdict');
+        var v = route && position && route.verdictByPosition
+          ? route.verdictByPosition[position] : null;
+        var applicable = typeof v === 'boolean';
+        row.classList.toggle('is-inapplicable', !applicable);
+        if (!applicable) {
+          chip.hidden = true;
+          chip.textContent = '';
+          chip.className = 'app-eval-rail__route-verdict app-eval-chip';
+          return;
+        }
+        chip.hidden = false;
+        chip.textContent = v ? t('report.dash.verdictYes') : t('report.dash.verdictNo');
+        chip.className = 'app-eval-rail__route-verdict app-eval-chip ' +
+          (v ? 'app-eval-chip--met' : 'app-eval-chip--below');
+      });
     });
   }
 

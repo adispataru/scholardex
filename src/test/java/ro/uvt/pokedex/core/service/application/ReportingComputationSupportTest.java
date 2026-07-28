@@ -770,6 +770,44 @@ class ReportingComputationSupportTest {
     }
 
     @Test
+    void perspectiveRoutesEmitPerChildVerdictsForAnyRootsOnly() {
+        // FEAA P4 shape: any[a: art>=3, b: all[grants>=3, dir>=2]] with authored labels. Routes may
+        // share criteria and must reuse the verdict evaluator's vacuity rules per position.
+        var artGe3 = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 3.0,
+                ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 1.0);
+        var grantsGe3 = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 3.0);
+        var dirGe2 = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 2.0);
+
+        var routeA = leaf(0);
+        routeA.setLabel("Ruta a");
+        var routeB = all(leaf(1), leaf(2));
+        routeB.setLabel("Ruta b");
+
+        Map<Integer, List<ReportingComputationSupport.PerspectiveRoute>> routes =
+                ReportingComputationSupport.computePerspectiveRoutes(
+                        List.of(perspective("P4", any(routeA, routeB)),
+                                perspective("all-root", all(leaf(0), leaf(1))),
+                                perspective("single-any", any(leaf(0), leaf(0)))),
+                        List.of(artGe3, grantsGe3, dirGe2),
+                        Map.of(0, 0.0, 1, 3.0, 2, 2.0), Map.of());
+
+        assertEquals(2, routes.get(0).size());
+        var a = routes.get(0).get(0);
+        assertEquals("Ruta a", a.label());
+        assertEquals(List.of(0), a.members());
+        assertFalse(a.verdictByPosition().get("PROF_UNIV")); // 0 < 3
+        assertFalse(a.verdictByPosition().get("CONF_UNIV")); // 0 < 1
+        var b = routes.get(0).get(1);
+        assertEquals("Ruta b", b.label());
+        assertEquals(List.of(1, 2), b.members());
+        assertTrue(b.verdictByPosition().get("PROF_UNIV"));  // 3>=3 AND 2>=2
+        assertFalse(b.verdictByPosition().containsKey("CONF_UNIV")); // no CONF thresholds → inapplicable
+
+        assertFalse(routes.containsKey(1)); // all-rooted perspectives get no route legend
+        assertTrue(routes.containsKey(2));  // any with 2 children qualifies even with repeated leaves
+    }
+
+    @Test
     void bundledCriterionIndicesCollectsDirectRefsOnly() {
         var perspectives = List.of(
                 perspective("B", all(leaf(0), leaf(2))),

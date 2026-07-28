@@ -318,6 +318,14 @@ Done history moved to `TASKS-done.md`.
     and "Total (verdict)" = `all[persp B, persp C, persp D, criterion sum≥threshold]` mirroring E19–E22.
     Changelog entry — the summary met-denominator changes for restructured reports. Prod apply after
     deploy.
+  - [x] **S4 — route legend for any-rooted perspectives — DONE 2026-07-29.** Perspectives whose root
+    is `any` with ≥2 children (FEAA Punctul 4's rutele a–d) render a legend under the group header:
+    one row per route with its own DA/NU chip (server-evaluated, same vacuity rules as the group
+    verdict; inapplicable routes dim chipless), hover highlights member tiles. Routes may SHARE
+    criteria (dir≥2 sits in rutele b and d), hence legend-over-flat-tiles rather than sub-groups.
+    Optional `CompositionNode.label` ("Ruta a"…; i18n "Varianta {n}" fallback); rail also reordered —
+    unbundled criteria (books cap) now render BELOW perspective groups. Labels in local data + seeds
+    + the pending prod script (label backfill made idempotent).
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*

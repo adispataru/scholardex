@@ -2369,7 +2369,8 @@
     "composition": {
      "any": [
       {
-       "criterion": 4
+       "criterion": 4,
+       "label": "Ruta a"
       },
       {
        "all": [
@@ -2379,7 +2380,8 @@
         {
          "criterion": 8
         }
-       ]
+       ],
+       "label": "Ruta b"
       },
       {
        "all": [
@@ -2389,7 +2391,8 @@
         {
          "criterion": 9
         }
-       ]
+       ],
+       "label": "Ruta c"
       },
       {
        "all": [
@@ -2399,7 +2402,8 @@
         {
          "criterion": 8
         }
-       ]
+       ],
+       "label": "Ruta d"
       }
      ]
     }

@@ -1036,6 +1036,42 @@
   margin-top: 0.1rem;
 }
 
+/* H95 routes: legend of alternative routes (any-rooted perspectives); hover highlights member tiles. */
+.individual-report-dashboard .app-eval-rail__routes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0 0.35rem 0.15rem;
+}
+
+.individual-report-dashboard .app-eval-rail__route {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.05rem 0;
+  cursor: default;
+}
+
+.individual-report-dashboard .app-eval-rail__route-name {
+  font-size: 0.74rem;
+  color: var(--app-color-text-muted);
+}
+
+.individual-report-dashboard .app-eval-rail__route.is-inapplicable {
+  opacity: 0.55;
+}
+
+.individual-report-dashboard .app-eval-rail__route-verdict {
+  font-size: 0.6rem;
+  padding: 0.05rem 0.4rem;
+}
+
+.individual-report-dashboard .app-eval-rail__tile.is-route-hint {
+  border-color: var(--app-color-primary);
+  border-style: dashed;
+}
+
 .individual-report-dashboard .app-eval-rail__tile {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -363,8 +363,12 @@ public class UserReportFacade {
         attrs.put("positionEffectiveScores", positionEffectiveScores);
         attrs.put("thresholdCapNotes", ReportingComputationSupport.buildThresholdCapNotes(
                 report.getCriteria(), report.getIndicators(), computation.indicatorScoresByIndicatorId()));
-        // H95: perspective verdicts on the live path too, for surface parity with the run-sourced page.
+        // H95: perspective verdicts (and per-route verdicts) on the live path too, for surface parity
+        // with the run-sourced page.
         attrs.put("perspectiveVerdicts", ReportingComputationSupport.computePerspectiveVerdicts(
+                report.getPerspectives(), report.getCriteria(),
+                computation.criterionScores(), positionEffectiveScores));
+        attrs.put("perspectiveRoutes", ReportingComputationSupport.computePerspectiveRoutes(
                 report.getPerspectives(), report.getCriteria(),
                 computation.criterionScores(), positionEffectiveScores));
 
