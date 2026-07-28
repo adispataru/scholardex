@@ -227,6 +227,41 @@ class EconomicsJournalScoringServiceTest {
         assertEquals(10, score.getMultiplier());
     }
 
+    // ── FEAA obs. 3: IY_OR_LATEST — best of publication-year and latest-list-year AIS ──
+
+    @Test
+    void itemYearOrLatestPicksTheBetterOfPublicationYearAndLatestListYear() {
+        EconomicsJournalScoringService service = new EconomicsJournalScoringService(lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forum("1111-1111"));
+        when(lookupPort.getDistinctRankingYears()).thenReturn(List.of(2020, 2023));
+        // AIS rose after publication: 2020 = 1.0, 2023 (latest list) = 2.0 → the dossier-year value wins.
+        WoSRanking.Score wosScore = new WoSRanking.Score();
+        wosScore.setAis(Map.of(2020, 1.0, 2023, 2.0));
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        rank.setQAis(Map.of(2020, WoSRanking.Quarter.Q2, 2023, WoSRanking.Quarter.Q1));
+        WoSRanking ranking = new WoSRanking();
+        ranking.setScore(wosScore);
+        ranking.setWebOfScienceCategoryIndex(Map.of("ECONOMICS - SSCI", rank));
+        when(lookupPort.getRankingsByIssn("1111-1111")).thenReturn(List.of(ranking));
+
+        Score best = service.getScore(publication2020("ar"), indicatorIyOrLatest());
+        assertEquals(2.0, best.getScore());
+
+        // AIS fell after publication: 2020 = 2.0, 2023 = 0.5 → the publication-year value wins.
+        wosScore.setAis(Map.of(2020, 2.0, 2023, 0.5));
+        Score kept = service.getScore(publication2020("ar"), indicatorIyOrLatest());
+        assertEquals(2.0, kept.getScore());
+    }
+
+    private Indicator indicatorIyOrLatest() {
+        return indicator("IY_OR_LATEST");
+    }
+
+    private ScoringPublication publication2020(String subtype) {
+        return new ScoringPublication("pub-1", "eid-1", "forum-1", "2020-06-01", subtype, null,
+                List.of("a1"), 1, "10.1/x", null, "title", 0, java.util.Set.of());
+    }
+
     // ── FEAA 2026 M table (economicsM2026 flag) ──
 
     private Indicator indicator2026() {

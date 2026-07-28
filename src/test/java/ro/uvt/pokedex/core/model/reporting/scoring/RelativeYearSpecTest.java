@@ -77,4 +77,36 @@ class RelativeYearSpecTest {
         assertEquals(new ScoreYearRangeSpec.LatestNRankings(1), ScoreYearRangeSpec.parse("LATEST:1"));
         assertThrows(IllegalArgumentException.class, () -> new ScoreYearRangeSpec.LatestNRankings(0));
     }
+
+    // --- ScoreYearRangeSpec.ItemYearOrLatest (FEAA obs. 3: publication year OR dossier year) ---
+
+    @Test
+    void itemYearOrLatestResolvesToItemYearPlusLatestRankingYear() {
+        ScoreYearRangeSpec spec = new ScoreYearRangeSpec.ItemYearOrLatest();
+        var ctx = new ScoreYearRangeSpec.ResolutionContext(2020, 2024, List.of(2019, 2021, 2023, 2025));
+        // 2025 is after referenceYear 2024 → the latest eligible list-year is 2023.
+        assertEquals(List.of(2020, 2023), spec.allowedYears(ctx));
+    }
+
+    @Test
+    void itemYearOrLatestCollapsesWhenTheItemYearIsTheLatest() {
+        ScoreYearRangeSpec spec = new ScoreYearRangeSpec.ItemYearOrLatest();
+        var ctx = new ScoreYearRangeSpec.ResolutionContext(2023, 2024, List.of(2019, 2021, 2023));
+        assertEquals(List.of(2023), spec.allowedYears(ctx));
+    }
+
+    @Test
+    void itemYearOrLatestDegradesToItemYearWithoutRankingYears() {
+        ScoreYearRangeSpec spec = new ScoreYearRangeSpec.ItemYearOrLatest();
+        // Legacy no-context path: no ranking years supplied → publication year only, never all-years.
+        assertEquals(List.of(2020), spec.allowedYears(ScoreYearRangeSpec.ResolutionContext.ofItemYear(2020)));
+        // Null referenceYear but ranking years present → latest overall still admitted.
+        var ctx = new ScoreYearRangeSpec.ResolutionContext(2020, null, List.of(2019, 2023));
+        assertEquals(List.of(2020, 2023), spec.allowedYears(ctx));
+    }
+
+    @Test
+    void itemYearOrLatestRoundTripsThroughParse() {
+        assertEquals(new ScoreYearRangeSpec.ItemYearOrLatest(), ScoreYearRangeSpec.parse("IY_OR_LATEST"));
+    }
 }

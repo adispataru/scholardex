@@ -186,6 +186,7 @@ public class Indicator {
         if (spec instanceof ScoreYearRangeSpec.ItemYear) return "IY";
         if (spec instanceof ScoreYearRangeSpec.Absolute a) return a.from() + "->" + a.to();
         if (spec instanceof ScoreYearRangeSpec.LatestNRankings l) return "LATEST:" + l.n();  // H60
+        if (spec instanceof ScoreYearRangeSpec.ItemYearOrLatest) return "IY_OR_LATEST";  // FEAA obs. 3
         return null;
     }
 

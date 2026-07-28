@@ -2304,7 +2304,7 @@
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
     },
     "scoreYearRangeSpec": {
-      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
     },
     "selectorSpec": {
       "topN": 10,
@@ -2336,7 +2336,7 @@
       "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
     },
     "scoreYearRangeSpec": {
-      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
     },
     "selectorSpec": {
       "n": 10,

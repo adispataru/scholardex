@@ -18,12 +18,20 @@ import java.util.List;
  */
 public sealed interface ScoreYearRangeSpec
         permits ScoreYearRangeSpec.AllYears, ScoreYearRangeSpec.ItemYear, ScoreYearRangeSpec.Absolute,
-                ScoreYearRangeSpec.LatestNRankings {
+                ScoreYearRangeSpec.LatestNRankings, ScoreYearRangeSpec.ItemYearOrLatest {
 
     record AllYears() implements ScoreYearRangeSpec {}
 
     /** The publication's own year. */
     record ItemYear() implements ScoreYearRangeSpec {}
+
+    /**
+     * FEAA obs. 3: the candidate's choice between the publication-year metric and the one "din momentul
+     * depunerii dosarului" — resolved as {itemYear, latest ranking list-year ≤ referenceYear}, the scorer's
+     * best-of compare picking whichever is higher. Falls back to {itemYear} alone when the context carries
+     * no ranking years (legacy no-context path), so it degrades to {@link ItemYear}, never to all-years.
+     */
+    record ItemYearOrLatest() implements ScoreYearRangeSpec {}
 
     /** Inclusive range [from, to]. */
     record Absolute(int from, int to) implements ScoreYearRangeSpec {
@@ -104,6 +112,20 @@ public sealed interface ScoreYearRangeSpec
             for (int y = a.from(); y <= a.to(); y++) years.add(y);
             return years;
         }
+        if (this instanceof ItemYearOrLatest) {
+            List<Integer> years = new ArrayList<>(2);
+            years.add(ctx.itemYear());
+            if (ctx.availableRankingYears() != null && !ctx.availableRankingYears().isEmpty()) {
+                Integer cap = ctx.referenceYear();
+                ctx.availableRankingYears().stream()
+                        .filter(java.util.Objects::nonNull)
+                        .filter(y -> cap == null || y <= cap)
+                        .max(Integer::compareTo)
+                        .filter(latestYear -> !latestYear.equals(ctx.itemYear()))
+                        .ifPresent(years::add);
+            }
+            return years;
+        }
         if (this instanceof LatestNRankings latest) {
             if (ctx.referenceYear() == null || ctx.availableRankingYears() == null
                     || ctx.availableRankingYears().isEmpty()) {
@@ -124,6 +146,7 @@ public sealed interface ScoreYearRangeSpec
         if (raw == null || raw.isBlank()) return new ItemYear();
         String trimmed = raw.trim();
         if ("IY".equals(trimmed)) return new ItemYear();
+        if ("IY_OR_LATEST".equals(trimmed)) return new ItemYearOrLatest();
         if ("*".equals(trimmed)) return new AllYears();
         if (trimmed.toUpperCase(java.util.Locale.ROOT).startsWith("LATEST:")) {
             try {

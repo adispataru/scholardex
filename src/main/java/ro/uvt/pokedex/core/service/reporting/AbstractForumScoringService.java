@@ -239,7 +239,8 @@ public abstract class AbstractForumScoringService implements ScoringService {
         publicationYear.ifPresent(pubYear -> {
             ScoreYearRangeSpec spec = indicator.getEffectiveScoreYearRange();
             int referenceYear = ScoringReferenceYearContext.currentOrCurrentYear();
-            List<Integer> rankingYears = (spec instanceof ScoreYearRangeSpec.LatestNRankings)
+            List<Integer> rankingYears = (spec instanceof ScoreYearRangeSpec.LatestNRankings
+                    || spec instanceof ScoreYearRangeSpec.ItemYearOrLatest)
                     ? lookupPort.getDistinctRankingYears()
                     : List.of();
             allowedYears.addAll(spec.allowedYears(
