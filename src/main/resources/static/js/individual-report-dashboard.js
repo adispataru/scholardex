@@ -121,13 +121,16 @@
 
   /**
    * Groups the server-rendered rail tiles under perspective headings. Tiles are MOVED, not cloned, so
-   * every existing data-criterion-index hook (selection, chips, sparklines) keeps working; unbundled
-   * criteria stay where they are. Runs once at boot; verdicts re-render on position change.
+   * every existing data-criterion-index hook (selection, chips, sparklines) keeps working. Unbundled
+   * criteria (supporting caps like the FEAA books-into-P criterion) move BELOW the groups — data
+   * order puts them first, but the perspectives are the headline and the default selection should
+   * land on their first member. Runs once at boot; verdicts re-render on position change.
    */
   function groupRailByPerspectives(root) {
     if (!_perspectives.length) return;
     var rail = root.querySelector('.app-eval-rail');
     if (!rail) return;
+    var grouped = 0;
     _perspectives.forEach(function (entry) {
       var group = document.createElement('section');
       group.className = 'app-eval-rail__group';
@@ -143,8 +146,13 @@
         var tile = rail.querySelector('.app-eval-rail__tile[data-criterion-index="' + idx + '"]');
         if (tile) { group.appendChild(tile); moved++; }
       });
-      if (moved > 0) rail.appendChild(group);
+      if (moved > 0) { rail.appendChild(group); grouped++; }
     });
+    if (grouped > 0) {
+      Array.from(rail.children).forEach(function (child) {
+        if (child.classList && child.classList.contains('app-eval-rail__tile')) rail.appendChild(child);
+      });
+    }
   }
 
   function renderPerspectiveVerdicts(root, position) {
