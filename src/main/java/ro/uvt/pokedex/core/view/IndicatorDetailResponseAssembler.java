@@ -49,7 +49,11 @@ public final class IndicatorDetailResponseAssembler {
                              /** Why a gate zeroed/dropped this item (EXCLUDED_VENUE, …); null for scored items. */
                              String zeroReason,
                              /** Forum display name for the forum link; null when unresolved. */
-                             String forumName) {}
+                             String forumName,
+                             /** APC/fee-journal venue fact (always shown as a badge, gate or no gate). */
+                             boolean feeJournal,
+                             /** Comma-joined gate reasons behind a MULTIPLE_GATES zero; null otherwise. */
+                             String gateCauses) {}
 
     /** Publication/forum ids resolved for a scored item; both null when the title join is ambiguous. */
     private record PubLink(String publicationId, String forumId) {
@@ -128,7 +132,8 @@ public final class IndicatorDetailResponseAssembler {
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()),
                                 "publication", null, null, null,
-                                zeroReason, null));
+                                zeroReason, null,
+                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue())));
                         total += authorScore;
                     }
                 }
@@ -164,7 +169,8 @@ public final class IndicatorDetailResponseAssembler {
                                     extractQuarter(totalObj), extractCoreRankingEquivalent(totalObj),
                                     extractScoringSource(totalObj), "citation", null,
                                     link.publicationId(), link.forumId(), null,
-                                    forumNameResolver.apply(link.forumId())));
+                                    forumNameResolver.apply(link.forumId()),
+                                    false, null));
                         }
                     }
                 }
@@ -183,7 +189,7 @@ public final class IndicatorDetailResponseAssembler {
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
-                                null, null, null, null));
+                                null, null, null, null, false, null));
                     }
                 }
             }
@@ -208,7 +214,8 @@ public final class IndicatorDetailResponseAssembler {
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "publication", null,
                                 link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
-                                forumNameResolver.apply(link.forumId())));
+                                forumNameResolver.apply(link.forumId()),
+                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue())));
                     }
                 }
             }
@@ -224,7 +231,8 @@ public final class IndicatorDetailResponseAssembler {
                             extractCoreRankingEquivalent(entry.getValue()),
                             extractScoringSource(entry.getValue()), "publication", null,
                             link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
-                            forumNameResolver.apply(link.forumId())));
+                            forumNameResolver.apply(link.forumId()),
+                            extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue())));
                 }
             }
         }
@@ -249,6 +257,34 @@ public final class IndicatorDetailResponseAssembler {
             return reason != null ? reason.toString() : null;
         }
         return null;
+    }
+
+    /** Generic scoringInfo reader (bean or cached plain-map form); null when absent. */
+    private static Object extractScoringInfoValue(Object scoreObj, String key) {
+        if (scoreObj == null) return null;
+        Object scoringInfo;
+        if (scoreObj instanceof Map<?, ?> map) {
+            scoringInfo = map.get("scoringInfo");
+        } else {
+            try {
+                scoringInfo = scoreObj.getClass().getMethod("getScoringInfo").invoke(scoreObj);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return scoringInfo instanceof Map<?, ?> info ? info.get(key) : null;
+    }
+
+    /** APC/fee-journal venue fact stamped by the scorer; false when absent (pre-badge cached results). */
+    private static boolean extractFeeJournal(Object scoreObj) {
+        return Boolean.TRUE.equals(extractScoringInfoValue(scoreObj, "feeJournal"))
+                || "true".equals(String.valueOf(extractScoringInfoValue(scoreObj, "feeJournal")));
+    }
+
+    /** Comma-joined gate reasons behind a MULTIPLE_GATES zero; null when absent. */
+    private static String extractGateCauses(Object scoreObj) {
+        Object causes = extractScoringInfoValue(scoreObj, "gateCauses");
+        return causes != null ? causes.toString() : null;
     }
 
     /**

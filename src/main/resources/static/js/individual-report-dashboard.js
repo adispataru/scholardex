@@ -478,6 +478,7 @@
         if (item.coreRankingEquivalent && item.coreRankingEquivalent !== item.quarter) {
           html += rankBadge(item.coreRankingEquivalent);
         }
+        html += feeBadge(item);
         if (item.forumScore) {
           html += '<span class="eval-scored-item__meta-text">· ' + toNumber(item.forumScore).toFixed(4) + '</span>';
         }
@@ -546,7 +547,23 @@
       var cat = item.coreRankingEquivalent || item.quarter;
       if (cat) return t('report.dash.zeroLabel.category', cat === 'A_STAR' ? 'A*' : cat, label);
     }
+    // Several gates zeroed the item together: name them ("revistă cu taxă + sub prag") instead of
+    // the vague umbrella — the APC cause was invisible behind "mai multe condiții" before this.
+    if (item.zeroReason === 'MULTIPLE_GATES' && item.gateCauses) {
+      var parts = String(item.gateCauses).split(',').map(function (cause) {
+        var key = ZERO_REASON_KEY[cause.trim()];
+        return key ? t('report.dash.zeroLabel.' + key) : cause.trim();
+      });
+      if (parts.length) return parts.join(' + ');
+    }
     return label;
+  }
+
+  /** APC/fee-journal venue badge — a venue FACT, rendered whether or not any gate fired. */
+  function feeBadge(item) {
+    if (!item || !item.feeJournal) return '';
+    return '<span class="eval-fee-badge" title="' + esc(t('report.dash.apcBadgeHint')) + '">' +
+      esc(t('report.dash.apcBadge')) + '</span>';
   }
 
   // Short label for the forum link: first 10 chars + ellipsis; the full name lives in the tooltip.
@@ -608,6 +625,7 @@
       if (item.coreRankingEquivalent && item.coreRankingEquivalent !== item.quarter) {
         row += rankBadge(item.coreRankingEquivalent);
       }
+      row += feeBadge(item);
       if (item.scoringSource) {
         row += '<span class="eval-scored-item__meta-text">' + esc(item.scoringSource) + '</span>';
       }

@@ -1469,6 +1469,50 @@ class ScientificProductionServiceTest {
                 .authorCountForCountry(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
+    // ── APC visibility: feeJournal venue fact + named MULTIPLE_GATES causes ──
+
+    @Test
+    void feeJournalVenueFactIsStampedEvenWhenTheItemScores() {
+        // FEAA does not exclude APC journals — the badge is a venue FACT, independent of gating.
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication paper = publication("p-apc", "f-mdpi", "2022-01-01", "ar", "ar",
+                "Electronics Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(paper, indicator)).thenReturn(score(4.0));
+        when(reportingLookupPort.isFeeJournal("f-mdpi")).thenReturn(true);
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(paper), indicator);
+
+        assertEquals(4.0, result.get("Electronics Paper").getAuthorScore(), 0.0001);
+        assertEquals(Boolean.TRUE, result.get("Electronics Paper").getScoringInfo().get("feeJournal"));
+    }
+
+    @Test
+    void multipleGatesZeroNamesItsCauses() {
+        // The Info "top A*/A" shape: S >= 8 AND !feeJournal — an APC paper below the bar fails BOTH,
+        // and the pill must be able to say so instead of the vague "mai multe condiții".
+        Indicator indicator = indicator("PUBLICATIONS", "(S >= 8 && !feeJournal) ? S : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ScoringPublication paper = publication("p-apc2", "f-mdpi", "2022-01-01", "ar", "ar",
+                "Gated Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
+        when(scoringService.getScore(paper, indicator)).thenReturn(score(4.0));
+        when(reportingLookupPort.isFeeJournal("f-mdpi")).thenReturn(true);
+
+        ScientificProductionService.ScoredProductionResult result =
+                scientificProductionService.calculateScientificProductionScoreDetailed(
+                        List.of(paper), indicator);
+
+        Score gated = result.scores().containsKey("Gated Paper")
+                ? result.scores().get("Gated Paper") : result.excluded().get("Gated Paper");
+        assertEquals("MULTIPLE_GATES", gated.getScoringInfo().get("zeroReason"));
+        assertEquals("FEE_JOURNAL,SCORE_BELOW_FORMULA_THRESHOLD",
+                gated.getScoringInfo().get("gateCauses"));
+        assertEquals(Boolean.TRUE, gated.getScoringInfo().get("feeJournal"));
+    }
+
     // ── S2: Poz formula variable — per-position item scores and totals ──
 
     @Test

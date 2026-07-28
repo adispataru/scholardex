@@ -53,6 +53,34 @@ class IndicatorPayloadSerializerTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void scoringInfoWithScoreShapedKeysSurvivesTheRoundTripVerbatim() {
+        // Regression: the journal scorer's provenance puts "quarter" INSIDE scoringInfo. The
+        // looksLikeScoreMap heuristic used to fire on it, converting scoringInfo to a Score bean that
+        // normalizeScore's asMap() then dropped to an EMPTY map — silently destroying
+        // zeroReason/feeJournal/provenance on every cached read of such items.
+        IndicatorPayloadSerializer serializer = new IndicatorPayloadSerializer(new ObjectMapper());
+        Score score = new Score();
+        score.setScore(4.0);
+        score.setAuthorScore(0.0);
+        score.setQuarter("Q2");
+        score.setScoringInfo(new java.util.LinkedHashMap<>(Map.of(
+                "quarter", "Q2",                       // the trap: a score-shaped key inside scoringInfo
+                "quartileMetric", "IF",
+                "feeJournal", Boolean.TRUE,
+                "zeroReason", "MULTIPLE_GATES",
+                "gateCauses", "FEE_JOURNAL,SCORE_BELOW_FORMULA_THRESHOLD")));
+
+        Map<String, Object> payload = serializer.deserialize(
+                serializer.serialize(Map.of("scores", Map.of("APC Paper", score))));
+
+        Score restored = (Score) ((Map<String, Object>) payload.get("scores")).get("APC Paper");
+        assertEquals(Boolean.TRUE, restored.getScoringInfo().get("feeJournal"));
+        assertEquals("MULTIPLE_GATES", restored.getScoringInfo().get("zeroReason"));
+        assertEquals("Q2", restored.getScoringInfo().get("quarter"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void serializeSanitizesCanonicalPublicationViewsIntoJsonSafeMaps() {
         IndicatorPayloadSerializer serializer = new IndicatorPayloadSerializer(new ObjectMapper());
         ScholardexPublicationView publication = new ScholardexPublicationView();

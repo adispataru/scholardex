@@ -57,6 +57,25 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void feeJournalAndGateCausesFlowFromBothBeanAndSnapshotMapForms() {
+        // Bean form (live compute): Score with scoringInfo entries.
+        Score bean = score(0.0, 4.0, 2022, "Q2");
+        bean.getScoringInfo().put("feeJournal", Boolean.TRUE);
+        bean.getScoringInfo().put("zeroReason", "MULTIPLE_GATES");
+        bean.getScoringInfo().put("gateCauses", "FEE_JOURNAL,SCORE_BELOW_FORMULA_THRESHOLD");
+        Map<String, Object> beanGraph = new LinkedHashMap<>();
+        beanGraph.put("scores", new LinkedHashMap<>(Map.of("APC Paper", bean)));
+        var beanItem = IndicatorDetailResponseAssembler.buildDetail(dto(beanGraph, 0.0), id -> null)
+                .items().get(0);
+        org.junit.jupiter.api.Assertions.assertTrue(beanItem.feeJournal());
+        org.junit.jupiter.api.Assertions.assertEquals("FEE_JOURNAL,SCORE_BELOW_FORMULA_THRESHOLD",
+                beanItem.gateCauses());
+
+        // The persisted round-trip form is covered by IndicatorPayloadSerializerTest: deserialize()
+        // rebuilds Score BEANS (the bean branch above), and scoringInfo must survive verbatim.
+    }
+
+    @Test
     void buildDetailShowsCategorizedItemsIncludingFormulaZeroedAndSkipsTotal() {
         Map<String, Object> scores = new LinkedHashMap<>();
         scores.put("Paper A", score(5.0, 3.0, 2022, "Q1"));   // author > 0 → shown

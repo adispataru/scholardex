@@ -120,7 +120,15 @@ public class IndicatorPayloadSerializer {
     private Object normalizeNode(Object node) {
         if (node instanceof Map<?, ?> rawMap) {
             Map<String, Object> normalized = new LinkedHashMap<>();
-            rawMap.forEach((key, value) -> normalized.put(String.valueOf(key), normalizeNode(value)));
+            // A score's scoringInfo is a FREE-FORM map that legitimately carries score-shaped keys
+            // (the journal scorer's provenance includes "quarter"); running the looksLikeScoreMap
+            // heuristic on it converted it to a Score bean, and normalizeScore's asMap() then dropped
+            // it to an EMPTY map — silently destroying zeroReason/feeJournal/provenance on every
+            // cached read of such items. It must round-trip verbatim, never score-normalized.
+            rawMap.forEach((key, value) -> {
+                String name = String.valueOf(key);
+                normalized.put(name, "scoringInfo".equals(name) ? normalizeVerbatim(value) : normalizeNode(value));
+            });
             if (looksLikeScoreMap(normalized)) {
                 return normalizeScore(normalized);
             }
@@ -130,6 +138,23 @@ public class IndicatorPayloadSerializer {
             List<Object> normalized = new ArrayList<>(rawList.size());
             for (Object item : rawList) {
                 normalized.add(normalizeNode(item));
+            }
+            return normalized;
+        }
+        return node;
+    }
+
+    /** Structural copy with NO score detection — for subtrees that must stay plain data. */
+    private Object normalizeVerbatim(Object node) {
+        if (node instanceof Map<?, ?> rawMap) {
+            Map<String, Object> normalized = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> normalized.put(String.valueOf(key), normalizeVerbatim(value)));
+            return normalized;
+        }
+        if (node instanceof List<?> rawList) {
+            List<Object> normalized = new ArrayList<>(rawList.size());
+            for (Object item : rawList) {
+                normalized.add(normalizeVerbatim(item));
             }
             return normalized;
         }
