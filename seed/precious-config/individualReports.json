@@ -1815,9 +1815,377 @@
   "$oid": "6a67b4a35dc7f48abc80a702"
  },
  "individualAffiliation": {
+ "_id": {
+  "$oid": "6a67b4a35dc7f48abc80a702"
+ },
+ "individualAffiliation": {
   "$ref": "institutions",
   "$id": "ANY"
  },
+ "title": "FEAA 2026",
+ "description": "COMISIA 27 (2026): S = P + C din max 10 articole WoS cu AIS nenul (max 1/revistă/an, exceptând Core/Infoeconomics) și max 10 citări (fără autocitări și semi-autocitări). Cărțile/capitolele substituie articole, plafonat la 25% din P minim.",
+ "indicators": [
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a67b4a35dc7f48abc80a700"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a67b4a35dc7f48abc80a6ff"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a67b4a35dc7f48abc80a701"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a68feca2d8c50428a37cf34"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a68feca2d8c50428a37cf35"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a68feca2d8c50428a37cf36"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a68feca2d8c50428a37cf37"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a68feca2d8c50428a37cf38"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a626d02a4be38276d5a28d5"
+   }
+  },
+  {
+   "$ref": "indicators",
+   "$id": {
+    "$oid": "6a626d02a4be38276d5a28d6"
+   }
+  }
+ ],
+ "criteria": [
+  {
+   "name": "C — citări",
+   "indicatorIndices": [
+    0
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 0.75
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 2.0
+    }
+   ]
+  },
+  {
+   "name": "P — articole (+ cărți plafonate)",
+   "indicatorIndices": [
+    1
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 1.25
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 3.0
+    }
+   ],
+   "thresholdCapAdditions": [
+    {
+     "indicatorIndex": 2,
+     "percent": 25.0
+    }
+   ]
+  },
+  {
+   "name": "S = P + C",
+   "indicatorIndices": [
+    0,
+    1
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 2.25
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 6.0
+    }
+   ],
+   "thresholdCapAdditions": [
+    {
+     "indicatorIndex": 2,
+     "percent": 25.0,
+     "thresholdCriterionIndex": 1
+    }
+   ]
+  },
+  {
+   "name": "Cărți/Capitole (substituie articole, max 25% din P minim)",
+   "indicatorIndices": [
+    2
+   ],
+   "contributesToTotal": false,
+   "thresholds": []
+  },
+  {
+   "name": "Articole cu AIS > 0,15",
+   "indicatorIndices": [
+    3
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 1.0
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 3.0
+    }
+   ]
+  },
+  {
+   "name": "Articole cu AIS > 0,15 (≥2, ruta c)",
+   "indicatorIndices": [
+    3
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "PROF_UNIV",
+     "value": 2.0
+    }
+   ]
+  },
+  {
+   "name": "Articole cu AIS > 0,15 (≥1, ruta d)",
+   "indicatorIndices": [
+    3
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "PROF_UNIV",
+     "value": 1.0
+    }
+   ]
+  },
+  {
+   "name": "Granturi câștigate în competiții",
+   "indicatorIndices": [
+    8
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 1.0
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 3.0
+    }
+   ]
+  },
+  {
+   "name": "Granturi director/responsabil (≥2)",
+   "indicatorIndices": [
+    9
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "PROF_UNIV",
+     "value": 2.0
+    }
+   ]
+  },
+  {
+   "name": "Granturi director/responsabil (≥1, ruta c)",
+   "indicatorIndices": [
+    9
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "PROF_UNIV",
+     "value": 1.0
+    }
+   ]
+  },
+  {
+   "name": "Articole WoS cu AIS nenul",
+   "indicatorIndices": [
+    4
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 3.0
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 5.0
+    }
+   ]
+  },
+  {
+   "name": "Reviste distincte (AIS nenul)",
+   "indicatorIndices": [
+    6
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "PROF_UNIV",
+     "value": 3.0
+    }
+   ]
+  },
+  {
+   "name": "Din care Core Economics / Infoeconomics",
+   "indicatorIndices": [
+    5
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "CONF_UNIV",
+     "value": 1.0
+    },
+    {
+     "position": "PROF_UNIV",
+     "value": 3.0
+    }
+   ]
+  },
+  {
+   "name": "Reviste distincte Core/Infoeconomics",
+   "indicatorIndices": [
+    7
+   ],
+   "contributesToTotal": false,
+   "thresholds": [
+    {
+     "position": "PROF_UNIV",
+     "value": 2.0
+    }
+   ]
+  }
+ ],
+ "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+ "perspectives": [
+  {
+   "name": "Scor minimal (S = P + C)",
+   "composition": {
+    "all": [
+     {
+      "criterion": 0
+     },
+     {
+      "criterion": 1
+     },
+     {
+      "criterion": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "Punctul 4 — articol de impact sau granturi",
+   "composition": {
+    "any": [
+     {
+      "criterion": 4
+     },
+     {
+      "all": [
+       {
+        "criterion": 7
+       },
+       {
+        "criterion": 8
+       }
+      ]
+     },
+     {
+      "all": [
+       {
+        "criterion": 5
+       },
+       {
+        "criterion": 9
+       }
+      ]
+     },
+     {
+      "all": [
+       {
+        "criterion": 6
+       },
+       {
+        "criterion": 8
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "Punctul 5 — număr minim de articole",
+   "composition": {
+    "all": [
+     {
+      "criterion": 10
+     },
+     {
+      "criterion": 11
+     },
+     {
+      "criterion": 12
+     },
+     {
+      "criterion": 13
+     }
+    ]
+   }
+  }
+ ]
+},
  "title": "FEAA 2026",
  "description": "COMISIA 27 (2026): S = P + C din max 10 articole WoS cu AIS nenul (max 1/revistă/an, exceptând Core/Infoeconomics) și max 10 citări (fără autocitări și semi-autocitări). Cărțile/capitolele substituie articole, plafonat la 25% din P minim.",
  "indicators": [

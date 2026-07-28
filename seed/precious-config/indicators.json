@@ -2372,5 +2372,150 @@
     },
     "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
     "feaaBookTiers2026": true
+  },
+  {
+    "_id": {
+      "$oid": "6a68feca2d8c50428a37cf34"
+    },
+    "name": "FEEA_Q4_AIS015_2026",
+    "formula": "M > 0 && S > 0.15 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "b9d55e5a19e45e39ce8e902b20b77751463d7a8256cfcc2d3b5e61d792b43832",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "economicsM2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a68feca2d8c50428a37cf35"
+    },
+    "name": "FEEA_Q5_Nonzero_2026",
+    "formula": "M > 0 && S > 0 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "economicsM2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a68feca2d8c50428a37cf36"
+    },
+    "name": "FEEA_Q5_CoreInfo_2026",
+    "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+    },
+    "economicsM2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a68feca2d8c50428a37cf37"
+    },
+    "name": "FEEA_Q5_Journals_2026",
+    "formula": "M > 0 && S > 0 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$DistinctForums"
+    },
+    "economicsM2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  },
+  {
+    "_id": {
+      "$oid": "6a68feca2d8c50428a37cf38"
+    },
+    "name": "FEEA_Q5_CoreInfo_Journals_2026",
+    "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
+    "domain": {
+      "$ref": "domains",
+      "$id": "ALL"
+    },
+    "version": 1,
+    "kind": {
+      "role": "ALL",
+      "strategy": "ECONOMICS_JOURNAL_AIS",
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+    },
+    "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
+    "yearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+    },
+    "scoreYearRangeSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+    },
+    "selectorSpec": {
+      "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$DistinctForums"
+    },
+    "economicsM2026": true,
+    "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
   }
 ]
