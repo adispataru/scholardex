@@ -326,15 +326,22 @@ Done history moved to `TASKS-done.md`.
     Optional `CompositionNode.label` ("Ruta a"…; i18n "Varianta {n}" fallback); rail also reordered —
     unbundled criteria (books cap) now render BELOW perspective groups. Labels in local data + seeds
     + the pending prod script (label backfill made idempotent).
-  - [ ] **S5 — FEAA 2026 standards-sweep gaps (found 2026-07-29, full COMISIA 27 conf+prof+abilitare
-    read-through).** Two REAL misses, both data-only:
+  - [x] **S5 — FEAA 2026 standards-sweep gaps — DONE 2026-07-29** (found same day, full COMISIA 27
+    conf+prof+abilitare read-through). Two REAL misses, fixed data-only (script
+    `h95s5_feaa_p5_p8.js`, runs AFTER h95s2; local + seeds applied, prod pending):
     (1) Punctul 5 prof sub-condition — "din cele 3 articole Core/Info, minim unul cu AIS > 0,15":
-    new indicator `FEEA_Q5_CoreInfo_AIS015_2026` (`(M == 10 || M == 8) && S > 0.15 ? 1 : 0`, same
-    ECONOMICS_JOURNAL_AIS/m2026/IY_OR_LATEST shape), criterion PROF ≥ 1, add as a 5th leaf of the
+    indicator `FEEA_Q5_CoreInfo_AIS015_2026` (`(M == 10 || M == 8) && S > 0.15 ? 1 : 0`, same
+    ECONOMICS_JOURNAL_AIS/m2026/IY_OR_LATEST shape), criterion 14 PROF ≥ 1, 5th leaf of the
     "Punctul 5" perspective.
-    (2) Punctul 8 prof — "publicarea cel puțin a unei cărți de specialitate": count indicator over
-    FEAA_BOOK-scored items with `docType == 'bk' && S > 0 ? 1 : 0` (any publisher tier; domain
-    fit stays human judgment), criterion PROF ≥ 1, unbundled (its own top-level gate).
+    (2) Punctul 8 prof — "publicarea cel puțin a unei cărți de specialitate": indicator
+    `FEEA_Books_Count_2026` over FEAA_BOOK-scored items, `docType == "bk" && S > 0 ? 1 : 0` (any
+    publisher tier; chapters/proceedings excluded; domain fit stays human judgment), criterion 15
+    PROF ≥ 1, unbundled (its own top-level gate — renders below the groups).
+    Verified live (provisional CS sweep, 19 scored): eva Prof 3/4 (Core/Info-AIS leaf 9≥1 DA;
+    Punctul 8 NU — her 0.88 book points are chapters), Conf unchanged 3/3 (both gates
+    PROF-only → inapplicable). docType binds the pub itself in the publications path
+    (cited==citing), pinned with formula tests. Changelog entry added. Sweep data point: 0/19 CS
+    researchers have an authored 'bk' (canon holds 968 books overall).
     Everything else verified in place: P/C formulas + N_ro, 2026 M table with SSCI/SCIE-only gate
     (no ESCI), article/review docType gate, top-10 + per-journal-year cap w/ Core/Info exemption,
     ANY_COAUTHOR semi-self-citation exclusion, book tiers incl. ISI-proceedings 0.1 + 25%-of-P-min

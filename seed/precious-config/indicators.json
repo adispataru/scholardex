@@ -2713,5 +2713,63 @@
    "$ref": "domains",
    "$id": "ALL"
   }
+ },
+ {
+  "_id": {
+   "$oid": "6a6922769d2957ece117b4b9"
+  },
+  "name": "FEEA_Q5_CoreInfo_AIS015_2026",
+  "formula": "(M == 10 || M == 8) && S > 0.15 ? 1 : 0",
+  "formulaHash": "3b7dff06c8486ccce656150a5f4bc2d8353f36e80e807f993363883daa0b3b05",
+  "kind": {
+   "role": "ALL",
+   "strategy": "ECONOMICS_JOURNAL_AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "economicsM2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "version": 1,
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  }
+ },
+ {
+  "_id": {
+   "$oid": "6a6922769d2957ece117b4ba"
+  },
+  "name": "FEEA_Books_Count_2026",
+  "formula": "docType == \"bk\" && S > 0 ? 1 : 0",
+  "formulaHash": "0671ab6a3b1d35fe0680190c7891f731dd5f61bf9e942f5c53792e535c02f800",
+  "kind": {
+   "role": "ALL",
+   "strategy": "FEAA_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$AllYears"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "feaaBookTiers2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "version": 1,
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  }
  }
 ]

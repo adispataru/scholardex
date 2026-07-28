@@ -2123,6 +2123,18 @@
     "$id": {
      "$oid": "6a626d02a4be38276d5a28d6"
     }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6922769d2957ece117b4b9"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6922769d2957ece117b4ba"
+    }
    }
   ],
   "criteria": [
@@ -2344,6 +2356,32 @@
       "value": 2
      }
     ]
+   },
+   {
+    "name": "Din care Core/Info cu AIS > 0,15",
+    "indicatorIndices": [
+     10
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "name": "Carte de specialitate (Punctul 8)",
+    "indicatorIndices": [
+     11
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ]
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
@@ -2423,6 +2461,9 @@
       },
       {
        "criterion": 13
+      },
+      {
+       "criterion": 14
       }
      ]
     }

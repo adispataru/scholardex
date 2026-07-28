@@ -1469,6 +1469,58 @@ class ScientificProductionServiceTest {
                 .authorCountForCountry(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
+    // ── H95 S5: FEAA 2026 Punctul 5 sub-condition + Punctul 8 book count formulas ──
+
+    @Test
+    void feaaBooksCountFormulaCountsAuthoredBooksOnly() {
+        // Punctul 8: "publicarea cel puțin a unei cărți de specialitate" — docType 'bk' with a positive
+        // book coefficient counts 1; chapters ('ch') never do, whatever they score.
+        Indicator indicator = indicator("PUBLICATIONS", "docType == \"bk\" && S > 0 ? 1 : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "FEAA_BOOK");
+        ScoringPublication book = publication("p-bk", "f-1", "2021-01-01", "bk", "bk",
+                "Authored Book", List.of("a1"));
+        ScoringPublication chapter = publication("p-ch", "f-1", "2022-01-01", "ch", "ch",
+                "Chapter", List.of("a1"));
+        when(scoringFactoryService.getScoringService("FEAA_BOOK")).thenReturn(scoringService);
+        when(scoringService.getScore(book, indicator)).thenReturn(score(0.1));
+        when(scoringService.getScore(chapter, indicator)).thenReturn(score(0.3));
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(book, chapter), indicator);
+
+        assertEquals(1.0, result.get("Authored Book").getAuthorScore(), 0.0001);
+        assertEquals(1.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void feaaCoreInfoAisGateRequiresBothMultiplierAndAisAboveThreshold() {
+        // Punctul 5 prof sub-condition: "din cele 3 articole Core/Info, minim unul cu AIS > 0,15" —
+        // counts only Core (M=10) / Info (M=8) articles whose AIS clears 0.15.
+        Indicator indicator = indicator("PUBLICATIONS", "(M == 10 || M == 8) && S > 0.15 ? 1 : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "ECONOMICS_JOURNAL_AIS");
+        ScoringPublication core = publication("p-core", "f-1", "2023-01-01", "ar", "ar",
+                "Core High AIS", List.of("a1"));
+        ScoringPublication residual = publication("p-res", "f-2", "2023-01-01", "ar", "ar",
+                "Residual High AIS", List.of("a1"));
+        ScoringPublication coreLow = publication("p-low", "f-3", "2023-01-01", "ar", "ar",
+                "Core Low AIS", List.of("a1"));
+        when(scoringFactoryService.getScoringService("ECONOMICS_JOURNAL_AIS")).thenReturn(scoringService);
+        Score coreScore = score(0.4);
+        coreScore.setMultiplier(10);
+        Score residualScore = score(0.4);
+        residualScore.setMultiplier(3);
+        Score coreLowScore = score(0.1);
+        coreLowScore.setMultiplier(10);
+        when(scoringService.getScore(core, indicator)).thenReturn(coreScore);
+        when(scoringService.getScore(residual, indicator)).thenReturn(residualScore);
+        when(scoringService.getScore(coreLow, indicator)).thenReturn(coreLowScore);
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(core, residual, coreLow), indicator);
+
+        assertEquals(1.0, result.get("total").getAuthorScore(), 0.0001); // only the Core M=10 AIS 0.4
+    }
+
     // ── APC visibility: feeJournal venue fact + named MULTIPLE_GATES causes ──
 
     @Test
