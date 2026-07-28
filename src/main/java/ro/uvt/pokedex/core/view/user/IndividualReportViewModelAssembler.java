@@ -79,15 +79,24 @@ public class IndividualReportViewModelAssembler {
                         report.getCriteria(), report.getIndicators(), indicatorScores, criterionScores,
                         run.indicatorScoresByPositionByIndicatorId());
 
-        // Criteria-met count: only count criteria that have a threshold for the researcher's position.
-        // Criteria with no threshold for the current position are not applicable and excluded from both
-        // numerator and denominator.
+        // H95: perspective verdicts (per-position DA/NU over the composition trees) and the bundled set —
+        // criteria referenced by a perspective count through their perspective, not individually.
+        Map<Integer, Map<String, Boolean>> perspectiveVerdicts =
+                ro.uvt.pokedex.core.service.application.ReportingComputationSupport.computePerspectiveVerdicts(
+                        report.getPerspectives(), report.getCriteria(), criterionScores, positionEffectiveScores);
+        java.util.Set<Integer> bundledCriteria =
+                ro.uvt.pokedex.core.service.application.ReportingComputationSupport.bundledCriterionIndices(
+                        report.getPerspectives());
+
+        // Met count over TOP-LEVEL units (decided 2026-07-28): perspectives applicable at the researcher's
+        // position, plus criteria NOT bundled into any perspective that have a threshold for it. Reports
+        // without perspectives behave exactly as before.
         int criteriaMet = 0;
         int criteriaTotal = 0;
         if (report.getCriteria() != null && !researcherPosition.isEmpty()) {
             for (int i = 0; i < report.getCriteria().size(); i++) {
                 AbstractReport.Criterion crit = report.getCriteria().get(i);
-                if (crit.getThresholds() == null) continue;
+                if (crit.getThresholds() == null || bundledCriteria.contains(i)) continue;
                 final String pos = researcherPosition;
                 boolean hasThresholdForPosition = crit.getThresholds().stream()
                         .anyMatch(t -> t.getPosition() != null && t.getPosition().name().equals(pos));
@@ -101,6 +110,14 @@ public class IndividualReportViewModelAssembler {
                         .filter(t -> t.getPosition() != null && t.getPosition().name().equals(pos))
                         .anyMatch(t -> cScore >= t.getValue());
                 if (met) criteriaMet++;
+            }
+        }
+        if (!researcherPosition.isEmpty()) {
+            for (Map<String, Boolean> verdict : perspectiveVerdicts.values()) {
+                if (verdict.containsKey(researcherPosition)) {
+                    criteriaTotal++;
+                    if (Boolean.TRUE.equals(verdict.get(researcherPosition))) criteriaMet++;
+                }
             }
         }
 
@@ -149,6 +166,7 @@ public class IndividualReportViewModelAssembler {
         model.addAttribute("thresholdsJson", thresholdsJson(report, criterionScores, positionEffectiveScores,
                 ro.uvt.pokedex.core.service.application.ReportingComputationSupport.buildThresholdCapNotes(
                         report.getCriteria(), report.getIndicators(), indicatorScores)));
+        model.addAttribute("perspectivesJson", perspectivesJson(report, perspectiveVerdicts));
 
         // Export format the report type drives (XLSX → "Excel", DOCX → "Word"), so the export
         // action labels/links correctly instead of hardcoding xlsx.
@@ -197,6 +215,38 @@ public class IndividualReportViewModelAssembler {
         try {
             // '<' is escaped so a hostile criterion name cannot close the inline <script> tag.
             return JSON.writeValueAsString(criteria).replace("<", "\\u003c");
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return "[]";
+        }
+    }
+
+    /**
+     * H95: the perspectives payload for the dashboard JS (script tag {@code #eval-perspectives-data}) —
+     * {@code [{index, name, members:[criterionIdx…], verdictByPosition:{POS: bool}}]}. Members are the
+     * perspective's OWN direct criterion refs (a referenced earlier perspective groups its own members);
+     * empty array for reports without perspectives, so legacy pages ship an inert {@code []}.
+     */
+    private String perspectivesJson(IndividualReport report,
+                                    Map<Integer, Map<String, Boolean>> perspectiveVerdicts) {
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        List<AbstractReport.Perspective> perspectives = report.getPerspectives() == null
+                ? List.of() : report.getPerspectives();
+        for (int i = 0; i < perspectives.size(); i++) {
+            AbstractReport.Perspective perspective = perspectives.get(i);
+            if (perspective == null || !perspectiveVerdicts.containsKey(i)) {
+                continue; // malformed or inapplicable everywhere — leave it out entirely
+            }
+            Map<String, Object> entry = new java.util.LinkedHashMap<>();
+            entry.put("index", i);
+            entry.put("name", perspective.getName() != null && !perspective.getName().isBlank()
+                    ? perspective.getName().trim() : "Perspectiva " + (i + 1));
+            entry.put("members", ro.uvt.pokedex.core.service.application.ReportingComputationSupport
+                    .bundledCriterionIndices(List.of(perspective)));
+            entry.put("verdictByPosition", perspectiveVerdicts.get(i));
+            out.add(entry);
+        }
+        try {
+            return JSON.writeValueAsString(out).replace("<", "\\u003c");
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             return "[]";
         }

@@ -355,12 +355,18 @@ public class UserReportFacade {
                 report.getCriteria(), report.getIndicators(), computation.indicatorScoresByIndicatorId()));
         // Stage 1 position-aware eligibility: same render-time effective scores the run-sourced page
         // (IndividualReportViewModelAssembler) computes, so the two surfaces cannot drift.
-        attrs.put("positionEffectiveScores", ReportingComputationSupport.computePositionEffectiveScores(
-                report.getCriteria(), report.getIndicators(),
-                computation.indicatorScoresByIndicatorId(), computation.criterionScores(),
-                computation.indicatorScoresByPositionByIndicatorId()));
+        Map<Integer, Map<String, Double>> positionEffectiveScores =
+                ReportingComputationSupport.computePositionEffectiveScores(
+                        report.getCriteria(), report.getIndicators(),
+                        computation.indicatorScoresByIndicatorId(), computation.criterionScores(),
+                        computation.indicatorScoresByPositionByIndicatorId());
+        attrs.put("positionEffectiveScores", positionEffectiveScores);
         attrs.put("thresholdCapNotes", ReportingComputationSupport.buildThresholdCapNotes(
                 report.getCriteria(), report.getIndicators(), computation.indicatorScoresByIndicatorId()));
+        // H95: perspective verdicts on the live path too, for surface parity with the run-sourced page.
+        attrs.put("perspectiveVerdicts", ReportingComputationSupport.computePerspectiveVerdicts(
+                report.getPerspectives(), report.getCriteria(),
+                computation.criterionScores(), positionEffectiveScores));
 
         return new UserIndividualReportViewModel(null, attrs);
     }

@@ -990,6 +990,32 @@
   top: 1rem;
 }
 
+/* H95: perspective group — a heading with a DA/NU verdict chip, member tiles moved inside by the JS. */
+.individual-report-dashboard .app-eval-rail__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--app-color-text-strong) 4%, transparent);
+}
+
+.individual-report-dashboard .app-eval-rail__group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.individual-report-dashboard .app-eval-rail__group-name {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-color-text-muted);
+}
+
 .individual-report-dashboard .app-eval-rail__tile {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

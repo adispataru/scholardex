@@ -15,6 +15,8 @@ public abstract class AbstractReport {
     @DBRef
     private List<Indicator> indicators = new ArrayList<>();
     private List<Criterion> criteria;
+    /** H95: section-level groupings with logical verdicts over {@link #criteria}; null on legacy reports. */
+    private List<Perspective> perspectives;
 
     @Data
     public static class Criterion {
@@ -69,6 +71,37 @@ public abstract class AbstractReport {
     public static class Threshold {
         private Position position;
         private Double value;
+    }
+
+    /**
+     * H95: a report-level grouping ABOVE criteria — the standards' own section layer (Perspectiva B,
+     * Punctul 4, …). Criteria stay exactly as they are; a perspective BUNDLES them and judges them with a
+     * declarative AND/OR {@link CompositionNode} tree. Verdicts are derived at render time from the
+     * criteria's per-position met-ness (which already includes the position-effective machinery) — a
+     * perspective carries no score and nothing about it is persisted on runs.
+     */
+    @Data
+    public static class Perspective {
+        private String name;
+        private CompositionNode composition;
+    }
+
+    /**
+     * One node of a perspective's composition tree — exactly one of the four fields is set:
+     * {@code all} (conjunction), {@code any} (disjunction), {@code criterion} (leaf: criterion index in
+     * {@link #criteria}), or {@code perspective} (leaf: an EARLIER perspective's index — the ordering
+     * constraint makes cycles impossible by construction; the Total verdict references B/C/D this way).
+     * Deliberately not a formula engine: leaf truth is the criterion's existing threshold met-ness.
+     * Per-position skip rules (pinned 2026-07-28): a leaf with no threshold for the position is
+     * inapplicable — vacuously TRUE inside {@code all}, FALSE inside {@code any}; a node with no
+     * applicable child is itself inapplicable.
+     */
+    @Data
+    public static class CompositionNode {
+        private List<CompositionNode> all;
+        private List<CompositionNode> any;
+        private Integer criterion;
+        private Integer perspective;
     }
 
 }

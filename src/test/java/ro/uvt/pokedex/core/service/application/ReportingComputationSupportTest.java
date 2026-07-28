@@ -655,6 +655,129 @@ class ReportingComputationSupportTest {
         assertTrue(silent.isEmpty()); // zero raw → nothing to annotate
     }
 
+    // ── H95: perspective verdicts (AND/OR trees over criteria met-ness) ──
+
+    private static AbstractReport.CompositionNode leaf(int criterion) {
+        AbstractReport.CompositionNode n = new AbstractReport.CompositionNode();
+        n.setCriterion(criterion);
+        return n;
+    }
+
+    private static AbstractReport.CompositionNode perspectiveLeaf(int perspective) {
+        AbstractReport.CompositionNode n = new AbstractReport.CompositionNode();
+        n.setPerspective(perspective);
+        return n;
+    }
+
+    private static AbstractReport.CompositionNode all(AbstractReport.CompositionNode... children) {
+        AbstractReport.CompositionNode n = new AbstractReport.CompositionNode();
+        n.setAll(new ArrayList<>(List.of(children)));
+        return n;
+    }
+
+    private static AbstractReport.CompositionNode any(AbstractReport.CompositionNode... children) {
+        AbstractReport.CompositionNode n = new AbstractReport.CompositionNode();
+        n.setAny(new ArrayList<>(List.of(children)));
+        return n;
+    }
+
+    private static AbstractReport.Perspective perspective(String name, AbstractReport.CompositionNode composition) {
+        AbstractReport.Perspective p = new AbstractReport.Perspective();
+        p.setName(name);
+        p.setComposition(composition);
+        return p;
+    }
+
+    private static AbstractReport.Criterion thresholdCriterion(Object... positionValuePairs) {
+        AbstractReport.Criterion c = new AbstractReport.Criterion();
+        List<AbstractReport.Threshold> thresholds = new ArrayList<>();
+        for (int i = 0; i < positionValuePairs.length; i += 2) {
+            thresholds.add(threshold((ro.uvt.pokedex.core.model.reporting.Position) positionValuePairs[i],
+                    (Double) positionValuePairs[i + 1]));
+        }
+        c.setThresholds(thresholds);
+        return c;
+    }
+
+    @Test
+    void perspectiveAllRequiresEveryApplicableLeaf() {
+        // FV Info B shape (conf): total >= 32 AND topAB >= 16; the A*+A gate exists only for PROF and is
+        // skipped at CONF (vacuous true in `all`) — the excel's E9 vs E10 difference.
+        var total = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 32.0,
+                ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 56.0);
+        var topAB = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 16.0,
+                ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 40.0);
+        var topAStarA = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 24.0);
+
+        Map<Integer, Map<String, Boolean>> verdicts = ReportingComputationSupport.computePerspectiveVerdicts(
+                List.of(perspective("Perspectiva B", all(leaf(0), leaf(1), leaf(2)))),
+                List.of(total, topAB, topAStarA),
+                Map.of(0, 40.0, 1, 20.0, 2, 10.0), // conf passes both gates; prof fails all three
+                Map.of());
+
+        assertTrue(verdicts.get(0).get("CONF_UNIV"));  // A*+A leaf skipped at CONF
+        assertFalse(verdicts.get(0).get("PROF_UNIV")); // 40 < 56 etc.
+    }
+
+    @Test
+    void perspectiveAnyTreatsInapplicableLeavesAsNotSatisfied() {
+        // FEAA P4 prof shape: any[a, all[b1, b2]] — route criteria without a CONF threshold must not make
+        // the disjunction vacuously true at CONF.
+        var artGe3 = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 3.0);
+        var grantsGe3 = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 3.0);
+        var dirGe2 = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 2.0);
+        var confOnly = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 1.0);
+
+        Map<Integer, Map<String, Boolean>> verdicts = ReportingComputationSupport.computePerspectiveVerdicts(
+                List.of(perspective("P4", any(leaf(0), all(leaf(1), leaf(2))))),
+                List.of(artGe3, grantsGe3, dirGe2, confOnly),
+                Map.of(0, 0.0, 1, 3.0, 2, 2.0, 3, 1.0), // route a fails, route b passes
+                Map.of());
+
+        assertTrue(verdicts.get(0).get("PROF_UNIV"));       // any: route b (all of b1,b2) fires
+        assertFalse(verdicts.get(0).containsKey("CONF_UNIV")); // no leaf applicable at CONF → inapplicable
+    }
+
+    @Test
+    void perspectiveLeafReferencesEarlierVerdictAndUsesEffectiveScores() {
+        // Total-verdict shape: all[persp 0, criterion 1] — and criterion 1's met-ness uses the
+        // position-EFFECTIVE score (Stage 1/S2) when one exists.
+        var member = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 5.0);
+        var sum = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 100.0);
+
+        Map<Integer, Map<String, Boolean>> verdicts = ReportingComputationSupport.computePerspectiveVerdicts(
+                List.of(perspective("B", all(leaf(0))),
+                        perspective("Total", all(perspectiveLeaf(0), leaf(1)))),
+                List.of(member, sum),
+                Map.of(0, 6.0, 1, 90.0),                       // canonical sum 90 < 100…
+                Map.of(1, Map.of("CONF_UNIV", 105.0)));        // …but effective 105 passes
+
+        assertTrue(verdicts.get(0).get("CONF_UNIV"));
+        assertTrue(verdicts.get(1).get("CONF_UNIV"));
+    }
+
+    @Test
+    void malformedCompositionDisablesOnlyThatPerspective() {
+        var c = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV, 1.0);
+
+        Map<Integer, Map<String, Boolean>> verdicts = ReportingComputationSupport.computePerspectiveVerdicts(
+                List.of(perspective("forward-ref", all(perspectiveLeaf(1))),  // refs a LATER perspective
+                        perspective("ok", all(leaf(0)))),
+                List.of(c), Map.of(0, 2.0), Map.of());
+
+        assertFalse(verdicts.containsKey(0));
+        assertTrue(verdicts.get(1).get("CONF_UNIV"));
+    }
+
+    @Test
+    void bundledCriterionIndicesCollectsDirectRefsOnly() {
+        var perspectives = List.of(
+                perspective("B", all(leaf(0), leaf(2))),
+                perspective("Total", all(perspectiveLeaf(0), leaf(5))));
+        assertEquals(java.util.Set.of(0, 2, 5),
+                ReportingComputationSupport.bundledCriterionIndices(perspectives));
+    }
+
     private static Score totalScore(double value) {
         Score score = new Score();
         score.setAuthorScore(value);

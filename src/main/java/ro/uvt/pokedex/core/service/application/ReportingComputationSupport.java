@@ -571,6 +571,171 @@ public final class ReportingComputationSupport {
         return notes;
     }
 
+    /**
+     * H95 perspective verdicts: for each perspective, the per-position DA/NU derived from its composition
+     * tree over criteria met-ness. A position appears in a perspective's map only when the perspective is
+     * APPLICABLE there (at least one leaf has a threshold for it). Leaf truth uses the position-effective
+     * criterion score when one exists (Stage 1 / S2), else the canonical score. Malformed nodes
+     * (out-of-range refs, non-earlier perspective refs, empty/ambiguous nodes) make the whole perspective
+     * inapplicable and are logged — render-time safety over hard failure.
+     */
+    public static Map<Integer, Map<String, Boolean>> computePerspectiveVerdicts(
+            List<AbstractReport.Perspective> perspectives,
+            List<AbstractReport.Criterion> criteria,
+            Map<Integer, Double> criterionScores,
+            Map<Integer, Map<String, Double>> positionEffectiveScores) {
+        Map<Integer, Map<String, Boolean>> verdicts = new HashMap<>();
+        if (perspectives == null || perspectives.isEmpty()) {
+            return verdicts;
+        }
+        List<AbstractReport.Criterion> safeCriteria = criteria == null ? List.of() : criteria;
+        Set<String> positions = new java.util.LinkedHashSet<>();
+        for (AbstractReport.Criterion criterion : safeCriteria) {
+            if (criterion.getThresholds() == null) continue;
+            for (AbstractReport.Threshold t : criterion.getThresholds()) {
+                if (t.getPosition() != null && t.getValue() != null) {
+                    positions.add(t.getPosition().name());
+                }
+            }
+        }
+        for (int p = 0; p < perspectives.size(); p++) {
+            AbstractReport.Perspective perspective = perspectives.get(p);
+            if (perspective == null || perspective.getComposition() == null) {
+                continue;
+            }
+            Map<String, Boolean> byPosition = new HashMap<>();
+            for (String position : positions) {
+                NodeResult result = evaluateNode(perspective.getComposition(), p, position,
+                        safeCriteria, criterionScores, positionEffectiveScores, verdicts);
+                if (result == null) { // malformed tree — drop the whole perspective
+                    byPosition = null;
+                    break;
+                }
+                if (result.applicable()) {
+                    byPosition.put(position, result.met());
+                }
+            }
+            if (byPosition != null && !byPosition.isEmpty()) {
+                verdicts.put(p, byPosition);
+            }
+        }
+        return verdicts;
+    }
+
+    /** (applicable, met) for one node at one position; null signals a malformed tree. */
+    private record NodeResult(boolean applicable, boolean met) {}
+
+    private static NodeResult evaluateNode(
+            AbstractReport.CompositionNode node,
+            int perspectiveIndex,
+            String position,
+            List<AbstractReport.Criterion> criteria,
+            Map<Integer, Double> criterionScores,
+            Map<Integer, Map<String, Double>> positionEffectiveScores,
+            Map<Integer, Map<String, Boolean>> earlierVerdicts) {
+        if (node == null) {
+            return malformed(perspectiveIndex, "null node");
+        }
+        int kinds = (node.getAll() != null ? 1 : 0) + (node.getAny() != null ? 1 : 0)
+                + (node.getCriterion() != null ? 1 : 0) + (node.getPerspective() != null ? 1 : 0);
+        if (kinds != 1) {
+            return malformed(perspectiveIndex, "node must set exactly one of all/any/criterion/perspective");
+        }
+        if (node.getCriterion() != null) {
+            int idx = node.getCriterion();
+            if (idx < 0 || idx >= criteria.size() || criteria.get(idx) == null) {
+                return malformed(perspectiveIndex, "criterion index out of range: " + idx);
+            }
+            AbstractReport.Criterion criterion = criteria.get(idx);
+            Double threshold = null;
+            if (criterion.getThresholds() != null) {
+                for (AbstractReport.Threshold t : criterion.getThresholds()) {
+                    if (t.getPosition() != null && position.equals(t.getPosition().name()) && t.getValue() != null) {
+                        threshold = t.getValue();
+                        break;
+                    }
+                }
+            }
+            if (threshold == null) {
+                return new NodeResult(false, false); // inapplicable; all/any decide the vacuous truth value
+            }
+            double score = positionEffectiveScores != null
+                    && positionEffectiveScores.containsKey(idx)
+                    && positionEffectiveScores.get(idx).containsKey(position)
+                    ? positionEffectiveScores.get(idx).get(position)
+                    : (criterionScores == null ? 0.0 : criterionScores.getOrDefault(idx, 0.0));
+            return new NodeResult(true, score >= threshold);
+        }
+        if (node.getPerspective() != null) {
+            int ref = node.getPerspective();
+            if (ref < 0 || ref >= perspectiveIndex) {
+                return malformed(perspectiveIndex, "perspective ref must point to an EARLIER perspective: " + ref);
+            }
+            Map<String, Boolean> refVerdicts = earlierVerdicts.get(ref);
+            if (refVerdicts == null || !refVerdicts.containsKey(position)) {
+                return new NodeResult(false, false); // referenced perspective inapplicable here
+            }
+            return new NodeResult(true, refVerdicts.get(position));
+        }
+        List<AbstractReport.CompositionNode> children = node.getAll() != null ? node.getAll() : node.getAny();
+        if (children.isEmpty()) {
+            return malformed(perspectiveIndex, "all/any node with no children");
+        }
+        boolean isAll = node.getAll() != null;
+        boolean anyApplicable = false;
+        boolean allMet = true;
+        boolean anyMet = false;
+        for (AbstractReport.CompositionNode child : children) {
+            NodeResult r = evaluateNode(child, perspectiveIndex, position, criteria,
+                    criterionScores, positionEffectiveScores, earlierVerdicts);
+            if (r == null) {
+                return null;
+            }
+            if (!r.applicable()) {
+                continue; // vacuous TRUE in all (doesn't break allMet), vacuous FALSE in any (doesn't set anyMet)
+            }
+            anyApplicable = true;
+            allMet &= r.met();
+            anyMet |= r.met();
+        }
+        if (!anyApplicable) {
+            return new NodeResult(false, false);
+        }
+        return new NodeResult(true, isAll ? allMet : anyMet);
+    }
+
+    private static NodeResult malformed(int perspectiveIndex, String reason) {
+        logger.warn("H95: malformed composition on perspective {} — {}; perspective disabled", perspectiveIndex, reason);
+        return null;
+    }
+
+    /**
+     * H95: the criterion indices referenced (transitively, through earlier-perspective refs) by any
+     * perspective — the "bundled" set the summary count EXCLUDES (top-level = perspectives + unbundled
+     * criteria) and the rail groups under headings. Malformed refs are simply not collected.
+     */
+    public static Set<Integer> bundledCriterionIndices(List<AbstractReport.Perspective> perspectives) {
+        Set<Integer> bundled = new java.util.LinkedHashSet<>();
+        if (perspectives == null) {
+            return bundled;
+        }
+        for (AbstractReport.Perspective perspective : perspectives) {
+            if (perspective != null) {
+                collectCriterionRefs(perspective.getComposition(), bundled);
+            }
+        }
+        return bundled;
+    }
+
+    private static void collectCriterionRefs(AbstractReport.CompositionNode node, Set<Integer> out) {
+        if (node == null) return;
+        if (node.getCriterion() != null) out.add(node.getCriterion());
+        if (node.getAll() != null) node.getAll().forEach(child -> collectCriterionRefs(child, out));
+        if (node.getAny() != null) node.getAny().forEach(child -> collectCriterionRefs(child, out));
+        // perspective refs need no recursion here: the referenced perspective's own criteria are
+        // collected when that perspective is visited.
+    }
+
     private static String firstAuthorId(ScholardexPublicationView publication) {
         if (publication == null || publication.getAuthors() == null || publication.getAuthors().isEmpty()) {
             return null;

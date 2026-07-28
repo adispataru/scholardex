@@ -197,6 +197,81 @@ class EvaluationWorkspaceControllerContractTest {
     }
 
     @Test
+    void evaluationTemplateShipsThePerspectivesDataTag() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-perspectives-data\""));
+    }
+
+    @Test
+    void showEvaluationExposesPerspectiveVerdictsAndTopLevelMetCount() throws Exception {
+        // H95: a perspective bundles criteria; the JSON ships its members + per-position verdicts, and
+        // the summary met-count counts the perspective INSTEAD of its bundled members.
+        User user = userPrincipal("u@uvt.ro");
+        Indicator indicator = publicationIndicator("ind-1");
+        IndividualReport report = report("rep-1", indicator);
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion total =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        total.setName("Total B");
+        total.setIndicatorIndices(List.of(0));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold t1 =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        t1.setPosition(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
+        t1.setValue(5.0);
+        total.setThresholds(List.of(t1));
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion gate =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        gate.setName("Din care top");
+        gate.setIndicatorIndices(List.of(0));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold t2 =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        t2.setPosition(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
+        t2.setValue(3.0);
+        gate.setThresholds(List.of(t2));
+        report.setCriteria(List.of(total, gate));
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.CompositionNode leaf0 =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.CompositionNode();
+        leaf0.setCriterion(0);
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.CompositionNode leaf1 =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.CompositionNode();
+        leaf1.setCriterion(1);
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.CompositionNode allNode =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.CompositionNode();
+        allNode.setAll(List.of(leaf0, leaf1));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Perspective perspective =
+                new ro.uvt.pokedex.core.model.reporting.AbstractReport.Perspective();
+        perspective.setName("Perspectiva B");
+        perspective.setComposition(allNode);
+        report.setPerspectives(List.of(perspective));
+
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(report)));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(new IndividualReportRunDto(
+                        "run-1", "rep-1", List.of(),
+                        Map.of("ind-1", 6.0), Map.of(),
+                        Map.of(0, 6.0, 1, 2.0), // total met (6>=5), gate NOT met (2<3) → verdict NU
+                        Instant.parse("2026-04-16T12:00:00Z"),
+                        IndividualReportRunDto.Source.BUILT,
+                        "user@uvt.ro")));
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-1")).thenReturn(List.of());
+
+        var modelMap = mockMvc.perform(
+                        get("/user/evaluation").param("report", "rep-1").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andReturn().getModelAndView().getModel();
+
+        String perspectivesJson = (String) modelMap.get("perspectivesJson");
+        org.junit.jupiter.api.Assertions.assertTrue(perspectivesJson.contains("\"name\":\"Perspectiva B\""));
+        org.junit.jupiter.api.Assertions.assertTrue(perspectivesJson.contains("\"members\":[0,1]"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                perspectivesJson.contains("\"verdictByPosition\":{\"CONF_UNIV\":false}"));
+    }
+
+    @Test
     void showEvaluationExposesPositionEffectiveScoresForThresholdCapAdditions() throws Exception {
         // Stage 1 position-aware eligibility (FEAA 2026 book cap): a criterion declaring a
         // thresholdCapAddition ships per-position effective scores + "counted, capped" notes in the

@@ -93,6 +93,79 @@
     } catch (e) { /* malformed JSON → rail renders scores without thresholds */ }
   }
 
+  // H95: perspectives = section-level groupings with a per-position DA/NU verdict over their member
+  // criteria. Empty on legacy reports, in which case nothing below changes any behavior.
+  var _perspectives = [];       // parsed #eval-perspectives-data entries, in order
+  var _bundledCriteria = {};    // criterionIndex → true when grouped under some perspective
+
+  function readPerspectives() {
+    _perspectives = [];
+    _bundledCriteria = {};
+    var el = document.getElementById('eval-perspectives-data');
+    if (!el) return;
+    try {
+      var parsed = JSON.parse(el.textContent || '[]');
+      (parsed || []).forEach(function (entry) {
+        if (!entry || typeof entry.index !== 'number') return;
+        _perspectives.push(entry);
+        (entry.members || []).forEach(function (m) { _bundledCriteria[m] = true; });
+      });
+    } catch (e) { /* malformed JSON → flat rail, as before H95 */ }
+  }
+
+  function perspectiveVerdict(entry, position) {
+    if (!entry || !position || !entry.verdictByPosition) return null; // null = not applicable
+    var v = entry.verdictByPosition[position];
+    return typeof v === 'boolean' ? v : null;
+  }
+
+  /**
+   * Groups the server-rendered rail tiles under perspective headings. Tiles are MOVED, not cloned, so
+   * every existing data-criterion-index hook (selection, chips, sparklines) keeps working; unbundled
+   * criteria stay where they are. Runs once at boot; verdicts re-render on position change.
+   */
+  function groupRailByPerspectives(root) {
+    if (!_perspectives.length) return;
+    var rail = root.querySelector('.app-eval-rail');
+    if (!rail) return;
+    _perspectives.forEach(function (entry) {
+      var group = document.createElement('section');
+      group.className = 'app-eval-rail__group';
+      group.setAttribute('data-perspective-index', String(entry.index));
+      var header = document.createElement('header');
+      header.className = 'app-eval-rail__group-header';
+      header.innerHTML = '<span class="app-eval-rail__group-name"></span>' +
+        '<span class="app-eval-rail__group-verdict app-eval-chip" hidden></span>';
+      header.querySelector('.app-eval-rail__group-name').textContent = entry.name;
+      group.appendChild(header);
+      var moved = 0;
+      (entry.members || []).forEach(function (idx) {
+        var tile = rail.querySelector('.app-eval-rail__tile[data-criterion-index="' + idx + '"]');
+        if (tile) { group.appendChild(tile); moved++; }
+      });
+      if (moved > 0) rail.appendChild(group);
+    });
+  }
+
+  function renderPerspectiveVerdicts(root, position) {
+    _perspectives.forEach(function (entry) {
+      var el = root.querySelector('.app-eval-rail__group[data-perspective-index="' + entry.index + '"] ' +
+        '.app-eval-rail__group-verdict');
+      if (!el) return;
+      var verdict = perspectiveVerdict(entry, position);
+      if (verdict === null) {
+        el.hidden = true;
+        el.textContent = '';
+        el.className = 'app-eval-rail__group-verdict app-eval-chip';
+        return;
+      }
+      el.hidden = false;
+      el.textContent = verdict ? t('report.dash.verdictYes') : t('report.dash.verdictNo');
+      el.className = 'app-eval-rail__group-verdict app-eval-chip ' +
+        (verdict ? 'app-eval-chip--met' : 'app-eval-chip--below');
+    });
+  }
+
   function thresholdByPosition(criterionIndex, position) {
     var entry = _thresholds[criterionIndex];
     if (!entry || !Array.isArray(entry.thresholds) || !position) return null;
@@ -943,13 +1016,21 @@
 
   /** Returns {met, total} for criteria applicable to the given position (from the thresholds JSON). */
   function computeCriteriaMet(position) {
+    // H95: TOP-LEVEL units — perspectives applicable at the position, plus criteria not bundled into
+    // any perspective. Without perspectives this is exactly the pre-H95 count.
     var met = 0, total = 0;
     _thresholds.forEach(function (entry) {
-      if (!entry) return;
+      if (!entry || _bundledCriteria[entry.index]) return;
       var threshold = thresholdByPosition(entry.index, position);
       if (threshold == null) return; // no threshold for this position — criterion not applicable
       total++;
       if (criterionScore(entry.index, position) >= threshold) met++;
+    });
+    _perspectives.forEach(function (entry) {
+      var verdict = perspectiveVerdict(entry, position);
+      if (verdict === null) return;
+      total++;
+      if (verdict) met++;
     });
     return { met: met, total: total };
   }
@@ -990,6 +1071,7 @@
     _position = position;
     root.setAttribute('data-researcher-position', position);
     renderRail(root, position);
+    renderPerspectiveVerdicts(root, position);
     updateCriteriaMet(position);
     var active = root.querySelector('.app-eval-rail__tile.is-active');
     if (active) {
@@ -1566,8 +1648,11 @@
     _selfMode = _apiBase === '/user/evaluation';
 
     readThresholds();
+    readPerspectives();
+    groupRailByPerspectives(root);
     initPositionSelector(root, researcherPosition);
     renderRail(root, _position);
+    renderPerspectiveVerdicts(root, _position);
     renderNearMisses(root, _position);
     initRail(root);
     initIndicatorHashClicks(root);

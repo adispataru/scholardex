@@ -352,6 +352,10 @@
                 <script type="application/json" id="eval-thresholds-data"
                         th:utext="${thresholdsJson != null ? thresholdsJson : '[]'}"></script>
 
+                <!-- H95: perspective groupings + per-position DA/NU verdicts; inert [] on legacy reports. -->
+                <script type="application/json" id="eval-perspectives-data"
+                        th:utext="${perspectivesJson != null ? perspectivesJson : '[]'}"></script>
+
             </div>
 
             <div th:replace="~{fragments :: app-footer}"></div>
