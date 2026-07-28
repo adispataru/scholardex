@@ -195,12 +195,13 @@
     return Array.isArray(notes) ? notes : [];
   }
 
-  /** met / near (within 20% below) / below; null when no threshold applies. */
+  /** DA / APROAPE (within 20% below) / NU — same verdict vocabulary as the perspective headers;
+   *  null when no threshold applies. */
   function chipFor(score, threshold) {
     if (threshold == null || threshold <= 0) return null;
-    if (score >= threshold) return { label: 'met', cls: 'app-eval-chip--met' };
-    if (score >= 0.8 * threshold) return { label: 'near', cls: 'app-eval-chip--near' };
-    return { label: 'below', cls: 'app-eval-chip--below' };
+    if (score >= threshold) return { label: t('report.dash.verdictYes'), cls: 'app-eval-chip--met' };
+    if (score >= 0.8 * threshold) return { label: t('report.dash.verdictNear'), cls: 'app-eval-chip--near' };
+    return { label: t('report.dash.verdictNo'), cls: 'app-eval-chip--below' };
   }
 
   function applyChip(el, score, threshold) {
