@@ -837,7 +837,7 @@
   ],
   "criteria": [
    {
-    "name": "Perspectiva B",
+    "name": "Publicații",
     "indicatorIndices": [
      19,
      20
@@ -863,7 +863,7 @@
     "contributesToTotal": true
    },
    {
-    "name": "Perspectiva C",
+    "name": "Citări",
     "indicatorIndices": [
      1
     ],
@@ -888,7 +888,7 @@
     "contributesToTotal": true
    },
    {
-    "name": "Publicații de top",
+    "name": "Publicații A*+A+B",
     "indicatorIndices": [
      2
     ],
@@ -905,7 +905,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "Citări de top",
+    "name": "Citări A*+A+B",
     "indicatorIndices": [
      3
     ],
@@ -1275,7 +1275,7 @@
   ],
   "criteria": [
    {
-    "name": "Perspectiva B",
+    "name": "Publicații",
     "indicatorIndices": [
      19,
      20
@@ -1305,7 +1305,7 @@
     "contributesToTotal": true
    },
    {
-    "name": "Perspectiva C",
+    "name": "Citări",
     "indicatorIndices": [
      1
     ],
@@ -1334,7 +1334,7 @@
     "contributesToTotal": true
    },
    {
-    "name": "Publicații de top",
+    "name": "Publicații A*+A+B",
     "indicatorIndices": [
      2
     ],
@@ -1355,7 +1355,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "Citări de top",
+    "name": "Citări A*+A+B",
     "indicatorIndices": [
      3
     ],
