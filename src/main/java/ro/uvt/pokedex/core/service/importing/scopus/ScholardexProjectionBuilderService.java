@@ -89,6 +89,11 @@ public class ScholardexProjectionBuilderService {
             "scholardex_forum_category_view",
             "scholardex_forum_membership_view");
 
+    // H96: the full replacement bulk-loads "<table>__next" shadow copies (zero locks on the serving
+    // tables) and swaps them in with a short rename transaction; see executeFullReplacementWrite.
+    private static final String SHADOW_SUFFIX = "__next";
+    private static final int SWAP_MAX_ATTEMPTS = 5;
+
     private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorFactRepository authorFactRepository;
     private final ScholardexAffiliationFactRepository affiliationFactRepository;
@@ -622,12 +627,14 @@ public class ScholardexProjectionBuilderService {
     // PostgreSQL write methods
     // -------------------------------------------------------------------------
 
-    private void insertForumRows(List<ScholardexForumView> rows) {
+    // H96: the insert* writers take a target-table suffix so the full-replacement path can aim at the
+    // shadow ("__next") copies while the incremental batch path keeps writing the live tables ("").
+    private void insertForumRows(List<ScholardexForumView> rows, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_forum_view
+                INSERT INTO reporting_read.scholardex_forum_view%s
                     (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, build_version, build_at, updated_at, source_event_id, aggregation_types)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         writeForumRows(rows, sql);
     }
 
@@ -682,12 +689,12 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertForumMetricRows(List<ForumMetricRow> rows, String buildVersion, Instant buildAt) {
+    private void insertForumMetricRows(List<ForumMetricRow> rows, String buildVersion, Instant buildAt, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_forum_metric_view
+                INSERT INTO reporting_read.scholardex_forum_metric_view%s
                     (id, forum_id, year, metric_type, value, source, build_version, build_at, updated_at)
                 VALUES (?, ?, ?, ?::reporting_read.metric_type_enum, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -714,12 +721,12 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertForumCategoryRows(List<ForumCategoryRow> rows, String buildVersion, Instant buildAt) {
+    private void insertForumCategoryRows(List<ForumCategoryRow> rows, String buildVersion, Instant buildAt, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_forum_category_view
+                INSERT INTO reporting_read.scholardex_forum_category_view%s
                     (id, forum_id, year, edition, category, metric_type, quarter, quartile_rank, "rank", source, build_version, build_at, updated_at)
                 VALUES (?, ?, ?, ?::reporting_read.edition_normalized_enum, ?, ?::reporting_read.metric_type_enum, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -754,12 +761,12 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertForumMembershipRows(List<ForumMembershipRow> rows, String buildVersion, Instant buildAt) {
+    private void insertForumMembershipRows(List<ForumMembershipRow> rows, String buildVersion, Instant buildAt, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_forum_membership_view
+                INSERT INTO reporting_read.scholardex_forum_membership_view%s
                     (id, forum_id, database, member, as_of, source, build_version, build_at, updated_at, apc)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -788,12 +795,12 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertAuthorRows(List<ScholardexAuthorView> rows) {
+    private void insertAuthorRows(List<ScholardexAuthorView> rows, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_author_view
+                INSERT INTO reporting_read.scholardex_author_view%s
                     (id, name, alternative_names, affiliation_ids, build_version, build_at, updated_at, source_event_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         writeAuthorRows(rows, sql);
     }
 
@@ -836,12 +843,12 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertAffiliationRows(List<ScholardexAffiliationView> rows) {
+    private void insertAffiliationRows(List<ScholardexAffiliationView> rows, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_affiliation_view
+                INSERT INTO reporting_read.scholardex_affiliation_view%s
                     (id, name, city, country, build_version, build_at, updated_at, source_event_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         writeAffiliationRows(rows, sql);
     }
 
@@ -884,9 +891,9 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertPublicationRows(List<ScholardexPublicationView> rows) {
+    private void insertPublicationRows(List<ScholardexPublicationView> rows, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_publication_view (
+                INSERT INTO reporting_read.scholardex_publication_view%s (
                     id, doi, doi_normalized, eid, title, subtype, subtype_description,
                     scopus_subtype, scopus_subtype_description, creator, cover_date, cover_display_date,
                     volume, issue_identifier, description, author_count, corresponding_authors,
@@ -898,7 +905,7 @@ public class ScholardexProjectionBuilderService {
                     graph_citation_count, scopus_citation_count, wos_citation_count,
                     corresponding_author_ids, original_forum_id
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         writePublicationRows(rows, sql);
     }
 
@@ -1032,18 +1039,18 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertCitationRows(List<ScholardexCitationFact> rows) {
+    private void insertCitationRows(List<ScholardexCitationFact> rows, String tableSuffix) {
         List<ScholardexCitationFact> dedupedRows = dedupeCitationFactsByPair(rows);
         if (dedupedRows.isEmpty()) {
             return;
         }
         String sql = """
-                INSERT INTO reporting_read.scholardex_citation_fact (
+                INSERT INTO reporting_read.scholardex_citation_fact%s (
                     id, cited_publication_id, citing_publication_id, source,
                     source_record_id, source_event_id, source_batch_id, source_correlation_id,
                     created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         batchInChunks(dedupedRows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -1067,14 +1074,14 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertAuthorshipRows(List<ScholardexAuthorshipFact> rows) {
+    private void insertAuthorshipRows(List<ScholardexAuthorshipFact> rows, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_authorship_fact (
+                INSERT INTO reporting_read.scholardex_authorship_fact%s (
                     id, publication_id, author_id, source,
                     source_record_id, source_event_id, source_batch_id, source_correlation_id,
                     link_state, link_reason, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -1100,14 +1107,14 @@ public class ScholardexProjectionBuilderService {
         }));
     }
 
-    private void insertAuthorAffiliationRows(List<ScholardexAuthorAffiliationFact> rows) {
+    private void insertAuthorAffiliationRows(List<ScholardexAuthorAffiliationFact> rows, String tableSuffix) {
         String sql = """
-                INSERT INTO reporting_read.scholardex_author_affiliation_fact (
+                INSERT INTO reporting_read.scholardex_author_affiliation_fact%s (
                     id, author_id, affiliation_id, source,
                     source_record_id, source_event_id, source_batch_id, source_correlation_id,
                     link_state, link_reason, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+                """.formatted(tableSuffix);
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -1549,6 +1556,15 @@ public class ScholardexProjectionBuilderService {
         return compact.length() == 8 ? compact : null;
     }
 
+    /**
+     * H96: full replacement WITHOUT locking the serving tables. The old shape (drop secondary indexes +
+     * TRUNCATE + bulk insert in one transaction) held ACCESS EXCLUSIVE on all ten tables for the whole
+     * write phase (~10.5 min in prod) — every reader queued, the Hikari pool filled with lock-waiters
+     * and the app read as down. Now the bulk work targets {@code __next} shadow copies nobody reads
+     * (build phase), and the live tables are replaced by a short rename swap (ms-scale lock window)
+     * that keeps the same all-or-nothing semantics: readers see the complete old projection until the
+     * swap commits, then the complete new one.
+     */
     private void executeFullReplacementWrite(
             List<ScholardexForumView> forumViews,
             List<ScholardexAuthorView> authorViews,
@@ -1563,52 +1579,241 @@ public class ScholardexProjectionBuilderService {
             String buildVersion,
             Instant buildAt
     ) {
+        LiveCatalog catalog = captureLiveCatalog();
+        long buildStart = System.nanoTime();
         transactionTemplate.executeWithoutResult(status -> {
-            // H75: this whole rebuild is re-runnable, so skip per-commit fsync waits for the bulk load.
+            // H75: the rebuild is re-runnable, so skip per-commit fsync waits for the bulk load.
             jdbcTemplate.execute("SET LOCAL synchronous_commit = off");
-            // H75 Tier-2: drop the secondary idx_* indexes (incl. GINs) so the bulk insert doesn't maintain them
-            // per row; recreate them once over the full tables after the load. DDL is transactional in Postgres,
-            // so a rollback restores them. Captured from live catalog so it never drifts from the Flyway DDL.
-            List<Map<String, Object>> secondaryIndexes = captureSecondaryIndexes();
-            long dropStart = System.nanoTime();
-            for (Map<String, Object> ix : secondaryIndexes) {
-                jdbcTemplate.execute("DROP INDEX IF EXISTS reporting_read." + ix.get("indexname"));
-            }
-            long dropMs = nanosToMillis(System.nanoTime() - dropStart);
-            long insertStart = System.nanoTime();
-            jdbcTemplate.execute("""
-                    TRUNCATE TABLE
-                        reporting_read.scholardex_author_affiliation_fact,
-                        reporting_read.scholardex_authorship_fact,
-                        reporting_read.scholardex_citation_fact,
-                        reporting_read.scholardex_publication_view,
-                        reporting_read.scholardex_affiliation_view,
-                        reporting_read.scholardex_author_view,
-                        reporting_read.scholardex_forum_view,
-                        reporting_read.scholardex_forum_metric_view,
-                        reporting_read.scholardex_forum_category_view,
-                        reporting_read.scholardex_forum_membership_view
-                    """);
-            insertForumRows(forumViews);
-            insertAuthorRows(authorViews);
-            insertAffiliationRows(affiliationViews);
-            insertPublicationRows(publicationViews);
-            insertCitationRows(citationFacts);
-            insertAuthorshipRows(authorshipFacts);
-            insertAuthorAffiliationRows(authorAffiliationFacts);
-            insertForumMetricRows(forumMetricRows, buildVersion, buildAt);
-            insertForumCategoryRows(forumCategoryRows, buildVersion, buildAt);
-            insertForumMembershipRows(forumMembershipRows, buildVersion, buildAt);
-            long insertMs = nanosToMillis(System.nanoTime() - insertStart);
-            // Recreate the secondary indexes once over the now-full tables.
-            long recreateStart = System.nanoTime();
-            for (Map<String, Object> ix : secondaryIndexes) {
-                jdbcTemplate.execute((String) ix.get("indexdef"));
-            }
-            long recreateMs = nanosToMillis(System.nanoTime() - recreateStart);
-            log.info("Projection full-replacement write sub-timings: dropIndexes={}ms insertRows={}ms recreateIndexes={}ms ({} secondary indexes)",
-                    dropMs, insertMs, recreateMs, secondaryIndexes.size());
+            prepareShadowTables(catalog);
+            insertForumRows(forumViews, SHADOW_SUFFIX);
+            insertAuthorRows(authorViews, SHADOW_SUFFIX);
+            insertAffiliationRows(affiliationViews, SHADOW_SUFFIX);
+            insertPublicationRows(publicationViews, SHADOW_SUFFIX);
+            insertCitationRows(citationFacts, SHADOW_SUFFIX);
+            insertAuthorshipRows(authorshipFacts, SHADOW_SUFFIX);
+            insertAuthorAffiliationRows(authorAffiliationFacts, SHADOW_SUFFIX);
+            insertForumMetricRows(forumMetricRows, buildVersion, buildAt, SHADOW_SUFFIX);
+            insertForumCategoryRows(forumCategoryRows, buildVersion, buildAt, SHADOW_SUFFIX);
+            insertForumMembershipRows(forumMembershipRows, buildVersion, buildAt, SHADOW_SUFFIX);
+            // H75 Tier-2 carried over: secondary indexes are built ONCE over the full shadow tables
+            // instead of being maintained per row; FKs validate once over the loaded data; the shadow
+            // matviews scan the shadow tables — all of it off the serving path.
+            buildShadowSecondaryObjects(catalog);
         });
+        long buildMs = nanosToMillis(System.nanoTime() - buildStart);
+        long swapStart = System.nanoTime();
+        int attempts = swapShadowIntoPlace(catalog);
+        long swapMs = nanosToMillis(System.nanoTime() - swapStart);
+        log.info("Projection shadow-build write sub-timings: buildShadow={}ms swap={}ms swapAttempts={} "
+                        + "({} secondary indexes, {} constraints, {} dependent matviews)",
+                buildMs, swapMs, attempts, catalog.secondaryIndexes().size(), catalog.constraints().size(),
+                catalog.dependentMatviews().size());
+    }
+
+    // -------------------------------------------------------------------------
+    // H96: shadow-build + atomic swap machinery
+    // -------------------------------------------------------------------------
+
+    /** One live constraint (PK/unique/FK/check) with the collision-free name its shadow copy uses. */
+    private record CatalogConstraint(String table, String name, String shadowName, String contype, String definition) {}
+
+    /** One live non-constraint index with the collision-free name its shadow copy uses. */
+    private record CatalogIndex(String table, String name, String shadowName, String definition) {}
+
+    /** A materialized view that reads swap-set tables, so it must be shadow-built and swapped too. */
+    private record CatalogMatview(String name, String definition, List<CatalogIndex> indexes) {}
+
+    private record LiveCatalog(
+            List<CatalogConstraint> constraints,
+            List<CatalogIndex> secondaryIndexes,
+            List<CatalogMatview> dependentMatviews
+    ) {}
+
+    /**
+     * Snapshot of the live catalog for the swap set: constraints, non-constraint indexes and dependent
+     * matviews, each paired with a deterministic {@code nx<i>_}-prefixed shadow name. The ordinal prefix
+     * keeps shadow names unique even when the 63-byte identifier truncation bites, and the pairing is
+     * what lets the swap rename everything back to the exact Flyway-managed names — cycle idempotency
+     * (a second rebuild right after the first) depends on it.
+     */
+    private LiveCatalog captureLiveCatalog() {
+        String placeholders = String.join(",", java.util.Collections.nCopies(FULL_REPLACEMENT_TABLES.size(), "?"));
+        Object[] tables = FULL_REPLACEMENT_TABLES.toArray();
+        java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger();
+
+        List<CatalogConstraint> constraints = jdbcTemplate.query(
+                "SELECT rel.relname AS tbl, con.conname AS name, con.contype::text AS contype, "
+                        + "pg_get_constraintdef(con.oid) AS def "
+                        + "FROM pg_constraint con "
+                        + "JOIN pg_class rel ON rel.oid = con.conrelid "
+                        + "JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace "
+                        + "WHERE nsp.nspname = 'reporting_read' AND con.contype IN ('p','u','f','c') "
+                        + "AND rel.relname IN (" + placeholders + ") ORDER BY rel.relname, con.conname",
+                (rs, i) -> new CatalogConstraint(rs.getString("tbl"), rs.getString("name"),
+                        shadowName(counter.getAndIncrement(), rs.getString("name")),
+                        rs.getString("contype"), rs.getString("def")),
+                tables);
+
+        Set<String> constraintNames = constraints.stream().map(CatalogConstraint::name)
+                .collect(java.util.stream.Collectors.toSet());
+        List<CatalogIndex> secondaryIndexes = jdbcTemplate.query(
+                "SELECT tablename, indexname, indexdef FROM pg_indexes "
+                        + "WHERE schemaname = 'reporting_read' AND tablename IN (" + placeholders + ") "
+                        + "ORDER BY tablename, indexname",
+                (rs, i) -> new CatalogIndex(rs.getString("tablename"), rs.getString("indexname"),
+                        shadowName(counter.getAndIncrement(), rs.getString("indexname")),
+                        rs.getString("indexdef")),
+                tables).stream()
+                .filter(ix -> !constraintNames.contains(ix.name())) // constraint-backed indexes ride their constraint
+                .toList();
+
+        List<CatalogMatview> matviews = jdbcTemplate.queryForList(
+                        "SELECT matviewname, definition FROM pg_matviews WHERE schemaname = 'reporting_read'")
+                .stream()
+                .filter(row -> FULL_REPLACEMENT_TABLES.stream()
+                        .anyMatch(t -> ((String) row.get("definition")).contains("reporting_read." + t)))
+                .map(row -> {
+                    String name = (String) row.get("matviewname");
+                    List<CatalogIndex> mvIndexes = jdbcTemplate.query(
+                            "SELECT tablename, indexname, indexdef FROM pg_indexes "
+                                    + "WHERE schemaname = 'reporting_read' AND tablename = ? ORDER BY indexname",
+                            (rs, i) -> new CatalogIndex(rs.getString("tablename"), rs.getString("indexname"),
+                                    shadowName(counter.getAndIncrement(), rs.getString("indexname")),
+                                    rs.getString("indexdef")),
+                            name);
+                    return new CatalogMatview(name, (String) row.get("definition"), mvIndexes);
+                })
+                .toList();
+
+        return new LiveCatalog(constraints, secondaryIndexes, matviews);
+    }
+
+    /** {@code nx<ordinal>_<name>}, truncated to Postgres's 63-byte identifier limit (ordinal keeps it unique). */
+    private static String shadowName(int ordinal, String name) {
+        String candidate = "nx" + ordinal + "_" + name;
+        return candidate.length() <= 63 ? candidate : candidate.substring(0, 63);
+    }
+
+    /**
+     * Fresh empty shadow copies: leftover shadows from a crashed earlier run are dropped first (the whole
+     * scheme self-heals), then bare-column copies are created with PK/unique/check constraints attached
+     * up front — the unique constraints guard dedup during the load, exactly as on the live path. FKs and
+     * secondary indexes come AFTER the load ({@link #buildShadowSecondaryObjects}): one validation/build
+     * pass over full tables beats per-row maintenance (the H75 Tier-2 lesson).
+     */
+    private void prepareShadowTables(LiveCatalog catalog) {
+        for (CatalogMatview mv : catalog.dependentMatviews()) {
+            jdbcTemplate.execute("DROP MATERIALIZED VIEW IF EXISTS reporting_read." + mv.name() + SHADOW_SUFFIX);
+        }
+        for (String table : FULL_REPLACEMENT_TABLES) {
+            jdbcTemplate.execute("DROP TABLE IF EXISTS reporting_read." + table + SHADOW_SUFFIX + " CASCADE");
+        }
+        for (String table : FULL_REPLACEMENT_TABLES) {
+            jdbcTemplate.execute("CREATE TABLE reporting_read." + table + SHADOW_SUFFIX
+                    + " (LIKE reporting_read." + table + " INCLUDING DEFAULTS)");
+        }
+        for (CatalogConstraint con : catalog.constraints()) {
+            if (!"f".equals(con.contype())) {
+                jdbcTemplate.execute("ALTER TABLE reporting_read." + con.table() + SHADOW_SUFFIX
+                        + " ADD CONSTRAINT " + con.shadowName() + " " + con.definition());
+            }
+        }
+    }
+
+    /** Secondary indexes, FKs and dependent matviews over the LOADED shadow tables — still zero live locks. */
+    private void buildShadowSecondaryObjects(LiveCatalog catalog) {
+        for (CatalogIndex ix : catalog.secondaryIndexes()) {
+            jdbcTemplate.execute(rewriteForShadow(ix.definition())
+                    .replaceFirst(" INDEX " + java.util.regex.Pattern.quote(ix.name()) + " ",
+                            " INDEX " + ix.shadowName() + " "));
+        }
+        for (CatalogConstraint con : catalog.constraints()) {
+            if ("f".equals(con.contype())) {
+                jdbcTemplate.execute("ALTER TABLE reporting_read." + con.table() + SHADOW_SUFFIX
+                        + " ADD CONSTRAINT " + con.shadowName() + " " + rewriteForShadow(con.definition()));
+            }
+        }
+        for (CatalogMatview mv : catalog.dependentMatviews()) {
+            jdbcTemplate.execute("CREATE MATERIALIZED VIEW reporting_read." + mv.name() + SHADOW_SUFFIX
+                    + " AS " + rewriteForShadow(mv.definition()));
+            for (CatalogIndex ix : mv.indexes()) {
+                jdbcTemplate.execute(rewriteForShadow(ix.definition())
+                        .replaceFirst(" INDEX " + java.util.regex.Pattern.quote(ix.name()) + " ",
+                                " INDEX " + ix.shadowName() + " ")
+                        .replaceFirst("ON reporting_read\\." + java.util.regex.Pattern.quote(mv.name()) + "\\b",
+                                "ON reporting_read." + mv.name() + SHADOW_SUFFIX));
+            }
+        }
+    }
+
+    /** Rewrites every swap-set table reference in a DDL/definition string to its shadow twin. */
+    private static String rewriteForShadow(String sql) {
+        String rewritten = sql;
+        for (String table : FULL_REPLACEMENT_TABLES) {
+            rewritten = rewritten.replaceAll(
+                    "reporting_read\\." + java.util.regex.Pattern.quote(table) + "\\b",
+                    "reporting_read." + table + SHADOW_SUFFIX);
+        }
+        return rewritten;
+    }
+
+    /**
+     * The only moment live locks are taken: one short transaction that drops the old objects and renames
+     * the shadows into place, then restores every catalog name. Guarded by {@code lock_timeout} + retry —
+     * WITHOUT the timeout, this transaction queueing behind a single slow reader would itself block every
+     * new reader for that reader's duration, recreating the outage in miniature. On a timeout it rolls
+     * back completely (old projection still serving) and retries after a backoff.
+     */
+    private int swapShadowIntoPlace(LiveCatalog catalog) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                transactionTemplate.executeWithoutResult(status -> {
+                    jdbcTemplate.execute("SET LOCAL lock_timeout = '3s'");
+                    for (CatalogMatview mv : catalog.dependentMatviews()) {
+                        jdbcTemplate.execute("DROP MATERIALIZED VIEW IF EXISTS reporting_read." + mv.name());
+                    }
+                    // FULL_REPLACEMENT_TABLES lists FK children (facts) before their parents (views).
+                    for (String table : FULL_REPLACEMENT_TABLES) {
+                        jdbcTemplate.execute("DROP TABLE reporting_read." + table);
+                    }
+                    for (String table : FULL_REPLACEMENT_TABLES) {
+                        jdbcTemplate.execute("ALTER TABLE reporting_read." + table + SHADOW_SUFFIX
+                                + " RENAME TO " + table);
+                    }
+                    for (CatalogMatview mv : catalog.dependentMatviews()) {
+                        jdbcTemplate.execute("ALTER MATERIALIZED VIEW reporting_read." + mv.name() + SHADOW_SUFFIX
+                                + " RENAME TO " + mv.name());
+                    }
+                    for (CatalogConstraint con : catalog.constraints()) {
+                        jdbcTemplate.execute("ALTER TABLE reporting_read." + con.table()
+                                + " RENAME CONSTRAINT " + con.shadowName() + " TO " + con.name());
+                    }
+                    for (CatalogIndex ix : catalog.secondaryIndexes()) {
+                        jdbcTemplate.execute("ALTER INDEX reporting_read." + ix.shadowName()
+                                + " RENAME TO " + ix.name());
+                    }
+                    for (CatalogMatview mv : catalog.dependentMatviews()) {
+                        for (CatalogIndex ix : mv.indexes()) {
+                            jdbcTemplate.execute("ALTER INDEX reporting_read." + ix.shadowName()
+                                    + " RENAME TO " + ix.name());
+                        }
+                    }
+                });
+                return attempt;
+            } catch (Exception e) {
+                if (attempt >= SWAP_MAX_ATTEMPTS) {
+                    throw e;
+                }
+                log.warn("Projection swap attempt {}/{} failed ({}); retrying — old projection still serving",
+                        attempt, SWAP_MAX_ATTEMPTS, e.getMessage());
+                try {
+                    Thread.sleep(2_000L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
     }
 
     private void executeBatchRefreshWrite(BatchRefreshState batchRefreshState) {
@@ -1629,7 +1834,7 @@ public class ScholardexProjectionBuilderService {
                 publicationIds,
                 publicationIds
         );
-        insertCitationRows(citationFacts);
+        insertCitationRows(citationFacts, "");
     }
 
     private List<ScholardexCitationFact> dedupeCitationFactsByPair(List<ScholardexCitationFact> rows) {
@@ -1652,7 +1857,7 @@ public class ScholardexProjectionBuilderService {
                 "DELETE FROM reporting_read.scholardex_authorship_fact WHERE publication_id = ANY (?)",
                 publicationIds
         );
-        insertAuthorshipRows(authorshipFacts);
+        insertAuthorshipRows(authorshipFacts, "");
     }
 
     private void refreshAuthorAffiliationRowsForBatch(Set<String> authorIds, List<ScholardexAuthorAffiliationFact> authorAffiliationFacts) {
@@ -1660,7 +1865,7 @@ public class ScholardexProjectionBuilderService {
                 "DELETE FROM reporting_read.scholardex_author_affiliation_fact WHERE author_id = ANY (?)",
                 authorIds
         );
-        insertAuthorAffiliationRows(authorAffiliationFacts);
+        insertAuthorAffiliationRows(authorAffiliationFacts, "");
     }
 
     private void deleteByTextArray(String sql, Set<String> firstValues, Set<String> secondValues) {
@@ -1693,19 +1898,6 @@ public class ScholardexProjectionBuilderService {
     // -------------------------------------------------------------------------
     // JDBC utility helpers
     // -------------------------------------------------------------------------
-
-    /**
-     * H75 Tier-2: the secondary {@code idx_*} indexes (name + recreate DDL) on the full-replacement tables, read
-     * live from the catalog so the drop/recreate never drifts from the Flyway-managed definitions. Excludes
-     * {@code _pkey} and {@code uq_*} (those stay to guard correctness/dedup during the load).
-     */
-    private List<Map<String, Object>> captureSecondaryIndexes() {
-        String placeholders = String.join(",", java.util.Collections.nCopies(FULL_REPLACEMENT_TABLES.size(), "?"));
-        return jdbcTemplate.queryForList(
-                "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'reporting_read' "
-                        + "AND indexname LIKE 'idx_%' AND tablename IN (" + placeholders + ")",
-                FULL_REPLACEMENT_TABLES.toArray());
-    }
 
     private <T> void batchInChunks(List<T> rows, Consumer<List<T>> chunkWriter) {
         if (rows == null || rows.isEmpty()) {

@@ -352,7 +352,20 @@ Done history moved to `TASKS-done.md`.
     the "AIS nenul at deposit" condition; citations FROM Anexa-1 books (=Q4) not counted (no book
     citation edges in canon); national publisher list = CNCSIS register until CNATDCU A2 sourced.
 
-- [ ] `H96` Projection rebuild must not lock the serving read model (shadow-build + atomic swap).
+- [x] `H96` Projection rebuild must not lock the serving read model (shadow-build + atomic swap).
+  **DONE 2026-07-29 (same day as raised).** Implemented exactly as scoped below: insert writers took a
+  target-suffix, `executeFullReplacementWrite` = build-into-`__next` transaction (zero live locks;
+  constraints up front for load dedup, secondary indexes/FKs/dependent matviews after the load) +
+  short drop-and-rename swap tx with `lock_timeout='3s'` and 5-attempt backoff retry, then catalog
+  names restored from the captured live catalog (nx<i>_ shadow names, 63-byte-safe). Pinned in
+  `PostgresReportingProjectionServiceIntegrationTest`: two consecutive cycles → byte-identical
+  index/constraint name lists, FKs survive, zero `__next` leftovers; plus a concurrent reader that
+  must never error across two rebuilds. Live-verified on the full local dataset (150k pubs / 1.3M
+  authorships): buildShadow=142s with ZERO live locks, swap=90ms on attempt 1; a 100ms-interval
+  read-hammer across the whole rebuild saw max 217ms and 0 errors (the old path held readers for
+  the entire ~10-min write phase). Rider done: the always-on CS_CONFERENCE_TRACE DEBUG line in
+  application.properties commented out — prod logs return to INFO.
+  Original scope, kept for the record:
   **RAISED 2026-07-29 (prod incident, same day).** The full Postgres projection rebuild
   (`ScholardexProjectionBuilderService.executeFullReplacementWrite`) runs ONE transaction that drops
   the secondary indexes (instant ACCESS EXCLUSIVE on all 10 `reporting_read` tables), TRUNCATEs,

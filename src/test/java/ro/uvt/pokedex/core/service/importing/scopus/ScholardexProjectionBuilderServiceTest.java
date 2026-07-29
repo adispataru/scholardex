@@ -1284,14 +1284,20 @@ class ScholardexProjectionBuilderServiceTest {
         ImportProcessingResult result = service.rebuildViews();
 
         assertEquals(5, result.getImportedCount());
-        verify(jdbcTemplate).execute(contains("TRUNCATE TABLE"));
-        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_forum_view"), any(BatchPreparedStatementSetter.class));
-        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_author_view"), any(BatchPreparedStatementSetter.class));
-        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_affiliation_view"), any(BatchPreparedStatementSetter.class));
-        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_publication_view"), any(BatchPreparedStatementSetter.class));
-        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_citation_fact"), any(BatchPreparedStatementSetter.class));
-        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_authorship_fact"), any(BatchPreparedStatementSetter.class));
-        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_author_affiliation_fact"), any(BatchPreparedStatementSetter.class));
+        // H96: the full replacement bulk-loads __next shadow copies (never TRUNCATE on the serving
+        // tables) and swaps them in with drop+rename — the only statements that touch live names.
+        verify(jdbcTemplate, org.mockito.Mockito.never()).execute(contains("TRUNCATE TABLE"));
+        verify(jdbcTemplate, org.mockito.Mockito.times(10)).execute(contains("(LIKE reporting_read."));
+        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_forum_view__next"), any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_author_view__next"), any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_affiliation_view__next"), any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_publication_view__next"), any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_citation_fact__next"), any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_authorship_fact__next"), any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(contains("reporting_read.scholardex_author_affiliation_fact__next"), any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).execute("DROP TABLE reporting_read.scholardex_publication_view");
+        verify(jdbcTemplate).execute(
+                "ALTER TABLE reporting_read.scholardex_publication_view__next RENAME TO scholardex_publication_view");
     }
 
     @Test

@@ -207,6 +207,101 @@ class PostgresReportingProjectionServiceIntegrationTest {
     }
 
     @Test
+    void shadowSwapRebuildIsCycleIdempotentAndRestoresCatalogNames() {
+        // H96: the full rebuild bulk-loads __next shadow tables and swaps them in by rename. The swap
+        // must restore every Flyway-managed catalog name (index + constraint), keep the FKs that
+        // CREATE TABLE (LIKE ...) does not copy, and leave no __next leftovers — otherwise the SECOND
+        // rebuild collides with the first one's residue. Two consecutive cycles prove all of it.
+        seedMongoProjectionSources();
+        java.util.List<String> canonicalIndexes = scholardexCatalogIndexNames();
+        java.util.List<String> canonicalConstraints = scholardexCatalogConstraintNames();
+        long canonicalFkCount = scholardexForeignKeyCount();
+        org.junit.jupiter.api.Assertions.assertTrue(canonicalFkCount >= 5,
+                "expected the V2 fact->view FKs in the baseline schema, got " + canonicalFkCount);
+
+        assertEquals("SUCCESS", projectionService.runFullRebuild().status());
+        assertEquals("SUCCESS", projectionService.runFullRebuild().status());
+
+        assertEquals(canonicalIndexes, scholardexCatalogIndexNames());
+        assertEquals(canonicalConstraints, scholardexCatalogConstraintNames());
+        assertEquals(canonicalFkCount, scholardexForeignKeyCount());
+        assertEquals(1L, tableCount("reporting_read.scholardex_publication_view"));
+        assertEquals(1L, tableCount("reporting_read.scholardex_citation_fact"));
+        assertEquals(1L, tableCount("reporting_read.mv_scholardex_citation_context"));
+        Long leftovers = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                        + "WHERE n.nspname = 'reporting_read' AND c.relname LIKE '%__next%'",
+                Long.class);
+        assertEquals(0L, leftovers);
+    }
+
+    @Test
+    void readersNeverFailWhileTheShadowRebuildRuns() throws Exception {
+        // H96: the point of the shadow build is that serving reads keep working throughout — including
+        // across the drop+rename swap instant. A reader polling the swapped tables during a full
+        // rebuild must never see an error (a "relation does not exist" here means the swap is not
+        // atomic from the readers' perspective).
+        seedMongoProjectionSources();
+        assertEquals("SUCCESS", projectionService.runFullRebuild().status());
+
+        java.util.concurrent.atomic.AtomicBoolean stop = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.atomic.AtomicReference<Throwable> readerFailure = new java.util.concurrent.atomic.AtomicReference<>();
+        Thread reader = new Thread(() -> {
+            while (!stop.get()) {
+                try {
+                    jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM reporting_read.scholardex_publication_view p "
+                                    + "JOIN reporting_read.scholardex_authorship_fact a ON a.publication_id = p.id",
+                            Long.class);
+                } catch (Throwable t) {
+                    readerFailure.compareAndSet(null, t);
+                    return;
+                }
+            }
+        });
+        reader.start();
+        try {
+            assertEquals("SUCCESS", projectionService.runFullRebuild().status());
+            assertEquals("SUCCESS", projectionService.runFullRebuild().status());
+        } finally {
+            stop.set(true);
+            reader.join(10_000);
+        }
+        if (readerFailure.get() != null) {
+            throw new AssertionError("reader failed during shadow rebuild", readerFailure.get());
+        }
+    }
+
+    private java.util.List<String> scholardexCatalogIndexNames() {
+        return jdbcTemplate.queryForList(
+                "SELECT indexname FROM pg_indexes WHERE schemaname = 'reporting_read' "
+                        + "AND (tablename LIKE 'scholardex_%' OR tablename = 'mv_scholardex_citation_context') "
+                        + "ORDER BY indexname",
+                String.class);
+    }
+
+    private java.util.List<String> scholardexCatalogConstraintNames() {
+        return jdbcTemplate.queryForList(
+                "SELECT con.conname FROM pg_constraint con "
+                        + "JOIN pg_class rel ON rel.oid = con.conrelid "
+                        + "JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace "
+                        + "WHERE nsp.nspname = 'reporting_read' AND rel.relname LIKE 'scholardex_%' "
+                        + "AND con.contype IN ('p','u','f','c') ORDER BY con.conname",
+                String.class);
+    }
+
+    private long scholardexForeignKeyCount() {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM pg_constraint con "
+                        + "JOIN pg_class rel ON rel.oid = con.conrelid "
+                        + "JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace "
+                        + "WHERE nsp.nspname = 'reporting_read' AND rel.relname LIKE 'scholardex_%' "
+                        + "AND con.contype = 'f'",
+                Long.class);
+        return count == null ? 0L : count;
+    }
+
+    @Test
     void failedSliceDoesNotAdvanceCheckpoint() {
         seedMongoProjectionSources();
         PostgresReportingProjectionService.ProjectionRunSummary initial = projectionService.runFullRebuild();
