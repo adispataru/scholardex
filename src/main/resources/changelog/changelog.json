@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-07-29",
+    "title": "FEAA: lista oficială CNATDCU A2 pentru edituri naționale; corecții de domeniu în fișa 2016",
+    "body": "Nivelul «editură națională» din punctajul cărților FEAA folosește acum lista oficială CNATDCU A2 (Panel 4 — edituri de prestigiu recunoscut în domeniul științelor sociale, 106 edituri românești și străine, inclusiv organizațiile internaționale din sistemul ONU), în locul registrului CNCSIS folosit provizoriu. Separat, în fișa FEAA 2016 au fost corectate două restricții de domeniu: indicatorul P nu avea domeniu setat și puncta zero pe rulările reale, iar indicatorul C era limitat la categoriile Economie și sub-număra nivelul rezidual «Social Science & Science». Ambele folosesc acum toate categoriile, ierarhizarea pe coeficienți (Core 10 / Info 8 / rezidual 6) rămânând în sarcina punctajului. Scorurile FEAA 2016 cresc la următoarea rulare."
+  },
+  {
+    "date": "2026-07-29",
     "title": "Fișele Info: pragul «minim un proiect ca director» apare explicit la Perspectiva D",
     "body": "În FV Info 2016 și FV Info 2026, criteriul de punctaj al Perspectivei D se numește acum «Activități», iar pragul standardului pentru Profesor — minim un proiect de cercetare obținut de candidat prin competiție (în fișa 2026: în calitate de director/responsabil, cu buget de cel puțin 50.000 EUR intrat în instituție) — apare ca rând separat, «Proiect ca director». Verdictul Perspectivei D (și implicit «Total — verdict») cere acum și acest prag la Profesor; pentru Conferențiar și celelalte poziții nimic nu se schimbă, standardul neimpunând pragul acolo. Condiția privind echipa de minim 2 membri rămâne în seama comisiei — datele platformei nu o pot verifica."
   },

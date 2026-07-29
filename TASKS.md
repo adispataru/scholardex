@@ -348,6 +348,18 @@ Done history moved to `TASKS-done.md`.
     PROF-only → inapplicable). docType binds the pub itself in the publications path
     (cited==citing), pinned with formula tests. Changelog entry added. Sweep data point: 0/19 CS
     researchers have an authored 'bk' (canon holds 968 books overall).
+    **FEAA closeout decisions (user, 2026-07-29) + follow-through:** docx export deferred (H50.5
+    covers it when wanted); H94 descriptions = nice-to-have, content only; books missing from
+    Scopus/OpenAlex → researchers add them manually (user-defined publications feed the book
+    scorer — no work needed). DONE same day: (a) the REAL CNATDCU A2 list (Panel 4, sourced from
+    cnatdcu.ro A2_Panel41.xls, mirrored in data/standards/economie/) now backs the FEAA national
+    book tier — `FeaaA2Publisher` collection + fixture reconcile
+    (report-data/feaa-a2-national-publishers.csv, 106 rows: RO + foreign sections, ONU aggregate
+    row split into member orgs), `FeaaNationalPublisherService` re-backed from the CNCSIS-register
+    proxy (register untouched for SENSE); self-seeds on boot, no prod script. (b) FEAA 2016 domain
+    fix (score-raising, approved — report unused): FEEA_P null domain (scored 0 on every real run)
+    and FEEA_C's Economie-only restriction (dropped the residual M=6 tier) both → ALL; verified
+    live, eva P 0 → 71.15. Prod: `feaa_2016_domain_fix.js --restart` after deploy.
     Everything else verified in place: P/C formulas + N_ro, 2026 M table with SSCI/SCIE-only gate
     (no ESCI), article/review docType gate, top-10 + per-journal-year cap w/ Core/Info exemption,
     ANY_COAUTHOR semi-self-citation exclusion, book tiers incl. ISI-proceedings 0.1 + 25%-of-P-min

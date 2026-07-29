@@ -1005,7 +1005,11 @@
    "n": 10,
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  }
  },
  {
   "_id": {
@@ -1015,7 +1019,7 @@
   "formula": "Q == 'Q1' ? 1 : Q == 'Q2' ? 0.75 : Q == 'Q3' ? 0.5 : Q == 'Q4' ? 0.25 : 0",
   "domain": {
    "$ref": "domains",
-   "$id": "Economie"
+   "$id": "ALL"
   },
   "version": 1,
   "kind": {
