@@ -697,7 +697,8 @@
    "6820eec804e38843635e0ca8": "Consolidarea de echipe",
    "682100ba04e38843635e0cb8": "Pozitii de conducere",
    "6820e5552654f8388e8d364c": "Keynote/invited speaker",
-   "6656440ef349c0670bb68b26": "__not_exported__"
+   "6656440ef349c0670bb68b26": "__not_exported__",
+   "6a69c858d7843ac4374b56ed": "__not_exported__"
   },
   "title": "FV Info 2016",
   "description": "FV Info",
@@ -833,6 +834,12 @@
     "$id": {
      "$oid": "6823535fbb926870c1f86fbd"
     }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a69c858d7843ac4374b56ed"
+    }
    }
   ],
   "criteria": [
@@ -922,7 +929,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "Perspectiva D",
+    "name": "Activități",
     "indicatorIndices": [
      4,
      5,
@@ -1007,6 +1014,19 @@
      }
     ],
     "contributesToTotal": false
+   },
+   {
+    "name": "Proiect ca director",
+    "indicatorIndices": [
+     22
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ]
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
@@ -1043,6 +1063,9 @@
      "all": [
       {
        "criterion": 4
+      },
+      {
+       "criterion": 6
       }
      ]
     }
@@ -1123,7 +1146,8 @@
    "6a63b59843226fd40f87b942": "__not_exported__",
    "6a63b59843226fd40f87b943": "Editor proceedings",
    "6a63b59843226fd40f87b944": "Membru comitet stiintific",
-   "6a63b59843226fd40f87b945": "Keynote/invited speaker"
+   "6a63b59843226fd40f87b945": "Keynote/invited speaker",
+   "6a69c858d7843ac4374b56ee": "__not_exported__"
   },
   "title": "FV Info 2026",
   "description": "FV Info",
@@ -1271,6 +1295,12 @@
     "$id": {
      "$oid": "6a493be99fe41c33d2883e87"
     }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a69c858d7843ac4374b56ee"
+    }
    }
   ],
   "criteria": [
@@ -1376,7 +1406,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "Perspectiva D",
+    "name": "Activități",
     "indicatorIndices": [
      4,
      5,
@@ -1482,6 +1512,19 @@
      }
     ],
     "contributesToTotal": false
+   },
+   {
+    "name": "Proiect ca director",
+    "indicatorIndices": [
+     24
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ]
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
@@ -1521,6 +1564,9 @@
      "all": [
       {
        "criterion": 4
+      },
+      {
+       "criterion": 7
       }
      ]
     }

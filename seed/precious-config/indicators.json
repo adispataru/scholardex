@@ -2771,5 +2771,69 @@
    "$ref": "domains",
    "$id": "ALL"
   }
+ },
+ {
+  "_id": {
+   "$oid": "6a69c858d7843ac4374b56ed"
+  },
+  "name": "Info_D_Director",
+  "formula": "Rol != 'Membru' ? 1 : 0",
+  "formulaHash": "08d541dcdc6bfa83d02f922b6b00d47dcad4eef230ff2b7667a97f9daf311543",
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "version": 1,
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  }
+ },
+ {
+  "_id": {
+   "$oid": "6a69c858d7843ac4374b56ee"
+  },
+  "name": "Info_D_Director_2026",
+  "formula": "(Interval_buget >= 2 && Rol != 'Membru') ? 1 : 0",
+  "formulaHash": "de7ce2b3855308c7d1b2724e24372541a5593031cf650480c17ec3776846ee09",
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "version": 1,
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  }
  }
 ]
