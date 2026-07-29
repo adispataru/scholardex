@@ -1492,6 +1492,10 @@
      {
       "position": "PROF_UNIV",
       "value": 236
+     },
+     {
+      "position": "HABIL",
+      "value": 176
      }
     ],
     "contributesToTotal": false
