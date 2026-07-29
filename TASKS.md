@@ -351,6 +351,46 @@ Done history moved to `TASKS-done.md`.
     consume article slots; points 4a/5 count over ALL articles not "din cele 10"; IY_OR_LATEST skips
     the "AIS nenul at deposit" condition; citations FROM Anexa-1 books (=Q4) not counted (no book
     citation edges in canon); national publisher list = CNCSIS register until CNATDCU A2 sourced.
+
+- [ ] `H96` Projection rebuild must not lock the serving read model (shadow-build + atomic swap).
+  **RAISED 2026-07-29 (prod incident, same day).** The full Postgres projection rebuild
+  (`ScholardexProjectionBuilderService.executeFullReplacementWrite`) runs ONE transaction that drops
+  the secondary indexes (instant ACCESS EXCLUSIVE on all 10 `reporting_read` tables), TRUNCATEs,
+  bulk-inserts (~10.5 min in prod: writePg=631s of total=743s for 156k pubs / 1.3M authorships /
+  555k citations), recreates indexes, commits. Every reader of `reporting_read.*` queues on the
+  locks for the whole write phase — observed live: 9 of 10 Hikari connections in
+  `wait_event=Lock` behind the rebuild's INSERT, pool exhausted, every request and health check
+  timing out at 30s; the app read as down for ~12 minutes. Trigger was routine (OpenAlex author
+  resolve → projection rebuild on CarThread-1); it recurs on every full re-sync.
+  Mechanism: keep the all-or-nothing swap semantics but move the heavy work off the live tables.
+  Build phase writes into `<table>__next` copies (`CREATE TABLE (LIKE … INCLUDING ALL)`, drop
+  secondary idx on the empty copies, bulk-insert via the existing batch writers with the target
+  table parameterized, recreate secondary indexes + FKs over the full copies) — zero locks on live;
+  a failure rolls back leaving live untouched. Swap phase is one short transaction: DROP live
+  (children first) + RENAME `__next` into place for all 10 tables, guarded by
+  `SET LOCAL lock_timeout='3s'` WITH RETRY (without it the swap queueing behind one slow reader
+  would itself block all new readers — the outage in miniature). Lock window: ~10 min → ms.
+  Pinned traps (from code/catalog, not hypothetical): (1) renaming a table does NOT rename its
+  indexes/constraints and index names are schema-global — post-swap, strip the `__next` marker from
+  PK/unique/FK names or the SECOND rebuild collides with leftovers; cycle-idempotency (two
+  consecutive rebuilds) is the core test property, and it keeps `captureSecondaryIndexes()`
+  (pg_indexes by name) + Flyway valid. (2) FKs exist INSIDE the swap set (`citation_fact` →
+  `publication_view(id)`, V2 migration) and `CREATE TABLE (LIKE)` does NOT copy them — capture from
+  catalog and recreate on the `__next` set against `__next` parents (they follow the rename), else
+  the first swap silently drops integrity constraints. (3) leftover hygiene: build starts with
+  `DROP TABLE IF EXISTS <t>__next` so a crash between build and swap self-heals.
+  Untouched: `executeBatchRefreshWrite` (incremental upserts, short tx); read semantics (old data
+  until the atomic swap — same as today); `synchronous_commit=off` + build-indexes-once stay.
+  Costs/risks (accepted): ~2× projection disk during build (low GBs); theoretical one-off pgjdbc
+  cached-plan hiccup at the swap instant (self-healing).
+  Test: extend `PostgresReportingProjectionServiceIntegrationTest` (real-PG Testcontainers infra
+  exists) — two consecutive rebuild cycles → identical catalog (index/constraint names, FK count),
+  correct data after each; concurrent-reader thread asserting reads never block >~1s mid-rebuild.
+  Live verify: hammer a report page locally while a full rebuild runs.
+  Rider: flip prod logging DEBUG → INFO (`CS_CONFERENCE_TRACE` floods the logs; the incident took
+  minutes longer to diagnose for it).
+
+- [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**
   Goal: enable users to export a `UserIndividualReportRun` to a per-report-type template and to upload a corrected file for a transient, read-only score verification (file scores vs the persisted run; never writes, never auto-creates a run). The original 4-bucket reconcile/commit design was superseded (2026-05-19) and its dead code removed (2026-06-14).
