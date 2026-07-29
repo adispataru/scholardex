@@ -987,8 +987,13 @@
    "$oid": "683618f381a0fe77d6a1c04c"
   },
   "name": "FEEA_P",
+  "description": "Punctajul P al articolelor (fișa 2016): suma punctajelor celor mai bune maximum 10 articole în reviste cotate Web of Science (SSCI/SCIE) cu scor de influență absolut (AIS) nenul, de tip «article» sau «review». Punctajul unui articol este P_i = M × [1 − (N − 1) × 0,1] × AIS, unde N este numărul de autori, iar M este multiplicatorul categoriei revistei: 10 pentru Core Economics (Economics; Business, Finance; Business; Management), 8 pentru Infoeconomics (categoriile Computer Science, Statistics & Probability, Operations Research & Management Science, Cybernetics), 6 pentru restul categoriilor («Social Science & Science»). Articolele cu N > 10 sau AIS = 0 nu se punctează.",
   "formula": "M * (1 - (N-1) * 0.1) * S",
-  "version": 3,
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 4,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
@@ -1005,27 +1010,24 @@
    "n": 10,
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "683624c863193d59c7eb2b31"
   },
   "name": "FEEA_C",
+  "description": "Punctajul C al citărilor (fișa 2016): suma punctajelor celor mai bune maximum 10 citări în reviste cotate Web of Science cu AIS nenul, cu excluderea autocitărilor. O citare aduce punctajul cuartilei AIS a revistei citante, în încadrarea cea mai favorabilă: Q1 = 1, Q2 = 0,75, Q3 = 0,5, Q4 = 0,25.",
   "formula": "Q == 'Q1' ? 1 : Q == 'Q2' ? 0.75 : Q == 'Q3' ? 0.5 : Q == 'Q4' ? 0.25 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
+   "policy": "CANDIDATE_ONLY",
    "strategy": "AIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations",
-   "policy": "CANDIDATE_ONLY"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
   "formulaHash": "142a8ea38bc77d5f33a74a6c25f88643719c5d2ef0c25f75062c7b920d208058",
   "yearRangeSpec": {
@@ -1279,12 +1281,13 @@
    "$oid": "6a30667f5ae41a6b1b60c6ce"
   },
   "name": "FEEA_Books",
+  "description": "Cărți și capitole (fișa 2016): coeficientul lucrării împărțit la numărul de autori — carte la editură internațională din Anexa 1 = 0,5, carte la altă editură = 0,2, capitol la editură din Anexa 1 = 0,25, capitol la altă editură sau articol în volume ISI Proceedings = 0,1. Fiecare carte sau capitol substituie unul dintre cele maximum 10 articole din P; punctajul astfel adăugat este plafonat la 25% din valoarea minimă a lui P pentru poziția selectată. Calitatea de editor nu se asimilează cu cea de autor. Lucrările care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru.",
   "formula": "S/N",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "FEAA_BOOK",
@@ -2076,12 +2079,13 @@
    "$oid": "6a626d02a4be38276d5a28d0"
   },
   "name": "FEEA_Q4_Article_AIS015",
+  "description": "Numărul articolelor în reviste cotate Web of Science cu AIS mai mare decât 0,15 (condiția de la punctul 4 al fișei 2016 pentru Profesor). Se numără articolele de tip «article»/«review» din categoriile luate în considerare de standard.",
   "formula": "M > 0 && S > 0.15 ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Economie"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
@@ -2104,12 +2108,13 @@
    "$oid": "6a626d02a4be38276d5a28d1"
   },
   "name": "FEEA_Q4_Article_AIS0075",
+  "description": "Numărul articolelor în reviste cotate Web of Science cu AIS mai mare decât 0,075 (pragul intermediar al fișei 2016). Se numără articolele de tip «article»/«review» din categoriile luate în considerare de standard.",
   "formula": "M > 0 && S > 0.075 ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Economie"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
@@ -2132,12 +2137,13 @@
    "$oid": "6a626d02a4be38276d5a28d2"
   },
   "name": "FEEA_Q4_Article_AISNonzero",
+  "description": "Numărul articolelor în reviste cotate Web of Science cu AIS nenul (fișa 2016). Se numără articolele de tip «article»/«review» din categoriile luate în considerare de standard.",
   "formula": "M > 0 && S > 0 ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Economie"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
@@ -2160,12 +2166,13 @@
    "$oid": "6a626d02a4be38276d5a28d3"
   },
   "name": "FEEA_Q5_CoreInfo_Nonzero",
+  "description": "Numărul articolelor cu AIS nenul din categoriile Core Economics (Economics; Business, Finance; Business; Management) și/sau Infoeconomics (Computer Science, Statistics & Probability, Operations Research & Management Science, Cybernetics) — condiția de număr minim de articole a fișei 2016.",
   "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Economie"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
@@ -2188,12 +2195,13 @@
    "$oid": "6a626d02a4be38276d5a28d4"
   },
   "name": "FEEA_Q5_CoreInfo_0075",
+  "description": "Numărul articolelor din categoriile Core Economics și/sau Infoeconomics cu AIS mai mare decât 0,075 (fișa 2016).",
   "formula": "(M == 10 || M == 8) && S > 0.075 ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Economie"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
@@ -2216,6 +2224,7 @@
    "$oid": "6a626d02a4be38276d5a28d5"
   },
   "name": "FEEA_Grant_Any",
+  "description": "Numărul proiectelor/granturilor de cercetare câștigate în competiții naționale sau internaționale, în orice calitate (director, responsabil partener sau membru). Nu se iau în considerare proiectele finanțate prin programe operaționale de tip POS-DRU, POS-CCE, POCU, SIPOCA, POCA, POC, ERASMUS sau similare. Proiectele se declară la activități («Grant Cercetare»).",
   "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); excluded ? 0 : 1",
   "domain": {
    "$ref": "domains",
@@ -2227,7 +2236,7 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -2248,6 +2257,7 @@
    "$oid": "6a626d02a4be38276d5a28d6"
   },
   "name": "FEEA_Grant_Director",
+  "description": "Numărul proiectelor/granturilor de cercetare câștigate în competiții naționale sau internaționale în calitate de director de proiect sau responsabil partener (rolul «Membru» nu se numără). Aceleași excluderi ca la numărul total de granturi: POS-DRU, POS-CCE, POCU, SIPOCA, POCA, POC, ERASMUS sau similare. Proiectele se declară la activități («Grant Cercetare»).",
   "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); (!excluded && Rol != \"Membru\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -2259,7 +2269,7 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -2488,13 +2498,19 @@
    "$oid": "6a67b4a35dc7f48abc80a6ff"
   },
   "name": "FEEA_P_2026",
+  "description": "Punctajul P al articolelor (fișa 2026): suma punctajelor celor mai bune maximum 10 articole în reviste cotate Web of Science (SSCI/SCIE) cu AIS nenul, de tip «article» sau «review», cu cel mult un articol din aceeași revistă într-un an (excepție: articolele din Core Economics și Infoeconomics). Punctajul unui articol este P_i = M × [1 − (N − 1) × 0,1] × AIS, unde N numără DOAR autorii cu afiliere la instituții de învățământ și cercetare din România (punctul 6), iar M este multiplicatorul categoriei: 10 pentru Core Economics (Economics; Business, Finance; Business; Management; Operations Research & Management Science), 8 pentru Infoeconomics (categoriile Computer Science, Statistics & Probability, Cybernetics), 3 pentru restul («Social Science & Science»). AIS-ul folosit este cel mai favorabil dintre anul publicării și cel mai recent an disponibil (observația 3 din Anexa 2). Articolele cu N > 10 sau AIS = 0 nu se punctează.",
   "formula": "M * (1 - (N_ro-1) * 0.1) * S",
-  "formulaHash": "173902565b56d1da4fb465aba088da8d2e779cee514a9690f3d60641a38ac5f5",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 4,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "173902565b56d1da4fb465aba088da8d2e779cee514a9690f3d60641a38ac5f5",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2508,25 +2524,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopNPerForumYear"
   },
   "economicsM2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 3,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a67b4a35dc7f48abc80a700"
   },
   "name": "FEEA_C_2026",
+  "description": "Punctajul C al citărilor (fișa 2026): suma punctajelor celor mai bune maximum 10 citări în reviste cotate Web of Science cu AIS nenul. Se exclud autocitările și semi-autocitările (citări din lucrări semnate de oricare dintre coautorii lucrării citate). O citare aduce punctajul cuartilei AIS a revistei citante, în încadrarea pe domeniul cel mai favorabil: Q1 = 1, Q2 = 0,75, Q3 = 0,5, Q4 = 0,25.",
   "formula": "Q == 'Q1' ? 1 : Q == 'Q2' ? 0.75 : Q == 'Q3' ? 0.5 : Q == 'Q4' ? 0.25 : 0",
-  "formulaHash": "142a8ea38bc77d5f33a74a6c25f88643719c5d2ef0c25f75062c7b920d208058",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 4,
   "kind": {
-   "strategy": "AIS",
    "policy": "ANY_COAUTHOR",
+   "strategy": "AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
+  "formulaHash": "142a8ea38bc77d5f33a74a6c25f88643719c5d2ef0c25f75062c7b920d208058",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2537,25 +2554,26 @@
    "n": 10,
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$TopN"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 3,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a67b4a35dc7f48abc80a701"
   },
   "name": "FEEA_Books_2026",
+  "description": "Cărți și capitole (fișa 2026): coeficientul lucrării împărțit la numărul de autori — carte la editură internațională din Anexa 1 = 0,5, capitol la editură internațională din Anexa 1 = 0,3, carte la editură națională (lista CNATDCU A2 de edituri de prestigiu recunoscut în științele sociale) = 0,25, capitol la editură națională = 0,15, carte/capitol la alte edituri sau articol în volume ISI Proceedings = 0,1. Fiecare carte sau capitol substituie unul dintre cele maximum 10 articole din P; punctajul adăugat este plafonat la 25% din valoarea minimă a lui P pentru poziția selectată (0,3125 pentru Conferențiar, 0,75 pentru Profesor). Calitatea de editor nu se asimilează cu cea de autor. Lucrările care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru.",
   "formula": "S/N",
-  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "FEAA_BOOK",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2566,25 +2584,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "feaaBookTiers2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a68feca2d8c50428a37cf34"
   },
   "name": "FEEA_Q4_AIS015_2026",
+  "description": "Numărul articolelor în reviste cotate Web of Science cu AIS mai mare decât 0,15 — condiția a) de la punctul 4 al fișei 2026 (și componenta de articole a rutelor c și d pentru Profesor: 2 articole + 1 grant ca director, respectiv 1 articol + 2 granturi ca director).",
   "formula": "M > 0 && S > 0.15 ? 1 : 0",
-  "formulaHash": "b9d55e5a19e45e39ce8e902b20b77751463d7a8256cfcc2d3b5e61d792b43832",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "b9d55e5a19e45e39ce8e902b20b77751463d7a8256cfcc2d3b5e61d792b43832",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2595,25 +2614,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "economicsM2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a68feca2d8c50428a37cf35"
   },
   "name": "FEEA_Q5_Nonzero_2026",
+  "description": "Numărul articolelor în reviste cotate Web of Science cu AIS nenul — punctul 5 al fișei 2026 (minim 3 articole pentru Conferențiar, minim 5 pentru Profesor).",
   "formula": "M > 0 && S > 0 ? 1 : 0",
-  "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2624,25 +2644,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "economicsM2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a68feca2d8c50428a37cf36"
   },
   "name": "FEEA_Q5_CoreInfo_2026",
+  "description": "Numărul articolelor cu AIS nenul din categoriile Core Economics (Economics; Business, Finance; Business; Management; Operations Research & Management Science) și/sau Infoeconomics (Computer Science, Statistics & Probability, Cybernetics) — punctul 5 al fișei 2026 (minim 1 pentru Conferențiar, minim 3 pentru Profesor).",
   "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
-  "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2653,25 +2674,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "economicsM2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a68feca2d8c50428a37cf37"
   },
   "name": "FEEA_Q5_Journals_2026",
+  "description": "Numărul revistelor DISTINCTE cu AIS nenul în care au apărut articolele candidatului — punctul 5 al fișei 2026 cere ca cele minim 5 articole ale Profesorului să fie publicate în minim 3 reviste diferite. Se numără revistele, nu lucrările.",
   "formula": "M > 0 && S > 0 ? 1 : 0",
-  "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "eaadaf02e731afb9929cca9a600372ca669cf9fdf296d5026f7ec3a02ff31b17",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2682,25 +2704,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$DistinctForums"
   },
   "economicsM2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a68feca2d8c50428a37cf38"
   },
   "name": "FEEA_Q5_CoreInfo_Journals_2026",
+  "description": "Numărul revistelor DISTINCTE din categoriile Core Economics și/sau Infoeconomics în care au apărut articolele candidatului — punctul 5 al fișei 2026 cere ca cele minim 3 articole Core/Info ale Profesorului să fie publicate în minim 2 reviste diferite. Se numără revistele, nu lucrările.",
   "formula": "(M == 10 || M == 8) && S > 0 ? 1 : 0",
-  "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "a88f932766461aeff53ffb5e1d8482dfaff23642dc736703b4404b8e67a6ea46",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2711,25 +2734,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$DistinctForums"
   },
   "economicsM2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a6922769d2957ece117b4b9"
   },
   "name": "FEEA_Q5_CoreInfo_AIS015_2026",
+  "description": "Numărul articolelor din categoriile Core Economics și/sau Infoeconomics cu AIS mai mare decât 0,15 — punctul 5 al fișei 2026 cere ca, dintre articolele Core/Info ale Profesorului, minim unul să depășească acest prag.",
   "formula": "(M == 10 || M == 8) && S > 0.15 ? 1 : 0",
-  "formulaHash": "3b7dff06c8486ccce656150a5f4bc2d8353f36e80e807f993363883daa0b3b05",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "ECONOMICS_JOURNAL_AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "3b7dff06c8486ccce656150a5f4bc2d8353f36e80e807f993363883daa0b3b05",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2740,25 +2764,26 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "economicsM2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a6922769d2957ece117b4ba"
   },
   "name": "FEEA_Books_Count_2026",
+  "description": "Numărul cărților de specialitate publicate în calitate de autor (punctul 8 al fișei 2026, doar pentru Profesor: minim o carte). Se numără doar cărțile de autor — capitolele și volumele de proceedings nu se contorizează; editura poate fi oricare. Încadrarea în domeniul postului rămâne în aprecierea comisiei. Cărțile care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru.",
   "formula": "docType == \"bk\" && S > 0 ? 1 : 0",
-  "formulaHash": "0671ab6a3b1d35fe0680190c7891f731dd5f61bf9e942f5c53792e535c02f800",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "FEAA_BOOK",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
+  "formulaHash": "0671ab6a3b1d35fe0680190c7891f731dd5f61bf9e942f5c53792e535c02f800",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2769,22 +2794,15 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "feaaBookTiers2026": true,
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
-  "domain": {
-   "$ref": "domains",
-   "$id": "ALL"
-  }
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a69c858d7843ac4374b56ed"
   },
   "name": "Info_D_Director",
+  "description": "Pragul Perspectivei D (fișa 2016, doar pentru Profesor): numărul proiectelor de cercetare-dezvoltare-inovare obținute de candidat prin competiție la nivel național sau internațional, în calitate de director (coordonator/responsabil) — rolul «Membru» nu se numără. Standardul cere minim un proiect, cu echipă de cel puțin 2 membri (condiția de echipă rămâne în aprecierea comisiei). Proiectele se declară la activități («Grant Cercetare»).",
   "formula": "Rol != 'Membru' ? 1 : 0",
-  "formulaHash": "08d541dcdc6bfa83d02f922b6b00d47dcad4eef230ff2b7667a97f9daf311543",
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -2795,9 +2813,11 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
+  "version": 2,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
+  "formulaHash": "08d541dcdc6bfa83d02f922b6b00d47dcad4eef230ff2b7667a97f9daf311543",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2806,17 +2826,16 @@
   },
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  }
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
   "_id": {
    "$oid": "6a69c858d7843ac4374b56ee"
   },
   "name": "Info_D_Director_2026",
+  "description": "Pragul Perspectivei D (fișa 2026, doar pentru Profesor): numărul proiectelor de cercetare-dezvoltare-inovare obținute de candidat prin competiție națională sau internațională, în calitate de director (coordonator/responsabil), cu buget de cel puțin 50.000 EUR intrat în instituție — rolul «Membru» și proiectele sub acest buget nu se numără. Standardul cere minim un proiect, cu echipă de cel puțin 2 membri plus directorul (condiția de echipă rămâne în aprecierea comisiei). Proiectele se declară la activități («Grant Cercetare»).",
   "formula": "(Interval_buget >= 2 && Rol != 'Membru') ? 1 : 0",
-  "formulaHash": "de7ce2b3855308c7d1b2724e24372541a5593031cf650480c17ec3776846ee09",
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
-  "version": 1,
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -2827,9 +2846,11 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
+  "version": 2,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
+  "formulaHash": "de7ce2b3855308c7d1b2724e24372541a5593031cf650480c17ec3776846ee09",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2838,6 +2859,7 @@
   },
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
-  }
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

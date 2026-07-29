@@ -1,0 +1,43 @@
+{
+  "_comment": "H94 — researcher-facing descriptions for the FEAA indicators, grounded in the standards' own text (2016: OM 6.129/2016 Anexa 27; 2026: OM 3.019/2025 COMISIA 27 Științe economice și administrarea afacerilor). Applied by POST /admin/indicators/descriptions/apply. Romanian by the H87 decision. FEEA_Grant_Any/_Director are shared by both fișe; their text stays valid for both.",
+
+  "FEEA_P": "Punctajul P al articolelor (fișa 2016): suma punctajelor celor mai bune maximum 10 articole în reviste cotate Web of Science (SSCI/SCIE) cu scor de influență absolut (AIS) nenul, de tip «article» sau «review». Punctajul unui articol este P_i = M × [1 − (N − 1) × 0,1] × AIS, unde N este numărul de autori, iar M este multiplicatorul categoriei revistei: 10 pentru Core Economics (Economics; Business, Finance; Business; Management), 8 pentru Infoeconomics (categoriile Computer Science, Statistics & Probability, Operations Research & Management Science, Cybernetics), 6 pentru restul categoriilor («Social Science & Science»). Articolele cu N > 10 sau AIS = 0 nu se punctează.",
+
+  "FEEA_C": "Punctajul C al citărilor (fișa 2016): suma punctajelor celor mai bune maximum 10 citări în reviste cotate Web of Science cu AIS nenul, cu excluderea autocitărilor. O citare aduce punctajul cuartilei AIS a revistei citante, în încadrarea cea mai favorabilă: Q1 = 1, Q2 = 0,75, Q3 = 0,5, Q4 = 0,25.",
+
+  "FEEA_Books": "Cărți și capitole (fișa 2016): coeficientul lucrării împărțit la numărul de autori — carte la editură internațională din Anexa 1 = 0,5, carte la altă editură = 0,2, capitol la editură din Anexa 1 = 0,25, capitol la altă editură sau articol în volume ISI Proceedings = 0,1. Fiecare carte sau capitol substituie unul dintre cele maximum 10 articole din P; punctajul astfel adăugat este plafonat la 25% din valoarea minimă a lui P pentru poziția selectată. Calitatea de editor nu se asimilează cu cea de autor. Lucrările care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru.",
+
+  "FEEA_Q4_Article_AIS015": "Numărul articolelor în reviste cotate Web of Science cu AIS mai mare decât 0,15 (condiția de la punctul 4 al fișei 2016 pentru Profesor). Se numără articolele de tip «article»/«review» din categoriile luate în considerare de standard.",
+
+  "FEEA_Q4_Article_AIS0075": "Numărul articolelor în reviste cotate Web of Science cu AIS mai mare decât 0,075 (pragul intermediar al fișei 2016). Se numără articolele de tip «article»/«review» din categoriile luate în considerare de standard.",
+
+  "FEEA_Q4_Article_AISNonzero": "Numărul articolelor în reviste cotate Web of Science cu AIS nenul (fișa 2016). Se numără articolele de tip «article»/«review» din categoriile luate în considerare de standard.",
+
+  "FEEA_Q5_CoreInfo_Nonzero": "Numărul articolelor cu AIS nenul din categoriile Core Economics (Economics; Business, Finance; Business; Management) și/sau Infoeconomics (Computer Science, Statistics & Probability, Operations Research & Management Science, Cybernetics) — condiția de număr minim de articole a fișei 2016.",
+
+  "FEEA_Q5_CoreInfo_0075": "Numărul articolelor din categoriile Core Economics și/sau Infoeconomics cu AIS mai mare decât 0,075 (fișa 2016).",
+
+  "FEEA_Grant_Any": "Numărul proiectelor/granturilor de cercetare câștigate în competiții naționale sau internaționale, în orice calitate (director, responsabil partener sau membru). Nu se iau în considerare proiectele finanțate prin programe operaționale de tip POS-DRU, POS-CCE, POCU, SIPOCA, POCA, POC, ERASMUS sau similare. Proiectele se declară la activități («Grant Cercetare»).",
+
+  "FEEA_Grant_Director": "Numărul proiectelor/granturilor de cercetare câștigate în competiții naționale sau internaționale în calitate de director de proiect sau responsabil partener (rolul «Membru» nu se numără). Aceleași excluderi ca la numărul total de granturi: POS-DRU, POS-CCE, POCU, SIPOCA, POCA, POC, ERASMUS sau similare. Proiectele se declară la activități («Grant Cercetare»).",
+
+  "FEEA_P_2026": "Punctajul P al articolelor (fișa 2026): suma punctajelor celor mai bune maximum 10 articole în reviste cotate Web of Science (SSCI/SCIE) cu AIS nenul, de tip «article» sau «review», cu cel mult un articol din aceeași revistă într-un an (excepție: articolele din Core Economics și Infoeconomics). Punctajul unui articol este P_i = M × [1 − (N − 1) × 0,1] × AIS, unde N numără DOAR autorii cu afiliere la instituții de învățământ și cercetare din România (punctul 6), iar M este multiplicatorul categoriei: 10 pentru Core Economics (Economics; Business, Finance; Business; Management; Operations Research & Management Science), 8 pentru Infoeconomics (categoriile Computer Science, Statistics & Probability, Cybernetics), 3 pentru restul («Social Science & Science»). AIS-ul folosit este cel mai favorabil dintre anul publicării și cel mai recent an disponibil (observația 3 din Anexa 2). Articolele cu N > 10 sau AIS = 0 nu se punctează.",
+
+  "FEEA_C_2026": "Punctajul C al citărilor (fișa 2026): suma punctajelor celor mai bune maximum 10 citări în reviste cotate Web of Science cu AIS nenul. Se exclud autocitările și semi-autocitările (citări din lucrări semnate de oricare dintre coautorii lucrării citate). O citare aduce punctajul cuartilei AIS a revistei citante, în încadrarea pe domeniul cel mai favorabil: Q1 = 1, Q2 = 0,75, Q3 = 0,5, Q4 = 0,25.",
+
+  "FEEA_Books_2026": "Cărți și capitole (fișa 2026): coeficientul lucrării împărțit la numărul de autori — carte la editură internațională din Anexa 1 = 0,5, capitol la editură internațională din Anexa 1 = 0,3, carte la editură națională (lista CNATDCU A2 de edituri de prestigiu recunoscut în științele sociale) = 0,25, capitol la editură națională = 0,15, carte/capitol la alte edituri sau articol în volume ISI Proceedings = 0,1. Fiecare carte sau capitol substituie unul dintre cele maximum 10 articole din P; punctajul adăugat este plafonat la 25% din valoarea minimă a lui P pentru poziția selectată (0,3125 pentru Conferențiar, 0,75 pentru Profesor). Calitatea de editor nu se asimilează cu cea de autor. Lucrările care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru.",
+
+  "FEEA_Q4_AIS015_2026": "Numărul articolelor în reviste cotate Web of Science cu AIS mai mare decât 0,15 — condiția a) de la punctul 4 al fișei 2026 (și componenta de articole a rutelor c și d pentru Profesor: 2 articole + 1 grant ca director, respectiv 1 articol + 2 granturi ca director).",
+
+  "FEEA_Q5_Nonzero_2026": "Numărul articolelor în reviste cotate Web of Science cu AIS nenul — punctul 5 al fișei 2026 (minim 3 articole pentru Conferențiar, minim 5 pentru Profesor).",
+
+  "FEEA_Q5_CoreInfo_2026": "Numărul articolelor cu AIS nenul din categoriile Core Economics (Economics; Business, Finance; Business; Management; Operations Research & Management Science) și/sau Infoeconomics (Computer Science, Statistics & Probability, Cybernetics) — punctul 5 al fișei 2026 (minim 1 pentru Conferențiar, minim 3 pentru Profesor).",
+
+  "FEEA_Q5_Journals_2026": "Numărul revistelor DISTINCTE cu AIS nenul în care au apărut articolele candidatului — punctul 5 al fișei 2026 cere ca cele minim 5 articole ale Profesorului să fie publicate în minim 3 reviste diferite. Se numără revistele, nu lucrările.",
+
+  "FEEA_Q5_CoreInfo_Journals_2026": "Numărul revistelor DISTINCTE din categoriile Core Economics și/sau Infoeconomics în care au apărut articolele candidatului — punctul 5 al fișei 2026 cere ca cele minim 3 articole Core/Info ale Profesorului să fie publicate în minim 2 reviste diferite. Se numără revistele, nu lucrările.",
+
+  "FEEA_Q5_CoreInfo_AIS015_2026": "Numărul articolelor din categoriile Core Economics și/sau Infoeconomics cu AIS mai mare decât 0,15 — punctul 5 al fișei 2026 cere ca, dintre articolele Core/Info ale Profesorului, minim unul să depășească acest prag.",
+
+  "FEEA_Books_Count_2026": "Numărul cărților de specialitate publicate în calitate de autor (punctul 8 al fișei 2026, doar pentru Profesor: minim o carte). Se numără doar cărțile de autor — capitolele și volumele de proceedings nu se contorizează; editura poate fi oricare. Încadrarea în domeniul postului rămâne în aprecierea comisiei. Cărțile care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru."
+}
