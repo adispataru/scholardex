@@ -326,6 +326,12 @@ Done history moved to `TASKS-done.md`.
     Optional `CompositionNode.label` ("Ruta a"…; i18n "Varianta {n}" fallback); rail also reordered —
     unbundled criteria (books cap) now render BELOW perspective groups. Labels in local data + seeds
     + the pending prod script (label backfill made idempotent).
+    **Extended 2026-07-29 (florin's HABIL report):** all-root perspectives' EARLIER-PERSPECTIVE refs
+    now emit legend rows too — FV Info's "Total — verdict" showed only its sum tile ("Total DA"
+    inside a NU group read as a contradiction); it now lists Perspectiva B/C/D rows with their own
+    DA/NU chips (row label = referenced perspective's name; hover highlights that perspective's
+    tiles rail-wide). Criterion children of all-roots stay tiles-only; plain all-roots and the FEAA
+    any-root routes are unchanged. Code-only — no data or prod-script changes.
   - [x] **S5 — FEAA 2026 standards-sweep gaps — DONE 2026-07-29** (found same day, full COMISIA 27
     conf+prof+abilitare read-through). Two REAL misses, fixed data-only (script
     `h95s5_feaa_p5_p8.js`, runs AFTER h95s2; local + seeds applied, prod pending):

@@ -631,12 +631,15 @@ public final class ReportingComputationSupport {
     public record PerspectiveRoute(String label, List<Integer> members, Map<String, Boolean> verdictByPosition) {}
 
     /**
-     * H95 routes: per-child verdicts for perspectives whose composition root is an {@code any} with
-     * two or more children — the FEAA point-4 "ruta a/b/c/d" shape. Routes may SHARE criteria
-     * (FEAA's "director grants ≥2" sits in routes b and d), which is why the UI renders them as a
-     * legend over the flat tiles rather than as sub-groups. Verdicts reuse {@link #evaluateNode}'s
-     * per-position vacuity rules, so route chips can never disagree with the group verdict. Empty
-     * for all-rooted perspectives, single-child roots, and malformed trees.
+     * H95 routes: per-child verdicts rendered as a legend under the group header, in two shapes.
+     * (1) {@code any} roots with two or more children — the FEAA point-4 "ruta a/b/c/d" alternatives.
+     * Routes may SHARE criteria (FEAA's "director grants ≥2" sits in routes b and d), which is why
+     * the UI renders them as a legend over the flat tiles rather than as sub-groups. (2) {@code all}
+     * roots' EARLIER-PERSPECTIVE refs — the FV Info "Total — verdict" shape, whose group otherwise
+     * shows only its sum tile while the B/C/D components fail invisibly ("Total DA" inside a NU group
+     * read as a contradiction). Criterion children of {@code all} roots are NOT emitted — they already
+     * render as tiles in the group. Verdicts reuse {@link #evaluateNode}'s per-position vacuity rules,
+     * so legend chips can never disagree with the group verdict. Empty for malformed trees.
      */
     public static Map<Integer, List<PerspectiveRoute>> computePerspectiveRoutes(
             List<AbstractReport.Perspective> perspectives,
@@ -656,14 +659,27 @@ public final class ReportingComputationSupport {
             if (perspective == null || perspective.getComposition() == null || !verdicts.containsKey(p)) {
                 continue; // malformed or inapplicable perspectives ship no routes either
             }
-            List<AbstractReport.CompositionNode> children = perspective.getComposition().getAny();
-            if (children == null || children.size() < 2) {
+            boolean anyRoot = perspective.getComposition().getAny() != null;
+            List<AbstractReport.CompositionNode> children = anyRoot
+                    ? perspective.getComposition().getAny()
+                    : perspective.getComposition().getAll();
+            if (children == null || (anyRoot && children.size() < 2)) {
                 continue;
             }
             List<PerspectiveRoute> out = new java.util.ArrayList<>();
             for (AbstractReport.CompositionNode child : children) {
+                if (!anyRoot && child != null && child.getPerspective() == null) {
+                    continue; // all-root criterion children already render as tiles in the group
+                }
                 Set<Integer> members = new java.util.LinkedHashSet<>();
                 collectCriterionRefs(child, members);
+                if (child != null && child.getPerspective() != null) {
+                    // a perspective-ref row highlights the referenced perspective's own tiles on hover
+                    int ref = child.getPerspective();
+                    if (ref >= 0 && ref < perspectives.size() && perspectives.get(ref) != null) {
+                        collectCriterionRefs(perspectives.get(ref).getComposition(), members);
+                    }
+                }
                 Map<String, Boolean> byPosition = new HashMap<>();
                 for (String position : positions) {
                     NodeResult result = evaluateNode(child, p, position, safeCriteria,
@@ -679,7 +695,15 @@ public final class ReportingComputationSupport {
                 if (out == null) {
                     break;
                 }
-                out.add(new PerspectiveRoute(child.getLabel(), List.copyOf(members), byPosition));
+                String label = child.getLabel();
+                if ((label == null || label.isBlank()) && child.getPerspective() != null) {
+                    int ref = child.getPerspective();
+                    if (ref >= 0 && ref < perspectives.size() && perspectives.get(ref) != null
+                            && perspectives.get(ref).getName() != null) {
+                        label = perspectives.get(ref).getName();
+                    }
+                }
+                out.add(new PerspectiveRoute(label, List.copyOf(members), byPosition));
             }
             if (out != null && !out.isEmpty()) {
                 routes.put(p, out);

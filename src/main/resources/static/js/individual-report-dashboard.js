@@ -157,14 +157,17 @@
   }
 
   /**
-   * H95 routes: a legend of alternative routes under an any-rooted perspective's header (FEAA point
-   * 4's rutele a–d). Routes may SHARE criteria, so tiles stay flat in the group and hovering a route
-   * highlights its member tiles instead of partitioning them. Verdicts come from the server (same
-   * evaluator as the group chip) and re-render on position change.
+   * H95 routes: a legend of composition rows under a perspective's header — the alternative routes
+   * of an any-root (FEAA point 4's rutele a–d) or the referenced-perspective components of an
+   * all-root (FV Info's "Total — verdict": Perspectiva B/C/D rows explain a NU verdict whose only
+   * visible tile, the sum, is DA). Rows may SHARE criteria with tiles anywhere in the rail, so
+   * hovering a row highlights its member tiles (in this group or a referenced one) instead of
+   * partitioning anything. Verdicts come from the server (same evaluator as the group chip) and
+   * re-render on position change.
    */
   function appendRouteLegend(group, entry) {
     var routes = entry.routes;
-    if (!Array.isArray(routes) || routes.length < 2) return;
+    if (!Array.isArray(routes) || routes.length < 1) return;
     var box = document.createElement('div');
     box.className = 'app-eval-rail__routes';
     routes.forEach(function (route, ri) {
@@ -187,8 +190,11 @@
   }
 
   function toggleRouteHint(group, route, on) {
+    // Search the whole rail, not just this group: a perspective-ref row (Total — verdict's
+    // "Perspectiva B/C/D") points at tiles that live under the REFERENCED perspective's heading.
+    var rail = group.closest('.app-eval-rail') || group;
     (route.members || []).forEach(function (idx) {
-      var tile = group.querySelector('.app-eval-rail__tile[data-criterion-index="' + idx + '"]');
+      var tile = rail.querySelector('.app-eval-rail__tile[data-criterion-index="' + idx + '"]');
       if (tile) tile.classList.toggle('is-route-hint', on);
     });
   }

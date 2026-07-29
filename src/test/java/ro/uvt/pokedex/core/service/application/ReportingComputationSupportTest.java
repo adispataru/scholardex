@@ -803,8 +803,39 @@ class ReportingComputationSupportTest {
         assertTrue(b.verdictByPosition().get("PROF_UNIV"));  // 3>=3 AND 2>=2
         assertFalse(b.verdictByPosition().containsKey("CONF_UNIV")); // no CONF thresholds → inapplicable
 
-        assertFalse(routes.containsKey(1)); // all-rooted perspectives get no route legend
+        assertFalse(routes.containsKey(1)); // all-root with only criterion children gets no legend
         assertTrue(routes.containsKey(2));  // any with 2 children qualifies even with repeated leaves
+    }
+
+    @Test
+    void allRootPerspectiveRefsEmitLegendRowsNamedAfterTheReferencedPerspective() {
+        // FV Info "Total — verdict" shape: all[persp B, persp C, criterion sum]. The group's only
+        // visible tile is the sum, so a failing component perspective made "Total DA inside a NU
+        // group" read as a contradiction — the refs must surface as legend rows (criterion children
+        // must NOT, they are already tiles), with members covering the referenced perspective's own
+        // criteria so hover can highlight them.
+        var bMember = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 5.0);
+        var cMember = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 3.0);
+        var sum = thresholdCriterion(ro.uvt.pokedex.core.model.reporting.Position.PROF_UNIV, 100.0);
+
+        Map<Integer, List<ReportingComputationSupport.PerspectiveRoute>> routes =
+                ReportingComputationSupport.computePerspectiveRoutes(
+                        List.of(perspective("Perspectiva B", all(leaf(0))),
+                                perspective("Perspectiva C", all(leaf(1))),
+                                perspective("Total — verdict",
+                                        all(perspectiveLeaf(0), perspectiveLeaf(1), leaf(2)))),
+                        List.of(bMember, cMember, sum),
+                        Map.of(0, 2.0, 1, 4.0, 2, 150.0), // B fails (2<5), C passes, sum passes
+                        Map.of());
+
+        assertFalse(routes.containsKey(0)); // plain all-roots stay legend-free
+        var totalRows = routes.get(2);
+        assertEquals(2, totalRows.size()); // the sum criterion is a tile, not a row
+        assertEquals("Perspectiva B", totalRows.get(0).label());
+        assertEquals(List.of(0), totalRows.get(0).members());
+        assertFalse(totalRows.get(0).verdictByPosition().get("PROF_UNIV"));
+        assertEquals("Perspectiva C", totalRows.get(1).label());
+        assertTrue(totalRows.get(1).verdictByPosition().get("PROF_UNIV"));
     }
 
     @Test
