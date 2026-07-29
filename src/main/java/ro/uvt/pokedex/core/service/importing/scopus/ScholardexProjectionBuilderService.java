@@ -92,7 +92,7 @@ public class ScholardexProjectionBuilderService {
     // H96: the full replacement bulk-loads "<table>__next" shadow copies (zero locks on the serving
     // tables) and swaps them in with a short rename transaction; see executeFullReplacementWrite.
     private static final String SHADOW_SUFFIX = "__next";
-    private static final int SWAP_MAX_ATTEMPTS = 5;
+    private static final int SWAP_MAX_ATTEMPTS = 20;
 
     private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorFactRepository authorFactRepository;
@@ -1759,16 +1759,25 @@ public class ScholardexProjectionBuilderService {
 
     /**
      * The only moment live locks are taken: one short transaction that drops the old objects and renames
-     * the shadows into place, then restores every catalog name. Guarded by {@code lock_timeout} + retry —
-     * WITHOUT the timeout, this transaction queueing behind a single slow reader would itself block every
-     * new reader for that reader's duration, recreating the outage in miniature. On a timeout it rolls
-     * back completely (old projection still serving) and retries after a backoff.
+     * the shadows into place, then restores every catalog name. Two guards make this reader-safe:
+     * (1) {@code lock_timeout} + retry — without the timeout, this transaction queueing behind a single
+     * slow reader would itself block every new reader for that reader's duration, recreating the outage
+     * in miniature. (2) The timeout is deliberately SHORTER than {@code deadlock_timeout} (1s default)
+     * and every live lock is requested up front in one {@code LOCK TABLE} statement, before any DROP:
+     * a multi-table reader can lock-order-invert with this transaction (reader holds A wants B, swap
+     * holds B wants A — CI caught the deadlock detector killing the READER), and the short timeout
+     * guarantees the swap aborts and retries before the detector ever fires, so readers never error.
+     * On any timeout the transaction rolls back completely (old projection still serving) and retries.
      */
     private int swapShadowIntoPlace(LiveCatalog catalog) {
+        String lockAllTables = "LOCK TABLE " + FULL_REPLACEMENT_TABLES.stream()
+                .map(t -> "reporting_read." + t)
+                .collect(java.util.stream.Collectors.joining(", ")) + " IN ACCESS EXCLUSIVE MODE";
         for (int attempt = 1; ; attempt++) {
             try {
                 transactionTemplate.executeWithoutResult(status -> {
-                    jdbcTemplate.execute("SET LOCAL lock_timeout = '3s'");
+                    jdbcTemplate.execute("SET LOCAL lock_timeout = '250ms'");
+                    jdbcTemplate.execute(lockAllTables);
                     for (CatalogMatview mv : catalog.dependentMatviews()) {
                         jdbcTemplate.execute("DROP MATERIALIZED VIEW IF EXISTS reporting_read." + mv.name());
                     }
@@ -1807,7 +1816,9 @@ public class ScholardexProjectionBuilderService {
                 log.warn("Projection swap attempt {}/{} failed ({}); retrying — old projection still serving",
                         attempt, SWAP_MAX_ATTEMPTS, e.getMessage());
                 try {
-                    Thread.sleep(2_000L * attempt);
+                    // Short backoff: with the 250ms lock_timeout each attempt is cheap, and later
+                    // readers queue behind our pending exclusive request, so a quiet instant comes fast.
+                    Thread.sleep(Math.min(250L * attempt, 2_000L));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw e;

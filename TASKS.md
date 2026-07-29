@@ -383,6 +383,13 @@ Done history moved to `TASKS-done.md`.
   read-hammer across the whole rebuild saw max 217ms and 0 errors (the old path held readers for
   the entire ~10-min write phase). Rider done: the always-on CS_CONFERENCE_TRACE DEBUG line in
   application.properties commented out — prod logs return to INFO.
+  **Deadlock hardening (2026-07-29, caught by the new reader test in CI, not locally):** a
+  multi-table reader can lock-order-invert with the swap (reader holds A wants B, swap holds B
+  wants A) and Postgres's deadlock detector killed the READER. Fix: the swap requests every live
+  lock up front in one LOCK TABLE ... ACCESS EXCLUSIVE statement with lock_timeout=250ms —
+  deliberately SHORTER than deadlock_timeout (1s default) — so any inversion resolves by the swap
+  aborting and retrying (20 attempts, short backoff), never by a reader error. 7 consecutive local
+  runs of the integration class green after the fix.
   Original scope, kept for the record:
   **RAISED 2026-07-29 (prod incident, same day).** The full Postgres projection rebuild
   (`ScholardexProjectionBuilderService.executeFullReplacementWrite`) runs ONE transaction that drops
