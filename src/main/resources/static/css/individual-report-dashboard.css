@@ -1453,7 +1453,8 @@
   margin-top: 0.5rem;
 }
 
-.individual-report-dashboard .app-eval-mismatch-toggle {
+.individual-report-dashboard .app-eval-mismatch-toggle,
+.individual-report-dashboard .app-eval-zero-toggle {
   background: none;
   border: none;
   padding: 0.35rem 0;
@@ -1463,8 +1464,14 @@
   text-decoration: underline dotted;
 }
 
-.individual-report-dashboard .app-eval-mismatch-toggle:hover {
+.individual-report-dashboard .app-eval-mismatch-toggle:hover,
+.individual-report-dashboard .app-eval-zero-toggle:hover {
   color: var(--app-color-primary);
+}
+
+/* The two collapse toggles sit side by side under the table. */
+.individual-report-dashboard .app-eval-zero-toggle + .app-eval-mismatch-toggle {
+  margin-left: 1rem;
 }
 
 /* Sortable Year/Points headers: neutral ↕ hint, solid arrow once a direction is active. */

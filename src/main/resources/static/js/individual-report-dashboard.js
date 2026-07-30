@@ -677,7 +677,9 @@
       } else if (mismatch) {
         rowAttrs = ' class="app-eval-evidence-table__row--zero app-eval-evidence-table__row--mismatch" hidden';
       } else if (isZeroScored) {
-        rowAttrs = ' class="app-eval-evidence-table__row--zero"';
+        // Zero-scored rows stay in the payload for transparency but are collapsed behind the
+        // "cu punctaj 0" toggle below the table — the counted list is the default reading.
+        rowAttrs = ' class="app-eval-evidence-table__row--zero app-eval-evidence-table__row--zeroitem" hidden';
       }
       var row = '<tr' + rowAttrs + '>';
 
@@ -792,6 +794,14 @@
 
     html += '</tbody></table>';
 
+    if (!isCitations && zeros.length > 0) {
+      // Same pattern as the venue-mismatch toggle: the rows exist for transparency (each carries its
+      // zero-reason pill and APC badge), but the default view is the counted list only.
+      html += '<button type="button" class="app-eval-zero-toggle" aria-expanded="false">' +
+        esc(tp('report.dash.zeroToggle', zeros.length, t('report.dash.mismatch.show'))) +
+        '</button>';
+    }
+
     if (mismatched.length > 0) {
       // Name where they went, not just that they differ. A reviewer scanning a conference indicator
       // sees journals at the foot of the list and cannot tell whether they were dropped or moved;
@@ -841,14 +851,33 @@
     });
   }
 
-  // Reveal/hide the wrong-venue-type rows of one indicator's evidence table (delegated —
-  // tables are re-rendered on every detail fetch, so the handler lives on the root).
+  // Reveal/hide the collapsed rows of one indicator's evidence table — zero-scored rows and
+  // wrong-venue-type rows each have their own toggle (delegated: tables are re-rendered on every
+  // detail fetch, so the handler lives on the root). The toggles are SIBLINGS after the table, so
+  // the table is found by walking back rather than assuming previousElementSibling.
   function initMismatchToggles(root) {
+    function tableBefore(btn) {
+      var el = btn.previousElementSibling;
+      while (el && !(el.matches && el.matches('table'))) el = el.previousElementSibling;
+      return el;
+    }
     root.addEventListener('click', function (e) {
+      var zeroBtn = e.target.closest('.app-eval-zero-toggle');
+      if (zeroBtn) {
+        var zeroTable = tableBefore(zeroBtn);
+        if (!zeroTable) return;
+        var showZeros = zeroBtn.getAttribute('aria-expanded') !== 'true';
+        var zeroRows = zeroTable.querySelectorAll('.app-eval-evidence-table__row--zeroitem');
+        zeroRows.forEach(function (row) { row.hidden = !showZeros; });
+        zeroBtn.setAttribute('aria-expanded', String(showZeros));
+        zeroBtn.textContent = tp('report.dash.zeroToggle', zeroRows.length,
+            t(showZeros ? 'report.dash.mismatch.hide' : 'report.dash.mismatch.show'));
+        return;
+      }
       var btn = e.target.closest('.app-eval-mismatch-toggle');
       if (!btn) return;
-      var table = btn.previousElementSibling;
-      if (!table || !table.matches('table')) return;
+      var table = tableBefore(btn);
+      if (!table) return;
       var show = btn.getAttribute('aria-expanded') !== 'true';
       table.querySelectorAll('.app-eval-evidence-table__row--mismatch').forEach(function (row) {
         row.hidden = !show;
