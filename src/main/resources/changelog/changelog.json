@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-08-02",
+    "title": "Fișa de Fizică 2026 (COMISIA 3) este disponibilă",
+    "body": "A fost adăugată fișa pentru standardele minimale de Fizică din 2026 (OM 3.019/2025), cu praguri pentru conferențiar, profesor și atestatul de abilitare. Fișa calculează indicatorii de cercetare I (suma AIS/nᵢᵉᶠ, unde nᵢᵉᶠ este numărul efectiv de autori) și P (suma AIS pentru articolele ca prim autor sau autor corespondent), indicatorii de impact C (citări raportate la numărul efectiv de autori, fără citările semnate de candidat sau de coautori) și h (indicele Hirsch), precum și punctajul total CNATDCU T = A + P/2 + I/2 + C/20 + h/5. Activitatea profesională (A) cuprinde deocamdată proiectele educaționale și de infrastructură conduse, respectiv valoarea proiectelor de cercetare conduse (Vᵢ/50.000 EUR — pentru acestea contează câmpul «Buget» al activității). Rândurile A1–A8 (cărți, capitole, lucrări în proceedings ISI, brevete) urmează, astfel că A și T sunt deocamdată valori minime."
+  },
+  {
+    "date": "2026-08-02",
     "title": "Fișa de Matematică 2026 (COMISIA 1) este disponibilă",
     "body": "A fost adăugată fișa pentru standardele minimale de Matematică din 2026 (OM 3.019/2025), cu praguri pentru conferențiar, profesor și atestatul de abilitare. Standardul înlocuiește complet schema din 2016: articolele se numără ponderat pe quartile (N = 2·Q1 + Q2, plus varianta N_recent pe ultimii 7 ani), punctajele S1 și S2 însumează AIS/nᵢ peste revistele din quartilele Q1–Q3, respectiv Q1–Q2, iar citările se numără separat după quartila revistei citante (C1 și C2), excluzând citările semnate de candidat sau de coautorii lucrării citate. Se iau în considerare doar revistele indexate SCIE care nu percep taxă de publicare, iar quartila și scorul AIS folosite sunt cele mai favorabile din ultimele cinci clasamente UEFISCDI. Cerințele care nu pot fi verificate din date — cursurile susținute și atestatul de abilitare — rămân în sarcina comisiei."
   },

@@ -467,6 +467,45 @@ Done history moved to `TASKS-done.md`.
   - [ ] **S3 — optional** — reuse `scieIndexed` to tighten the 2016 C4 gate if the comisie wants
     L-membership there too (today C4 checks fee + quartile only).
 
+- [ ] `H98` Fizică — the fișă (COMISIA 3). **RAISED 2026-08-02.**
+  Investigation finding: there was NEVER a physics report — none in `scholardex`, `test` or
+  `scholardex_h66`, none in the seed, none in git history. Only export scaffolding existed
+  (`Fizica2024ReportTypeImportSupport` + template.docx + binding.json declaring A1–A10, the two
+  article tables and a 6-value summary), written against the standard rather than against a report.
+  The 2016 doc in `data/standards/fizica/` is UVT's own faculty procedure; the 2026 one is national
+  (OM 3.019/2025, mirrored at `data/standards/2026/OM3019-2025-anexe.pdf` — the authoritative
+  annexes for EVERY commission, worth keeping). Same scheme both years — A (professional) + I/P
+  (research) + C/h (impact) + `T = A + P/2 + I/2 + C/20 + h/5` — but 2026 moved four coefficients
+  (A1 4→5, A3 0.5→1, A4 0.5→1, A10 /100.000→/50.000), raised A to ≥1, added explicit I/P minimums,
+  and set T 5 / 12.5 / 11.5 (conf/prof/abilitare). So the coefficients live inside the formulas and
+  the two years need separate indicator sets.
+  Machinery was already there, some of it built for this standard by name: `Nef` (H65 — the
+  nᵢᵉᶠ 5/15/75 step), `Criterion.weights` (H65's javadoc literally cites the physics T),
+  `AuthorRole.FIRST_OR_CORRESPONDING` for P, `ANY_COAUTHOR` citations for C, `HIRSCH`/`WOS_VENUE`
+  for h, `Buget` on Grant Cercetare for A10, Brevet + Proiect educational activities for A7–A9.
+  - [x] **S1 — the 2026 fișă core — DONE 2026-08-02** (`fizica_2026_report.js`, local + seeds; prod
+    pending). "FV Fizică 2026": Fiz26_I (`S/Nef`), _P (`S`, FIRST_OR_CORRESPONDING), _C
+    (`S > 0 ? 1/Nef : 0`, Citations+ANY_COAUTHOR — Nef binds from the CITED publication, which is
+    what cᵢ/nᵢᵉᶠ means), _h (HIndex WOS_VENUE, exclude-self), _A9, _A10 (`Buget/50000`, null-safe).
+    Six criteria incl. the weighted T; three perspectives (the standard's own sections) with T
+    unbundled as the headline tile. Verified live: T computed 5.6300 against a hand-check of
+    4.5 + 0.6917/2 + 7.6839/20 + 2/5 = 5.630045 — the weighted-sum criterion is exact to the digit;
+    rail reads 2/4 with T DA below the three groups. Descriptions written + applied.
+  - [ ] **S2 — A1–A8** (books, chapters, ISI proceedings ≥3 pages, patents). BLOCKED on a committee
+    decision, not on us: A1/A2/A3 need the WoS "Master Book List" of recognised publishers, which
+    Clarivate DISCONTINUED — the 2026 standard still cites the dead `wokinfo.com/mbl/publishers/`,
+    so there is no authoritative source to import in either year. Ask Fizică what to accept (SENSE?
+    the FEAA Anexa 1 international list? declared-and-ruled?); A4/A5 are its complement, A6 needs a
+    WoS-indexed-proceedings test (CPCI, cf. H76) plus the ≥3 pages rule, A7/A8 need Brevet.Tip
+    (Triadic/European/International vs National) and a numeric author count (`N_autori` is a STRING
+    field today). Until then A and T are documented lower bounds.
+  - [ ] **S3 — the 2016 UVT fișă**, if Fizică still needs it: same indicators with the old
+    coefficients (A1 4, A3/A4 0.5, A10 /100.000) and T ≥ 5 / 12; adds a Lector tier (I ≥ 1, P ≥ 1,
+    A ≥ 0.5) the national standard has no equivalent for.
+  - [ ] **S4 — validate against a real filled fișă**: `doctorat.uvt.ro` publishes one for a UVT
+    physicist (Conf. dr. O. M. Bunoiu, 07.07.2025) computed under these 2026 rules — the same kind
+    of ground truth the Info excel provided.
+
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**

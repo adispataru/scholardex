@@ -2801,5 +2801,229 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f9ae165d7f2a001bec0a2"
+  },
+  "title": "FV Fizică 2026",
+  "description": "Standarde minimale COMISIA 3 Fizică (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. Activitatea profesională (A) este deocamdată parțială: rândurile A1–A8 (cărți, capitole, proceedings ISI, brevete) urmează după decizia comisiei privind lista editurilor recunoscute Web of Science.",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f9ae165d7f2a001bec0a0"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f9ae165d7f2a001bec0a1"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f9ae165d7f2a001bec09c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f9ae165d7f2a001bec09d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f9ae165d7f2a001bec09e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f9ae165d7f2a001bec09f"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "A — activitate profesională",
+    "indicatorIndices": [
+     0,
+     1
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "name": "I — articole (AIS/nᵢᵉᶠ)",
+    "indicatorIndices": [
+     2
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 4
+     },
+     {
+      "position": "HABIL",
+      "value": 4
+     }
+    ]
+   },
+   {
+    "name": "P — prim autor/corespondent (AIS)",
+    "indicatorIndices": [
+     3
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 4
+     },
+     {
+      "position": "HABIL",
+      "value": 4
+     }
+    ]
+   },
+   {
+    "name": "C — citări (cᵢ/nᵢᵉᶠ)",
+    "indicatorIndices": [
+     4
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 20
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 40
+     },
+     {
+      "position": "HABIL",
+      "value": 40
+     }
+    ]
+   },
+   {
+    "name": "h — indice Hirsch",
+    "indicatorIndices": [
+     5
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 10
+     },
+     {
+      "position": "HABIL",
+      "value": 10
+     }
+    ]
+   },
+   {
+    "name": "T — punctaj total CNATDCU",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 12.5
+     },
+     {
+      "position": "HABIL",
+      "value": 11.5
+     }
+    ],
+    "weights": {
+     "2": 0.5,
+     "3": 0.5,
+     "4": 0.05,
+     "5": 0.2
+    }
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Activitatea profesională",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      }
+     ]
+    }
+   },
+   {
+    "name": "Activitatea de cercetare",
+    "composition": {
+     "all": [
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 2
+      }
+     ]
+    }
+   },
+   {
+    "name": "Recunoașterea impactului",
+    "composition": {
+     "all": [
+      {
+       "criterion": 3
+      },
+      {
+       "criterion": 4
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  }
 ]

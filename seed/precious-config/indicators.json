@@ -3110,5 +3110,187 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f9ae165d7f2a001bec09c"
+  },
+  "name": "Fiz26_I",
+  "description": "Indicatorul I: suma valorilor AISᵢ/nᵢᵉᶠ peste articolele științifice originale in extenso ale candidatului, unde AISᵢ este scorul de influență absolut al revistei în anul publicării articolului, iar nᵢᵉᶠ este numărul EFECTIV de autori: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Când anul publicării nu are clasament disponibil se folosește cea mai apropiată valoare cunoscută. Praguri: 2 pentru Conferențiar, 4 pentru Profesor și pentru atestatul de abilitare. Excepția HEPP (numărul de autori din nota internă a experimentului) rămâne în aprecierea comisiei.",
+  "formula": "S/Nef",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "6dac7a661b2286f133086935248bf6a10ad515080587382e5bbf08728b57c4ac",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f9ae165d7f2a001bec09d"
+  },
+  "name": "Fiz26_P",
+  "description": "Indicatorul P: suma scorurilor AISᵢ ale articolelor în care candidatul este prim autor sau autor corespondent, conform mențiunilor de pe articol — de această dată FĂRĂ împărțire la numărul de autori. Standardul exclude articolele în care autorii apar în ordine alfabetică și candidatul este prim-autor doar din acest motiv; verificarea acestei excepții, ca și regula HEPP privind nota internă, rămâne în sarcina comisiei. Praguri: 2 pentru Conferențiar, 4 pentru Profesor și pentru atestatul de abilitare.",
+  "formula": "S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "FIRST_OR_CORRESPONDING",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f9ae165d7f2a001bec09e"
+  },
+  "name": "Fiz26_C",
+  "description": "Indicatorul C: suma valorilor cᵢ/nᵢᵉᶠ, unde cᵢ este numărul de citări ale publicației i provenite din reviste cu factor de impact (InCites Journal Citation Reports), iar nᵢᵉᶠ este numărul efectiv de autori ai publicației CITATE. Nu se iau în considerare citările provenind din articole care îl au ca autor sau coautor pe candidat. Praguri: 20 pentru Conferențiar, 40 pentru Profesor și pentru atestatul de abilitare. Citările din cărți la edituri recunoscute Web of Science nu sunt încă numărate automat.",
+  "formula": "S > 0 ? 1/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "policy": "ANY_COAUTHOR",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "9d2415aed44e9bf07bc81ae923a27befe7b0cd8a68280487f48f6c2b62ba2dac",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f9ae165d7f2a001bec09f"
+  },
+  "name": "Fiz26_h",
+  "description": "Indicele Hirsch: un autor are indicele h dacă a publicat h articole citate fiecare de cel puțin h ori. Standardul indică baza de date Web of Science (Core Collection); platforma îl calculează pe baza grafului propriu de citări restrâns la revistele Web of Science, excluzând autocitările — o valoare orientativă, care poate diferi de cea raportată direct de Web of Science. Praguri: 5 pentru Conferențiar, 10 pentru Profesor și pentru atestatul de abilitare.",
+  "formula": "S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "source": "WOS_VENUE",
+   "excludeSelf": true,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$HIndex"
+  },
+  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f9ae165d7f2a001bec0a0"
+  },
+  "name": "Fiz26_A9",
+  "description": "Indicatorul A9 din activitatea profesională: 0,5 puncte pentru fiecare program de studii, program de formare continuă, proiect educațional obținut prin competiție sau proiect de infrastructură în care candidatul este director sau responsabil (proiectele de cercetare se punctează separat, la A10). Standardul precizează că poziția de director de programe de studii se punctează o singură dată, indiferent de numărul de programe coordonate — o ajustare care rămâne în sarcina comisiei. Proiectele se declară la activități.",
+  "formula": "Rol == \"Director\" ? 0.5 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d0b20102ad3f7d329358ab"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "301a63d208bdc66ab5a9d8335ed3be43649e95e14106ccf517ffd3ffb6752366",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f9ae165d7f2a001bec0a1"
+  },
+  "name": "Fiz26_A10",
+  "description": "Indicatorul A10 din activitatea profesională: valoarea proiectelor de cercetare conduse de candidat, împărțită la 50.000 EUR (în standardul din 2016 divizorul era 100.000). Se punctează proiectele câștigate prin competiție națională sau internațională ori obținute de la mediul privat, în calitate de director sau responsabil; proiectele instituționale sau de tip Nucleu se exclud, iar pentru responsabilii de partener se ia în calcul doar suma echipei conduse. Punctajul se calculează din câmpul «Buget» al activității — un grant fără buget completat contează 0, deci merită completat. Conversia în euro a sumelor în alte valute rămâne în sarcina candidatului.",
+  "formula": "Rol != \"Membru\" ? (Buget == null ? 0 : Buget/50000) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "9aab69b20115954628dc06d0252ec416d9791fa989ad20a324030eb6d87b9b68",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]
