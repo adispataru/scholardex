@@ -126,6 +126,11 @@ public final class FormulaVariableContract {
         // H79: feeJournal (boolean) is bound on every publication/citation score — true when the scored forum is a
         // DOAJ gold-OA (APC) journal. The 2026 Informatică indicators gate on it (`!feeJournal ? … : 0`); always allowed.
         allowed.add("feeJournal");
+        // Math 2026: scieIndexed (boolean) — true when the scored forum is covered by Science Citation Index
+        // Expanded in the item's publication year. The COMISIA 1 list L is "SCIE minus the fee journals", i.e.
+        // `scieIndexed && !feeJournal`. Bound lazily (one indexed coverage lookup) only for formulas that
+        // reference it, so nothing else pays for it. Always allowed — publications and citations alike.
+        allowed.add("scieIndexed");
         // H79: topAB (boolean) — category-based eligibility for the 2026 "top A*/A/B" indicators. True when the scored
         // item's forum category is in {A*,A,B} (workshop-authoritative; S>=4 otherwise). Always allowed.
         allowed.add("topAB");

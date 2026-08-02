@@ -1521,6 +1521,56 @@ class ScientificProductionServiceTest {
         assertEquals(1.0, result.get("total").getAuthorScore(), 0.0001); // only the Core M=10 AIS 0.4
     }
 
+    // ── Math 2026: scieIndexed — list L is "SCIE minus the fee journals" ──
+
+    @Test
+    void scieIndexedBindsCoverageOfTheScoredForumInThePublicationYear() {
+        // COMISIA 1 2026 list L: reviste indexate SCIE, fără cele cu taxă. An SSCI/ESCI-only journal
+        // is NOT in L even when it carries an AIS quartile, which is why the flag is a coverage
+        // question on (forum, publication year) and not a category/quartile test.
+        Indicator indicator = indicator("PUBLICATIONS", "(scieIndexed && !feeJournal) ? 1 : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "AIS");
+        ScoringPublication inScie = publication("p-scie", "f-scie", "2021-01-01", "ar", "ar",
+                "SCIE Paper", List.of("a1"));
+        ScoringPublication notScie = publication("p-ssci", "f-ssci", "2021-01-01", "ar", "ar",
+                "SSCI Paper", List.of("a1"));
+        ScoringPublication scieButPaid = publication("p-apc", "f-apc", "2021-01-01", "ar", "ar",
+                "SCIE APC Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(inScie, indicator)).thenReturn(score(1.0));
+        when(scoringService.getScore(notScie, indicator)).thenReturn(score(1.0));
+        when(scoringService.getScore(scieButPaid, indicator)).thenReturn(score(1.0));
+        when(reportingLookupPort.isForumInScie("f-scie", 2021)).thenReturn(true);
+        when(reportingLookupPort.isForumInScie("f-ssci", 2021)).thenReturn(false);
+        when(reportingLookupPort.isForumInScie("f-apc", 2021)).thenReturn(true);
+        when(reportingLookupPort.isFeeJournal("f-scie")).thenReturn(false);
+        when(reportingLookupPort.isFeeJournal("f-ssci")).thenReturn(false);
+        when(reportingLookupPort.isFeeJournal("f-apc")).thenReturn(true);
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(inScie, notScie, scieButPaid), indicator);
+
+        assertEquals(1.0, result.get("SCIE Paper").getAuthorScore(), 0.0001);
+        assertEquals(0.0, result.get("SSCI Paper").getAuthorScore(), 0.0001);
+        assertEquals(0.0, result.get("SCIE APC Paper").getAuthorScore(), 0.0001);
+        assertEquals(1.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void formulasWithoutScieIndexedNeverQueryCoverage() {
+        Indicator indicator = indicator("PUBLICATIONS", "S/N");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "AIS");
+        ScoringPublication paper = publication("p-plain", "f-1", "2021-01-01", "ar", "ar",
+                "Plain Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(paper, indicator)).thenReturn(score(2.0));
+
+        scientificProductionService.calculateScientificProductionScore(List.of(paper), indicator);
+
+        verify(reportingLookupPort, never())
+                .isForumInScie(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
     // ── APC visibility: feeJournal venue fact + named MULTIPLE_GATES causes ──
 
     @Test

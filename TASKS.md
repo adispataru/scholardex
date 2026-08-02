@@ -428,6 +428,34 @@ Done history moved to `TASKS-done.md`.
   Rider: flip prod logging DEBUG → INFO (`CS_CONFERENCE_TRACE` floods the logs; the incident took
   minutes longer to diagnose for it).
 
+- [ ] `H97` Matematică — the 2026 fișă (COMISIA 1, OM 3.019/2025).
+  **RAISED 2026-08-02.** The 2016 fișă is done and faithful (names/perspectives/descriptions, the
+  nᵢ=1-for-Lector note, C4's condiția b). 2026 is a REWRITE, not a tweak: N = 2·Q1 + Q2 ≥ 7 (Conf) /
+  12 (Prof), N_recent = 2·Q1_recent + Q2_recent ≥ 2, S1 ≥ 2,5 and S2 ≥ 1,75 (Conf only), Q1 ≥ 1
+  (Prof only), C1 ≥ 16/32 and C2 ≥ 8/16. Definitions: L = SCIE minus journals that charge an APC;
+  M1 = L ∩ (Q1|Q2|Q3), M2 = L ∩ (Q1|Q2) over the UEFISCDI AIS lists of t‑1…t‑5; A/A1/A2 = the
+  candidate's articles in L/M1/M2; A_recent = A from t‑7 (maternity extension in the text);
+  sᵢ = MAX AIS across those five lists REGARDLESS of publication year; S1/S2 = Σ sᵢ/nᵢ over A1/A2;
+  C1/C2 = citations from M1/M2 journals, excluding any citing article that has the candidate as
+  author or coauthor.
+  Machinery is almost entirely in place from the Info/FEAA work: `LatestNRankings(5)` IS the sᵢ
+  rule, `feeJournal` IS L's exclusion, `PreviousNYears(7)` is A_recent, `SelfCitationPolicy.
+  ANY_COAUTHOR` is C1/C2's exclusion, `Q` + `Q=="Q1"?2:Q=="Q2"?1:0` gives N directly, perspectives
+  give the cumulative verdict.
+  - [x] **S1 — the SCIE gate — DONE 2026-08-02.** `scieIndexed` formula variable (bound lazily from
+    the existing `ReportingLookupPort.isForumInScie(forumId, publicationYear)` — the delegator
+    already forwards it; house convention taken from PdWosEligibilityScoringService), declared in
+    FormulaVariableContract for every kind. `scieIndexed && !feeJournal` expresses list L exactly.
+    Tests: SCIE vs SSCI-only vs SCIE-with-APC, plus "formulas that don't reference it never query
+    coverage". No data changes.
+  - [ ] **S2 — the fișă** — ~8 indicators (N via the weighted quartile formula, N_recent, S1, S2,
+    Q1, C1, C2), criteria with the per-position thresholds, two perspectives + cumulative verdict,
+    descriptions. Verify with a provisional Math-department sweep. NOT derivable, leave to the
+    comisie (document in the descriptions): the taught semester courses (1 Conf / 2 Prof) and the
+    abilitation certificate; also the A_recent maternity extension.
+  - [ ] **S3 — optional** — reuse `scieIndexed` to tighten the 2016 C4 gate if the comisie wants
+    L-membership there too (today C4 checks fee + quartile only).
+
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**

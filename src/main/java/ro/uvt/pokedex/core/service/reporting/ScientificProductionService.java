@@ -525,6 +525,18 @@ public class ScientificProductionService {
                 builder.put("N_ro",
                         publicationCountryAuthorCountService.authorCountForCountry(cited, "Romania"));
             }
+            // Math 2026 list L ("revistele indexate în SCIE, cu excepția celor cu taxă"): the WoS edition
+            // of the SCORED forum, in the item's own publication year — the same (forumId, year) coverage
+            // question PdWosEligibilityScoringService asks. SSCI/ESCI/AHCI-only journals are NOT in L.
+            // Bound lazily (one indexed lookup per item) so only formulas that reference it pay for it;
+            // pair it with !feeJournal to express L exactly.
+            if (formulaReferences(indicator.getFormula(), "scieIndexed")) {
+                builder.put("scieIndexed", citing != null && citing.getForumId() != null
+                        && ro.uvt.pokedex.core.service.application.PersistenceYearSupport
+                                .extractYear(citing.getCoverDate(), citing.getId(), log)
+                                .map(year -> reportingLookupPort.isForumInScie(citing.getForumId(), year))
+                                .orElse(false));
+            }
             if (result.getMultiplier() != null) {
                 builder.put("M", result.getMultiplier());
             }
