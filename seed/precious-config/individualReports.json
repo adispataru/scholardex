@@ -71,7 +71,7 @@
   ],
   "criteria": [
    {
-    "name": "",
+    "name": "S — punctaj articole",
     "indicatorIndices": [
      0
     ],
@@ -96,7 +96,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "",
+    "name": "S_recent — articole din ultimii 7 ani",
     "indicatorIndices": [
      1
     ],
@@ -113,7 +113,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "",
+    "name": "C — citări",
     "indicatorIndices": [
      2
     ],
@@ -130,7 +130,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "",
+    "name": "C1 — cărți de specialitate",
     "indicatorIndices": [
      3
     ],
@@ -147,7 +147,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "",
+    "name": "C2 — cursuri publicate",
     "indicatorIndices": [
      4
     ],
@@ -164,7 +164,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "",
+    "name": "C3 — granturi de cercetare",
     "indicatorIndices": [
      5
     ],
@@ -181,7 +181,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "",
+    "name": "C4 — număr de lucrări",
     "indicatorIndices": [
      6
     ],
@@ -198,7 +198,44 @@
     "contributesToTotal": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "perspectives": [
+   {
+    "name": "Standarde naționale (Anexa 1)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 2
+      }
+     ]
+    }
+   },
+   {
+    "name": "Indicatori suplimentari UVT",
+    "composition": {
+     "all": [
+      {
+       "criterion": 3
+      },
+      {
+       "criterion": 4
+      },
+      {
+       "criterion": 5
+      },
+      {
+       "criterion": 6
+      }
+     ]
+    }
+   }
+  ]
  },
  {
   "_id": {

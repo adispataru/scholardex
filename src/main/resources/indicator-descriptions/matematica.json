@@ -1,0 +1,17 @@
+{
+  "_comment": "H94 — researcher-facing descriptions for the FV Matematică indicators, grounded in the standard's own text (Standarde minimale Matematică, indicatorii din Anexa 1 la OM 6.129/2016 + indicatorii suplimentari UVT C1–C4). Applied by POST /admin/indicators/descriptions/apply. Romanian by the H87 decision.",
+
+  "Mate_S": "Punctajul S (Anexa 1 la OM 6.129/2016): suma valorilor sᵢ/nᵢ peste toate articolele candidatului, unde sᵢ este scorul relativ de influență (RIS) al revistei în care a apărut articolul, iar nᵢ este numărul de autori. Se punctează doar articolele din reviste cu scor relativ de influență peste 0,5; celelalte apar în listă cu punctaj 0. Praguri: 5 pentru Profesor, 2,5 pentru Conferențiar, 1 pentru Lector.",
+
+  "Mate_S_recent": "Punctajul S_recent: aceeași sumă sᵢ/nᵢ ca la S, dar numai peste articolele publicate în ultimii 7 ani (coloana «Publicat în ultimii 7 ani» din fișa de verificare). Praguri: 2,5 pentru Profesor, 1,5 pentru Conferențiar; standardul nu impune acest indicator pentru Lector și Asistent.",
+
+  "Mate_C": "Punctajul C: numărul citărilor articolelor candidatului provenite din reviste cu scor relativ de influență (RIS) de cel puțin 0,5. Autocitările candidatului nu se iau în considerare. Praguri: 12 pentru Profesor, 6 pentru Conferențiar.",
+
+  "Mate_C1_UVT": "Indicator suplimentar UVT C1: numărul cărților de specialitate publicate în domeniul postului, la edituri recunoscute CNCSIS. Praguri: 2 pentru Profesor, 1 pentru Conferențiar. Cărțile care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru.",
+
+  "Mate_C2_UVT": "Indicator suplimentar UVT C2: numărul cursurilor universitare publicate în domeniul postului, la edituri recunoscute CNCSIS. Culegerile de probleme nu se iau în considerare. Prag: 1 pentru Profesor și pentru Conferențiar.",
+
+  "Mate_C3_UVT": "Indicator suplimentar UVT C3: participarea la granturi de cercetare, punctată după calitate — 2 puncte pentru fiecare grant în calitate de director și 1 punct pentru fiecare participare ca membru. Pragurile (4 pentru Profesor, 2 pentru Conferențiar) exprimă astfel cerințele standardului: Profesorul are nevoie de două granturi ca director, iar Conferențiarul fie de două participări ca membru, fie de un singur grant în calitate de director. Granturile se declară la activități.",
+
+  "Mate_C4_UVT": "Indicator suplimentar UVT C4: numărul lucrărilor publicate, cerut pentru posturile de început de carieră — 5 pentru Lector, 3 pentru Asistent pe perioadă nedeterminată (lucrările trebuie să întrunească și condiția b. de la asistent pe perioadă determinată: reviste fără taxă de publicare, în quartilele Q1–Q3 după AIS, dintre care cel puțin una în Q1 sau Q2 — verificare care rămâne în sarcina comisiei)."
+}

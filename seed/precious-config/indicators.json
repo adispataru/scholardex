@@ -149,16 +149,17 @@
    "$oid": "680f69396f664731f88f814a"
   },
   "name": "Mate_C",
+  "description": "Punctajul C: numărul citărilor articolelor candidatului provenite din reviste cu scor relativ de influență (RIS) de cel puțin 0,5. Autocitările candidatului nu se iau în considerare. Praguri: 12 pentru Profesor, 6 pentru Conferențiar.",
   "formula": "S >= 0.5 ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
+   "policy": "CANDIDATE_ONLY",
    "strategy": "RIS",
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations",
-   "policy": "CANDIDATE_ONLY"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
   "formulaHash": "7ea678abf0d728dc06e32227fea714fba2c6989dc94b18121863e26c1af6f816",
   "yearRangeSpec": {
@@ -178,12 +179,13 @@
    "$oid": "680fa64de3d12644e3045404"
   },
   "name": "Mate_S",
+  "description": "Punctajul S (Anexa 1 la OM 6.129/2016): suma valorilor sᵢ/nᵢ peste toate articolele candidatului, unde sᵢ este scorul relativ de influență (RIS) al revistei în care a apărut articolul, iar nᵢ este numărul de autori. Se punctează doar articolele din reviste cu scor relativ de influență peste 0,5; celelalte apar în listă cu punctaj 0. Praguri: 5 pentru Profesor, 2,5 pentru Conferențiar, 1 pentru Lector.",
   "formula": "S > 0.5 ? S/N : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "RIS",
@@ -681,12 +683,13 @@
    "$oid": "68220d212a04a41f93fc7dba"
   },
   "name": "Mate_S_recent",
+  "description": "Punctajul S_recent: aceeași sumă sᵢ/nᵢ ca la S, dar numai peste articolele publicate în ultimii 7 ani (coloana «Publicat în ultimii 7 ani» din fișa de verificare). Praguri: 2,5 pentru Profesor, 1,5 pentru Conferențiar; standardul nu impune acest indicator pentru Lector și Asistent.",
   "formula": "S > 0.5 ? S/N : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "RIS",
@@ -711,12 +714,13 @@
    "$oid": "68230b164652ac0103a9eebd"
   },
   "name": "Mate_C1_UVT",
+  "description": "Indicator suplimentar UVT C1: numărul cărților de specialitate publicate în domeniul postului, la edituri recunoscute CNCSIS. Praguri: 2 pentru Profesor, 1 pentru Conferențiar. Cărțile care lipsesc din Scopus/OpenAlex pot fi adăugate manual din spațiul de lucru.",
   "formula": "S",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "CNCSIS",
@@ -773,6 +777,7 @@
    "$oid": "682340fe7123387ec34394ae"
   },
   "name": "Mate_C2_UVT",
+  "description": "Indicator suplimentar UVT C2: numărul cursurilor universitare publicate în domeniul postului, la edituri recunoscute CNCSIS. Culegerile de probleme nu se iau în considerare. Prag: 1 pentru Profesor și pentru Conferențiar.",
   "formula": "S",
   "domain": {
    "$ref": "domains",
@@ -784,7 +789,7 @@
     "$oid": "68233847cf66a42617d2b6c7"
    }
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "type": "FORUM",
    "strategy": "CNCSIS",
@@ -807,6 +812,7 @@
    "$oid": "682342d67123387ec34394b0"
   },
   "name": "Mate_C3_UVT",
+  "description": "Indicator suplimentar UVT C3: participarea la granturi de cercetare, punctată după calitate — 2 puncte pentru fiecare grant în calitate de director și 1 punct pentru fiecare participare ca membru. Pragurile (4 pentru Profesor, 2 pentru Conferențiar) exprimă astfel cerințele standardului: Profesorul are nevoie de două granturi ca director, iar Conferențiarul fie de două participări ca membru, fie de un singur grant în calitate de director. Granturile se declară la activități.",
   "formula": "Rol == 'Membru' ? 1 : 2",
   "domain": {
    "$ref": "domains",
@@ -818,7 +824,7 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -839,12 +845,13 @@
    "$oid": "68234a6c7e443769580e906d"
   },
   "name": "Mate_C4_UVT",
+  "description": "Indicator suplimentar UVT C4: numărul lucrărilor publicate, cerut pentru posturile de început de carieră — 5 pentru Lector, 3 pentru Asistent pe perioadă nedeterminată (lucrările trebuie să întrunească și condiția b. de la asistent pe perioadă determinată: reviste fără taxă de publicare, în quartilele Q1–Q3 după AIS, dintre care cel puțin una în Q1 sau Q2 — verificare care rămâne în sarcina comisiei).",
   "formula": "S",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "role": "ALL",
    "strategy": "GENERIC_COUNT",

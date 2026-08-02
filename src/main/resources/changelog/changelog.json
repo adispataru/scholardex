@@ -1,5 +1,10 @@
 [
   {
+    "date": "2026-08-02",
+    "title": "Fișa de Matematică: criterii denumite, grupate pe cele două secțiuni ale fișei, cu descrieri",
+    "body": "Fișa FV Matematică afișa criteriile fără denumire. Acestea poartă acum numele din standard (S, S_recent, C, respectiv indicatorii suplimentari UVT C1–C4) și sunt grupate în cele două secțiuni ale fișei de verificare: «Standarde naționale (Anexa 1)» și «Indicatori suplimentari UVT». Fiecare grup arată verdictul DA/NU pentru poziția selectată — cerințele standardului se aplică cumulativ, iar criteriile pe care standardul nu le impune pentru poziția aleasă (de exemplu S_recent și C la Lector) nu blochează verdictul. Fiecare indicator are acum și o descriere care explică modul de calcul și pragurile."
+  },
+  {
     "date": "2026-07-29",
     "title": "FEAA: lista oficială CNATDCU A2 pentru edituri naționale; corecții de domeniu în fișa 2016",
     "body": "Nivelul «editură națională» din punctajul cărților FEAA folosește acum lista oficială CNATDCU A2 (Panel 4 — edituri de prestigiu recunoscut în domeniul științelor sociale, 106 edituri românești și străine, inclusiv organizațiile internaționale din sistemul ONU), în locul registrului CNCSIS folosit provizoriu. Separat, în fișa FEAA 2016 au fost corectate două restricții de domeniu: indicatorul P nu avea domeniu setat și puncta zero pe rulările reale, iar indicatorul C era limitat la categoriile Economie și sub-număra nivelul rezidual «Social Science & Science». Ambele folosesc acum toate categoriile, ierarhizarea pe coeficienți (Core 10 / Info 8 / rezidual 6) rămânând în sarcina punctajului. Scorurile FEAA 2016 cresc la următoarea rulare."
