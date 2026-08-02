@@ -1,5 +1,10 @@
 [
   {
+    "date": "2026-08-03",
+    "title": "Fizică 2026: brevetele de invenție se punctează (A7 și A8)",
+    "body": "Fișa de Fizică 2026 punctează acum și brevetele acordate: 3 puncte pentru fiecare brevet internațional (tip Triadic, European sau International) și 0,5 puncte pentru fiecare brevet național, în ambele cazuri împărțite la numărul efectiv de autori. Brevetele se declară la activități, iar câmpul «N_autori» este de acum numeric — completați-l, pentru că din el se calculează împărțirea; dacă lipsește, brevetul se punctează integral, ca pentru un singur autor. Odată cu acest rând, toată activitatea profesională prevăzută de standard este acoperită, cu excepția cărților în calitate de editor (A3) și a lucrărilor în proceedings indexate ISI (A6), care urmează."
+  },
+  {
     "date": "2026-08-02",
     "title": "Fizică 2026: cărțile și capitolele se punctează după lista Web of Science a editurilor",
     "body": "Fișa de Fizică 2026 punctează acum și rândurile de cărți din activitatea profesională: A1 (cărți ca autor la edituri internaționale recunoscute Web of Science), A2 (capitole la aceleași edituri, plus review-urile din reviste cotate ISI), A4 și A5 (cărți, respectiv capitole la edituri din afara listei). Lista oficială — «Master Book List» — a fost desființată de Clarivate, iar standardul trimite în continuare la adresa care nu mai există; platforma folosește arhiva paginii oficiale, cu 834 de edituri. Numele sunt comparate după cuvintele cheie, astfel încât formele prescurtate din listă («OXFORD UNIV PRESS») să corespundă cu cele din datele bibliografice («Oxford University Press»). Fiind o listă înghețată în timp, o editură admisă ulterior nu poate apărea în ea, iar încadrarea unei astfel de lucrări rămâne în decizia comisiei."

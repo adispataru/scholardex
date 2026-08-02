@@ -2874,6 +2874,18 @@
     "$id": {
      "$oid": "6a6fa3f00245d4399f218bb5"
     }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6fb025720e6c72aaf89453"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6fb025720e6c72aaf89454"
+    }
    }
   ],
   "criteria": [
@@ -2886,7 +2898,9 @@
      7,
      8,
      9,
-     10
+     10,
+     11,
+     12
     ],
     "contributesToTotal": false,
     "thresholds": [
@@ -3001,7 +3015,9 @@
      7,
      8,
      9,
-     10
+     10,
+     11,
+     12
     ],
     "contributesToTotal": false,
     "thresholds": [

@@ -3437,5 +3437,71 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6fb025720e6c72aaf89453"
+  },
+  "name": "Fiz26_A7",
+  "description": "Indicatorul A7: 3 puncte pentru fiecare brevet de invenție internațional ACORDAT — adică brevetele declarate cu tipul Triadic, European sau International. Punctajul se împarte la numărul efectiv de autori (nᵢᵉᶠ), calculat din câmpul «N_autori» al activității: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Dacă numărul de autori nu este completat, se consideră 1. Brevetele se declară la activități, împreună cu dovezile aferente.",
+  "formula": "(Tip == \"Triadic\" || Tip == \"European\" || Tip == \"International\") ? 3/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6820fe0d04e38843635e0cb1"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "44ebf5fccbed48563f8445fa80f767b9ca28c6d39b552dbc5362bac10e0aeed5",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6fb025720e6c72aaf89454"
+  },
+  "name": "Fiz26_A8",
+  "description": "Indicatorul A8: 0,5 puncte pentru fiecare brevet de invenție național acordat (tipul National). Punctajul se împarte la numărul efectiv de autori (nᵢᵉᶠ), calculat din câmpul «N_autori» al activității: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Dacă numărul de autori nu este completat, se consideră 1. Brevetele se declară la activități, împreună cu dovezile aferente.",
+  "formula": "Tip == \"National\" ? 0.5/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6820fe0d04e38843635e0cb1"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f8caf7a87e99885ba4b7dca3ce5e255ba756204a6e8e7a43ceb74e27178b1cf8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

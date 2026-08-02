@@ -510,9 +510,21 @@ Done history moved to `TASKS-done.md`.
     from A5 (0.0764, "other publishers") to A2 (0.3818, "recognised") — exactly 5×, matching the
     1/nᵢᵉᶠ vs 0.2/nᵢᵉᶠ coefficients — lifting A to 4.8818 and T to 6.0118.
     Ask Fizică: accept a frozen 2026 snapshot with a manual-claim escape hatch for publishers
-    admitted later? Still open regardless: A3 (book editorship — not in our data), A6 (ISI
-    proceedings ≥3 pages, needs CPCI + a page-count rule), A7/A8 (Brevet.Tip
-    Triadic/European/International vs National, and `N_autori` is a STRING field today).
+    admitted later?
+  - [x] **S3 — brevete A7/A8 — DONE 2026-08-03** (`fizica_2026_brevete.js`). A7 = Σ3/nᵢᵉᶠ for granted
+    international patents (Brevet.Tip ∈ {Triadic, European, International}), A8 = Σ0.5/nᵢᵉᶠ for
+    national ones — an explicit allowlist rather than `!= "National"`, so a missing Tip scores 0
+    instead of counting as international. The only real gap was one boolean: `Nef` is ALREADY bound
+    for activities (H65 added it for "physics didactic activities A1–A8"), but only when `N_autori`
+    binds as a NUMBER, and Brevet declared it as text — so Nef never appeared. Flipped to numeric;
+    zero Brevet instances existed, so no migration (and `parseNumberOrNull` would have coerced
+    "3"→3.0 anyway). Seed edit done line-scoped: the snapshot script pretty-prints activities.json
+    while the committed file is compact, so a full snapshot would have reformatted all 18 activities
+    to change one flag. Verified with two temporary instances (European/2 authors → 1.5000 = 3/2;
+    National/4 authors → 0.1250 = 0.5/4), both removed after; A rose to 6.5068 and T to 7.6368,
+    reconciling exactly.
+    Still open: A3 (book editorship — not in our data at all) and A6 (ISI proceedings ≥3 pages,
+    needs a CPCI test cf. H76 plus a page-count rule).
   - [ ] **S3 — the 2016 UVT fișă**, if Fizică still needs it: same indicators with the old
     coefficients (A1 4, A3/A4 0.5, A10 /100.000) and T ≥ 5 / 12; adds a Lector tier (I ≥ 1, P ≥ 1,
     A ≥ 0.5) the national standard has no equivalent for.
