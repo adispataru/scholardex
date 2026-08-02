@@ -491,14 +491,28 @@ Done history moved to `TASKS-done.md`.
     unbundled as the headline tile. Verified live: T computed 5.6300 against a hand-check of
     4.5 + 0.6917/2 + 7.6839/20 + 2/5 = 5.630045 — the weighted-sum criterion is exact to the digit;
     rail reads 2/4 with T DA below the three groups. Descriptions written + applied.
-  - [ ] **S2 — A1–A8** (books, chapters, ISI proceedings ≥3 pages, patents). BLOCKED on a committee
-    decision, not on us: A1/A2/A3 need the WoS "Master Book List" of recognised publishers, which
-    Clarivate DISCONTINUED — the 2026 standard still cites the dead `wokinfo.com/mbl/publishers/`,
-    so there is no authoritative source to import in either year. Ask Fizică what to accept (SENSE?
-    the FEAA Anexa 1 international list? declared-and-ruled?); A4/A5 are its complement, A6 needs a
-    WoS-indexed-proceedings test (CPCI, cf. H76) plus the ≥3 pages rule, A7/A8 need Brevet.Tip
-    (Triadic/European/International vs National) and a numeric author count (`N_autori` is a STRING
-    field today). Until then A and T are documented lower bounds.
+  - [x] **S2 — A1/A2/A4/A5 on the ARCHIVED Master Book List — DONE 2026-08-02** (a demo for the
+    Fizică committee to accept or reject). The list Clarivate discontinued survives in the Internet
+    Archive: 834 publishers, A→Z, one table, recovered from the 2026-02-20 snapshot and committed as
+    `report-data/wos-master-book-list-publishers.csv` (raw page mirrored at
+    `data/standards/fizica/wos-master-book-list-archived-20260220.html`) so it no longer depends on
+    the archive staying up. `WosMasterBookListService` + `wosBookPublisher` formula variable, bound
+    lazily through the shared book→publisher path — extracted from FeaaBookScoringService into
+    `PublicationPublisherSupport` rather than written twice.
+    The matching is the substance: WoS shouts and abbreviates ("OXFORD UNIV PRESS", "JOHN WILEY &
+    SONS LTD") where Scopus writes prose ("Oxford University Press", "wiley"), so EXACT matching hit
+    none of the majors and everything fell into the A4/A5 complement — the demo would have looked
+    broken. Names now compare as canonical TOKEN SETS (abbreviations expanded, legal forms dropped,
+    subset match requiring one identifying non-generic token, so a bare "Press" matches nothing).
+    Indicators score off FEAA_BOOK, the only base scorer returning > 0 for any book/chapter — AIS is
+    0 for books and GENERIC_COUNT short-circuits BEFORE the formula runs (which is also why the old
+    Mate C4 counted every publication). Verified end-to-end on real data: the same chapters moved
+    from A5 (0.0764, "other publishers") to A2 (0.3818, "recognised") — exactly 5×, matching the
+    1/nᵢᵉᶠ vs 0.2/nᵢᵉᶠ coefficients — lifting A to 4.8818 and T to 6.0118.
+    Ask Fizică: accept a frozen 2026 snapshot with a manual-claim escape hatch for publishers
+    admitted later? Still open regardless: A3 (book editorship — not in our data), A6 (ISI
+    proceedings ≥3 pages, needs CPCI + a page-count rule), A7/A8 (Brevet.Tip
+    Triadic/European/International vs National, and `N_autori` is a STRING field today).
   - [ ] **S3 — the 2016 UVT fișă**, if Fizică still needs it: same indicators with the old
     coefficients (A1 4, A3/A4 0.5, A10 /100.000) and T ≥ 5 / 12; adds a Lector tier (I ≥ 1, P ≥ 1,
     A ≥ 0.5) the national standard has no equivalent for.

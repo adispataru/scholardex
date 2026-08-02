@@ -51,6 +51,8 @@ class ScientificProductionServiceTest {
     private ReportingLookupPort reportingLookupPort;
     @Mock
     private PublicationCountryAuthorCountService publicationCountryAuthorCountService;
+    @Mock
+    private WosMasterBookListService wosMasterBookListService;
 
     // Real evaluator (no MVEL behavior to mock) — @InjectMocks picks it up via the
     // constructor signature.
@@ -1569,6 +1571,64 @@ class ScientificProductionServiceTest {
 
         verify(reportingLookupPort, never())
                 .isForumInScie(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    // ── H98 physics: wosBookPublisher — the WoS Master Book List gate for A1–A5 ──
+
+    @Test
+    void wosBookPublisherSplitsBooksBetweenTheRecognisedListAndItsComplement() {
+        // A1 pays 5/nᵢᵉᶠ for a book at a Master-Book-List publisher; A4 pays 1/nᵢᵉᶠ for the same book
+        // shape at any other publisher. Both run off the FEAA_BOOK base scorer, which returns a positive
+        // coefficient for ANY book/chapter — required because the formula is only evaluated for
+        // positively-scored items (an AIS base is 0 for books, and GENERIC_COUNT short-circuits before
+        // the formula runs). The physics coefficients come entirely from the formula, not from S.
+        Indicator a1 = indicator("PUBLICATIONS", "(docType == \"bk\" && wosBookPublisher) ? 5/Nef : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(a1, "FEAA_BOOK");
+        Indicator a4 = indicator("PUBLICATIONS", "(docType == \"bk\" && !wosBookPublisher) ? 1/Nef : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(a4, "FEAA_BOOK");
+        ScoringPublication listed = publication("p-mbl", "f-mbl", "2020-01-01", "bk", "bk",
+                "Springer Book", List.of("a1", "a2"));
+        ScoringPublication unlisted = publication("p-other", "f-other", "2020-01-01", "bk", "bk",
+                "Local Book", List.of("a1", "a2"));
+        when(scoringFactoryService.getScoringService("FEAA_BOOK")).thenReturn(scoringService);
+        when(scoringService.getScore(org.mockito.ArgumentMatchers.any(ScoringPublicationReadModel.class),
+                org.mockito.ArgumentMatchers.any(Indicator.class))).thenReturn(score(1.0));
+        when(reportingLookupPort.getForum("f-mbl")).thenReturn(forumWithPublisher("Springer"));
+        when(reportingLookupPort.getForum("f-other")).thenReturn(forumWithPublisher("Editura Locală"));
+        when(wosMasterBookListService.isRecognized("Springer")).thenReturn(true);
+        when(wosMasterBookListService.isRecognized("Editura Locală")).thenReturn(false);
+
+        Map<String, Score> onList = scientificProductionService
+                .calculateScientificProductionScore(List.of(listed, unlisted), a1);
+        Map<String, Score> offList = scientificProductionService
+                .calculateScientificProductionScore(List.of(listed, unlisted), a4);
+
+        // Two authors → Nef = 2 (nᵢ ≤ 5 keeps nᵢ), so 5/2 on the list and 1/2 off it.
+        assertEquals(2.5, onList.get("Springer Book").getAuthorScore(), 0.0001);
+        assertEquals(0.0, onList.get("Local Book").getAuthorScore(), 0.0001);
+        assertEquals(0.0, offList.get("Springer Book").getAuthorScore(), 0.0001);
+        assertEquals(0.5, offList.get("Local Book").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void formulasWithoutWosBookPublisherNeverQueryTheList() {
+        Indicator indicator = indicator("PUBLICATIONS", "S/Nef");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "FEAA_BOOK");
+        ScoringPublication paper = publication("p-plain", "f-1", "2021-01-01", "ar", "ar",
+                "Plain Paper", List.of("a1"));
+        when(scoringFactoryService.getScoringService("FEAA_BOOK")).thenReturn(scoringService);
+        when(scoringService.getScore(paper, indicator)).thenReturn(score(2.0));
+
+        scientificProductionService.calculateScientificProductionScore(List.of(paper), indicator);
+
+        verify(wosMasterBookListService, never()).isRecognized(org.mockito.ArgumentMatchers.any());
+    }
+
+    private static ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView forumWithPublisher(String publisher) {
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView forum =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView();
+        forum.setPublisher(publisher);
+        return forum;
     }
 
     // ── APC visibility: feeJournal venue fact + named MULTIPLE_GATES causes ──

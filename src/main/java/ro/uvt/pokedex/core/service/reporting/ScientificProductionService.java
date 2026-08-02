@@ -33,6 +33,9 @@ public class ScientificProductionService {
     /** FEAA point 6: RO-affiliated author counting for the {@code N_ro} formula variable. Consulted only
      *  when the indicator's formula actually references {@code N_ro} (one indexed query per item). */
     private final PublicationCountryAuthorCountService publicationCountryAuthorCountService;
+    /** H98 physics: WoS Master Book List membership for the {@code wosBookPublisher} formula variable.
+     *  Consulted only when the indicator's formula references it. */
+    private final WosMasterBookListService wosMasterBookListService;
 
 
     /**
@@ -530,6 +533,15 @@ public class ScientificProductionService {
             // question PdWosEligibilityScoringService asks. SSCI/ESCI/AHCI-only journals are NOT in L.
             // Bound lazily (one indexed lookup per item) so only formulas that reference it pay for it;
             // pair it with !feeJournal to express L exactly.
+            // H98 physics A1–A5: "edituri internaționale recunoscute Web of Science" — membership of the
+            // book's publisher in the WoS Master Book List. Resolved through the shared book→publisher
+            // path (book_facts by bookId, else the forum's publisher) so it agrees with the FEAA book
+            // scorer. Bound lazily; false for anything without a resolvable publisher, which is how the
+            // A4/A5 "national or other publishers" complement picks those items up.
+            if (formulaReferences(indicator.getFormula(), "wosBookPublisher")) {
+                builder.put("wosBookPublisher", wosMasterBookListService.isRecognized(
+                        PublicationPublisherSupport.resolvePublisher(cited, reportingLookupPort)));
+            }
             if (formulaReferences(indicator.getFormula(), "scieIndexed")) {
                 builder.put("scieIndexed", citing != null && citing.getForumId() != null
                         && ro.uvt.pokedex.core.service.application.PersistenceYearSupport

@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-08-02",
+    "title": "Fizică 2026: cărțile și capitolele se punctează după lista Web of Science a editurilor",
+    "body": "Fișa de Fizică 2026 punctează acum și rândurile de cărți din activitatea profesională: A1 (cărți ca autor la edituri internaționale recunoscute Web of Science), A2 (capitole la aceleași edituri, plus review-urile din reviste cotate ISI), A4 și A5 (cărți, respectiv capitole la edituri din afara listei). Lista oficială — «Master Book List» — a fost desființată de Clarivate, iar standardul trimite în continuare la adresa care nu mai există; platforma folosește arhiva paginii oficiale, cu 834 de edituri. Numele sunt comparate după cuvintele cheie, astfel încât formele prescurtate din listă («OXFORD UNIV PRESS») să corespundă cu cele din datele bibliografice («Oxford University Press»). Fiind o listă înghețată în timp, o editură admisă ulterior nu poate apărea în ea, iar încadrarea unei astfel de lucrări rămâne în decizia comisiei."
+  },
+  {
+    "date": "2026-08-02",
     "title": "Fișa de Fizică 2026 (COMISIA 3) este disponibilă",
     "body": "A fost adăugată fișa pentru standardele minimale de Fizică din 2026 (OM 3.019/2025), cu praguri pentru conferențiar, profesor și atestatul de abilitare. Fișa calculează indicatorii de cercetare I (suma AIS/nᵢᵉᶠ, unde nᵢᵉᶠ este numărul efectiv de autori) și P (suma AIS pentru articolele ca prim autor sau autor corespondent), indicatorii de impact C (citări raportate la numărul efectiv de autori, fără citările semnate de candidat sau de coautori) și h (indicele Hirsch), precum și punctajul total CNATDCU T = A + P/2 + I/2 + C/20 + h/5. Activitatea profesională (A) cuprinde deocamdată proiectele educaționale și de infrastructură conduse, respectiv valoarea proiectelor de cercetare conduse (Vᵢ/50.000 EUR — pentru acestea contează câmpul «Buget» al activității). Rândurile A1–A8 (cărți, capitole, lucrări în proceedings ISI, brevete) urmează, astfel că A și T sunt deocamdată valori minime."
   },

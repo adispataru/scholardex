@@ -3292,5 +3292,150 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6fa3f00245d4399f218bb1"
+  },
+  "name": "Fiz26_A1",
+  "description": "Indicatorul A1: 5 puncte împărțite la numărul efectiv de autori (nᵢᵉᶠ) pentru fiecare carte publicată în calitate de autor la o editură internațională recunoscută Web of Science. Lista editurilor recunoscute Web of Science («Master Book List») a fost desființată de Clarivate, iar standardul trimite în continuare la adresa care nu mai există; platforma folosește arhiva paginii oficiale (834 de edituri, februarie 2026). Fiind o listă înghețată, o editură admisă ulterior nu poate apărea în ea — în acest caz decizia rămâne a comisiei. Numele editurilor sunt comparate după cuvintele cheie, astfel încât «OXFORD UNIV PRESS» din listă să corespundă cu «Oxford University Press» din datele bibliografice.",
+  "formula": "(docType == \"bk\" && wosBookPublisher) ? 5/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "FEAA_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "f35f52a31d89ac09c62be6f287da2a8859a52a05500e8893467cf0c411d95e9d",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6fa3f00245d4399f218bb2"
+  },
+  "name": "Fiz26_A2_capitole",
+  "description": "Prima jumătate a indicatorului A2: 1 punct împărțit la numărul efectiv de autori pentru fiecare capitol de carte publicat la o editură internațională recunoscută Web of Science. Capitolele apărute în volume de proceedings nu se punctează aici — standardul le trimite la A6. Lista editurilor recunoscute Web of Science («Master Book List») a fost desființată de Clarivate, iar standardul trimite în continuare la adresa care nu mai există; platforma folosește arhiva paginii oficiale (834 de edituri, februarie 2026). Fiind o listă înghețată, o editură admisă ulterior nu poate apărea în ea — în acest caz decizia rămâne a comisiei. Numele editurilor sunt comparate după cuvintele cheie, astfel încât «OXFORD UNIV PRESS» din listă să corespundă cu «Oxford University Press» din datele bibliografice.",
+  "formula": "(docType == \"ch\" && wosBookPublisher) ? 1/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "FEAA_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "b37d1ceb4357c99e94da174b4ba1f3b2a39e51dd548427a4c82b106d547f2698",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6fa3f00245d4399f218bb3"
+  },
+  "name": "Fiz26_A2_reviewuri",
+  "description": "A doua jumătate a indicatorului A2: 1 punct împărțit la numărul efectiv de autori pentru fiecare articol de tip «review» publicat într-o revistă cotată ISI. Cele două componente ale rândului 2 din standard se adună în același criteriu A2.",
+  "formula": "docType == \"re\" ? 1/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "1c407e328fed13c817232c3ce0076fc73a9bd1cdf7be2eaa28c36a1ef7bb983f",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6fa3f00245d4399f218bb4"
+  },
+  "name": "Fiz26_A4",
+  "description": "Indicatorul A4: 1 punct împărțit la numărul efectiv de autori pentru cărți, manuale și îndrumare de laborator publicate ca autor la edituri naționale sau la alte edituri internaționale — adică la edituri care NU se află pe lista Web of Science. Notele interne și prezentările susținute pentru aprobarea analizelor de date în colaborările mari se încadrează tot aici, dar se declară manual.",
+  "formula": "(docType == \"bk\" && !wosBookPublisher) ? 1/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "FEAA_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "78b0add67a2ad532f3465bc5d6b9a909fa8c461e8501dba5925263617ecd17cf",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6fa3f00245d4399f218bb5"
+  },
+  "name": "Fiz26_A5",
+  "description": "Indicatorul A5: 0,2 puncte împărțite la numărul efectiv de autori pentru capitole de carte publicate la edituri naționale sau la alte edituri internaționale, adică în afara listei Web of Science.",
+  "formula": "(docType == \"ch\" && !wosBookPublisher) ? 0.2/Nef : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "FEAA_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "591dfdee7d83b53898b4c9a7effb14ca706e8f4efd26afc9c1fb7beaa9eb5c56",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYearOrLatest"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

@@ -2844,6 +2844,36 @@
     "$id": {
      "$oid": "6a6f9ae165d7f2a001bec09f"
     }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6fa3f00245d4399f218bb1"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6fa3f00245d4399f218bb2"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6fa3f00245d4399f218bb3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6fa3f00245d4399f218bb4"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6fa3f00245d4399f218bb5"
+    }
    }
   ],
   "criteria": [
@@ -2851,7 +2881,12 @@
     "name": "A — activitate profesională",
     "indicatorIndices": [
      0,
-     1
+     1,
+     6,
+     7,
+     8,
+     9,
+     10
     ],
     "contributesToTotal": false,
     "thresholds": [
@@ -2961,7 +2996,12 @@
      2,
      3,
      4,
-     5
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
     ],
     "contributesToTotal": false,
     "thresholds": [

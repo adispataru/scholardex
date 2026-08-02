@@ -86,21 +86,9 @@ public class FeaaBookScoringService extends AbstractForumScoringService {
         return anexa1PublisherService.isPrestigePublisher(resolvePublisher(publication));
     }
 
-    /**
-     * H66B M7: a book/chapter publication resolves its publisher from the book registry
-     * ({@code scholardex.book_facts}) via {@code bookId}; otherwise (or if the book is unlisted) fall back to
-     * the forum's publisher. With observed-book minting the bookId path resolves for every book venue.
-     */
+    /** Shared with the H98 physics MBL gate — see {@link PublicationPublisherSupport}. */
     private String resolvePublisher(ScoringPublicationReadModel publication) {
-        String bookId = publication.getBookId();
-        if (bookId != null && !bookId.isBlank()) {
-            ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact book = lookupPort.getBook(bookId);
-            if (book != null) {
-                return book.getPublisher();
-            }
-        }
-        ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
-        return forum != null ? forum.getPublisher() : null;
+        return PublicationPublisherSupport.resolvePublisher(publication, lookupPort);
     }
 
     /** Stable label for the slot a coefficient belongs to (also lets the renderer group by it). */
