@@ -2899,5 +2899,216 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf2"
+  },
+  "name": "Mate26_N",
+  "description": "Indicatorul N = 2·Q1 + Q2: fiecare articol publicat într-o revistă din prima quartilă (Q1) aduce 2 puncte, iar unul din a doua quartilă (Q2) aduce 1 punct. Se iau în considerare doar articolele din lista L — reviste indexate Science Citation Index Expanded (SCIE) care NU au ca regulă generală plata unei taxe de procesare sau publicare. Quartila este cea mai favorabilă încadrare din ultimele cinci clasamente UEFISCDI după AIS (anii t‑1…t‑5), indiferent de anul publicării articolului. Praguri: 7 pentru Conferențiar, 12 pentru Profesor.",
+  "formula": "(scieIndexed && !feeJournal) ? (Q == \"Q1\" ? 2 : (Q == \"Q2\" ? 1 : 0)) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "2881c7eaf120d94f184943f6bdb67fa23b04c0002e1402ddc467959baed71629",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "n": 5,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$LatestNRankings"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf3"
+  },
+  "name": "Mate26_N_recent",
+  "description": "Indicatorul N_recent = 2·Q1_recent + Q2_recent: același calcul ca la N, dar numai peste articolele din A_recent, adică cele publicate în ultimii 7 ani. Prag: 2 pentru Conferențiar, Profesor și pentru atestatul de abilitare. Notă: standardul permite extinderea perioadei cu durata concediului de maternitate sau de creștere a copilului — o ajustare care rămâne în sarcina comisiei.",
+  "formula": "(scieIndexed && !feeJournal) ? (Q == \"Q1\" ? 2 : (Q == \"Q2\" ? 1 : 0)) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "2881c7eaf120d94f184943f6bdb67fa23b04c0002e1402ddc467959baed71629",
+  "yearRangeSpec": {
+   "n": 7,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$PreviousNYears"
+  },
+  "scoreYearRangeSpec": {
+   "n": 5,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$LatestNRankings"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf4"
+  },
+  "name": "Mate26_S1",
+  "description": "Punctajul S1: suma valorilor sᵢ/nᵢ peste articolele din lista A1 — articolele candidatului publicate în reviste din M1, adică reviste din lista L (SCIE, fără taxă de publicare) aflate în quartilele Q1, Q2 sau Q3 în cel puțin unul dintre clasamentele UEFISCDI. sᵢ este scorul AIS maxim al revistei în clasamentele din anii t‑1…t‑5 (indiferent de anul publicării), iar nᵢ este numărul de autori ai articolului. Praguri: 2,5 pentru Conferențiar și 4 pentru atestatul de abilitare; standardul nu impune S1 la Profesor.",
+  "formula": "(scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\" || Q == \"Q3\")) ? S/N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "41adf65656c804db5005f7f110de5233df44b01987e5526949b9cd2aaad46621",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "n": 5,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$LatestNRankings"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf5"
+  },
+  "name": "Mate26_S2",
+  "description": "Punctajul S2: aceeași sumă sᵢ/nᵢ ca la S1, dar peste articolele din lista A2 — cele publicate în reviste din M2, adică reviste din L aflate în quartilele Q1 sau Q2. Praguri: 1,75 pentru Conferențiar și 2,5 pentru atestatul de abilitare; standardul nu impune S2 la Profesor.",
+  "formula": "(scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\")) ? S/N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "78c2652e85d5eea9d0b5371186c1c5c196ce11a60aee797e9872f6c1f1f096c3",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "n": 5,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$LatestNRankings"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf6"
+  },
+  "name": "Mate26_Q1",
+  "description": "Numărul articolelor publicate în reviste din lista L aflate în prima quartilă (Q1) a clasamentelor UEFISCDI după AIS, în cea mai favorabilă încadrare din anii t‑1…t‑5. Standardul cere cel puțin un astfel de articol pentru titlul de Profesor; pentru Conferențiar și pentru abilitare nu se impune acest prag.",
+  "formula": "(scieIndexed && !feeJournal && Q == \"Q1\") ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "752421eec8e1ef90086e54945788118c4496c6b6a912b274797eb256ba1a974b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "n": 5,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$LatestNRankings"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf7"
+  },
+  "name": "Mate26_C1",
+  "description": "Indicatorul C1: numărul citărilor articolelor candidatului care provin din articole publicate în reviste din lista M1 — reviste indexate SCIE, fără taxă de publicare, aflate în quartilele Q1, Q2 sau Q3. Nu se iau în considerare citările provenind din articole care îl au ca autor sau coautor pe candidat (se exclud deci și citările semnate împreună cu colaboratorii). Praguri: 16 pentru Conferențiar, 32 pentru Profesor, 20 pentru atestatul de abilitare.",
+  "formula": "(scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\" || Q == \"Q3\")) ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "policy": "ANY_COAUTHOR",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "d5e31799c944102134c06ae713f5fdbea611ac4f59b59975e2f259f91ec8f397",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "n": 5,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$LatestNRankings"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf8"
+  },
+  "name": "Mate26_C2",
+  "description": "Indicatorul C2: numărul citărilor provenite din reviste din lista M2 — reviste din L aflate în quartilele Q1 sau Q2 — cu aceeași excludere a citărilor semnate de candidat sau de coautorii lucrării citate. Praguri: 8 pentru Conferențiar, 16 pentru Profesor, 10 pentru atestatul de abilitare.",
+  "formula": "(scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\")) ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "policy": "ANY_COAUTHOR",
+   "strategy": "AIS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "68753b519b7fbbd6a67dfc25b8d1ad73dd40a7b9cc716129233a23b871a42bff",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "n": 5,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$LatestNRankings"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

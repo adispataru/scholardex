@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-08-02",
+    "title": "Fișa de Matematică 2026 (COMISIA 1) este disponibilă",
+    "body": "A fost adăugată fișa pentru standardele minimale de Matematică din 2026 (OM 3.019/2025), cu praguri pentru conferențiar, profesor și atestatul de abilitare. Standardul înlocuiește complet schema din 2016: articolele se numără ponderat pe quartile (N = 2·Q1 + Q2, plus varianta N_recent pe ultimii 7 ani), punctajele S1 și S2 însumează AIS/nᵢ peste revistele din quartilele Q1–Q3, respectiv Q1–Q2, iar citările se numără separat după quartila revistei citante (C1 și C2), excluzând citările semnate de candidat sau de coautorii lucrării citate. Se iau în considerare doar revistele indexate SCIE care nu percep taxă de publicare, iar quartila și scorul AIS folosite sunt cele mai favorabile din ultimele cinci clasamente UEFISCDI. Cerințele care nu pot fi verificate din date — cursurile susținute și atestatul de abilitare — rămân în sarcina comisiei."
+  },
+  {
+    "date": "2026-08-02",
     "title": "Matematică: C4 numără doar lucrările care întrunesc condiția b.",
     "body": "Indicatorul C4_UVT («număr de lucrări», cerut la Lector și Asistent) număra toate publicațiile candidatului. Standardul cere însă ca lucrările numărate să întrunească condiția b.: articole în reviste FĂRĂ taxă de publicare, aflate în quartilele Q1, Q2 sau Q3 ale clasamentelor după AIS, în cea mai favorabilă încadrare din ultimele cinci clasamente (anii t‑1…t‑5). C4 aplică acum acest filtru, iar a doua parte a condiției — cel puțin o lucrare în Q1 sau Q2 — apare ca rând separat în fișă. Lucrările care nu îndeplinesc condiția rămân vizibile în listă, cu punctaj 0 și motivul afișat. Punctajele C4 scad la următoarea rulare a fișei."
   },

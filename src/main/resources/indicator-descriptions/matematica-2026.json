@@ -1,0 +1,17 @@
+{
+  "_comment": "H94/H97 — researcher-facing descriptions for the FV Matematică 2026 indicators, grounded in the standard's own text (OM 3.019/2025, COMISIA 1 Matematică: definițiile listelor L/M1/M2, A/A1/A2/A_recent, sᵢ, nᵢ, N, C1, C2). Applied by POST /admin/indicators/descriptions/apply. Romanian by the H87 decision.",
+
+  "Mate26_N": "Indicatorul N = 2·Q1 + Q2: fiecare articol publicat într-o revistă din prima quartilă (Q1) aduce 2 puncte, iar unul din a doua quartilă (Q2) aduce 1 punct. Se iau în considerare doar articolele din lista L — reviste indexate Science Citation Index Expanded (SCIE) care NU au ca regulă generală plata unei taxe de procesare sau publicare. Quartila este cea mai favorabilă încadrare din ultimele cinci clasamente UEFISCDI după AIS (anii t‑1…t‑5), indiferent de anul publicării articolului. Praguri: 7 pentru Conferențiar, 12 pentru Profesor.",
+
+  "Mate26_N_recent": "Indicatorul N_recent = 2·Q1_recent + Q2_recent: același calcul ca la N, dar numai peste articolele din A_recent, adică cele publicate în ultimii 7 ani. Prag: 2 pentru Conferențiar, Profesor și pentru atestatul de abilitare. Notă: standardul permite extinderea perioadei cu durata concediului de maternitate sau de creștere a copilului — o ajustare care rămâne în sarcina comisiei.",
+
+  "Mate26_S1": "Punctajul S1: suma valorilor sᵢ/nᵢ peste articolele din lista A1 — articolele candidatului publicate în reviste din M1, adică reviste din lista L (SCIE, fără taxă de publicare) aflate în quartilele Q1, Q2 sau Q3 în cel puțin unul dintre clasamentele UEFISCDI. sᵢ este scorul AIS maxim al revistei în clasamentele din anii t‑1…t‑5 (indiferent de anul publicării), iar nᵢ este numărul de autori ai articolului. Praguri: 2,5 pentru Conferențiar și 4 pentru atestatul de abilitare; standardul nu impune S1 la Profesor.",
+
+  "Mate26_S2": "Punctajul S2: aceeași sumă sᵢ/nᵢ ca la S1, dar peste articolele din lista A2 — cele publicate în reviste din M2, adică reviste din L aflate în quartilele Q1 sau Q2. Praguri: 1,75 pentru Conferențiar și 2,5 pentru atestatul de abilitare; standardul nu impune S2 la Profesor.",
+
+  "Mate26_Q1": "Numărul articolelor publicate în reviste din lista L aflate în prima quartilă (Q1) a clasamentelor UEFISCDI după AIS, în cea mai favorabilă încadrare din anii t‑1…t‑5. Standardul cere cel puțin un astfel de articol pentru titlul de Profesor; pentru Conferențiar și pentru abilitare nu se impune acest prag.",
+
+  "Mate26_C1": "Indicatorul C1: numărul citărilor articolelor candidatului care provin din articole publicate în reviste din lista M1 — reviste indexate SCIE, fără taxă de publicare, aflate în quartilele Q1, Q2 sau Q3. Nu se iau în considerare citările provenind din articole care îl au ca autor sau coautor pe candidat (se exclud deci și citările semnate împreună cu colaboratorii). Praguri: 16 pentru Conferențiar, 32 pentru Profesor, 20 pentru atestatul de abilitare.",
+
+  "Mate26_C2": "Indicatorul C2: numărul citărilor provenite din reviste din lista M2 — reviste din L aflate în quartilele Q1 sau Q2 — cu aceeași excludere a citărilor semnate de candidat sau de coautorii lucrării citate. Praguri: 8 pentru Conferențiar, 16 pentru Profesor, 10 pentru atestatul de abilitare."
+}

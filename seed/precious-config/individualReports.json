@@ -2583,5 +2583,223 @@
     }
    }
   ]
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6b99327b63b313829bf9"
+  },
+  "title": "FV Matematică 2026",
+  "description": "Standarde minimale COMISIA 1 Matematică (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare.",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f6b99327b63b313829bf2"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f6b99327b63b313829bf3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f6b99327b63b313829bf4"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f6b99327b63b313829bf5"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f6b99327b63b313829bf6"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f6b99327b63b313829bf7"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f6b99327b63b313829bf8"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "N — articole ponderate (2·Q1 + Q2)",
+    "indicatorIndices": [
+     0
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 7
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 12
+     }
+    ]
+   },
+   {
+    "name": "N_recent — ultimii 7 ani",
+    "indicatorIndices": [
+     1
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ]
+   },
+   {
+    "name": "S1 — sumă AIS/nᵢ (Q1–Q3)",
+    "indicatorIndices": [
+     2
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 2.5
+     },
+     {
+      "position": "HABIL",
+      "value": 4
+     }
+    ]
+   },
+   {
+    "name": "S2 — sumă AIS/nᵢ (Q1–Q2)",
+    "indicatorIndices": [
+     3
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1.75
+     },
+     {
+      "position": "HABIL",
+      "value": 2.5
+     }
+    ]
+   },
+   {
+    "name": "Q1 — cel puțin un articol Q1",
+    "indicatorIndices": [
+     4
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ]
+   },
+   {
+    "name": "C1 — citări din reviste Q1–Q3",
+    "indicatorIndices": [
+     5
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 16
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 32
+     },
+     {
+      "position": "HABIL",
+      "value": 20
+     }
+    ]
+   },
+   {
+    "name": "C2 — citări din reviste Q1–Q2",
+    "indicatorIndices": [
+     6
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 8
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 16
+     },
+     {
+      "position": "HABIL",
+      "value": 10
+     }
+    ]
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Articole (tabelul 1)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 2
+      },
+      {
+       "criterion": 3
+      },
+      {
+       "criterion": 4
+      }
+     ]
+    }
+   },
+   {
+    "name": "Citări (tabelul 2)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 5
+      },
+      {
+       "criterion": 6
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  }
 ]

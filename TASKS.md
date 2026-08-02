@@ -448,11 +448,22 @@ Done history moved to `TASKS-done.md`.
     FormulaVariableContract for every kind. `scieIndexed && !feeJournal` expresses list L exactly.
     Tests: SCIE vs SSCI-only vs SCIE-with-APC, plus "formulas that don't reference it never query
     coverage". No data changes.
-  - [ ] **S2 — the fișă** — ~8 indicators (N via the weighted quartile formula, N_recent, S1, S2,
-    Q1, C1, C2), criteria with the per-position thresholds, two perspectives + cumulative verdict,
-    descriptions. Verify with a provisional Math-department sweep. NOT derivable, leave to the
-    comisie (document in the descriptions): the taught semester courses (1 Conf / 2 Prof) and the
-    abilitation certificate; also the A_recent maternity extension.
+  - [x] **S2 — the fișă — DONE 2026-08-02** (`mate_2026_report.js`, local + seeds; prod pending).
+    "FV Matematică 2026": 7 indicators (Mate26_N, _N_recent, _S1, _S2, _Q1, _C1, _C2), all gated by
+    `scieIndexed && !feeJournal` (list L) with AIS + `LatestNRankings(5)` for sᵢ/quartile;
+    N_recent adds `PreviousNYears(7)`; C1/C2 are Citations + ANY_COAUTHOR on the CITING journal's
+    quartile. Criteria carry the three position sets INCLUDING abilitare, which has its own numbers
+    (S1 4, S2 2,5, C1 20, C2 10, N_recent 2 — and NO N, NO Q1; verified in the abilitare standard).
+    Two perspectives mirroring the fișă's own tables: "Articole (tabelul 1)" and "Citări (tabelul 2)".
+    No reportTypeKey (no export binding yet), like FEAA 2026. Descriptions written + applied.
+    Verified live on a real run (florin, CS researcher on the math fișă via a temporary division
+    selection, reverted): N 2.00 with Q1 1.00 — the invariant N = 2·Q1 + Q2 holds — N_recent 2.00,
+    S1 = S2 = 0.045, C1 11 / C2 6, i.e. every subset relation (Q1 ⊆ N, S2 ≤ S1, C2 ≤ C1) is
+    respected; HABIL thresholds render exactly as the abilitare standard, with N/Q1 inapplicable.
+    The SCIE gate demonstrably bites: the same researcher counts 2 papers under the 2016 C4
+    (fee+quartile only) but 1 here, the difference being a non-SCIE-covered venue.
+    NOT derivable, left to the comisie and documented in the descriptions: the taught semester
+    courses (1 Conf / 2 Prof), the abilitation certificate, and A_recent's maternity extension.
   - [ ] **S3 — optional** — reuse `scieIndexed` to tighten the 2016 C4 gate if the comisie wants
     L-membership there too (today C4 checks fee + quartile only).
 
