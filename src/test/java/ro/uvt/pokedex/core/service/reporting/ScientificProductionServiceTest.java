@@ -1609,6 +1609,33 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void mathLectorFormulaDropsTheAuthorDivisorForLectorOnly() {
+        // "Se consideră nᵢ = 1 pentru lector" (FV Matematică, nota fișei din Anexa 1): the S sum
+        // divides sᵢ by the author count everywhere EXCEPT the Lector position, where each article
+        // counts its full sᵢ. Canonical (Poz = "") keeps the divisor, so stored scores don't move.
+        Indicator indicator = indicator("PUBLICATIONS", "S > 0.5 ? (Poz == \"LECT_UNIV\" ? S : S/N) : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "RIS");
+        ScoringPublication coauthored = publication("p-ris", "f-ris", "2022-01-01", "ar", "ar",
+                "Coauthored Paper", List.of("a1", "a2", "a3", "a4"));
+        when(scoringFactoryService.getScoringService("RIS")).thenReturn(scoringService);
+        when(scoringService.getScore(coauthored, indicator)).thenReturn(score(2.0));
+
+        Map<String, Score> result = scientificProductionService
+                .calculateScientificProductionScore(List.of(coauthored), indicator);
+
+        assertEquals(0.5, result.get("total").getAuthorScore(), 0.0001); // canonical: 2.0 / 4 authors
+        Map<String, Double> byPosition = (Map<String, Double>)
+                result.get("Coauthored Paper").getScoringInfo()
+                        .get(ScientificProductionService.AUTHOR_SCORE_BY_POSITION);
+        assertEquals(2.0, byPosition.get("LECT_UNIV"), 0.0001); // undivided for Lector
+        // Every other position matches canonical, so nothing else is stamped.
+        org.junit.jupiter.api.Assertions.assertFalse(byPosition.containsKey("CONF_UNIV"));
+        org.junit.jupiter.api.Assertions.assertFalse(byPosition.containsKey("PROF_UNIV"));
+        org.junit.jupiter.api.Assertions.assertFalse(byPosition.containsKey("ASIST_UNIV"));
+    }
+
+    @Test
     void nonPozFormulaStampsNothing() {
         Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2,1)");
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");

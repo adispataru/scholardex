@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-08-02",
+    "title": "Matematică: punctajul S respectă regula nᵢ = 1 pentru Lector",
+    "body": "Fișa de verificare a standardelor de Matematică precizează, în nota de sub tabelul din Anexa 1, că pentru posturile de Lector se consideră nᵢ = 1 — adică punctajul unui articol nu se împarte la numărul de autori. Platforma împărțea la numărul de autori indiferent de poziție, deci candidații pe post de Lector erau evaluați mai sever decât cere standardul. Punctajele S și S_recent aplică acum regula: la selectarea poziției de Lector fiecare articol contează cu întregul său scor de influență. Pentru celelalte poziții nimic nu se schimbă. Punctajele de Lector cresc la următoarea rulare a fișei."
+  },
+  {
+    "date": "2026-08-02",
     "title": "Fișa de Matematică: criterii denumite, grupate pe cele două secțiuni ale fișei, cu descrieri",
     "body": "Fișa FV Matematică afișa criteriile fără denumire. Acestea poartă acum numele din standard (S, S_recent, C, respectiv indicatorii suplimentari UVT C1–C4) și sunt grupate în cele două secțiuni ale fișei de verificare: «Standarde naționale (Anexa 1)» și «Indicatori suplimentari UVT». Fiecare grup arată verdictul DA/NU pentru poziția selectată — cerințele standardului se aplică cumulativ, iar criteriile pe care standardul nu le impune pentru poziția aleasă (de exemplu S_recent și C la Lector) nu blochează verdictul. Fiecare indicator are acum și o descriere care explică modul de calcul și pragurile."
   },

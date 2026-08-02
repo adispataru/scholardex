@@ -1,9 +1,9 @@
 {
   "_comment": "H94 — researcher-facing descriptions for the FV Matematică indicators, grounded in the standard's own text (Standarde minimale Matematică, indicatorii din Anexa 1 la OM 6.129/2016 + indicatorii suplimentari UVT C1–C4). Applied by POST /admin/indicators/descriptions/apply. Romanian by the H87 decision.",
 
-  "Mate_S": "Punctajul S (Anexa 1 la OM 6.129/2016): suma valorilor sᵢ/nᵢ peste toate articolele candidatului, unde sᵢ este scorul relativ de influență (RIS) al revistei în care a apărut articolul, iar nᵢ este numărul de autori. Se punctează doar articolele din reviste cu scor relativ de influență peste 0,5; celelalte apar în listă cu punctaj 0. Praguri: 5 pentru Profesor, 2,5 pentru Conferențiar, 1 pentru Lector.",
+  "Mate_S": "Punctajul S (Anexa 1 la OM 6.129/2016): suma valorilor sᵢ/nᵢ peste toate articolele candidatului, unde sᵢ este scorul relativ de influență (RIS) al revistei în care a apărut articolul, iar nᵢ este numărul de autori. Se punctează doar articolele din reviste cu scor relativ de influență peste 0,5; celelalte apar în listă cu punctaj 0. Pentru poziția de Lector standardul prevede nᵢ = 1, așa că fiecare articol contează cu întregul sᵢ — punctajul afișat se ajustează automat când selectezi această poziție. Praguri: 5 pentru Profesor, 2,5 pentru Conferențiar, 1 pentru Lector.",
 
-  "Mate_S_recent": "Punctajul S_recent: aceeași sumă sᵢ/nᵢ ca la S, dar numai peste articolele publicate în ultimii 7 ani (coloana «Publicat în ultimii 7 ani» din fișa de verificare). Praguri: 2,5 pentru Profesor, 1,5 pentru Conferențiar; standardul nu impune acest indicator pentru Lector și Asistent.",
+  "Mate_S_recent": "Punctajul S_recent: aceeași sumă sᵢ/nᵢ ca la S (inclusiv regula nᵢ = 1 pentru Lector), dar numai peste articolele publicate în ultimii 7 ani (coloana «Publicat în ultimii 7 ani» din fișa de verificare). Praguri: 2,5 pentru Profesor, 1,5 pentru Conferențiar; standardul nu impune acest indicator pentru Lector și Asistent.",
 
   "Mate_C": "Punctajul C: numărul citărilor articolelor candidatului provenite din reviste cu scor relativ de influență (RIS) de cel puțin 0,5. Autocitările candidatului nu se iau în considerare. Praguri: 12 pentru Profesor, 6 pentru Conferențiar.",
 

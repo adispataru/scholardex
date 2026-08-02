@@ -179,19 +179,19 @@
    "$oid": "680fa64de3d12644e3045404"
   },
   "name": "Mate_S",
-  "description": "Punctajul S (Anexa 1 la OM 6.129/2016): suma valorilor sᵢ/nᵢ peste toate articolele candidatului, unde sᵢ este scorul relativ de influență (RIS) al revistei în care a apărut articolul, iar nᵢ este numărul de autori. Se punctează doar articolele din reviste cu scor relativ de influență peste 0,5; celelalte apar în listă cu punctaj 0. Praguri: 5 pentru Profesor, 2,5 pentru Conferențiar, 1 pentru Lector.",
-  "formula": "S > 0.5 ? S/N : 0",
+  "description": "Punctajul S (Anexa 1 la OM 6.129/2016): suma valorilor sᵢ/nᵢ peste toate articolele candidatului, unde sᵢ este scorul relativ de influență (RIS) al revistei în care a apărut articolul, iar nᵢ este numărul de autori. Se punctează doar articolele din reviste cu scor relativ de influență peste 0,5; celelalte apar în listă cu punctaj 0. Pentru poziția de Lector standardul prevede nᵢ = 1, așa că fiecare articol contează cu întregul sᵢ — punctajul afișat se ajustează automat când selectezi această poziție. Praguri: 5 pentru Profesor, 2,5 pentru Conferențiar, 1 pentru Lector.",
+  "formula": "S > 0.5 ? (Poz == \"LECT_UNIV\" ? S : S/N) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "RIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "8960ed89dd0e44ac09a4b4d186f0fb0c54d2adfbed8177f3a18c5ab965ebb74e",
+  "formulaHash": "4e895c794ab03f6c1cc43f9d31a860ab0b627b173aae72906a674674a8efedf4",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -683,19 +683,19 @@
    "$oid": "68220d212a04a41f93fc7dba"
   },
   "name": "Mate_S_recent",
-  "description": "Punctajul S_recent: aceeași sumă sᵢ/nᵢ ca la S, dar numai peste articolele publicate în ultimii 7 ani (coloana «Publicat în ultimii 7 ani» din fișa de verificare). Praguri: 2,5 pentru Profesor, 1,5 pentru Conferențiar; standardul nu impune acest indicator pentru Lector și Asistent.",
-  "formula": "S > 0.5 ? S/N : 0",
+  "description": "Punctajul S_recent: aceeași sumă sᵢ/nᵢ ca la S (inclusiv regula nᵢ = 1 pentru Lector), dar numai peste articolele publicate în ultimii 7 ani (coloana «Publicat în ultimii 7 ani» din fișa de verificare). Praguri: 2,5 pentru Profesor, 1,5 pentru Conferențiar; standardul nu impune acest indicator pentru Lector și Asistent.",
+  "formula": "S > 0.5 ? (Poz == \"LECT_UNIV\" ? S : S/N) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "RIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "8960ed89dd0e44ac09a4b4d186f0fb0c54d2adfbed8177f3a18c5ab965ebb74e",
+  "formulaHash": "4e895c794ab03f6c1cc43f9d31a860ab0b627b173aae72906a674674a8efedf4",
   "yearRangeSpec": {
    "n": 7,
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$PreviousNYears"
