@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-08-02",
+    "title": "Matematică: C4 numără doar lucrările care întrunesc condiția b.",
+    "body": "Indicatorul C4_UVT («număr de lucrări», cerut la Lector și Asistent) număra toate publicațiile candidatului. Standardul cere însă ca lucrările numărate să întrunească condiția b.: articole în reviste FĂRĂ taxă de publicare, aflate în quartilele Q1, Q2 sau Q3 ale clasamentelor după AIS, în cea mai favorabilă încadrare din ultimele cinci clasamente (anii t‑1…t‑5). C4 aplică acum acest filtru, iar a doua parte a condiției — cel puțin o lucrare în Q1 sau Q2 — apare ca rând separat în fișă. Lucrările care nu îndeplinesc condiția rămân vizibile în listă, cu punctaj 0 și motivul afișat. Punctajele C4 scad la următoarea rulare a fișei."
+  },
+  {
+    "date": "2026-08-02",
     "title": "Matematică: punctajul S respectă regula nᵢ = 1 pentru Lector",
     "body": "Fișa de verificare a standardelor de Matematică precizează, în nota de sub tabelul din Anexa 1, că pentru posturile de Lector se consideră nᵢ = 1 — adică punctajul unui articol nu se împarte la numărul de autori. Platforma împărțea la numărul de autori indiferent de poziție, deci candidații pe post de Lector erau evaluați mai sever decât cere standardul. Punctajele S și S_recent aplică acum regula: la selectarea poziției de Lector fiecare articol contează cu întregul său scor de influență. Pentru celelalte poziții nimic nu se schimbă. Punctajele de Lector cresc la următoarea rulare a fișei."
   },

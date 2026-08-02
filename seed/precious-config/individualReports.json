@@ -21,7 +21,8 @@
    "68230b164652ac0103a9eebd": "C1_UVT",
    "680f69396f664731f88f814a": "__not_exported__",
    "682340fe7123387ec34394ae": "C2_UVT",
-   "680fa64de3d12644e3045404": "__not_exported__"
+   "680fa64de3d12644e3045404": "__not_exported__",
+   "6a6f60f1fa0cd41bfd91ca11": "__not_exported__"
   },
   "title": "FV Matematică",
   "description": "Bazat pe https://cariere.uvt.ro/wp-content/uploads/2025/03/Standarde-minimale-FMI.pdf",
@@ -66,6 +67,12 @@
     "$ref": "indicators",
     "$id": {
      "$oid": "68234a6c7e443769580e906d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a6f60f1fa0cd41bfd91ca11"
     }
    }
   ],
@@ -181,7 +188,7 @@
     "contributesToTotal": false
    },
    {
-    "name": "C4 — număr de lucrări",
+    "name": "C4 — lucrări în Q1–Q3, fără taxă",
     "indicatorIndices": [
      6
     ],
@@ -196,6 +203,23 @@
      }
     ],
     "contributesToTotal": false
+   },
+   {
+    "name": "C4 — din care în Q1 sau Q2",
+    "indicatorIndices": [
+     7
+    ],
+    "contributesToTotal": false,
+    "thresholds": [
+     {
+      "position": "LECT_UNIV",
+      "value": 1
+     },
+     {
+      "position": "ASIST_UNIV",
+      "value": 1
+     }
+    ]
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
@@ -231,6 +255,9 @@
       },
       {
        "criterion": 6
+      },
+      {
+       "criterion": 7
       }
      ]
     }
