@@ -1,5 +1,10 @@
 [
   {
+    "date": "2026-08-31",
+    "title": "Un singur punctaj total pe pagină; intervalul de buget declarat are prioritate",
+    "body": "Două corecții pornite din observațiile lui Florin Fortis. (1) Punctajul total din antetul fișei putea diferi de rândul «Total» de mai jos: antetul arăta suma canonică, iar rândul aplica ajustările poziției selectate (de exemplu tăierea punctelor de categoria D la Conferențiar și Profesor, conform fișei Info). Antetul se recalculează acum pentru poziția selectată, cu aceleași valori ca rândul «Total» — cele două nu mai pot diferi. (2) La granturi, intervalul de buget declarat (exprimat explicit în EUR) are acum prioritate față de suma numerică din câmpul «Buget», care nu precizează moneda — sumele introduse în lei produceau încadrări greșite (de exemplu un proiect de 100–200 de mii EUR punctat ca unul de peste 500 de mii). Bugetele preluate de la CORDIS rămân sursa cea mai de încredere. Punctajele D_v se corectează la următoarea rulare a fișei."
+  },
+  {
     "date": "2026-08-03",
     "title": "Fizică 2026: brevetele de invenție se punctează (A7 și A8)",
     "body": "Fișa de Fizică 2026 punctează acum și brevetele acordate: 3 puncte pentru fiecare brevet internațional (tip Triadic, European sau International) și 0,5 puncte pentru fiecare brevet național, în ambele cazuri împărțite la numărul efectiv de autori. Brevetele se declară la activități, iar câmpul «N_autori» este de acum numeric — completați-l, pentru că din el se calculează împărțirea; dacă lipsește, brevetul se punctează integral, ca pentru un singur autor. Odată cu acest rând, toată activitatea profesională prevăzută de standard este acoperită, cu excepția cărților în calitate de editor (A3) și a lucrărilor în proceedings indexate ISI (A6), care urmează."

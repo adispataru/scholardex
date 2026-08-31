@@ -534,12 +534,13 @@ Done history moved to `TASKS-done.md`.
 
 - [ ] `H99` Florin Fortis's FV Info 2026 feedback batch (email, ~2026-08-31; triaged against his
   PROD data same day — every number below verified against his actual runs/instances).
-  1. **Two totals on one page (1361,92 top vs 1355,67 bottom)** — BOTH real: the header "PUNCTAJ
-     TOTAL" sums CANONICAL contributing criteria; the "Total" tile is POSITION-EFFECTIVE (the
-     Conf/Prof D-gate cuts category-D conference points: his Info_B_Conferințe canonical 116.58 vs
-     110.33 by position — Δ6.25 = exactly the gap). Fix: the header is server-rendered once and
-     ignores the position selector — make it re-render client-side from position-effective scores
-     like the tiles (assembler must ship contributesToTotal flags in the thresholds payload).
+  1. **Two totals on one page — FIXED 2026-08-31.** Root cause as diagnosed: header canonical vs
+     tile position-effective (Δ6.25 = the Conf D-gate cut on Info_B_Conferințe 116.58→110.33).
+     `contributesToTotal` was ALREADY in the thresholds payload; `updateTotalScore(position)` in
+     the dashboard JS recomputes the header from the same position-effective criterion scores the
+     tiles use (hooked at boot + applyPosition; Thymeleaf-matching locale format, no grouping).
+     Verified live at Prof/Conf/Lect: header == Total tile at every position (188,93 / 188,93 /
+     190,43 on florin.spataru's local run). Code-only, ships with the next deploy.
   2. **A*+A+B=44 vs "B entries in the conference list total 36"** — hypothesis (verify on his
      items): workshops of A*/A/B conferences are 2026-reclassified to categoria C (excluded from
      the top indicator) while the drilldown badge still shows the CORE category B — ~8p = two
@@ -560,10 +561,11 @@ Done history moved to `TASKS-done.md`.
      SCIPA (565.600 LEI, declared 100–199k EUR) derives bracket 5 → Membru 5p instead of 3p.
      Reproduced his whole D_v=71 sum from Buget-derived brackets — three entries wrong: SCIPA 5
      (should be 3), SCAMP-ML 10 (should be 8, lei), Dehems 0 (should be 6 — "156.491" parses as
-     156.491 EUR, dot-as-thousands). Fix: reorder to CORDIS → DECLARED interval → Buget-derived
-     (the declared interval is explicitly EUR-labeled; raw Buget is currency-ambiguous). Also
-     affects physics A10 (uses Buget directly — same lei contamination, needs its own decision:
-     currency field?).
+     156.491 EUR, dot-as-thousands). **FIXED 2026-08-31**: derivation reordered to CORDIS →
+     DECLARED interval → Buget-derived in `injectBudgetBracketVariable`; tests pin the SCIPA and
+     Dehems reproductions plus CORDIS-beats-declared. His D_v recomputes 71 → 73 on next refresh.
+     STILL OPEN from this item: physics A10 uses raw `Buget` directly — same lei/locale
+     contamination, needs its own decision (currency field on the activity?).
   6. **"Cereri de corectare" unprocessed** — his 86 authorship decisions are all CONFIRMED (fine);
      what's actually stuck is a PENDING publication-merge request (6a66785a…, ~Jul 27) sitting
      unreviewed in /admin/publication-merges for a month. Admin action, not code.

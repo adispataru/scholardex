@@ -162,22 +162,32 @@ public class ActivityReportingService {
 
     /**
      * Binds {@code Interval_buget} (int 1–5 per {@link GrantBudgetBracket}, 0 = unknown), derived
-     * trusted-first: CORDIS {@code proj_budget} → the declared exact {@code Buget} → the
-     * researcher's interval select (label-matched against the bracket scale) → 0. Always bound, so
-     * formulas can reference it without null checks; overwrites the raw select label the generic
-     * field loop bound under the same name.
+     * trusted-first: CORDIS {@code proj_budget} → the researcher's declared interval select
+     * (label-matched against the bracket scale) → the declared exact {@code Buget} → 0. Always
+     * bound, so formulas can reference it without null checks; overwrites the raw select label the
+     * generic field loop bound under the same name.
+     *
+     * <p>H99 item 5 (Florin Fortis): the declared interval now OUTRANKS the raw {@code Buget}.
+     * {@code Buget} carries no currency — real prod entries hold lei amounts ("565600" for a
+     * 100–199k EUR project → bracket 5 instead of 3) and locale-formatted strings ("156.491"
+     * parsing as 156 EUR → bracket 1 instead of 3) — while the interval options are explicitly
+     * EUR-labeled, so when a researcher picked one it is the reliable statement of the bracket.
+     * CORDIS stays on top: it is authoritative EUR from the funder.
      */
     private void injectBudgetBracketVariable(ActivityInstance activity, Map<String, Object> variables) {
         Object projBudget = variables.get("proj_budget");
+        String declared = activity.getFields() == null ? null : activity.getFields().get("Interval_buget");
+        int declaredBracket = GrantBudgetBracket.indexFromLabel(declared);
         Object exactBudget = variables.get("Buget");
         int bracket;
         if (projBudget instanceof Number n) {
             bracket = GrantBudgetBracket.fromAmount(n.doubleValue()).index;
+        } else if (declaredBracket > 0) {
+            bracket = declaredBracket;
         } else if (exactBudget instanceof Number n) {
             bracket = GrantBudgetBracket.fromAmount(n.doubleValue()).index;
         } else {
-            String declared = activity.getFields() == null ? null : activity.getFields().get("Interval_buget");
-            bracket = GrantBudgetBracket.indexFromLabel(declared);
+            bracket = 0;
         }
         variables.put("Interval_buget", bracket);
     }

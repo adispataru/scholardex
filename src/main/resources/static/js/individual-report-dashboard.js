@@ -1155,6 +1155,32 @@
     return { met: met, total: total };
   }
 
+  /**
+   * H99 item 1 (Florin Fortis): the header "PUNCTAJ TOTAL" was server-rendered once with the
+   * CANONICAL sum while the Total criterion tile showed the position-effective value (e.g. the
+   * Conf/Prof D-gate cut) — two different totals on one page, 1361,92 vs 1355,67. The header now
+   * recomputes from the same position-effective criterion scores the tiles use, so the two can
+   * never disagree. With no position selected every lookup falls back to the canonical score and
+   * the value equals what the server rendered.
+   */
+  function updateTotalScore(position) {
+    var el = document.getElementById('eval-total-score-value');
+    if (!el) return; // report has no contributesToTotal criteria — the cell isn't rendered
+    var total = 0, any = false;
+    _thresholds.forEach(function (entry) {
+      if (!entry || !entry.contributesToTotal) return;
+      any = true;
+      total += criterionScore(entry.index, position);
+    });
+    if (!any) return;
+    // Mirror Thymeleaf's #numbers.formatDecimal(totalScore, 1, 2): two decimals, locale decimal
+    // separator, no thousands grouping.
+    var locale = (window.appLocale === 'ro') ? 'ro-RO' : 'en-US';
+    el.textContent = total.toLocaleString(locale, {
+      minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false
+    });
+  }
+
   function updateCriteriaMet(position) {
     var valueEl = document.getElementById('eval-criteria-met-value');
     var barEl   = document.getElementById('eval-criteria-met-bar');
@@ -1193,6 +1219,7 @@
     renderRail(root, position);
     renderPerspectiveVerdicts(root, position);
     updateCriteriaMet(position);
+    updateTotalScore(position);
     var active = root.querySelector('.app-eval-rail__tile.is-active');
     if (active) {
       var activeIdx = parseInt(active.getAttribute('data-criterion-index'), 10);
@@ -1773,6 +1800,7 @@
     initPositionSelector(root, researcherPosition);
     renderRail(root, _position);
     renderPerspectiveVerdicts(root, _position);
+    updateTotalScore(_position);
     renderNearMisses(root, _position);
     initRail(root);
     initIndicatorHashClicks(root);

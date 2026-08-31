@@ -101,7 +101,9 @@
                     <!-- Total score (only shown when at least one criterion is flagged contributesToTotal) -->
                     <div class="app-eval-aggregate__cell" th:if="${totalScore != null}">
                         <span class="app-eval-aggregate__label" th:text="#{report.view.totalScore}">Total Score</span>
-                        <span class="app-eval-aggregate__value"
+                        <!-- H99: JS re-renders this per selected position from position-effective scores,
+                             so it can never disagree with the Total criterion tile below. -->
+                        <span class="app-eval-aggregate__value" id="eval-total-score-value"
                               th:text="${#numbers.formatDecimal(totalScore, 1, 2)}">0.00</span>
                     </div>
                     <!-- Criteria Met — values updated by JS when position changes -->

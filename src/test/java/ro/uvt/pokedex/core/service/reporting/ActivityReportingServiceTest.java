@@ -245,6 +245,41 @@ class ActivityReportingServiceTest {
     }
 
     @Test
+    void declaredIntervalOutranksTheCurrencyAmbiguousBuget() {
+        // H99 item 5 (Florin Fortis's SCIPA/Dehems): Buget has no currency semantics — prod holds lei
+        // amounts and locale-formatted strings — while the interval select is explicitly EUR-labeled.
+        // A conflicting declared interval must therefore win over the raw number.
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator bracket = indicator("GENERIC_ACTIVITY", "Interval_buget");
+
+        // SCIPA: 565.600 LEI entered as Buget, project declared 100–199k EUR → bracket 3, not 5.
+        ActivityInstance scipa = grantActivity("g-scipa", Map.of(
+                "Buget", "565600", "Rol", "Membru", "Nume Proiect", "SCIPA",
+                "Interval_buget", "100.000 – 199.999 EUR"));
+        // Dehems: "156.491" parses as 156.491 EUR (dot-as-thousands) → would be bracket 1; declared 100–199k wins.
+        ActivityInstance dehems = grantActivity("g-dehems", Map.of(
+                "Buget", "156.491", "Rol", "Director (proiect internațional)", "Nume Proiect", "Dehems",
+                "Interval_buget", "100.000 – 199.999 EUR"));
+
+        assertEquals(3.0, service.calculateActivityScores(List.of(scipa), bracket).get("g-scipa").getAuthorScore(), 1e-9);
+        assertEquals(3.0, service.calculateActivityScores(List.of(dehems), bracket).get("g-dehems").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void cordisBudgetStillOutranksTheDeclaredInterval() {
+        // CORDIS is authoritative EUR from the funder — it stays above the researcher's select.
+        when(scholardexProjectReadPort.findById("sproj_2")).thenReturn(project(270000L, "EC"));
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator bracket = indicator("GENERIC_ACTIVITY", "Interval_buget");
+        ActivityInstance act = grantActivityWithProject("g-cordis",
+                Map.of("Rol", "Membru", "Nume Proiect", "X", "Interval_buget", "sub 50.000 EUR"), "sproj_2");
+
+        assertEquals(4.0, service.calculateActivityScores(List.of(act), bracket).get("g-cordis").getAuthorScore(), 1e-9);
+    }
+
+    @Test
     void intervalBugetUsesTheDeclaredIntervalSelectWhenNoAmountIsKnown() {
         ActivityReportingService service = new ActivityReportingService(
                 scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
