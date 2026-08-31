@@ -532,6 +532,54 @@ Done history moved to `TASKS-done.md`.
     physicist (Conf. dr. O. M. Bunoiu, 07.07.2025) computed under these 2026 rules — the same kind
     of ground truth the Info excel provided.
 
+- [ ] `H99` Florin Fortis's FV Info 2026 feedback batch (email, ~2026-08-31; triaged against his
+  PROD data same day — every number below verified against his actual runs/instances).
+  1. **Two totals on one page (1361,92 top vs 1355,67 bottom)** — BOTH real: the header "PUNCTAJ
+     TOTAL" sums CANONICAL contributing criteria; the "Total" tile is POSITION-EFFECTIVE (the
+     Conf/Prof D-gate cuts category-D conference points: his Info_B_Conferințe canonical 116.58 vs
+     110.33 by position — Δ6.25 = exactly the gap). Fix: the header is server-rendered once and
+     ignores the position selector — make it re-render client-side from position-effective scores
+     like the tiles (assembler must ship contributesToTotal flags in the thresholds payload).
+  2. **A*+A+B=44 vs "B entries in the conference list total 36"** — hypothesis (verify on his
+     items): workshops of A*/A/B conferences are 2026-reclassified to categoria C (excluded from
+     the top indicator) while the drilldown badge still shows the CORE category B — ~8p = two
+     4p workshop entries. If confirmed, scoring is CORRECT per the amendment and the fix is
+     display: badge should show the effective 2026 category (or both).
+  3. **D_xii = 0 — FOUND, fix ready** (`info_2026_dxii_quote_fix.js`): prod's formula lost its
+     quotes in a prod-side edit ("Rol == Conducător ? 3 : 1" — MVEL compares against an undefined
+     identifier, every instance errors to 0). Local + seeds carry the quoted form. His 4 Membru +
+     2 Conducător committees → 10p once fixed. Follow-up feature (his suggestion, sensible
+     platform-wide): activity instances dated in the FUTURE should not score — he wants to record
+     doctoranzi now, dated by (expected) defense, and have them start counting then.
+  4. **GoveIN "missing" from the list** — it EXISTS in his data (Coordonator local, 35.000 EUR,
+     sub-50k). D_v gives bracket-1 grants 0 points, and zero-scored rows are collapsed/absent in
+     the drilldown. Scoring correct; explain + make sure the activities drilldown shows zero rows
+     (with reason) like publications do.
+  5. **SCIPA 5p — CONFIRMED, his hypothesis exactly right**: `Interval_buget` binds trusted-first
+     CORDIS → numeric `Buget` → declared interval, and `Buget` has NO currency semantics. His
+     SCIPA (565.600 LEI, declared 100–199k EUR) derives bracket 5 → Membru 5p instead of 3p.
+     Reproduced his whole D_v=71 sum from Buget-derived brackets — three entries wrong: SCIPA 5
+     (should be 3), SCAMP-ML 10 (should be 8, lei), Dehems 0 (should be 6 — "156.491" parses as
+     156.491 EUR, dot-as-thousands). Fix: reorder to CORDIS → DECLARED interval → Buget-derived
+     (the declared interval is explicitly EUR-labeled; raw Buget is currency-ambiguous). Also
+     affects physics A10 (uses Buget directly — same lei contamination, needs its own decision:
+     currency field?).
+  6. **"Cereri de corectare" unprocessed** — his 86 authorship decisions are all CONFIRMED (fine);
+     what's actually stuck is a PENDING publication-merge request (6a66785a…, ~Jul 27) sitting
+     unreviewed in /admin/publication-merges for a month. Admin action, not code.
+  7. **No way to add books (Mirton/Eubeea)** — real UX gap: user_defined publications exist as a
+     source but the workspace has no add-a-book flow. FEAA Punctul 8 and physics A1/A4 depend on
+     this too ("books can be added manually" is currently only true in principle).
+  8. **Missing book chapters** (clearly chapters, no conference) — canon subtype/identification
+     investigation; he offers Alexandra's smaller profile as a testbed.
+  9. **NEW (found during triage, he didn't spot it): nondeterministic runs** — his back-to-back
+     refreshes flip between 1356.25 and 1361.92 (pub ±0.33, cit ±5.33 — both thirds: one forum
+     flapping C↔D affects one n=5 paper by 1/3 and ~16 citations by 1/3 each). Same inputs,
+     different scores per run — likely a conference-resolution or best-of tie broken by iteration
+     order. Needs its own investigation; determinism matters more than either value.
+  Order proposed: 3 (script ready) → 5 (code, score-correcting) → 1 (code, UX-trust) → 9
+  (investigation) → 4+2 (display/explanations) → 7 → 8 → future-dated feature from 3.
+
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**
