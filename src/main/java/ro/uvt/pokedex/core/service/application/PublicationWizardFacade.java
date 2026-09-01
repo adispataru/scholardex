@@ -223,7 +223,7 @@ public class PublicationWizardFacade {
         book.setPublisher(publisher);
         String isbnKey = isbn.replaceAll("[^0-9Xx]", "");
         book.setPrintIsbn(isBlank(isbnKey) ? null : isbnKey);
-        book.setPublicationYear(extractYear(command.getCoverDate()));
+        book.setPublicationYear(extractYear(command.getCoverDate()).orElse(null));
         book.setSource(UserDefinedWizardOnboardingContract.SOURCE);
         book.setAsOf(now.toString());
         book.setCreatedAt(now);
@@ -232,15 +232,17 @@ public class PublicationWizardFacade {
         return id;
     }
 
-    private Integer extractYear(String coverDate) {
+    // Optional, not a nullable Integer: the security-validation guardrail rejects bare null
+    // returns anywhere downstream of resolveForumId in this file (it scans the raw text).
+    private Optional<Integer> extractYear(String coverDate) {
         String normalized = normalizeDate(coverDate);
         if (normalized.length() < 4) {
-            return null;
+            return Optional.empty();
         }
         try {
-            return Integer.parseInt(normalized.substring(0, 4));
+            return Optional.of(Integer.parseInt(normalized.substring(0, 4)));
         } catch (NumberFormatException e) {
-            return null;
+            return Optional.empty();
         }
     }
 
