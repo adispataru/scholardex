@@ -482,7 +482,7 @@ Arguments: `+Array.prototype.slice.call(L).join("")+`
             <div class="app-ws-pubs__wiz-field">
               <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-book-publisher">${U("workspace.pubs.publisher")}</label>
               <input class="app-ws-pubs__wiz-input" id="ws-wiz-book-publisher" type="text"
-                     value="${Ae(i.publisher??"")}" placeholder="e.g. Editura Mirton"/>
+                     value="${Ae(i.publisher??"")}" placeholder="e.g. Editura Universit\u0103\u021Bii de Vest din Timi\u0219oara"/>
               <div class="app-ws-pubs__wiz-sense-badge" id="ws-wiz-sense-badge" hidden></div>
             </div>
           </div>

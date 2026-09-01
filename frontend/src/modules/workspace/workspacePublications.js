@@ -1697,7 +1697,7 @@ function _renderStep1Book() {
             <div class="app-ws-pubs__wiz-field">
               <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-book-publisher">${t('workspace.pubs.publisher')}</label>
               <input class="app-ws-pubs__wiz-input" id="ws-wiz-book-publisher" type="text"
-                     value="${_esc(nb.publisher ?? '')}" placeholder="e.g. Editura Mirton"/>
+                     value="${_esc(nb.publisher ?? '')}" placeholder="e.g. Editura Universității de Vest din Timișoara"/>
               <div class="app-ws-pubs__wiz-sense-badge" id="ws-wiz-sense-badge" hidden></div>
             </div>
           </div>
