@@ -573,8 +573,15 @@ Done history moved to `TASKS-done.md`.
      156.491 EUR, dot-as-thousands). **FIXED 2026-08-31**: derivation reordered to CORDIS →
      DECLARED interval → Buget-derived in `injectBudgetBracketVariable`; tests pin the SCIPA and
      Dehems reproductions plus CORDIS-beats-declared. His D_v recomputes 71 → 73 on next refresh.
-     STILL OPEN from this item: physics A10 uses raw `Buget` directly — same lei/locale
-     contamination, needs its own decision (currency field on the activity?).
+     Physics A10 follow-up CLOSED 2026-09-01 (Option A): new derived `Buget_eur` variable bound
+     centrally in ActivityReportingService — CORDIS proj_budget → raw Buget when it agrees with
+     the declared interval → the interval's LOWER bound when Buget is missing/contradicts it
+     (conservative; `budgetEurDerived` note surfaces on the drilldown row) → raw Buget alone →
+     null. Fiz26_A10 formula switches to `Buget_eur/50000` via
+     `fizica_a10_buget_eur.js` (run AFTER the code deploy; hash stamped via FormulaHasher);
+     description updated (re-apply descriptions). Tests pin the SCIPA-in-lei reproduction
+     (565600 @ 100–199k declared → 2.0, not 11.3), CORDIS precedence, agreement, interval-only,
+     raw-only, and null→0.
   6. **"Cereri de corectare" unprocessed — CLOSED 2026-09-01**: his merge request (a Scopus↔
      OpenAlex twin of the IGI IoT-governance chapter; never auto-merged because the Scopus DOI has
      a typo, ch0013 vs ch013) was buried mid-queue among 31 pending (sorted updatedAt desc between

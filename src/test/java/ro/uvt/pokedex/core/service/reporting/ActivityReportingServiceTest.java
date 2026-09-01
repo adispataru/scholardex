@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -356,6 +357,79 @@ class ActivityReportingServiceTest {
     private static ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse project(Long budget, String funder) {
         return new ro.uvt.pokedex.core.controller.dto.ScholardexProjectListItemResponse(
                 "sproj_1", "PN-CODE", null, "Title", funder, "Dir", 2017, 2018, "UVT", budget);
+    }
+
+    // ── Buget_eur: the continuous EUR budget for /50.000-style formulas (physics A10) ──
+
+    @Test
+    void budgetEurPrefersCordisOverEverything() {
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator a10 = indicator("GENERIC_ACTIVITY", "Buget_eur == null ? 0 : Buget_eur/50000");
+        ActivityInstance grant = grantActivityWithProject("g-cordis", Map.of(
+                "Buget", "565600", "Rol", "Director", "Nume Proiect", "EU-X"), "sproj_eu");
+        when(scholardexProjectReadPort.findById("sproj_eu")).thenReturn(project(250000L, "EC"));
+
+        Score score = service.calculateActivityScores(List.of(grant), a10).get("g-cordis");
+
+        assertEquals(5.0, score.getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void budgetEurTrustsTheNumericBudgetWhenItAgreesWithTheDeclaredInterval() {
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator a10 = indicator("GENERIC_ACTIVITY", "Buget_eur == null ? 0 : Buget_eur/50000");
+        ActivityInstance grant = grantActivity("g-agree", Map.of(
+                "Buget", "150000", "Interval_buget", "100.000 – 199.999 EUR", "Rol", "Director"));
+
+        Score score = service.calculateActivityScores(List.of(grant), a10).get("g-agree");
+
+        assertEquals(3.0, score.getAuthorScore(), 1e-9);
+        assertFalse(score.getScoringInfo().containsKey("budgetEurDerived"));
+    }
+
+    @Test
+    void budgetEurFallsToTheIntervalLowerBoundWhenTheNumericBudgetContradictsIt() {
+        // The SCIPA reproduction: 565.600 (lei) declared as 100.000–199.999 EUR. The lei amount must
+        // not divide by 50.000 EUR; the conservative lower bound (100.000 → 2.0) scores instead, and
+        // the drilldown note says the amount was inferred.
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator a10 = indicator("GENERIC_ACTIVITY", "Buget_eur == null ? 0 : Buget_eur/50000");
+        ActivityInstance grant = grantActivity("g-scipa", Map.of(
+                "Buget", "565600", "Interval_buget", "100.000 – 199.999 EUR", "Rol", "Director"));
+
+        Score score = service.calculateActivityScores(List.of(grant), a10).get("g-scipa");
+
+        assertEquals(2.0, score.getAuthorScore(), 1e-9);
+        assertEquals("DECLARED_INTERVAL_LOWER_BOUND", score.getScoringInfo().get("budgetEurDerived"));
+    }
+
+    @Test
+    void budgetEurFallsToTheIntervalLowerBoundWhenNoNumericBudgetExists() {
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator a10 = indicator("GENERIC_ACTIVITY", "Buget_eur == null ? 0 : Buget_eur/50000");
+        ActivityInstance grant = grantActivity("g-interval-only", Map.of(
+                "Interval_buget", "200.000 – 499.999 EUR", "Rol", "Director"));
+
+        Score score = service.calculateActivityScores(List.of(grant), a10).get("g-interval-only");
+
+        assertEquals(4.0, score.getAuthorScore(), 1e-9);
+        assertEquals("DECLARED_INTERVAL_LOWER_BOUND", score.getScoringInfo().get("budgetEurDerived"));
+    }
+
+    @Test
+    void budgetEurUsesTheRawBudgetAloneAndNullsOutWhenNothingExists() {
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator a10 = indicator("GENERIC_ACTIVITY", "Buget_eur == null ? 0 : Buget_eur/50000");
+
+        // No interval declared: the raw number is all we have (irreducible without currency info).
+        Score raw = service.calculateActivityScores(List.of(
+                grantActivity("g-raw", Map.of("Buget", "75000", "Rol", "Director"))), a10).get("g-raw");
+        assertEquals(1.5, raw.getAuthorScore(), 1e-9);
+
+        // Nothing at all: Buget_eur binds null and the formula's null-guard yields 0 (excluded row).
+        ActivityReportingService.ScoredActivityResult none = service.calculateActivityScoresDetailed(List.of(
+                grantActivity("g-none", Map.of("Rol", "Director"))), a10);
+        assertEquals(0.0, none.excludedItems().get("g-none").getAuthorScore(), 1e-9);
     }
 
     @Test

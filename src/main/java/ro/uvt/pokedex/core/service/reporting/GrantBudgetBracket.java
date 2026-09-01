@@ -44,6 +44,16 @@ public enum GrantBudgetBracket {
         return best;
     }
 
+    /** Bracket for an {@code Interval_buget} index (1–5), or null for 0/out-of-range. */
+    public static GrantBudgetBracket byIndex(int index) {
+        for (GrantBudgetBracket bracket : values()) {
+            if (bracket.index == index) {
+                return bracket;
+            }
+        }
+        return null;
+    }
+
     /** Bracket index for a stored select label, or 0 when the value is absent/unrecognized. */
     public static int indexFromLabel(String label) {
         if (label == null || label.isBlank()) {

@@ -107,6 +107,8 @@ public class ActivityReportingService {
         // researcher's self-declared interval select, else 0 (unknown). Budget-aware formulas consume
         // Interval_buget (1–5) instead of re-encoding the threshold bounds per indicator.
         injectBudgetBracketVariable(activity, variables);
+        // H99/physics A10: continuous EUR budget with the same trusted-first spirit — see the method doc.
+        boolean budgetEurDerivedFromInterval = injectBudgetEurVariable(activity, variables);
         // Editions multiplier for recurring roles (20 years on the SYNASC committee = ONE entry):
         // N_editii = An_sfarsit - An_inceput + 1 from the optional year-pair fields, else 1. Rank-
         // sensitive formulas (D_vi S/2) value the whole range at the entry-year rank — when the
@@ -143,6 +145,11 @@ public class ActivityReportingService {
             if (score.getMultiplier() != null) {
                 variables.put("M", score.getMultiplier());
             }
+        }
+        if (budgetEurDerivedFromInterval) {
+            // Surfaced on the drilldown row: the amount was inferred from the declared interval's lower
+            // bound, not taken from the (missing or interval-contradicting) numeric Buget.
+            result.getScoringInfo().put("budgetEurDerived", "DECLARED_INTERVAL_LOWER_BOUND");
         }
         if(result.getScore() > 0.0) {
 
@@ -208,6 +215,44 @@ public class ActivityReportingService {
             bracket = 0;
         }
         variables.put("Interval_buget", bracket);
+    }
+
+    /**
+     * Binds {@code Buget_eur} — a continuous EUR amount for formulas that divide by a euro threshold
+     * (physics A10: Vᵢ/50.000 EUR), where the bracketed {@code Interval_buget} cannot serve. Same
+     * trusted-first spirit, adapted to a continuous value: CORDIS {@code proj_budget} (authoritative
+     * EUR) → the raw {@code Buget} when it agrees with the researcher's declared interval (the honest
+     * "this really is EUR" signal) → the declared interval's LOWER bound when {@code Buget} is missing
+     * or contradicts it (conservative: real prod entries hold lei amounts and locale-formatted strings,
+     * and an eligibility instrument must under-promise on contradictory data) → the raw {@code Buget}
+     * alone when nothing else exists (irreducible without currency information) → null. Always bound,
+     * so formulas can null-check without exploding.
+     *
+     * @return true when the interval-lower-bound fallback fired (surfaced as a drilldown note)
+     */
+    private boolean injectBudgetEurVariable(ActivityInstance activity, Map<String, Object> variables) {
+        Object projBudget = variables.get("proj_budget");
+        String declared = activity.getFields() == null ? null : activity.getFields().get("Interval_buget");
+        GrantBudgetBracket declaredBracket = GrantBudgetBracket.byIndex(GrantBudgetBracket.indexFromLabel(declared));
+        Object exactBudget = variables.get("Buget");
+        Object eur;
+        boolean derivedFromInterval = false;
+        if (projBudget instanceof Number n) {
+            eur = n.doubleValue();
+        } else if (declaredBracket != null) {
+            if (exactBudget instanceof Number n && GrantBudgetBracket.fromAmount(n.doubleValue()) == declaredBracket) {
+                eur = n.doubleValue();
+            } else {
+                eur = (double) declaredBracket.lowerBoundEur;
+                derivedFromInterval = true;
+            }
+        } else if (exactBudget instanceof Number n) {
+            eur = n.doubleValue();
+        } else {
+            eur = null;
+        }
+        variables.put("Buget_eur", eur);
+        return derivedFromInterval;
     }
 
     /**
