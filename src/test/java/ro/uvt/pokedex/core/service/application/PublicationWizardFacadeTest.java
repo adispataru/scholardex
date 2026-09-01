@@ -39,6 +39,12 @@ class PublicationWizardFacadeTest {
     private ScopusImportEventIngestionService importEventIngestionService;
     @Mock
     private ScopusCanonicalMaterializationService canonicalMaterializationService;
+    @Mock
+    private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
+    @Mock
+    private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    @Mock
+    private PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
 
     @InjectMocks
     private PublicationWizardFacade facade;
@@ -406,6 +412,116 @@ class PublicationWizardFacadeTest {
         WizardPublicationCommand command = facade.buildPublicationDraft("missing", "a1", "creator", null);
         assertEquals(List.of("a1"), command.getAuthorIds());
         assertNull(command.getWizardForumPublicationName());
+    }
+
+    @Test
+    void chapterSubmissionMintsADeterministicBookEntityAndSkipsForums() {
+        // H99 item 7: a chapter at a publisher outside the Scopus book list (Mirton) mints a USER_DEFINED
+        // book entity and the pub carries book_id with NO forum — the Scopus ch/bk shape.
+        WizardPublicationCommand command = new WizardPublicationCommand();
+        command.setTitle("Capitol despre sisteme distribuite");
+        command.setCreator("user@example.com");
+        command.setSubtype("ch");
+        command.setSubtypeDescription("Book Chapter");
+        command.setCoverDate("2026-03-01");
+        command.setWizardBookTitle("Sisteme distribuite moderne");
+        command.setWizardBookIsbn("978-973-52-0000-1");
+        command.setWizardBookPublisher("Editura Mirton");
+        command.setPageRange("45-78");
+        command.setExternalAuthorNames("Ion Popescu\nMaria Ionescu");
+
+        when(bookFactRepository.findById(any())).thenReturn(Optional.empty());
+        when(importEventIngestionService.ingest(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-book"));
+
+        User submitter = new User();
+        submitter.setEmail("user@example.com");
+
+        PublicationWizardFacade.SubmissionResult result = facade.submitPublication(command, submitter);
+        assertTrue(result.imported());
+
+        ArgumentCaptor<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact> bookCaptor =
+                ArgumentCaptor.forClass(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact.class);
+        verify(bookFactRepository).save(bookCaptor.capture());
+        var book = bookCaptor.getValue();
+        assertTrue(book.getId().startsWith(UserDefinedWizardOnboardingContract.BOOK_ID_PREFIX));
+        assertEquals("Editura Mirton", book.getPublisher());
+        assertEquals("Sisteme distribuite moderne", book.getTitle());
+        assertEquals(Integer.valueOf(2026), book.getPublicationYear());
+
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(importEventIngestionService).ingest(any(), any(), any(), any(), any(), any(), payloadCaptor.capture());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = (Map<String, Object>) payloadCaptor.getValue();
+        assertEquals(book.getId(), payload.get("book_id"));
+        assertEquals("", payload.get("source_id"));                       // no forum minted for a book pub
+        // external co-authors count toward the divisor and land in author_names, unminted
+        assertEquals(2, payload.get("author_count"));
+        assertEquals("Ion Popescu;Maria Ionescu", payload.get("author_names"));
+        assertEquals("45-78", payload.get("pageRange"));
+    }
+
+    @Test
+    void chapterSubmissionAttachesToASelectedListedBook() {
+        WizardPublicationCommand command = new WizardPublicationCommand();
+        command.setTitle("Chapter in a listed volume");
+        command.setCreator("user@example.com");
+        command.setSubtype("ch");
+        command.setSubtypeDescription("Book Chapter");
+        command.setCoverDate("2025-06-01");
+        command.setBookId("606201523");
+
+        var listed = new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact();
+        listed.setId("606201523");
+        when(bookFactRepository.findById("606201523")).thenReturn(Optional.of(listed));
+        when(importEventIngestionService.ingest(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-book2"));
+
+        User submitter = new User();
+        submitter.setEmail("user@example.com");
+        facade.submitPublication(command, submitter);
+
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(importEventIngestionService).ingest(any(), any(), any(), any(), any(), any(), payloadCaptor.capture());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = (Map<String, Object>) payloadCaptor.getValue();
+        assertEquals("606201523", payload.get("book_id"));
+        verify(bookFactRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void submitAutoConfirmsTheSubmittersAuthorship() {
+        // H99 item 7: the researcher just declared their own publication — the CONFIRMED authorship
+        // decision is written at submit time (scoring reads only decision-confirmed pubs).
+        WizardPublicationCommand command = buildCommand();
+        when(importEventIngestionService.ingest(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-3"));
+        var canonical = new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact();
+        canonical.setId("spub_wizard_1");
+        when(scholardexPublicationFactRepository.findByEid(any())).thenReturn(Optional.of(canonical));
+
+        User submitter = new User();
+        submitter.setEmail("user@example.com");
+        facade.submitPublication(command, submitter);
+
+        verify(publicationAuthorshipDecisionService).upsertDecision(
+                eq("user@example.com"), eq("spub_wizard_1"),
+                eq(ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED),
+                eq("wizard-self-submission"));
+    }
+
+    @Test
+    void bookSubmissionRequiresABookOrItsDraft() {
+        WizardPublicationCommand command = new WizardPublicationCommand();
+        command.setTitle("A book with no venue");
+        command.setCreator("user@example.com");
+        command.setSubtype("bk");
+        command.setSubtypeDescription("Book");
+        command.setCoverDate("2026-01-01");
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> facade.submitPublication(command, new User()));
+        assertTrue(ex.getMessage().contains("book"));
     }
 
     private WizardPublicationCommand buildCommand() {

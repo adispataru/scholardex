@@ -781,6 +781,18 @@ public class ResearcherWorkspaceController {
         return ResponseEntity.ok(publicationWizardFacade.findAuthorsForAffiliation(afid));
     }
 
+    // ── JSON: wizard — book search for the book/chapter path (H99 item 7) ─
+    @GetMapping("/publications/wizard-books")
+    @ResponseBody
+    public ResponseEntity<List<PublicationWizardFacade.BookOption>> searchWizardBooks(
+            @RequestParam(name = "q", required = false) String query,
+            Authentication authentication) {
+        if (currentUser(authentication).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(publicationWizardFacade.searchBooks(query));
+    }
+
     // ── JSON: wizard — submit new publication ─────────────────────────────
     @PostMapping("/publications/wizard")
     @ResponseBody

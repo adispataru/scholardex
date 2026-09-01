@@ -94,6 +94,8 @@ public class UserDefinedFactBuilderService {
         fact.setSourceBatchId(event.getBatchId());
         fact.setSourceCorrelationId(event.getCorrelationId());
         fact.setForumSourceRecordId(text(payload, "source_id"));
+        // H99 item 7: book-entity venue for bk/ch wizard pubs (no forum minted for these).
+        fact.setBookId(text(payload, "book_id"));
         fact.setEid(text(payload, "eid"));
         fact.setDoi(text(payload, "doi"));
         fact.setPii(text(payload, "pii"));

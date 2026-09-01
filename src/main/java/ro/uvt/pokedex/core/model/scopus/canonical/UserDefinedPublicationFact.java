@@ -22,6 +22,8 @@ public class UserDefinedPublicationFact implements HasLineageFields, HasReviewFi
     private String sourceCorrelationId;
 
     private String forumSourceRecordId;
+    /** H99 item 7: book-entity venue ({@code scholardex.book_facts} id) — set for bk/ch wizard pubs instead of a forum. */
+    private String bookId;
     private String eid;
     private String doi;
     private String pii;

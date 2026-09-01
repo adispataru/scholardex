@@ -222,6 +222,11 @@ public class UserDefinedCanonicalizationService {
             if (!isDblpStampedForum(target.getForumId())) {
                 target.setForumId(forumId);
             }
+            // H99 item 7: bk/ch wizard pubs are book-entity-venued. Copy-if-present only — a user-defined
+            // submission matching an existing Scopus pub must never null out that pub's bookId.
+            if (!isBlank(sourcePublication.getBookId())) {
+                target.setBookId(sourcePublication.getBookId());
+            }
             target.setVolume(sourcePublication.getVolume());
             target.setIssueIdentifier(sourcePublication.getIssueIdentifier());
             target.setCoverDate(sourcePublication.getCoverDate());

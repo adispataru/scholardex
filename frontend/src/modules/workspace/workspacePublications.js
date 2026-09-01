@@ -63,6 +63,16 @@ const AGGREGATION_TYPES = [
     { value: 'Report',                key: 'workspace.pubs.aggregation.report' },
 ];
 
+// H99 item 7 — type-first wizard: the kind chosen at step 0 shapes every later step (venue = forum
+// vs book entity, subtype preset, canonical Scopus-style type description).
+const KIND_OPTIONS = [
+    { value: 'ar', icon: 'fa-newspaper',    key: 'workspace.pubs.kind.ar', subtypeDesc: 'Journal Article' },
+    { value: 'cp', icon: 'fa-users',        key: 'workspace.pubs.kind.cp', subtypeDesc: 'Conference Paper' },
+    { value: 'bk', icon: 'fa-book',         key: 'workspace.pubs.kind.bk', subtypeDesc: 'Book' },
+    { value: 'ch', icon: 'fa-book-open',    key: 'workspace.pubs.kind.ch', subtypeDesc: 'Book Chapter' },
+];
+const BOOK_KINDS = ['bk', 'ch'];
+
 // ── Module state ─────────────────────────────────────────────────────────────
 
 let _panel          = null;
@@ -84,8 +94,16 @@ let _wAuthors       = null;   // Array<ScholardexAuthorView> — null until fetc
 let _wAuthorsLoading = false;
 let _wTitle         = '';
 let _wDate          = '';
+let _wKind          = null;   // 'ar' | 'cp' | 'bk' | 'ch' — chosen at step 0
 let _wSubtype       = 'ar';
 let _wSubtypeDesc   = '';
+// Book-entity venue state (bk/ch kinds)
+let _wBookId        = null;   // selected book_facts id
+let _wBookFilter    = '';
+let _wBookResults   = [];
+let _wNewBook       = null;   // {title, isbn, publisher}
+let _wExternalAuthors = '';   // free-text co-authors outside the platform (one per line)
+let _wPageRange     = '';
 let _wDoi           = '';
 let _wVolume        = '';
 let _wIssueIdentifier = '';
@@ -1498,13 +1516,19 @@ function _setModalState(modal, open) {
 function _openWizard() {
     if (_wizardOpen) return;
     _wizardOpen      = true;
-    _wizardStep      = 1;
+    _wizardStep      = 0;
+    _wKind           = null;
     _wForumId        = null;
     _wNewForum       = null;
     _wForumFilter    = '';
+    _wBookId         = null;
+    _wBookFilter     = '';
+    _wBookResults    = [];
+    _wNewBook        = null;
     _wAuthorIds      = [];
     _wAuthors        = null;
     _wAuthorsLoading = false;
+    _wExternalAuthors = '';
     _wTitle          = '';
     _wDate           = '';
     _wSubtype        = 'ar';
@@ -1512,10 +1536,8 @@ function _openWizard() {
     _wDoi            = '';
     _wVolume         = '';
     _wIssueIdentifier = '';
+    _wPageRange      = '';
     _renderWizardPanel();
-    setTimeout(() => {
-        document.getElementById('ws-pubs-wiz-forum-search')?.focus();
-    }, 50);
 }
 
 function _closeWizard(force) {
@@ -1540,8 +1562,10 @@ function _wizardIsDirty() {
     return !!(
         _wForumId ||
         (_wNewForum && (_wNewForum.publicationName || _wNewForum.issn)) ||
-        _wAuthorIds.length > 0 ||
-        _wTitle || _wDate || _wSubtypeDesc || _wDoi
+        _wBookId ||
+        (_wNewBook && (_wNewBook.title || _wNewBook.isbn || _wNewBook.publisher)) ||
+        _wAuthorIds.length > 0 || _wExternalAuthors ||
+        _wTitle || _wDate || _wDoi
     );
 }
 
@@ -1554,13 +1578,14 @@ function _renderWizardPanel() {
 
 function _buildWizardShell() {
     const steps = [
-        { label: t('workspace.pubs.wizard.stepForum') },
+        { label: t('workspace.pubs.wizard.stepKind') },
+        { label: BOOK_KINDS.includes(_wKind) ? t('workspace.pubs.wizard.stepBook') : t('workspace.pubs.wizard.stepForum') },
         { label: t('workspace.pubs.wizard.stepAuthors') },
         { label: t('workspace.pubs.wizard.stepDetails') },
     ];
 
     const stepsHtml = steps.map((s, i) => {
-        const n = i + 1;
+        const n = i;
         const cls = n < _wizardStep
             ? 'app-ws-pubs__wizard-step--done'
             : n === _wizardStep
@@ -1568,7 +1593,7 @@ function _buildWizardShell() {
                 : '';
         const dotContent = n < _wizardStep
             ? `<i class="fa-solid fa-check" aria-hidden="true"></i>`
-            : String(n);
+            : String(n + 1);
         return `
             <div class="app-ws-pubs__wizard-step ${cls}" aria-current="${n === _wizardStep ? 'step' : 'false'}">
               <div class="app-ws-pubs__wizard-step-dot">${dotContent}</div>
@@ -1596,9 +1621,82 @@ function _buildWizardShell() {
 }
 
 function _renderCurrentStep() {
-    if (_wizardStep === 1) return _renderStep1();
+    if (_wizardStep === 0) return _renderStep0();
+    if (_wizardStep === 1) return BOOK_KINDS.includes(_wKind) ? _renderStep1Book() : _renderStep1();
     if (_wizardStep === 2) return _renderStep2();
     return _renderStep3();
+}
+
+// Step 0: publication kind — shapes every later step.
+function _renderStep0() {
+    const options = KIND_OPTIONS.map(o => `
+        <li class="app-ws-pubs__wiz-forum-item ${o.value === _wKind ? 'app-ws-pubs__wiz-forum-item--selected' : ''}"
+            data-kind="${_esc(o.value)}" role="option" aria-selected="${o.value === _wKind}">
+          <div class="app-ws-pubs__wiz-forum-name">
+            <i class="fa-solid ${_esc(o.icon)}" aria-hidden="true" style="margin-right:0.5rem"></i>${_esc(t(o.key))}
+          </div>
+        </li>`).join('');
+    return `
+        <ul class="app-ws-pubs__wiz-forum-list" role="listbox" aria-label="${_esc(t('workspace.pubs.wizard.stepKind'))}" id="ws-pubs-wiz-kind-list">
+          ${options}
+        </ul>
+        <div class="app-ws-pubs__wiz-nav">
+          <span class="app-ws-pubs__wiz-feedback" id="ws-pubs-wiz-error" role="alert" aria-live="assertive"></span>
+          <button class="btn btn-sm btn-outline-secondary" type="button" id="ws-pubs-wiz-cancel">${t('common.cancel')}</button>
+          <button class="btn btn-sm btn-primary" type="button" id="ws-pubs-wiz-next">Next →</button>
+        </div>`;
+}
+
+// Step 1 (book kinds): search the book list (Scopus snapshot + user-defined), else describe the book.
+function _renderStep1Book() {
+    const items = (_wBookResults ?? []).map(b => {
+        const selected = b.id === _wBookId;
+        const meta = [b.publisher, b.isbn, b.year].filter(Boolean).join(' · ');
+        return `
+            <li class="app-ws-pubs__wiz-forum-item ${selected ? 'app-ws-pubs__wiz-forum-item--selected' : ''}"
+                data-book-id="${_esc(b.id)}" role="option" aria-selected="${selected}">
+              <div class="app-ws-pubs__wiz-forum-name">${_esc(b.title ?? b.id)}</div>
+              <div class="app-ws-pubs__wiz-forum-meta">${_esc(meta)}</div>
+            </li>`;
+    }).join('');
+    const emptyNotice = (_wBookFilter.trim().length >= 3 && (_wBookResults ?? []).length === 0)
+        ? `<li style="padding:0.5rem;font-size:0.85rem;color:var(--app-color-text-muted)">${_esc(t('workspace.pubs.wizard.noBookMatch'))}</li>`
+        : '';
+
+    const nb = _wNewBook ?? {};
+    return `
+        <input class="app-ws-pubs__wiz-search-input" id="ws-pubs-wiz-book-search"
+               type="search" placeholder="${t('workspace.pubs.wizard.searchBooks')}" value="${_esc(_wBookFilter)}"
+               autocomplete="off" aria-label="${t('workspace.pubs.wizard.searchBooks')}"/>
+        <ul class="app-ws-pubs__wiz-forum-list" role="listbox" aria-label="${t('workspace.pubs.wizard.stepBook')}" id="ws-pubs-wiz-book-list">
+          ${items}${emptyNotice}
+        </ul>
+        <details class="app-ws-pubs__wiz-new-forum" id="ws-pubs-wiz-new-book-details" ${_wBookId === null && _wNewBook ? 'open' : ''}>
+          <summary>${_esc(t('workspace.pubs.wizard.createBookSummary'))}</summary>
+          <div class="app-ws-pubs__wiz-new-forum-fields">
+            <div class="app-ws-pubs__wiz-field">
+              <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-book-title">${t('workspace.pubs.bookTitle')}</label>
+              <input class="app-ws-pubs__wiz-input" id="ws-wiz-book-title" type="text"
+                     value="${_esc(nb.title ?? '')}" placeholder="e.g. Advances in …"/>
+            </div>
+            <div class="app-ws-pubs__wiz-field">
+              <label class="app-ws-pubs__wiz-label" for="ws-wiz-book-isbn">ISBN</label>
+              <input class="app-ws-pubs__wiz-input" id="ws-wiz-book-isbn" type="text"
+                     value="${_esc(nb.isbn ?? '')}" placeholder="978-…"/>
+            </div>
+            <div class="app-ws-pubs__wiz-field">
+              <label class="app-ws-pubs__wiz-label app-ws-pubs__wiz-label--required" for="ws-wiz-book-publisher">${t('workspace.pubs.publisher')}</label>
+              <input class="app-ws-pubs__wiz-input" id="ws-wiz-book-publisher" type="text"
+                     value="${_esc(nb.publisher ?? '')}" placeholder="e.g. Editura Mirton"/>
+              <div class="app-ws-pubs__wiz-sense-badge" id="ws-wiz-sense-badge" hidden></div>
+            </div>
+          </div>
+        </details>
+        <div class="app-ws-pubs__wiz-nav">
+          <span class="app-ws-pubs__wiz-feedback" id="ws-pubs-wiz-error" role="alert" aria-live="assertive"></span>
+          <button class="btn btn-sm btn-outline-secondary" type="button" id="ws-pubs-wiz-back">← Back</button>
+          <button class="btn btn-sm btn-primary" type="button" id="ws-pubs-wiz-next">Next →</button>
+        </div>`;
 }
 
 // Step 1: Forum selection
@@ -1728,6 +1826,11 @@ function _renderStep2() {
             <ul class="app-ws-pubs__wiz-author-list" id="ws-pubs-wiz-staged">${stagedItems}</ul>
           </div>
         </div>
+        <div class="app-ws-pubs__wiz-field app-ws-pubs__wiz-field--full" style="margin-top:0.75rem">
+          <label class="app-ws-pubs__wiz-label" for="ws-wiz-external-authors">${t('workspace.pubs.externalAuthors')}</label>
+          <textarea class="app-ws-pubs__wiz-input" id="ws-wiz-external-authors" rows="3"
+                    placeholder="${_esc(t('workspace.pubs.externalAuthorsHint'))}">${_esc(_wExternalAuthors)}</textarea>
+        </div>
         <div class="app-ws-pubs__wiz-nav">
           <span class="app-ws-pubs__wiz-feedback" id="ws-pubs-wiz-error" role="alert" aria-live="assertive"></span>
           <button class="btn btn-sm btn-outline-secondary" type="button" id="ws-pubs-wiz-back">← Back</button>
@@ -1758,12 +1861,19 @@ function _renderStep3() {
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-subtype-desc" type="text"
                    value="${_esc(_wSubtypeDesc)}" placeholder="e.g. Journal Article"/>
           </div>
+          ${_wKind === 'ar' ? `
           <div class="app-ws-pubs__wiz-field">
             <label class="app-ws-pubs__wiz-label" for="ws-wiz-subtype">${t('workspace.pubs.subtypeCode')}</label>
             <select class="app-ws-pubs__wiz-select" id="ws-wiz-subtype">
               ${subtypeOptions}
             </select>
-          </div>
+          </div>` : ''}
+          ${BOOK_KINDS.includes(_wKind) ? `
+          <div class="app-ws-pubs__wiz-field">
+            <label class="app-ws-pubs__wiz-label" for="ws-wiz-pagerange">${t('workspace.pubs.pageRange')}</label>
+            <input class="app-ws-pubs__wiz-input" id="ws-wiz-pagerange" type="text"
+                   value="${_esc(_wPageRange)}" placeholder="e.g. 45-78"/>
+          </div>` : ''}
           <div class="app-ws-pubs__wiz-field">
             <label class="app-ws-pubs__wiz-label" for="ws-wiz-doi">DOI</label>
             <input class="app-ws-pubs__wiz-input" id="ws-wiz-doi" type="text"
@@ -1820,7 +1930,53 @@ function _wireWizardEvents() {
     document.getElementById('ws-pubs-wiz-next')?.addEventListener('click', () => _wizardNext());
     document.getElementById('ws-pubs-wiz-submit')?.addEventListener('click', () => _submitWizard());
 
-    if (_wizardStep === 1) {
+    if (_wizardStep === 0) {
+        document.getElementById('ws-pubs-wiz-kind-list')?.addEventListener('click', e => {
+            const item = e.target.closest('[data-kind]');
+            if (!item) return;
+            const kind = item.dataset.kind;
+            _wKind = kind;
+            const opt = KIND_OPTIONS.find(o => o.value === kind);
+            _wSubtype = kind;
+            // Canonical Scopus-style description; researcher can still edit it at the details step.
+            _wSubtypeDesc = opt ? opt.subtypeDesc : '';
+            _reRenderStepBody();
+        });
+    }
+
+    if (_wizardStep === 1 && BOOK_KINDS.includes(_wKind)) {
+        const bookSearch = document.getElementById('ws-pubs-wiz-book-search');
+        if (bookSearch) {
+            let bookTimer = null;
+            bookSearch.addEventListener('input', () => {
+                _wBookFilter = bookSearch.value;
+                clearTimeout(bookTimer);
+                bookTimer = setTimeout(() => _fetchBookResults(), 300);
+            });
+        }
+        document.getElementById('ws-pubs-wiz-book-list')?.addEventListener('click', e => {
+            const item = e.target.closest('[data-book-id]');
+            if (!item) return;
+            const bid = item.dataset.bookId;
+            _wBookId  = _wBookId === bid ? null : bid; // toggle
+            _wNewBook = null;
+            const details = document.getElementById('ws-pubs-wiz-new-book-details');
+            if (details && _wBookId) details.open = false;
+            _reRenderStepBody();
+        });
+        // Live SENSE badge on the book publisher too — same resolution the book scorer uses.
+        const bookPublisher = document.getElementById('ws-wiz-book-publisher');
+        if (bookPublisher) {
+            let senseTimer = null;
+            bookPublisher.addEventListener('input', () => {
+                clearTimeout(senseTimer);
+                senseTimer = setTimeout(() => _updateSenseBadge(bookPublisher.value), 250);
+            });
+            if (bookPublisher.value.trim()) _updateSenseBadge(bookPublisher.value);
+        }
+    }
+
+    if (_wizardStep === 1 && !BOOK_KINDS.includes(_wKind)) {
         // Forum search filter
         const searchInput = document.getElementById('ws-pubs-wiz-forum-search');
         searchInput?.addEventListener('input', () => {
@@ -1884,7 +2040,31 @@ function _reRenderStepBody() {
 // ── Wizard navigation ─────────────────────────────────────────────────────────
 
 function _wizardNext() {
-    if (_wizardStep === 1) {
+    if (_wizardStep === 0) {
+        if (!_wKind) {
+            _showWizardError(t('workspace.pubs.wizard.kindRequired'));
+            return;
+        }
+        _clearWizardError();
+        _wizardStep = 1;
+        _renderWizardPanel();
+        setTimeout(() => {
+            (document.getElementById('ws-pubs-wiz-book-search')
+                ?? document.getElementById('ws-pubs-wiz-forum-search'))?.focus();
+        }, 50);
+    } else if (_wizardStep === 1 && BOOK_KINDS.includes(_wKind)) {
+        _captureStep1Book();
+        const bookSelected  = !!_wBookId;
+        const newBookValid  = _wNewBook && _wNewBook.title && _wNewBook.publisher;
+        if (!bookSelected && !newBookValid) {
+            _showWizardError(t('workspace.pubs.wizard.bookRequired'));
+            return;
+        }
+        _clearWizardError();
+        _wizardStep = 2;
+        _renderWizardPanel();
+        _fetchAuthorsIfNeeded();
+    } else if (_wizardStep === 1) {
         _captureStep1();
         const forumSelected = !!_wForumId;
         const newForumValid  = _wNewForum &&
@@ -1899,6 +2079,7 @@ function _wizardNext() {
         _renderWizardPanel();
         _fetchAuthorsIfNeeded();
     } else if (_wizardStep === 2) {
+        _captureStep2();
         _wizardStep = 3;
         _renderWizardPanel();
         setTimeout(() => document.getElementById('ws-wiz-title')?.focus(), 50);
@@ -1906,7 +2087,12 @@ function _wizardNext() {
 }
 
 function _wizardBack() {
-    if (_wizardStep === 2) {
+    if (_wizardStep === 1) {
+        if (BOOK_KINDS.includes(_wKind)) _captureStep1Book(); else _captureStep1();
+        _wizardStep = 0;
+        _renderWizardPanel();
+    } else if (_wizardStep === 2) {
+        _captureStep2();
         _wizardStep = 1;
         _renderWizardPanel();
     } else if (_wizardStep === 3) {
@@ -1914,6 +2100,43 @@ function _wizardBack() {
         _wizardStep = 2;
         _renderWizardPanel();
     }
+}
+
+function _captureStep1Book() {
+    const details = document.getElementById('ws-pubs-wiz-new-book-details');
+    if (details?.open) {
+        _wBookId  = null;
+        _wNewBook = {
+            title:     document.getElementById('ws-wiz-book-title')?.value?.trim() ?? '',
+            isbn:      document.getElementById('ws-wiz-book-isbn')?.value?.trim() ?? '',
+            publisher: document.getElementById('ws-wiz-book-publisher')?.value?.trim() ?? '',
+        };
+    }
+}
+
+function _captureStep2() {
+    _wExternalAuthors = document.getElementById('ws-wiz-external-authors')?.value ?? '';
+}
+
+function _fetchBookResults() {
+    const q = _wBookFilter.trim();
+    if (q.length < 3) {
+        _wBookResults = [];
+        if (_wizardStep === 1) _reRenderStepBody();
+        return;
+    }
+    fetch(`/user/workspace/publications/wizard-books?q=${encodeURIComponent(q)}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+        .then(res => res.ok ? res.json() : [])
+        .then(books => {
+            _wBookResults = Array.isArray(books) ? books : [];
+            if (_wizardStep === 1) _reRenderStepBody();
+        })
+        .catch(() => {
+            _wBookResults = [];
+            if (_wizardStep === 1) _reRenderStepBody();
+        });
 }
 
 function _captureStep1() {
@@ -1934,10 +2157,12 @@ function _captureStep3() {
     _wTitle           = document.getElementById('ws-wiz-title')?.value?.trim() ?? '';
     _wDate            = document.getElementById('ws-wiz-date')?.value?.trim() ?? '';
     _wSubtypeDesc     = document.getElementById('ws-wiz-subtype-desc')?.value?.trim() ?? '';
-    _wSubtype         = document.getElementById('ws-wiz-subtype')?.value ?? 'ar';
+    // The code select renders only for journal kinds; other kinds keep the step-0 preset.
+    _wSubtype         = document.getElementById('ws-wiz-subtype')?.value ?? _wSubtype ?? 'ar';
     _wDoi             = document.getElementById('ws-wiz-doi')?.value?.trim() ?? '';
     _wVolume          = document.getElementById('ws-wiz-volume')?.value?.trim() ?? '';
     _wIssueIdentifier = document.getElementById('ws-wiz-issue')?.value?.trim() ?? '';
+    _wPageRange       = document.getElementById('ws-wiz-pagerange')?.value?.trim() ?? _wPageRange;
 }
 
 function _validateStep3() {
@@ -2012,6 +2237,7 @@ function _submitWizard() {
         submitBtn.textContent = t('workspace.pubs.wizard.submitting');
     }
 
+    const isBookKind = BOOK_KINDS.includes(_wKind);
     const command = {
         title:            _wTitle,
         doi:              _wDoi,
@@ -2020,12 +2246,23 @@ function _submitWizard() {
         coverDate:        _wDate,
         volume:           _wVolume,
         issueIdentifier:  _wIssueIdentifier,
+        pageRange:        _wPageRange,
+        externalAuthorNames: _wExternalAuthors,
         authorIdsCsv:     _wAuthorIds.join(','),
-        forum:            _wForumId ?? '',
+        forum:            isBookKind ? '' : (_wForumId ?? ''),
     };
 
-    // Attach new-forum fields when creating a new forum
-    if (!_wForumId && _wNewForum) {
+    if (isBookKind) {
+        // H99 item 7: book-entity venue — selected book_facts id, or a draft the backend mints.
+        if (_wBookId) {
+            command.bookId = _wBookId;
+        } else if (_wNewBook) {
+            command.wizardBookTitle     = _wNewBook.title;
+            command.wizardBookIsbn      = _wNewBook.isbn;
+            command.wizardBookPublisher = _wNewBook.publisher;
+        }
+    } else if (!_wForumId && _wNewForum) {
+        // Attach new-forum fields when creating a new forum
         command.wizardForumPublicationName  = _wNewForum.publicationName;
         command.wizardForumIssn             = _wNewForum.issn;
         command.wizardForumEIssn            = _wNewForum.eIssn;

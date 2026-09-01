@@ -579,9 +579,22 @@ Done history moved to `TASKS-done.md`.
      OpenAlex twin of the IGI IoT-governance chapter; never auto-merged because the Scopus DOI has
      a typo, ch0013 vs ch013) was buried mid-queue among 31 pending (sorted updatedAt desc between
      Dana's and Mădălina's batches). Admin approved the queue + rebuilt projections.
-  7. **No way to add books (Mirton/Eubeea)** — real UX gap: user_defined publications exist as a
-     source but the workspace has no add-a-book flow. FEAA Punctul 8 and physics A1/A4 depend on
-     this too ("books can be added manually" is currently only true in principle).
+  7. **No way to add books (Mirton/Eubeea) — BUILT 2026-09-01** (the wizard could nearly do it;
+     it was journal-shaped and never used — 0 user_defined pubs in prod). Reworked type-first:
+     step 0 picks Articol/Conferință/Carte/Capitol and shapes everything after. Book kinds are
+     BOOK-ENTITY-venued like Scopus ch/bk pubs (bookId → book_facts, NO forum): step 1 searches
+     the 477k-row book list by title/ISBN (a listed Springer/IGI volume attaches to the real
+     entity + publisher), else mints a deterministic USER_DEFINED book fact (title+ISBN+publisher,
+     idempotent; ISBN field finally wired). Free-text external co-authors (no minting) count into
+     author_count so the divisor stays honest; pageRange wired; subtype preset per kind with the
+     code select kept only for journal kinds; submit AUTO-CONFIRMS the submitter's authorship
+     decision (scoring reads only decision-confirmed pubs — the old flow landed invisible).
+     bookId flows payload → UserDefinedPublicationFact → canonicalization (copy-if-present, never
+     nulls a Scopus pub's bookId). Verified end-to-end on agent-dev: Mirton chapter → book fact
+     minted, pub ch/bookId/no-forum/authorCount=2/pageRange, decision CONFIRMED, row in workspace
+     (9→10). Polish left: auto-stage the submitter's own canonical author in step 2; the list's
+     provenance line says "Importat din Scopus" for USER_DEFINED pubs; book-title search is a cold
+     regex over 477k docs (~seconds first hit — index title if it annoys).
   8. **Missing book chapters — DIAGNOSED 2026-09-01 on Alexandra's profile: split identity ×4,
      not subtype logic.** alexandra.fortis maps to FOUR canonical authors: sauth_ab9f68… (profile
      primary: OA-only + ORCID, 35 pubs), sauth_a929bbe2… "Fortis A.-E." (Scopus 58690372800,

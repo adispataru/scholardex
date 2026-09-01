@@ -17,6 +17,13 @@ public final class UserDefinedWizardOnboardingContract {
     public static final String SOURCE = "USER_DEFINED";
     public static final String FORUM_SOURCE_RECORD_PREFIX = "USER_DEFINED:FORUM:";
     public static final String PUBLICATION_SOURCE_RECORD_PREFIX = "USER_DEFINED:PUBLICATION:";
+    /**
+     * H99 item 7: id prefix for wizard-minted book entities ({@code scholardex.book_facts} rows with
+     * {@code source=USER_DEFINED}). Books are a distinct entity from forums (H66B M7) — a wizard book or
+     * chapter resolves a {@code bookId} against the book list, and only a book absent from the Scopus
+     * snapshot (Mirton, Eubeea, …) mints one of these. Deterministic so a resubmission reuses the entity.
+     */
+    public static final String BOOK_ID_PREFIX = "USER_DEFINED:BOOK:";
 
     public static final List<String> LINEAGE_FIELDS = List.of(
             "source",
@@ -72,6 +79,22 @@ public final class UserDefinedWizardOnboardingContract {
                     + "|forum|" + normalizeToken(forumSourceRecordId);
         }
         return PUBLICATION_SOURCE_RECORD_PREFIX + shortHash(keyMaterial);
+    }
+
+    /**
+     * Deterministic id for a wizard-minted book entity: ISBN-keyed when an ISBN is given (the stable
+     * bibliographic identity), else normalized title + publisher. Mirrors the forum helper's
+     * identifier-first shape so the same book entered twice lands on one {@code book_facts} row.
+     */
+    public static String deterministicBookId(String title, String isbn, String publisher) {
+        String normalizedIsbn = trim(isbn).replaceAll("[^0-9Xx]", "").toUpperCase(Locale.ROOT);
+        String keyMaterial;
+        if (!isBlank(normalizedIsbn)) {
+            keyMaterial = "isbn|" + normalizedIsbn;
+        } else {
+            keyMaterial = "title|" + normalizeToken(title) + "|publisher|" + normalizeToken(publisher);
+        }
+        return BOOK_ID_PREFIX + shortHash(keyMaterial);
     }
 
     static String normalizeDoi(String rawDoi) {
