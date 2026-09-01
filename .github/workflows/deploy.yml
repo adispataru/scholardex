@@ -63,10 +63,15 @@ jobs:
 
       - name: Deploy to STAGE
         run: |
+          # 20m, not 12m: the rdi-stage node has twice taken ~15 minutes just to get the core
+          # container STARTED (sandbox/pull crawl on a 165MB image; the app itself boots in ~21s),
+          # and on 2026-09-01 helm gave up at 12m while the rollout then completed healthy on its
+          # own — a red release train over a slow node, with no code problem. --wait without
+          # --atomic is deliberate: never roll back a slow-but-succeeding rollout.
           helm upgrade --install scholardex ./helm/scholardex \
             -f helm/scholardex/values-stage.yaml \
             --set image.tag="$SHA" --set scopusPython.image.tag="$SHA" \
-            -n scholardex --wait --timeout 12m
+            -n scholardex --wait --timeout 20m
           helm -n scholardex list
 
   deploy-prod:
@@ -96,9 +101,11 @@ jobs:
 
       - name: Deploy to PRODUCTION
         run: |
+          # Same 20m rationale as stage: a node-level sandbox/pull crawl must not fail (and never
+          # roll back) a rollout that is succeeding slowly.
           helm upgrade --install scholardex ./helm/scholardex \
             -f helm/scholardex/values-prod.yaml \
             --set image.tag="${{ steps.resolve.outputs.tag }}" \
             --set scopusPython.image.tag="${{ steps.resolve.outputs.tag }}" \
-            -n scholardex --wait --timeout 12m
+            -n scholardex --wait --timeout 20m
           helm -n scholardex list
