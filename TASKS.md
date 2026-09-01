@@ -541,21 +541,30 @@ Done history moved to `TASKS-done.md`.
      tiles use (hooked at boot + applyPosition; Thymeleaf-matching locale format, no grouping).
      Verified live at Prof/Conf/Lect: header == Total tile at every position (188,93 / 188,93 /
      190,43 on florin.spataru's local run). Code-only, ships with the next deploy.
-  2. **A*+A+B=44 vs "B entries in the conference list total 36"** — hypothesis (verify on his
-     items): workshops of A*/A/B conferences are 2026-reclassified to categoria C (excluded from
-     the top indicator) while the drilldown badge still shows the CORE category B — ~8p = two
-     4p workshop entries. If confirmed, scoring is CORRECT per the amendment and the fix is
-     display: badge should show the effective 2026 category (or both).
+  2. **A*+A+B=44 vs "B entries in the conference list total 36" — SOLVED 2026-09-01, workshop
+     hypothesis DEAD** (isTopAStarAB already handles workshopAdjusted; his top-AB items are all
+     properly A/B-badged). Real cause: 44 was an UNDERCOUNT. Two 2026 B papers (Cognitively
+     Inspired…, Aggregate Computational Fields…, AINA via LNDECT) sit on the not-yet-DBLP-restamped
+     LNDECT Book-Series forum; Scopus labels such proceedings papers "ch", and resolveSubtype's
+     scopus-first priority masked the Crossref "conference-paper" type — so the combined CS strategy
+     (used by the top indicator) dropped them to NON_RANK while CS_CONFERENCE (the conference list)
+     ranked them B=4 on the same page. Fixed: `PublicationSubtypeSupport.indicatesConferencePaper`
+     (either vocabulary saying conference paper) routes to the conference scorer in the CS
+     dispatcher's subtype path; genuine chapters (ch + book-chapter) stay out. After deploy+refresh
+     his top-AB = 36 (B conferences) + 16 (two A journals) = 52 — exactly his arithmetic.
   3. **D_xii = 0 — FOUND, fix ready** (`info_2026_dxii_quote_fix.js`): prod's formula lost its
      quotes in a prod-side edit ("Rol == Conducător ? 3 : 1" — MVEL compares against an undefined
      identifier, every instance errors to 0). Local + seeds carry the quoted form. His 4 Membru +
      2 Conducător committees → 10p once fixed. Follow-up feature (his suggestion, sensible
      platform-wide): activity instances dated in the FUTURE should not score — he wants to record
      doctoranzi now, dated by (expected) defense, and have them start counting then.
-  4. **GoveIN "missing" from the list** — it EXISTS in his data (Coordonator local, 35.000 EUR,
-     sub-50k). D_v gives bracket-1 grants 0 points, and zero-scored rows are collapsed/absent in
-     the drilldown. Scoring correct; explain + make sure the activities drilldown shows zero rows
-     (with reason) like publications do.
+  4. **GoveIN "missing" from the list — FIXED 2026-09-01** (scoring was correct: Coordonator
+     local, 35.000 EUR, bracket 1 → D_v 0). Zero-scored declared activities now surface: new
+     `calculateActivityScoresDetailed` splits scores vs excludedItems (plain map + every
+     total/export consumer unchanged), both activity detail paths ship excludedItems, the
+     assembler appends them as zero rows, and the drilldown list zero-flags activities like
+     publications (de-emphasised row + formula-cutoff pill). SNAPSHOT payload bumped to v3 so
+     stale details recompute.
   5. **SCIPA 5p — CONFIRMED, his hypothesis exactly right**: `Interval_buget` binds trusted-first
      CORDIS → numeric `Buget` → declared interval, and `Buget` has NO currency semantics. His
      SCIPA (565.600 LEI, declared 100–199k EUR) derives bracket 5 → Membru 5p instead of 3p.
@@ -566,14 +575,27 @@ Done history moved to `TASKS-done.md`.
      Dehems reproductions plus CORDIS-beats-declared. His D_v recomputes 71 → 73 on next refresh.
      STILL OPEN from this item: physics A10 uses raw `Buget` directly — same lei/locale
      contamination, needs its own decision (currency field on the activity?).
-  6. **"Cereri de corectare" unprocessed** — his 86 authorship decisions are all CONFIRMED (fine);
-     what's actually stuck is a PENDING publication-merge request (6a66785a…, ~Jul 27) sitting
-     unreviewed in /admin/publication-merges for a month. Admin action, not code.
+  6. **"Cereri de corectare" unprocessed — CLOSED 2026-09-01**: his merge request (a Scopus↔
+     OpenAlex twin of the IGI IoT-governance chapter; never auto-merged because the Scopus DOI has
+     a typo, ch0013 vs ch013) was buried mid-queue among 31 pending (sorted updatedAt desc between
+     Dana's and Mădălina's batches). Admin approved the queue + rebuilt projections.
   7. **No way to add books (Mirton/Eubeea)** — real UX gap: user_defined publications exist as a
      source but the workspace has no add-a-book flow. FEAA Punctul 8 and physics A1/A4 depend on
      this too ("books can be added manually" is currently only true in principle).
-  8. **Missing book chapters** (clearly chapters, no conference) — canon subtype/identification
-     investigation; he offers Alexandra's smaller profile as a testbed.
+  8. **Missing book chapters — DIAGNOSED 2026-09-01 on Alexandra's profile: split identity ×4,
+     not subtype logic.** alexandra.fortis maps to FOUR canonical authors: sauth_ab9f68… (profile
+     primary: OA-only + ORCID, 35 pubs), sauth_a929bbe2… "Fortis A.-E." (Scopus 58690372800,
+     1 pub), sauth_4b9a6411… "Fortis, Alexandra Emilia" (Scopus 24450119400, 0 pubs — her OLDER
+     Scopus catalog was NEVER imported: profile declares no scopusId, so no author-works sync),
+     and sauth_459c6afb… "Alexandra-Emilia Forti" (OpenAlex name-TYPO mint, no ids) which holds
+     the reproduced missing chapter ("A Theoretical Evaluation of Distributed LLM Inference",
+     ch). 22/24 of her Scopus-imported works did attach to the primary via the H73 inversion
+     bridge — the leak is the satellites. FIX (admin, via the new /author/merge endpoint): merge
+     a929bbe2, 4b9a6411, 459c6afb into her cluster (winner rule keeps ids; her profile primary
+     re-points automatically), merge Florin's leftover OA ghost sauth_b033b318… (A5089574526,
+     1 pub) into sauth_2930286987…, then have Alexandra declare BOTH Scopus ids so her own
+     catalog (incl. older chapters) syncs. Systemic follow-up: OA display-name typos minting
+     fresh authors is H71 reconcile territory.
   9. **NEW (found during triage, he didn't spot it): nondeterministic runs — SOLVED 2026-09-01.**
      Not a forum flap: one paper's AUTHOR COUNT flipped 4↔5 ("Datastores supporting services
      lifecycle…", spub_8448b20354f36259357d30f8), and `S/max(N-2,1)` div 2↔3 explains all four

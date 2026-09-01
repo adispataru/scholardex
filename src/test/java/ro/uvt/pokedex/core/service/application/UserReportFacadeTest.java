@@ -734,8 +734,9 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(indicatorRepository.findById("ind-act")).thenReturn(Optional.of(indicator));
         when(activityInstanceRepository.findAllByResearcherId("user@uvt.ro")).thenReturn(List.of());
-        when(activityReportingService.calculateActivityScores(anyList(), eq(indicator)))
-                .thenReturn(new java.util.LinkedHashMap<>(Map.of("total", totalScore(0.0))));
+        when(activityReportingService.calculateActivityScoresDetailed(anyList(), eq(indicator)))
+                .thenReturn(new ro.uvt.pokedex.core.service.reporting.ActivityReportingService.ScoredActivityResult(
+                        new java.util.LinkedHashMap<>(Map.of("total", totalScore(0.0))), Map.of()));
 
         UserIndicatorApplyViewModel applyView = facade.buildIndicatorApplyView("user@uvt.ro", "ind-act");
 
@@ -1041,8 +1042,9 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(individualReportRepository.findById("rep-act")).thenReturn(Optional.of(report));
         when(activityInstanceRepository.findAllByResearcherId("user@uvt.ro")).thenReturn(List.of(match, other));
-        when(activityReportingService.calculateActivityScores(anyList(), eq(indicator)))
-                .thenReturn(new LinkedHashMap<>(Map.of("total", totalScore(2.0), "Mentoring", totalScore(2.0))));
+        when(activityReportingService.calculateActivityScoresDetailed(anyList(), eq(indicator)))
+                .thenReturn(new ro.uvt.pokedex.core.service.reporting.ActivityReportingService.ScoredActivityResult(
+                        new LinkedHashMap<>(Map.of("total", totalScore(2.0), "Mentoring", totalScore(2.0))), Map.of()));
         when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of());
 
         var detailOpt = facade.buildReportScopedIndicatorDetail("user@uvt.ro", "rep-act", "ind-act");

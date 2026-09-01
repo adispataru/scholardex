@@ -358,6 +358,37 @@ class ActivityReportingServiceTest {
                 "sproj_1", "PN-CODE", null, "Title", funder, "Dir", 2017, 2018, "UVT", budget);
     }
 
+    @Test
+    void detailedResultSurfacesZeroScoredInstancesAsExcludedItems() {
+        // H99 item 4 (GoveIN): a declared grant whose formula yields 0 (bracket-1 under the
+        // Interval_buget >= 2 gate) must not vanish — the detail paths list it as an excluded
+        // zero row, while the scores map and total stay exactly as before.
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator indicator = indicator("GENERIC_ACTIVITY",
+                "(Interval_buget >= 2) ? (Rol == 'Membru' ? Interval_buget : Interval_buget * 2) : 0");
+        ActivityInstance govein = grantActivity("grant-govein", Map.of(
+                "Buget", "35000",
+                "Rol", "Coordonator local",
+                "Nume Proiect", "GoveIN"
+        ));
+        ActivityInstance scored = grantActivity("grant-big", Map.of(
+                "Buget", "270000",
+                "Rol", "Membru",
+                "Nume Proiect", "SERRANO"
+        ));
+
+        ActivityReportingService.ScoredActivityResult detailed =
+                service.calculateActivityScoresDetailed(List.of(govein, scored), indicator);
+
+        assertEquals(4.0, detailed.scores().get("total").getAuthorScore());
+        assertEquals(4.0, detailed.scores().get("grant-big").getAuthorScore());
+        org.junit.jupiter.api.Assertions.assertFalse(detailed.scores().containsKey("grant-govein"));
+        assertEquals(0.0, detailed.excludedItems().get("grant-govein").getAuthorScore());
+        // The plain map keeps its historical shape for every total/export consumer.
+        assertEquals(detailed.scores().keySet(),
+                service.calculateActivityScores(List.of(govein, scored), indicator).keySet());
+    }
+
     private ActivityInstance grantActivityWithProject(String id, Map<String, String> fields, String projectRef) {
         ActivityInstance instance = grantActivity(id, fields);
         instance.setReferenceFields(Map.of(Activity.ReferenceField.PROJECT_GRANT_ID, projectRef));

@@ -74,6 +74,16 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
+        // H99 item 2: Scopus labels proceedings papers in book-series venues (LNCS/LNDECT/CCIS) "ch",
+        // and the scopus-first crosswalk masks the Crossref "conference-paper" type on the same pub — so
+        // the intended cp escape below never fired for a not-yet-restamped book-series forum, and the
+        // combined CS strategy dropped to NON_RANK a paper the CS_CONFERENCE indicator ranked B on the
+        // same page (Florin's 44-vs-36 top-A*/A/B mismatch). Either vocabulary saying "conference paper"
+        // routes to the conference scorer, which resolves the actual venue (DBLP/Crossref/CORE) itself.
+        if (PublicationSubtypeSupport.indicatesConferencePaper(publication)) {
+            return conferenceScoringService.getScore(publication, indicator);
+        }
+
         String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
         if (subtype.isEmpty()) {
             logger.warn("Publication has empty subtype: {}", publication.getId());

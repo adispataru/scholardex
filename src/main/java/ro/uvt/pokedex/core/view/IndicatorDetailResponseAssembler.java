@@ -193,6 +193,22 @@ public final class IndicatorDetailResponseAssembler {
                     }
                 }
             }
+            // H99 item 4: declared activities whose formula yielded 0 (a bracket-1 grant under D_v's
+            // Interval_buget gate) are appended as zero rows so the drilldown explains the zero instead of
+            // silently hiding the researcher's entry (GoveIN read as "my project is missing").
+            Object excludedActivitiesObj = graph.get("excludedItems");
+            if (excludedActivitiesObj instanceof Map<?, ?> excludedActivities) {
+                for (Map.Entry<?, ?> entry : excludedActivities.entrySet()) {
+                    String key = entry.getKey().toString();
+                    String description = resolveActivityDescription(
+                            activitiesObj, key, entry.getValue(), projectLabelResolver);
+                    items.add(new ScoredItem(description, extractYear(entry.getValue()),
+                            0.0, extractForumScore(entry.getValue()), extractQuarter(entry.getValue()),
+                            extractCoreRankingEquivalent(entry.getValue()),
+                            extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
+                            null, null, extractZeroReason(entry.getValue()), null, false, null));
+                }
+            }
         } else {
             if (scoresObj instanceof Map<?, ?> pubScores) {
                 for (Map.Entry<?, ?> entry : pubScores.entrySet()) {

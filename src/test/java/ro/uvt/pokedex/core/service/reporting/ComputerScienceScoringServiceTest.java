@@ -235,6 +235,56 @@ class ComputerScienceScoringServiceTest {
     }
 
     @Test
+    void scopusChapterLabelDoesNotMaskACrossrefConferencePaperOnABookSeriesForum() {
+        // H99 item 2 (Florin's 44-vs-36): Scopus labels proceedings papers in book-series venues
+        // (LNDECT/LNCS/CCIS) "ch", and the scopus-first crosswalk masked the Crossref "conference-paper"
+        // type — so a not-yet-restamped proceedings paper dropped to NON_RANK under the combined CS
+        // strategy while CS_CONFERENCE ranked it B on the same page. Either vocabulary saying
+        // "conference paper" must reach the conference scorer.
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+        Score conferenceScore = score(4.0, 2026, "B", "NOT_FOUND");
+        when(conferenceScoringService.getScore(any(ScoringPublicationReadModel.class), any(Indicator.class))).thenReturn(conferenceScore);
+
+        ScoringPublication publication = publication("p-lndect-1", "forum-lndect", "conference-paper", "ch");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lndect")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(4.0, score.getScore());
+        verify(conferenceScoringService, times(1)).getScore(any(ScoringPublicationReadModel.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, bookScoringService);
+    }
+
+    @Test
+    void genuineBookChapterOnABookSeriesForumStaysOutOfTheFramework() {
+        // Both vocabularies agree it is a chapter — it must keep yielding an empty score here (it belongs
+        // to the SENSE book indicator), not ride the new conference-paper escape.
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        ScoringPublication publication = publication("p-chapter-1", "forum-lndect", "book-chapter", "ch");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lndect")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
+    }
+
+    @Test
     void nullActivityFallsBackToEmptyScore() {
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,

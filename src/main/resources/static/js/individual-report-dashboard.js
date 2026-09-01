@@ -521,9 +521,10 @@
     items.forEach(function (item) {
       var isClickable = isCitations && indicatorId;
       var clickable = isClickable ? ' eval-scored-item--clickable' : '';
-      // A categorized publication whose scoring formula produced 0: shown (it matched the
-      // indicator) but visually de-emphasised so it reads as "counted, scored 0".
-      var isZeroScored = !isActivities && !isCitations && toNumber(item.authorScore) <= 0;
+      // A categorized publication — or, H99 item 4, a declared activity — whose scoring formula
+      // produced 0: shown (it matched the indicator) but visually de-emphasised so it reads as
+      // "counted, scored 0" instead of vanishing (GoveIN read as "my project is missing").
+      var isZeroScored = !isCitations && toNumber(item.authorScore) <= 0;
       var zeroClass = isZeroScored ? ' eval-scored-item--zero' : '';
       var dataAttrs = isClickable
         ? ' role="button" tabindex="0"' +

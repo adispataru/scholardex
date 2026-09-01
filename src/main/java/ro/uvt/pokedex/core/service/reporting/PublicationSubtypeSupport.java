@@ -67,6 +67,26 @@ public final class PublicationSubtypeSupport {
         return SUBTYPE_CROSSWALK.getOrDefault(resolved, resolved);
     }
 
+    /**
+     * H99 item 2: whether EITHER source vocabulary identifies the publication as a conference paper.
+     * Scopus labels proceedings papers published in book-series venues (LNCS, LNDECT, CCIS, …) as
+     * {@code ch} (book chapter), and {@link #resolveSubtype}'s scopus-first priority then masks the
+     * Crossref/OpenAlex {@code proceedings-article}/{@code conference-paper} type carried by the same
+     * publication. Dispatchers that must not drop proceedings papers on book-series forums check this
+     * instead of the single resolved code. A genuine chapter ({@code ch} + Crossref {@code book-chapter})
+     * stays false.
+     */
+    public static boolean indicatesConferencePaper(ScoringPublicationReadModel publication) {
+        if (publication == null) {
+            return false;
+        }
+        if ("cp".equals(normalize(publication.getScopusSubtype()))) {
+            return true;
+        }
+        String raw = normalize(publication.getSubtype());
+        return "cp".equals(SUBTYPE_CROSSWALK.getOrDefault(raw, raw));
+    }
+
     public static boolean isSubtype(ScoringPublicationReadModel publication, String... expected) {
         String subtype = resolveSubtype(publication);
         if (subtype.isEmpty() || expected == null) {

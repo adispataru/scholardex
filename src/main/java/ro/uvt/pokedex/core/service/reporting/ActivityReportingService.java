@@ -27,8 +27,21 @@ public class ActivityReportingService {
     private final ScholardexProjectReadPort scholardexProjectReadPort;
 
     public Map<String, Score> calculateActivityScores(List<ActivityInstance> activities, Indicator indicator) {
+        return calculateActivityScoresDetailed(activities, indicator).scores();
+    }
+
+    /**
+     * H99 item 4: scores plus the zero-scored instances the totals exclude. A declared activity whose
+     * formula yields 0 (GoveIN: a bracket-1 grant under D_v's {@code Interval_buget >= 2} gate) used to
+     * vanish from every drilldown — the researcher saw their entry "missing" and read it as data loss.
+     * The detail paths surface {@code excludedItems} as zero rows with a reason, exactly like the
+     * publications side; the {@code scores} map (and every total/export consumer of
+     * {@link #calculateActivityScores}) is unchanged.
+     */
+    public ScoredActivityResult calculateActivityScoresDetailed(List<ActivityInstance> activities, Indicator indicator) {
 
         Map<String, Score> result = new HashMap<>();
+        Map<String, Score> excluded = new HashMap<>();
         double totalScore = 0;
 
         for (ActivityInstance act : activities) {
@@ -43,6 +56,8 @@ public class ActivityReportingService {
             if(hasScore) {
                 totalScore += score.getAuthorScore();
                 result.put(act.getId(), score);
+            } else {
+                excluded.put(act.getId(), score);
             }
         }
 
@@ -50,8 +65,11 @@ public class ActivityReportingService {
         total.setAuthorScore(totalScore);
 
         result.put("total", total);
-        return result;
+        return new ScoredActivityResult(result, excluded);
     }
+
+    /** The activity analogue of the publications {@code ScoredProductionResult}: totals-contributing scores + zero rows. */
+    public record ScoredActivityResult(Map<String, Score> scores, Map<String, Score> excludedItems) {}
 
     private Score calculateActivityScore(ActivityInstance activity, Indicator indicator) {
         Score result = new Score();

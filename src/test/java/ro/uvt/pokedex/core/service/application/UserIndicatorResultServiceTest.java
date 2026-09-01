@@ -74,7 +74,7 @@ class UserIndicatorResultServiceTest {
         persisted.setId("r1");
         persisted.setIndicatorId("ind-1");
         persisted.setMode(UserIndicatorResult.Mode.LATEST);
-        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-0");
         persisted.setViewName("user/indicators-apply-publications");
         persisted.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(Map.of("total", "1.00")));
         persisted.setCreatedAt(Instant.now());
@@ -119,7 +119,7 @@ class UserIndicatorResultServiceTest {
     void getReportScopedDetailServesFreshSnapshotWithoutComputingOrWriting() {
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(publicationsIndicator()));
         UserIndicatorResult snapshot = reportScopedSnapshot("rep-1",
-                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-0");
         when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode(
                 "u@uvt.ro", "ind-1", UserIndicatorResult.Mode.SNAPSHOT)).thenReturn(Optional.of(snapshot));
 
@@ -136,7 +136,7 @@ class UserIndicatorResultServiceTest {
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(publicationsIndicator()));
         // Snapshot fingerprinted at an older reporting data epoch — a projection rebuild happened since.
         UserIndicatorResult stale = reportScopedSnapshot("rep-1",
-                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-OLD");
+                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-OLD");
         when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode(
                 "u@uvt.ro", "ind-1", UserIndicatorResult.Mode.SNAPSHOT)).thenReturn(Optional.of(stale));
         when(userReportFacade.buildReportScopedIndicatorDetail("u@uvt.ro", "rep-1", "ind-1"))
@@ -153,7 +153,7 @@ class UserIndicatorResultServiceTest {
     void getReportScopedDetailFallsBackWhenSnapshotBelongsToAnotherReport() {
         // No indicatorRepository stub: the report-id filter short-circuits before fingerprinting.
         UserIndicatorResult otherReport = reportScopedSnapshot("rep-OTHER",
-                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+                "ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-0");
         when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode(
                 "u@uvt.ro", "ind-1", UserIndicatorResult.Mode.SNAPSHOT)).thenReturn(Optional.of(otherReport));
         when(userReportFacade.buildReportScopedIndicatorDetail("u@uvt.ro", "rep-1", "ind-1"))
@@ -177,7 +177,7 @@ class UserIndicatorResultServiceTest {
         persisted.setId("r1");
         persisted.setIndicatorId("ind-1");
         persisted.setMode(UserIndicatorResult.Mode.LATEST);
-        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-0");
         persisted.setCreatedAt(Instant.now());
         persisted.setUpdatedAt(Instant.now());
         when(reportingDataEpochService.currentEpoch()).thenReturn(1L);
@@ -195,7 +195,7 @@ class UserIndicatorResultServiceTest {
         assertEquals(IndicatorApplyResultDto.Source.COMPUTED, dto.source());
         ArgumentCaptor<UserIndicatorResult> captor = ArgumentCaptor.forClass(UserIndicatorResult.class);
         verify(userIndicatorResultRepository).save(captor.capture());
-        assertEquals("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-1",
+        assertEquals("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-1",
                 captor.getValue().getFingerprint());
     }
 
@@ -380,7 +380,7 @@ class UserIndicatorResultServiceTest {
         latest.setId("latest");
         latest.setIndicatorId("ind-1");
         latest.setMode(UserIndicatorResult.Mode.LATEST);
-        latest.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+        latest.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-0");
         latest.setViewName("user/indicators");
         latest.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(Map.of("total", "1.00")));
         latest.setRefreshVersion(9);
@@ -421,7 +421,7 @@ class UserIndicatorResultServiceTest {
         persisted.setId("r2");
         persisted.setIndicatorId("ind-1");
         persisted.setMode(UserIndicatorResult.Mode.LATEST);
-        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance|data-epoch-0");
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v3-activity-excluded|data-epoch-0");
         persisted.setViewName("user/indicators-apply-publications");
         persisted.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(
                 Map.of("total", "1.00", "scores", Map.of("Paper", score))
@@ -607,7 +607,7 @@ class UserIndicatorResultServiceTest {
         assertEquals(UserIndicatorResult.SourceType.APPLY_PAGE, saved.getSourceType());
         assertEquals(null, saved.getSourceReportId());
         assertEquals(UserIndicatorResult.Mode.LATEST, saved.getMode());
-        assertEquals("ind-existing|PUBLICATIONS|GENERIC_COUNT|||||payload-v2-scoring-provenance|data-epoch-0", saved.getFingerprint());
+        assertEquals("ind-existing|PUBLICATIONS|GENERIC_COUNT|||||payload-v3-activity-excluded|data-epoch-0", saved.getFingerprint());
     }
 
     @Test
@@ -640,6 +640,6 @@ class UserIndicatorResultServiceTest {
 
         ArgumentCaptor<UserIndicatorResult> captor = ArgumentCaptor.forClass(UserIndicatorResult.class);
         verify(userIndicatorResultRepository).save(captor.capture());
-        assertEquals("ind-null-segments|||||||payload-v2-scoring-provenance|data-epoch-0", captor.getValue().getFingerprint());
+        assertEquals("ind-null-segments|||||||payload-v3-activity-excluded|data-epoch-0", captor.getValue().getFingerprint());
     }
 }

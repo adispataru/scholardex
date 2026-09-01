@@ -633,12 +633,16 @@ public class UserReportFacade {
             List<ActivityInstance> filteredActivities = activities.stream()
                     .filter(act -> act.getActivity().getName().equals(activityName))
                     .toList();
-            Map<String, Score> scores = new HashMap<>(activityReportingService.calculateActivityScores(filteredActivities, indicator));
+            ActivityReportingService.ScoredActivityResult detailedActivities =
+                    activityReportingService.calculateActivityScoresDetailed(filteredActivities, indicator);
+            Map<String, Score> scores = new HashMap<>(detailedActivities.scores());
             Score totalScore = scores.remove("total");
             double total = totalScore != null ? totalScore.getAuthorScore() : 0.0;
             rawGraph.put("total", String.format(Locale.ROOT, "%.2f", total));
             rawGraph.put("scores", scores);
             rawGraph.put("activities", filteredActivities);
+            // H99 item 4: zero-scored declared activities surface as excluded rows (GoveIN) instead of vanishing.
+            rawGraph.put("excludedItems", detailedActivities.excludedItems());
             rawGraph.put("outputMode", "activities");
             return Optional.of(new IndicatorApplyResultDto(
                     null, indicatorId,
@@ -886,11 +890,15 @@ public class UserReportFacade {
     }
 
     private UserIndicatorApplyViewModel handleActivities(Indicator indicator, List<ActivityInstance> activities, Map<String, Object> attrs) {
-        Map<String, Score> scores = activityReportingService.calculateActivityScores(activities, indicator);
+        ActivityReportingService.ScoredActivityResult detailedActivities =
+                activityReportingService.calculateActivityScoresDetailed(activities, indicator);
+        Map<String, Score> scores = new HashMap<>(detailedActivities.scores());
         attrs.put("total", String.format("%.2f", scores.get("total").getAuthorScore()));
         scores.remove("total");
         attrs.put("scores", scores);
         attrs.put("activities", activities);
+        // H99 item 4: zero-scored declared activities surface as excluded rows instead of vanishing.
+        attrs.put("excludedItems", detailedActivities.excludedItems());
 
         Map<String, Integer> quarterHistogram = new HashMap<>();
         scores.forEach((k, v) -> {

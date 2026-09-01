@@ -18,7 +18,9 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class UserIndicatorResultService {
-    private static final String PAYLOAD_VERSION = "payload-v2-scoring-provenance";
+    // v3: activity detail payloads carry excludedItems (H99 item 4 — zero-scored declared activities
+    // surface as rows); bumping invalidates pre-v3 snapshots so stale details recompute with them.
+    private static final String PAYLOAD_VERSION = "payload-v3-activity-excluded";
 
     private final UserIndicatorResultRepository userIndicatorResultRepository;
     private final IndicatorRepository indicatorRepository;
