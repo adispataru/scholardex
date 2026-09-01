@@ -35,6 +35,9 @@ class UserPublicationFacadeTest {
     @Mock
     private ScholardexSourceLinkService scholardexSourceLinkService;
 
+    @Mock
+    private ro.uvt.pokedex.core.repository.UserRepository userRepository;
+
     @InjectMocks
     private UserPublicationFacade facade;
 

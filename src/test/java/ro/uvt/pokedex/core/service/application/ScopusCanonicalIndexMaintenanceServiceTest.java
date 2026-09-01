@@ -82,6 +82,8 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
     private IndexOperations canonicalCitationFactOps;
     @Mock
     private IndexOperations publicationAuthorAffiliationFactOps;
+    @Mock
+    private IndexOperations bookFactOps;
 
     private ScopusCanonicalIndexMaintenanceService service;
 
@@ -107,6 +109,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(mongoTemplate.indexOps(ScholardexIdentityConflict.class)).thenReturn(identityConflictOps);
         when(mongoTemplate.indexOps(ImportRunMetric.class)).thenReturn(importRunMetricOps);
         when(mongoTemplate.indexOps(ScholardexProjectionDirtyMarker.class)).thenReturn(projectionDirtyMarkerOps);
+        when(mongoTemplate.indexOps(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact.class)).thenReturn(bookFactOps);
     }
 
     @Test
@@ -130,10 +133,11 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(identityConflictOps.getIndexInfo()).thenReturn(List.of());
         when(importRunMetricOps.getIndexInfo()).thenReturn(List.of());
         when(projectionDirtyMarkerOps.getIndexInfo()).thenReturn(List.of());
+        when(bookFactOps.getIndexInfo()).thenReturn(List.of());
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(72, result.created().size());
+        assertEquals(75, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -254,10 +258,15 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
                 info(ScopusCanonicalIndexMaintenanceService.IDX_PROJECTION_DIRTY_STATUS_KEY, false,
                         "status", "entityType", "canonicalEntityId", "sourceBatchId")
         ));
+        when(bookFactOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_BOOK_PRINT_ISBN, false, "printIsbn"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_BOOK_ELECTRONIC_ISBN, false, "electronicIsbn"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_BOOK_TITLE_TEXT, false, "title")
+        ));
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(72, result.present().size());
+        assertEquals(75, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());

@@ -102,6 +102,7 @@ let _wBookId        = null;   // selected book_facts id
 let _wBookFilter    = '';
 let _wBookResults   = [];
 let _wNewBook       = null;   // {title, isbn, publisher}
+let _wSelfAuthorId  = null;   // the submitter's canonical author — pre-staged, locked presence, free position
 let _wExternalAuthors = '';   // free-text co-authors outside the platform (one per line)
 let _wPageRange     = '';
 let _wDoi           = '';
@@ -1134,6 +1135,11 @@ function _buildReviewSummaryText(pub, state) {
 }
 
 function _buildImportLineage(pub) {
+    // H99 item 7 polish: wizard pubs carry a synthetic USER_DEFINED eid — without this check they
+    // masqueraded as "Importat din Scopus".
+    if (pub?.eid?.startsWith('USER_DEFINED:')) {
+        return t('workspace.pubs.addedManually');
+    }
     const sources = [];
     if (pub?.eid) sources.push('Scopus');
     if (pub?.wosId) sources.push('WoS');
@@ -1525,7 +1531,11 @@ function _openWizard() {
     _wBookFilter     = '';
     _wBookResults    = [];
     _wNewBook        = null;
-    _wAuthorIds      = [];
+    // H99 item 7 polish: pre-stage the submitter's own canonical author. Locked presence (submit
+    // auto-confirms their authorship anyway), free position — authorIds[0] is what MAIN/CO role
+    // gates read, so where they sit in the order must stay theirs to decide.
+    _wSelfAuthorId   = _data?.profileAuthor?.id ?? null;
+    _wAuthorIds      = _wSelfAuthorId ? [_wSelfAuthorId] : [];
     _wAuthors        = null;
     _wAuthorsLoading = false;
     _wExternalAuthors = '';
@@ -1793,9 +1803,13 @@ function _renderStep2() {
     }
 
     const available = (_wAuthors ?? []).filter(a => !_wAuthorIds.includes(a.id));
-    const staged    = _wAuthorIds
-        .map(id => (_wAuthors ?? []).find(a => a.id === id))
-        .filter(Boolean);
+    // Resolve names beyond the affiliation fetch: the submitter's own author and any author already
+    // known from the publications tab payload.
+    const nameFor = id => (_wAuthors ?? []).find(a => a.id === id)?.name
+        ?? (_data?.profileAuthor?.id === id ? _data.profileAuthor.name : null)
+        ?? _data?.authorMap?.[id]?.name
+        ?? id;
+    const staged = _wAuthorIds.map(id => ({ id, name: nameFor(id), self: id === _wSelfAuthorId }));
 
     const availableItems = available.length > 0
         ? available.map(a =>
@@ -1807,12 +1821,24 @@ function _renderStep2() {
         : `<li class="app-ws-pubs__wiz-empty-authors">${t('workspace.pubs.noCoauthors')}</li>`;
 
     const stagedItems = staged.length > 0
-        ? staged.map(a =>
-            `<li class="app-ws-pubs__wiz-author-item" data-remove-author="${_esc(a.id)}" title="Remove">
-               <span>${_esc(a.name ?? a.id)}</span>
-               <i class="fa-solid fa-xmark" aria-hidden="true" style="color:var(--app-color-danger);font-size:0.75rem"></i>
-             </li>`
-        ).join('')
+        ? staged.map((a, i) => {
+            const arrows = staged.length > 1 ? `
+               <button type="button" class="app-ws-pubs__wiz-author-move" data-move-author="${_esc(a.id)}" data-move-dir="-1"
+                       title="${_esc(t('workspace.pubs.moveUp'))}" ${i === 0 ? 'disabled' : ''}>
+                 <i class="fa-solid fa-arrow-up" aria-hidden="true" style="font-size:0.7rem"></i>
+               </button>
+               <button type="button" class="app-ws-pubs__wiz-author-move" data-move-author="${_esc(a.id)}" data-move-dir="1"
+                       title="${_esc(t('workspace.pubs.moveDown'))}" ${i === staged.length - 1 ? 'disabled' : ''}>
+                 <i class="fa-solid fa-arrow-down" aria-hidden="true" style="font-size:0.7rem"></i>
+               </button>` : '';
+            const tail = a.self
+                ? `<i class="fa-solid fa-lock" aria-hidden="true" title="${_esc(t('workspace.pubs.selfAuthorLocked'))}" style="color:var(--app-color-text-muted);font-size:0.7rem"></i>`
+                : `<i class="fa-solid fa-xmark" aria-hidden="true" data-remove-author="${_esc(a.id)}" role="button" tabindex="0" title="Remove" style="color:var(--app-color-danger);font-size:0.75rem;cursor:pointer"></i>`;
+            return `<li class="app-ws-pubs__wiz-author-item" data-staged-author="${_esc(a.id)}">
+               <span>${_esc(a.name)}</span>
+               <span style="display:inline-flex;gap:0.35rem;align-items:center">${arrows}${tail}</span>
+             </li>`;
+        }).join('')
         : `<li class="app-ws-pubs__wiz-empty-authors">${t('workspace.pubs.noStagedAuthors')}</li>`;
 
     return `
@@ -2020,11 +2046,26 @@ function _wireWizardEvents() {
             _reRenderStepBody();
         });
 
-        // Remove author
+        // Remove / reorder staged authors. The submitter's own author has no remove control (locked
+        // presence) but moves freely — authorIds[0] is what MAIN/CO role gates read.
         document.getElementById('ws-pubs-wiz-staged')?.addEventListener('click', e => {
+            const move = e.target.closest('[data-move-author]');
+            if (move && !move.disabled) {
+                const id = move.dataset.moveAuthor;
+                const dir = parseInt(move.dataset.moveDir, 10);
+                const idx = _wAuthorIds.indexOf(id);
+                const target = idx + dir;
+                if (idx >= 0 && target >= 0 && target < _wAuthorIds.length) {
+                    [_wAuthorIds[idx], _wAuthorIds[target]] = [_wAuthorIds[target], _wAuthorIds[idx]];
+                    _reRenderStepBody();
+                }
+                return;
+            }
             const item = e.target.closest('[data-remove-author]');
             if (!item) return;
-            _wAuthorIds = _wAuthorIds.filter(id => id !== item.dataset.removeAuthor);
+            const removeId = item.dataset.removeAuthor;
+            if (removeId === _wSelfAuthorId) return;
+            _wAuthorIds = _wAuthorIds.filter(id => id !== removeId);
             _reRenderStepBody();
         });
     }

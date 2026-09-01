@@ -592,9 +592,19 @@ Done history moved to `TASKS-done.md`.
      bookId flows payload → UserDefinedPublicationFact → canonicalization (copy-if-present, never
      nulls a Scopus pub's bookId). Verified end-to-end on agent-dev: Mirton chapter → book fact
      minted, pub ch/bookId/no-forum/authorCount=2/pageRange, decision CONFIRMED, row in workspace
-     (9→10). Polish left: auto-stage the submitter's own canonical author in step 2; the list's
-     provenance line says "Importat din Scopus" for USER_DEFINED pubs; book-title search is a cold
-     regex over 477k docs (~seconds first hit — index title if it annoys).
+     (9→10). Polish DONE 2026-09-01 (all three): (a) submitter's canonical author pre-staged —
+     LOCKED presence (submit auto-confirms authorship anyway), FREE position with up/down
+     reordering, because authorIds[0] is what the MAIN/CO role gates read (forcing first would
+     misclassify every non-first-author pub); the workspace payload now fills profileAuthor (was
+     hardcoded null outside the public author page). Known edge, registered by decision: an
+     EXTERNAL first author is inexpressible (authorIds holds only canonical authors) — becomes
+     real only if a MAIN/CO-gated indicator ever consumes user-defined pubs; the fix then is
+     ordered mixed authorship, a feature not a polish. (b) USER_DEFINED:-prefixed eids render
+     "Adăugată manual" instead of masquerading as "Importat din Scopus". (c) book_facts indexes
+     via /scopus/ensureIndexes (printIsbn, electronicIsbn, title TEXT) + $text-first search with
+     the regex contains-scan as fallback (pre-index window + substring-of-word); 42ms vs cold
+     seconds. All three verified live on agent-dev. PROD NOTE: run POST
+     /admin/initialization/scopus/ensureIndexes after deploy to create the book indexes.
   8. **Missing book chapters — DIAGNOSED 2026-09-01 on Alexandra's profile: split identity ×4,
      not subtype logic.** alexandra.fortis maps to FOUR canonical authors: sauth_ab9f68… (profile
      primary: OA-only + ORCID, 35 pubs), sauth_a929bbe2… "Fortis A.-E." (Scopus 58690372800,

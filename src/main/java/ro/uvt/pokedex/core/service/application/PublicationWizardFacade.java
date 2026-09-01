@@ -67,7 +67,19 @@ public class PublicationWizardFacade {
                 byId.putIfAbsent(book.getId(), toBookOption(book));
             }
         }
-        for (var book : bookFactRepository.findTop20ByTitleContainingIgnoreCaseOrderByTitleAsc(q)) {
+        // $text first (indexed, word-based — right for "cloud computing"-style queries); the regex
+        // contains-scan is the fallback for substring-of-word matches and for the window before the
+        // text index exists (it is created by /scopus/ensureIndexes, not annotations).
+        List<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact> titleHits;
+        try {
+            titleHits = bookFactRepository.searchByTitleText(q, org.springframework.data.domain.PageRequest.of(0, 20));
+        } catch (RuntimeException textIndexMissing) {
+            titleHits = List.of();
+        }
+        if (titleHits.isEmpty()) {
+            titleHits = bookFactRepository.findTop20ByTitleContainingIgnoreCaseOrderByTitleAsc(q);
+        }
+        for (var book : titleHits) {
             byId.putIfAbsent(book.getId(), toBookOption(book));
         }
         return List.copyOf(byId.values());

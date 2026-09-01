@@ -30,6 +30,9 @@ public class UserPublicationFacade {
     private final PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
     private final SuspiciousAuthorshipTriageService suspiciousAuthorshipTriageService;
     private final ScholardexSourceLinkService scholardexSourceLinkService;
+    // H99 item 7 polish: the workspace payload's profileAuthor was hardcoded null (only the public
+    // author page filled it); the wizard needs it to pre-stage the submitter's own canonical author.
+    private final ro.uvt.pokedex.core.repository.UserRepository userRepository;
 
     public Optional<UserPublicationsViewModel> buildUserPublicationsView(String userEmail) {
         long startedAtNanos = System.nanoTime();
@@ -275,10 +278,23 @@ public class UserPublicationFacade {
                 suspiciousPendingCount,
                 recommendedPendingCount,
                 base.numCitations(),
-                base.profileAuthor(),
+                resolveProfileAuthor(userEmail),
                 base.affiliations(),
                 base.hIndices()
         );
+    }
+
+    /** The researcher's own canonical author (profile primary id), or null when no profile/author exists. */
+    private ScholardexAuthorView resolveProfileAuthor(String userEmail) {
+        if (userEmail == null || userEmail.isBlank()) {
+            return null;
+        }
+        return userRepository.findById(userEmail)
+                .map(user -> user.getResearcherProfile())
+                .map(profile -> profile.getPrimaryScholardexAuthorId())
+                .filter(id -> !id.isBlank())
+                .flatMap(scholardexProjectionReadService::findAuthorById)
+                .orElse(null);
     }
 
     private Map<String, PublicationAuthorshipReviewState> buildReviewStateByPublicationId(String userEmail,

@@ -120,6 +120,12 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_SOURCE_LINK_BATCH_ENTITY = "idx_scholardex_source_link_batch_entity";
     static final String IDX_SOURCE_LINK_CORRELATION_ENTITY = "idx_scholardex_source_link_correlation_entity";
 
+    // H99 item 7 polish: the wizard's book search hits scholardex.book_facts (~477k reference rows) by
+    // exact ISBN and by title text — both were collection scans.
+    static final String IDX_BOOK_PRINT_ISBN = "idx_scholardex_book_print_isbn";
+    static final String IDX_BOOK_ELECTRONIC_ISBN = "idx_scholardex_book_electronic_isbn";
+    static final String IDX_BOOK_TITLE_TEXT = "text_scholardex_book_title";
+
     static final String IDX_IDENTITY_CONFLICT_OPEN = "uniq_scholardex_open_identity_conflict";
     static final String IDX_IDENTITY_CONFLICT_STATUS = "idx_scholardex_identity_conflict_status";
     static final String IDX_IMPORT_RUN_METRIC_KEY = "idx_import_run_metric_key";
@@ -156,6 +162,7 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureIdentityConflictIndexes(created, present, invalid, errors);
         ensureImportRunMetricIndexes(created, present, invalid, errors);
         ensureProjectionDirtyMarkerIndexes(created, present, invalid, errors);
+        ensureBookFactIndexes(created, present, invalid, errors);
 
         ScopusCanonicalIndexEnsureResult result = new ScopusCanonicalIndexEnsureResult(created, present, invalid, errors);
         log.info("Scopus canonical index ensure summary: created={}, present={}, invalid={}, errors={}",
@@ -393,6 +400,30 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureNamedIndex(ops, new IndexDefinition(IDX_PROJECTION_DIRTY_STATUS_KEY, false,
                         List.of(field("status"), field("entityType"), field("canonicalEntityId"), field("sourceBatchId"))),
                 created, present, invalid, errors);
+    }
+
+    private void ensureBookFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_BOOK_PRINT_ISBN, false, List.of(field("printIsbn"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_BOOK_ELECTRONIC_ISBN, false, List.of(field("electronicIsbn"))),
+                created, present, invalid, errors);
+        // Text index for the wizard's word-based title search ($text). Created here (not by annotation) like
+        // every other perf index; until it exists the facade's $text query throws and falls back to the regex scan.
+        try {
+            boolean already = ops.getIndexInfo().stream().anyMatch(info -> IDX_BOOK_TITLE_TEXT.equals(info.getName()));
+            if (already) {
+                present.add(IDX_BOOK_TITLE_TEXT);
+            } else {
+                ops.createIndex(new org.springframework.data.mongodb.core.index.TextIndexDefinition.TextIndexDefinitionBuilder()
+                        .named(IDX_BOOK_TITLE_TEXT)
+                        .onField("title")
+                        .build());
+                created.add(IDX_BOOK_TITLE_TEXT);
+            }
+        } catch (Exception e) {
+            errors.add(IDX_BOOK_TITLE_TEXT + ": " + e.getMessage());
+        }
     }
 
     private void ensureNamedIndex(
