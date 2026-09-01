@@ -105,6 +105,33 @@ public class AuthorReconcileService {
     @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.coauthor-max-paper-authors:20}")
     private int coauthorMaxPaperAuthors;
 
+    /**
+     * H99: explicit two-author merge for a human-confirmed split identity that no automatic pass can reach —
+     * e.g. a researcher's OpenAlex-half ghost (ORCID + OpenAlex ids, no Scopus id) beside their Scopus-half
+     * canonical, where the display names parse incompatibly ("Fortis T.-F." vs "Teodor-Florin Fortiş") so the
+     * ORCID pass would quarantine even after seeding. The admin asserts identity; no name gate is applied. The
+     * winner is picked by the same deterministic rule as every reconcile pass (most Scopus ids → most id keys
+     * → smallest id), and all references are repointed by the shared merge machinery.
+     *
+     * @return the surviving author's id
+     * @throws IllegalArgumentException when the ids are equal or either author does not exist
+     */
+    public String mergePair(String idA, String idB) {
+        if (idA == null || idB == null || idA.isBlank() || idB.isBlank() || idA.trim().equals(idB.trim())) {
+            throw new IllegalArgumentException("two distinct author ids are required");
+        }
+        ScholardexAuthorFact a = authorRepository.findById(idA.trim())
+                .orElseThrow(() -> new IllegalArgumentException("author not found: " + idA));
+        ScholardexAuthorFact b = authorRepository.findById(idB.trim())
+                .orElseThrow(() -> new IllegalArgumentException("author not found: " + idB));
+        List<ScholardexAuthorFact> cluster = List.of(a, b);
+        String winnerId = pickWinner(cluster).getId();
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        mergeCluster(cluster, Instant.now(), result);
+        log.info("Author explicit merge: {} + {} -> {}", idA, idB, winnerId);
+        return winnerId;
+    }
+
     /** ORCID pass: merge canonical authors that share an ORCID (name-compatible), quarantine the rest. */
     public ImportProcessingResult reconcileByOrcid(String batchId, String correlationId) {
         ImportProcessingResult result = new ImportProcessingResult(20);

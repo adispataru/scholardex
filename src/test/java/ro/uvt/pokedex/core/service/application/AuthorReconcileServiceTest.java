@@ -23,7 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -387,6 +389,38 @@ class AuthorReconcileServiceTest {
 
     private ScholardexAuthorFact sameName(String id) {
         return author(id, "Dragan, Ioan", null);
+    }
+
+    @Test
+    void explicitMergePairJoinsNameIncompatibleHalvesAndKeepsTheScopusEstablishedAuthor() {
+        // H99: the OpenAlex-half ghost ("Teodor-Florin Fortiş": ORCID + OpenAlex ids, no Scopus id) beside the
+        // Scopus-half canonical ("Fortis T.-F."): the surname heuristic parses these as incompatible, so the
+        // ORCID pass would only quarantine. The explicit merge applies no name gate; the winner rule (most
+        // Scopus ids first) keeps the author the publication author lists already point at.
+        ScholardexAuthorFact scopusHalf = author("sauth_scopus", "Fortis T.-F.", null);
+        scopusHalf.setScopusAuthorIds(new ArrayList<>(List.of("6603648115")));
+        ScholardexAuthorFact ghost = author("sauth_ghost", "Teodor-Florin Fortiş", "0000-0002-3143-8908");
+        ghost.setOpenAlexAuthorIds(new ArrayList<>(List.of("A5091103345", "A5134267359")));
+        when(authorRepository.findById("sauth_scopus")).thenReturn(Optional.of(scopusHalf));
+        when(authorRepository.findById("sauth_ghost")).thenReturn(Optional.of(ghost));
+
+        String winnerId = service.mergePair("sauth_scopus", "sauth_ghost");
+
+        assertEquals("sauth_scopus", winnerId);
+        verify(authorRepository).deleteById("sauth_ghost");
+        // The ghost's identity keys fold onto the survivor.
+        verify(authorRepository).save(argThat(a -> "sauth_scopus".equals(a.getId())
+                && a.getOrcidIds().contains("0000-0002-3143-8908")
+                && a.getOpenAlexAuthorIds().containsAll(List.of("A5091103345", "A5134267359"))
+                && a.getScopusAuthorIds().contains("6603648115")));
+    }
+
+    @Test
+    void explicitMergePairRefusesMissingOrIdenticalIds() {
+        assertThrows(IllegalArgumentException.class, () -> service.mergePair("sauth_x", "sauth_x"));
+        assertThrows(IllegalArgumentException.class, () -> service.mergePair(null, "sauth_x"));
+        when(authorRepository.findById("sauth_absent")).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class, () -> service.mergePair("sauth_absent", "sauth_y"));
     }
 
     private ScholardexAuthorFact author(String id, String displayName, String orcid) {

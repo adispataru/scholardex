@@ -580,6 +580,57 @@ class OpenAlexCanonicalizationServiceTest {
     }
 
     @Test
+    void foreignPubWithCompleteAuthorListDoesNotGainASplitIdentityDuplicate() {
+        // H99: a Scopus pub whose author list already matches its bibliographic authorCount is COMPLETE. An
+        // OpenAlex-resolved identity that is not in that list is then a duplicate of an author already present
+        // under a different canonical id (split identity), not a missing author. Appending it made authorCount
+        // 4→5 on every OpenAlex sync while the Scopus canon rewrite reset it — the scoring divisor max(N-2,1)
+        // flip-flopped run to run with whichever scheduler task wrote the pub last (the Fortiș B/C flap).
+        OpenAlexPublicationFact source = source("W10", "10.1/complete", "Complete paper", "sauth_self");
+        source.setAuthorships(List.of(
+                authorship("Me", "0000-0002-0702-6276", "A1", true),
+                authorship("Other", null, "A2", false)));
+        ScholardexPublicationFact scopus = new ScholardexPublicationFact();
+        scopus.setId("spub_complete");
+        scopus.setSource("SCOPUS");
+        scopus.setAuthorIds(new java.util.ArrayList<>(List.of("sauth_a", "sauth_b")));
+        scopus.setAuthorCount(2);
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/complete")).thenReturn(List.of(scopus));
+        when(scholardexPublicationFactRepository.findById("spub_complete")).thenReturn(java.util.Optional.of(scopus));
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any(), any())).thenReturn("sauth_ghost");
+
+        service.rebuildCanonicalFacts();
+
+        // The authorship edge may exist for provenance, but the denormalized author list must not grow.
+        verify(scholardexPublicationFactRepository, org.mockito.Mockito.never()).save(argThat(p ->
+                "spub_complete".equals(p.getId()) && p.getAuthorIds().contains("sauth_ghost")));
+    }
+
+    @Test
+    void foreignPubWithTruncatedAuthorListStillGainsTheMissingResearcher() {
+        // The safety net the merge exists for: fewer resolved ids than the bibliographic count means the list
+        // is genuinely incomplete, and the researcher's resolved author must still be added.
+        OpenAlexPublicationFact source = source("W11", "10.1/truncated", "Truncated paper", "sauth_self");
+        source.setAuthorships(List.of(authorship("Me", "0000-0002-0702-6276", "A1", true)));
+        ScholardexPublicationFact scopus = new ScholardexPublicationFact();
+        scopus.setId("spub_truncated");
+        scopus.setSource("SCOPUS");
+        scopus.setAuthorIds(new java.util.ArrayList<>(List.of("sauth_a", "sauth_b")));
+        scopus.setAuthorCount(3);
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/truncated")).thenReturn(List.of(scopus));
+        when(scholardexPublicationFactRepository.findById("spub_truncated")).thenReturn(java.util.Optional.of(scopus));
+        when(authorResolver.resolveOrMint(eq("Me"), any(), eq("A1"), any(), any(), any(), any())).thenReturn("sauth_self");
+
+        service.rebuildCanonicalFacts();
+
+        verify(scholardexPublicationFactRepository).save(argThat(p ->
+                "spub_truncated".equals(p.getId())
+                        && p.getAuthorIds().equals(List.of("sauth_a", "sauth_b", "sauth_self"))));
+    }
+
+    @Test
     void openAlexAuthorshipEmitsAffiliationEdgesToTheRorBackbone() {
         // H73 slice 3: a resolved authorship with an OpenAlex institution ROR emits both the author→affiliation
         // and pub→author→affiliation edges, pointing at the ROR-keyed backbone affiliation id.

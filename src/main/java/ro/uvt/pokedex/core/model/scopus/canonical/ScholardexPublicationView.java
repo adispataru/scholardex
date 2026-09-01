@@ -87,7 +87,14 @@ public class ScholardexPublicationView {
 
     public void setAuthors(List<String> authorIds) {
         this.authorIds = authorIds == null ? new ArrayList<>() : new ArrayList<>(authorIds);
-        this.authorCount = this.authorIds.size();
+        // authorCount is the bibliographic author count (the source record's own tally, persisted in the
+        // author_count column) — NOT the number of resolved canonical author ids. The two differ whenever
+        // resolution is incomplete (ids < count) or a sync path appended a duplicate identity (ids > count),
+        // and the scoring divisor max(N-2,1) must not follow either drift. Derive from the id list only as a
+        // fallback for minimal mappers that never read the column; a mapper that set the column keeps it.
+        if (this.authorCount == 0) {
+            this.authorCount = this.authorIds.size();
+        }
     }
 
     public List<String> getAffiliations() {

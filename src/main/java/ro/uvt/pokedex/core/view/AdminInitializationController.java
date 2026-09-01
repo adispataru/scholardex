@@ -610,6 +610,28 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    /**
+     * H99: explicit merge of two canonical authors the admin has confirmed to be the same person (a split
+     * identity out of reach of the automatic passes — see {@code AuthorReconcileService#mergePair}). Winner is
+     * picked deterministically; every reference (edges, pub author lists, profiles, syncedResearchers) is
+     * repointed by the shared merge machinery.
+     */
+    @PostMapping("/author/merge")
+    public String runAuthorExplicitMerge(
+            @RequestParam("idA") String idA,
+            @RequestParam("idB") String idB,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            String winnerId = authorReconcileService.mergePair(idA, idB);
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Authors merged: " + idA + " + " + idB + " -> survivor " + winnerId + ".");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Author merge refused: " + e.getMessage());
+        }
+        return "redirect:/admin/initialization";
+    }
+
     @PostMapping("/author/reconcile/fuzzy")
     public String runAuthorFuzzyReconcile(RedirectAttributes redirectAttributes) {
         var result = authorReconcileService.reconcileByName("admin-manual", "admin-manual");

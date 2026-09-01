@@ -525,7 +525,15 @@ public class OpenAlexCanonicalizationService {
                 desired.addAll(syncingAuthorIds);
             } else {
                 desired = new LinkedHashSet<>(pub.getAuthorIds() == null ? List.of() : pub.getAuthorIds());
-                desired.addAll(edgeAuthorIds);
+                // H99: only grow a foreign pub's author list when it is provably INCOMPLETE (fewer resolved
+                // ids than the bibliographic authorCount). On a complete list, an OpenAlex-resolved identity
+                // absent from it is a duplicate of an author already there under a different canonical id
+                // (a split identity — e.g. an ORCID-keyed OpenAlex author vs the Scopus-keyed one), and
+                // appending it inflated authorCount-by-ids to N+1 while the Scopus canon rewrite reset it —
+                // the researcher's scores flip-flopped run to run with whichever scheduler wrote last.
+                if (pub.getAuthorCount() == null || desired.size() < pub.getAuthorCount()) {
+                    desired.addAll(edgeAuthorIds);
+                }
             }
             List<String> current = pub.getAuthorIds() == null ? List.of() : pub.getAuthorIds();
             if (!new ArrayList<>(desired).equals(current)) {

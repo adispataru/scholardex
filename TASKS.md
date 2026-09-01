@@ -574,11 +574,26 @@ Done history moved to `TASKS-done.md`.
      this too ("books can be added manually" is currently only true in principle).
   8. **Missing book chapters** (clearly chapters, no conference) — canon subtype/identification
      investigation; he offers Alexandra's smaller profile as a testbed.
-  9. **NEW (found during triage, he didn't spot it): nondeterministic runs** — his back-to-back
-     refreshes flip between 1356.25 and 1361.92 (pub ±0.33, cit ±5.33 — both thirds: one forum
-     flapping C↔D affects one n=5 paper by 1/3 and ~16 citations by 1/3 each). Same inputs,
-     different scores per run — likely a conference-resolution or best-of tie broken by iteration
-     order. Needs its own investigation; determinism matters more than either value.
+  9. **NEW (found during triage, he didn't spot it): nondeterministic runs — SOLVED 2026-09-01.**
+     Not a forum flap: one paper's AUTHOR COUNT flipped 4↔5 ("Datastores supporting services
+     lifecycle…", spub_8448b20354f36259357d30f8), and `S/max(N-2,1)` div 2↔3 explains all four
+     indicator deltas at once (own B score ±1/3, ΣS=32 of citing edges ±S/6 = 16/3, top-AB ±2/3).
+     Root cause chain: Fortis is a SPLIT IDENTITY — Scopus-half `sauth_2930286987…` (in the author
+     lists) vs OpenAlex-half ghost `sauth_6c08ce38…` (his ORCID + 6 OA ids, his OA sync's
+     syncedResearchers entry). Every OA scheduler sync appended the ghost to the Scopus-owned pub's
+     authorIds (foreign merge was unconditional); every scopus-python citation-task rewrite reset
+     the list; and `ScholardexPublicationView.setAuthors` CLOBBERED the mapper-set author_count
+     column with the id-list size, so N tracked whichever task wrote last (17:37 OA write → 17:38
+     LOW run; 17:42 citation write → 17:55 HIGH run). True count is 4 → HIGH (1361.92) is correct.
+     Fixed (3 pieces): (a) `setAuthors` derives authorCount only as a fallback when no column value
+     was set — N is now the bibliographic count, immune to resolved-id drift both ways (also fixes
+     the divisor for ~15k pubs whose resolution is INCOMPLETE, ids < count); (b) OA foreign-pub
+     merge only grows an author list that is provably incomplete (ids < authorCount) — a complete
+     list never gains a split-identity duplicate; (c) new explicit admin merge
+     `POST /admin/initialization/author/merge?idA=…&idB=…` (AuthorReconcileService.mergePair, no
+     name gate, deterministic winner = Scopus-established) for the ghost itself — the ORCID pass
+     would quarantine this pair ("Fortis T.-F." vs "Teodor-Florin Fortiş" parse as incompatible).
+     After deploy: merge the pair above, then Refresh — runs should pin at the HIGH values.
   Order proposed: 3 (script ready) → 5 (code, score-correcting) → 1 (code, UX-trust) → 9
   (investigation) → 4+2 (display/explanations) → 7 → 8 → future-dated feature from 3.
 
