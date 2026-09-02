@@ -264,8 +264,62 @@ class ComputerScienceScoringServiceTest {
 
     @Test
     void genuineBookChapterOnABookSeriesForumStaysOutOfTheFramework() {
-        // Both vocabularies agree it is a chapter — it must keep yielding an empty score here (it belongs
-        // to the SENSE book indicator), not ride the new conference-paper escape.
+        // Both vocabularies agree it is a chapter. The conference machinery gets consulted (Springer
+        // registers proceedings volumes as chapters), but with NO positive identification the chapter
+        // stays out of this framework — it belongs to the SENSE book indicator.
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+        Score unidentified = score(2.0, 2026, "C", "NOT_FOUND");
+        unidentified.getScoringInfo().put("matchSource", "SCOPUS");   // forum-title echo, no real match
+        when(conferenceScoringService.getScore(any(ScoringPublicationReadModel.class), any(Indicator.class))).thenReturn(unidentified);
+
+        ScoringPublication publication = publication("p-chapter-1", "forum-lndect", "book-chapter", "ch");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lndect")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        verifyNoInteractions(journalScoringService, bookScoringService);
+    }
+
+    @Test
+    void chapterLabeledProceedingsPaperCountsWhenAConferenceIsPositivelyIdentified() {
+        // Florin's AINA-2026 case: Springer registers the proceedings volume as book chapters (both
+        // vocabularies say "ch"), but the Crossref volume title names AINA. A POSITIVE identification
+        // (resolved acronym / CORE id / DBLP match) makes the conference verdict count.
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+        Score identified = score(4.0, 2026, "B", "NOT_FOUND");
+        identified.getScoringInfo().put("matchSource", "DBLP");
+        identified.getScoringInfo().put("matchedAcronym", "AINA");
+        when(conferenceScoringService.getScore(any(ScoringPublicationReadModel.class), any(Indicator.class))).thenReturn(identified);
+
+        ScoringPublication publication = publication("p-aina-ch", "forum-lndect", "book-chapter", "ch");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lndect")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(4.0, score.getScore());
+        assertEquals("B", score.getCoreRankingEquivalent());
+        verifyNoInteractions(journalScoringService, bookScoringService);
+    }
+
+    @Test
+    void chapterWithNoForumNeverConsultsTheConferenceScorer() {
+        // A bookId-venued chapter (Wiley volume, no forum) must not risk a fuzzy false-match — the
+        // conference-try applies only on SERIES venues, where proceedings actually masquerade.
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
@@ -273,10 +327,7 @@ class ComputerScienceScoringServiceTest {
                 cacheService
         );
 
-        ScoringPublication publication = publication("p-chapter-1", "forum-lndect", "book-chapter", "ch");
-        ScholardexForumView forum = new ScholardexForumView();
-        forum.setAggregationType("Book Series");
-        when(cacheService.getForum("forum-lndect")).thenReturn(forum);
+        ScoringPublication publication = publication("p-wiley-ch", null, "other", "ch");
 
         Score score = service.getScore(publication, new Indicator());
 

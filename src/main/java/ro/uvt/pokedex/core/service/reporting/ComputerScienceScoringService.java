@@ -61,15 +61,15 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
                 // Book/Book-Series forums: a "cp" paper is a conference proceeding (e.g. LNCS), otherwise fall to
                 // the subtype switch — which keeps journal output and DROPS books/chapters (they are not part of
                 // this A*/A/B journal+conference framework; they belong to the SENSE book indicator, CS_SENSE).
-                case "Book", "Book Series" -> scoreBySubtype(publication, indicator);
-                default -> scoreBySubtype(publication, indicator);
+                case "Book", "Book Series" -> scoreBySubtype(publication, indicator, true);
+                default -> scoreBySubtype(publication, indicator, false);
             };
         }
 
-        return scoreBySubtype(publication, indicator);
+        return scoreBySubtype(publication, indicator, false);
     }
 
-    private Score scoreBySubtype(ScoringPublicationReadModel publication, Indicator indicator) {
+    private Score scoreBySubtype(ScoringPublicationReadModel publication, Indicator indicator, boolean bookSeriesVenue) {
         if (publication == null) {
             return createEmptyScore();
         }
@@ -90,6 +90,21 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
+        // H99 follow-up (Florin's AINA-2026 chapters): Springer registers many proceedings volumes as BOOK
+        // CHAPTERS — both vocabularies say "ch", so the conference-paper escape above cannot fire — yet the
+        // Crossref volume title / DBLP evidence can still name the actual conference. On a SERIES venue (the
+        // only place proceedings masquerade as chapters) give the conference machinery a shot and accept its
+        // verdict ONLY on a positive identification (CORE conference id, resolved acronym, or a DBLP/volume
+        // match). A genuine edited-volume chapter identifies nothing and stays out of this framework — it
+        // belongs to the book indicators, exactly as before.
+        if (bookSeriesVenue && "ch".equals(subtype)) {
+            Score conference = conferenceScoringService.getScore(publication, indicator);
+            if (identifiedConference(conference)) {
+                return conference;
+            }
+            return createEmptyScore();
+        }
+
         // Delegate to specialized scoring services by publication subtype — the type is the authoritative
         // discriminator (mirrors the puncte/clas.c type switch). Only journals and conferences are dispatched:
         // this is the A*/A/B journal+conference framework (Info_B / Info_C). Books/chapters ("ch"/"bk") are NOT
@@ -100,6 +115,17 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             case "cp" -> conferenceScoringService.getScore(publication, indicator);
             default -> createEmptyScore();
         };
+    }
+
+    /** A conference score counts only when the scorer NAMED a conference — not a series floor or forum-title echo. */
+    private static boolean identifiedConference(Score score) {
+        if (score == null || score.getScoringInfo() == null) {
+            return false;
+        }
+        var info = score.getScoringInfo();
+        return info.get("matchedConferenceId") != null
+                || info.get("matchedAcronym") != null
+                || "DBLP".equals(info.get("matchSource"));
     }
 
     /* ------------------------------------------------------------------ */

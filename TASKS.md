@@ -9,6 +9,16 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H101` Fee-journal (APC) status must be time-aware (Florin, 2026-09-02 follow-up).
+  `isFeeJournal(forumId)` is a per-forum boolean, but a journal's business model changes: IJCCC
+  (Univ. Agora) was free open-access in 2013–2014 (SCPE-style) and moved to APC later — his two
+  IJCCC papers from that era are declassified by TODAY'S status. Model: an `apcSince` year on the
+  forum's fee fact; the formula gate compares the PUBLICATION year (same year-true pattern as WoS
+  coverage). Data is the hard part — OpenAlex APC data is current-only; historical status needs
+  web.archive.org traces, so realistically researcher-supplied claims with evidence (a small
+  cousin of the H93 venue claims). PARKED until his announced follow-up message on the broader
+  APC-declassification interpretation dispute (Springer/Elsevier Q1/Q2 APC journals growing yearly).
+
 - [ ] `H100` Future-dated activity instances must not score (from H99 item 3, Florin's suggestion).
   A researcher records an activity now, dated in the future (doctorand cu susținerea programată — D_xii
   keyed by the DEFENSE date), and it starts counting only once the date passes; until then it shows as a

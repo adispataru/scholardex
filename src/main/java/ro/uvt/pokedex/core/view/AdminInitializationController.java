@@ -100,8 +100,9 @@ public class AdminInitializationController {
     @PostMapping("/crossref/volumes/dryRun")
     @ResponseBody
     public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult crossrefVolumeDryRun(
-            @RequestParam(name = "limit", defaultValue = "0") int limit) {
-        return crossrefVolumeEnrichmentService.sweep(true, limit);
+            @RequestParam(name = "limit", defaultValue = "0") int limit,
+            @RequestParam(name = "recheckEmpty", defaultValue = "false") boolean recheckEmpty) {
+        return crossrefVolumeEnrichmentService.sweep(true, limit, recheckEmpty);
     }
 
     /**
@@ -112,8 +113,9 @@ public class AdminInitializationController {
     @PostMapping("/crossref/volumes/apply")
     @ResponseBody
     public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult crossrefVolumeApply(
-            @RequestParam(name = "limit", defaultValue = "0") int limit) {
-        return crossrefVolumeEnrichmentService.sweep(false, limit);
+            @RequestParam(name = "limit", defaultValue = "0") int limit,
+            @RequestParam(name = "recheckEmpty", defaultValue = "false") boolean recheckEmpty) {
+        return crossrefVolumeEnrichmentService.sweep(false, limit, recheckEmpty);
     }
 
     /**

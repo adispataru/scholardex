@@ -70,6 +70,16 @@ public class CrossrefVolumeEnrichmentService {
      * @param limit 0 or negative for "no cap"; otherwise stop after that many candidates (for a first pass).
      */
     public ImportProcessingResult sweep(boolean dryRun, int limit) {
+        return sweep(dryRun, limit, false);
+    }
+
+    /**
+     * @param recheckEmpty re-try rows that were checked but came back EMPTY (no volume title). A fresh
+     *     Springer DOI queried days after publication often has incomplete Crossref metadata; without a
+     *     re-check such papers stay unidentified forever (the AINA-2026 chapters Florin reported —
+     *     crossref-volume rows with a null volumeTitle blocked the sweep's already-checked guard).
+     */
+    public ImportProcessingResult sweep(boolean dryRun, int limit, boolean recheckEmpty) {
         // Logged BEFORE any work: the first prod run left zero trace when it never got this far, and
         // "did the method even run" should never again require a thread dump to answer.
         log.info("Crossref volume sweep starting: dryRun={} limit={}", dryRun, limit);
@@ -82,7 +92,7 @@ public class CrossrefVolumeEnrichmentService {
             if (limit > 0 && examined >= limit) {
                 break;
             }
-            if (!isCandidate(pub, forums)) {
+            if (!isCandidate(pub, forums, recheckEmpty)) {
                 continue;
             }
             examined++;
@@ -115,7 +125,8 @@ public class CrossrefVolumeEnrichmentService {
      * volume title we have not already looked up. Papers already carrying a DBLP {@code series} are left
      * alone — DBLP named the conference outright, which beats a volume title.
      */
-    private boolean isCandidate(ScholardexPublicationFact pub, Map<String, ScholardexForumFact> seriesForums) {
+    private boolean isCandidate(ScholardexPublicationFact pub, Map<String, ScholardexForumFact> seriesForums,
+                                boolean recheckEmpty) {
         String doi = pub.getDoi() == null ? "" : pub.getDoi().toLowerCase(java.util.Locale.ROOT);
         if (!doi.contains(SPRINGER_ISBN_DOI_PREFIX)) {
             return false;
@@ -130,7 +141,8 @@ public class CrossrefVolumeEnrichmentService {
         ScholardexPublicationDblpEvidence ev = existing.get();
         boolean dblpNamedIt = ev.getSeries() != null && !ev.getSeries().isBlank();
         boolean alreadyChecked = ev.getCrossrefCheckedAt() != null;
-        return !dblpNamedIt && !alreadyChecked;
+        boolean volumeKnown = ev.getVolumeTitle() != null && !ev.getVolumeTitle().isBlank();
+        return !dblpNamedIt && (!alreadyChecked || (recheckEmpty && !volumeKnown));
     }
 
     /** Forums whose aggregationType marks them a series — the ones whose NAME identifies no conference. */
@@ -171,6 +183,6 @@ public class CrossrefVolumeEnrichmentService {
     public long countCandidates() {
         Map<String, ScholardexForumFact> forums = seriesForumsById();
         List<ScholardexPublicationFact> all = publicationFactRepository.findAll();
-        return all.stream().filter(p -> isCandidate(p, forums)).count();
+        return all.stream().filter(p -> isCandidate(p, forums, false)).count();
     }
 }
