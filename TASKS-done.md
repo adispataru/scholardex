@@ -4175,3 +4175,57 @@ Closed task docs: `docs/tasks/closed/h66-curated-allowlists.md`, `docs/tasks/clo
     authorships. Decision-0 authorship-decision remap is **moot** (the wipe removed the old user-state).
   - **Memory gotchas captured:** Boot-4 Mongo key (`spring-boot-4-mongo-config-key`), DBLP long-line dump reader
     (`dblp-dump-long-lines`), `@WebMvcTest` mock completeness, verify-code-path-before-rebuild.
+
+
+## H84 Researcher-flagged publication merges (archived 2026-09-02)
+
+Fully shipped end to end. S1 executor + durable side-table + rebuild re-apply + resurrection guard;
+S2 admin review queue on /admin/publication-merges; S3 researcher suggest/flag flow on the workspace;
+admin request endpoint (idempotent PENDING writes); S4 (2026-09-01) the UVT-authored scheduled sweep
+(`PublicationMergeSweepService`: registered researchers' pubs, same-normalized-title ±1y, minus generic
+≤3-word titles / different-DOI pairs / preprints-by-decision, richness survivor, weekly Sun 04:30 +
+`POST /admin/publications/mergeSweep?dryRun=`). First prod sweep found 0 new pairs — correct: the
+July–September review batches (~40 approved merges incl. Florin's IGI chapter pair) had drained exactly
+the measured candidate set; the schedule now watches for future duplicates. Left undone by decision:
+preprint-vs-published folding (a policy call, not a merge).
+
+- [x] `H84` Researcher-flagged publication merges (durable across rebuilds).
+
+## H93 Researcher-supplied venue claims (archived 2026-09-02)
+
+Fully shipped: spared `publication_venue_claims` (DOI+title+year anchors, Displaced for exact revert),
+claims beat DBLP in the re-apply order (rebuildFromEvidence → merges → claims), admin queue shares the
+Merges page, workspace picker (Book-Series-last). Origin case (EuroMLSys@EuroSYS) expressible by the
+claimant. Exercised in prod through the H99 review cycle.
+
+- [x] `H93` Researcher-supplied venue claim (durable across rebuilds).
+
+## H95 Perspectives (archived 2026-09-02)
+
+Fully shipped: `Perspective {name, composition}` + `CompositionNode {all|any|criterion|perspective}` on
+reports, position-effective verdicts, the evaluation rail with per-route legend (any-roots → rutele,
+all-roots' perspective children → Total component rows, rail-wide hover hints), FV Info 2016+2026
+compositions in prod (incl. the criteria renames and Perspectiva D → Activități + project-director
+criterion), FEAA 2026 gates. The zero-collapse UX and the H99 position-aware header total built on it.
+
+- [x] `H95` Perspectives — report-level grouping with logical verdicts over criteria.
+
+## H99 Florin Fortis's FV Info 2026 feedback batch (archived 2026-09-02)
+
+All nine items closed (two emails, every number verified against prod): (1) dual totals — position-aware
+header; (2) A*+A+B 44-vs-36 — Scopus "ch" masked Crossref conference-paper on unrestamped Book-Series
+forums; `indicatesConferencePaper` routes both vocabularies to the conference scorer (44→52, citations
+too — his Springer-series hint described the mechanism exactly); (3) D_xii — prod formula had lost its
+quotes; (4) GoveIN — zero-scored activities now surface as excluded rows with reason; (5) SCIPA —
+Interval_buget precedence reordered (declared interval beats currency-blind Buget); physics A10 follow-up
+closed with the derived `Buget_eur` (CORDIS → interval-consistent Buget → interval lower bound);
+(6) stuck correction request — his merge sat mid-queue among 31 pending; approved; (7) no add-book flow —
+the type-first wizard with the real book-entity path (searches the 477k book list, mints USER_DEFINED
+books for Mirton/Eubeea, auto-confirms authorship, self-author pre-staged); (8) missing chapters — split
+identities ×4 (Alexandra) + Scopus-side author-id merge, all consolidated via the new explicit
+/author/merge endpoint; the genuinely absent chapters are unindexed local ones → the wizard;
+(9) nondeterministic runs (found in triage) — the author-count flap: setAuthors clobbered the
+bibliographic author_count while two sync paths fought over a split-identity ghost; fixed at both ends.
+Follow-on feature extracted to `H100` (future-dated activities).
+
+- [x] `H99` Florin Fortis's FV Info 2026 feedback batch.
