@@ -35,6 +35,18 @@ public class AdminPublicationMergeController {
 
     private final PublicationMergeService publicationMergeService;
     private final ScholardexProjectionDirtyService projectionDirtyService;
+    private final ro.uvt.pokedex.core.service.application.PublicationMergeSweepService publicationMergeSweepService;
+
+    /**
+     * H84 S4: run the UVT-authored duplicate sweep on demand. {@code dryRun=true} (default) only reports
+     * the candidate pairs; {@code dryRun=false} writes them PENDING into the review queue via the same
+     * idempotent request path the researcher flow uses. The weekly schedule calls the same service.
+     */
+    @PostMapping("/mergeSweep")
+    public ro.uvt.pokedex.core.service.application.PublicationMergeSweepService.SweepResult mergeSweep(
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        return publicationMergeSweepService.sweep(dryRun);
+    }
 
     @PostMapping("/merge")
     public Map<String, Object> directMerge(@RequestParam String survivorId,

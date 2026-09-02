@@ -41,6 +41,8 @@ class AdminPublicationMergeControllerContractTest {
     private PublicationMergeService publicationMergeService;
     @MockitoBean
     private ScholardexProjectionDirtyService projectionDirtyService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PublicationMergeSweepService publicationMergeSweepService;
 
     private static PublicationMergeDecision decision(PublicationMergeDecision.Status status) {
         PublicationMergeDecision decision = new PublicationMergeDecision();

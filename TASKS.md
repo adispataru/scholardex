@@ -57,6 +57,15 @@ Done history moved to `TASKS-done.md`.
   ~10 rows today, grows with onboarding (57 of ~370 staff have profiles), structurally cannot flood the queue.
   Left undone by decision: preprint-vs-published pairs (3 for madalina.erascu) — folding an arXiv preprint into
   its published version changes a score and is a policy call, not a merge.
+  **S4 DONE locally 2026-09-01: `PublicationMergeSweepService`** — the UVT-authored sweep exactly as re-scoped:
+  registered researchers' author keys → their publications → same-normalized-title groups (±1 year) minus the
+  three measured exclusions (generic ≤3-word titles, different-DOI pairs, preprints — the by-decision carve-out),
+  richness-picked survivor, PENDING rows via the idempotent requestMerge (requestedByEmail="merge-sweep").
+  Weekly @Scheduled (Sun 04:30, after the nightly rebuild; `core.merge-sweep.enabled`/`.cron` to tune) + on-demand
+  `POST /admin/publications/mergeSweep?dryRun=true|false`. Reuses the workspace facade's richness/yearsCompatible
+  (now package-visible). Wiring verified live on agent-dev (dry run: 55 researchers resolved, grouping exercised).
+  ROLLOUT: after deploy, hit the endpoint with dryRun=true, eyeball the ~10 expected pairs, then dryRun=false;
+  the weekly schedule takes over. H84 is CLOSABLE once that first prod sweep lands in the queue.
 
 - [ ] `H76` WoS CPCI onboarding — **MVP done + live; only blocked/attributed remainders open.**
   Plan: `docs/tasks/active/h76-wos-cpci-onboarding.md`. Background: `wosForumIds` come only from the WoS **journal**

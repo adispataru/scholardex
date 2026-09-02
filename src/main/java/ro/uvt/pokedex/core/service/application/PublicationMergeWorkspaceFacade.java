@@ -120,14 +120,14 @@ public class PublicationMergeWorkspaceFacade {
         return suggestions;
     }
 
-    private static boolean yearsCompatible(ScholardexPublicationView a, ScholardexPublicationView b) {
+    static boolean yearsCompatible(ScholardexPublicationView a, ScholardexPublicationView b) {
         Integer yearA = parseYear(a.getCoverDate());
         Integer yearB = parseYear(b.getCoverDate());
         return yearA == null || yearB == null || Math.abs(yearA - yearB) <= 1;
     }
 
-    /** Richer record survives: a Scopus EID outweighs a DOI, citations break ties. */
-    private static long richness(ScholardexPublicationView pub) {
+    /** Richer record survives: a Scopus EID outweighs a DOI, citations break ties. (Package-visible: the S4 sweep reuses it.) */
+    static long richness(ScholardexPublicationView pub) {
         long score = 0;
         if (!isBlank(pub.getEid())) {
             score += 4_000_000_000L;
