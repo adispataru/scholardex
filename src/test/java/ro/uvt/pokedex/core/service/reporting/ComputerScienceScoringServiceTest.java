@@ -280,6 +280,7 @@ class ComputerScienceScoringServiceTest {
         ScoringPublication publication = publication("p-chapter-1", "forum-lndect", "book-chapter", "ch");
         ScholardexForumView forum = new ScholardexForumView();
         forum.setAggregationType("Book Series");
+        forum.setPublicationName("Lecture Notes on Data Engineering and Communications Technologies");
         when(cacheService.getForum("forum-lndect")).thenReturn(forum);
 
         Score score = service.getScore(publication, new Indicator());
@@ -307,6 +308,7 @@ class ComputerScienceScoringServiceTest {
         ScoringPublication publication = publication("p-aina-ch", "forum-lndect", "book-chapter", "ch");
         ScholardexForumView forum = new ScholardexForumView();
         forum.setAggregationType("Book Series");
+        forum.setPublicationName("Lecture Notes on Data Engineering and Communications Technologies");
         when(cacheService.getForum("forum-lndect")).thenReturn(forum);
 
         Score score = service.getScore(publication, new Indicator());
@@ -314,6 +316,30 @@ class ComputerScienceScoringServiceTest {
         assertEquals(4.0, score.getScore());
         assertEquals("B", score.getCoreRankingEquivalent());
         verifyNoInteractions(journalScoringService, bookScoringService);
+    }
+
+    @Test
+    void chapterOnANonLectureNotesSeriesStaysOnTheBookSide() {
+        // Partition guard: a chapter on e.g. "Studies in Computational Intelligence" belongs to the
+        // SENSE book scorer (LectureNotesSeriesSupport's measured boundary) — the conference-try must
+        // not fire there, or the same paper counts on both sides.
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        ScoringPublication publication = publication("p-sci-ch", "forum-sci", "book-chapter", "ch");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Book Series");
+        forum.setPublicationName("Studies in Computational Intelligence");
+        when(cacheService.getForum("forum-sci")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
     }
 
     @Test

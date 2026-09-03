@@ -73,13 +73,37 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
         boolean bookCandidate = ("ch".equals(subtype) || "bk".equals(subtype))
                 && !isLectureNotesSeries(forum) && !conferenceForum;
         if (bookCandidate) {
+            // H99 follow-up (Florin's Editura-UVT / Wiley cases): a book-entity-venued publication (bookId,
+            // no forum — every wizard book and most Scopus-sourced chapters) carries its publisher on the
+            // book registry row, not on a forum. Resolve through the shared book-first path and, when the
+            // forum has no publisher of its own, hand the compute a venue carrying that publisher. The
+            // predatory/LNCS/conference gates above keep using the REAL forum.
+            String effectivePublisher = PublicationPublisherSupport.resolvePublisher(publication, lookupPort);
+            ScholardexForumView scoringVenue = forum;
+            if ((forum == null || forum.getPublisher() == null || forum.getPublisher().isBlank())
+                    && effectivePublisher != null && !effectivePublisher.isBlank()) {
+                scoringVenue = new ScholardexForumView();
+                scoringVenue.setPublisher(effectivePublisher);
+            }
             computeScoresWithForum(
                     domain,
-                    forum,
+                    scoringVenue,
                     allowedYears,
                     scoreResult,
                     this::computeSENSEScore
             );
+            // The standard's scale is explicit: "cărți (D, E și nelistate) ... 2p" — a real publisher with
+            // NO SENSE listing (Editura Mirton, Eubeea) is worth the D/E tier, not zero. Only awarded when
+            // a publisher actually resolved; a ch/bk with no publisher evidence anywhere stays at 0.
+            if (scoreResult.bestPoints.get() == 0
+                    && effectivePublisher != null && !effectivePublisher.isBlank()) {
+                scoreResult.bestPoints.set(2.0);
+                scoreResult.bestCategory.set(ro.uvt.pokedex.core.model.CoreConferenceRanking.Rank.D);
+                scoreResult.bestYear.set(LAST_SENSE_YEAR);
+                scoreResult.scoringSource.set("UNLISTED_PUBLISHER");
+                scoreResult.scoringInfo.put("matchSource", "UNLISTED_PUBLISHER");
+                scoreResult.scoringInfo.put("publisher", effectivePublisher);
+            }
             if("ch".equals(subtype)) {
                 scoreResult.bestPoints.set(scoreResult.bestPoints.get() / 2);
             }

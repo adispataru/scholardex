@@ -61,7 +61,11 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
                 // Book/Book-Series forums: a "cp" paper is a conference proceeding (e.g. LNCS), otherwise fall to
                 // the subtype switch — which keeps journal output and DROPS books/chapters (they are not part of
                 // this A*/A/B journal+conference framework; they belong to the SENSE book indicator, CS_SENSE).
-                case "Book", "Book Series" -> scoreBySubtype(publication, indicator, true);
+                // The ch-conference-try below is restricted to the Lecture-Notes family — exactly the series
+                // the book scorer excludes (LectureNotesSeriesSupport's partition: family → conference side,
+                // other series → book side). Widening it would double-count SENSE-scored chapters.
+                case "Book", "Book Series" -> scoreBySubtype(publication, indicator,
+                        LectureNotesSeriesSupport.isLectureNotesSeries(forum));
                 default -> scoreBySubtype(publication, indicator, false);
             };
         }
@@ -69,7 +73,7 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
         return scoreBySubtype(publication, indicator, false);
     }
 
-    private Score scoreBySubtype(ScoringPublicationReadModel publication, Indicator indicator, boolean bookSeriesVenue) {
+    private Score scoreBySubtype(ScoringPublicationReadModel publication, Indicator indicator, boolean lectureNotesVenue) {
         if (publication == null) {
             return createEmptyScore();
         }
@@ -92,12 +96,12 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
 
         // H99 follow-up (Florin's AINA-2026 chapters): Springer registers many proceedings volumes as BOOK
         // CHAPTERS — both vocabularies say "ch", so the conference-paper escape above cannot fire — yet the
-        // Crossref volume title / DBLP evidence can still name the actual conference. On a SERIES venue (the
-        // only place proceedings masquerade as chapters) give the conference machinery a shot and accept its
-        // verdict ONLY on a positive identification (CORE conference id, resolved acronym, or a DBLP/volume
-        // match). A genuine edited-volume chapter identifies nothing and stays out of this framework — it
-        // belongs to the book indicators, exactly as before.
-        if (bookSeriesVenue && "ch".equals(subtype)) {
+        // Crossref volume title / DBLP evidence can still name the actual conference. On a LECTURE-NOTES
+        // series (the family the book scorer excludes, so the handoff is a clean partition) give the
+        // conference machinery a shot and accept its verdict ONLY on a positive identification (CORE
+        // conference id, resolved acronym, or a DBLP/volume match). Unidentified papers yield nothing here —
+        // and being family-gated out of the book scorer too, they stay where they were before this route.
+        if (lectureNotesVenue && "ch".equals(subtype)) {
             Score conference = conferenceScoringService.getScore(publication, indicator);
             if (identifiedConference(conference)) {
                 return conference;

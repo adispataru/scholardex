@@ -133,7 +133,8 @@ class ComputerScienceBookServiceTest {
     @Test
     void chapterFuzzyMatchRejectsShortNameCharSubstringOverMatch() {
         // The old bidirectional char-substring matched SENSE "IOS" inside "Bios Scientific" — a false positive.
-        // Whole-word matching rejects it, so an unrelated publisher gets no SENSE score.
+        // Whole-word matching rejects it, so the publisher gets NO SENSE rank (no A-tier 8p) — and, per the
+        // standard's "cărți (D, E și nelistate)" scale, lands on the unlisted D/E tier instead (chapter = 1p).
         ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
         when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Bios Scientific Publishers"));
         when(senseRankingRepository.findAllByNameIgnoreCase("Bios Scientific Publishers")).thenReturn(List.of());
@@ -144,8 +145,9 @@ class ComputerScienceBookServiceTest {
 
         Score score = service.getScore(publication("ch", "ch"), indicator());
 
-        assertEquals(0.0, score.getScore());
-        // A real chapter (candidate) whose publisher resolved no SENSE rank is NOT a venue-type mismatch.
+        assertEquals(1.0, score.getScore());
+        assertEquals("UNLISTED_PUBLISHER", score.getScoringSource());
+        // A real chapter (candidate) on an unlisted publisher is scored, not zero-flagged.
         assertEquals(null, score.getScoringInfo().get("zeroReason"));
     }
 
@@ -215,6 +217,63 @@ class ComputerScienceBookServiceTest {
         indicator.setDomain(domain);
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         return indicator;
+    }
+
+    @Test
+    void bookEntityVenuedBookResolvesItsPublisherThroughTheBookRegistry() {
+        // H99 follow-up (Editura-UVT wizard book): a bookId-venued pub has NO forum — the publisher lives
+        // on the book_facts row and must still reach the SENSE match.
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        var book = new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact();
+        book.setId("USER_DEFINED:BOOK:x");
+        book.setPublisher("Editura Universitatii de Vest din Timisoara");
+        when(lookupPort.getBook("USER_DEFINED:BOOK:x")).thenReturn(book);
+        when(senseRankingRepository.findAllByNameIgnoreCase("Editura Universitatii de Vest din Timisoara"))
+                .thenReturn(List.of(ranking(SenseBookRanking.Rank.E)));
+
+        ScoringPublication pub = new ScoringPublication("pub-b", "eid-b", null, "USER_DEFINED:BOOK:x",
+                "1999-01-01", "bk", "bk", List.of("a1"), 2, null, null, "Variabile aleatoare", 0,
+                java.util.Set.of(), 0, 0, 0, List.of(), null);
+
+        Score score = service.getScore(pub, indicator());
+
+        // SENSE E tier: authored book = 2p ("cărți (D, E și nelistate)").
+        assertEquals(2.0, score.getScore());
+    }
+
+    @Test
+    void unlistedPublisherBookScoresTheDETierInsteadOfZero() {
+        // The standard's scale is explicit: D, E AND UNLISTED = 2p per volume. Editura Mirton is not in
+        // SENSE — it must not vanish to zero.
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        var book = new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact();
+        book.setId("USER_DEFINED:BOOK:m");
+        book.setPublisher("Editura Mirton");
+        when(lookupPort.getBook("USER_DEFINED:BOOK:m")).thenReturn(book);
+        when(senseRankingRepository.findAllByNameIgnoreCase("Editura Mirton")).thenReturn(List.of());
+        when(senseRankingRepository.findAll()).thenReturn(List.of());
+
+        ScoringPublication bookPub = new ScoringPublication("pub-m", "eid-m", null, "USER_DEFINED:BOOK:m",
+                "2020-01-01", "bk", "bk", List.of("a1"), 1, null, null, "Carte la Mirton", 0,
+                java.util.Set.of(), 0, 0, 0, List.of(), null);
+        ScoringPublication chapterPub = new ScoringPublication("pub-mc", "eid-mc", null, "USER_DEFINED:BOOK:m",
+                "2020-01-01", "ch", "ch", List.of("a1"), 1, null, null, "Capitol la Mirton", 0,
+                java.util.Set.of(), 0, 0, 0, List.of(), null);
+
+        assertEquals(2.0, service.getScore(bookPub, indicator()).getScore());
+        assertEquals(1.0, service.getScore(chapterPub, indicator()).getScore());
+    }
+
+    @Test
+    void bookWithNoPublisherEvidenceAnywhereStaysAtZero() {
+        // No forum, no book registry row: nothing supports even the unlisted tier.
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+
+        ScoringPublication pub = new ScoringPublication("pub-n", "eid-n", null, null,
+                "2020-01-01", "bk", "bk", List.of("a1"), 1, null, null, "Carte fara editura", 0,
+                java.util.Set.of(), 0, 0, 0, List.of(), null);
+
+        assertEquals(0.0, service.getScore(pub, indicator()).getScore());
     }
 
     private ScoringPublication publication(String subtype, String scopusSubtype) {
