@@ -9,6 +9,16 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
+  A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit
+  (three places: user_defined fact + canonical pub + book entity). Feature: an "Editează" action on
+  source=USER_DEFINED rows (submitter-only), reopening the wizard prefilled and resubmitting through
+  the SAME ingest path with the PINNED original sourceRecordId — the essential subtlety, since the
+  derived id includes coverDate and a naive re-derive on an edited date mints a duplicate. The ingest
+  pipeline is already idempotent on (sourceRecordId, payload-hash), so the backend is mostly free;
+  the work is the workspace action + prefill + the pin. Delete (tombstone semantics) deliberately
+  out of scope for the first slice.
+
 - [ ] `H101` Fee-journal (APC) status must be time-aware (Florin, 2026-09-02 follow-up).
   `isFeeJournal(forumId)` is a per-forum boolean, but a journal's business model changes: IJCCC
   (Univ. Agora) was free open-access in 2013–2014 (SCPE-style) and moved to APC later — his two
