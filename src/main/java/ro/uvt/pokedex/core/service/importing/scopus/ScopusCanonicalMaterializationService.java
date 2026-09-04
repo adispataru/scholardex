@@ -25,6 +25,7 @@ public class ScopusCanonicalMaterializationService {
     private final OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     private final ro.uvt.pokedex.core.service.application.PublicationMergeService publicationMergeService;
+    private final ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
     private final ro.uvt.pokedex.core.service.application.PublicationVenueClaimService publicationVenueClaimService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexSourceLinkService sourceLinkService;
@@ -71,6 +72,10 @@ public class ScopusCanonicalMaterializationService {
         // replay reset OpenAlex-conference pubs' forumId. Full-maintenance only, mirroring the OpenAlex replay above.
         if (!incrementalBatchRun) {
             dblpConferenceResolveService.rebuildFromEvidence();
+            // H103: re-apply explicit AUTHOR merges first — the replay above re-minted the split identities
+            // (ghost authors) these decisions closed; consolidating authors before the publication merges keeps
+            // the pub-side re-apply working over settled author lists.
+            authorReconcileService.reapplyPersistedMerges();
             // H84: re-apply human-approved publication merges — the canonical replay above re-minted both sides
             // of every merged pair from source, so each merge re-executes here (idempotent; projections are not
             // dirty-marked because the full view rebuild follows in this same run).

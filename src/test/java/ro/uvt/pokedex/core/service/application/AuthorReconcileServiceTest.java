@@ -46,6 +46,7 @@ class AuthorReconcileServiceTest {
     @Mock private ScholardexSourceLinkRepository sourceLinkRepository;
     @Mock private UserRepository userRepository;
     @Mock private OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.AuthorMergeDecisionRepository authorMergeDecisionRepository;
     @Mock private ScholardexIdentityConflictRepository identityConflictRepository;
 
     @InjectMocks private AuthorReconcileService service;
@@ -421,6 +422,97 @@ class AuthorReconcileServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.mergePair(null, "sauth_x"));
         when(authorRepository.findById("sauth_absent")).thenReturn(Optional.empty());
         assertThrows(IllegalArgumentException.class, () -> service.mergePair("sauth_absent", "sauth_y"));
+    }
+
+    @Test
+    void explicitMergePersistsADurableDecisionAnchoredOnTheUnionOfIdentityKeys() {
+        // H103: the merge writes a rebuild-durable decision carrying the winner's post-merge key sets.
+        ScholardexAuthorFact scopusHalf = author("sauth_scopus", "Fortis T.-F.", null);
+        scopusHalf.setScopusAuthorIds(new ArrayList<>(List.of("6603648115")));
+        ScholardexAuthorFact ghost = author("sauth_ghost", "Teodor-Florin Fortiş", "0000-0002-3143-8908");
+        ghost.setOpenAlexAuthorIds(new ArrayList<>(List.of("A5091103345")));
+        when(authorRepository.findById("sauth_scopus")).thenReturn(Optional.of(scopusHalf));
+        when(authorRepository.findById("sauth_ghost")).thenReturn(Optional.of(ghost));
+        when(authorMergeDecisionRepository.findAll()).thenReturn(List.of());
+
+        service.mergePair("sauth_scopus", "sauth_ghost");
+
+        org.mockito.ArgumentCaptor<ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision> captor =
+                org.mockito.ArgumentCaptor.forClass(ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision.class);
+        verify(authorMergeDecisionRepository).save(captor.capture());
+        var decision = captor.getValue();
+        assertTrue(decision.getAnchorScopusIds().contains("6603648115"));
+        assertTrue(decision.getAnchorOrcidIds().contains("0000-0002-3143-8908"));
+        assertTrue(decision.getAnchorOpenAlexIds().contains("A5091103345"));
+        assertTrue(decision.getDisplayNamesSnapshot().contains("Fortis T.-F."));
+    }
+
+    @Test
+    void stepwiseMergesCoalesceIntoASingleDecisionPerIdentity() {
+        // Alexandra's ×3 chain: a later merge overlapping an earlier decision's keys unions into ONE row.
+        ScholardexAuthorFact survivor = author("sauth_a", "Fortis A.-E.", "0000-0002-7899-3415");
+        survivor.setScopusAuthorIds(new ArrayList<>(List.of("58690372800", "24450119400")));
+        ScholardexAuthorFact typo = author("sauth_typo", "Alexandra-Emilia Forti", null);
+        when(authorRepository.findById("sauth_a")).thenReturn(Optional.of(survivor));
+        when(authorRepository.findById("sauth_typo")).thenReturn(Optional.of(typo));
+
+        var earlier = new ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision();
+        earlier.setId("dec-1");
+        earlier.setAnchorScopusIds(new ArrayList<>(List.of("58690372800")));
+        earlier.setDisplayNamesSnapshot(new ArrayList<>(List.of("Alexandra Fortis")));
+        earlier.setCreatedAt(java.time.Instant.parse("2026-09-01T10:00:00Z"));
+        when(authorMergeDecisionRepository.findAll()).thenReturn(List.of(earlier));
+
+        service.mergePair("sauth_a", "sauth_typo");
+
+        verify(authorMergeDecisionRepository).deleteById("dec-1");
+        org.mockito.ArgumentCaptor<ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision> captor =
+                org.mockito.ArgumentCaptor.forClass(ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision.class);
+        verify(authorMergeDecisionRepository).save(captor.capture());
+        var coalesced = captor.getValue();
+        assertTrue(coalesced.getAnchorScopusIds().containsAll(List.of("58690372800", "24450119400")));
+        assertTrue(coalesced.getDisplayNamesSnapshot().contains("Alexandra Fortis"));
+        assertEquals(java.time.Instant.parse("2026-09-01T10:00:00Z"), coalesced.getCreatedAt());
+    }
+
+    @Test
+    void reapplyReMergesAResurrectedSplitResolvedThroughAnchorKeys() {
+        // H103: after a rebuild the ghost is re-minted with the OA ids while the Scopus author has the AU-ID.
+        var decision = new ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision();
+        decision.setId("dec-f");
+        decision.setAnchorScopusIds(new ArrayList<>(List.of("6603648115")));
+        decision.setAnchorOrcidIds(new ArrayList<>(List.of("0000-0002-3143-8908")));
+        when(authorMergeDecisionRepository.findAll()).thenReturn(List.of(decision));
+
+        ScholardexAuthorFact scopusHalf = author("sauth_scopus2", "Fortis T.-F.", null);
+        scopusHalf.setScopusAuthorIds(new ArrayList<>(List.of("6603648115")));
+        ScholardexAuthorFact resurrectedGhost = author("sauth_ghost2", "Teodor-Florin Fortiş", "0000-0002-3143-8908");
+        when(authorRepository.findByScopusAuthorIdsContains("6603648115")).thenReturn(Optional.of(scopusHalf));
+        when(authorRepository.findByOrcidIdsContains("0000-0002-3143-8908")).thenReturn(List.of(resurrectedGhost));
+
+        int remerged = service.reapplyPersistedMerges();
+
+        assertEquals(1, remerged);
+        verify(authorRepository).deleteById("sauth_ghost2");   // winner rule keeps the Scopus-established doc
+        verify(authorMergeDecisionRepository).save(decision);  // lastAppliedAt stamped
+        org.junit.jupiter.api.Assertions.assertNotNull(decision.getLastAppliedAt());
+    }
+
+    @Test
+    void reapplyIsANoOpWhenTheIdentityIsAlreadyOneDocument() {
+        var decision = new ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision();
+        decision.setId("dec-one");
+        decision.setAnchorScopusIds(new ArrayList<>(List.of("111")));
+        decision.setAnchorOrcidIds(new ArrayList<>(List.of("0000-0001-0000-0000")));
+        when(authorMergeDecisionRepository.findAll()).thenReturn(List.of(decision));
+
+        ScholardexAuthorFact whole = author("sauth_whole", "Doe, Jane", "0000-0001-0000-0000");
+        whole.setScopusAuthorIds(new ArrayList<>(List.of("111")));
+        when(authorRepository.findByScopusAuthorIdsContains("111")).thenReturn(Optional.of(whole));
+        when(authorRepository.findByOrcidIdsContains("0000-0001-0000-0000")).thenReturn(List.of(whole));
+
+        assertEquals(0, service.reapplyPersistedMerges());
+        verify(authorRepository, never()).deleteById(any());
     }
 
     private ScholardexAuthorFact author(String id, String displayName, String orcid) {

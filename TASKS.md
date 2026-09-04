@@ -9,18 +9,17 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H103` Author merges must survive from-scratch rebuilds (found 2026-09-04 auditing durability).
-  The explicit `/admin/initialization/author/merge` (H99 item 9 / item 8: the Fortiș ghost, Alexandra's
-  ×4 split) mutates canonical author docs + repoints references — but `scholardex.author_facts` and
-  `scholardex.source_links` are MANAGED_DERIVED_COLLECTIONS: a derive/full rebuild re-derives authors
-  from source facts using exactly the bridging that failed to union these identities originally, so the
-  ghosts RESURRECT and the H99 score flap returns. Cure is the proven H84/H93 pattern: a spared
-  `author_merge_decisions` side-table written by mergePair (pair of id-key SETS as the durable anchor,
-  since canonical ids are rebuild-unstable), re-applied after the canonical author build in the same
-  chain as merges/claims (rebuildFromEvidence → pub merges → venue claims → AUTHOR merges). Until built:
-  after any full rebuild re-run the four merges manually (ids in TASKS-done H99 closeout) and re-run
-  `POST /admin/initialization/crossref/publishers/apply` (forum publishers are also wiped; the sweep is
-  its own re-apply — books/volume evidence are spared and survive).
+- [ ] `H103` Author merges must survive from-scratch rebuilds — **BUILT 2026-09-04, awaiting deploy+seed.**
+  Spared `scholardex.author_merge_decisions` (NOT in MANAGED_DERIVED_COLLECTIONS) anchored on identity-KEY
+  sets (scopus/orcid/openalex/wos/userSource — canonical ids are rebuild-unstable). `mergePair` persists +
+  COALESCES decisions (any-key-overlap unions into one row per identity, so Alexandra's stepwise ×3 chain is
+  one decision). `reapplyPersistedMerges()` resolves current authors by anchor keys and re-merges when ≥2
+  docs answer; chained in BOTH rebuild paths (incremental materialization: before pub merges; V2 runFull:
+  same — and the audit found VENUE CLAIMS were missing from the V2 chain entirely, the repeated 2026-07-25
+  dual-path omission — fixed: evidence → author merges → pub merges → claims → views, order pinned by test).
+  Manual `POST /admin/initialization/author/merges/reapply`. ROLLOUT: deploy, then run
+  `h103_seed_author_merge_decisions.js` (scripts folder) — the four pre-side-table merges need seeding from
+  the survivors' current key sets, else the first rebuild still resurrects them. CLOSABLE after the seed.
 
 - [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
   A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit

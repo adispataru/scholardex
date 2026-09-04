@@ -46,6 +46,8 @@ class ScopusCanonicalMaterializationServiceTest {
     @org.mockito.Mock
     private ro.uvt.pokedex.core.service.application.PublicationMergeService publicationMergeService;
     @org.mockito.Mock
+    private ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
+    @org.mockito.Mock
     private ro.uvt.pokedex.core.service.application.PublicationVenueClaimService publicationVenueClaimService;
     @Mock
     private ScholardexCitationCanonicalizationService citationCanonicalizationService;
@@ -286,6 +288,7 @@ class ScopusCanonicalMaterializationServiceTest {
                 openAlexCanonicalizationService,
                 dblpConferenceResolveService,
                 publicationMergeService,
+                authorReconcileService,
                 publicationVenueClaimService,
                 citationCanonicalizationService,
                 sourceLinkService,
@@ -305,6 +308,7 @@ class ScopusCanonicalMaterializationServiceTest {
                 openAlexCanonicalizationService,
                 dblpConferenceResolveService,
                 publicationMergeService,
+                authorReconcileService,
                 publicationVenueClaimService,
                 citationCanonicalizationService,
                 sourceLinkService,

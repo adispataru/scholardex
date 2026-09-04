@@ -59,6 +59,8 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     @Mock private ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     @Mock private PublicationMergeService publicationMergeService;
+    @Mock private PublicationVenueClaimService publicationVenueClaimService;
+    @Mock private AuthorReconcileService authorReconcileService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private ro.uvt.pokedex.core.service.derivation.CanonicalDerivationV2Service canonicalDerivationV2Service;
     @Mock private ScholardexForumBuilder forumBuilder;
@@ -95,6 +97,8 @@ class ScopusBigBangMigrationServiceTest {
                 openAlexCitationCanonicalizationService,
                 dblpConferenceResolveService,
                 publicationMergeService,
+                publicationVenueClaimService,
+                authorReconcileService,
                 citationCanonicalizationService,
                 canonicalDerivationV2Service,
                 forumBuilder,
@@ -205,10 +209,16 @@ class ScopusBigBangMigrationServiceTest {
         // merges — after the DBLP evidence re-link (pubs re-minted from source) and BEFORE the projection
         // rebuild (so retired pubs drop out of the views). Chaining only the Tier-2 incremental path left prod
         // merges applied=never after a derive rebuild.
+        // H103 extends the chain: author merges re-apply BEFORE pub merges (consolidated author lists),
+        // and venue claims LAST (the human decision writes over the machine's) — the claims chain was
+        // MISSING from this path entirely, the same dual-path omission the comment above records.
         org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(
-                dblpConferenceResolveService, publicationMergeService, scopusProjectionBuilderService);
+                dblpConferenceResolveService, authorReconcileService, publicationMergeService,
+                publicationVenueClaimService, scopusProjectionBuilderService);
         inOrder.verify(dblpConferenceResolveService).rebuildFromEvidence();
+        inOrder.verify(authorReconcileService).reapplyPersistedMerges();
         inOrder.verify(publicationMergeService).reapplyApproved();
+        inOrder.verify(publicationVenueClaimService).reapplyApproved();
         inOrder.verify(scopusProjectionBuilderService).rebuildViews();
     }
 
@@ -226,10 +236,16 @@ class ScopusBigBangMigrationServiceTest {
 
         service.runDeriveFromFacts();
 
+        // H103 extends the chain: author merges re-apply BEFORE pub merges (consolidated author lists),
+        // and venue claims LAST (the human decision writes over the machine's) — the claims chain was
+        // MISSING from this path entirely, the same dual-path omission the comment above records.
         org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(
-                dblpConferenceResolveService, publicationMergeService, scopusProjectionBuilderService);
+                dblpConferenceResolveService, authorReconcileService, publicationMergeService,
+                publicationVenueClaimService, scopusProjectionBuilderService);
         inOrder.verify(dblpConferenceResolveService).rebuildFromEvidence();
+        inOrder.verify(authorReconcileService).reapplyPersistedMerges();
         inOrder.verify(publicationMergeService).reapplyApproved();
+        inOrder.verify(publicationVenueClaimService).reapplyApproved();
         inOrder.verify(scopusProjectionBuilderService).rebuildViews();
     }
 

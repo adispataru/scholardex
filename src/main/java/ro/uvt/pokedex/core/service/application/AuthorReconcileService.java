@@ -28,6 +28,7 @@ import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -66,6 +67,8 @@ public class AuthorReconcileService {
     private final UserRepository userRepository;
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
+    // H103: durable record of explicit merges, re-applied after every canonical author build.
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.AuthorMergeDecisionRepository authorMergeDecisionRepository;
 
     /**
      * Fuzzy pass: when {@code true} actually merge corroborated same-name clusters; when {@code false} (default)
@@ -126,10 +129,118 @@ public class AuthorReconcileService {
                 .orElseThrow(() -> new IllegalArgumentException("author not found: " + idB));
         List<ScholardexAuthorFact> cluster = List.of(a, b);
         String winnerId = pickWinner(cluster).getId();
+        // H103: capture the decision anchors BEFORE merging (both docs still hold their own keys + names).
+        List<String> namesSnapshot = cluster.stream()
+                .map(ScholardexAuthorFact::getDisplayName)
+                .filter(n -> n != null && !n.isBlank())
+                .toList();
         ImportProcessingResult result = new ImportProcessingResult(20);
         mergeCluster(cluster, Instant.now(), result);
+        // The winner now carries the union of every identity key — persist it as the durable anchor set.
+        authorRepository.findById(winnerId).ifPresent(winner ->
+                persistMergeDecision(winner, namesSnapshot, "admin-explicit"));
         log.info("Author explicit merge: {} + {} -> {}", idA, idB, winnerId);
         return winnerId;
+    }
+
+    /**
+     * H103: record (or coalesce into) a durable merge decision anchored on the winner's identity-key sets.
+     * Coalescing: any existing decision sharing at least one key describes the SAME person — union it in and
+     * keep a single row per identity, so re-apply converges regardless of how many stepwise merges built it.
+     */
+    private void persistMergeDecision(ScholardexAuthorFact winner, List<String> namesSnapshot, String decidedBy) {
+        Instant now = Instant.now();
+        ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision merged =
+                new ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision();
+        merged.setAnchorScopusIds(new ArrayList<>(set(winner.getScopusAuthorIds())));
+        merged.setAnchorOrcidIds(new ArrayList<>(set(winner.getOrcidIds())));
+        merged.setAnchorOpenAlexIds(new ArrayList<>(set(winner.getOpenAlexAuthorIds())));
+        merged.setAnchorWosIds(new ArrayList<>(set(winner.getWosAuthorIds())));
+        merged.setAnchorUserSourceIds(new ArrayList<>(set(winner.getUserSourceAuthorIds())));
+        LinkedHashSet<String> names = new LinkedHashSet<>(namesSnapshot);
+        merged.setDecidedBy(decidedBy);
+        merged.setCreatedAt(now);
+        merged.setUpdatedAt(now);
+        for (ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision existing : authorMergeDecisionRepository.findAll()) {
+            if (!anchorsOverlap(existing, merged)) {
+                continue;
+            }
+            merged.setAnchorScopusIds(unionOf(merged.getAnchorScopusIds(), existing.getAnchorScopusIds()));
+            merged.setAnchorOrcidIds(unionOf(merged.getAnchorOrcidIds(), existing.getAnchorOrcidIds()));
+            merged.setAnchorOpenAlexIds(unionOf(merged.getAnchorOpenAlexIds(), existing.getAnchorOpenAlexIds()));
+            merged.setAnchorWosIds(unionOf(merged.getAnchorWosIds(), existing.getAnchorWosIds()));
+            merged.setAnchorUserSourceIds(unionOf(merged.getAnchorUserSourceIds(), existing.getAnchorUserSourceIds()));
+            names.addAll(safe(existing.getDisplayNamesSnapshot()));
+            if (merged.getCreatedAt() == null || (existing.getCreatedAt() != null && existing.getCreatedAt().isBefore(merged.getCreatedAt()))) {
+                merged.setCreatedAt(existing.getCreatedAt());
+            }
+            authorMergeDecisionRepository.deleteById(existing.getId());
+        }
+        merged.setDisplayNamesSnapshot(new ArrayList<>(names));
+        authorMergeDecisionRepository.save(merged);
+    }
+
+    private static boolean anchorsOverlap(ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision a,
+                                          ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision b) {
+        return overlaps(a.getAnchorScopusIds(), b.getAnchorScopusIds())
+                || overlaps(a.getAnchorOrcidIds(), b.getAnchorOrcidIds())
+                || overlaps(a.getAnchorOpenAlexIds(), b.getAnchorOpenAlexIds())
+                || overlaps(a.getAnchorWosIds(), b.getAnchorWosIds())
+                || overlaps(a.getAnchorUserSourceIds(), b.getAnchorUserSourceIds());
+    }
+
+    private static boolean overlaps(List<String> a, List<String> b) {
+        if (a == null || b == null || a.isEmpty() || b.isEmpty()) {
+            return false;
+        }
+        LinkedHashSet<String> probe = new LinkedHashSet<>(a);
+        return b.stream().anyMatch(probe::contains);
+    }
+
+    private static List<String> unionOf(List<String> a, List<String> b) {
+        LinkedHashSet<String> union = new LinkedHashSet<>(safe(a));
+        union.addAll(safe(b));
+        return new ArrayList<>(union);
+    }
+
+    /**
+     * H103: re-execute every persisted explicit merge against the CURRENT canonical authors. Called after
+     * each canonical author build (both the incremental materialization chain and the V2 full rebuild),
+     * mirroring H84's {@code reapplyApproved}: the rebuild re-derives authors from source facts with the
+     * bridging that failed to union these identities originally, so without this pass the ghosts resurrect.
+     * Idempotent — when one document already carries the whole anchor set, there is nothing to merge.
+     *
+     * @return how many decisions re-merged at least one resurrected split
+     */
+    public int reapplyPersistedMerges() {
+        int remerged = 0;
+        Instant now = Instant.now();
+        for (ro.uvt.pokedex.core.model.scopus.canonical.AuthorMergeDecision decision : authorMergeDecisionRepository.findAll()) {
+            LinkedHashMap<String, ScholardexAuthorFact> cluster = new LinkedHashMap<>();
+            safe(decision.getAnchorScopusIds()).forEach(key ->
+                    authorRepository.findByScopusAuthorIdsContains(key).ifPresent(a -> cluster.putIfAbsent(a.getId(), a)));
+            safe(decision.getAnchorOrcidIds()).forEach(key ->
+                    authorRepository.findByOrcidIdsContains(key).forEach(a -> cluster.putIfAbsent(a.getId(), a)));
+            safe(decision.getAnchorOpenAlexIds()).forEach(key ->
+                    authorRepository.findByOpenAlexAuthorIdsContains(key).forEach(a -> cluster.putIfAbsent(a.getId(), a)));
+            safe(decision.getAnchorWosIds()).forEach(key ->
+                    authorRepository.findByWosAuthorIdsContains(key).forEach(a -> cluster.putIfAbsent(a.getId(), a)));
+            safe(decision.getAnchorUserSourceIds()).forEach(key ->
+                    authorRepository.findByUserSourceAuthorIdsContains(key).forEach(a -> cluster.putIfAbsent(a.getId(), a)));
+            if (cluster.size() >= 2) {
+                ImportProcessingResult result = new ImportProcessingResult(20);
+                mergeCluster(new ArrayList<>(cluster.values()), now, result);
+                remerged++;
+                log.info("Author merge re-applied: {} docs -> 1 ({})", cluster.size(),
+                        String.join(" / ", safe(decision.getDisplayNamesSnapshot())));
+            }
+            decision.setLastAppliedAt(now);
+            decision.setUpdatedAt(now);
+            authorMergeDecisionRepository.save(decision);
+        }
+        log.info("Author merge re-apply complete: decisions={} remerged={}",
+                authorMergeDecisionRepository.count(), remerged);
+        return remerged;
     }
 
     /** ORCID pass: merge canonical authors that share an ORCID (name-compatible), quarantine the rest. */

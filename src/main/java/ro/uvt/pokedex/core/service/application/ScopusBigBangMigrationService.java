@@ -80,6 +80,8 @@ public class ScopusBigBangMigrationService {
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     private final ro.uvt.pokedex.core.service.dblp.DblpConferenceResolveService dblpConferenceResolveService;
     private final PublicationMergeService publicationMergeService;
+    private final PublicationVenueClaimService publicationVenueClaimService;
+    private final AuthorReconcileService authorReconcileService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     // H75: the V2 batch derivation engine — replaces the V1 canon block in runFull (the full-rebuild path).
     private final ro.uvt.pokedex.core.service.derivation.CanonicalDerivationV2Service canonicalDerivationV2Service;
@@ -432,7 +434,14 @@ public class ScopusBigBangMigrationService {
         // ScopusCanonicalMaterializationService — the two paths are separate on purpose (V2 dual-path), so the
         // pass lives in BOTH. Caught live 2026-07-25: merges seeded in prod stayed applied=never after a
         // derive rebuild because only the incremental path was chained.
+        // H103: explicit author merges re-apply BEFORE the publication merges — the V2 build re-derived the
+        // split identities these decisions closed (the same dual-path lesson as the pub merges below).
+        authorReconcileService.reapplyPersistedMerges();
         publicationMergeService.reapplyApproved();
+        // H93 + H103 audit: venue claims were chained ONLY in the incremental materialization path — the exact
+        // dual-path omission the pub-merge comment above records ("caught live 2026-07-25"), repeated for
+        // claims. Same order as there: claims LAST, so the human decision writes over the machine's.
+        publicationVenueClaimService.reapplyApproved();
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();

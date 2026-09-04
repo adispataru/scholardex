@@ -13,6 +13,9 @@ public interface ScholardexAuthorFactRepository extends MongoRepository<Scholard
     // the author-reconcile resolves), so these must tolerate multiplicity rather than throw "non unique result".
     List<ScholardexAuthorFact> findByOrcidIdsContains(String orcid);
     List<ScholardexAuthorFact> findByOpenAlexAuthorIdsContains(String openAlexAuthorId);
+    // H103: re-apply resolution for the remaining anchor-key families.
+    List<ScholardexAuthorFact> findByWosAuthorIdsContains(String wosAuthorId);
+    List<ScholardexAuthorFact> findByUserSourceAuthorIdsContains(String userSourceAuthorId);
     List<ScholardexAuthorFact> findBySourceBatchId(String sourceBatchId);
     List<ScholardexAuthorFact> findByScopusAuthorIdsIn(Collection<String> scopusAuthorIds);
     List<ScholardexAuthorFact> findByIdIn(Collection<String> ids);

@@ -650,6 +650,15 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    /** H103: manually re-apply the durable explicit author merges (also chained into every rebuild). */
+    @PostMapping("/author/merges/reapply")
+    public String reapplyAuthorMerges(RedirectAttributes redirectAttributes) {
+        int remerged = authorReconcileService.reapplyPersistedMerges();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Author merge re-apply complete: " + remerged + " resurrected split(s) re-merged.");
+        return "redirect:/admin/initialization";
+    }
+
     @PostMapping("/author/reconcile/fuzzy")
     public String runAuthorFuzzyReconcile(RedirectAttributes redirectAttributes) {
         var result = authorReconcileService.reconcileByName("admin-manual", "admin-manual");
