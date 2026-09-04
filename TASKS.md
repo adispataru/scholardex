@@ -9,6 +9,19 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H103` Author merges must survive from-scratch rebuilds (found 2026-09-04 auditing durability).
+  The explicit `/admin/initialization/author/merge` (H99 item 9 / item 8: the Fortiș ghost, Alexandra's
+  ×4 split) mutates canonical author docs + repoints references — but `scholardex.author_facts` and
+  `scholardex.source_links` are MANAGED_DERIVED_COLLECTIONS: a derive/full rebuild re-derives authors
+  from source facts using exactly the bridging that failed to union these identities originally, so the
+  ghosts RESURRECT and the H99 score flap returns. Cure is the proven H84/H93 pattern: a spared
+  `author_merge_decisions` side-table written by mergePair (pair of id-key SETS as the durable anchor,
+  since canonical ids are rebuild-unstable), re-applied after the canonical author build in the same
+  chain as merges/claims (rebuildFromEvidence → pub merges → venue claims → AUTHOR merges). Until built:
+  after any full rebuild re-run the four merges manually (ids in TASKS-done H99 closeout) and re-run
+  `POST /admin/initialization/crossref/publishers/apply` (forum publishers are also wiped; the sweep is
+  its own re-apply — books/volume evidence are spared and survive).
+
 - [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
   A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit
   (three places: user_defined fact + canonical pub + book entity). Feature: an "Editează" action on
