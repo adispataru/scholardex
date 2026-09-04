@@ -19,15 +19,27 @@ Done history moved to `TASKS-done.md`.
   the work is the workspace action + prefill + the pin. Delete (tombstone semantics) deliberately
   out of scope for the first slice.
 
-- [ ] `H101` Fee-journal (APC) status must be time-aware (Florin, 2026-09-02 follow-up).
-  `isFeeJournal(forumId)` is a per-forum boolean, but a journal's business model changes: IJCCC
-  (Univ. Agora) was free open-access in 2013–2014 (SCPE-style) and moved to APC later — his two
-  IJCCC papers from that era are declassified by TODAY'S status. Model: an `apcSince` year on the
-  forum's fee fact; the formula gate compares the PUBLICATION year (same year-true pattern as WoS
-  coverage). Data is the hard part — OpenAlex APC data is current-only; historical status needs
-  web.archive.org traces, so realistically researcher-supplied claims with evidence (a small
-  cousin of the H93 venue claims). PARKED until his announced follow-up message on the broader
-  APC-declassification interpretation dispute (Springer/Elsevier Q1/Q2 APC journals growing yearly).
+- [ ] `H101` Fee-journal (APC) status must be time-aware — **FEASIBILITY INVESTIGATED 2026-09-04.**
+  Origin: Florin's IJCCC papers (2013–14, free-OA era) declassified by TODAY'S apc flag.
+  **Findings:** (a) OpenAlex is PROVEN useless for history — the works dumps stamp the venue's CURRENT
+  list price onto every work uniformly (IJCCC 2012/2013/2014/2026 all carry apc_list=apc_paid=539 USD),
+  so no per-year signal exists there. (b) DOAJ historic snapshots via archive.org would work (the MBL
+  Wayback recovery is the precedent) but are a bulk pipeline with era-varying CSV formats. (c) OpenAPC
+  gives positive-only evidence (payment happened ≠ absence means free). (d) **The stakes don't justify
+  bulk reconstruction**: measured in prod, registered researchers' pre-2015 pubs on currently-fee-flagged
+  forums = ~5 publications across exactly THREE journals (IJCCC, IEEE JSTARS, J. of Cloud Computing) —
+  citations skew recent, so the citing side is smaller still.
+  **Recommended design (small, claim-based):** a spared `forum_apc_exemptions` collection (ISSN-anchored,
+  H93-style, admin-approved, evidenceUrl = wayback trace), consulted by a year-aware
+  `isFeeJournal(forumId, year)` overload — the call site in ScientificProductionService already holds the
+  pub year; remember the @Primary delegator (add the overload to BOTH facades). Researcher-facing claim
+  flow deferred; admin-entered rows suffice for 3 journals.
+  **STILL PARKED pending Florin's announced follow-up on the broader APC-declassification interpretation
+  dispute** — if the comisie reading changes the gate semantics wholesale (his argument: Springer/Elsevier
+  Q1/Q2 APC journals shouldn't be declassified at all), per-year exemptions may be moot. Decide after his
+  message; implementation is a one-sitting job either way.
+  Side observation worth a look someday: IEEE JSTARS (hybrid, not gold-OA) being apc-flagged suggests the
+  OpenAlex fee signal may over-reach into hybrids.
 
 - [ ] `H100` Future-dated activity instances must not score (from H99 item 3, Florin's suggestion).
   A researcher records an activity now, dated in the future (doctorand cu susținerea programată — D_xii
