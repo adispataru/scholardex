@@ -4229,3 +4229,19 @@ bibliographic author_count while two sync paths fought over a split-identity gho
 Follow-on feature extracted to `H100` (future-dated activities).
 
 - [x] `H99` Florin Fortis's FV Info 2026 feedback batch.
+
+
+## H103 Author merges durable across rebuilds (archived 2026-09-04)
+
+Built, deployed (7866caca) and seeded same day. Spared `scholardex.author_merge_decisions` anchored on
+identity-KEY sets (canonical ids are rebuild-unstable); `mergePair` persists + coalesces one decision per
+identity; `reapplyPersistedMerges()` re-merges resurrected splits, chained in BOTH rebuild paths before
+the publication merges, order pinned by test (evidence → author merges → pub merges → venue claims →
+views). The audit also caught and fixed venue claims missing from the V2 full-rebuild chain — the same
+dual-path omission caught live 2026-07-25 for merges. Manual endpoint
+`POST /admin/initialization/author/merges/reapply`. Seeded in prod: Fortiș (scopus 6603648115 + ORCID +
+7 OA ids) and Alexandra (both Scopus ids + ORCID + 4 OA ids), verified. Remaining rebuild-volatile data
+is only the Crossref forum publishers — self-healing via `/crossref/publishers/apply` (book_facts and
+volume evidence are spared).
+
+- [x] `H103` Author merges must survive from-scratch rebuilds.

@@ -9,18 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H103` Author merges must survive from-scratch rebuilds — **BUILT 2026-09-04, awaiting deploy+seed.**
-  Spared `scholardex.author_merge_decisions` (NOT in MANAGED_DERIVED_COLLECTIONS) anchored on identity-KEY
-  sets (scopus/orcid/openalex/wos/userSource — canonical ids are rebuild-unstable). `mergePair` persists +
-  COALESCES decisions (any-key-overlap unions into one row per identity, so Alexandra's stepwise ×3 chain is
-  one decision). `reapplyPersistedMerges()` resolves current authors by anchor keys and re-merges when ≥2
-  docs answer; chained in BOTH rebuild paths (incremental materialization: before pub merges; V2 runFull:
-  same — and the audit found VENUE CLAIMS were missing from the V2 chain entirely, the repeated 2026-07-25
-  dual-path omission — fixed: evidence → author merges → pub merges → claims → views, order pinned by test).
-  Manual `POST /admin/initialization/author/merges/reapply`. ROLLOUT: deploy, then run
-  `h103_seed_author_merge_decisions.js` (scripts folder) — the four pre-side-table merges need seeding from
-  the survivors' current key sets, else the first rebuild still resurrects them. CLOSABLE after the seed.
-
 - [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
   A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit
   (three places: user_defined fact + canonical pub + book entity). Feature: an "Editează" action on
