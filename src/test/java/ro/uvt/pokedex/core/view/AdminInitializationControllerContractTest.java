@@ -52,6 +52,8 @@ class AdminInitializationControllerContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService crossrefPublisherBackfillService;
+    @MockitoBean
     private ScopusBigBangMigrationService scopusBigBangMigrationService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.PipelineRebuildService pipelineRebuildService;

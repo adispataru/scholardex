@@ -42,6 +42,8 @@ class AdminInitializationSecurityContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService crossrefPublisherBackfillService;
+    @MockitoBean
     private CacheService cacheService;
     @MockitoBean
     private RankingMaintenanceFacade rankingMaintenanceFacade;

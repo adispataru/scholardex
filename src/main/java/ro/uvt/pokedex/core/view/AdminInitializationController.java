@@ -50,6 +50,22 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
     private final ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
+    private final ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService crossrefPublisherBackfillService;
+
+    /** Publisher backfill for publisher-less book rows / series forums (perspectiva-D holes) — see the service doc. */
+    @PostMapping("/crossref/publishers/dryRun")
+    @ResponseBody
+    public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult crossrefPublisherDryRun(
+            @RequestParam(name = "limit", defaultValue = "0") int limit) {
+        return crossrefPublisherBackfillService.sweep(true, limit);
+    }
+
+    @PostMapping("/crossref/publishers/apply")
+    @ResponseBody
+    public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult crossrefPublisherApply(
+            @RequestParam(name = "limit", defaultValue = "0") int limit) {
+        return crossrefPublisherBackfillService.sweep(false, limit);
+    }
 
     @org.springframework.beans.factory.annotation.Value("${core.openalex.bulk.works-file:}")
     private String openAlexWorksFile;

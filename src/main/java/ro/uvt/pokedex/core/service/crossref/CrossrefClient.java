@@ -75,6 +75,20 @@ public class CrossrefClient {
         return (volume == null || volume.isBlank()) ? Optional.empty() : Optional.of(volume.trim());
     }
 
+    /**
+     * The publisher name for a DOI ({@code message.publisher}), or empty when unknown. Used by the
+     * publisher backfill: observed-minted book rows and bare series forums carry no publisher, which
+     * starves the SENSE/A2/MBL book scorers — Crossref's registrant-supplied publisher fills the hole.
+     */
+    public synchronized Optional<String> publisher(String doi) {
+        JsonNode message = fetch(doi);
+        if (message == null) {
+            return Optional.empty();
+        }
+        String publisher = message.path("publisher").asText(null);
+        return (publisher == null || publisher.isBlank()) ? Optional.empty() : Optional.of(publisher.trim());
+    }
+
     /** The raw {@code message} node, or null on any failure — callers treat absence as "no evidence". */
     private JsonNode fetch(String doi) {
         String normalized = normalizeDoi(doi);
