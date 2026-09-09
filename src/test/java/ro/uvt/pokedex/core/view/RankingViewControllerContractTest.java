@@ -70,17 +70,13 @@ class RankingViewControllerContractTest {
     private WosCategoryPageService wosCategoryPageService;
     @MockitoBean
     private ScholardexPublicationMvcService scholardexPublicationMvcService;
-    @MockitoBean
-    private ro.uvt.pokedex.core.service.application.WelcomeFacade welcomeFacade;
 
     @org.junit.jupiter.api.Test
-    void landingPageGreetsASignedInUserAndLinksTheUnreadUpdates() throws Exception {
+    void signedInResearcherIsRedirectedToTheirWorkspace() throws Exception {
+        // H104: the landing page is the post-login target; a researcher should never see the global
+        // rankings/publications surface first — their home is the workspace.
         ro.uvt.pokedex.core.model.user.User user = new ro.uvt.pokedex.core.model.user.User();
         user.setEmail("florin.fortis@e-uvt.ro");
-        org.mockito.Mockito.when(welcomeFacade.forUser(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean()))
-                .thenReturn(new ro.uvt.pokedex.core.service.application.WelcomeFacade.Welcome(
-                        "Florin", "florin.fortis@e-uvt.ro", 3L, true));
-
         org.springframework.security.authentication.TestingAuthenticationToken auth =
                 new org.springframework.security.authentication.TestingAuthenticationToken(user, null, "RESEARCHER");
 
@@ -91,34 +87,33 @@ class RankingViewControllerContractTest {
                                     .setAuthentication(auth);
                             return request;
                         }))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("Bun venit, Florin!")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("florin.fortis@e-uvt.ro")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("3 noutăți de la ultima vizită")));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().is3xxRedirection())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl("/user/workspace"));
     }
 
     @org.junit.jupiter.api.Test
-    void landingPageUsesTheRomanianParticleFormFromTwentyUp() throws Exception {
-        // The whole point of the 3-form plural work: Romanian says "21 DE noutăți", not "21 noutăți".
+    void adminOnlyAndSupervisorOnlyAccountsGetTheirOwnHomes() throws Exception {
+        // An account with no RESEARCHER role has no workspace of its own: admins go to the admin
+        // dashboard, supervisors to the researcher reports they oversee. A researcher who is ALSO an
+        // admin still lands on the workspace (researcher role wins).
         ro.uvt.pokedex.core.model.user.User user = new ro.uvt.pokedex.core.model.user.User();
-        user.setEmail("florin.fortis@e-uvt.ro");
-        org.mockito.Mockito.when(welcomeFacade.forUser(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean()))
-                .thenReturn(new ro.uvt.pokedex.core.service.application.WelcomeFacade.Welcome(
-                        "Florin", "florin.fortis@e-uvt.ro", 21L, true));
-        org.springframework.security.authentication.TestingAuthenticationToken auth =
-                new org.springframework.security.authentication.TestingAuthenticationToken(user, null, "RESEARCHER");
-
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/")
-                        .with(request -> {
-                            request.setUserPrincipal(auth);
-                            org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
-                            return request;
-                        }))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .string(org.hamcrest.Matchers.containsString("21 de noutăți de la ultima vizită")));
+        user.setEmail("ops@e-uvt.ro");
+        for (String[] roleAndHome : new String[][] {
+                {"PLATFORM_ADMIN", "/admin"},
+                {"SUPERVISOR", "/reports/researcher"},
+                {"PLATFORM_ADMIN,RESEARCHER", "/user/workspace"}}) {
+            org.springframework.security.authentication.TestingAuthenticationToken auth =
+                    new org.springframework.security.authentication.TestingAuthenticationToken(
+                            user, null, roleAndHome[0].split(","));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/")
+                            .with(request -> {
+                                request.setUserPrincipal(auth);
+                                org.springframework.security.core.context.SecurityContextHolder.getContext()
+                                        .setAuthentication(auth);
+                                return request;
+                            }))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl(roleAndHome[1]));
+        }
     }
 
     @org.junit.jupiter.api.Test
@@ -139,13 +134,12 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void landingPageRendersPublicShellForAuthenticatedUsers() throws Exception {
+    void authenticatedUserNeverRendersTheLandingPage() throws Exception {
+        // H104 replaces the old "public shell for authenticated users" contract: the landing template is
+        // an anonymous-only surface now.
         mockMvc.perform(get("/").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
-                .andExpect(status().isOk())
-                .andExpect(view().name("landing"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/workspace\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/users\""))));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/workspace"));
     }
 
     @Test

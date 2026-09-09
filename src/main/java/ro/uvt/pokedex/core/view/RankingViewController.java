@@ -40,22 +40,43 @@ public class RankingViewController {
     private final ScholardexForumDetailService scholardexForumDetailService;
     private final WosCategoryPageService wosCategoryPageService;
     private final ScholardexPublicationMvcService scholardexPublicationMvcService;
-    private final ro.uvt.pokedex.core.service.application.WelcomeFacade welcomeFacade;
 
     /**
-     * The landing page doubles as the post-login destination, so a signed-in visitor gets a personal greeting
-     * (H86 follow-up): signed out and signed in used to look nearly identical, which made a successful login
-     * hard to tell from a failed one.
+     * H104: a signed-in visitor is sent straight to THEIR home instead of the global landing page. The
+     * landing doubles as the post-login destination (the OAuth2 success handler is SavedRequest-aware, so a
+     * deep link the user came in on still wins over this redirect), and showing global rankings/publications
+     * first meant every login started one navigation away from the researcher's own data. Anonymous visitors
+     * keep the public landing. This retires the H86 signed-in greeting: nobody signed-in renders this page.
      */
     @GetMapping("/")
-    public String showLandingPage(org.springframework.security.core.Authentication authentication, Model model) {
-        if (authentication != null && authentication.getPrincipal() instanceof ro.uvt.pokedex.core.model.user.User user) {
-            boolean isAdmin = authentication.getAuthorities() != null
-                    && authentication.getAuthorities().stream()
-                    .anyMatch(a -> "PLATFORM_ADMIN".equals(a.getAuthority()));
-            model.addAttribute("welcome", welcomeFacade.forUser(user, isAdmin));
+    public String showLandingPage(org.springframework.security.core.Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof ro.uvt.pokedex.core.model.user.User) {
+            return "redirect:" + homeFor(authentication);
         }
         return "landing";
+    }
+
+    /**
+     * Researchers (and anyone without a more specific role) land on the workspace — the onboarding modal
+     * lives there, so a not-yet-onboarded account is guided rather than stranded. Admin-only accounts get
+     * the admin dashboard; supervisor-only accounts get the researcher reports they oversee.
+     */
+    static String homeFor(org.springframework.security.core.Authentication authentication) {
+        java.util.Set<String> authorities = authentication.getAuthorities() == null
+                ? java.util.Set.of()
+                : authentication.getAuthorities().stream()
+                        .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                        .collect(java.util.stream.Collectors.toSet());
+        if (authorities.contains("RESEARCHER")) {
+            return "/user/workspace";
+        }
+        if (authorities.contains("PLATFORM_ADMIN")) {
+            return "/admin";
+        }
+        if (authorities.contains("SUPERVISOR")) {
+            return "/reports/researcher";
+        }
+        return "/user/workspace";
     }
 
     @GetMapping("/publications")
