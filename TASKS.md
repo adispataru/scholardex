@@ -9,6 +9,21 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H104` Signed-in users land on THEIR dashboard, not the global landing page (raised 2026-09-09).
+  Today Keycloak login targets `/` (`KeycloakOAuth2LoginSuccessHandler` → SavedRequestAware, default
+  target "/"), and `RankingViewController.showLandingPage` renders the GLOBAL landing (rankings/
+  publications surface) with only a personal greeting for signed-in users (the H86 follow-up). A
+  researcher's actual home is `/user/workspace`; making them navigate there every login shows them
+  global data first. Design: redirect AT `/` when authenticated (covers both post-login and manual
+  visits; the saved-request deep-link behavior stays intact — someone who bookmarked a report still
+  lands on it). Decisions to make in implementation: (a) role routing — researchers (profile present)
+  → `/user/workspace`; PLATFORM_ADMIN-only accounts → `/admin` dashboard?; profile-less signed-in
+  users → workspace anyway (the onboarding modal lives there) or landing; (b) keep `/` as-is for
+  anonymous visitors (public rankings/publications stay reachable via nav and direct URL); (c) the
+  H86 greeting block becomes redundant for researchers — keep it only for whoever still lands on `/`.
+  Small: one redirect in showLandingPage + contract tests (anonymous stays, researcher redirects,
+  saved-request wins); check the agent-dev profile still opens the workspace normally.
+
 - [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
   A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit
   (three places: user_defined fact + canonical pub + book entity). Feature: an "Editează" action on
