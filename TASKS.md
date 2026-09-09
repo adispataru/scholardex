@@ -9,20 +9,6 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H104` Signed-in users land on THEIR dashboard, not the global landing page — **BUILT 2026-09-09,
-  awaiting deploy.** `RankingViewController.showLandingPage` now redirects any authenticated `User` via
-  `homeFor(authentication)`: RESEARCHER → `/user/workspace` (researcher role wins over admin — the
-  onboarding modal lives there, so a not-yet-onboarded account is guided, not stranded); admin-only →
-  `/admin`; supervisor-only → `/reports/researcher`; else workspace. Anonymous visitors keep the public
-  landing untouched. The OAuth2 success handler stays SavedRequest-aware, so a deep link the user came
-  in on still wins over this redirect. Retires the H86 signed-in greeting (nobody signed-in renders the
-  landing any more): controller wiring + WelcomeFacade dependency removed; the `th:if="${welcome != null}"`
-  template block, its i18n keys and `WelcomeFacade` itself are left in place as inert (a follow-up can
-  re-home the "N noutăți de la ultima vizită" hook onto the workspace, where it now belongs). Contract
-  tests rewritten: researcher → workspace, admin-only/supervisor-only/admin+researcher → their homes,
-  anonymous still renders landing. Verified live on agent-dev: `/` → 302 `/user/workspace` → 200;
-  `/publications` still 200. Full suite + guardrails green. CLOSABLE once deployed.
-
 - [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
   A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit
   (three places: user_defined fact + canonical pub + book entity). Feature: an "Editează" action on
@@ -102,74 +88,6 @@ Done history moved to `TASKS-done.md`.
   `docs/tasks/active/h68-criteria-extensions.md` (Slice 3).
   **Data change VERIFIED IN PROD 2026-07-25** — both FV Info 2016 and 2026 carry
   `Perspectiva D.maxPercentOfTotal = {13: 10, 17: 10}`. Nothing pending here.
-
-- [x] `H88` Production readiness / launch checklist (operational, not feature work). **CLOSED 2026-07-28 —
-  the last open bullet (exposed-key deactivation) got Elsevier's written confirmation; every other bullet
-  was already done and verified.**
-  **RAISED + AUDITED 2026-07-25.** These existed only in session memory, in neither task file. Audited
-  against production the same day; two were already done and my initial reading of a third was WRONG.
-  - **Keycloak decision — DONE 2026-07-18 (`c8350488`).** OIDC-only through the Keycloak realm; `formLogin`
-    and `DaoAuthenticationProvider` DELETED, not hidden. Prod confirms the design: `rdi-breakglass` exists
-    with PLATFORM_ADMIN and no password.
-  - **On-prem Scopus smoke test — DONE.** Superseded by real traffic: `scholardex-scopus-python` served
-    `POST /v1/author-works` and `/v1/citations/by-eid` against live AU-ID queries, all 200, on 2026-07-25.
-  - **Mongodump / dev admin password — DONE 2026-07-18, and my first read of it was wrong.** I reported
-    "57 of 58 users still carry bcrypt hashes" as unresolved residue. They are RANDOM UUID hashes:
-    `LocalPasswordScrambleRunner` (marker `local-password-scramble-v1`, applied 2026-07-18T18:55Z,
-    `scrambledUsers: 56`) already neutralized every stored password for exactly this reason. Nothing
-    guessable survives even if a password path were reintroduced.
-  - **EXPOSED KEY — the old Elsevier key is in PUBLIC git history. Revoke it.** Found 2026-07-25 while
-    confirming which key `.env` holds. `scopus.api.key=186f196685e39c011a1c1a0123630231` was committed in
-    `application.properties` on 2025-12-12 (`74b0fa97`, "first push") and removed 2026-07-13 (`48f31efd`,
-    when the key moved to the container env). `github.com/adispataru/scholardex` is **PUBLIC**, and the value
-    is still reachable from history on `origin/main` plus five other remote branches — roughly seven months
-    of public exposure, and retrievable right now. It is NOT the current key (different SHA-256), so the
-    rotation did happen; what is missing is REVOCATION at dev.elsevier.com. Rewriting history is secondary
-    and unreliable (clones, GitHub caches, archives) — revoking makes the string worthless, which is the
-    actual fix. Also consider: any GHCR image built between those two dates baked the key into the jar.
-    **2026-07-26: there is NO self-service revoke.** Confirmed by the user in the portal and against
-    Elsevier's own docs — the developer portal documents key *settings*, not deletion, and publishes no
-    support email. The only route is the Research Product APIs support hub contact form
-    (`https://service.elsevier.com/app/contact/supporthub/researchproductsapis/`): open a ticket asking
-    them to deactivate the key, stating it was published in a public repository and has already been
-    rotated. Elsevier's API Service Agreement reserves their right to deactivate keys, so the ticket is
-    asking for something they already do.
-    **Partial containment, measured 2026-07-26:** prod carries exactly one Elsevier credential —
-    `SCOPUS_API_KEY` in the `scholardex-scopus` secret — and **no InstToken anywhere** (no env var, secret
-    key, or config in either deployment; the only mention in the repo is an optional, unset
-    `PYBLIOMETRICS_INST_TOKEN` in a dev wrapper script). Entitlement is therefore IP-bound, so the exposed
-    key used from an arbitrary address gets non-subscriber access, not UVT's full Scopus entitlement. That
-    caps the damage; it does not remove it — the key still identifies UVT's account, consumes its quota,
-    and works for anyone calling from a subscribing network. Watch the portal's usage stats for the old
-    key: unexpected traffic is the signal it is being used.
-    **DONE 2026-07-28 — Elsevier confirmed in writing.** Customer Service reply: "The API key has already
-    been deactivated and will no longer be functional when used. However, it will still be visible on your
-    'My API Key' page." The exposed string is now worthless; the key remaining visible in the portal is
-    expected and harmless. No further action — history rewriting stays not-worth-it (the value is dead).
-  - **Separate prod key — DONE 2026-07-25, verified.** Production now holds its own key
-    (`sha256=fbf72819…`), distinct from the local `.env` (`0dbb2a29…`) and from the exposed one
-    (`098dc67c…`) — three different values. Confirmed working: `ScopusSearch` 200 at 17:46 after both pods
-    restarted at 17:34; no 401/403/429. A laptop compromise no longer reaches production.
-  - **Remove `agent@dev.local` — DONE 2026-07-25, verified.** Gone from the prod user collection (57 users
-    left); the reversible copy is at `app_migrations/remove-agent-dev-user-v1` (17:48:59Z). Remaining
-    PLATFORM_ADMINs: `florin.spataru@e-uvt.ro` and `rdi-breakglass` (still passwordless, as designed).
-  **History secret-scan (2026-07-25)**: swept every commit for credential-shaped literals in
-  `*.properties`/`*.yml`/`*.yaml`. Exactly TWO values were ever committed — the Scopus key above, and
-  `h14.wos.gov-ais.password=uefiscdi`, which is the password to UEFISCDI's publicly distributed WoS AIS
-  archives (documented as such in `application.properties`), not a service credential. Everything else
-  matching was a Helm reference to a k8s secret NAME, not a value. No Mongo/Postgres/Keycloak secret has
-  ever been committed.
-  **Decided AGAINST: removing `User.password` and the `PasswordEncoder` bean.** Scoped it and it is not the
-  cheap cleanup I first called it — `PasswordEncoder` is threaded through SEVEN production services
-  (`UserService`, `AdminUserService`, `GroupService`, `StaffImportService`, `ResearcherShellService`,
-  `KeycloakOAuth2LoginSuccessHandler`, `LocalPasswordScrambleRunner`) and ~15 test classes, because every
-  provisioning path defensively writes a random hash. With the scramble already applied and no login path,
-  the security gain is nil and the blast radius is every user-creation path. Revisit only if the field
-  causes a real problem.
-  **Fixed in passing (`UserController`)**: `PUT /api/admin/users/{email}` wrote `request.password()`
-  STRAIGHT THROUGH — unencoded, unlike `createUser` which hashes — so an admin-supplied password landed in
-  Mongo as plaintext. Inert without a login path, but a real defect. It now ignores the field and carries
-  the existing scrambled hash; pinned by a regression assertion on the captured save.
 
 - [ ] `H94` Indicator descriptions from the standards text.
   **RAISED + S1 DONE locally 2026-07-27 (user ask).** A researcher opening the drilldown saw an indicator
