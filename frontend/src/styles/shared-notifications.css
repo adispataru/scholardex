@@ -321,10 +321,26 @@
   .app-ws-header {
     flex-wrap: wrap;
     align-items: stretch;
+    /* The dropdown anchors HERE on small screens (see below). */
+    position: relative;
   }
 
   .app-ws-header .app-ws-search {
     flex-basis: 100%;
     min-width: 0;
+  }
+
+  /* Once the search wraps onto its own row, the bell sits at the LEFT edge of the second row — and a
+   * 22rem panel right-anchored to a 2.4rem bell extends off the left of the viewport (iPhone report,
+   * 2026-09-09). Re-anchor the panel to the header row instead: it drops below the whole header and
+   * spans its width, wherever the bell happens to land. The badge stays on the bell (own relative box). */
+  .app-ws-notif {
+    position: static;
+  }
+
+  .app-ws-notif__panel {
+    left: 0;
+    right: 0;
+    width: auto;
   }
 }
