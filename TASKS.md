@@ -11,36 +11,44 @@ Done history moved to `TASKS-done.md`.
 
 - [ ] `H105` External (non-UVT) accounts for candidates to any UVT position (abilitare, concurs) —
   the usual rich interface, minus the licensed RAW layer; full view for UVT staff. **RAISED 2026-09-11**
-  (dean's request: Vlad Drăgoi, Arad, wants abilitare at UVT; widened 2026-09-11 to any candidate). Decision recorded: NO paid/subscription product (dropped 2026-09-11 — licensing
-  makes it impractical); UVT staff evaluating an external candidate's file is legitimate institutional
-  use of the Scopus/JCR licences, the candidate himself is not a licensed user.
-  Identity: aai.rdi (we own it) — external candidates become REALM-LOCAL Keycloak users (username =
-  email, email verified ON, temp password); the Google IdP, browser flow and client stay untouched. The
-  app already auto-provisions RESEARCHER on first verified-email login, so a local user works TODAY as
-  a plain researcher. Slices:
+  (dean's request: Vlad Drăgoi, Arad, Scopus 57202987286, target department SCIA; widened the same day
+  to any candidate). Decisions 2026-09-11: NO paid/subscription product (licensing makes it impractical);
+  UVT staff evaluating a UVT candidate is legitimate institutional use — **UVT library confirmed**;
+  identity = REALM-LOCAL Keycloak users in aai.rdi created MANUALLY by Adrian (username = email, email
+  verified ON; Google IdP, browser flow and client untouched); the app auto-provisions RESEARCHER on
+  first verified-email login. NOTE: `POST /api/admin/researcher-profiles` does NOT create a user — it
+  throws for an unknown email — so the profile can only be filled after his first login (or by mongosh).
+  Slices:
   - S1 — token marker: Keycloak group `external` + client protocol mapper emitting a `groups` (or
     `account_kind`) claim; `KeycloakOAuth2LoginSuccessHandler` stamps `User.accountKind`
-    INSTITUTIONAL|EXTERNAL at provisioning (absent claim → INSTITUTIONAL, so UVT tokens are unchanged).
-  - S2 — gating for EXTERNAL: workspace + own individual report only; global landing, org-unit and
-    supervisor surfaces hidden (mostly falls out of having no department affiliation / group, but pin
-    it in the security config + contract tests).
+    INSTITUTIONAL|EXTERNAL at provisioning (absent claim → INSTITUTIONAL, so UVT tokens are unchanged)
+    plus `User.validUntil` for externals — login locks the account once passed (supervisor view stays).
+  - S2 — "applicant affiliation" (DECIDED over per-user report assignment): the external candidate gets
+    a `department_affiliations` row for the TARGET department, so fișe resolve through the normal
+    division-selection path and that department's head + dean see him as supervisors. Required
+    counterpart: EXCLUDE EXTERNAL accounts from department/division roll-ups and batch refresh; hide the
+    global landing, org-unit and supervisor surfaces for EXTERNAL (pin in security config + contract
+    tests). Today a user with no affiliation/group sees NO reports (`listVisibleReportsForUser` → empty).
   - S3 — viewer-role filter on the DETAIL rendering, not on the scores: the run is identical, the
     response assembler drops licensed evidence fields for EXTERNAL viewers — metric values/ranks (AIS,
     JIF, JCR quartile tables), citing-document lists from Scopus/WoS edges, forum explorers and any
     browse/search beyond the user's own pubs. Kept: per-item category + points, criterion totals,
     threshold status, open-source evidence (CORE rank, DBLP match, SENSE tier, OpenAlex citing works).
     Rationale: categories/points are what UEFISCDI publishes and what the candidate must put on the
-    fișă anyway; a point value cannot be reversed into an AIS/JIF or a citing document. Pre-condition:
-    one-line confirmation from the UVT library (Elsevier + Clarivate contract holder) before the first
-    external account is created — the institutional-use argument (UVT staff evaluating a UVT candidate)
-    carries the weight, the raw-layer filter is the belt-and-braces.
+    fișă anyway; a point value cannot be reversed into an AIS/JIF or a citing document.
   - S4 (optional) — admin "provisional report for these author ids" action so an external candidate
-    can be pre-scored from declared Scopus/ORCID ids without the department-roster hack (H77 path is
-    roster-only today).
-  Immediate (no code): ask aai.rdi for the local user; create the profile via
-  `POST /api/admin/researcher-profiles` with the same email + his Scopus ids/ORCID (OpenAlex
-  A5005677757, ORCID 0000-0002-8673-9097); enqueue Scopus pubs + citations tasks; perspectiva d is
-  his own data entry.
+    can be pre-scored from declared Scopus/ORCID ids without the department-roster route (H77 path is
+    roster-only today and scores the WHOLE department).
+  - S5 (only if a case appears) — admin ACCOUNT MERGE (external local account → later UVT identity).
+    Primary answer is IdP-side: aai.rdi links the Google identity to the existing local user, the token
+    keeps the local email, zero app work. The app-side merge is a ~12-collection email re-key: users
+    (`_id`), PublicationAuthorshipDecision, ActivityInstance.researcherId, UserIndividualReportRun,
+    UserIndicatorResult, EvaluationSnapshot, DepartmentAffiliation.userId, Membership, Task.initiator,
+    WorkspacePreferences, user_defined facts (submitter), venue-claim/merge requests (requestedByEmail)
+    — model it like H103 (side-table decision, re-applied) rather than a one-shot script.
+  Immediate (no code) — ops script `h105_dragoi_prescore.js` (rke2-overmind/feaa-2026-scripts, phased +
+  idempotent): Scopus pubs task FULL → citations task FULL → SCIA roster row → `/admin/provisional-report`
+  (dept SCIA × FV Info 2026) gives perspectivele b/c; perspectiva d is his own entry after login.
 
 - [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
   A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit
