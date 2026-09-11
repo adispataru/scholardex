@@ -9,6 +9,32 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H105` External (non-UVT) accounts for habilitation candidates — open-source view for the
+  candidate, full view for UVT staff. **RAISED 2026-09-11** (dean's request: Vlad Drăgoi, Arad, wants
+  abilitare at UVT). Decision recorded: NO paid/subscription product (dropped 2026-09-11 — licensing
+  makes it impractical); UVT staff evaluating an external candidate's file is legitimate institutional
+  use of the Scopus/JCR licences, the candidate himself is not a licensed user.
+  Identity: aai.rdi (we own it) — external candidates become REALM-LOCAL Keycloak users (username =
+  email, email verified ON, temp password); the Google IdP, browser flow and client stay untouched. The
+  app already auto-provisions RESEARCHER on first verified-email login, so a local user works TODAY as
+  a plain researcher. Slices:
+  - S1 — token marker: Keycloak group `external` + client protocol mapper emitting a `groups` (or
+    `account_kind`) claim; `KeycloakOAuth2LoginSuccessHandler` stamps `User.accountKind`
+    INSTITUTIONAL|EXTERNAL at provisioning (absent claim → INSTITUTIONAL, so UVT tokens are unchanged).
+  - S2 — gating for EXTERNAL: workspace + own individual report only; global landing, org-unit and
+    supervisor surfaces hidden (mostly falls out of having no department affiliation / group, but pin
+    it in the security config + contract tests).
+  - S3 — open-source view of the candidate's OWN report: Scopus/WoS-derived items (JCR quartiles,
+    Scopus citation edges) rendered as "unresolved / evaluated by the committee" for EXTERNAL viewers;
+    the SAME run shown in full to supervisors/admins (render-time, not a second scoring path).
+  - S4 (optional) — admin "provisional report for these author ids" action so an external candidate
+    can be pre-scored from declared Scopus/ORCID ids without the department-roster hack (H77 path is
+    roster-only today).
+  Immediate (no code): ask aai.rdi for the local user; create the profile via
+  `POST /api/admin/researcher-profiles` with the same email + his Scopus ids/ORCID (OpenAlex
+  A5005677757, ORCID 0000-0002-8673-9097); enqueue Scopus pubs + citations tasks; perspectiva d is
+  his own data entry.
+
 - [ ] `H102` Edit flow for user-added (wizard) publications (Florin's 1997/1999 typo, 2026-09-02).
   A USER_DEFINED pub is currently immutable from the workspace — a typo means an admin mongosh edit
   (three places: user_defined fact + canonical pub + book entity). Feature: an "Editează" action on
