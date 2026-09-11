@@ -9,9 +9,9 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H105` External (non-UVT) accounts for habilitation candidates — open-source view for the
-  candidate, full view for UVT staff. **RAISED 2026-09-11** (dean's request: Vlad Drăgoi, Arad, wants
-  abilitare at UVT). Decision recorded: NO paid/subscription product (dropped 2026-09-11 — licensing
+- [ ] `H105` External (non-UVT) accounts for candidates to any UVT position (abilitare, concurs) —
+  the usual rich interface, minus the licensed RAW layer; full view for UVT staff. **RAISED 2026-09-11**
+  (dean's request: Vlad Drăgoi, Arad, wants abilitare at UVT; widened 2026-09-11 to any candidate). Decision recorded: NO paid/subscription product (dropped 2026-09-11 — licensing
   makes it impractical); UVT staff evaluating an external candidate's file is legitimate institutional
   use of the Scopus/JCR licences, the candidate himself is not a licensed user.
   Identity: aai.rdi (we own it) — external candidates become REALM-LOCAL Keycloak users (username =
@@ -24,9 +24,16 @@ Done history moved to `TASKS-done.md`.
   - S2 — gating for EXTERNAL: workspace + own individual report only; global landing, org-unit and
     supervisor surfaces hidden (mostly falls out of having no department affiliation / group, but pin
     it in the security config + contract tests).
-  - S3 — open-source view of the candidate's OWN report: Scopus/WoS-derived items (JCR quartiles,
-    Scopus citation edges) rendered as "unresolved / evaluated by the committee" for EXTERNAL viewers;
-    the SAME run shown in full to supervisors/admins (render-time, not a second scoring path).
+  - S3 — viewer-role filter on the DETAIL rendering, not on the scores: the run is identical, the
+    response assembler drops licensed evidence fields for EXTERNAL viewers — metric values/ranks (AIS,
+    JIF, JCR quartile tables), citing-document lists from Scopus/WoS edges, forum explorers and any
+    browse/search beyond the user's own pubs. Kept: per-item category + points, criterion totals,
+    threshold status, open-source evidence (CORE rank, DBLP match, SENSE tier, OpenAlex citing works).
+    Rationale: categories/points are what UEFISCDI publishes and what the candidate must put on the
+    fișă anyway; a point value cannot be reversed into an AIS/JIF or a citing document. Pre-condition:
+    one-line confirmation from the UVT library (Elsevier + Clarivate contract holder) before the first
+    external account is created — the institutional-use argument (UVT staff evaluating a UVT candidate)
+    carries the weight, the raw-layer filter is the belt-and-braces.
   - S4 (optional) — admin "provisional report for these author ids" action so an external candidate
     can be pre-scored from declared Scopus/ORCID ids without the department-roster hack (H77 path is
     roster-only today).
