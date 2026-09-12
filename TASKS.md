@@ -77,14 +77,18 @@ Done history moved to `TASKS-done.md`.
     ingesting hits as citation facts with provenance `SCOPUS_REFTITLE`; false-positive control = exact
     title (quoted) AND author surname in `REF`, plus an admin/user review queue for short or generic
     titles. All 7 DOIs Florin listed are absent from the corpus, so this is new intake, not linking.
-    **Decisions 2026-09-12 (Adrian):** (a) the REFTITLE pass runs ONLY for works WITHOUT a Scopus EID —
-    so it covers the arXiv items (cases 1 and 4), not the EID works whose reference Scopus failed to link
-    (cases 2 and 3; a later `citedby_count`-mismatch trigger would cover those). (b) OpenAlex checked the
-    same day: it holds 6 of the 7 citing works (the ACM 10.5555 PLoP paper is absent) and NONE of their
+    **Decisions 2026-09-12 (Adrian), final:** the REFTITLE pass runs for ALL confirmed works, every sync,
+    incremental by year floor, with the exact-reference check before auto-ingest. Why not "no-EID works
+    only" or a `citedby_count`-mismatch trigger: Scopus's cited-by count counts only LINKED references —
+    the same set `REF(eid)` returns — so an unlinked reference (the FSI paper citing Hybrid Microservices
+    with mangled diacritics; the two 2026 Springer papers citing Barcode Scanning) leaves NO count
+    mismatch (prod: Hybrid 3/3, Barcode 1/1) and can only be found by searching the reference text.
+    Cost: one extra search per work per sync (doubles the search calls), plus one retrieval per NEW hit.
+    (b) OpenAlex checked the same day: it holds 6 of the 7 citing works (the ACM 10.5555 PLoP paper is absent) and NONE of their
     `referenced_works` name the cited works; its cited_by_count for the four works (6/3/1/2) equals ours.
     OpenAlex cannot close this gap — Scopus reference-text search is the only source. Design as above:
     `REFTITLE("<exact title>") AND REFAUTH(<surnames>)`, exact reference check on each hit before
-    auto-ingest, provenance `SCOPUS_REFTITLE`, incremental by PUBYEAR.
+    auto-ingest, provenance `SCOPUS_REFTITLE`, incremental by PUBYEAR. **IN PROGRESS 2026-09-12.**
   - S6 — **Policy: the Springer ISBN-DOI floor is broader than "LNCS".** `ComputerScienceConferenceScoringService`
     floors any citing paper with a `10.1007/978…` DOI to C/2p (`DoiVenueSupport.isSpringerBookSeriesProceedings`).
     Florin's case: "Web Service Based Approach for Viral Hepatitis Ontology…" is Communications in Computer
