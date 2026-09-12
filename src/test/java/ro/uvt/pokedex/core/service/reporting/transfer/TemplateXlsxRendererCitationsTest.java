@@ -7,7 +7,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
 import ro.uvt.pokedex.core.service.reporting.transfer.binding.TemplateBindingLoader;
@@ -22,14 +23,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TemplateXlsxRendererCitationsTest {
 
-    private static final String BINDING_RESOURCE = "report-templates/informatica-2016/binding.json";
+    // H106 S1: both xlsx bindings — the 2026 template is stored with inline strings and used to lose every write.
+    private static final String BINDING_2016 = "report-templates/informatica-2016/binding.json";
+    private static final String BINDING_2026 = "report-templates/informatica-2026/binding.json";
 
     private final TemplateBindingLoader loader = new TemplateBindingLoader(new ObjectMapper());
     private final TemplateXlsxRenderer renderer = new TemplateXlsxRenderer();
 
-    @Test
-    void clonesPerPublicationCitationSheetsAndRegeneratesSummaryFormulas() throws Exception {
-        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+    @ParameterizedTest
+    @ValueSource(strings = {BINDING_2016, BINDING_2026})
+    void clonesPerPublicationCitationSheetsAndRegeneratesSummaryFormulas(String bindingResource) throws Exception {
+        TemplateBinding binding = loader.load(bindingResource);
 
         CitationSnapshotItem tile1 = citedPub("Self-supervised graph learning",
                 "Journal of Machine Learning Research", 2023, 2,
@@ -88,9 +92,10 @@ class TemplateXlsxRendererCitationsTest {
         }
     }
 
-    @Test
-    void tileWithMoreThan12CitationsExpandsAndAdjustsSummaryReference() throws Exception {
-        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+    @ParameterizedTest
+    @ValueSource(strings = {BINDING_2016, BINDING_2026})
+    void tileWithMoreThan12CitationsExpandsAndAdjustsSummaryReference(String bindingResource) throws Exception {
+        TemplateBinding binding = loader.load(bindingResource);
 
         CitationSnapshotItem tile = citedPub("Use of genetic algorithms in numerical weather prediction",
                 "Meteorological Soc.", 2018, 3);
@@ -136,9 +141,10 @@ class TemplateXlsxRendererCitationsTest {
         }
     }
 
-    @Test
-    void zeroTilesNeutralizesSummaryFormulasToLiteralZero() throws Exception {
-        TemplateBinding binding = loader.load(BINDING_RESOURCE);
+    @ParameterizedTest
+    @ValueSource(strings = {BINDING_2016, BINDING_2026})
+    void zeroTilesNeutralizesSummaryFormulasToLiteralZero(String bindingResource) throws Exception {
+        TemplateBinding binding = loader.load(bindingResource);
 
         byte[] bytes = renderer.render(binding, Map.of(), Map.of("citations-per-publication", List.of()));
 

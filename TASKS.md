@@ -13,7 +13,7 @@ Done history moved to `TASKS-done.md`.
   (2026-09-12). Two families: the xlsx export of the citations block is broken in prod, and citation
   COVERAGE misses what Scopus does not link by EID. Evidence gathered the same day (prod reads + local
   repro); every slice below is a separate discussion point.
-  - S1 — **Export: writes into the 2026 template are silently lost.** The 2026 `template.xlsx` was re-saved
+  - S1 — **DONE 2026-09-12.** Export: writes into the 2026 template were silently lost. The 2026 `template.xlsx` was re-saved
     in H81 (`d41f0d0a`) with inline strings (`t="inlineStr"`); the 2016 template carries shared strings.
     POI's `setCellValue` on an inline-string cell is a no-op even in memory (verified: `setBlank()` first
     makes the write stick). Effect: every tile keeps the placeholder title "Articol Revista 1 (Nume
@@ -22,7 +22,13 @@ Done history moved to `TASKS-done.md`.
     only because it loads the 2016 binding. Fix: `setBlank()` before every write in
     `TemplateXlsxRenderer` (title, scalars, `writeColumns`, copied sample rows), normalise the 2026
     template to shared strings, add the 2026 binding to the renderer test; check B-Reviste/B-Conferinte
-    sample rows for the same loss.
+    sample rows for the same loss. **Shipped:** `TemplateXlsxRenderer.normaliseInlineStrings` runs on every
+    loaded template (402 cells rewritten for 2026), `writeCellValue`/`writeStringAt` reset the cell first,
+    `TemplateXlsxRendererCitationsTest` is parametrised over both bindings, and
+    `TemplateXlsxRendererTemplateWritabilityTest` stamps a sentinel into every bound cell of every xlsx
+    binding (negative check done: both fail on the 2026 file without the fix). Verified live on Florin
+    Spataru's local run: B-Reviste/B-Conferinte were ALSO affected (only numbers landed) — every FV Info
+    2026 xlsx exported from prod between 2026-07-04 and this fix has template text in its string columns.
   - S2 — **Export: one sheet per work, even without citations** (Florin's a). `RunIndicatorSnapshotProjector
     .projectCitations` emits a tile for every entry of the stored `scores` map, which holds an entry per
     confirmed publication (only a "total"). `CitationRowProjector` (live path) already skips them. Fix:

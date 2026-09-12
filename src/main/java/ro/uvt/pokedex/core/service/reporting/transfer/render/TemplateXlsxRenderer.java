@@ -6,7 +6,9 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.STCellType;
 import org.apache.poi.ss.usermodel.CellCopyPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +61,7 @@ public class TemplateXlsxRenderer {
         try (InputStream in = openTemplate(binding.getTemplateResource());
              Workbook workbook = WorkbookFactory.create(in);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            normaliseInlineStrings(workbook);
             for (BindingRole role : binding.getRoles()) {
                 renderRole(workbook, role, rowsByRole, tilesByRole);
             }
@@ -213,7 +216,39 @@ public class TemplateXlsxRenderer {
 
     private void writeStringAt(Sheet sheet, CellReference ref, String value) {
         Cell cell = getOrCreateCell(sheet, ref);
+        // H106 S1: reset before writing — see normaliseInlineStrings for why a plain setCellValue is not enough.
+        cell.setBlank();
         cell.setCellValue(value);
+    }
+
+    /**
+     * H106 S1 — rewrite every inline-string cell ({@code t="inlineStr"}) of the freshly loaded template as a
+     * shared string. Templates re-saved by non-Excel tools (openpyxl re-saved the Informatică 2026 file in H81)
+     * store their text inline, and POI's {@code XSSFCell.setCellValue(String)} on such a cell only updates the
+     * {@code <v>} element while the reader (Excel, POI, openpyxl) keeps preferring the untouched {@code <is>}
+     * element: the write is silently lost, in memory and on disk. That shipped three months of Fișă 2026
+     * exports whose text columns still carried the template's sample text ("Titlu articol", "(niciunul)",
+     * "Articol Revista 1 (Nume Jurnal, 2017)"). {@code setBlank()} drops both elements and the type, keeps the
+     * style, and the re-set text becomes a normal shared string, so every later write behaves like it does on
+     * an Excel-saved template. Cells cloned afterwards (tile sheets, expanded rows) inherit the normalised form.
+     */
+    static void normaliseInlineStrings(Workbook workbook) {
+        int rewritten = 0;
+        for (Sheet sheet : workbook) {
+            for (Row row : sheet) {
+                for (Cell cell : row) {
+                    if (!(cell instanceof XSSFCell xssfCell)) continue;
+                    if (xssfCell.getCTCell().getT() != STCellType.INLINE_STR) continue;
+                    String text = xssfCell.getStringCellValue();
+                    xssfCell.setBlank();
+                    xssfCell.setCellValue(text);
+                    rewritten++;
+                }
+            }
+        }
+        if (rewritten > 0) {
+            LOG.info("Template normalised: {} inline-string cells rewritten as shared strings", rewritten);
+        }
     }
 
     private Cell getOrCreateCell(Sheet sheet, CellReference ref) {
@@ -401,8 +436,10 @@ public class TemplateXlsxRenderer {
     }
 
     private void writeCellValue(Cell cell, Object value) {
+        // Always reset first (style survives): a stale inline-string body would otherwise shadow the new value,
+        // and a numeric write on a string-typed cell must not leave the old text element behind.
+        cell.setBlank();
         if (value == null) {
-            cell.setBlank();
             return;
         }
         if (value instanceof Number n) {
