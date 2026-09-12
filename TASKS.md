@@ -9,6 +9,69 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H106` Citations round 2 — Florin Fortiș's review of Alexandra Fortiș's FV Info 2026 export
+  (2026-09-12). Two families: the xlsx export of the citations block is broken in prod, and citation
+  COVERAGE misses what Scopus does not link by EID. Evidence gathered the same day (prod reads + local
+  repro); every slice below is a separate discussion point.
+  - S1 — **Export: writes into the 2026 template are silently lost.** The 2026 `template.xlsx` was re-saved
+    in H81 (`d41f0d0a`) with inline strings (`t="inlineStr"`); the 2016 template carries shared strings.
+    POI's `setCellValue` on an inline-string cell is a no-op even in memory (verified: `setBlank()` first
+    makes the write stick). Effect: every tile keeps the placeholder title "Articol Revista 1 (Nume
+    Jurnal, 2017)" (Florin's b) and the citing rows keep the sample row's values "Titlu articol care
+    citeaza"/"(niciunul)" (his c, "informații aleatorii"). `TemplateXlsxRendererCitationsTest` passes
+    only because it loads the 2016 binding. Fix: `setBlank()` before every write in
+    `TemplateXlsxRenderer` (title, scalars, `writeColumns`, copied sample rows), normalise the 2026
+    template to shared strings, add the 2026 binding to the renderer test; check B-Reviste/B-Conferinte
+    sample rows for the same loss.
+  - S2 — **Export: one sheet per work, even without citations** (Florin's a). `RunIndicatorSnapshotProjector
+    .projectCitations` emits a tile for every entry of the stored `scores` map, which holds an entry per
+    confirmed publication (only a "total"). `CitationRowProjector` (live path) already skips them. Fix:
+    skip tiles with zero citing rows.
+  - S3 — **Export from a run has no forum/year/authors.** The citations branch of
+    `UserReportFacade.buildReportScopedIndicatorDetail` stores only `scores`/`total`/`totalCit` in the
+    rawGraph — no `publications`, no `citationMap` (the publications branch stores `publications`). So
+    even after S1 the tile header reads "Title (, )" and rows show only citing title + category + points.
+    Fix: put `publications` (cited works with citations) and `citationView.citationMap()` in the run
+    rawGraph; the apply-page LATEST result already stores both (size precedent). Then the run-sourced
+    export equals the live one.
+  - S4 — **DOI everywhere a work is listed** (Florin: "nu era util să fie și DOI în interfață, cel puțin cu
+    link bazat pe DOI resolver?"). No user-facing page shows a DOI today (only `publications/detail.html`
+    and the admin merges page). Add `https://doi.org/<doi>` links to the evaluation citations drilldown
+    (cited + citing rows), the workbench publication rows and the xlsx citing rows (column F or a new
+    column — the template has spare columns K–M).
+  - S5 — **Coverage: Scopus reverse-title citation search.** Root cause of items 1–4: the Scopus
+    citations task queries `REF(<eid>)`, so (i) works WITHOUT a Scopus EID (arXiv items such as
+    "Considerations on Construction Ontologies" and "Workflow Patterns in Process Modeling", present via
+    OpenAlex only) can never get Scopus citations, and (ii) EID works miss citing papers whose reference
+    Scopus failed to link (the FSI Digital Investigation 2026 paper with mangled diacritics "Forti��").
+    Florin's manual recipe: `REFTITLE("<exact title>")` (+ `REF("Fortis A.E.")` to disambiguate). Design:
+    a per-user task (`ScopusReferenceTitleSearch`) run after the EID pass, for every confirmed work,
+    ingesting hits as citation facts with provenance `SCOPUS_REFTITLE`; false-positive control = exact
+    title (quoted) AND author surname in `REF`, plus an admin/user review queue for short or generic
+    titles. All 7 DOIs Florin listed are absent from the corpus, so this is new intake, not linking.
+    Check first how OpenAlex would have done on the same 7 (cheap: OpenAlex works by DOI → `referenced_works`).
+  - S6 — **Policy: the Springer ISBN-DOI floor is broader than "LNCS".** `ComputerScienceConferenceScoringService`
+    floors any citing paper with a `10.1007/978…` DOI to C/2p (`DoiVenueSupport.isSpringerBookSeriesProceedings`).
+    Florin's case: "Web Service Based Approach for Viral Hepatitis Ontology…" is Communications in Computer
+    and Information Science (Crossref), not LNCS → he scores it D/1p. The OM text names LNCS (2016) and ACM,
+    EPTCS, LNCS (2026); the DOI prefix also covers CCIS, AISC, LNNS, SIST. Options: (a) keep "best category"
+    (current policy, deliberate since the H92 sweep); (b) require series-name evidence (forum name or
+    Crossref `container-title` containing "Lecture Notes") and demote the DOI prefix to a hint. (b) lowers
+    scores across the board — measure before deciding (dry-run count of citing papers currently floored
+    via DOI-only whose container title is not Lecture Notes).
+  - S7 — **Reply to Florin's closing observation.** Perspectiva c) is maximal: citations of ANY publication
+    of the candidate count (incl. out-of-list forums), from citing works in A*–D, theses, reports,
+    out-of-list forums and monographs, minus any common author. The platform already collects for all
+    confirmed works regardless of cited venue (the arXiv items prove it) and excludes self-citations
+    per the same rule (his "Barcode Scanning" has exactly one citing paper — Alexandra's own Hybrid paper —
+    and "Workflow Patterns" has two, both by Fortiș). The gap is SOURCE coverage (S5), not the rule.
+    Ask him whether he meant that.
+  Facts for the discussion: Alexandra = `alexandra.fortis@e-uvt.ro` (author `sauth_a929bbe2f3087d10dca72278`,
+  citations task FULL completed 2026-09-11); "Hybrid Microservices" has 3 citations in corpus (missing:
+  `10.1016/j.fsidi.2026.302128`); "Barcode Scanning" 1 (self); the two arXiv works have 6 and 2 citations
+  via OpenAlex. Order proposed: S1+S2+S3 together (one sitting), S4, then S5 as the real feature; S6/S7
+  are decisions.
+
 - [ ] `H105` External (non-UVT) accounts for candidates to any UVT position (abilitare, concurs) —
   the usual rich interface, minus the licensed RAW layer; full view for UVT staff. **RAISED 2026-09-11**
   (dean's request: Vlad Drăgoi, Arad, Scopus 57202987286, target department SCIA; widened the same day
