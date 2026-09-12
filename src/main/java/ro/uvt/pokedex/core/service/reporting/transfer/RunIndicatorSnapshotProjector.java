@@ -73,6 +73,11 @@ public class RunIndicatorSnapshotProjector {
 
         Map<String, Map<?, ?>> citedPublicationsByTitle = publicationsByTitle(result.rawGraph().get("publications"));
         Map<String, Map<?, ?>> citationMapByTitle = publicationsByTitle(result.rawGraph().get("citationMap"));
+        // H106 S3: both maps carry author/forum IDS (RunGraphPublicationSlice); resolve names once per export.
+        List<Map<?, ?>> allPublications = new ArrayList<>(citedPublicationsByTitle.values());
+        allPublications.addAll(citationMapByTitle.values());
+        Map<String, String> authorNames = resolveAuthorNames(allPublications);
+        Map<String, String> forumNames = resolveForumNames(allPublications);
         List<CitationSnapshotItem> out = new ArrayList<>();
         for (Map.Entry<?, ?> entry : scores.entrySet()) {
             CitationSnapshotItem tile = new CitationSnapshotItem();
@@ -81,10 +86,7 @@ public class RunIndicatorSnapshotProjector {
             tile.setRoleKey(roleKey);
             tile.setItemKey(firstNonBlank(asString(value(citedPublication, "id")), title));
             tile.setPublicationTitle(title);
-            tile.setPublicationForumName(firstNonBlank(
-                    asString(value(citedPublication, "forumName")),
-                    asString(value(citedPublication, "publicationName")),
-                    asString(value(citedPublication, "forum"))));
+            tile.setPublicationForumName(resolveForumLabel(citedPublication, forumNames));
             tile.setPublicationYear(extractYear(value(citedPublication, "coverDate")));
             tile.setPublicationAuthorCount(asInteger(value(citedPublication, "authorCount")));
 
@@ -94,16 +96,17 @@ public class RunIndicatorSnapshotProjector {
                     String citingTitle = String.valueOf(citingEntry.getKey());
                     if ("total".equals(citingTitle)) continue;
                     Object scoreObj = citingEntry.getValue();
+                    // H106 S3: an EXCLUDED citation (self-citation mirrored back with a zero Score so the
+                    // drilldown can explain it) is not a fișă row — it carries no slice either, so it would
+                    // print as a bare title with no forum/year/category.
+                    if (zeroReason(scoreObj) != null) continue;
                     tileScore += authorScore(scoreObj);
 
                     Map<?, ?> citingPublication = citationMapByTitle.get(citingTitle);
                     CitationSnapshotItem.CitingPublication row = new CitationSnapshotItem.CitingPublication();
                     row.setTitle(citingTitle);
-                    row.setAuthors(formatList(value(citingPublication, "authors")));
-                    row.setForumName(firstNonBlank(
-                            asString(value(citingPublication, "forumName")),
-                            asString(value(citingPublication, "publicationName")),
-                            asString(value(citingPublication, "forum"))));
+                    row.setAuthors(joinAuthorNames(value(citingPublication, "authors"), authorNames));
+                    row.setForumName(resolveForumLabel(citingPublication, forumNames));
                     row.setVolumeInfo(asString(value(citingPublication, "volume")));
                     row.setYear(extractYear(value(citingPublication, "coverDate")));
                     row.setIsWorkshopDaNu(isWorkshopAdjusted(scoreObj) ? "DA" : "NU");
@@ -244,7 +247,7 @@ public class RunIndicatorSnapshotProjector {
                 }
             }
         }
-        if (ids.isEmpty()) return Map.of();
+        if (ids.isEmpty() || projectionRead == null) return Map.of();
         return projectionRead.findAuthorsByIdIn(ids).stream()
                 .collect(Collectors.toMap(ScholardexAuthorView::getId, ScholardexAuthorView::getName, (a, b) -> a));
     }
@@ -255,7 +258,7 @@ public class RunIndicatorSnapshotProjector {
             String f = asString(value(p, "forum"));
             if (f != null && !f.isBlank()) ids.add(f);
         }
-        if (ids.isEmpty()) return Map.of();
+        if (ids.isEmpty() || projectionRead == null) return Map.of();
         return projectionRead.findForumsByIdIn(ids).stream()
                 .collect(Collectors.toMap(ScholardexForumView::getId, ScholardexForumView::getPublicationName, (a, b) -> a));
     }
@@ -280,13 +283,6 @@ public class RunIndicatorSnapshotProjector {
         if (forumId == null) return null;
         String name = forumNames.get(forumId);
         return name != null && !name.isBlank() ? name : forumId;
-    }
-
-    private String formatList(Object value) {
-        if (value instanceof List<?> list) {
-            return list.stream().map(String::valueOf).collect(Collectors.joining(", "));
-        }
-        return asString(value);
     }
 
     private String firstNonBlank(String... values) {
@@ -368,6 +364,17 @@ public class RunIndicatorSnapshotProjector {
             return String.valueOf(map.get("coreRankingEquivalent"));
         }
         return null;
+    }
+
+    /** The deserialised graph carries score-shaped maps as {@code Score} beans (IndicatorPayloadSerializer). */
+    private String zeroReason(Object scoreObj) {
+        Object v = null;
+        if (scoreObj instanceof ro.uvt.pokedex.core.service.reporting.Score score && score.getScoringInfo() != null) {
+            v = score.getScoringInfo().get("zeroReason");
+        } else if (scoreObj instanceof Map<?, ?> map && map.get("scoringInfo") instanceof Map<?, ?> info) {
+            v = info.get("zeroReason");
+        }
+        return v != null && !String.valueOf(v).isBlank() ? String.valueOf(v) : null;
     }
 
     private boolean isWorkshopAdjusted(Object scoreObj) {

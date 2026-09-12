@@ -726,6 +726,10 @@ public class UserReportFacade {
         rawGraph.put("outputMode", "citations");
         rawGraph.put("allQuarters", citationView.quarterLabels());
         rawGraph.put("allValues", citationView.quarterValues());
+        // H106 S3: the run-sourced export needs the cited works and the citing publications behind the
+        // score map (forum/year/authors/volume) — persisted as slim slices, not full views.
+        rawGraph.put("publications", RunGraphPublicationSlice.ofAll(publications));
+        rawGraph.put("citationMap", RunGraphPublicationSlice.ofMap(citationView.citationMap()));
         return Optional.of(new IndicatorApplyResultDto(
                 null, indicatorId,
                 ReportScopedIndicatorScoringSupport.viewNameFor(indicator),

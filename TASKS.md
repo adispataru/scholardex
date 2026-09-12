@@ -40,13 +40,20 @@ Done history moved to `TASKS-done.md`.
     stacked name. Tests: stacked geometry + expansion + zero tiles + parser round-trip (both bindings),
     projector empty-tile skip; per-sheet tests kept by forcing SHEET_PER_TILE. Verified live on Florin
     Spataru's local run: 17 tiles (was 24 sheets), one sheet, no sample text.
-  - S3 — **Export from a run has no forum/year/authors.** The citations branch of
-    `UserReportFacade.buildReportScopedIndicatorDetail` stores only `scores`/`total`/`totalCit` in the
-    rawGraph — no `publications`, no `citationMap` (the publications branch stores `publications`). So
-    even after S1 the tile header reads "Title (, )" and rows show only citing title + category + points.
-    Fix: put `publications` (cited works with citations) and `citationView.citationMap()` in the run
-    rawGraph; the apply-page LATEST result already stores both (size precedent). Then the run-sourced
-    export equals the live one.
+  - S3 — **DONE 2026-09-12.** Export from a run had no forum/year/authors: the citations branch of
+    `UserReportFacade.buildReportScopedIndicatorDetail` stored only `scores`/`total`/`totalCit`, so the
+    tile header read "Title (, )" and rows showed only citing title + category. **Shipped:** the run
+    graph now carries `publications` + `citationMap` as SLIM slices (`RunGraphPublicationSlice`: id,
+    title, doi, author ids, forum id, volume, coverDate, authorCount — ~120 KB vs ~250 KB for the full
+    views the apply-page cache stores; doi kept for S4); `RunIndicatorSnapshotProjector` resolves author
+    and forum names at export time (same helpers as the publications path) and SKIPS citations carrying
+    a `zeroReason` (excluded self-citations are mirrored into the score map with a zero Score for the
+    drilldown and have no slice — they printed as bare titles with no category). Trap found on the way:
+    `IndicatorPayloadSerializer` turns score-shaped maps into `Score` BEANS on read, so any projector
+    helper must accept both; the projector test now round-trips through the serializer. Verified live on
+    a fresh local run: 19 tiles / 92 rows, no header gaps, no missing year/category; the only blank
+    forum/author cells are citing works that have none in the corpus. NOTE: runs created before this
+    ship still export with blank forum/year/authors — a refresh (new run) is needed per researcher.
   - S4 — **DOI everywhere a work is listed** (Florin: "nu era util să fie și DOI în interfață, cel puțin cu
     link bazat pe DOI resolver?"). No user-facing page shows a DOI today (only `publications/detail.html`
     and the admin merges page). Add `https://doi.org/<doi>` links to the evaluation citations drilldown
