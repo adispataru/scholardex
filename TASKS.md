@@ -88,7 +88,14 @@ Done history moved to `TASKS-done.md`.
     `referenced_works` name the cited works; its cited_by_count for the four works (6/3/1/2) equals ours.
     OpenAlex cannot close this gap — Scopus reference-text search is the only source. Design as above:
     `REFTITLE("<exact title>") AND REFAUTH(<surnames>)`, exact reference check on each hit before
-    auto-ingest, provenance `SCOPUS_REFTITLE`, incremental by PUBYEAR. **IN PROGRESS 2026-09-12.**
+    auto-ingest, provenance `SCOPUS_REFTITLE`, incremental by PUBYEAR. **BUILT 2026-09-12, awaiting prod
+    verification** (needs the Scopus key: a FULL citations sync for alexandra.fortis after release — see
+    `docs/scopus-reference-title-citations.md`). Shipped: Python `/v1/citations/by-title` (REFTITLE+REFAUTH
+    search, known-EID exclusion, per-hit reference verification with a truncation-tolerant surname match);
+    `ScopusReferenceTitlePlanner` + second phase of every `ScopusCitationsUpdate` (verified hits only,
+    failures reported in the message, never failing the EID pass); `CitedWorkKey` — `citedEid` holds an EID,
+    `doi:<doi>` or a canonical id, resolved by BOTH canon paths (incremental canonicaliser + V2 graph
+    builder; real-Mongo integration test). No review queue yet: unverified hits are logged and counted only.
   - S6 — **Policy: the Springer ISBN-DOI floor is broader than "LNCS".** `ComputerScienceConferenceScoringService`
     floors any citing paper with a `10.1007/978…` DOI to C/2p (`DoiVenueSupport.isSpringerBookSeriesProceedings`).
     Florin's case: "Web Service Based Approach for Viral Hepatitis Ontology…" is Communications in Computer

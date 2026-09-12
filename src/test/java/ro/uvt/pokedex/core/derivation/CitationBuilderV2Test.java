@@ -60,6 +60,34 @@ class CitationBuilderV2Test {
         assertThat(edges).hasSize(1);
     }
 
+    @Test
+    void referenceTitleEdgesResolveTheCitedSideByDoiOrCanonicalId() {
+        // H106 S5: a cited work with no Scopus EID (arXiv, OpenAlex-only) is keyed "doi:<doi>" in the
+        // Scopus citation fact; a DOI-less one by its canonical id. The citing side is a Scopus document.
+        OpenAlexPublicationFact arxiv = openAlexPub("W9", "https://doi.org/10.48550/arXiv.0905.4601");
+        ScopusPublicationFact citing = scopusPub("2-s2.0-X", "10.3233/web-190396");
+        ScopusCitationFact byDoi = new ScopusCitationFact();
+        byDoi.setCitedEid("doi:10.48550/arxiv.0905.4601");
+        byDoi.setCitingEid("2-s2.0-X");
+
+        List<ScholardexCitationFact> edges = builder.buildCitations(List.of(citing), List.of(arxiv), List.of(byDoi));
+        assertThat(edges).hasSize(1);
+        String arxivCanonicalId = edges.get(0).getCitedPublicationId();
+        assertThat(arxivCanonicalId).startsWith("spub_");
+        assertThat(edges.get(0).getCitingPublicationId()).isNotEqualTo(arxivCanonicalId);
+
+        ScopusCitationFact byCanonical = new ScopusCitationFact();
+        byCanonical.setCitedEid(arxivCanonicalId);
+        byCanonical.setCitingEid("2-s2.0-X");
+        assertThat(builder.buildCitations(List.of(citing), List.of(arxiv), List.of(byCanonical)))
+                .extracting(ScholardexCitationFact::getCitedPublicationId).containsExactly(arxivCanonicalId);
+
+        ScopusCitationFact unknown = new ScopusCitationFact();
+        unknown.setCitedEid("doi:10.9999/not-in-corpus");
+        unknown.setCitingEid("2-s2.0-X");
+        assertThat(builder.buildCitations(List.of(citing), List.of(arxiv), List.of(unknown))).isEmpty();
+    }
+
     private OpenAlexPublicationFact openAlexPub(String workId, String doi) {
         OpenAlexPublicationFact f = new OpenAlexPublicationFact();
         f.setSourceRecordId(workId);

@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionSe
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksRequest;
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksResponse;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidResponse;
+import ro.uvt.pokedex.core.service.scopus.dto.CitationsByTitleResponse;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 
 import java.time.Instant;
@@ -748,6 +749,90 @@ class ScopusUpdateSchedulerTest {
     }
 
     @SuppressWarnings("unchecked")
+    @Test
+    void pollQueueCitationTaskIngestsOnlyVerifiedReferenceTitleHits() {
+        // H106 S5: the second phase searches Scopus reference text; a hit whose own reference list
+        // named the title + surname is ingested (cited side keyed by DOI for an EID-less work), an
+        // unverified hit is skipped, and the task message reports both.
+        ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
+        ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
+        ScholardexProjectionReadService projectionReadService = mock(ScholardexProjectionReadService.class);
+        ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
+        ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        List<ScopusCitationsUpdate> savedTasks = captureCitationSaves(citationTaskRepo);
+
+        CitationsByEidResponse eidResponse = new CitationsByEidResponse();
+        eidResponse.setRequestId("req-eid");
+        eidResponse.setByEid(new LinkedHashMap<>());
+        WebClient webClient = mockCitationsClient(Mono.just(eidResponse));
+        CitationsByTitleResponse titleResponse = new CitationsByTitleResponse();
+        titleResponse.setRequestId("req-title");
+        Map<String, List<Map<String, Object>>> byKey = new LinkedHashMap<>();
+        Map<String, Object> verifiedHit = new LinkedHashMap<>();
+        verifiedHit.put("eid", "2-s2.0-ref1");
+        verifiedHit.put("title", "Sentiment analysis of Kazakh text");
+        verifiedHit.put("verified", true);
+        verifiedHit.put("matched_reference", "Fortis, A.E., Considerations on Construction Ontologies, 2009");
+        Map<String, Object> unverifiedHit = new LinkedHashMap<>();
+        unverifiedHit.put("eid", "2-s2.0-ref2");
+        unverifiedHit.put("title", "Unrelated survey");
+        unverifiedHit.put("verified", false);
+        byKey.put("doi:10.48550/arxiv.0905.4601", List.of(verifiedHit, unverifiedHit));
+        titleResponse.setByKey(byKey);
+        // The by-eid helper stubbed by-title with an empty response; restub with ours on the same specs.
+        WebClient.RequestBodyUriSpec spec = webClient.post();
+        WebClient.ResponseSpec responseSpec = spec.bodyValue(new Object()).retrieve();
+        mockReferenceTitleEndpoint(webClient, spec, responseSpec, Mono.just(titleResponse));
+
+        ScopusUpdateScheduler scheduler = new ScopusUpdateScheduler(
+                publicationTaskRepo, citationTaskRepo, projectionReadService, ingestionService,
+                canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
+                meterRegistry, webClient);
+        ReflectionTestUtils.setField(scheduler, "pageSize", 100);
+        ReflectionTestUtils.setField(scheduler, "defaultMaxAttempts", 3);
+        ReflectionTestUtils.setField(scheduler, "initialBackoffSeconds", 60L);
+        ReflectionTestUtils.setField(scheduler, "maxBackoffSeconds", 3600L);
+
+        ScopusCitationsUpdate task = new ScopusCitationsUpdate();
+        task.setId("cit-9");
+        task.setScopusId("a1");
+        task.setStatus(Status.PENDING);
+        task.setMaxAttempts(3);
+        when(publicationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of());
+        when(citationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of(task));
+
+        var arxivWork = new ScholardexPublicationView();
+        arxivWork.setId("spub_arxiv");
+        arxivWork.setDoi("https://doi.org/10.48550/arXiv.0905.4601");
+        arxivWork.setTitle("Considerations on Construction Ontologies");
+        var eidWork = new ScholardexPublicationView();
+        eidWork.setId("spub_1");
+        eidWork.setEid("2-s2.0-cited");
+        eidWork.setTitle("A Hybrid Microservices Architecture for Smart Glasses");
+        when(projectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of(arxivWork, eidWork));
+        when(projectionReadService.findAllCitationsByCitedIdIn(any())).thenReturn(List.of());
+        when(ingestionService.ingest(any(), anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("event-x"));
+
+        scheduler.pollQueue();
+
+        verify(ingestionService).ingest(eq(ScopusImportEntityType.PUBLICATION), eq("SCOPUS_PYTHON_REFTITLE_PUBLICATION"),
+                eq("2-s2.0-ref1"), anyString(), anyString(), eq("json-object"), any());
+        verify(ingestionService).ingest(eq(ScopusImportEntityType.CITATION), eq("SCOPUS_PYTHON_REFTITLE_EDGE"),
+                eq("doi:10.48550/arxiv.0905.4601->2-s2.0-ref1"), anyString(), anyString(), eq("json-object"),
+                argThat(payload -> payload instanceof Map<?, ?> m
+                        && "SCOPUS_REFTITLE".equals(m.get("provenance"))
+                        && "doi:10.48550/arxiv.0905.4601".equals(m.get("citedEid"))));
+        verify(ingestionService, never()).ingest(any(), anyString(), eq("2-s2.0-ref2"), anyString(), anyString(), anyString(), any());
+        ScopusCitationsUpdate completed = savedTasks.get(savedTasks.size() - 1);
+        assertEquals(Status.COMPLETED, completed.getStatus());
+        assertTrue(completed.getMessage().contains("Reference-title pass: 1 new citation links from 2 works (1 unverified hits skipped)."),
+                completed.getMessage());
+    }
+
     private WebClient mockAuthorWorksClient() {
         return mockAuthorWorksClient(authorWorksResponse(List.of(Map.of("eid", "2-s2.0-1")), null));
     }
@@ -807,6 +892,15 @@ class ScopusUpdateSchedulerTest {
         when(requestBodyUriSpec.bodyValue(any())).thenReturn((WebClient.RequestHeadersSpec) requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(CitationsByEidResponse.class)).thenReturn(responseMono);
+        return mockReferenceTitleEndpoint(client, requestBodyUriSpec, responseSpec, Mono.just(new CitationsByTitleResponse()));
+    }
+
+    /** H106 S5: the citations task's second phase calls /v1/citations/by-title on the same client. */
+    private WebClient mockReferenceTitleEndpoint(WebClient client, WebClient.RequestBodyUriSpec requestBodyUriSpec,
+                                                 WebClient.ResponseSpec responseSpec,
+                                                 Mono<CitationsByTitleResponse> responseMono) {
+        when(requestBodyUriSpec.uri("/v1/citations/by-title")).thenReturn(requestBodyUriSpec);
+        when(responseSpec.bodyToMono(CitationsByTitleResponse.class)).thenReturn(responseMono);
         return client;
     }
 

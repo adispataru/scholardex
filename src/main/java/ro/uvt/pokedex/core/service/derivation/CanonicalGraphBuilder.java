@@ -162,6 +162,17 @@ public class CanonicalGraphBuilder {
                 eidToCanonical.put(s.getEid(), buildPublicationId(fromScopus(s), doiBlocklist));
             }
         }
+        // H106 S5: the reverse-title search keys a cited work without an EID by "doi:<doi>" or by its
+        // canonical id (CitedWorkKey). Resolve both against every source, the same way the ids are built.
+        Map<String, String> doiToCanonical = new java.util.HashMap<>();
+        Set<String> canonicalIds = new java.util.HashSet<>();
+        for (SourcePub sp : allSources) {
+            String id = buildPublicationId(sp, doiBlocklist);
+            canonicalIds.add(id);
+            if (sp.doiNorm() != null && !sp.doiNorm().isBlank() && !doiBlocklist.contains(sp.doiNorm())) {
+                doiToCanonical.putIfAbsent(sp.doiNorm(), id);
+            }
+        }
 
         Set<String> seen = new java.util.HashSet<>();
         List<ScholardexCitationFact> edges = new ArrayList<>();
@@ -178,13 +189,25 @@ public class CanonicalGraphBuilder {
             }
         }
         for (ScopusCitationFact sc : scopusCitations) {
-            String cited = eidToCanonical.get(sc.getCitedEid());
+            String cited = resolveCitedKey(sc.getCitedEid(), eidToCanonical, doiToCanonical, canonicalIds);
             String citing = eidToCanonical.get(sc.getCitingEid());
             if (cited != null && citing != null && !cited.equals(citing) && seen.add(cited + "|" + citing)) {
                 edges.add(citation(cited, citing, SOURCE_SCOPUS));
             }
         }
         return edges;
+    }
+
+    private static String resolveCitedKey(String key, Map<String, String> eidToCanonical,
+                                          Map<String, String> doiToCanonical, Set<String> canonicalIds) {
+        if (key == null) return null;
+        if (ro.uvt.pokedex.core.service.importing.scopus.CitedWorkKey.isDoiKey(key)) {
+            return doiToCanonical.get(ro.uvt.pokedex.core.service.importing.scopus.CitedWorkKey.doiOf(key));
+        }
+        if (ro.uvt.pokedex.core.service.importing.scopus.CitedWorkKey.isCanonicalKey(key)) {
+            return canonicalIds.contains(key) ? key : null;
+        }
+        return eidToCanonical.get(key);
     }
 
     private static ScholardexCitationFact citation(String citedPubId, String citingPubId, String source) {

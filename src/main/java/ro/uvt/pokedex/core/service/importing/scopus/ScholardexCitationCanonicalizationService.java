@@ -194,6 +194,33 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
                 }
             }
         }
+        // H106 S5: a cited work found by the reverse-title search may be keyed by DOI or canonical id
+        // (no Scopus EID) — see CitedWorkKey. Resolve those keys into the same id map.
+        Set<String> doiKeys = new LinkedHashSet<>();
+        Set<String> canonicalKeys = new LinkedHashSet<>();
+        for (String key : eids) {
+            if (CitedWorkKey.isDoiKey(key)) {
+                doiKeys.add(key);
+            } else if (CitedWorkKey.isCanonicalKey(key)) {
+                canonicalKeys.add(key);
+            }
+        }
+        if (!doiKeys.isEmpty()) {
+            Set<String> dois = new LinkedHashSet<>();
+            doiKeys.forEach(k -> dois.add(CitedWorkKey.doiOf(k)));
+            for (ScholardexPublicationFact publication : scholardexPublicationFactRepository.findAllByDoiNormalizedIn(dois)) {
+                if (!isBlank(publication.getDoiNormalized()) && !isBlank(publication.getId())) {
+                    context.publicationIdByEid.putIfAbsent(CitedWorkKey.DOI_PREFIX + publication.getDoiNormalized(), publication.getId());
+                }
+            }
+        }
+        if (!canonicalKeys.isEmpty()) {
+            for (ScholardexPublicationFact publication : scholardexPublicationFactRepository.findAllById(canonicalKeys)) {
+                if (publication != null && !isBlank(publication.getId())) {
+                    context.publicationIdByEid.put(publication.getId(), publication.getId());
+                }
+            }
+        }
 
         Set<String> edgeIds = new LinkedHashSet<>();
         for (ScopusCitationFact sourceFact : chunk) {

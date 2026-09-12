@@ -84,6 +84,27 @@ class CitationsByEidReq(BaseModel):
     page_size_per_eid: int = Field(25, ge=1, le=100)
     include_enrichment: bool = False
 
+class CitedWorkSpec(BaseModel):
+    """One cited work for the reverse-title search (H106 S5)."""
+    title: str
+    # surname variants of the researcher as they may appear in a reference ("Fortis", "Fortiş")
+    surnames: List[str] = []
+    # lower bound on the citing document's cover date: "YYYY-MM-DD" | "YYYY-MM" | "YYYY" | None
+    from_date: Optional[str] = None
+    # citing EIDs already known for this work (found by REF(eid) or earlier passes) — never re-reported
+    known_citing_eids: List[str] = []
+
+
+class CitationsByTitleReq(BaseModel):
+    request_id: Optional[str] = None
+    # cited key -> spec; the key is echoed back verbatim (Scopus EID, "doi:<doi>" or a canonical id)
+    items: Dict[str, CitedWorkSpec]
+    page_size_per_item: int = Field(25, ge=1, le=100)
+    include_enrichment: bool = False
+    # read each hit's reference list and keep only hits whose reference names the title AND a surname
+    verify_references: bool = True
+
+
 # -------------------------
 # Helpers
 # -------------------------
@@ -532,6 +553,140 @@ def fetch_citations_for_eids(
 
 
 # -------------------------
+# H106 S5 — reverse-title citation search
+# -------------------------
+_REF_QUOTES = str.maketrans({'"': ' ', '{': ' ', '}': ' ', '(': ' ', ')': ' '})
+
+
+def _norm_text(value: Optional[str]) -> str:
+    """Lower-case, diacritics stripped, punctuation dropped, spaces collapsed — for reference matching."""
+    if not value:
+        return ""
+    import unicodedata
+    decomposed = unicodedata.normalize("NFKD", str(value))
+    ascii_only = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    kept = "".join(ch if ch.isalnum() else " " for ch in ascii_only.lower())
+    return " ".join(kept.split())
+
+
+def _build_title_query(spec: CitedWorkSpec) -> str:
+    # Loose phrase ("...") rather than exact ({...}): references drop subtitles and punctuation, and the
+    # reference check below restores precision. Braces/quotes inside the title would break the query.
+    title = " ".join(spec.title.translate(_REF_QUOTES).split())
+    query = f'REFTITLE("{title}")'
+    surnames = [" ".join(x.translate(_REF_QUOTES).split()) for x in (spec.surnames or []) if x and x.strip()]
+    if surnames:
+        query += " AND (" + " OR ".join(f"REFAUTH({x})" for x in surnames) + ")"
+    if spec.from_date:
+        year = int(str(spec.from_date)[:4])
+        query += f" AND PUBYEAR > {year - 1}"
+    return query
+
+
+def _reference_match(references, title: str, surnames: List[str]):
+    """The first reference whose title/text contains the cited title and (when surnames are given) a surname."""
+    want_title = _norm_text(title)
+    want_names = [_norm_text(x) for x in (surnames or []) if x]
+    if not want_title:
+        return None
+    for ref in references or []:
+        ref_title = _norm_text(getattr(ref, "title", None))
+        ref_text = _norm_text(getattr(ref, "fulltext", None) or getattr(ref, "text", None))
+        title_ok = (want_title in ref_title) if ref_title else (want_title in ref_text)
+        if not title_ok:
+            continue
+        if not want_names:
+            return ref
+        ref_authors = _norm_text(getattr(ref, "authors", None))
+        haystack = ref_authors + " " + ref_text
+        # A mangled reference truncates the surname ("Forti��" for "Fortiș"), so a surname of five or
+        # more letters also matches on its stem minus the last letter. The title is the strong signal.
+        for name in want_names:
+            if not name:
+                continue
+            if name in haystack or (len(name) >= 5 and name[:-1] in haystack):
+                return ref
+    return None
+
+
+def fetch_citations_by_title(
+    items: Dict[str, CitedWorkSpec],
+    page_size_per_item: int = 25,
+    include_enrichment: bool = False,
+    verify_references: bool = True,
+) -> Dict[str, Any]:
+    """
+    For each cited work, search Scopus for documents whose REFERENCE TEXT names the title (REFTITLE),
+    narrowed by the researcher's surname (REFAUTH). Finds what REF(eid) cannot: citations of works with
+    no Scopus EID, and references Scopus failed to link (mangled author strings, fresh documents).
+    Known citing EIDs are dropped; every remaining hit is verified against its own reference list unless
+    verify_references is off. Items carry 'cited_key', 'verified' and 'matched_reference'.
+    """
+    by_key: Dict[str, List[Dict[str, Any]]] = {}
+    per_key_count: Dict[str, int] = {}
+    unverified_total = 0
+    t0 = datetime.utcnow()
+    for key, spec in items.items():
+        if not key or not spec or not spec.title or len(spec.title.split()) < 3:
+            by_key[key] = []
+            per_key_count[key] = 0
+            continue
+        known = {e for e in (spec.known_citing_eids or []) if e}
+        query = _build_title_query(spec)
+        try:
+            s = ScopusSearch(query=query, view="STANDARD", refresh=False, count=page_size_per_item)
+        except Exception as ex:
+            logger.warning("Reverse-title search failed for %s | query=%s | %s", key, query, ex)
+            by_key[key] = []
+            per_key_count[key] = 0
+            continue
+        rows = s.results or []
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            eid = getattr(r, "eid", "") or ""
+            if not eid or eid in known:
+                continue
+            verified = None
+            matched = None
+            if verify_references:
+                try:
+                    ar = AbstractRetrieval(eid, view="REF")
+                    ref = _reference_match(getattr(ar, "references", None), spec.title, spec.surnames)
+                    verified = ref is not None
+                    if ref is not None:
+                        matched = getattr(ref, "fulltext", None) or getattr(ref, "text", None) or getattr(ref, "title", None)
+                except Exception as ex:
+                    logger.warning("Reference check failed for %s citing %s | %s", eid, key, ex)
+                    verified = False
+            legacy = to_legacy(r, include_enrichment=include_enrichment)
+            legacy["cited_key"] = key
+            legacy["verified"] = verified
+            legacy["matched_reference"] = matched
+            legacy["search_query"] = query
+            if verified is False:
+                unverified_total += 1
+            out.append(legacy)
+        by_key[key] = out
+        per_key_count[key] = len(out)
+    elapsed_ms = int((datetime.utcnow() - t0).total_seconds() * 1000)
+    return {
+        "by_key": by_key,
+        "summary": {
+            "total_hits": sum(per_key_count.values()),
+            "unverified": unverified_total,
+            "per_key": per_key_count,
+        },
+        "provenance": {
+            "fetched_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "item_count": len(items),
+            "page_size_per_item": page_size_per_item,
+            "verify_references": verify_references,
+            "elapsed_ms": elapsed_ms,
+        },
+    }
+
+
+# -------------------------
 # FastAPI app
 # -------------------------
 app = FastAPI(title="Author Works (legacy-compatible)")
@@ -648,6 +803,41 @@ def citations_by_eid(body: CitationsByEidReq):
 
     except Exception as ex:
         logger.exception("Unhandled error in /v1/citations/by-eid")
+        raise HTTPException(status_code=502, detail=f"upstream_error: {type(ex).__name__}: {ex}")
+
+
+@app.post("/v1/citations/by-title")
+def citations_by_title(body: CitationsByTitleReq):
+    logger.info(
+        "POST /v1/citations/by-title | request_id=%s | item_count=%s | page_size_per_item=%s | verify=%s",
+        body.request_id,
+        len(body.items) if body.items else 0,
+        body.page_size_per_item,
+        body.verify_references,
+    )
+    try:
+        data = fetch_citations_by_title(
+            items=body.items,
+            page_size_per_item=body.page_size_per_item,
+            include_enrichment=body.include_enrichment,
+            verify_references=body.verify_references,
+        )
+        data["request_id"] = body.request_id
+        return data
+    except ValueError as ve:
+        logger.warning("Bad request in /v1/citations/by-title | %s", str(ve), exc_info=True)
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Scopus429Error as ex:
+        logger.warning("Scopus rate limited in /v1/citations/by-title | %s", str(ex), exc_info=True)
+        raise HTTPException(status_code=429, detail=f"scopus_rate_limited: {ex}")
+    except (Scopus401Error, Scopus403Error) as ex:
+        logger.error("Scopus access/entitlement error in /v1/citations/by-title | %s", str(ex), exc_info=True)
+        raise HTTPException(status_code=403, detail=f"scopus_access_denied: {ex}")
+    except Scopus400Error as ex:
+        logger.warning("Scopus400Error in /v1/citations/by-title | %s", str(ex), exc_info=True)
+        raise HTTPException(status_code=400, detail=f"scopus_bad_request_or_service_level: {ex}")
+    except Exception as ex:
+        logger.exception("Unhandled error in /v1/citations/by-title")
         raise HTTPException(status_code=502, detail=f"upstream_error: {type(ex).__name__}: {ex}")
 
 

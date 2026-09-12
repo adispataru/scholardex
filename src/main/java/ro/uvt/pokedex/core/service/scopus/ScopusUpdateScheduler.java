@@ -30,6 +30,8 @@ import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksRequest;
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksResponse;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidRequest;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidResponse;
+import ro.uvt.pokedex.core.service.scopus.dto.CitationsByTitleRequest;
+import ro.uvt.pokedex.core.service.scopus.dto.CitationsByTitleResponse;
 
 import java.time.Instant;
 import java.util.*;
@@ -56,6 +58,8 @@ public class ScopusUpdateScheduler {
     private final ScopusIntegrationExceptionMapper exceptionMapper = new ScopusIntegrationExceptionMapper();
     private final ScopusPublicationSyncPlanner publicationPlanner = new ScopusPublicationSyncPlanner();
     private final ScopusCitationSyncPlanner citationPlanner = new ScopusCitationSyncPlanner(publicationPlanner);
+    // H106 S5: second phase of every citations sync — Scopus reference-TEXT search (REFTITLE/REFAUTH).
+    private final ScopusReferenceTitlePlanner referenceTitlePlanner = new ScopusReferenceTitlePlanner(publicationPlanner);
 
 
     @Value("${scopus.update.page-size:100}")
@@ -381,15 +385,131 @@ public class ScopusUpdateScheduler {
             }
         }
 
+        // H106 S5 — phase 2: reference-text search. Finds what REF(eid) cannot: citations of works with no
+        // Scopus EID, and references Scopus failed to link (mangled author strings, fresh documents). Runs
+        // over every work; only hits whose own reference list names the title + a surname are ingested.
+        // A failure here must not lose the EID pass, so it is reported in the message, not thrown.
+        String referenceTitleSummary = runReferenceTitlePass(task, authorScopusId, batchId, req.getRequestId());
+
         task.setStatus(Status.COMPLETED);
         task.setMessage("Author " + authorScopusId + ": imported/updated " +
-                importedPublications + " citing publications and " + createdCitations + " citation links.");
+                importedPublications + " citing publications and " + createdCitations + " citation links."
+                + referenceTitleSummary);
         task.setExecutionDate(Instant.now().toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
         citationsTaskRepo.save(task);
         canonicalMaterializationService.rebuildFactsAndViews("scheduler-citation-task-" + task.getId(), batchId);
+    }
+
+    /** Returns a message suffix ("" when nothing ran, " Reference-title pass: …" otherwise). */
+    private String runReferenceTitlePass(ScopusCitationsUpdate task, String authorScopusId, String batchId, String correlationId) {
+        try {
+            List<ScholardexPublicationView> authorPublications =
+                    scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
+            if (authorPublications.isEmpty()) {
+                return "";
+            }
+            List<String> citedIds = citationPlanner.citedPublicationIds(authorPublications);
+            List<ScholardexCitationView> citations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(citedIds);
+            List<String> citingIds = citationPlanner.citingPublicationIds(citations);
+            List<ScholardexPublicationView> citingPublications = citingIds.isEmpty()
+                    ? Collections.emptyList()
+                    : scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds);
+            List<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView> authorViews =
+                    scholardexProjectionReadService.findAuthorsByIdIn(List.of(authorScopusId));
+            if (authorViews == null) {
+                authorViews = Collections.emptyList();
+            }
+            Map<String, CitationsByTitleRequest.CitedWorkSpec> items = referenceTitlePlanner.buildItems(
+                    authorPublications, citations, citingPublications, authorViews, task);
+            if (items.isEmpty()) {
+                return "";
+            }
+            CitationsByTitleRequest req = referenceTitlePlanner.buildRequest(items);
+            CitationsByTitleResponse resp = callPythonCitationsByTitle(req);
+
+            int imported = 0;
+            int unverified = 0;
+            Map<String, List<Map<String, Object>>> byKey = resp.getByKey();
+            if (byKey != null) {
+                for (Map.Entry<String, List<Map<String, Object>>> entry : byKey.entrySet()) {
+                    String citedKey = entry.getKey();
+                    if (citedKey == null || citedKey.isBlank() || entry.getValue() == null) continue;
+                    for (Map<String, Object> hit : entry.getValue()) {
+                        String citingEid = text(hit, "eid");
+                        if (citingEid == null) continue;
+                        Object verified = hit.get("verified");
+                        if (!Boolean.TRUE.equals(verified)) {
+                            // null = check not run (verify_references off), false = reference did not name the work
+                            unverified++;
+                            log.info("Reference-title hit not ingested (verified={}): {} -> {} [{}]",
+                                    verified, citedKey, citingEid, text(hit, "title"));
+                            continue;
+                        }
+                        JsonNode item = mapper.valueToTree(hit);
+                        importEventIngestionService.ingest(
+                                ScopusImportEntityType.PUBLICATION,
+                                "SCOPUS_PYTHON_REFTITLE_PUBLICATION",
+                                citingEid, batchId, req.getRequestId(), "json-object", item);
+                        Map<String, Object> citationPayload = new LinkedHashMap<>();
+                        citationPayload.put("citedEid", citedKey);
+                        citationPayload.put("citingEid", citingEid);
+                        citationPayload.put("provenance", "SCOPUS_REFTITLE");
+                        citationPayload.put("matchedReference", hit.get("matched_reference"));
+                        ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                                ScopusImportEntityType.CITATION,
+                                "SCOPUS_PYTHON_REFTITLE_EDGE",
+                                citedKey + "->" + citingEid, batchId, req.getRequestId(), "json-object", citationPayload);
+                        if (outcome.imported()) {
+                            imported++;
+                        }
+                    }
+                }
+            }
+            log.info("Reference-title pass for author {}: works={} newLinks={} unverifiedHits={}",
+                    authorScopusId, items.size(), imported, unverified);
+            return " Reference-title pass: " + imported + " new citation links from " + items.size()
+                    + " works (" + unverified + " unverified hits skipped).";
+        } catch (RuntimeException ex) {
+            log.warn("Reference-title pass failed for author {} (EID pass results kept): {}", authorScopusId, ex.toString());
+            return " Reference-title pass failed: " + ex.getMessage();
+        }
+    }
+
+    private CitationsByTitleResponse callPythonCitationsByTitle(CitationsByTitleRequest req) {
+        Timer.Sample timer = Timer.start(meterRegistry);
+        try {
+            CitationsByTitleResponse response = scopusPythonClient.post()
+                    .uri("/v1/citations/by-title")
+                    .bodyValue(req)
+                    .retrieve()
+                    .bodyToMono(CitationsByTitleResponse.class)
+                    .onErrorResume(ex -> {
+                        IntegrationException mapped = exceptionMapper.mapIntegrationException("citationsByTitle", ex);
+                        log.error("Python reference-title service call failed: code={}, retryable={}, message={}",
+                                mapped.getErrorCode(), mapped.isRetryable(), mapped.getMessage());
+                        return Mono.error(mapped);
+                    })
+                    .block();
+            if (response == null) {
+                throw new IntegrationException(
+                        IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
+                        false,
+                        "Python reference-title service returned empty response"
+                );
+            }
+            meterRegistry.counter("core.external.scopus_python.calls", "operation", "citationsByTitle", "outcome", "success")
+                    .increment();
+            timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "citationsByTitle", "outcome", "success"));
+            return response;
+        } catch (RuntimeException ex) {
+            meterRegistry.counter("core.external.scopus_python.calls", "operation", "citationsByTitle", "outcome", "failure")
+                    .increment();
+            timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "citationsByTitle", "outcome", "failure"));
+            throw ex;
+        }
     }
 
     private void closeContext(AutoCloseable context) {
