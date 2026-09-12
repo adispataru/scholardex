@@ -53,11 +53,13 @@ public final class IndicatorDetailResponseAssembler {
                              /** APC/fee-journal venue fact (always shown as a badge, gate or no gate). */
                              boolean feeJournal,
                              /** Comma-joined gate reasons behind a MULTIPLE_GATES zero; null otherwise. */
-                             String gateCauses) {}
+                             String gateCauses,
+                             /** H106 S4: the item's DOI (any shape the corpus holds); null when unknown. */
+                             String doi) {}
 
     /** Publication/forum ids resolved for a scored item; both null when the title join is ambiguous. */
-    private record PubLink(String publicationId, String forumId) {
-        static final PubLink NONE = new PubLink(null, null);
+    private record PubLink(String publicationId, String forumId, String doi) {
+        static final PubLink NONE = new PubLink(null, null, null);
     }
 
     public record CitationDetailResponse(String pubTitle, double totalScore, List<ScoredItem> citations) {}
@@ -123,7 +125,9 @@ public final class IndicatorDetailResponseAssembler {
                     // paper the self-citation policy excluded upstream (SELF_CITATION) never gets a
                     // venue score at all — the zeroReason clause is what surfaces it here.
                     if (authorScore > 0 || forumScore > 0 || zeroReason != null) {
-                        // Citing papers are third-party publications — no ids in the graph to link.
+                        // Citing papers are third-party publications; their id/DOI come from the
+                        // graph's citationMap when it carries them (H106 S4), else stay unlinked.
+                        PubLink citing = citingLinkFor(graph, entry.getKey().toString());
                         citations.add(new ScoredItem(
                                 entry.getKey().toString(),
                                 extractYear(entry.getValue()),
@@ -131,9 +135,10 @@ public final class IndicatorDetailResponseAssembler {
                                 extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()),
-                                "publication", null, null, null,
+                                "publication", null, citing.publicationId(), null,
                                 zeroReason, null,
-                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue())));
+                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()),
+                                citing.doi()));
                         total += authorScore;
                     }
                 }
@@ -170,7 +175,7 @@ public final class IndicatorDetailResponseAssembler {
                                     extractScoringSource(totalObj), "citation", null,
                                     link.publicationId(), link.forumId(), null,
                                     forumNameResolver.apply(link.forumId()),
-                                    false, null));
+                                    false, null, link.doi()));
                         }
                     }
                 }
@@ -189,7 +194,7 @@ public final class IndicatorDetailResponseAssembler {
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
-                                null, null, null, null, false, null));
+                                null, null, null, null, false, null, null));
                     }
                 }
             }
@@ -206,7 +211,7 @@ public final class IndicatorDetailResponseAssembler {
                             0.0, extractForumScore(entry.getValue()), extractQuarter(entry.getValue()),
                             extractCoreRankingEquivalent(entry.getValue()),
                             extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
-                            null, null, extractZeroReason(entry.getValue()), null, false, null));
+                            null, null, extractZeroReason(entry.getValue()), null, false, null, null));
                 }
             }
         } else {
@@ -231,7 +236,7 @@ public final class IndicatorDetailResponseAssembler {
                                 extractScoringSource(entry.getValue()), "publication", null,
                                 link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
                                 forumNameResolver.apply(link.forumId()),
-                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue())));
+                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()), link.doi()));
                     }
                 }
             }
@@ -248,7 +253,7 @@ public final class IndicatorDetailResponseAssembler {
                             extractScoringSource(entry.getValue()), "publication", null,
                             link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
                             forumNameResolver.apply(link.forumId()),
-                            extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue())));
+                            extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()), link.doi()));
                 }
             }
         }
@@ -329,7 +334,22 @@ public final class IndicatorDetailResponseAssembler {
         Object pub = matches.get(0);
         String forumId = pubProperty(pub, "forumId");
         if (forumId == null) forumId = pubProperty(pub, "forum");
-        return new PubLink(pubProperty(pub, "id"), forumId);
+        return new PubLink(pubProperty(pub, "id"), forumId, pubProperty(pub, "doi"));
+    }
+
+    /**
+     * H106 S4: the citing paper behind a citation row. The graph's {@code citationMap} (citing title →
+     * publication: a live view on the apply-page cache, a {@code RunGraphPublicationSlice} on a run) is the
+     * only place its id/DOI live — the score map carries titles only. Title-keyed like the map itself.
+     */
+    private static PubLink citingLinkFor(Map<String, Object> graph, String citingTitle) {
+        Object mapObj = graph.get("citationMap");
+        if (!(mapObj instanceof Map<?, ?> citationMap) || citingTitle == null) return PubLink.NONE;
+        Object pub = citationMap.get(citingTitle);
+        if (pub == null) return PubLink.NONE;
+        String forumId = pubProperty(pub, "forumId");
+        if (forumId == null) forumId = pubProperty(pub, "forum");
+        return new PubLink(pubProperty(pub, "id"), forumId, pubProperty(pub, "doi"));
     }
 
     /** Publications arrive as live view beans (report-scoped path) or plain maps (cached LATEST blobs). */

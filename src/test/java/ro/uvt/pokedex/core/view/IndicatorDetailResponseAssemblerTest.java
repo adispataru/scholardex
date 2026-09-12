@@ -182,6 +182,38 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void doiAndCitingPaperIdComeFromThePublicationsListAndTheCitationMap() {
+        // H106 S4: the evidence row carries the cited work's DOI; the drilldown row carries the citing
+        // paper's id + DOI from the graph's citationMap (title-keyed, live view or run slice).
+        Map<String, Object> citing = new LinkedHashMap<>();
+        citing.put("Citing Paper", score(2.0, 2.0, 2019, null));
+        citing.put("total", score(2.0, 2.0, 2019, null));
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Cited Pub", citing);
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "citations");
+        graph.put("scores", scores);
+        graph.put("publications", List.of(Map.of("id", "spub_7", "title", "Cited Pub", "forum", "sforum_3",
+                "doi", "https://doi.org/10.48550/arxiv.0905.4601")));
+        graph.put("citationMap", Map.of("Citing Paper",
+                Map.of("id", "spub_9", "title", "Citing Paper", "forum", "sforum_4", "doi", "10.3233/WEB-190396")));
+
+        IndicatorDetailResponse resp = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 2.0));
+        assertEquals("https://doi.org/10.48550/arxiv.0905.4601", resp.items().getFirst().doi());
+
+        CitationDetailResponse citations = IndicatorDetailResponseAssembler.buildCitations(dto(graph, 2.0), "Cited Pub");
+        assertEquals(1, citations.citations().size());
+        assertEquals("spub_9", citations.citations().getFirst().publicationId());
+        assertEquals("10.3233/WEB-190396", citations.citations().getFirst().doi());
+
+        // No citationMap → unlinked, as before.
+        graph.remove("citationMap");
+        CitationDetailResponse unlinked = IndicatorDetailResponseAssembler.buildCitations(dto(graph, 2.0), "Cited Pub");
+        assertEquals(null, unlinked.citations().getFirst().publicationId());
+        assertEquals(null, unlinked.citations().getFirst().doi());
+    }
+
+    @Test
     void citationsOutputModeShowsFormulaZeroedCitingPapersMutedWithTheirGateReason() {
         // A citing paper the 2026 FEE_JOURNAL/NOT_TOP_RANKED gates zeroed keeps a positive forum score
         // (it was correctly categorized) — the drilldown modal must show it muted with the reason instead

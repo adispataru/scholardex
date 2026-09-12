@@ -140,6 +140,7 @@ public class CitationRowProjector {
                 ScholardexForumView f = forumById.get(citing.getForum());
                 row.setForumName(f != null ? f.getPublicationName() : null);
                 row.setVolumeInfo(citing.getVolume());
+                row.setDoi(citing.getDoi());
                 row.setYear(PersistenceYearSupport.extractYear(citing.getCoverDate(), citing.getId(), LOG).orElse(null));
                 row.setIsWorkshopDaNu(isWorkshopAdjusted(score) ? "DA" : "NU");
                 row.setForumCategoryLetter(CategoryLetterMapper.toPublicationTemplateLetter(score.getCoreRankingEquivalent()));
@@ -161,6 +162,7 @@ public class CitationRowProjector {
             tile.setPublicationYear(PersistenceYearSupport.extractYear(cited.getCoverDate(), cited.getId(), LOG).orElse(null));
             tile.setPublicationAuthorCount(cited.getAuthorCount() > 0 ? cited.getAuthorCount()
                     : (cited.getAuthors() != null ? cited.getAuthors().size() : 0));
+            tile.setPublicationDoi(cited.getDoi());
             tile.setCitingPublications(innerRows);
             tile.setScore(tileScore);
             out.add(tile);

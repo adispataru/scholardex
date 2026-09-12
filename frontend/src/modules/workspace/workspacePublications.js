@@ -687,6 +687,8 @@ function _buildDetailPanel(pub) {
           </button>
           <div class="app-ws-pubs__detail-panel">
 
+            ${_doiDetailHtml(pub)}
+
             <div>
               <p class="app-ws-pubs__detail-section-title">${t('common.citations')}</p>
               ${citationsHtml}
@@ -1307,6 +1309,28 @@ function _pendingSuspiciousCount() {
 function _recommendedPendingCount() {
     if (typeof _data?.recommendedPendingCount === 'number') return _data.recommendedPendingCount;
     return Math.max(0, _pendingReviewCount() - _pendingSuspiciousCount());
+}
+
+/** H106 S4: the DOI shown on expand only (the row itself stays dense) — resolver link in a new tab. */
+function _doiDetailHtml(pub) {
+    const url = _doiResolverUrl(pub?.doi);
+    if (!url) return '';
+    return `
+            <div>
+              <p class="app-ws-pubs__detail-section-title">DOI</p>
+              <a href="${_esc(url)}" target="_blank" rel="noopener">${_esc(url.replace('https://doi.org/', ''))}</a>
+            </div>`;
+}
+
+function _doiResolverUrl(raw) {
+    if (!raw) return null;
+    const s = String(raw).trim();
+    const idx = s.toLowerCase().indexOf('10.');
+    if (idx < 0) return null;
+    const path = s.substring(idx).trim();
+    const slash = path.indexOf('/');
+    if (slash <= 3 || slash === path.length - 1) return null;
+    return 'https://doi.org/' + path;
 }
 
 function _buildSuspiciousDetailSection(state) {

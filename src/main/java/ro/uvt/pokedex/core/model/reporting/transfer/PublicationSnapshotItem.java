@@ -17,6 +17,8 @@ public class PublicationSnapshotItem implements SnapshotItem {
     private String authors;
     private String forumName;
     private String volumeInfo;
+    /** H106 S4: DOI in whatever shape the corpus holds; hyperlinked on the export title cell. */
+    private String doi;
     private Integer year;
     private String forumCategoryLetter;
     private Integer authorCount;
@@ -50,6 +52,7 @@ public class PublicationSnapshotItem implements SnapshotItem {
         m.put("publication.authors", authors);
         m.put("publication.forumName", forumName);
         m.put("publication.volumeInfo", volumeInfo);
+        m.put("publication.doi", doi);
         m.put("publication.year", year);
         m.put("publication.forumCategoryLetter", forumCategoryLetter);
         m.put("publication.authorCount", authorCount);

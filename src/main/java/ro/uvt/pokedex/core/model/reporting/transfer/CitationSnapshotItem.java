@@ -21,6 +21,8 @@ public class CitationSnapshotItem implements SnapshotItem {
     private String publicationForumName;
     private Integer publicationYear;
     private Integer publicationAuthorCount;
+    /** H106 S4: the cited work's DOI, hyperlinked on the tile title cell. */
+    private String publicationDoi;
 
     /** Sum of the kept citing rows' platform scores — the tile's comparable score for verification. */
     private Double score;
@@ -44,6 +46,7 @@ public class CitationSnapshotItem implements SnapshotItem {
         m.put("publication.forumName", publicationForumName);
         m.put("publication.year", publicationYear);
         m.put("publication.authorCount", publicationAuthorCount);
+        m.put("publication.doi", publicationDoi);
         return m;
     }
 
@@ -58,6 +61,7 @@ public class CitationSnapshotItem implements SnapshotItem {
             r.put("citation.year", c.getYear());
             r.put("citation.isWorkshopDaNu", c.getIsWorkshopDaNu());
             r.put("citation.forumCategoryLetter", c.getForumCategoryLetter());
+            r.put("citation.doi", c.getDoi());
             rows.add(r);
         }
         return rows;
@@ -68,6 +72,8 @@ public class CitationSnapshotItem implements SnapshotItem {
     public static class CitingPublication {
         private String title;
         private String authors;
+        /** H106 S4: the citing paper's DOI, hyperlinked on its title cell. */
+        private String doi;
         private String forumName;
         private String volumeInfo;
         private Integer year;

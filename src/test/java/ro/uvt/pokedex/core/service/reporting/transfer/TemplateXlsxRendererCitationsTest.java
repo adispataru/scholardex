@@ -172,6 +172,8 @@ class TemplateXlsxRendererCitationsTest {
                 "Journal of Machine Learning Research", 2023, 2,
                 citing("Follow-up on graph SSL", "Doe, J.; Roe, R.", "ICLR Proceedings", "pp. 1-12", 2024, "NU", "AA"),
                 citing("Survey of representation learning", "Smith, A.", "Survey J.", "Vol 5", 2024, "NU", "B"));
+        tile1.setPublicationDoi("https://doi.org/10.48550/arxiv.0905.4601");
+        tile1.getCitingPublications().get(0).setDoi("10.3233/WEB-190396");
         CitationSnapshotItem tile2 = citedPub("Sparse attention is all you need",
                 "Neural Computation", 2024, 3,
                 citing("Attention efficiency study", "Lee, K.", "NeurIPS", "pp. 11-22", 2025, "NU", "A"));
@@ -185,6 +187,12 @@ class TemplateXlsxRendererCitationsTest {
         try (Workbook out = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             assertThat(out.getSheet("C-Citari-TPL")).isNull();
             assertThat(out.getSheet("Citari-01")).isNull();
+            // H106 S4: DOI = hyperlink ON the title cells (cited work + citing row), text unchanged, no link without a DOI.
+            Sheet cit = out.getSheet("C-Citari");
+            assertThat(cit.getRow(4).getCell(2).getHyperlink().getAddress()).isEqualTo("https://doi.org/10.48550/arxiv.0905.4601");
+            assertThat(cit.getRow(7).getCell(2).getHyperlink().getAddress()).isEqualTo("https://doi.org/10.3233/WEB-190396");
+            assertThat(cit.getRow(8).getCell(2).getHyperlink()).isNull();
+            assertThat(cit.getRow(29).getCell(2).getHyperlink()).isNull();
             Sheet sheet = out.getSheet("C-Citari");
             assertThat(sheet).isNotNull();
             // The single sheet keeps the template's slot (right after the summary sheet), not the clone's last place.

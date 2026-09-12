@@ -54,11 +54,19 @@ Done history moved to `TASKS-done.md`.
     a fresh local run: 19 tiles / 92 rows, no header gaps, no missing year/category; the only blank
     forum/author cells are citing works that have none in the corpus. NOTE: runs created before this
     ship still export with blank forum/year/authors — a refresh (new run) is needed per researcher.
-  - S4 — **DOI everywhere a work is listed** (Florin: "nu era util să fie și DOI în interfață, cel puțin cu
-    link bazat pe DOI resolver?"). No user-facing page shows a DOI today (only `publications/detail.html`
-    and the admin merges page). Add `https://doi.org/<doi>` links to the evaluation citations drilldown
-    (cited + citing rows), the workbench publication rows and the xlsx citing rows (column F or a new
-    column — the template has spare columns K–M).
+  - S4 — **DONE 2026-09-12.** DOI everywhere a work is listed (Florin: "nu era util să fie și DOI în
+    interfață, cel puțin cu link bazat pe DOI resolver?"). Decisions (Adrian): workspace table shows the
+    DOI on EXPAND only; the xlsx gets a HYPERLINK on the title cell (official form untouched, parser reads
+    text); one normaliser. **Shipped:** `DoiLinks` (bare/URL/`doi:` shapes → `https://doi.org/…`, bean +
+    statics, tested); `ScoredItem.doi` + citing-paper id/DOI resolved from the graph's `citationMap`
+    (live views or S3 slices) in `IndicatorDetailResponseAssembler`; a "doi" affordance after the title
+    in the evidence list, the evidence table and the citation modal (`individual-report-dashboard.js`);
+    a DOI section in the workspace publication detail panel (bundle rebuilt); `publications/detail.html`
+    link now normalised (URL computed in `RankingViewController` — Thymeleaf 3.1 forbids `T()`/bean
+    calls in that context); export: `PublicationSnapshotItem.doi`, `CitationSnapshotItem.publicationDoi`
+    + `CitingPublication.doi` set by live and run projectors, `TemplateXlsxRenderer` hyperlinks the key
+    column of FIXED_TABLE/STACKED_BLOCKS rows, the tile title and the tile inner rows. Caveat as S3: runs
+    older than S3 have no citing-paper DOI in the export.
   - S5 — **Coverage: Scopus reverse-title citation search.** Root cause of items 1–4: the Scopus
     citations task queries `REF(<eid>)`, so (i) works WITHOUT a Scopus EID (arXiv items such as
     "Considerations on Construction Ontologies" and "Workflow Patterns in Process Modeling", present via

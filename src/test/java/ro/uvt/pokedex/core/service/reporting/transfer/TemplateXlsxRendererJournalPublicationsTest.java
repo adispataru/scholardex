@@ -39,6 +39,7 @@ class TemplateXlsxRendererJournalPublicationsTest {
         PublicationSnapshotItem pub2 = publication("Sparse attention is all you need",
                 "Ionescu, R.; Popa, M.", "Neural Computation",
                 "Vol. 35(2), pp. 200-240", 2024, "AA", 3);
+        pub1.setDoi("doi:10.1162/neco_a_01234");
 
         byte[] bytes = renderer.render(binding, Map.of(
                 "journal-publications", List.of(pub1.toRowMap(), pub2.toRowMap())
@@ -46,6 +47,9 @@ class TemplateXlsxRendererJournalPublicationsTest {
 
         try (Workbook out = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             Sheet sheet = out.getSheet("B-Reviste");
+            // H106 S4: the DOI is a hyperlink on the title cell (key column), no link without one.
+            assertThat(sheet.getRow(7).getCell(2).getHyperlink().getAddress()).isEqualTo("https://doi.org/10.1162/neco_a_01234");
+            assertThat(sheet.getRow(8).getCell(2).getHyperlink()).isNull();
             assertThat(sheet).isNotNull();
 
             // Row 8 (index 7) should be pub1.

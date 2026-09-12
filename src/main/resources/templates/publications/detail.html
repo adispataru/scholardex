@@ -126,7 +126,8 @@
                     <dt>DOI</dt>
                     <dd th:if="${publication.doi == null || publication.doi.isBlank()}">—</dd>
                     <dd th:if="${publication.doi != null && !publication.doi.isBlank()}">
-                        <a th:href="${'https://doi.org/' + publication.doi}" th:text="${publication.doi}" rel="noopener" target="_blank">DOI</a>
+                        <a th:if="${doiUrl != null}" th:href="${doiUrl}" th:text="${publication.doi}" rel="noopener" target="_blank">DOI</a>
+                        <span th:if="${doiUrl == null}" th:text="${publication.doi}">DOI</span>
                     </dd>
                 </div>
                 <div>

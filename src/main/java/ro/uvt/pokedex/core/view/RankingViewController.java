@@ -104,6 +104,8 @@ public class RankingViewController {
         }
         model.addAttribute("detail", detail.get());
         model.addAttribute("publication", detail.get().publication());
+        // H106 S4: resolver link computed here — Thymeleaf 3.1 forbids static access in templates.
+        model.addAttribute("doiUrl", ro.uvt.pokedex.core.utils.DoiLinks.resolverUrl(detail.get().publication().getDoi()));
         model.addAttribute("badges", ProvenanceBadges.forPublication(detail.get().publication()));
         model.addAttribute("breadcrumbs", List.of(
                 new BreadcrumbItem("Publications", "/publications"),

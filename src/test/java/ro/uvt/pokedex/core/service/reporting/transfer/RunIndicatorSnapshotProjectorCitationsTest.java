@@ -87,12 +87,14 @@ class RunIndicatorSnapshotProjectorCitationsTest {
         assertThat(tile.getPublicationForumName()).isEqualTo("ArXiv.org");
         assertThat(tile.getPublicationYear()).isEqualTo(2009);
         assertThat(tile.getPublicationAuthorCount()).isEqualTo(3);
+        assertThat(tile.getPublicationDoi()).isEqualTo("10.48550/arxiv.0905.4601");
         CitationSnapshotItem.CitingPublication row = tile.getCitingPublications().get(0);
         assertThat(row.getAuthors()).isEqualTo("Doe, J., Roe, R.");
         assertThat(row.getForumName()).isEqualTo("Web Intelligence");
         assertThat(row.getVolumeInfo()).isEqualTo("17(3)");
         assertThat(row.getYear()).isEqualTo(2019);
         assertThat(row.getForumCategoryLetter()).isEqualTo("B");
+        assertThat(row.getDoi()).isEqualTo("10.3233/WEB-190396");
     }
 
     @Test

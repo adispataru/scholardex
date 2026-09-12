@@ -1,6 +1,8 @@
 package ro.uvt.pokedex.core.service.reporting.transfer.render;
 
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Hyperlink;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -24,6 +26,7 @@ import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingSummaryFormula;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingTileLayout;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
+import ro.uvt.pokedex.core.utils.DoiLinks;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -138,6 +141,7 @@ public class TemplateXlsxRenderer {
             workbook.setSheetName(cloneIdx, sheetName);
             CellReference titleRef = new CellReference(role.getPerTileTitleCell());
             writeStringAt(tileSheet, titleRef, expandTitle(role.getPerTileTitleTemplate(), tile.header()));
+            applyDoiHyperlink(getOrCreateCell(tileSheet, titleRef), doiOf(tile.header()));
 
             for (Map.Entry<String, String> e : role.getPerTileScalar().entrySet()) {
                 CellReference ref = new CellReference(e.getKey());
@@ -157,6 +161,7 @@ public class TemplateXlsxRenderer {
             // and letting POI's FormulaShifter extend the in-sheet SUMIF/COUNTIF ranges that ended
             // at the original last data row.
             inner.setColumns(role.getInnerColumns());
+            inner.setKeyColumn(CellReference.convertNumToColString(titleRef.getCol()));
             renderFixedTable(workbook, inner, tile.innerRows());
         }
 
@@ -218,6 +223,7 @@ public class TemplateXlsxRenderer {
                 int delta = base0 - titleRow0;                               // vs. the template block
                 writeStringAt(sheet, new CellReference(base0, titleRef.getCol()),
                         expandTitle(role.getPerTileTitleTemplate(), tile.header()));
+                applyDoiHyperlink(getOrCreateCell(sheet, new CellReference(base0, titleRef.getCol())), doiOf(tile.header()));
                 for (Map.Entry<String, String> e : role.getPerTileScalar().entrySet()) {
                     CellReference ref = new CellReference(e.getKey());
                     writeCellValue(getOrCreateCell(sheet, new CellReference(ref.getRow() + delta, ref.getCol())),
@@ -231,6 +237,7 @@ public class TemplateXlsxRenderer {
                 inner.setFirstDataRow(role.getInnerTableFirstDataRow() + delta);
                 inner.setMaxRows(role.getInnerTableMaxRows());
                 inner.setColumns(role.getInnerColumns());
+                inner.setKeyColumn(CellReference.convertNumToColString(titleRef.getCol()));
                 renderFixedTable(workbook, inner, tile.innerRows());
 
                 anchors.add(new TileAnchor(sheetName, delta + innerOverflow));
@@ -383,7 +390,7 @@ public class TemplateXlsxRenderer {
                 int rowIndex0 = effectiveFirstDataRow1 - 1 + i;
                 Row row = sheet.getRow(rowIndex0);
                 if (row == null) row = sheet.createRow(rowIndex0);
-                writeColumns(row, role.getBlockColumns(), matches.get(i));
+                writeColumns(row, role.getBlockColumns(), matches.get(i), role.getKeyColumn());
             }
         }
     }
@@ -434,6 +441,11 @@ public class TemplateXlsxRenderer {
     }
 
     private void writeColumns(Row row, Map<String, BindingColumn> columns, Map<String, Object> rowMap) {
+        writeColumns(row, columns, rowMap, null);
+    }
+
+    private void writeColumns(Row row, Map<String, BindingColumn> columns, Map<String, Object> rowMap,
+                              String hyperlinkColumn) {
         for (Map.Entry<String, BindingColumn> e : columns.entrySet()) {
             BindingColumn col = e.getValue();
             if (col.getPolicy() != BindingPolicy.WRITE && col.getPolicy() != BindingPolicy.WRITE_SCORE) {
@@ -446,6 +458,37 @@ public class TemplateXlsxRenderer {
             }
             writeCellValue(cell, rowMap.get(col.getSource()));
         }
+        if (hyperlinkColumn != null) {
+            Cell keyCell = row.getCell(CellReference.convertColStringToIndex(hyperlinkColumn));
+            applyDoiHyperlink(keyCell, doiOf(rowMap));
+        }
+    }
+
+    /** The row's DOI, whichever role prefix it carries ({@code publication.doi}, {@code citation.doi}). */
+    private static Object doiOf(Map<String, Object> rowMap) {
+        if (rowMap == null) return null;
+        for (Map.Entry<String, Object> e : rowMap.entrySet()) {
+            if (e.getKey() != null && e.getKey().endsWith(".doi") && e.getValue() != null) return e.getValue();
+        }
+        return null;
+    }
+
+    /**
+     * H106 S4 — the DOI travels as a hyperlink ON the title cell, not as a column: the Fișă is an official
+     * form whose spare columns the publication sheets already use, and the parser reads the cell TEXT, so
+     * the verification round-trip is untouched. Only string cells with text get a link; a missing or
+     * malformed DOI leaves the cell as it is.
+     */
+    private void applyDoiHyperlink(Cell cell, Object doi) {
+        if (cell == null || doi == null || cell.getCellType() != org.apache.poi.ss.usermodel.CellType.STRING
+                || cell.getStringCellValue() == null || cell.getStringCellValue().isBlank()) {
+            return;
+        }
+        String url = DoiLinks.resolverUrl(String.valueOf(doi));
+        if (url == null) return;
+        Hyperlink link = cell.getSheet().getWorkbook().getCreationHelper().createHyperlink(HyperlinkType.URL);
+        link.setAddress(url);
+        cell.setHyperlink(link);
     }
 
     private void renderFixedTable(Workbook workbook, BindingRole role, List<Map<String, Object>> rows) {
@@ -475,7 +518,7 @@ public class TemplateXlsxRenderer {
             if (row == null) {
                 row = sheet.createRow(rowIndex0);
             }
-            writeColumns(row, role.getColumns(), rows.get(i));
+            writeColumns(row, role.getColumns(), rows.get(i), role.getKeyColumn());
         }
 
         // Clear the writable cells of any unused template rows so the export doesn't carry

@@ -104,6 +104,7 @@ public class PublicationRowProjector {
             item.setAuthors(formatAuthors(pub.getAuthors(), authorNames));
             item.setForumName(forum != null ? forum.getPublicationName() : null);
             item.setVolumeInfo(pub.getVolume());
+            item.setDoi(pub.getDoi());
             item.setYear(PersistenceYearSupport.extractYear(pub.getCoverDate(), pub.getId(), LOG).orElse(null));
             item.setForumCategoryLetter(CategoryLetterMapper.toPublicationTemplateLetter(score.getCoreRankingEquivalent()));
             item.setAuthorCount(pub.getAuthorCount() > 0 ? pub.getAuthorCount()

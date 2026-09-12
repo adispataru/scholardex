@@ -536,7 +536,7 @@
       html += '<div class="eval-scored-item__body">';
 
       // Line 1: title
-      html += '<div class="eval-scored-item__title" title="' + esc(item.key) + '">' + esc(item.key) + '</div>';
+      html += '<div class="eval-scored-item__title" title="' + esc(item.key) + '">' + esc(item.key) + doiLink(item) + '</div>';
 
       // Line 2: meta badges + text
       html += '<div class="eval-scored-item__meta">';
@@ -634,6 +634,25 @@
   }
 
   /** APC/fee-journal venue badge — a venue FACT, rendered whether or not any gate fired. */
+  // H106 S4: a small DOI affordance next to a title — resolver link in a new tab; nothing without a DOI.
+  function doiLink(item) {
+    if (!item || !item.doi) return '';
+    var url = doiResolverUrl(item.doi);
+    if (!url) return '';
+    return ' <a class="eval-scored-item__doi" href="' + esc(url) + '" target="_blank" rel="noopener"' +
+      ' title="' + esc(url) + '" onclick="event.stopPropagation()">doi</a>';
+  }
+
+  function doiResolverUrl(raw) {
+    var s = String(raw).trim();
+    var idx = s.toLowerCase().indexOf('10.');
+    if (idx < 0) return null;
+    var path = s.substring(idx).trim();
+    var slash = path.indexOf('/');
+    if (slash <= 3 || slash === path.length - 1) return null;
+    return 'https://doi.org/' + path;
+  }
+
   function feeBadge(item) {
     if (!item || !item.feeJournal) return '';
     return '<span class="eval-fee-badge" title="' + esc(t('report.dash.apcBadgeHint')) + '">' +
@@ -692,6 +711,7 @@
       } else {
         row += '<span title="' + esc(item.key) + '">' + esc(item.key) + '</span>';
       }
+      row += doiLink(item);
       row += '</td>';
 
       row += '<td>' + (item.year ? item.year : '—') + '</td>';

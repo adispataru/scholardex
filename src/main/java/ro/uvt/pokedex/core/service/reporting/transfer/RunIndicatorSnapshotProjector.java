@@ -51,6 +51,7 @@ public class RunIndicatorSnapshotProjector {
             item.setAuthors(joinAuthorNames(value(publication, "authors"), authorNames));
             item.setForumName(resolveForumLabel(publication, forumNames));
             item.setVolumeInfo(asString(value(publication, "volume")));
+            item.setDoi(asString(value(publication, "doi")));
             item.setYear(extractYear(value(publication, "coverDate")));
             item.setAuthorCount(asInteger(value(publication, "authorCount")));
             String category = coreRankingEquivalent(entry.getValue());
@@ -89,6 +90,7 @@ public class RunIndicatorSnapshotProjector {
             tile.setPublicationForumName(resolveForumLabel(citedPublication, forumNames));
             tile.setPublicationYear(extractYear(value(citedPublication, "coverDate")));
             tile.setPublicationAuthorCount(asInteger(value(citedPublication, "authorCount")));
+            tile.setPublicationDoi(asString(value(citedPublication, "doi")));
 
             double tileScore = 0.0;
             if (entry.getValue() instanceof Map<?, ?> citingScores) {
@@ -108,6 +110,7 @@ public class RunIndicatorSnapshotProjector {
                     row.setAuthors(joinAuthorNames(value(citingPublication, "authors"), authorNames));
                     row.setForumName(resolveForumLabel(citingPublication, forumNames));
                     row.setVolumeInfo(asString(value(citingPublication, "volume")));
+                    row.setDoi(asString(value(citingPublication, "doi")));
                     row.setYear(extractYear(value(citingPublication, "coverDate")));
                     row.setIsWorkshopDaNu(isWorkshopAdjusted(scoreObj) ? "DA" : "NU");
                     row.setForumCategoryLetter(CategoryLetterMapper.toPublicationTemplateLetter(coreRankingEquivalent(scoreObj)));
