@@ -189,6 +189,8 @@
         }
       },
       "sheetNameTemplate": "Citari-{index:02d}",
+      "tileLayout": "STACKED",
+      "stackedSheetName": "C-Citari",
       "summaryFormulas": [
         {
           "cell": "I7",

@@ -29,10 +29,17 @@ Done history moved to `TASKS-done.md`.
     binding (negative check done: both fail on the 2026 file without the fix). Verified live on Florin
     Spataru's local run: B-Reviste/B-Conferinte were ALSO affected (only numbers landed) — every FV Info
     2026 xlsx exported from prod between 2026-07-04 and this fix has template text in its string columns.
-  - S2 — **Export: one sheet per work, even without citations** (Florin's a). `RunIndicatorSnapshotProjector
-    .projectCitations` emits a tile for every entry of the stored `scores` map, which holds an entry per
-    confirmed publication (only a "total"). `CitationRowProjector` (live path) already skips them. Fix:
-    skip tiles with zero citing rows.
+  - S2 — **DONE 2026-09-12.** Export: one sheet per work, even without citations (Florin's a).
+    `RunIndicatorSnapshotProjector.projectCitations` emitted a tile for every entry of the stored `scores`
+    map (one per confirmed publication, only a "total"); now cited works without citing rows are not tiles.
+    Decision (Adrian): export ONE citations sheet with every tile stacked — the shape hand-filled Fișe have
+    and the parser already accepted. **Shipped:** `BindingRole.tileLayout` (SHEET_PER_TILE | STACKED) +
+    `stackedSheetName`; both Informatică bindings = STACKED / `C-Citari`; `renderStackedTiles` replicates the
+    template block before filling so POI shifts each copy's COUNTIF/SUMIF, expansion pushes later blocks,
+    summary = `SUM('C-Citari'!I22,'C-Citari'!I47,…)`, sheet kept at the template's slot; parser accepts the
+    stacked name. Tests: stacked geometry + expansion + zero tiles + parser round-trip (both bindings),
+    projector empty-tile skip; per-sheet tests kept by forcing SHEET_PER_TILE. Verified live on Florin
+    Spataru's local run: 17 tiles (was 24 sheets), one sheet, no sample text.
   - S3 — **Export from a run has no forum/year/authors.** The citations branch of
     `UserReportFacade.buildReportScopedIndicatorDetail` stores only `scores`/`total`/`totalCit` in the
     rawGraph — no `publications`, no `citationMap` (the publications branch stores `publications`). So

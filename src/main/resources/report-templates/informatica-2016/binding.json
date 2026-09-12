@@ -81,6 +81,8 @@
         "J": { "policy": "SKIP_FORMULA" }
       },
       "sheetNameTemplate": "Citari-{index:02d}",
+      "tileLayout": "STACKED",
+      "stackedSheetName": "C-Citari",
       "summaryFormulas": [
         { "cell": "I7",  "rule": "SUM_OVER_TILES", "tileCell": "I22" },
         { "cell": "I8",  "rule": "SUM_OVER_TILES", "tileCell": "I23" },

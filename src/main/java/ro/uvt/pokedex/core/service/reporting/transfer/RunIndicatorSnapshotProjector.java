@@ -118,6 +118,9 @@ public class RunIndicatorSnapshotProjector {
                 tileScore = authorScore(entry.getValue()) > 0 ? authorScore(entry.getValue()) : score(entry.getValue());
             }
             tile.setScore(tileScore);
+            // H106 S2: the stored score map has an entry (just a "total") for EVERY confirmed publication;
+            // a cited work without citing rows is not a tile — the live projector never emitted one either.
+            if (tile.getCitingPublications().isEmpty()) continue;
             out.add(tile);
         }
         return out;

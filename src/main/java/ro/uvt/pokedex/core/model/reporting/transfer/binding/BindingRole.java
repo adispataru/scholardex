@@ -52,6 +52,10 @@ public class BindingRole {
     private String innerScoreColumn;  // per-citing-row Punctaj column (raw points) for the breakdown
     private String tileTotalLabel;    // label in the key column marking the tile's grand-total row (e.g. "TOTAL")
     private String sheetNameTemplate;
+    /** H106 S2: SHEET_PER_TILE (default, "Citari-NN" clones) or STACKED (all tiles in one sheet). */
+    private BindingTileLayout tileLayout = BindingTileLayout.SHEET_PER_TILE;
+    /** STACKED only: name of the single sheet that receives every tile (e.g. "C-Citari"). */
+    private String stackedSheetName;
     private List<BindingSummaryFormula> summaryFormulas = new ArrayList<>();
 
     // DOCX fields. A DOCX role addresses a Word table by 0-based index; `firstDataRow`/`maxRows`

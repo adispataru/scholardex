@@ -8,6 +8,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.openxmlformats.schemas.spreadsheetml.x2006.main.STCellType;
 import org.apache.poi.ss.usermodel.CellCopyPolicy;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingOverflowPolic
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingPolicy;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingSummaryFormula;
+import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingTileLayout;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
 
 import java.util.regex.Matcher;
@@ -114,11 +116,19 @@ public class TemplateXlsxRenderer {
         }
     }
 
+    /** Where one rendered tile's aggregation cells ended up: sheet + row delta vs. the template block. */
+    private record TileAnchor(String sheetName, int rowShift) {}
+
+    /** Blank rows left between two stacked tiles. */
+    private static final int STACKED_GAP_ROWS = 1;
+
     private void renderTiledSheets(Workbook workbook, BindingRole role, List<TileData> tiles) {
+        if (role.getTileLayout() == BindingTileLayout.STACKED) {
+            renderStackedTiles(workbook, role, tiles);
+            return;
+        }
         int templateIdx = workbook.getSheetIndex(role.getTemplateSheet());
-        List<String> tileSheetNames = new ArrayList<>();
-        // Per-tile row delta applied to aggregation cells when the inner table expanded.
-        java.util.Map<String, Integer> tileOverflowByName = new java.util.HashMap<>();
+        List<TileAnchor> anchors = new ArrayList<>();
 
         for (int i = 0; i < tiles.size(); i++) {
             TileData tile = tiles.get(i);
@@ -126,7 +136,6 @@ public class TemplateXlsxRenderer {
             int cloneIdx = workbook.getSheetIndex(tileSheet);
             String sheetName = expandSheetName(role.getSheetNameTemplate(), i + 1);
             workbook.setSheetName(cloneIdx, sheetName);
-            tileSheetNames.add(sheetName);
             CellReference titleRef = new CellReference(role.getPerTileTitleCell());
             writeStringAt(tileSheet, titleRef, expandTitle(role.getPerTileTitleTemplate(), tile.header()));
 
@@ -136,7 +145,7 @@ public class TemplateXlsxRenderer {
             }
 
             int innerOverflow = Math.max(0, tile.innerRows().size() - role.getInnerTableMaxRows());
-            tileOverflowByName.put(sheetName, innerOverflow);
+            anchors.add(new TileAnchor(sheetName, innerOverflow));
 
             BindingRole inner = new BindingRole();
             inner.setRoleKey(role.getRoleKey() + "[" + sheetName + "]");
@@ -154,39 +163,126 @@ public class TemplateXlsxRenderer {
         // After cloning, drop the original template sheet so the saved workbook doesn't carry it.
         workbook.removeSheetAt(workbook.getSheetIndex(role.getTemplateSheet()));
 
-        regenerateSummaryFormulas(workbook, role, tileSheetNames, tileOverflowByName);
+        regenerateSummaryFormulas(workbook, role, anchors);
     }
 
-    private void regenerateSummaryFormulas(Workbook workbook, BindingRole role,
-                                           List<String> tileSheetNames,
-                                           java.util.Map<String, Integer> tileOverflowByName) {
+    /**
+     * H106 S2 — STACKED layout: one sheet named {@code stackedSheetName}, every tile a copy of the template
+     * block (title row through the TOTAL row, {@link #STACKED_GAP_ROWS} blank rows between). The block is
+     * replicated from itself BEFORE any fill so POI shifts the copied formulas (COUNTIF/SUMIF ranges, the
+     * category totals) to each copy's rows; tiles are then filled top-down, and an inner-table expansion
+     * shifts every block below it — which POI's formula shifter follows too. The result is the shape
+     * real researcher-filled Fișe have (many tiles in one sheet), so {@code TemplateXlsxScoreParser}
+     * verifies our own export and a hand-filled file through the same segment scan. No sheet is
+     * produced when there are no tiles: the summary reads 0, as in the per-sheet layout.
+     */
+    private void renderStackedTiles(Workbook workbook, BindingRole role, List<TileData> tiles) {
+        int templateIdx = workbook.getSheetIndex(role.getTemplateSheet());
+        List<TileAnchor> anchors = new ArrayList<>();
+        if (!tiles.isEmpty()) {
+            String sheetName = role.getStackedSheetName() != null && !role.getStackedSheetName().isBlank()
+                    ? role.getStackedSheetName() : "C-Citari";
+            Sheet sheet = workbook.cloneSheet(templateIdx);
+            workbook.setSheetName(workbook.getSheetIndex(sheet), sheetName);
+            // A clone is appended last; keep the citations sheet where the template put it (before Perspectiva D).
+            workbook.setSheetOrder(sheetName, templateIdx);
+            if (!(sheet instanceof XSSFSheet xssfSheet)) {
+                throw new IllegalStateException("Stacked tiles need an XSSF workbook (template "
+                        + role.getTemplateSheet() + ")");
+            }
+            CellReference titleRef = new CellReference(role.getPerTileTitleCell());
+            int titleRow0 = titleRef.getRow();
+            int totalRow0 = findTileTotalRow(sheet, role, titleRef.getCol());
+            int blockHeight = totalRow0 - titleRow0 + 1;
+            int stride = blockHeight + STACKED_GAP_ROWS;
+
+            // Phase A — replicate the pristine block once per extra tile, below itself.
+            CellCopyPolicy policy = new CellCopyPolicy();
+            for (int k = 1; k < tiles.size(); k++) {
+                for (int r = 0; r < blockHeight; r++) {
+                    XSSFRow src = xssfSheet.getRow(titleRow0 + r);
+                    int dstIdx = titleRow0 + k * stride + r;
+                    XSSFRow existing = xssfSheet.getRow(dstIdx);
+                    if (existing != null) xssfSheet.removeRow(existing);
+                    if (src == null) continue;
+                    XSSFRow dst = xssfSheet.createRow(dstIdx);
+                    dst.copyRowFrom(src, policy);
+                }
+            }
+
+            // Phase B — fill top-down; each tile's expansion pushes the blocks below it.
+            int cumulativeOverflow = 0;
+            for (int i = 0; i < tiles.size(); i++) {
+                TileData tile = tiles.get(i);
+                int base0 = titleRow0 + i * stride + cumulativeOverflow;   // this tile's title row (0-based)
+                int delta = base0 - titleRow0;                               // vs. the template block
+                writeStringAt(sheet, new CellReference(base0, titleRef.getCol()),
+                        expandTitle(role.getPerTileTitleTemplate(), tile.header()));
+                for (Map.Entry<String, String> e : role.getPerTileScalar().entrySet()) {
+                    CellReference ref = new CellReference(e.getKey());
+                    writeCellValue(getOrCreateCell(sheet, new CellReference(ref.getRow() + delta, ref.getCol())),
+                            tile.header().get(e.getValue()));
+                }
+
+                int innerOverflow = Math.max(0, tile.innerRows().size() - role.getInnerTableMaxRows());
+                BindingRole inner = new BindingRole();
+                inner.setRoleKey(role.getRoleKey() + "[" + sheetName + "#" + (i + 1) + "]");
+                inner.setSheet(sheetName);
+                inner.setFirstDataRow(role.getInnerTableFirstDataRow() + delta);
+                inner.setMaxRows(role.getInnerTableMaxRows());
+                inner.setColumns(role.getInnerColumns());
+                renderFixedTable(workbook, inner, tile.innerRows());
+
+                anchors.add(new TileAnchor(sheetName, delta + innerOverflow));
+                cumulativeOverflow += innerOverflow;
+            }
+        }
+        workbook.removeSheetAt(workbook.getSheetIndex(role.getTemplateSheet()));
+        regenerateSummaryFormulas(workbook, role, anchors);
+    }
+
+    /** Row (0-based) of the tile's grand-total label in the key column, i.e. the last row of the block. */
+    private int findTileTotalRow(Sheet sheet, BindingRole role, int keyCol) {
+        String label = role.getTileTotalLabel() != null ? role.getTileTotalLabel().trim() : "TOTAL";
+        int from = role.getInnerTableFirstDataRow() - 1;
+        for (int r = from; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            Cell cell = row != null ? row.getCell(keyCol) : null;
+            if (cell != null && cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING
+                    && label.equalsIgnoreCase(cell.getStringCellValue().trim())) {
+                return r;
+            }
+        }
+        throw new IllegalStateException("Template sheet '" + role.getTemplateSheet() + "' has no '" + label
+                + "' row below the inner table; cannot stack tiles for role " + role.getRoleKey());
+    }
+
+    private void regenerateSummaryFormulas(Workbook workbook, BindingRole role, List<TileAnchor> anchors) {
         Sheet summary = workbook.getSheet(role.getSummarySheet());
         for (BindingSummaryFormula sf : role.getSummaryFormulas()) {
             CellReference ref = new CellReference(sf.getCell());
             Cell cell = getOrCreateCell(summary, ref);
-            if (tileSheetNames.isEmpty()) {
+            if (anchors.isEmpty()) {
                 cell.setBlank();
                 cell.setCellValue(0.0);
                 continue;
             }
             switch (sf.getRule()) {
-                case SUM_OVER_TILES -> cell.setCellFormula(
-                        buildSumOverTiles(tileSheetNames, sf.getTileCell(), tileOverflowByName));
+                case SUM_OVER_TILES -> cell.setCellFormula(buildSumOverTiles(anchors, sf.getTileCell()));
             }
         }
     }
 
-    private String buildSumOverTiles(List<String> tileSheetNames, String tileCell,
-                                     java.util.Map<String, Integer> tileOverflowByName) {
+    private String buildSumOverTiles(List<TileAnchor> anchors, String tileCell) {
         CellReference base = new CellReference(tileCell);
         String colLetters = CellReference.convertNumToColString(base.getCol());
         int baseRow1 = base.getRow() + 1;
         StringBuilder sb = new StringBuilder("SUM(");
-        for (int i = 0; i < tileSheetNames.size(); i++) {
+        for (int i = 0; i < anchors.size(); i++) {
             if (i > 0) sb.append(',');
-            String name = tileSheetNames.get(i);
-            int adjustedRow1 = baseRow1 + tileOverflowByName.getOrDefault(name, 0);
-            sb.append('\'').append(name.replace("'", "''")).append("'!").append(colLetters).append(adjustedRow1);
+            TileAnchor a = anchors.get(i);
+            sb.append('\'').append(a.sheetName().replace("'", "''")).append("'!")
+                    .append(colLetters).append(baseRow1 + a.rowShift());
         }
         sb.append(')');
         return sb.toString();

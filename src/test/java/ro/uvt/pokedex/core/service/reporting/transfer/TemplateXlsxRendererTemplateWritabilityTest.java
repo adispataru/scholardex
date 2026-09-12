@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingColumn;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingPolicy;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingScalarCell;
+import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingTileLayout;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
 import ro.uvt.pokedex.core.service.reporting.transfer.binding.TemplateBindingLoader;
 import ro.uvt.pokedex.core.service.reporting.transfer.render.TemplateXlsxRenderer;
@@ -88,9 +89,7 @@ class TemplateXlsxRendererTemplateWritabilityTest {
                 }
                 case TILED_SHEETS -> {
                     tileIndex++;
-                    String sheetName = role.getSheetNameTemplate()
-                            .replace("{index:02d}", String.format("%02d", tileIndex))
-                            .replace("{index}", String.valueOf(tileIndex));
+                    String sheetName = tileSheetName(role, tileIndex);
                     Map<String, Object> header = new HashMap<>();
                     header.put("publication.title", "W:" + role.getRoleKey() + ":title");
                     Map<String, Object> inner = new HashMap<>();
@@ -154,6 +153,13 @@ class TemplateXlsxRendererTemplateWritabilityTest {
         }
     }
 
+    private static String tileSheetName(BindingRole role, int index) {
+        if (role.getTileLayout() == BindingTileLayout.STACKED) return role.getStackedSheetName();
+        return role.getSheetNameTemplate()
+                .replace("{index:02d}", String.format("%02d", index))
+                .replace("{index}", String.valueOf(index));
+    }
+
     private static boolean isWrite(BindingColumn col) {
         return col.getPolicy() == BindingPolicy.WRITE || col.getPolicy() == BindingPolicy.WRITE_SCORE;
     }
@@ -176,7 +182,7 @@ class TemplateXlsxRendererTemplateWritabilityTest {
                         // The output sheet is a clone of the template sheet; key the sample text by the
                         // first clone's name so the expectation lookup above finds it.
                         String tpl = role.getTemplateSheet();
-                        String clone = role.getSheetNameTemplate().replace("{index:02d}", "01").replace("{index}", "1");
+                        String clone = tileSheetName(role, 1);
                         put(out, wb, tpl + "!" + role.getPerTileTitleCell(), clone + "!" + role.getPerTileTitleCell());
                         role.getInnerColumns().forEach((col, c) -> {
                             if (isWrite(c)) put(out, wb, tpl + "!" + col + role.getInnerTableFirstDataRow(),

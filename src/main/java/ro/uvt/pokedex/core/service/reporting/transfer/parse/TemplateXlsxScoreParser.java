@@ -315,7 +315,8 @@ public class TemplateXlsxScoreParser {
         // unparsed before this. The summary sheet ("C-Citari-centralizare") shares no prefix.
         String sheetNamePrefix = sheetNamePrefix(role.getSheetNameTemplate());
         String officialPrefix = role.getTemplateSheet();
-        if (sheetNamePrefix == null && (officialPrefix == null || officialPrefix.isBlank())) return List.of();
+        if (sheetNamePrefix == null && (officialPrefix == null || officialPrefix.isBlank())
+                && role.getStackedSheetName() == null) return List.of();
         CellReference titleRef = new CellReference(role.getPerTileTitleCell());
         int keyCol = titleRef.getCol();
         int titleRow0 = titleRef.getRow();
@@ -329,7 +330,9 @@ public class TemplateXlsxScoreParser {
             boolean exportNamed = sheetNamePrefix != null && name.startsWith(sheetNamePrefix);
             boolean officialNamed = officialPrefix != null && !officialPrefix.isBlank()
                     && name.startsWith(officialPrefix);
-            if (!exportNamed && !officialNamed) continue;
+            // H106 S2: our STACKED export puts every tile in one sheet with its own name ("C-Citari").
+            boolean stackedNamed = role.getStackedSheetName() != null && name.equals(role.getStackedSheetName());
+            if (!exportNamed && !officialNamed && !stackedNamed) continue;
 
             // Real files come in two shapes: one tile per sheet (our exports, per-publication sheet
             // copies) and MANY tiles stacked vertically in a single sheet — sometimes with the first
