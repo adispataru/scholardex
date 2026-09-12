@@ -100,8 +100,9 @@ public class AdminInitializationController {
     }
 
     /**
-     * H92: how many publications the Crossref volume sweep would examine — Springer-ISBN papers sitting on a
-     * SERIES forum whose conference is therefore unnamed. No Crossref calls; sizes a run before starting it.
+     * H92 / H106 S6: how many publications the Crossref sweep would examine — EVERY Springer-ISBN paper not
+     * yet asked for its series (the sweep stores {@code container-title[0]} = series and {@code [1]} = volume
+     * title; the series decides the LNCS floor). No Crossref calls; sizes a run before starting it.
      */
     @PostMapping("/crossref/volumes/count")
     @ResponseBody
@@ -122,8 +123,8 @@ public class AdminInitializationController {
     }
 
     /**
-     * H92: apply the sweep — store each resolved volume title as venue evidence. Idempotent (a checked
-     * publication is not re-asked). Scores move only after a report refresh; no projection rebuild is needed
+     * H92 / H106 S6: apply the sweep — store each resolved series + volume title as venue evidence. Idempotent
+     * (a publication asked for its series is not re-asked). Scores move only after a report refresh; no projection rebuild is needed
      * because the evidence is read at scoring time, not projected.
      */
     @PostMapping("/crossref/volumes/apply")

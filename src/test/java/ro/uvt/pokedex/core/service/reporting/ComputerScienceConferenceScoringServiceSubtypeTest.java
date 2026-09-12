@@ -2369,7 +2369,10 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
                 "pub-lncs-ch", null, "forum-lncs-ch", "2023-01-01", "ch", "ch",
                 List.of(), 0, null, null, null, 0, Set.of());
         ScholardexForumView forum = new ScholardexForumView();
-        forum.setPublicationName("Lecture Notes on Practical Systems");        forum.setAggregationType("Conference Proceeding");
+        // H106 S6: "Lecture Notes on …" now belongs to the wider Lecture Notes family and floors to C, so this
+        // fallback-reason test uses a plain proceedings name to stay on the D path it pins.
+        forum.setPublicationName("Proceedings on Practical Systems");
+        forum.setAggregationType("Conference Proceeding");
         when(cacheService.getForum("forum-lncs-ch")).thenReturn(forum);
         when(cacheService.getConferenceRankingsByNormalizedTitle(anyString())).thenReturn(List.of());
 

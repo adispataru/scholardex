@@ -104,6 +104,33 @@ public class ScopusBigBangMigrationService {
     private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     private final JdbcTemplate jdbcTemplate;
     private final MongoTemplate mongoTemplate;
+    // H106 S6: the evidence sweeps ran only when an admin remembered the trigger (H66 handover deferral);
+    // now every full/derive rebuild refreshes DBLP dump matches and Crossref series/volume titles BEFORE
+    // rebuildFromEvidence re-stamps forums from that evidence.
+    private final ro.uvt.pokedex.core.service.dblp.DblpDumpConferenceSweepService dblpDumpConferenceSweepService;
+    private final ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
+
+    @org.springframework.beans.factory.annotation.Value("${core.evidence-sweeps.in-rebuild:true}")
+    private boolean evidenceSweepsInRebuild = true;
+
+    private void runEvidenceSweeps() {
+        if (!evidenceSweepsInRebuild) {
+            log.info("Evidence sweeps in rebuild disabled (core.evidence-sweeps.in-rebuild=false)");
+            return;
+        }
+        try {
+            ImportProcessingResult dump = dblpDumpConferenceSweepService.sweep();
+            log.info("Rebuild evidence sweep — DBLP dump: processed={} imported={}", dump.getProcessedCount(), dump.getImportedCount());
+        } catch (RuntimeException ex) {
+            log.warn("Rebuild evidence sweep — DBLP dump failed, continuing with stored evidence: {}", ex.toString());
+        }
+        try {
+            ImportProcessingResult crossref = crossrefVolumeEnrichmentService.sweep(false, 0);
+            log.info("Rebuild evidence sweep — Crossref: candidates={} resolved={}", crossref.getProcessedCount(), crossref.getImportedCount());
+        } catch (RuntimeException ex) {
+            log.warn("Rebuild evidence sweep — Crossref failed, continuing with stored evidence: {}", ex.toString());
+        }
+    }
 
     public ScopusBigBangMigrationResult runIngestStep() {
         Instant startedAt = Instant.now();
@@ -426,6 +453,10 @@ public class ScopusBigBangMigrationService {
                 wosScholardexOnboardingService.linkPublicationsToWos(SCOPUS_FORUM_CANON_BATCH, "run-full");
         // H66B Phase 4b: re-mint DBLP conference forums + re-link forumId from durable evidence (no API), since
         // forum_facts is wiped here. Runs after pubs + forums exist, before projections.
+        // H106 S6: accumulate evidence first — DBLP dump matches (skips itself when no dump is configured,
+        // as in prod) and Crossref series + volume titles for every Springer-ISBN paper (only rows not yet
+        // asked, so a steady-state rebuild costs a handful of calls). Neither may fail a rebuild.
+        runEvidenceSweeps();
         ImportProcessingResult dblpConferences = dblpConferenceResolveService.rebuildFromEvidence();
         // H84: re-apply human-approved publication merges — the canon replay above re-minted both sides of every
         // merged pair from source. MUST run before rebuildViews so the projection reflects the merged state

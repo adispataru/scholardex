@@ -48,6 +48,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ScopusBigBangMigrationServiceTest {
 
+    @Mock
+    private ro.uvt.pokedex.core.service.dblp.DblpDumpConferenceSweepService dblpDumpConferenceSweepService;
+    @Mock
+    private ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
     @Mock private ScopusDataService scopusDataService;
     @Mock private ScopusFactBuilderService scopusFactBuilderService;
     @Mock private ScholardexProjectionBuilderService scopusProjectionBuilderService;
@@ -117,9 +121,14 @@ class ScopusBigBangMigrationServiceTest {
                 scholardexCitationFactRepository,
                 scholardexSourceLinkRepository,
                 jdbcTemplate,
-                mongoTemplate
+                mongoTemplate,
+                dblpDumpConferenceSweepService,
+                crossrefVolumeEnrichmentService
         );
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
+        // H106 S6: evidence sweeps run inside the rebuild; empty by default.
+        lenient().when(dblpDumpConferenceSweepService.sweep()).thenReturn(result(0, 0, 0, 0, 0));
+        lenient().when(crossrefVolumeEnrichmentService.sweep(false, 0)).thenReturn(result(0, 0, 0, 0, 0));
         // H66B M8: publication→WoS links run after publication canon in the Scopus paths; empty by default.
         lenient().when(wosScholardexOnboardingService.linkPublicationsToWos(any(), any()))
                 .thenReturn(result(0, 0, 0, 0, 0));

@@ -40,6 +40,14 @@ public class ScholardexPublicationDblpEvidence {
      * re-stamp a forum from it (that is how the "AINA Workshops" mint accident happened).
      */
     private String volumeTitle;
+    /**
+     * H106 S6: Crossref {@code container-title[0]} — the Springer SERIES a chapter was printed in ("Lecture
+     * Notes in Computer Science", "Communications in Computer and Information Science"). Decides the LNCS
+     * floor; the DBLP {@code series} field above is the DBLP stream key (conf/X), not this.
+     */
+    private String crossrefSeries;
+    /** When the series lookup last ran (H92-era rows carry only {@code crossrefCheckedAt}, so they get re-asked once). */
+    private Instant crossrefSeriesCheckedAt;
     /** When the Crossref lookup last ran — set even on a miss, so the sweep does not re-ask forever. */
     private Instant crossrefCheckedAt;
     private Instant createdAt;

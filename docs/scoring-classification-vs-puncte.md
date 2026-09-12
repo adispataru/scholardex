@@ -62,3 +62,24 @@ also have richer acronym extraction + workshop handling + confidence tiers, and 
 - OpenAlex `source.type` → forum `aggregationType` capture + mapping.
 
 Policy to confirm with stakeholders: LNCS floor B vs our C; pre-2006 LNCS as journal.
+
+## LNCS floor — evidence-first (H106 S6, 2026-09-13)
+
+The `10.1007/978…` DOI prefix covers every Springer book series (CCIS, AISC, SIST, IFIP AICT, Studies in …,
+Springer Proceedings in …), not only LNCS, and DBLP re-stamps forums to bare acronyms, so neither the prefix
+nor the forum name can say which series printed a paper. Measured in prod before the change: the floor had
+fired on 992 cached citation rows and 266 own-paper rows, 500 of the citations on re-stamped forums and 304
+with no forum at all. The Crossref record carries the answer as `container-title[0]`, which H92 fetched and
+discarded. Now:
+
+1. `CrossrefVolumeEnrichmentService` asks Crossref for EVERY Springer-ISBN paper (any forum, DBLP or not) and
+   stores `crossrefSeries` next to `volumeTitle` on the shared evidence row; runs inside every rebuild
+   (`ScopusBigBangMigrationService.runEvidenceSweeps`, with the DBLP dump sweep) and daily
+   (`CrossrefSeriesSweepScheduler`).
+2. `ComputerScienceConferenceScoringService.lncsFloorEvidence`: a known series in the wider "Lecture Notes
+   in/on …" family (LNCS, LNAI, LNBIP, LNNS, LNEE, LNICST, LNDECT — user decision) floors to C; a known series
+   outside it does NOT, whatever the DOI or forum name say; no series yet → forum name in the family → C;
+   otherwise the DOI prefix keeps the floor, recorded as `doi-prefix (series unknown)`. The grounds land in
+   `scoringInfo.lncsFloorEvidence`.
+3. Backfill after deploy: `POST /admin/initialization/crossref/volumes/apply` once (~5,200 Springer papers,
+   polite pool ≈ 20 min), then report refreshes move the scores.

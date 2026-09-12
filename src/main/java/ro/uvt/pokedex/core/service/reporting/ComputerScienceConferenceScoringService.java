@@ -154,8 +154,8 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             // venues). The OM text reads the same way — LNCS/ACM papers "care nu sunt în categoriile
             // A*, A și B" are category C, which includes identified-but-lower ones. A resolution AT or
             // ABOVE C keeps its own rank and provenance; the floor never relabels an equal-or-better match.
-            if(scoreResult.bestPoints.get() < 2.0
-                    && (isLncsProceedingsForum(forum) || DoiVenueSupport.isSpringerBookSeriesProceedings(publication))) {
+            String lncsFloorEvidence = scoreResult.bestPoints.get() < 2.0 ? lncsFloorEvidence(publication, forum) : null;
+            if (lncsFloorEvidence != null) {
                 // Special case for LNCS chapters
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
@@ -163,6 +163,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 scoreResult.bestYear.set(LAST_CORE_YEAR);
                 trace = trace.withFallbackReason(FallbackReason.LNCS_SPECIAL_CASE);
                 applyTraceProvenance(scoreResult, trace, "SCOPUS");
+                scoreResult.scoringInfo.put("lncsFloorEvidence", lncsFloorEvidence);
             }
             // H85 — 2026 OM amendment: CORE-unranked ACM/EPTCS venues floor to C (the 2016 standard's
             // amendment is LNCS-only, so the flag lives on 2026 indicators exclusively). Mirrors the LNCS
@@ -272,7 +273,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         // venue qualifies for. Only the D default stays strictly for the nothing-resolved case — an
         // identified D at a venue with no floor is a real D, not a gap to paper over.
         if (scoreResult.bestPoints.get() < 2.0 && forum != null) {
-            if (isLncsProceedingsForum(forum)) {
+            if (isLectureNotesSeries(forum)) {
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.LNCS);
@@ -650,13 +651,38 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     /**
-     * LNCS-family Springer proceedings proper — "Lecture Notes in …" (LNCS, LNAI = "Lecture Notes in
-     * Artificial Intelligence", LNBIP), case-insensitive. Only these earn the LNCS C fallback; the rarer
-     * "Lecture Notes on …" stays a candidate but falls through to the SCOPUS D tier.
+     * H106 S6 — whether the LNCS C floor applies, EVIDENCE FIRST, and on what grounds (the string lands in
+     * {@code scoringInfo.lncsFloorEvidence} so the drilldown can show why a paper is C). Returns null when
+     * the floor must not apply.
+     * <ol>
+     *   <li>Crossref series on the evidence row ({@code container-title[0]}) — authoritative. A series in the
+     *       wider "Lecture Notes in/on …" family floors to C; a KNOWN series outside it (CCIS, AISC, SIST,
+     *       IFIP AICT, Studies in …) does not, whatever the forum name or DOI say. That is the CCIS paper
+     *       Florin Fortiș scored D that the DOI prefix had lifted to C.</li>
+     *   <li>No series known: the forum's own name in the Lecture Notes family.</li>
+     *   <li>Still nothing: the Springer ISBN DOI prefix — transitional, until the Crossref sweep has reached
+     *       the paper (then rule 1 decides). Recorded as such so the provenance is honest.</li>
+     * </ol>
+     * The evidence lookup only happens for papers the old rule would have floored, so scoring cost is unchanged
+     * for everything else.
      */
-    private boolean isLncsProceedingsForum(ScholardexForumView forum) {
-        String name = forum == null ? null : forum.getPublicationName();
-        return name != null && name.toLowerCase(java.util.Locale.ROOT).contains("lecture notes in ");
+    private String lncsFloorEvidence(ScoringPublicationReadModel publication, ScholardexForumView forum) {
+        boolean nameSaysLectureNotes = isLectureNotesSeries(forum);
+        boolean springerDoi = DoiVenueSupport.isSpringerBookSeriesProceedings(publication);
+        if (!nameSaysLectureNotes && !springerDoi) {
+            return null;
+        }
+        String series = findDblpEvidence(publication)
+                .map(ScholardexPublicationDblpEvidence::getCrossrefSeries)
+                .filter(v -> v != null && !v.isBlank())
+                .orElse(null);
+        if (series != null) {
+            return LectureNotesSeriesSupport.isLectureNotesSeriesName(series) ? "crossref-series: " + series.trim() : null;
+        }
+        if (nameSaysLectureNotes) {
+            return "forum-name: " + forum.getPublicationName();
+        }
+        return "doi-prefix (series unknown)";
     }
 
     private boolean isLncsBookSeriesCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {

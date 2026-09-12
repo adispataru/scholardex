@@ -63,16 +63,40 @@ public class CrossrefClient {
      * forum and which is exactly the uninformative name this lookup exists to get past.
      */
     public synchronized Optional<String> volumeTitle(String doi) {
+        return containerTitles(doi).flatMap(ct -> Optional.ofNullable(ct.volume()));
+    }
+
+    /** Both entries of a Springer chapter's {@code container-title}: the SERIES and the volume. */
+    public record ContainerTitles(String series, String volume) {
+        public boolean isEmpty() {
+            return series == null && volume == null;
+        }
+    }
+
+    /**
+     * H106 S6 — the series name ({@code container-title[0]}) together with the volume title. H92 kept only
+     * the volume because "the series is already on the forum"; that stopped being true once the DBLP sweep
+     * re-stamped forums to bare conference acronyms and citing papers arrived with no forum at all — the
+     * series then exists nowhere else, and it is what decides the LNCS floor. Empty when Crossref has no
+     * record; a record with a single container yields a series and no volume.
+     */
+    public synchronized Optional<ContainerTitles> containerTitles(String doi) {
         JsonNode message = fetch(doi);
         if (message == null) {
             return Optional.empty();
         }
         JsonNode containers = message.path("container-title");
-        if (!containers.isArray() || containers.size() < 2) {
+        if (!containers.isArray() || containers.isEmpty()) {
             return Optional.empty();
         }
-        String volume = containers.get(1).asText(null);
-        return (volume == null || volume.isBlank()) ? Optional.empty() : Optional.of(volume.trim());
+        String series = blankToNull(containers.get(0).asText(null));
+        String volume = containers.size() >= 2 ? blankToNull(containers.get(1).asText(null)) : null;
+        ContainerTitles ct = new ContainerTitles(series, volume);
+        return ct.isEmpty() ? Optional.empty() : Optional.of(ct);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /**

@@ -58,7 +58,16 @@ public final class LectureNotesSeriesSupport {
 
     /** Whether the forum is a "Lecture Notes in/on …" series. Null-safe; false for an unnamed forum. */
     public static boolean isLectureNotesSeries(ScholardexForumView forum) {
-        String name = forum == null ? null : forum.getPublicationName();
+        return isLectureNotesSeriesName(forum == null ? null : forum.getPublicationName());
+    }
+
+    /**
+     * H106 S6 — the SERIES-NAME form, for a name that did not come from a forum (Crossref
+     * {@code container-title[0]}). The wider Springer "Lecture Notes in/on …" family (LNCS, LNAI, LNBIP,
+     * LNNS, LNEE, LNICST, LNDECT …) — user decision 2026-09-13 — versus CCIS, AISC, SIST, IFIP AICT,
+     * Studies in …, Springer Proceedings in …, which are NOT.
+     */
+    public static boolean isLectureNotesSeriesName(String name) {
         if (name == null) {
             return false;
         }

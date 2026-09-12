@@ -3,18 +3,14 @@ package ro.uvt.pokedex.core.service.crossref;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblpEvidenceRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -49,16 +45,13 @@ public class CrossrefVolumeEnrichmentService {
 
     private final CrossrefClient crossrefClient;
     private final ScholardexPublicationFactRepository publicationFactRepository;
-    private final ScholardexForumFactRepository forumFactRepository;
     private final ScholardexPublicationDblpEvidenceRepository evidenceRepository;
 
     public CrossrefVolumeEnrichmentService(CrossrefClient crossrefClient,
                                            ScholardexPublicationFactRepository publicationFactRepository,
-                                           ScholardexForumFactRepository forumFactRepository,
                                            ScholardexPublicationDblpEvidenceRepository evidenceRepository) {
         this.crossrefClient = crossrefClient;
         this.publicationFactRepository = publicationFactRepository;
-        this.forumFactRepository = forumFactRepository;
         this.evidenceRepository = evidenceRepository;
     }
 
@@ -84,7 +77,6 @@ public class CrossrefVolumeEnrichmentService {
         // "did the method even run" should never again require a thread dump to answer.
         log.info("Crossref volume sweep starting: dryRun={} limit={}", dryRun, limit);
         ImportProcessingResult result = new ImportProcessingResult(30);
-        Map<String, ScholardexForumFact> forums = seriesForumsById();
         Instant now = Instant.now();
         int examined = 0;
 
@@ -92,25 +84,25 @@ public class CrossrefVolumeEnrichmentService {
             if (limit > 0 && examined >= limit) {
                 break;
             }
-            if (!isCandidate(pub, forums, recheckEmpty)) {
+            if (!isCandidate(pub, recheckEmpty)) {
                 continue;
             }
             examined++;
             result.markProcessed();
-
-            Optional<String> volumeTitle = crossrefClient.volumeTitle(pub.getDoi());
-            if (volumeTitle.isEmpty()) {
-                result.markSkipped("no-volume-title pub=" + pub.getId());
+            Optional<CrossrefClient.ContainerTitles> titles = crossrefClient.containerTitles(pub.getDoi());
+            if (titles.isEmpty()) {
+                result.markSkipped("no-crossref-record pub=" + pub.getId());
                 if (!dryRun) {
                     // Stamp the attempt even on a miss, so a re-run does not re-ask Crossref forever.
-                    storeVolumeTitle(pub, null, now);
+                    store(pub, null, null, now);
                 }
                 continue;
             }
             if (dryRun) {
-                log.info("Crossref dry-run: pub={} doi={} volumeTitle={}", pub.getId(), pub.getDoi(), volumeTitle.get());
+                log.info("Crossref dry-run: pub={} doi={} series={} volumeTitle={}",
+                        pub.getId(), pub.getDoi(), titles.get().series(), titles.get().volume());
             } else {
-                storeVolumeTitle(pub, volumeTitle.get(), now);
+                store(pub, titles.get().series(), titles.get().volume(), now);
             }
             result.markImported();
         }
@@ -121,17 +113,17 @@ public class CrossrefVolumeEnrichmentService {
     }
 
     /**
-     * A candidate is a Springer-ISBN paper whose forum is a SERIES rather than a conference, and whose
-     * volume title we have not already looked up. Papers already carrying a DBLP {@code series} are left
-     * alone — DBLP named the conference outright, which beats a volume title.
+     * H106 S6 — a candidate is EVERY Springer-ISBN paper whose Crossref series we do not hold yet, whatever
+     * its forum (a bare re-stamped conference acronym, a series, or none at all) and whether or not DBLP
+     * named its conference: the series decides the LNCS floor, which is orthogonal to the conference
+     * identity. H92's narrower rule (series forums only, no DBLP evidence) is why ~800 floored citations
+     * never had a Crossref record. A row checked in the H92 era (volume only) is re-asked once for its
+     * series; a row that has been asked for its series is done unless {@code recheckEmpty} asks for
+     * incomplete rows again.
      */
-    private boolean isCandidate(ScholardexPublicationFact pub, Map<String, ScholardexForumFact> seriesForums,
-                                boolean recheckEmpty) {
+    private boolean isCandidate(ScholardexPublicationFact pub, boolean recheckEmpty) {
         String doi = pub.getDoi() == null ? "" : pub.getDoi().toLowerCase(java.util.Locale.ROOT);
         if (!doi.contains(SPRINGER_ISBN_DOI_PREFIX)) {
-            return false;
-        }
-        if (pub.getForumId() == null || !seriesForums.containsKey(pub.getForumId())) {
             return false;
         }
         Optional<ScholardexPublicationDblpEvidence> existing = evidenceRepository.findByPublicationId(pub.getId());
@@ -139,25 +131,17 @@ public class CrossrefVolumeEnrichmentService {
             return true;
         }
         ScholardexPublicationDblpEvidence ev = existing.get();
-        boolean dblpNamedIt = ev.getSeries() != null && !ev.getSeries().isBlank();
-        boolean alreadyChecked = ev.getCrossrefCheckedAt() != null;
+        boolean seriesKnown = ev.getCrossrefSeries() != null && !ev.getCrossrefSeries().isBlank();
         boolean volumeKnown = ev.getVolumeTitle() != null && !ev.getVolumeTitle().isBlank();
-        return !dblpNamedIt && (!alreadyChecked || (recheckEmpty && !volumeKnown));
-    }
-
-    /** Forums whose aggregationType marks them a series — the ones whose NAME identifies no conference. */
-    private Map<String, ScholardexForumFact> seriesForumsById() {
-        Map<String, ScholardexForumFact> byId = new HashMap<>();
-        for (ScholardexForumFact forum : forumFactRepository.findAll()) {
-            if ("Book Series".equalsIgnoreCase(forum.getAggregationType())) {
-                byId.put(forum.getId(), forum);
-            }
+        boolean askedForSeries = ev.getCrossrefSeriesCheckedAt() != null;
+        if (!seriesKnown && !askedForSeries) {
+            return true;
         }
-        return byId;
+        return recheckEmpty && (!seriesKnown || !volumeKnown);
     }
 
     /** Upsert ONLY the Crossref fields; DBLP owns series/conferenceName and must not be disturbed. */
-    private void storeVolumeTitle(ScholardexPublicationFact pub, String volumeTitle, Instant now) {
+    private void store(ScholardexPublicationFact pub, String series, String volumeTitle, Instant now) {
         ScholardexPublicationDblpEvidence ev = evidenceRepository.findByPublicationId(pub.getId())
                 .orElseGet(ScholardexPublicationDblpEvidence::new);
         if (ev.getCreatedAt() == null) {
@@ -173,16 +157,22 @@ public class CrossrefVolumeEnrichmentService {
         if (ev.getMatchMethod() == null) {
             ev.setMatchMethod("crossref-volume");
         }
-        ev.setVolumeTitle(volumeTitle);
+        // Never erase a value a previous run stored with a later miss (Crossref records do go incomplete).
+        if (volumeTitle != null) {
+            ev.setVolumeTitle(volumeTitle);
+        }
+        if (series != null) {
+            ev.setCrossrefSeries(series);
+        }
         ev.setCrossrefCheckedAt(now);
+        ev.setCrossrefSeriesCheckedAt(now);
         ev.setUpdatedAt(now);
         evidenceRepository.save(ev);
     }
 
     /** Candidate count without calling Crossref — for sizing a run before starting it. */
     public long countCandidates() {
-        Map<String, ScholardexForumFact> forums = seriesForumsById();
         List<ScholardexPublicationFact> all = publicationFactRepository.findAll();
-        return all.stream().filter(p -> isCandidate(p, forums, false)).count();
+        return all.stream().filter(p -> isCandidate(p, false)).count();
     }
 }

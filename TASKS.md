@@ -96,7 +96,19 @@ Done history moved to `TASKS-done.md`.
     failures reported in the message, never failing the EID pass); `CitedWorkKey` — `citedEid` holds an EID,
     `doi:<doi>` or a canonical id, resolved by BOTH canon paths (incremental canonicaliser + V2 graph
     builder; real-Mongo integration test). No review queue yet: unverified hits are logged and counted only.
-  - S6 — **Policy: the Springer ISBN-DOI floor is broader than "LNCS".** `ComputerScienceConferenceScoringService`
+  - S6 — **DONE 2026-09-13 (decision: wider "Lecture Notes in/on …" family; seam closed).** Measured in prod:
+    the floor fired on 992 cached citation rows + 266 own-paper rows; 500 citations sit on DBLP-restamped
+    forums (ESOCC/IDC/3PGCIC/NMA/GECON), 304 have no forum, 66 AISC, 28 SIST, 20 CCIS, 14 IFIP. Where it hung:
+    H92 fetched Crossref `container-title[0]` (the series) and kept only `[1]`; its candidate rule (series
+    forums, no DBLP evidence) excluded exactly the restamped and forum-less papers; "fold the sweeps into
+    the rebuild" was deferred at the H66 handover. **Shipped:** `CrossrefClient.containerTitles`, evidence
+    fields `crossrefSeries`/`crossrefSeriesCheckedAt`, sweep widened to every Springer-ISBN paper (H92 rows
+    re-asked once), `runEvidenceSweeps` in every rebuild (DBLP dump + Crossref, never failing it, property
+    `core.evidence-sweeps.in-rebuild`), daily `CrossrefSeriesSweepScheduler`, and the evidence-first floor
+    `lncsFloorEvidence` (series in family → C; known other series → no floor; else forum name; else DOI
+    prefix "series unknown") with provenance in `scoringInfo`. Ops after deploy: one
+    `/crossref/volumes/apply` backfill (~5.2k calls), then refreshes. Original text of the slice follows.
+    Policy: the Springer ISBN-DOI floor is broader than "LNCS". `ComputerScienceConferenceScoringService`
     floors any citing paper with a `10.1007/978…` DOI to C/2p (`DoiVenueSupport.isSpringerBookSeriesProceedings`).
     Florin's case: "Web Service Based Approach for Viral Hepatitis Ontology…" is Communications in Computer
     and Information Science (Crossref), not LNCS → he scores it D/1p. The OM text names LNCS (2016) and ACM,
