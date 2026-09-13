@@ -131,8 +131,13 @@ Done history moved to `TASKS-done.md`.
   `indicator-descriptions/info.json` + `POST /admin/indicators/descriptions/apply?dryRun=` (data-after-code,
   own controller to dodge the constructor-arg slice trap); unmatched names on either side are REPORTED.
   Applied + verified live on agent-dev (36/36 matched; renders under the header; collapse hides/restores
-  it). Seed synced (36 of 74). **Remaining:** descriptions for the other domains' 45 indicators
-  (FEAA/Mate/Fizica/Psiho/Arte) — same mechanism, content only; and the prod apply after deploy.
+  it). Seed synced (36 of 74). FEAA (20, `feaa.json`), Matematică (8+7) and Fizică 2026 (13) followed under H97/H98 and are
+  applied in prod. **2026-09-13: content complete** — `psihologie.json` (14, FV Psihologie 2016: Anexa 28 rules
+  with the platform readings stated: «autor principal» = primul autor, I2/I6 BDI ladder, I9/I10 per-edition
+  cap, I17 ≈ 0,1/citare) and `eligibilitate-granturi.json` (13: PD 2026 director/mentor conditions, the
+  earlier JIF-based PD check marked as superseded, Tinere Echipe Q1/Q2). Every prod indicator has a
+  description except the sample `Arte_exemplu_event`; seed carries 113/114. **Left:** prod apply after the
+  next release (`POST /admin/indicators/descriptions/apply`, expect 27 updated / 0 unmatched) — then close.
 
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*

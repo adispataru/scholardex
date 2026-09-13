@@ -911,6 +911,7 @@
    "$oid": "6823a9e6d6df306cd304ded9"
   },
   "name": "Psiho_I1",
+  "description": "Indicatorul I1 (Anexa 28, realizări ca autor principal): articole sau review-uri in extenso în reviste indexate Web of Science al căror factor de impact (IF) este cel puțin pragul p = 1,00 al domeniului Psihologie, sau care se situează deasupra medianei categoriei (Q1/Q2, excepția prevăzută pentru Psihologie). Fiecare articol aduce 3 + 3 × IF, unde IF este factorul de impact al revistei în anul publicării, în categoriile WoS ale domeniului. Platforma consideră «autor principal» primul autor al lucrării; situațiile de autor corespondent sau de contribuție egală declarată în articol se verifică manual. Praguri (criteriul C1): 6 pentru Asistent, 8 pentru Lector, 10 pentru Conferențiar, 25 pentru Profesor.",
   "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + 3 * S) : 0",
   "domain": {
    "$ref": "domains",
@@ -939,6 +940,7 @@
    "$oid": "6823add4dc170c4fea2c3b3c"
   },
   "name": "Psiho_I5",
+  "description": "Indicatorul I5 (Anexa 28, realizări în calitate de co-autor): articole sau review-uri in extenso în reviste WoS cu IF ≥ p = 1,00 sau deasupra medianei categoriei (Q1/Q2), la care candidatul nu este primul autor. Punctaj (3 + 3 × IF) / n, unde n este numărul de autori, iar IF este factorul de impact al revistei în anul publicării, în categoriile WoS ale domeniului Psihologie.",
   "formula": "(S>=1 || Q=='Q1' || Q=='Q2') ? (3 + (3 * S)/N) : 0",
   "domain": {
    "$ref": "domains",
@@ -967,6 +969,7 @@
    "$oid": "6823b61df1cde62b43289faf"
   },
   "name": "Psiho_I16",
+  "description": "Indicatorul I16 (Anexa 28, vizibilitate și impact): citări ale publicațiilor candidatului în lucrări indexate Web of Science, cu excluderea autocitărilor (lucrarea care citează nu îl are pe candidat printre autori). Fiecare citare aduce 0,5 puncte. Platforma recunoaște o citare WoS după revista în care apare lucrarea care citează (revistă cu factor de impact în anul respectiv); celelalte citări sunt punctate la I17. Praguri (criteriul C4): 1 pentru Asistent, 3 pentru Lector, 6 pentru Conferențiar, 15 pentru Profesor.",
   "formula": "S > 0 ? 0.5 : 0",
   "domain": {
    "$ref": "domains",
@@ -1055,6 +1058,7 @@
    "$oid": "698b523ed6449873efdaa9c5"
   },
   "name": "grant_TE_FI_Q1",
+  "description": "Eligibilitate Tinere Echipe: numărul de articole din 2015–2025 publicate în reviste Web of Science din prima cuartilă (Q1) după scorul de influență absolut (AIS), în încadrarea cea mai favorabilă dintre categoriile revistei. Se cumulează cu articolele Q2 din indicatorul următor pentru pragul de 3 lucrări al directorului de proiect; condițiile complete (perioada de la doctorat, calitatea de autor principal) sunt cele din pachetul de informații al competiției.",
   "formula": "Q == 'Q1' ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1085,6 +1089,7 @@
    "$oid": "698b557dd6449873efdaa9c6"
   },
   "name": "grant_TE_FI_Q2",
+  "description": "Eligibilitate Tinere Echipe: numărul de articole din 2015–2025 publicate în reviste Web of Science din a doua cuartilă (Q2) după AIS, în încadrarea cea mai favorabilă dintre categoriile revistei. Împreună cu articolele Q1 din indicatorul anterior trebuie să însumeze cel puțin 3 lucrări; condițiile complete sunt cele din pachetul de informații al competiției.",
   "formula": "Q == 'Q2' ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1115,6 +1120,7 @@
    "$oid": "69b0256ad85c553474735e69"
   },
   "name": "PD_2026_nr_lucari_WoS",
+  "description": "Verificarea PD anterioară (director): numărul de lucrări în reviste cotate Web of Science cu o cuartilă JCR în categoriile Computer Science, indiferent de an. Aceasta este versiunea inițială a verificării, bazată pe cuartilele factorului de impact; pentru pachetul PN-IV PD 2026 (cuartile AIS, doar SCIE/SSCI/AHCI, ferestre de ani) folosiți raportul «Eligibilitate PD 2026». Prag: 3 lucrări.",
   "formula": "Q.contains(\"Q\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1143,6 +1149,7 @@
    "$oid": "69b0257cd85c553474735e6a"
   },
   "name": "PD_2026_Q1_Q2",
+  "description": "Verificarea PD anterioară (director): lucrări în reviste Web of Science din cuartilele Q1 sau Q2 (JCR, categoriile Computer Science), indiferent de an. Versiunea inițială a verificării; raportul «Eligibilitate PD 2026» aplică regulile exacte ale pachetului 2026 (AIS, SCIE/SSCI/AHCI, 2016–2026). Prag: 1 lucrare.",
   "formula": "Q == \"Q1\" || Q == \"Q2\" ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1171,6 +1178,7 @@
    "$oid": "69b02d61d85c553474735e71"
   },
   "name": "PD_2026_Q1_Q2 (mentor total)",
+  "description": "Verificarea PD anterioară (mentor): lucrări din 2015–2026 în reviste Web of Science din cuartilele Q1 sau Q2 (JCR, categoriile Computer Science). Versiunea inițială a verificării; raportul «Eligibilitate PD 2026» aplică regulile exacte ale pachetului 2026 (AIS, tipuri de document, reviste Q2 distincte). Prag: 5 lucrări.",
   "formula": "Q == \"Q1\" || Q == \"Q2\" ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1201,6 +1209,7 @@
    "$oid": "69b02d7ad85c553474735e72"
   },
   "name": "PD_2026_Q1 (mentor top)",
+  "description": "Verificarea PD anterioară (mentor): lucrări din 2015–2026 în reviste Web of Science din prima cuartilă (Q1 JCR, categoriile Computer Science). Versiunea inițială a verificării; raportul «Eligibilitate PD 2026» aplică regulile exacte ale pachetului 2026. Prag: 2 lucrări.",
   "formula": "Q == \"Q1\" ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1567,6 +1576,7 @@
    "$oid": "6a4e40467c184d3e2d35ea60"
   },
   "name": "PD26_Dir_lucrari_WoS",
+  "description": "Director de proiect PD 2026, condiția 1: numărul de lucrări de tip article sau review publicate în reviste indexate Science Citation Index Expanded, Social Sciences Citation Index sau Arts & Humanities Citation Index (ESCI nu se ia în considerare), în perioada 2016–2026 — aproximarea platformei pentru «după admiterea la doctorat» (limita reală: 8 ani de la primul titlu de doctor; cazurile-limită se verifică manual). Toți autorii sunt considerați autori principali, conform Anexei 6(e) pentru Informatică. Prag: 3 lucrări, indiferent de poziție.",
   "formula": "(docType == \"ar\" || docType == \"re\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1597,6 +1607,7 @@
    "$oid": "6a4e40467c184d3e2d35ea61"
   },
   "name": "PD26_Dir_Q1_Q2",
+  "description": "Director de proiect PD 2026, condiția 2 (varianta reviste): lucrări article/review din 2016–2026 publicate în reviste SCIE/SSCI/AHCI din primele două cuartile după scorul de influență absolut (AIS) în categoriile Informatică ale Anexei 6(e) și Multidisciplinary Sciences; cuartila este cea a clasamentului JCR din anul publicării (pentru 2025–2026 se folosește JCR 2024). Prag: 1 lucrare, împreună cu echivalentul CORE A/A* din indicatorul următor.",
   "formula": "(docType == \"ar\" || docType == \"re\") && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1627,6 +1638,7 @@
    "$oid": "6a4e40467c184d3e2d35ea62"
   },
   "name": "PD26_Dir_CORE_A_echiv",
+  "description": "Director de proiect PD 2026, condiția 2 (varianta conferințe): lucrări din 2016–2026 publicate în conferințe clasificate A* sau A în lista CORE, la care candidatul este prim autor sau autor corespondent — echivalentul unei lucrări Q1/Q2 prevăzut de Anexa 6(e) pentru Informatică. Prag: 1 lucrare, cumulat cu lucrările Q1/Q2 din indicatorul anterior.",
   "formula": "(category == \"A*\" || category == \"A\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1657,6 +1669,7 @@
    "$oid": "6a4e40467c184d3e2d35ea63"
   },
   "name": "PD26_Mentor_top50",
+  "description": "Mentor PD 2026, condiția 1: lucrări de tip article, review sau proceedings paper (în reviste) din 2015–2026, publicate în reviste SCIE/SSCI/AHCI din primele 50% (Q1 sau Q2) după AIS în categoriile Informatică ale Anexei 6(e); cuartila este cea a JCR-ului din anul publicării (JCR 2024 pentru 2025–2026). ESCI nu se ia în considerare. Prag: 5 lucrări.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1687,6 +1700,7 @@
    "$oid": "6a4e40467c184d3e2d35ea64"
   },
   "name": "PD26_Mentor_Q1",
+  "description": "Mentor PD 2026, condiția 2: dintre lucrările article/review/proceedings paper din 2015–2026 în reviste SCIE/SSCI/AHCI, cele publicate în reviste din prima cuartilă (Q1) după AIS în categoriile Informatică ale Anexei 6(e). Prag: 2 lucrări.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && Q == \"Q1\" ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1717,6 +1731,7 @@
    "$oid": "6a4e40467c184d3e2d35ea65"
   },
   "name": "PD26_Mentor_Q2_reviste_distincte",
+  "description": "Mentor PD 2026, condiția 3: numărul de REVISTE DISTINCTE din a doua cuartilă (Q2) după AIS în care mentorul a publicat lucrări article/review/proceedings paper în 2015–2026 (SCIE/SSCI/AHCI). Se numără revistele, nu lucrările: două articole în aceeași revistă Q2 contează o singură dată. Prag: 2 reviste.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && Q == \"Q2\" ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1747,6 +1762,7 @@
    "$oid": "6a4e40467c184d3e2d35ea66"
   },
   "name": "PD26_Mentor_tip_article",
+  "description": "Mentor PD 2026, condiția 4: lucrări strict de tip article (fără review sau proceedings paper) din 2015–2026, publicate în reviste SCIE/SSCI/AHCI din primele două cuartile (Q1/Q2) după AIS în categoriile Informatică ale Anexei 6(e). Prag: 3 lucrări.",
   "formula": "docType == \"ar\" && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1777,6 +1793,7 @@
    "$oid": "6a5d063ec4aec775c522d9e0"
   },
   "name": "Psiho_I3",
+  "description": "Indicatorul I3 (Anexa 28, autor principal): cărți publicate la edituri clasificate A1 (prestigiu internațional) sau A2 (prestigiu recunoscut). Punctaj 12 × m, cu m = 3 pentru A1 (36 de puncte) și m = 1 pentru A2 (12 puncte). Încadrarea editurii se face după lista de edituri a platformei pentru domeniul Psihologie; editurile clasificate B sunt punctate la I12, iar cele neclasificate nu se punctează. Cărțile se adaugă din spațiul de lucru (adăugare manuală). Praguri (criteriul C2, împreună cu I4): 3 pentru Lector, 6 pentru Conferențiar, 12 pentru Profesor.",
   "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S : 0",
   "domain": {
    "$ref": "domains",
@@ -1805,6 +1822,7 @@
    "$oid": "6a5d066bc4aec775c522d9e1"
   },
   "name": "Psiho_I4",
+  "description": "Indicatorul I4 (Anexa 28, autor principal): capitole în cărți publicate la edituri clasificate A1 sau A2. Punctaj 3 × m, cu m = 3 pentru A1 (9 puncte) și m = 1 pentru A2 (3 puncte). Încadrarea editurii urmează lista platformei pentru domeniul Psihologie; capitolele la edituri B sunt punctate la I13. Se consideră primul autor; capitolele se adaugă din spațiul de lucru. Contribuie la criteriul C2 împreună cu I3.",
   "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S : 0",
   "domain": {
    "$ref": "domains",
@@ -1833,6 +1851,7 @@
    "$oid": "6a5d066bc4aec775c522d9e2"
   },
   "name": "Psiho_I7",
+  "description": "Indicatorul I7 (Anexa 28, co-autor): cărți publicate la edituri clasificate A1 sau A2 la care candidatul nu este primul autor. Punctaj 12 × m / n, cu m = 3 pentru A1, m = 1 pentru A2 și n numărul de autori. Încadrarea editurii urmează lista platformei pentru domeniul Psihologie; cărțile se adaugă din spațiul de lucru.",
   "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 12*S/N : 0",
   "domain": {
    "$ref": "domains",
@@ -1861,6 +1880,7 @@
    "$oid": "6a5d066bc4aec775c522d9e3"
   },
   "name": "Psiho_I8",
+  "description": "Indicatorul I8 (Anexa 28, co-autor): capitole în cărți la edituri clasificate A1 sau A2 la care candidatul nu este primul autor. Punctaj 3 × m / n, cu m = 3 pentru A1, m = 1 pentru A2 și n numărul de autori.",
   "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 3*S/N : 0",
   "domain": {
    "$ref": "domains",
@@ -1889,6 +1909,7 @@
    "$oid": "6a5d066bc4aec775c522d9e4"
   },
   "name": "Psiho_I9",
+  "description": "Indicatorul I9 (Anexa 28, alte realizări): lucrări in extenso de tip proceedings, ca autor principal, publicate în volumele unor conferințe internaționale și indexate WoS sau într-o altă bază de date internațională recunoscută. Fiecare lucrare aduce 1 punct. Se pot puncta cel mult două lucrări pe ediție de conferință, cumulat cu I10; lucrările peste plafon apar cu punctaj zero și motivul «peste plafonul pe ediție». Se consideră primul autor.",
   "formula": "S",
   "domain": {
    "$ref": "domains",
@@ -1918,6 +1939,7 @@
    "$oid": "6a5d066bc4aec775c522d9e5"
   },
   "name": "Psiho_I10",
+  "description": "Indicatorul I10 (Anexa 28, alte realizări): lucrări in extenso de tip proceedings, în calitate de co-autor, în volumele unor conferințe internaționale indexate WoS sau într-o altă bază de date recunoscută. Punctaj 1 / n, unde n este numărul de autori. Plafonul de două lucrări pe ediție de conferință se aplică împreună cu I9.",
   "formula": "S/N",
   "domain": {
    "$ref": "domains",
@@ -1947,6 +1969,7 @@
    "$oid": "6a5d066bc4aec775c522d9e6"
   },
   "name": "Psiho_I12",
+  "description": "Indicatorul I12 (Anexa 28, alte realizări): cărți publicate, ca autor sau co-autor, la edituri clasificate B (alte edituri recunoscute). Punctaj 12 × m / n cu m = 0,5, adică 6 / n, unde n este numărul de autori. Încadrarea editurii urmează lista platformei pentru domeniul Psihologie; editurile A1/A2 sunt punctate la I3/I7.",
   "formula": "category=='B' && docType=='bk' ? 12*S/N : 0",
   "domain": {
    "$ref": "domains",
@@ -1975,6 +1998,7 @@
    "$oid": "6a5d066bc4aec775c522d9e7"
   },
   "name": "Psiho_I13",
+  "description": "Indicatorul I13 (Anexa 28, alte realizări): capitole în cărți publicate, ca autor sau co-autor, la edituri clasificate B. Punctaj 3 × m / n cu m = 0,5, adică 1,5 / n, unde n este numărul de autori. Capitolele la edituri A1/A2 sunt punctate la I4/I8.",
   "formula": "category=='B' && docType=='ch' ? 3*S/N : 0",
   "domain": {
    "$ref": "domains",
@@ -2003,6 +2027,7 @@
    "$oid": "6a5d06c2c4aec775c522d9e8"
   },
   "name": "Psiho_I17",
+  "description": "Indicatorul I17 (Anexa 28, vizibilitate și impact): alte citări ale publicațiilor candidatului, în afara celor deja punctate la I16, cu excluderea autocitărilor. Fișa punctează m / 10 după sursa citării: lucrări A1 (m = 3), lucrări A2 sau baza de date Scopus (m = 1), lucrări B sau alte surse identificabile prin Google Scholar (m = 0,5). Platforma nu poate distinge automat nivelul lucrării care citează și aplică nivelul I17.2: 0,1 puncte pentru fiecare citare din Scopus sau OpenAlex care nu apare într-o revistă WoS; citările din lucrări A1 (0,3) se pot corecta manual în fișă.",
   "formula": "S > 0 ? 0 : 0.1",
   "domain": {
    "$ref": "domains",
@@ -2031,6 +2056,7 @@
    "$oid": "6a5d0724c4aec775c522d9e9"
   },
   "name": "Psiho_I2",
+  "description": "Indicatorul I2 (Anexa 28, autor principal): articole in extenso în reviste WoS cu IF sub pragul p = 1,00, sau în reviste neindexate WoS dar indexate în cel puțin două baze de date internaționale recunoscute (una în format full-text). Punctaj: 3 + IF pentru revistele WoS (inclusiv ESCI; când anul publicării nu are IF se folosește ultima valoare cunoscută), respectiv 3 puncte pentru revistele indexate în cel puțin două dintre Scopus, DOAJ și ERIH Plus. O lucrare este punctată o singură dată: dacă îndeplinește condițiile I1 apare acolo și este marcată «punctată la un indicator mai strict» aici. Se consideră primul autor.",
   "formula": "S",
   "domain": {
    "$ref": "domains",
@@ -2059,6 +2085,7 @@
    "$oid": "6a5d0724c4aec775c522d9ea"
   },
   "name": "Psiho_I6",
+  "description": "Indicatorul I6 (Anexa 28, co-autor): perechea lui I2 pentru lucrările la care candidatul nu este primul autor — reviste WoS cu IF sub prag sau reviste indexate în cel puțin două baze de date internaționale recunoscute. Punctaj (3 + IF) / n pentru revistele WoS (inclusiv ESCI, cu ultima valoare IF cunoscută dacă anul lipsește), respectiv 3 / n pentru revistele indexate în cel puțin două dintre Scopus, DOAJ și ERIH Plus. O lucrare punctată la I5 nu se mai punctează aici.",
   "formula": "S/N",
   "domain": {
    "$ref": "domains",
