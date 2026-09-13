@@ -2,6 +2,34 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H94 Indicator descriptions from the standards text (archived 2026-09-14)
+
+Archived from `TASKS.md`. Mechanism shipped 2026-07-27 (`Indicator.description`, committed `indicator-descriptions/*.json` matched by name, `POST /admin/indicators/descriptions/apply`, admin-form round-trip, sibling render in the drilldown). Content landed per domain: Info 36 (both fișe), FEAA 20, Matematică 8+7, Fizică 2026 13, Psihologie 14, eligibility reports 13 (PD 2026, the earlier PD check, Tinere Echipe). Applied in prod 2026-09-14 on image `7c6f065d`: 113 of 114 indicators described, the only exception being the sample `Arte_exemplu_event`. Seed carries the same texts. A new indicator needs a JSON entry + apply after release; unmatched names on either side are reported by the endpoint.
+
+- [x] `H94` Indicator descriptions from the standards text.
+  **RAISED + S1 DONE locally 2026-07-27 (user ask).** A researcher opening the drilldown saw an indicator
+  NAME and a number; everything explaining the rule lived in the OM PDF. Now `Indicator.description`
+  renders under the indicator header — static and server-side, deliberately a SIBLING of the JS-owned
+  `.indicator-detail-content` (the dashboard replaces that div's innerHTML on every detail load; pinned by
+  a contract test that anchors on class attributes after a first version matched its own comment).
+  Round-tripped through the admin `IndicatorForm` (the persisted-only-fields wipe trap the form itself
+  documents) with an edit textarea. Content: **36 FV Info descriptions** (both fișe), grounded in the
+  actual standards text — `data/standards/2026/standarde-conf-2025.html` for 2026, the 2016 PDF for 2016 —
+  covering categories/points, the max(1, n−2) divisor, and the gates that most often explain a surprising
+  score (workshop reduction, fee-journal exclusion, the D(ix) 24-point and D(x)/D(xiv) 10% caps; 2016 vs
+  2026 differences kept distinct: LNCS-only vs ACM/EPTCS/LNCS, one-category-lower vs C-mapping for
+  workshops, UEFISCDI zones vs WoS quartiles, books A=16 vs 12). Shipped as committed
+  `indicator-descriptions/info.json` + `POST /admin/indicators/descriptions/apply?dryRun=` (data-after-code,
+  own controller to dodge the constructor-arg slice trap); unmatched names on either side are REPORTED.
+  Applied + verified live on agent-dev (36/36 matched; renders under the header; collapse hides/restores
+  it). Seed synced (36 of 74). FEAA (20, `feaa.json`), Matematică (8+7) and Fizică 2026 (13) followed under H97/H98 and are
+  applied in prod. **2026-09-13: content complete** — `psihologie.json` (14, FV Psihologie 2016: Anexa 28 rules
+  with the platform readings stated: «autor principal» = primul autor, I2/I6 BDI ladder, I9/I10 per-edition
+  cap, I17 ≈ 0,1/citare) and `eligibilitate-granturi.json` (13: PD 2026 director/mentor conditions, the
+  earlier JIF-based PD check marked as superseded, Tinere Echipe Q1/Q2). Every prod indicator has a
+  description except the sample `Arte_exemplu_event`; seed carries 113/114. **Left:** prod apply after the
+  next release (`POST /admin/indicators/descriptions/apply`, expect 27 updated / 0 unmatched) — then close.
+
 ## H106 Citations round 2 — Florin Fortiș's review of Alexandra Fortiș's FV Info 2026 export (archived 2026-09-13)
 
 Archived from `TASKS.md`. All seven slices shipped and in prod (`206dbcdb`, core + scopus-python): S1 inline-string template writes, S2 one stacked `C-Citari` sheet, S3 forum/year/authors from slim run slices, S4 DOI links everywhere, S5 Scopus reference-title pass (12 new links on Alexandra's FULL sync, 3 unverified hits rejected; thin-record heal), S6 evidence-first Lecture Notes floor via Crossref series (5,078 series backfilled, daily sweep), S7 answered (rule is already perspectiva c; the gap was source coverage). Both replies sent 2026-09-13. Data follow-ups need no code: Alexandra's next FULL citations sync heals the Energy Research citation to A/8; the AISC citation turns D after the 03:20 sweep. Spin-offs registered as `H107` (user-asserted / BibTeX citation import; review queue for unverified REFTITLE hits).

@@ -115,30 +115,6 @@ Done history moved to `TASKS-done.md`.
     full WoS citation graph (all citing venues) needs a programmatic Core-Collection pull (UI Records export caps
     ~1,000/file). Revisit when an Expanded/Starter API key is available.
 
-- [ ] `H94` Indicator descriptions from the standards text.
-  **RAISED + S1 DONE locally 2026-07-27 (user ask).** A researcher opening the drilldown saw an indicator
-  NAME and a number; everything explaining the rule lived in the OM PDF. Now `Indicator.description`
-  renders under the indicator header — static and server-side, deliberately a SIBLING of the JS-owned
-  `.indicator-detail-content` (the dashboard replaces that div's innerHTML on every detail load; pinned by
-  a contract test that anchors on class attributes after a first version matched its own comment).
-  Round-tripped through the admin `IndicatorForm` (the persisted-only-fields wipe trap the form itself
-  documents) with an edit textarea. Content: **36 FV Info descriptions** (both fișe), grounded in the
-  actual standards text — `data/standards/2026/standarde-conf-2025.html` for 2026, the 2016 PDF for 2016 —
-  covering categories/points, the max(1, n−2) divisor, and the gates that most often explain a surprising
-  score (workshop reduction, fee-journal exclusion, the D(ix) 24-point and D(x)/D(xiv) 10% caps; 2016 vs
-  2026 differences kept distinct: LNCS-only vs ACM/EPTCS/LNCS, one-category-lower vs C-mapping for
-  workshops, UEFISCDI zones vs WoS quartiles, books A=16 vs 12). Shipped as committed
-  `indicator-descriptions/info.json` + `POST /admin/indicators/descriptions/apply?dryRun=` (data-after-code,
-  own controller to dodge the constructor-arg slice trap); unmatched names on either side are REPORTED.
-  Applied + verified live on agent-dev (36/36 matched; renders under the header; collapse hides/restores
-  it). Seed synced (36 of 74). FEAA (20, `feaa.json`), Matematică (8+7) and Fizică 2026 (13) followed under H97/H98 and are
-  applied in prod. **2026-09-13: content complete** — `psihologie.json` (14, FV Psihologie 2016: Anexa 28 rules
-  with the platform readings stated: «autor principal» = primul autor, I2/I6 BDI ladder, I9/I10 per-edition
-  cap, I17 ≈ 0,1/citare) and `eligibilitate-granturi.json` (13: PD 2026 director/mentor conditions, the
-  earlier JIF-based PD check marked as superseded, Tinere Echipe Q1/Q2). Every prod indicator has a
-  description except the sample `Arte_exemplu_event`; seed carries 113/114. **Left:** prod apply after the
-  next release (`POST /admin/indicators/descriptions/apply`, expect 27 updated / 0 unmatched) — then close.
-
 - [ ] `H50` Individual report export / read-only score-verification import.
   **STATUS (2026-06-30): mostly done — H62/H65 overtook most of the "remaining" list. The genuine gap is docx *import*
   verification (H50.6). Entry below refreshed.**
