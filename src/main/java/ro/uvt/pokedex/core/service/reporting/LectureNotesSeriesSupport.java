@@ -72,6 +72,10 @@ public final class LectureNotesSeriesSupport {
             return false;
         }
         String normalized = name.toLowerCase(Locale.ROOT);
-        return normalized.contains("lecture notes in ") || normalized.contains("lecture notes on ");
+        // "of": LNICST — "Lecture Notes of the Institute for Computer Sciences, Social Informatics and
+        // Telecommunications Engineering" (40 papers in prod after the S6 backfill; part of the decided family).
+        return normalized.contains("lecture notes in ")
+                || normalized.contains("lecture notes on ")
+                || normalized.contains("lecture notes of ");
     }
 }

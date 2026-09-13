@@ -120,6 +120,19 @@ class ComputerScienceConferenceScoringServiceLncsFloorTest {
                 score.getScoringInfo().get("lncsFloorEvidence"));
     }
 
+    @Test
+    void lnicstIsPartOfTheFamilyAndOtherSpringerSeriesAreNot() {
+        assertEquals(true, LectureNotesSeriesSupport.isLectureNotesSeriesName(
+                "Lecture Notes of the Institute for Computer Sciences, Social Informatics and Telecommunications Engineering"));
+        assertEquals(true, LectureNotesSeriesSupport.isLectureNotesSeriesName("Lecture Notes in Networks and Systems"));
+        assertEquals(true, LectureNotesSeriesSupport.isLectureNotesSeriesName("Lecture Notes on Data Engineering and Communications Technologies"));
+        for (String other : List.of("Communications in Computer and Information Science", "Advances in Intelligent Systems and Computing",
+                "Smart Innovation, Systems and Technologies", "IFIP Advances in Information and Communication Technology",
+                "Studies in Computational Intelligence", "Springer Proceedings in Business and Economics", "Springer Theses")) {
+            assertEquals(false, LectureNotesSeriesSupport.isLectureNotesSeriesName(other), other);
+        }
+    }
+
     private static ScoringPublication springerPaper(String id, String forumId) {
         return new ScoringPublication(id, null, forumId, "2023-01-01", "cp", "cp", List.of(), 0,
                 "https://doi.org/10.1007/978-3-642-35326-0_26", null, "Web Service Based Approach for Viral Hepatitis Ontology Sharing", 0, Set.of());
