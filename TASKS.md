@@ -96,6 +96,14 @@ Done history moved to `TASKS-done.md`.
     failures reported in the message, never failing the EID pass); `CitedWorkKey` — `citedEid` holds an EID,
     `doi:<doi>` or a canonical id, resolved by BOTH canon paths (incremental canonicaliser + V2 graph
     builder; real-Mongo integration test). No review queue yet: unverified hits are logged and counted only.
+    **Prod result 2026-09-13 (Alexandra FULL sync):** 12 new links — both citations of the ontologies arXiv
+    paper, FSI, ICINCO (via the *Correction* record), CS&I, Energy Research; 3 unverified hits correctly
+    rejected. Still absent: the EMAC Insights chapter and PLoP — not Scopus documents at all (candidates for
+    a user-asserted citation import; Florin suggests BibTeX). Follow-up fix: a fresh hit's search row can
+    lack venue/authors → forum-less record scored D (Energy Research Q1 should be A/8 — the 2026 B/C
+    indicators carry NO domain, any WoS journal scores by best quartile): enrichment now fills venue from
+    the FULL record + logs failures, and a thin citing record is no longer "known" so the next sync
+    re-fetches it. NOTE from the same round: the FV Info 2026 fișă has no CS category list.
   - S6 — **DONE 2026-09-13 (decision: wider "Lecture Notes in/on …" family; seam closed).** Measured in prod:
     the floor fired on 992 cached citation rows + 266 own-paper rows; 500 citations sit on DBLP-restamped
     forums (ESOCC/IDC/3PGCIC/NMA/GECON), 304 have no forum, 66 AISC, 28 SIST, 20 CCIS, 14 IFIP. Where it hung:

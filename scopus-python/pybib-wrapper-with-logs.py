@@ -300,6 +300,19 @@ def to_legacy(
     if include_enrichment and eid:
         try:
             ar = AbstractRetrieval(eid, view="FULL")
+            # H106 S5 follow-up: a very fresh document's SEARCH row can miss its venue entirely (seen on a
+            # 2026 reference-title hit: no publicationName/ISSN/authors → forum-less record → scored D).
+            # The FULL record carries the venue; fill it the same way the other blanks are filled.
+            if not publicationName:
+                publicationName = getattr(ar, "publicationName", "") or ""
+            if not issn:
+                issn = getattr(ar, "issn", "") or ""
+            if not eIssn:
+                eIssn = getattr(ar, "eIssn", "") or ""
+            if not source_id:
+                source_id = str(getattr(ar, "source_id", "") or "")
+            if not aggregationType:
+                aggregationType = getattr(ar, "aggregationType", "") or ("Journal" if (issn or eIssn) else "")
 
             if not subtypeDescription:
                 subtypeDescription = getattr(ar, "subtypeDescription", "") or subtypeDescription
@@ -370,9 +383,9 @@ def to_legacy(
                     fund_acr = str(getattr(f0, "acronym", "") or "")
                     fund_no = str(getattr(f0, "number", "") or "")
                     fund_sponsor = str(getattr(f0, "sponsor", "") or getattr(f0, "agency", "") or "")
-        except Exception:
-            # swallow enrichment errors; return what we have
-            pass
+        except Exception as ex:
+            # return what we have — but say so: a silent miss here is how venue-less records reach the corpus
+            logger.warning("Enrichment failed for %s (record kept as searched): %s", eid, ex)
 
     # Make sure issn/eIssn are strings before replace
     issn_str = str(issn) if issn is not None else ""

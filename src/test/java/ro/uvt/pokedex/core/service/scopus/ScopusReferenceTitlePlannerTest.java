@@ -37,6 +37,7 @@ class ScopusReferenceTitlePlannerTest {
         ScholardexPublicationView cited = pub("spub_1", "2-s2.0-1", null, "Considerations on Construction Ontologies");
         ScholardexPublicationView citingA = pub("spub_a", "2-s2.0-a", null, "Citing A");
         citingA.setCoverDate("2017-01-01");
+        citingA.setForum("sforum_a");
         ScholardexPublicationView citingB = pub("spub_b", null, "10.1/b", "Citing B (OpenAlex only)");
         citingB.setCoverDate("2019-06-15");
 
@@ -47,6 +48,23 @@ class ScopusReferenceTitlePlannerTest {
         CitationsByTitleRequest.CitedWorkSpec spec = items.get("2-s2.0-1");
         assertThat(spec.getKnownCitingEids()).containsExactly("2-s2.0-a");
         assertThat(spec.getFromDate()).isEqualTo("2019-06-15");
+    }
+
+    @Test
+    void aThinCitingRecordIsNotKnownSoTheNextSyncRefetchesIt() {
+        ScholardexPublicationView cited = pub("spub_1", "2-s2.0-1", null, "Some Bibliometric Considerations for Computer Science");
+        ScholardexPublicationView thin = pub("spub_t", "2-s2.0-thin", "10.1155/er/1982938", "Optimized Electric Ferry Charging");
+        thin.setForum(null);
+        thin.setAuthors(List.of());
+        ScholardexPublicationView full = pub("spub_f", "2-s2.0-full", null, "A complete citing record");
+        full.setForum("sforum_x");
+        full.setAuthors(List.of("sauth_1"));
+
+        Map<String, CitationsByTitleRequest.CitedWorkSpec> items = planner.buildItems(
+                List.of(cited), List.of(cite("spub_1", "spub_t"), cite("spub_1", "spub_f")),
+                List.of(thin, full), List.of(), new ScopusCitationsUpdate());
+
+        assertThat(items.get("2-s2.0-1").getKnownCitingEids()).containsExactly("2-s2.0-full");
     }
 
     @Test

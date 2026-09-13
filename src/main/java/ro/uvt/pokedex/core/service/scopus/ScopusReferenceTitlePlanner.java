@@ -92,7 +92,10 @@ final class ScopusReferenceTitlePlanner {
             for (ScholardexCitationView c : citationsByCitedId.getOrDefault(publication.getId(), List.of())) {
                 ScholardexPublicationView citing = citingById.get(c.getCitingId());
                 if (citing == null) continue;
-                if (citing.getEid() != null && !citing.getEid().isBlank()) {
+                // A citing record that came in THIN (no venue, no authors — a fresh Scopus document whose
+                // search row was incomplete) is not "known": leaving it out lets the next sync re-fetch and
+                // re-enrich it, which is how a venue-less D heals into the journal's real category.
+                if (citing.getEid() != null && !citing.getEid().isBlank() && !isThin(citing)) {
                     knownEids.add(citing.getEid().trim());
                 }
                 Optional<LocalDate> date = publicationPlanner.parseCoverDate(citing.getCoverDate());
@@ -108,6 +111,12 @@ final class ScopusReferenceTitlePlanner {
             items.put(key, spec);
         }
         return items;
+    }
+
+    static boolean isThin(ScholardexPublicationView p) {
+        boolean noForum = p.getForum() == null || p.getForum().isBlank();
+        boolean noAuthors = p.getAuthors() == null || p.getAuthors().isEmpty();
+        return noForum && noAuthors;
     }
 
     /** Same sync-mode semantics as {@link ScopusCitationSyncPlanner#resolveEidLastDates}. */
