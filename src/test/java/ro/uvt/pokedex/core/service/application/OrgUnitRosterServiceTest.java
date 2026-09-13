@@ -110,6 +110,22 @@ class OrgUnitRosterServiceTest {
         return a;
     }
 
+    @Test
+    void staffRosterDropsExternalCandidatesButAllScopeKeepsThem() {
+        when(departmentAffiliationRepository.findByDepartmentIdAndValidToIsNull("dept-scia"))
+                .thenReturn(List.of(affiliation("dept-scia", "ana@uvt.ro"), affiliation("dept-scia", "cand@ext.ro")));
+        User candidate = user("cand@ext.ro", "Candidate");
+        candidate.setAccountKind(ro.uvt.pokedex.core.model.user.AccountKind.EXTERNAL);
+        when(userRepository.findAllById(any())).thenReturn(List.of(user("ana@uvt.ro", "Ana"), candidate));
+
+        List<OrgUnitRosterService.RosterMember> staff = rosterService.departmentRoster("dept-scia");
+        assertEquals(List.of("ana@uvt.ro"), staff.stream().map(m -> m.user().getEmail()).toList());
+
+        List<OrgUnitRosterService.RosterMember> all =
+                rosterService.departmentRoster("dept-scia", OrgUnitRosterService.RosterScope.ALL);
+        assertEquals(List.of("ana@uvt.ro", "cand@ext.ro"), all.stream().map(m -> m.user().getEmail()).toList());
+    }
+
     private static User user(String email, String firstName) {
         User u = new User();
         u.setEmail(email);

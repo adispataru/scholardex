@@ -151,6 +151,9 @@
                                             </span>
                                             <span th:unless="${user.locked}"
                                                   class="app-table-badge app-table-badge--success">Active</span>
+                                            <span th:if="${user.external}"
+                                                  class="app-table-badge app-table-badge--warning"
+                                                  title="External candidate: never counted in department numbers, RESEARCHER only">External</span>
                                         </td>
 
                                         <!-- Actions -->
@@ -174,6 +177,18 @@
                                                     <i class="fa-solid fa-pen fa-xs" aria-hidden="true"></i>
                                                 </button>
 
+                                                <!-- H105: institutional / external candidate toggle -->
+                                                <form th:action="@{/admin/users/account-kind/{email}(email=${user.email})}"
+                                                      method="post" style="display:inline;">
+                                                    <input type="hidden" name="kind"
+                                                           th:value="${user.external} ? 'INSTITUTIONAL' : 'EXTERNAL'">
+                                                    <button type="submit"
+                                                            class="app-admin-icon-btn"
+                                                            th:attr="aria-label=${user.external} ? 'Mark as institutional staff' : 'Mark as external candidate',
+                                                                     title=${user.external} ? 'Mark as institutional staff' : 'Mark as external candidate'">
+                                                        <i class="fa-solid fa-xs" th:classappend="${user.external} ? 'fa-building' : 'fa-user-tag'" aria-hidden="true"></i>
+                                                    </button>
+                                                </form>
                                                 <!-- Lock / Unlock -->
                                                 <form th:if="${!user.locked}"
                                                       th:action="@{/admin/users/lock/{email}(email=${user.email})}"

@@ -69,6 +69,29 @@ class SupervisorRosterControllerContractTest {
     }
 
     @Test
+    void rosterBadgesExternalCandidatesAndLeavesStaffUnbadged() throws Exception {
+        Department dept = new Department();
+        dept.setId("dept-scia");
+        dept.setName("SCIA");
+        when(departmentReportFacade.findDepartment("dept-scia")).thenReturn(Optional.of(dept));
+        when(departmentAffiliationService.listCurrentAffiliations("dept-scia"))
+                .thenReturn(List.of(affiliation("ana@uvt.ro"), affiliation("cand@ext.ro")));
+        User candidate = researcher("cand@ext.ro", "Candidate");
+        candidate.setAccountKind(ro.uvt.pokedex.core.model.user.AccountKind.EXTERNAL);
+        when(userService.findUsersWithResearcherProfile())
+                .thenReturn(List.of(researcher("ana@uvt.ro", "Ana"), candidate));
+
+        String html = mockMvc.perform(get("/supervisor/departments/dept-scia/members")
+                        .with(user("head@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        // H105 S2: the external candidate is listed (the head evaluates them) but marked; staff are not.
+        org.junit.jupiter.api.Assertions.assertEquals(1,
+                html.split("Candidat extern", -1).length - 1, "exactly one external badge");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("cand@ext.ro") && html.contains("ana@uvt.ro"));
+    }
+
+    @Test
     void addForwardsToTheServiceAndRedirectsBack() throws Exception {
         when(departmentAffiliationService.addMember("dept-cs", "bob@uvt.ro")).thenReturn(true);
 

@@ -184,10 +184,13 @@ public class OrgUnitReportRefreshService {
 
     private List<OrgUnitRosterService.RosterMember> resolveRoster(
             OrgUnitReportRefreshEvent.UnitType unitType, String unitId) {
+        // H105: external candidates are refreshed too — they are excluded from the unit's NUMBERS, not
+        // from being kept current for the head who evaluates them.
+        OrgUnitRosterService.RosterScope scope = OrgUnitRosterService.RosterScope.ALL;
         return switch (unitType) {
-            case DIVISION -> orgUnitRosterService.divisionRoster(unitId);
-            case DEPARTMENT -> orgUnitRosterService.departmentRoster(unitId);
-            case GROUP -> orgUnitRosterService.groupRoster(unitId);
+            case DIVISION -> orgUnitRosterService.divisionRoster(unitId, scope);
+            case DEPARTMENT -> orgUnitRosterService.departmentRoster(unitId, scope);
+            case GROUP -> orgUnitRosterService.groupRoster(unitId, scope);
         };
     }
 

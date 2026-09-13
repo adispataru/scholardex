@@ -79,6 +79,14 @@ public class UserService {
         eventPublisher.publishEvent(new UserDeactivatedEvent(email, "deleted"));
     }
 
+    /** H105: mark an account institutional or external (admin action; S1 will also stamp it from the token). */
+    public void setAccountKind(String email, ro.uvt.pokedex.core.model.user.AccountKind kind) {
+        userRepository.findById(email).ifPresent(user -> {
+            user.setAccountKind(kind == null ? ro.uvt.pokedex.core.model.user.AccountKind.INSTITUTIONAL : kind);
+            userRepository.save(user);
+        });
+    }
+
     public void lockUser(String email) {
         userRepository.findById(email).ifPresent(user -> {
             user.setLocked(true);

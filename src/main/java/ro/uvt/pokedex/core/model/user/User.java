@@ -40,19 +40,36 @@ public class User implements UserDetails {
      */
     private String preferredLanguage;
 
+    /**
+     * H105: institutional staff or an external candidate. Absent on pre-H105 documents, which
+     * Mongo leaves at the field default, so every existing user is INSTITUTIONAL.
+     */
+    private AccountKind accountKind = AccountKind.INSTITUTIONAL;
+
     @Transient
     private List<SimpleGrantedAuthority> authority;
     private boolean locked = false;
 
+    /**
+     * H105: an EXTERNAL account can only ever act as a RESEARCHER — supervisor and admin roles are
+     * dropped at the authority level, whichever way the account was authenticated, so the org-unit
+     * and admin surfaces stay closed even if a role is granted by mistake.
+     */
     @NonNull
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (authority == null) {
             authority = roles.stream()
+                    .filter(role -> !isExternal() || role == UserRole.RESEARCHER)
                     .map(role -> new SimpleGrantedAuthority(role.name()))
                     .collect(Collectors.toList());
         }
         return authority;
+    }
+
+    /** True for an external candidate account; null-safe for documents written before H105. */
+    public boolean isExternal() {
+        return accountKind == AccountKind.EXTERNAL;
     }
 
     @NonNull

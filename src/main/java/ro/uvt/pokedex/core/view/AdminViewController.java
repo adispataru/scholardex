@@ -876,6 +876,14 @@ public class AdminViewController {
         return "redirect:/forums?wos=indexed";
     }
 
+    /** H105: toggle an account between institutional staff and external candidate. */
+    @PostMapping("/users/account-kind/{email}")
+    public String setAccountKind(@PathVariable String email,
+                                 @RequestParam("kind") ro.uvt.pokedex.core.model.user.AccountKind kind) {
+        userService.setAccountKind(email, kind);
+        return "redirect:/admin/users";
+    }
+
     @PostMapping("/users/lock/{email}")
     public String lockUser(@PathVariable String email) {
         userService.lockUser(email);

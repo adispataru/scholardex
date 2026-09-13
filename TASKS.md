@@ -31,7 +31,21 @@ Done history moved to `TASKS-done.md`.
     `account_kind`) claim; `KeycloakOAuth2LoginSuccessHandler` stamps `User.accountKind`
     INSTITUTIONAL|EXTERNAL at provisioning (absent claim → INSTITUTIONAL, so UVT tokens are unchanged)
     plus `User.validUntil` for externals — login locks the account once passed (supervisor view stays).
-  - S2 — "applicant affiliation" (DECIDED over per-user report assignment): the external candidate gets
+  - S2 — **BUILT 2026-09-14 (decisions: user-level marker set by admin; roll-ups exclude, refresh includes).**
+    `AccountKind` INSTITUTIONAL|EXTERNAL on `User` (field default → every pre-H105 doc is institutional);
+    `User.getAuthorities()` keeps only RESEARCHER for EXTERNAL, so supervisor/admin surfaces are closed at
+    the authority level whichever way the account authenticates (the org-unit surfaces are all under
+    `/admin/**` and `/supervisor/**`; the "global landing" is public, nothing to hide). `OrgUnitRosterService`
+    gets a `RosterScope` — STAFF (default, drops externals: division/department/group roll-ups, comparison,
+    promotion board, cockpit strip and unit rows all go through it) vs ALL (only the batch refresh, so the
+    candidate's run stays current for the head). The supervisor department roster lists the candidate with a
+    "Candidat extern" badge; admin Users page shows an "External" badge + a toggle
+    (`POST /admin/users/account-kind/{email}?kind=`). Provisional scoring reads affiliations directly and still
+    includes the candidate. Tests: roster scope, authorities, roster-page badge, refresh stubs. Ops after
+    deploy: mark Drăgoi EXTERNAL (mongosh or the admin toggle) and delete his stray zero FV Matematică run.
+    Deferred: an affiliation-level APPLICANT kind for the internal-candidate-to-another-department case
+    (none seen yet). Original text of the slice follows.
+    "applicant affiliation" (DECIDED over per-user report assignment): the external candidate gets
     a `department_affiliations` row for the TARGET department, so fișe resolve through the normal
     division-selection path and that department's head + dean see him as supervisors. Required
     counterpart: EXCLUDE EXTERNAL accounts from department/division roll-ups and batch refresh; hide the

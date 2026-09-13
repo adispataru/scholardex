@@ -104,7 +104,12 @@
                                     </thead>
                                     <tbody>
                                     <tr th:each="u : ${members}">
-                                        <td th:text="${u.researcherProfile != null and u.researcherProfile.name != null and !#strings.isEmpty(u.researcherProfile.name) ? u.researcherProfile.name : '—'}">Name</td>
+                                        <td>
+                                            <span th:text="${u.researcherProfile != null and u.researcherProfile.name != null and !#strings.isEmpty(u.researcherProfile.name) ? u.researcherProfile.name : '—'}">Name</span>
+                                            <span th:if="${u.external}" class="badge badge-warning ml-1"
+                                                  th:title="#{supervisor.roster.external.title}"
+                                                  th:text="#{supervisor.roster.external}">External candidate</span>
+                                        </td>
                                         <td><span class="text-muted" th:text="${u.email}">email</span></td>
                                         <td>
                                             <form th:action="@{/supervisor/departments/{id}/members/position(id=${departmentId})}"

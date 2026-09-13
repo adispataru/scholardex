@@ -60,7 +60,7 @@ class OrgUnitReportRefreshServiceTest {
         ReportingDataEpoch epoch = new ReportingDataEpoch();
         epoch.setUpdatedAt(Instant.parse("2026-07-01T00:00:00Z"));
         when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.of(epoch));
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(
                 member("norun@uvt.ro"), member("stale@uvt.ro"), member("fresh@uvt.ro")));
         when(userIndividualReportRunRepository
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("norun@uvt.ro", "rep-1"))
@@ -90,7 +90,7 @@ class OrgUnitReportRefreshServiceTest {
         ReportingDataEpoch epoch = new ReportingDataEpoch();
         epoch.setUpdatedAt(Instant.parse("2026-07-01T00:00:00Z"));
         when(reportingDataEpochService.currentEpochInfo()).thenReturn(Optional.of(epoch));
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(member("fresh@uvt.ro")));
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(member("fresh@uvt.ro")));
         when(userIndividualReportRunRepository
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("fresh@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(run(Instant.parse("2026-07-02T00:00:00Z"), false)));
@@ -105,7 +105,7 @@ class OrgUnitReportRefreshServiceTest {
 
     @Test
     void provisionalLatestRunsAreNeverRefreshed() {
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(member("prov@uvt.ro")));
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(member("prov@uvt.ro")));
         when(userIndividualReportRunRepository
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("prov@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(run(Instant.parse("2026-07-02T00:00:00Z"), true)));
@@ -121,7 +121,7 @@ class OrgUnitReportRefreshServiceTest {
 
     @Test
     void aFailingMemberDoesNotStopTheBatch() {
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(
                 member("boom@uvt.ro"), member("ok@uvt.ro")));
         when(userIndividualReportRunRepository
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(any(), eq("rep-1")))
@@ -140,7 +140,7 @@ class OrgUnitReportRefreshServiceTest {
 
     @Test
     void everyBatchPersistsAnAuditEventWithTheCounts() {
-        when(orgUnitRosterService.divisionRoster("div-fmi")).thenReturn(List.of(member("ana@uvt.ro")));
+        when(orgUnitRosterService.divisionRoster("div-fmi", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(member("ana@uvt.ro")));
         when(userIndividualReportRunRepository
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
                 .thenReturn(Optional.empty());
@@ -163,7 +163,7 @@ class OrgUnitReportRefreshServiceTest {
 
     @Test
     void refreshAllRecordsConfirmedModeOnItsEvent() {
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(member("ana@uvt.ro")));
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(member("ana@uvt.ro")));
         when(userIndividualReportRunRepository
                 .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc("ana@uvt.ro", "rep-1"))
                 .thenReturn(Optional.empty());
@@ -178,7 +178,7 @@ class OrgUnitReportRefreshServiceTest {
 
     @Test
     void provisionalScoringSkipsMembersWithConfirmedPublications() {
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(
                 member("confirmed@uvt.ro"), member("unlinked@uvt.ro")));
         when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("confirmed@uvt.ro"))
                 .thenReturn(true);
@@ -202,7 +202,7 @@ class OrgUnitReportRefreshServiceTest {
 
     @Test
     void membersWithoutResolvableIdentifiersAreReportedNotScored() {
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(member("noids@uvt.ro")));
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(member("noids@uvt.ro")));
         when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("noids@uvt.ro")).thenReturn(false);
         when(profileLinkedAuthorResolutionService.resolveCanonicalAuthorIds(any())).thenReturn(List.of());
 
@@ -218,7 +218,7 @@ class OrgUnitReportRefreshServiceTest {
     @Test
     void provisionalScoringAlwaysRescoresCandidatesAndIsolatesFailures() {
         // boom's scoring explodes; ok has a provisional-latest run already — still re-scored.
-        when(orgUnitRosterService.departmentRoster("dept-cs")).thenReturn(List.of(
+        when(orgUnitRosterService.departmentRoster("dept-cs", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(
                 member("boom@uvt.ro"), member("ok@uvt.ro")));
         when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring(any())).thenReturn(false);
         when(profileLinkedAuthorResolutionService.resolveCanonicalAuthorIds(any()))
@@ -239,7 +239,7 @@ class OrgUnitReportRefreshServiceTest {
 
     @Test
     void provisionalBatchPersistsAnEventWithModeAndCounts() {
-        when(orgUnitRosterService.divisionRoster("div-fmi")).thenReturn(List.of(
+        when(orgUnitRosterService.divisionRoster("div-fmi", OrgUnitRosterService.RosterScope.ALL)).thenReturn(List.of(
                 member("confirmed@uvt.ro"), member("scored@uvt.ro"), member("noids@uvt.ro")));
         when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("confirmed@uvt.ro")).thenReturn(true);
         when(effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring("scored@uvt.ro")).thenReturn(false);
