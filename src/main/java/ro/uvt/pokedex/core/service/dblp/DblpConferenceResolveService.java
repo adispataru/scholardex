@@ -100,12 +100,30 @@ public class DblpConferenceResolveService {
     public ImportProcessingResult resolve(Collection<ScholardexPublicationFact> publications) {
         ImportProcessingResult result = new ImportProcessingResult(20);
         List<ScholardexPublicationFact> candidates = candidateDetector.detect(publications);
-        for (ScholardexPublicationFact pub : candidates) {
+        for (int i = 0; i < candidates.size(); i++) {
+            ScholardexPublicationFact pub = candidates.get(i);
             result.markProcessed();
-            resolveOne(pub, result);
+            try {
+                resolveOne(pub, result);
+            } catch (DblpUnavailableException e) {
+                // DBLP is throttling us: stop the batch instead of hammering every next query. The candidates not
+                // attempted stay unresolved (forumId null), so the detector picks them up again on the next sync.
+                result.markError("dblp-unavailable pub=" + pub.getId() + ": " + e.getMessage());
+                List<ScholardexPublicationFact> rest = candidates.subList(i + 1, candidates.size());
+                for (ScholardexPublicationFact skipped : rest) {
+                    result.markProcessed();
+                    result.markError("dblp-unavailable pub=" + skipped.getId() + " (batch stopped)");
+                }
+                log.warn("DBLP conference resolve stopped early: {} — {} of {} candidates not attempted",
+                        e.getMessage(), rest.size(), candidates.size());
+                break;
+            } catch (DblpLookupException e) {
+                // One lookup failed (timeout, I/O, bad body): counted, not silent; the candidate is retried next sync.
+                result.markError("dblp-lookup-failed pub=" + pub.getId() + ": " + e.getMessage());
+            }
         }
-        log.info("DBLP conference resolve: candidates={} resolved={} skipped={}",
-                candidates.size(), result.getImportedCount(), result.getSkippedCount());
+        log.info("DBLP conference resolve: candidates={} resolved={} skipped={} lookupErrors={}",
+                candidates.size(), result.getImportedCount(), result.getSkippedCount(), result.getErrorCount());
         return result;
     }
 

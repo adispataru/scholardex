@@ -111,7 +111,9 @@ public class OpenAlexUpdateScheduler {
         task.setMessage("Synced " + workIds.size() + " works (imported=" + result.getImportedCount()
                 + ", linked=" + result.getUpdatedCount() + ", skipped=" + result.getSkippedCount()
                 + ", citationEdges=" + citationResult.getImportedCount()
-                + ", dblpConferences=" + dblpResult.getImportedCount() + ")");
+                + ", dblpCandidates=" + dblpResult.getProcessedCount()
+                + ", dblpConferences=" + dblpResult.getImportedCount()
+                + dblpLookupErrorsSuffix(dblpResult) + ")");
         task.setExecutionDate(Instant.now().toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);
@@ -120,6 +122,18 @@ public class OpenAlexUpdateScheduler {
         log.info("OpenAlex author task {} completed: orcid={} works={} imported={} linked={} skipped={}",
                 task.getId(), task.getOrcid(), workIds.size(),
                 result.getImportedCount(), result.getUpdatedCount(), result.getSkippedCount());
+    }
+
+    /**
+     * DBLP lookups that could not be made (rate-limited/blocked, timeouts) are counted on the task message so a
+     * 0-conference sync is visibly "DBLP unavailable" rather than a silent "no conferences found".
+     */
+    static String dblpLookupErrorsSuffix(ImportProcessingResult dblpResult) {
+        if (dblpResult.getErrorCount() == 0) {
+            return "";
+        }
+        String detail = dblpResult.getErrorsSample().isEmpty() ? "" : " [" + dblpResult.getErrorsSample().getFirst() + "]";
+        return ", dblpLookupErrors=" + dblpResult.getErrorCount() + detail;
     }
 
     private void handleFailure(OpenAlexAuthorUpdate task, Exception exception) {

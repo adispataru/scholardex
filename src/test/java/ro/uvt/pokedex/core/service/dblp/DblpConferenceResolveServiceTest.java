@@ -15,6 +15,8 @@ import ro.uvt.pokedex.core.service.dblp.dto.DblpSearchResponse;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -109,6 +111,48 @@ class DblpConferenceResolveServiceTest {
         verify(evidenceRepository, never()).save(any());
         verify(forumFactRepository, never()).save(any());
         verify(publicationFactRepository, never()).save(any());
+    }
+
+    @Test
+    void stopsTheBatchWhenDblpIsUnavailableAndCountsEveryCandidateNotResolved() {
+        // Prod 2026-09-14: DBLP throttled the sweep with HTML pages; every next candidate must NOT be queried, and
+        // the result must say so rather than reporting a quiet 0 resolved.
+        ScholardexPublicationFact first = pub("p20", "10.1/first");
+        ScholardexPublicationFact second = pub("p21", "10.1/second");
+        ScholardexPublicationFact third = pub("p22", "10.1/third");
+        when(candidateDetector.detect(any())).thenReturn(List.of(first, second, third));
+        when(dblpClient.search("10.1/first")).thenThrow(
+                new DblpUnavailableException("DBLP unavailable: HTML page", java.time.Instant.EPOCH));
+
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result = service.resolve(List.of(first, second, third));
+
+        assertEquals(3, result.getProcessedCount());
+        assertEquals(0, result.getImportedCount());
+        assertEquals(3, result.getErrorCount());
+        assertTrue(result.getErrorsSample().get(0).startsWith("dblp-unavailable pub=p20"));
+        assertTrue(result.getErrorsSample().get(2).contains("batch stopped"));
+        verify(dblpClient, never()).search("10.1/second"); // batch stopped: no hammering of the next queries
+        verify(dblpClient, never()).search("10.1/third");
+        verify(publicationFactRepository, never()).save(any());
+    }
+
+    @Test
+    void aSingleFailedLookupIsCountedAndTheBatchContinues() {
+        ScholardexPublicationFact failing = pub("p30", "10.1/timeout");
+        ScholardexPublicationFact fine = pub("p31", "10.1109/ispdc.2017.31");
+        when(candidateDetector.detect(any())).thenReturn(List.of(failing, fine));
+        when(dblpClient.search("10.1/timeout")).thenThrow(new DblpLookupException("DBLP lookup failed: timeout"));
+        when(dblpClient.search("10.1109/ispdc.2017.31")).thenReturn(List.of(
+                hit("conf/ispdc/Author17", "ISPDC", "10.1109/ISPDC.2017.31", "2017")));
+        when(forumFactRepository.findByDblpIdsContaining("conf/ispdc")).thenReturn(Optional.empty());
+        when(evidenceRepository.findByPublicationId("p31")).thenReturn(Optional.empty());
+
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result = service.resolve(List.of(failing, fine));
+
+        assertEquals(2, result.getProcessedCount());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(1, result.getErrorCount());
+        assertTrue(result.getErrorsSample().get(0).startsWith("dblp-lookup-failed pub=p30"));
     }
 
     @Test
