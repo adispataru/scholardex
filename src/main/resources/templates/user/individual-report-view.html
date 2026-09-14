@@ -83,6 +83,17 @@
                                         th:selected="${r.id == report.id}"></option>
                             </select>
                         </div>
+                        <!-- Preferred report: remembered per user; the evaluation page opens it by default -->
+                        <div class="app-eval-report-switcher app-eval-preferred"
+                             th:if="${#bools.isTrue(preferenceEnabled) and allReports != null and #lists.size(allReports) > 1}">
+                            <span th:if="${#bools.isTrue(isPreferredReport)}" class="app-table-badge app-table-badge--success app-eval-preferred__badge"
+                                  th:title="#{report.view.preferred.badgeHint}" th:text="#{report.view.preferred.badge}">Preferred report</span>
+                            <form th:unless="${#bools.isTrue(isPreferredReport)}" th:action="@{/user/evaluation/preferred}" method="post" class="d-inline">
+                                <input type="hidden" name="report" th:value="${report.id}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary app-eval-preferred__button"
+                                        th:title="#{report.view.preferred.setHint}" th:text="#{report.view.preferred.set}">Set as preferred</button>
+                            </form>
+                        </div>
                         <!-- Position selector: lives next to the report switcher (both pick "what am I looking at").
                              Shown on the DELEGATED view too: a supervisor arrives here from the promotion board,
                              whose entire question is "does this person clear the NEXT position" — hiding the one

@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.model.workspace.WorkspacePreferences;
 import ro.uvt.pokedex.core.repository.EvaluationSnapshotRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.UserService;
@@ -51,6 +52,7 @@ public class EvaluationWorkspaceController {
     private final ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
     private final ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
+    private final ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository workspacePreferencesRepository;
 
     // ── MVC: main evaluation page ────────────────────────────────────────────
 
@@ -69,12 +71,18 @@ public class EvaluationWorkspaceController {
             return "user/individual-report-view";
         }
 
-        String resolvedReportId = (reportId != null && !reportId.isBlank()) ? reportId : reports.get(0).getId();
+        // No explicit report → the user's preferred one (if still visible), else the first visible report.
+        String preferredReportId = preferredReportId(currentUser.getEmail(), reports);
+        String resolvedReportId = (reportId != null && !reportId.isBlank()) ? reportId
+                : preferredReportId != null ? preferredReportId : reports.get(0).getId();
         Optional<IndividualReport> reportOpt = userReportFacade.findIndividualReportById(resolvedReportId);
         if (reportOpt.isEmpty()) {
             return "redirect:/user/evaluation";
         }
         IndividualReport report = reportOpt.get();
+        model.addAttribute("preferenceEnabled", true);
+        model.addAttribute("preferredReportId", preferredReportId);
+        model.addAttribute("isPreferredReport", report.getId().equals(preferredReportId));
         boolean confirmedPublicationScoringWarning =
                 userReportFacade.reportUsesPublicationScoring(report.getId())
                         && !userReportFacade.hasConfirmedPublicationsForScoring(currentUser.getEmail());
@@ -95,6 +103,37 @@ public class EvaluationWorkspaceController {
         model.addAttribute("pendingReviewCount",
                 userPublicationFacade.countPendingAuthorshipReviews(currentUser.getEmail()));
         return "user/individual-report-view";
+    }
+
+    /** The preferred report id when it is set AND still among the user's visible reports; otherwise null. */
+    private String preferredReportId(String userEmail, List<IndividualReport> visibleReports) {
+        return workspacePreferencesRepository.findById(userEmail)
+                .map(WorkspacePreferences::getPreferredReportId)
+                .filter(id -> id != null && !id.isBlank()
+                        && visibleReports.stream().anyMatch(r -> id.equals(r.getId())))
+                .orElse(null);
+    }
+
+    /** Remember the report the evaluation page should open by default, then show it. */
+    @PostMapping("/preferred")
+    public String setPreferredReport(@RequestParam("report") String reportId, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        boolean visible = userReportFacade.buildIndividualReportsListView(currentUser.getEmail())
+                .individualReports().stream().anyMatch(r -> reportId.equals(r.getId()));
+        if (visible) {
+            WorkspacePreferences prefs = workspacePreferencesRepository.findById(currentUser.getEmail())
+                    .orElseGet(() -> {
+                        WorkspacePreferences p = new WorkspacePreferences();
+                        p.setUserEmail(currentUser.getEmail());
+                        return p;
+                    });
+            prefs.setPreferredReportId(reportId);
+            prefs.setUpdatedAt(Instant.now());
+            workspacePreferencesRepository.save(prefs);
+        }
+        return "redirect:/user/evaluation?report=" + reportId;
     }
 
     // ── MVC: refresh actions ─────────────────────────────────────────────────

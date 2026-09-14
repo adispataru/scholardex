@@ -2,6 +2,12 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H108 Preferred evaluation report (done 2026-09-14, same-day feature)
+
+User ask: a researcher picks the fișă the evaluation page should open by default. `WorkspacePreferences.preferredReportId` (per-user doc, null = first visible report as before); `GET /user/evaluation` without `?report=` resolves to it when it is still among the user's visible reports; `POST /user/evaluation/preferred?report=` stores it (ignored for a report the user cannot see) and redirects to that report. Summary band: «Setează ca raport preferat» button on any other report, «Raport preferat» badge on the preferred one; shown only in self mode with more than one report (never on the delegated supervisor view). Contract tests: default resolution, stale preference fallback, set + redirect, invisible report ignored. Verified live under agent-dev (the local agent principal now carries a cloned researcher profile + runs so the summary band renders).
+
+- [x] `H108` Preferred evaluation report — see above.
+
 ## H94 Indicator descriptions from the standards text (archived 2026-09-14)
 
 Archived from `TASKS.md`. Mechanism shipped 2026-07-27 (`Indicator.description`, committed `indicator-descriptions/*.json` matched by name, `POST /admin/indicators/descriptions/apply`, admin-form round-trip, sibling render in the drilldown). Content landed per domain: Info 36 (both fișe), FEAA 20, Matematică 8+7, Fizică 2026 13, Psihologie 14, eligibility reports 13 (PD 2026, the earlier PD check, Tinere Echipe). Applied in prod 2026-09-14 on image `7c6f065d`: 113 of 114 indicators described, the only exception being the sample `Arte_exemplu_event`. Seed carries the same texts. A new indicator needs a JSON entry + apply after release; unmatched names on either side are reported by the endpoint.

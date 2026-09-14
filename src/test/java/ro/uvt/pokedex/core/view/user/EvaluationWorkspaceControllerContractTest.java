@@ -37,6 +37,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(EvaluationWorkspaceController.class)
@@ -69,6 +71,8 @@ class EvaluationWorkspaceControllerContractTest {
     private ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository workspacePreferencesRepository;
 
     @org.junit.jupiter.api.BeforeEach
     void assemblerDefaults() {
@@ -156,6 +160,88 @@ class EvaluationWorkspaceControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(template.contains(
                 "th:if=\"${!#bools.isTrue(delegated) and pendingReviewCount != null and pendingReviewCount > 0}\""));
         org.junit.jupiter.api.Assertions.assertTrue(template.contains("href=\"/user/workspace#publications\""));
+    }
+
+    @Test
+    void evaluationOpensThePreferredReportWhenNoneIsAskedFor() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        IndividualReport first = report("rep-1", publicationIndicator("ind-1"));
+        IndividualReport second = report("rep-2", publicationIndicator("ind-2"));
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(first, second)));
+        when(userReportFacade.findIndividualReportById("rep-2")).thenReturn(Optional.of(second));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-2"))
+                .thenReturn(Optional.of(runDto("run-2")));
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-2")).thenReturn(List.of());
+        ro.uvt.pokedex.core.model.workspace.WorkspacePreferences prefs =
+                new ro.uvt.pokedex.core.model.workspace.WorkspacePreferences();
+        prefs.setUserEmail("u@uvt.ro");
+        prefs.setPreferredReportId("rep-2");
+        when(workspacePreferencesRepository.findById("u@uvt.ro")).thenReturn(Optional.of(prefs));
+
+        String html = mockMvc.perform(get("/user/evaluation").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("isPreferredReport", true))
+                .andReturn().getResponse().getContentAsString();
+        // The preferred report is open: badge shown, no "set as preferred" form for it.
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("app-eval-preferred__badge"));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("app-eval-preferred__button"));
+    }
+
+    @Test
+    void aStalePreferenceFallsBackToTheFirstReportAndOffersTheButton() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        IndividualReport first = report("rep-1", publicationIndicator("ind-1"));
+        IndividualReport second = report("rep-2", publicationIndicator("ind-2"));
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(first, second)));
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(first));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(runDto("run-1")));
+        when(userIndividualReportRunService.listRuns("u@uvt.ro", "rep-1")).thenReturn(List.of());
+        ro.uvt.pokedex.core.model.workspace.WorkspacePreferences prefs =
+                new ro.uvt.pokedex.core.model.workspace.WorkspacePreferences();
+        prefs.setUserEmail("u@uvt.ro");
+        prefs.setPreferredReportId("rep-gone"); // no longer visible to the user
+        when(workspacePreferencesRepository.findById("u@uvt.ro")).thenReturn(Optional.of(prefs));
+
+        String html = mockMvc.perform(get("/user/evaluation").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("isPreferredReport", false))
+                .andReturn().getResponse().getContentAsString();
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("app-eval-preferred__button"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("action=\"/user/evaluation/preferred\""));
+    }
+
+    @Test
+    void settingThePreferredReportPersistsItAndRedirectsToIt() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        IndividualReport first = report("rep-1", publicationIndicator("ind-1"));
+        IndividualReport second = report("rep-2", publicationIndicator("ind-2"));
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(first, second)));
+        when(workspacePreferencesRepository.findById("u@uvt.ro")).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/user/evaluation/preferred").param("report", "rep-2").with(authenticatedUser(user)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/evaluation?report=rep-2"));
+
+        org.mockito.ArgumentCaptor<ro.uvt.pokedex.core.model.workspace.WorkspacePreferences> saved =
+                org.mockito.ArgumentCaptor.forClass(ro.uvt.pokedex.core.model.workspace.WorkspacePreferences.class);
+        org.mockito.Mockito.verify(workspacePreferencesRepository).save(saved.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("rep-2", saved.getValue().getPreferredReportId());
+        org.junit.jupiter.api.Assertions.assertEquals("u@uvt.ro", saved.getValue().getUserEmail());
+    }
+
+    @Test
+    void settingAnInvisibleReportAsPreferredIsIgnored() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(report("rep-1", publicationIndicator("ind-1")))));
+
+        mockMvc.perform(post("/user/evaluation/preferred").param("report", "rep-x").with(authenticatedUser(user)))
+                .andExpect(status().is3xxRedirection());
+        org.mockito.Mockito.verify(workspacePreferencesRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
