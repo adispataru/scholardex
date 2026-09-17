@@ -2,6 +2,12 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H109 Sync tasks orphaned by a restart; OpenAlex request deadlines (done 2026-09-17)
+
+Origin: Florin Fortiș reported OpenAlex syncs that "never started". Prod evidence: four OpenAlex tasks stuck `IN_PROGRESS` ("Starting OpenAlex author sync", no executionDate) since 24 Jul / 31 Aug / 1 Sep / 2 Sep. Mechanism: the schedulers are single-threaded and pick up only `PENDING`; the DBLP client had no request deadline, so one DBLP lookup hung for minutes to hours (14 Sep log: one query 12:49 → 13:05, the OS TCP timeout), everything queued behind it waited, and the next deploy killed the process leaving the running task `IN_PROGRESS` forever. OpenAlex itself was clean: no OpenAlex 429/error in the log, polite-pool mailto configured (the three 429s were DBLP's). Fixes: DBLP deadline + backoff = `452a6266`; this entry adds `OrphanedTaskRecovery` (`@PostConstruct`, before any poll; all three task types; re-queues as `PENDING`, or closes as `FAILED` with `ORPHANED_BY_RESTART` when no attempts are left so a JVM-killing run cannot loop; safe because the core deployment is `Recreate`; `core.tasks.orphan-recovery.enabled`) and OpenAlex deadlines (connector connect 10 s / idle-read 60 s + a hard 120 s per request in `OpenAlexClient`, `openalex.api.*-timeout-ms`). The four prod orphans were closed by hand 2026-09-16.
+
+- [x] `H109` Orphaned sync-task recovery + OpenAlex deadlines — see above.
+
 ## H108 Preferred evaluation report (done 2026-09-14, same-day feature)
 
 User ask: a researcher picks the fișă the evaluation page should open by default. `WorkspacePreferences.preferredReportId` (per-user doc, null = first visible report as before); `GET /user/evaluation` without `?report=` resolves to it when it is still among the user's visible reports; `POST /user/evaluation/preferred?report=` stores it (ignored for a report the user cannot see) and redirects to that report. Summary band: «Setează ca raport preferat» button on any other report, «Raport preferat» badge on the preferred one; shown only in self mode with more than one report (never on the delegated supervisor view). Contract tests: default resolution, stale preference fallback, set + redirect, invisible report ignored. Verified live under agent-dev (the local agent principal now carries a cloned researcher profile + runs so the summary band renders).

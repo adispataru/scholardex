@@ -18,6 +18,12 @@ public class CoreApplication {
     private String scopusServiceURL;
     @Value("${openalex.api.base-url:https://api.openalex.org}")
     private String openAlexBaseUrl;
+
+    @Value("${openalex.api.connect-timeout-ms:10000}")
+    private long openAlexConnectTimeoutMs;
+
+    @Value("${openalex.api.response-timeout-ms:60000}")
+    private long openAlexResponseTimeoutMs;
     @Value("${dblp.api.base-url:https://dblp.org}")
     private String dblpBaseUrl;
     @Value("${crossref.api.base-url:https://api.crossref.org}")
@@ -46,7 +52,13 @@ public class CoreApplication {
         final ExchangeStrategies strategies = ExchangeStrategies.builder()
                 .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
                 .build();
+        // Transport-level deadlines: without them a stalled OpenAlex connection blocks the (single-threaded) sync
+        // scheduler until the OS gives up on the socket — minutes to hours, with every queued task waiting behind it.
+        final reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create()
+                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) Math.max(1000, openAlexConnectTimeoutMs))
+                .responseTimeout(java.time.Duration.ofMillis(Math.max(1000, openAlexResponseTimeoutMs)));
         return WebClient.builder()
+                .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(httpClient))
                 .exchangeStrategies(strategies)
                 .baseUrl(openAlexBaseUrl)
                 .build();

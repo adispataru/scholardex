@@ -26,12 +26,23 @@ public class OpenAlexClient {
     private final int perPage;
     private final int maxPages;
 
+    /** Hard deadline for ONE request, body included — {@code block()} alone waits as long as the socket does. */
+    private final java.time.Duration requestTimeout;
+
+    public OpenAlexClient(WebClient openAlexWebClient, com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                          String mailto, int perPage, int maxPages) {
+        this(openAlexWebClient, objectMapper, mailto, perPage, maxPages, 120_000L);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public OpenAlexClient(
             @Qualifier("openAlexWebClient") WebClient openAlexWebClient,
             com.fasterxml.jackson.databind.ObjectMapper objectMapper,
             @Value("${openalex.api.mailto:}") String mailto,
             @Value("${openalex.api.per-page:200}") int perPage,
-            @Value("${openalex.api.max-pages:200}") int maxPages) {
+            @Value("${openalex.api.max-pages:200}") int maxPages,
+            @Value("${openalex.api.request-timeout-ms:120000}") long requestTimeoutMs) {
+        this.requestTimeout = java.time.Duration.ofMillis(Math.max(1000, requestTimeoutMs));
         this.openAlexWebClient = openAlexWebClient;
         this.objectMapper = objectMapper;
         this.mailto = mailto;
@@ -121,6 +132,7 @@ public class OpenAlexClient {
                     .retrieve()
                     .bodyToMono(byte[].class)
                     .map(this::parseWorksResponse)
+                    .timeout(requestTimeout)
                     .block();
             if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
                 break;
@@ -155,6 +167,7 @@ public class OpenAlexClient {
                     .retrieve()
                     .bodyToMono(byte[].class)
                     .map(this::parseWorksResponse)
+                    .timeout(requestTimeout)
                     .block();
             if (response != null && response.getResults() != null) {
                 works.addAll(response.getResults());
@@ -191,7 +204,8 @@ public class OpenAlexClient {
                         .retrieve()
                         .bodyToMono(byte[].class)
                         .map(this::parseWorksResponse)
-                        .block();
+                        .timeout(requestTimeout)
+                    .block();
                 if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
                     break;
                 }
