@@ -190,7 +190,7 @@ indexed later are invisible until the file is replaced. Refresh monthly or quart
    evidence from it. Sanity check: `gzip -t dblp-YYYY-MM-DD.xml.gz` and size around 1 GB (a few KB = the HTML page). Safari unpacks downloads: if you end up with a ~5 GB `.xml`, run `gzip -k dblp-YYYY-MM-DD.xml` — the sweep reads gzip only.
 2. **Copy to the data volume.** `scholardex-data` is ReadWriteOnce and mounted read-only by the core pod, so use a
    helper pod pinned to the core pod's node, mounting the PVC read-write, WITH cpu/memory requests and limits (the namespace `tenant-quota` rejects pods without them) (manifest in the ops repo notes below);
-   `kubectl cp` the file to `/data/`, verify size, delete the helper pod. Old dumps can stay (15 GB free) or go.
+   `kubectl cp` the file to `/data/`, verify size, then `chmod 644` it — `kubectl cp` keeps the local mode, a browser download is often owner-only, and the app runs as uid 10001 (check from the core pod: `head -c 2 <file>` must succeed) — and delete the helper pod. Old dumps can stay (15 GB free) or go.
 3. **Point the app at it:** `config.dblpDumpFile: /app/data/dblp-YYYY-MM-DD.xml.gz` in `helm/scholardex/values.yaml`,
    commit, push, deploy to prod.
 4. **Run the sweep:** Admin → Initialization → "DBLP LN chapter enrichment"
