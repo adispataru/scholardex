@@ -59,6 +59,23 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public java.util.List<String> findForumIdsByIssn(String issn, String eIssn) {
+        java.util.List<String> keys = java.util.stream.Stream.of(issn, eIssn)
+                .filter(v -> v != null && !v.isBlank())
+                .map(v -> v.replace("-", "").trim().toUpperCase())
+                .distinct()
+                .toList();
+        if (keys.isEmpty()) {
+            return java.util.List.of();
+        }
+        return namedParameterJdbcTemplate.queryForList(
+                "SELECT id FROM reporting_read.scholardex_forum_view "
+                        + "WHERE upper(replace(issn, '-', '')) IN (:keys) OR upper(replace(e_issn, '-', '')) IN (:keys)",
+                new MapSqlParameterSource("keys", keys),
+                String.class);
+    }
+
+    @Override
     public boolean isForumInScopus(String forumId) {
         return isForumInDatabase(forumId, "SCOPUS");
     }

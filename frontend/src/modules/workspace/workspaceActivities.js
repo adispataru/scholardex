@@ -944,7 +944,7 @@ function _saveInst(id, detailTr) {
         headers: postJsonHeaders(),
         body: JSON.stringify({ id, fields, referenceFields: refFields }),
     })
-        .then(r => { if (!r.ok) throw new Error(); })
+        .then(r => { if (!r.ok) return _rejectWithServerMessage(r); })
         .then(() => {
             // Update in-memory
             const inst = _instances.find(i => i.id === id);
@@ -956,9 +956,9 @@ function _saveInst(id, detailTr) {
                 setTimeout(() => feedback.classList.remove('app-ws-acts__feedback--visible'), 2500);
             }
         })
-        .catch(() => {
+        .catch(err => {
             if (feedback) {
-                feedback.textContent = t('workspace.activities.saveFailed');
+                feedback.textContent = (err && err.userMessage) || t('workspace.activities.saveFailed');
                 feedback.classList.add('app-ws-acts__feedback--error', 'app-ws-acts__feedback--visible');
             }
         })
@@ -1166,7 +1166,7 @@ function _submitCreate(placeholder) {
         headers: postJsonHeaders(),
         body: JSON.stringify({ activityId, name, date, fields, referenceFields: refFields }),
     })
-        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(r => { if (!r.ok) return _rejectWithServerMessage(r); return r.json(); })
         .then(newInst => {
             _instances.unshift(newInst);
             _page = 1;
@@ -1182,10 +1182,19 @@ function _submitCreate(placeholder) {
             }
             _renderPage();
         })
-        .catch(() => {
-            _showFeedback(feedback, t('workspace.activities.saveFailed'), true);
+        .catch(err => {
+            _showFeedback(feedback, (err && err.userMessage) || t('workspace.activities.saveFailed'), true);
             if (saveBtn) saveBtn.disabled = false;
         });
+}
+
+/** A failed save: a 422 carries a sentence for the researcher (e.g. a mistyped ISSN); anything else is generic. */
+function _rejectWithServerMessage(r) {
+    return r.json().catch(() => ({})).then(body => {
+        const err = new Error('save failed');
+        err.userMessage = body && body.message ? body.message : null;
+        throw err;
+    });
 }
 
 // ── Stats update (after create/delete) ────────────────────────────────────────

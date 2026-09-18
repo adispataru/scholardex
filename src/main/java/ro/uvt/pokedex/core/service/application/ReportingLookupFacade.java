@@ -28,6 +28,11 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public java.util.List<String> findForumIdsByIssn(String issn, String eIssn) {
+        return postgresFacade.findForumIdsByIssn(issn, eIssn);
+    }
+
+    @Override
     public boolean isForumInScopus(String forumId) {
         return postgresFacade.isForumInScopus(forumId);
     }

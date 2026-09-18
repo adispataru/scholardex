@@ -9,6 +9,32 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H110` Category D journals on D(iv) editorial activity — Florin Fortiș, 2026-09-18. **BUILT 2026-09-18, prod pending.**
+  His reading is the standard's own text (2026): «Categoria D: revistele ce nu se găsesc în categoriile A*, A, B și
+  C», Beall's list excepted — no indexing condition, unlike conferences. The three roles (Director/editor/membru)
+  share one score by design; only guest editor has its own scale. No effect on perspectiva c (a citation from D or
+  from outside the lists is already 1) nor on b (A*–C only).
+  Found in prod: an editorial entry names its journal by typed ISSN and the scorer only ever looked up WoS quartiles,
+  so EVERY journal without a quartile scored 0 — Scopus-only journals (should be C = 6) and D alike; the old
+  "SCOPUS fallback" on that path was dead code (the synthetic forum has no aggregation type). Alexandra Fortiș's two
+  entries (Anale. Seria Informatică 1583-7165; GeoGebra 2068-3227) scored 0 instead of 3 each.
+  Decisions (Adrian): D = any valid non-indexed ISSN; an ISSN the register could not be asked about scores NOW as D,
+  carries an «ISSN neverificat» marker and is retried nightly; a clear "no such ISSN" is rejected at save time.
+  Shipped: `ReportingLookupPort.findForumIdsByIssn` (interface + Postgres + @Primary delegator);
+  `ComputerScienceJournalScoringService.scoreUnrankedJournalActivity` (excluded venue → 0; corpus forum in
+  Scopus/ESCI/AHCI → C; valid ISSN not denied → D with `issnStatus`/`issnKeyTitle`; zero reasons `ISSN_INVALID`,
+  `ISSN_NOT_FOUND` with dashboard labels); `service/issn/*` — `IssnSupport` (check digit), `IssnPortalClient`
+  (portal.issn.org: 200 + `<title>ISSN … - key title</title>` / 404 unassigned / 400 bad check digit; anything
+  else, incl. a bot wall under 200, = could not ask), `IssnVerificationService` + spared collection
+  `scholardex.issn_verifications` + nightly retry (03:40), static `IssnRegistrySupport` seam for the scorers;
+  save-time validation in `UserActivityInstanceFacade` (normalizes, rejects typos, skips the register for journals
+  we hold) → 422 with a localized sentence the workspace form now shows (bundle rebuilt). OpenAlex was rejected as
+  the authority: it did not know the Tibiscus annals and holds a junk record for 1234-5678.
+  After deploy: `POST /admin/indicators/descriptions/apply` (Info_D_iv text), then refresh Alexandra's FV Info runs
+  (+6 in perspectiva D). Her two entries predate the validation: they score D as «ISSN neverificat» at once, and the
+  nightly job (03:40) queues every valid ISSN found on existing entries that the register was never asked about, so
+  they become verified on the first night without anyone re-saving them.
+
 - [ ] `H107` Citations not in Scopus: user-asserted / BibTeX citation import + review queue for unverified
   reference-title hits (spin-off of `H106`, 2026-09-13). Florin's case: the EMAC Insights book chapter and
   the ACM PLoP paper cite Alexandra's works but are not Scopus documents, so neither the EID pass nor the

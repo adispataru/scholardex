@@ -93,6 +93,14 @@ public interface ReportingLookupPort {
     }
 
     /**
+     * Ids of the corpus forums that carry either ISSN (print or electronic column, dash-insensitive). Lets an
+     * activity that names a journal only by ISSN reach the forum's index memberships. Default: none.
+     */
+    default java.util.List<String> findForumIdsByIssn(String issn, String eIssn) {
+        return java.util.List.of();
+    }
+
+    /**
      * Whether the forum is indexed in Scopus (a {@code database='SCOPUS'} row in the forum membership view). Used by
      * the CS-journal C-tier fallback so an OpenAlex-sourced paper (which has no Scopus {@code eid}) in a Scopus
      * journal still scores. Default false; the Postgres facade overrides with the real membership query.

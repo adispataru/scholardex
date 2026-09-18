@@ -488,33 +488,101 @@ class ComputerScienceJournalScoringServiceTest {
         assertEquals("VENUE_TYPE_MISMATCH", score.getScoringInfo().get("zeroReason"));
     }
 
-    @Test
-    void activityJournalFallsBackToScopusWhenNoWosMatch() {
-        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort) {
-            @Override
-            protected ScholardexForumView getForumFromActivity(ActivityInstance activity) {
-                ScholardexForumView forum = super.getForumFromActivity(activity);
-                forum.setAggregationType("Journal");
-                return forum;
-            }
-        };
-        Indicator indicator = indicator("IY");
-        when(lookupPort.getRankingsByIssn("1111-2222")).thenReturn(List.of());
+    // ── H110: the editorial-activity ladder below the WoS quartiles ────────────────────────────────────────
 
+    @org.junit.jupiter.api.AfterEach
+    void clearIssnRegistry() {
+        ro.uvt.pokedex.core.service.issn.IssnRegistrySupport.register(null);
+    }
+
+    private static ActivityInstance editorActivity(String name, String issn) {
         ActivityInstance activity = new ActivityInstance();
         activity.setDate("2023-01-01");
-        activity.setReferenceFields(Map.of(
-                Activity.ReferenceField.FORUM_NAME, "Journal of No Matches",
-                Activity.ReferenceField.FORUM_ISSN, "1111-2222"
-        ));
+        activity.setFields(new java.util.HashMap<>(Map.of("Nume", name, "Rol", "Editor")));
+        activity.setReferenceFields(new java.util.EnumMap<>(Map.of(Activity.ReferenceField.FORUM_ISSN, issn)));
+        return activity;
+    }
 
-        Score score = service.getScore(activity, indicator);
+    private static void registerIssn(String issn, ro.uvt.pokedex.core.model.issn.IssnVerification.Status status, String title) {
+        ro.uvt.pokedex.core.model.issn.IssnVerification v = new ro.uvt.pokedex.core.model.issn.IssnVerification();
+        v.setIssn(issn);
+        v.setStatus(status);
+        v.setKeyTitle(title);
+        ro.uvt.pokedex.core.service.issn.IssnRegistrySupport.register(
+                asked -> issn.equals(asked) ? java.util.Optional.of(v) : java.util.Optional.empty());
+    }
+
+    @Test
+    void anEditorialActivityOnAScopusOnlyJournalScoresC() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        when(lookupPort.getRankingsByIssn("1111-2227")).thenReturn(List.of());
+        when(lookupPort.findForumIdsByIssn("1111-2227", null)).thenReturn(List.of("sforum_1"));
+        when(lookupPort.isForumInScopus("sforum_1")).thenReturn(true);
+
+        Score score = service.getScore(editorActivity("Journal of No Quartiles", "1111-2227"), indicator("IY"));
 
         assertEquals(2.0, score.getScore());
         assertEquals("C", score.getCoreRankingEquivalent());
         assertEquals("SCOPUS", score.getScoringSource());
-        assertNotNull(score.getScoringInfo());
-        assertEquals("SCOPUS", score.getScoringInfo().get("matchSource"));
+    }
+
+    @Test
+    void aRealJournalOutsideTheListsIsCategoryD() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        when(lookupPort.getRankingsByIssn("1583-7165")).thenReturn(List.of());
+        when(lookupPort.findForumIdsByIssn("1583-7165", null)).thenReturn(List.of());
+        registerIssn("1583-7165", ro.uvt.pokedex.core.model.issn.IssnVerification.Status.VERIFIED, "Anale. Seria Informatică");
+
+        Score score = service.getScore(editorActivity("Annals. Computer Science Series", "1583-7165"), indicator("IY"));
+
+        assertEquals(1.0, score.getScore());
+        assertEquals("D", score.getCoreRankingEquivalent());
+        assertEquals("ISSN", score.getScoringSource());
+        assertEquals("VERIFIED", score.getScoringInfo().get("issnStatus"));
+        assertEquals("Anale. Seria Informatică", score.getScoringInfo().get("issnKeyTitle"));
+    }
+
+    @Test
+    void anIssnTheRegisterCouldNotBeAskedAboutStillScoresDButIsMarked() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        when(lookupPort.getRankingsByIssn("2068-3227")).thenReturn(List.of());
+        when(lookupPort.findForumIdsByIssn("2068-3227", null)).thenReturn(List.of());
+        // no registry entry at all (never asked, or the register was unreachable)
+
+        Score score = service.getScore(editorActivity("GeoGebra", "2068-3227"), indicator("IY"));
+
+        assertEquals(1.0, score.getScore());
+        assertEquals("D", score.getCoreRankingEquivalent());
+        assertEquals("ISSN neverificat", score.getScoringSource());
+        assertEquals("UNVERIFIED", score.getScoringInfo().get("issnStatus"));
+    }
+
+    @Test
+    void anIssnTheRegisterDeniesOrAMistypedOneScoresNothingWithTheReason() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        when(lookupPort.getRankingsByIssn(org.mockito.ArgumentMatchers.anyString())).thenReturn(List.of());
+        when(lookupPort.findForumIdsByIssn(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.isNull()))
+                .thenReturn(List.of());
+        registerIssn("9999-9994", ro.uvt.pokedex.core.model.issn.IssnVerification.Status.NOT_FOUND, null);
+
+        Score denied = service.getScore(editorActivity("Ghost Journal", "9999-9994"), indicator("IY"));
+        assertEquals(0.0, denied.getScore());
+        assertEquals("ISSN_NOT_FOUND", denied.getScoringInfo().get("zeroReason"));
+
+        Score mistyped = service.getScore(editorActivity("Typo Journal", "1234-5678"), indicator("IY"));
+        assertEquals(0.0, mistyped.getScore());
+        assertEquals("ISSN_INVALID", mistyped.getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void aStandardExcludedVenueStaysAtZeroEvenWithARealIssn() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        when(lookupPort.getRankingsByIssn("1583-7165")).thenReturn(List.of());
+
+        Score score = service.getScore(editorActivity("WSEAS Transactions on Computers", "1583-7165"), indicator("IY"));
+
+        assertEquals(0.0, score.getScore());
+        assertEquals("EXCLUDED_VENUE", score.getScoringInfo().get("zeroReason"));
     }
 
     @Test

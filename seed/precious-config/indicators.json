@@ -209,7 +209,7 @@
    "$oid": "6816987607ff6c4e2956d5c4"
   },
   "name": "Info_D_iv",
-  "description": "D(iv): director/editor/membru în comitetul editorial al unei reviste, punctat după categoria revistei — 36/24/12/6/3 pentru A*/A/B/C/D, pe revistă. În fișa 2026 se punctează și calitatea de guest editor: 9/6/3/2/1 după aceeași scară.",
+  "description": "D(iv): director/editor/membru în comitetul editorial al unei reviste, punctat după categoria revistei — 36/24/12/6/3 pentru A*/A/B/C/D, pe revistă; cele trei calități primesc același punctaj. În fișa 2026 se punctează și calitatea de guest editor: 9/6/3/2/1 după aceeași scară. Categoria revistei: cuartila WoS (A*–C), apoi C pentru revistele indexate Scopus sau în edițiile WoS fără cuartilă (ESCI, AHCI), apoi D — conform standardului, «revistele ce nu se găsesc în categoriile A*, A, B și C», adică orice revistă reală din afara listelor (de exemplu anale universitare), cu excepția celor de pe lista Beall. Revista se identifică prin ISSN: un ISSN greșit tastat este refuzat la salvare, iar pentru revistele pe care platforma nu le cunoaște ISSN-ul se verifică în registrul internațional (portal.issn.org); până la confirmare intrarea se punctează ca D și apare marcată «ISSN neverificat».",
   "formula": "Rol == 'Editor invitat' ? (S == 12 ? 9 : S == 8 ? 6 : S == 4 ? 3 : S == 2 ? 2 : 1) : S * 3",
   "domain": {
    "$ref": "domains",

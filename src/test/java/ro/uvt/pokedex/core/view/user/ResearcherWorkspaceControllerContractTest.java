@@ -403,4 +403,22 @@ class ResearcherWorkspaceControllerContractTest {
             return request;
         };
     }
+
+    // H110: a mistyped / non-existent ISSN comes back as 422 with a sentence the activity form can show.
+    @org.junit.jupiter.api.Test
+    void creatingAnActivityWithABadIssnReturns422WithAReadableMessage() throws Exception {
+        ro.uvt.pokedex.core.model.activities.Activity activity = new ro.uvt.pokedex.core.model.activities.Activity();
+        activity.setName("Editor Revista");
+        org.mockito.Mockito.when(userActivityInstanceFacade.findActivity("act-1")).thenReturn(java.util.Optional.of(activity));
+        org.mockito.Mockito.when(userActivityInstanceFacade.saveActivityInstance(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new ro.uvt.pokedex.core.service.issn.InvalidIssnException("workspace.activities.issn.invalid", "1234-5678"));
+
+        mockMvc.perform(post("/user/workspace/activities/create")
+                        .with(authenticatedUser("u@uvt.ro"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"activityId\":\"act-1\",\"name\":\"x\",\"date\":\"2020-01-01\",\"fields\":{},\"referenceFields\":{\"FORUM_ISSN\":\"1234-5678\"}}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value(org.hamcrest.Matchers.containsString("1234-5678")));
+    }
 }

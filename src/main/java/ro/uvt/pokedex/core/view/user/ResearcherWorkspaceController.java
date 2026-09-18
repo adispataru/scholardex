@@ -317,7 +317,7 @@ public class ResearcherWorkspaceController {
     // ── JSON: create activity instance ────────────────────────────────────
     @PostMapping("/activities/create")
     @ResponseBody
-    public ResponseEntity<ActivityInstance> createActivityInstance(
+    public ResponseEntity<?> createActivityInstance(
             @RequestBody ActivityInstanceCreateRequest request,
             Authentication authentication) {
         Optional<User> userOpt = currentUser(authentication);
@@ -339,13 +339,24 @@ public class ResearcherWorkspaceController {
             });
             instance.setReferenceFields(refMap);
         }
-        return ResponseEntity.ok(userActivityInstanceFacade.saveActivityInstance(instance));
+        try {
+            return ResponseEntity.ok(userActivityInstanceFacade.saveActivityInstance(instance));
+        } catch (ro.uvt.pokedex.core.service.issn.InvalidIssnException e) {
+            return invalidIssn(e);
+        }
+    }
+
+    /** 422 with the localized sentence the activity form shows next to its Save button. */
+    private ResponseEntity<Map<String, String>> invalidIssn(ro.uvt.pokedex.core.service.issn.InvalidIssnException e) {
+        String message = messageSource.getMessage(e.getMessageKey(), new Object[]{e.getIssn()},
+                org.springframework.context.i18n.LocaleContextHolder.getLocale());
+        return ResponseEntity.unprocessableEntity().body(Map.of("message", message));
     }
 
     // ── JSON: update activity instance ────────────────────────────────────
     @PostMapping("/activities/update")
     @ResponseBody
-    public ResponseEntity<Void> updateActivityInstance(
+    public ResponseEntity<?> updateActivityInstance(
             @RequestBody ActivityInstanceUpdateRequest request,
             Authentication authentication) {
         if (currentUser(authentication).isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -360,7 +371,11 @@ public class ResearcherWorkspaceController {
             });
             patch.setReferenceFields(refMap);
         }
-        userActivityInstanceFacade.updateActivityInstance(patch);
+        try {
+            userActivityInstanceFacade.updateActivityInstance(patch);
+        } catch (ro.uvt.pokedex.core.service.issn.InvalidIssnException e) {
+            return invalidIssn(e);
+        }
         return ResponseEntity.ok().build();
     }
 

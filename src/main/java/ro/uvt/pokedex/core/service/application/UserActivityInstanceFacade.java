@@ -21,6 +21,8 @@ public class UserActivityInstanceFacade {
 
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ActivityRepository activityRepository;
+    private final ro.uvt.pokedex.core.service.issn.IssnVerificationService issnVerificationService;
+    private final ro.uvt.pokedex.core.service.reporting.ReportingLookupPort reportingLookupPort;
 
     public UserActivityInstancesViewModel buildActivityInstancesView(String researcherId) {
         List<Activity> activities = activityRepository.findAll();
@@ -58,13 +60,72 @@ public class UserActivityInstanceFacade {
     }
 
     public ActivityInstance saveActivityInstance(ActivityInstance activityInstance) {
+        validateJournalIssns(activityInstance);
         return activityInstanceRepository.save(activityInstance);
+    }
+
+    /**
+     * A journal named by ISSN must be a real journal: the check digit has to be right (typos are rejected), and for
+     * a journal we do not hold — category D, outside WoS and Scopus — the international register is asked. A clear
+     * "no such ISSN" rejects the entry; "could not ask" is accepted as unverified and retried nightly.
+     *
+     * @throws ro.uvt.pokedex.core.service.issn.InvalidIssnException with a message key for the form
+     */
+    void validateJournalIssns(ActivityInstance instance) {
+        java.util.Map<Activity.ReferenceField, String> refs = instance.getReferenceFields();
+        if (refs == null) {
+            return;
+        }
+        java.util.List<String> issns = new java.util.ArrayList<>();
+        for (Activity.ReferenceField key : java.util.List.of(
+                Activity.ReferenceField.FORUM_ISSN, Activity.ReferenceField.FORUM_EISSN)) {
+            String raw = refs.get(key);
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            if (!ro.uvt.pokedex.core.service.issn.IssnSupport.isValid(raw)) {
+                throw new ro.uvt.pokedex.core.service.issn.InvalidIssnException(
+                        "workspace.activities.issn.invalid", raw.trim());
+            }
+            String normalized = ro.uvt.pokedex.core.service.issn.IssnSupport.normalize(raw);
+            refs.put(key, normalized);
+            issns.add(normalized);
+        }
+        if (issns.isEmpty() || isKnownJournal(issns)) {
+            return;
+        }
+        boolean allDenied = true;
+        for (String issn : issns) {
+            if (issnVerificationService.verify(issn).getStatus()
+                    != ro.uvt.pokedex.core.model.issn.IssnVerification.Status.NOT_FOUND) {
+                allDenied = false;
+            }
+        }
+        if (allDenied) {
+            throw new ro.uvt.pokedex.core.service.issn.InvalidIssnException(
+                    "workspace.activities.issn.notFound", String.join(", ", issns));
+        }
+    }
+
+    /** In the WoS lists or in our forum corpus — no need to ask the register. A lookup failure means "unknown". */
+    private boolean isKnownJournal(java.util.List<String> issns) {
+        try {
+            for (String issn : issns) {
+                if (!reportingLookupPort.getRankingsByIssn(issn).isEmpty()) {
+                    return true;
+                }
+            }
+            return !reportingLookupPort.findForumIdsByIssn(issns.get(0), issns.size() > 1 ? issns.get(1) : null).isEmpty();
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     public void updateActivityInstance(ActivityInstance activityInstance) {
         Optional<ActivityInstance> byId = activityInstanceRepository.findById(activityInstance.getId());
         if (byId.isPresent()) {
             ActivityInstance existingInstance = byId.get();
+            validateJournalIssns(activityInstance);
             existingInstance.setFields(activityInstance.getFields());
             existingInstance.setReferenceFields(activityInstance.getReferenceFields());
             activityInstanceRepository.save(existingInstance);

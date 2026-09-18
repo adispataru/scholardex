@@ -173,21 +173,82 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
                 carryForward
         );
 
-        // Special case for SCOPUS-only journals
-        if (scoreResult.bestPoints.get() == 0 &&
-            forum != null &&
-            forum.hasAggregationType("Journal")) {
-            scoreResult.bestPoints.set(2.0);
-            scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
-            scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
-            scoreResult.bestYear.set(lookupPort.maxAvailableYear());
-            scoreResult.scoringSource.set("SCOPUS");
-            scoreResult.scoringInfo.put("matchSource", "SCOPUS");
-            scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
-            scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS"));
+        if (scoreResult.bestPoints.get() == 0) {
+            scoreUnrankedJournalActivity(activity, forum, scoreResult);
         }
 
         return createScore(scoreResult);
+    }
+
+    /**
+     * An activity names its journal by ISSN only (the forum here is a bag of typed reference fields, not a corpus
+     * forum), so a journal without a WoS quartile used to score 0 — Scopus-only journals and category D alike.
+     * The standard's ladder below the quartiles: Scopus (and the quartile-less WoS editions ESCI/AHCI) → C; then
+     * «Categoria D: revistele ce nu se găsesc în categoriile A*, A, B și C» — any real journal, Beall's list excepted.
+     * "Real" = an ISSN with a valid check digit that the international register has not denied (see
+     * {@code IssnVerificationService}: unverified scores now and is retried nightly).
+     */
+    private void scoreUnrankedJournalActivity(ActivityInstance activity, ScholardexForumView forum, ScoreResult result) {
+        if (forum == null) {
+            return;
+        }
+        if (forum.getPublicationName() == null && activity.getFields() != null) {
+            forum.setPublicationName(activity.getFields().get("Nume"));
+        }
+        if (PredatoryVenueSupport.isExcludedVenue(forum)) {
+            result.scoringInfo.put("zeroReason", "EXCLUDED_VENUE");
+            return;
+        }
+        int year = activity.getYearOptional().orElseGet(lookupPort::maxAvailableYear);
+        List<String> indexes = new java.util.ArrayList<>();
+        for (String forumId : lookupPort.findForumIdsByIssn(forum.getIssn(), forum.getEIssn())) {
+            if (lookupPort.isForumInScopus(forumId) && !indexes.contains("SCOPUS")) indexes.add("SCOPUS");
+            if (lookupPort.isForumInAhci(forumId, year) && !indexes.contains("AHCI")) indexes.add("AHCI");
+            if (lookupPort.isForumInEsci(forumId, year) && !indexes.contains("ESCI")) indexes.add("ESCI");
+        }
+        if (!indexes.isEmpty()) {
+            String primary = indexes.getFirst();
+            result.bestPoints.set(2.0);
+            result.bestCategory.set(CoreConferenceRanking.Rank.C);
+            result.bestQuarter.set(WoSRanking.Quarter.valueOf(primary));
+            result.bestYear.set(lookupPort.maxAvailableYear());
+            result.scoringSource.set(String.join("+", indexes));
+            result.scoringInfo.put("matchSource", primary);
+            result.scoringInfo.put("fallbackReason", primary + "_FALLBACK");
+            result.scoringInfo.put("sourcesConsulted", List.copyOf(indexes));
+            return;
+        }
+        // Category D: a real journal outside the lists.
+        List<String> issns = java.util.stream.Stream.of(forum.getIssn(), forum.getEIssn())
+                .filter(ro.uvt.pokedex.core.service.issn.IssnSupport::isValid)
+                .map(ro.uvt.pokedex.core.service.issn.IssnSupport::normalize)
+                .distinct()
+                .toList();
+        if (issns.isEmpty()) {
+            result.scoringInfo.put("zeroReason", "ISSN_INVALID");
+            return;
+        }
+        List<ro.uvt.pokedex.core.model.issn.IssnVerification> known = issns.stream()
+                .map(ro.uvt.pokedex.core.service.issn.IssnRegistrySupport::find)
+                .flatMap(java.util.Optional::stream)
+                .toList();
+        boolean verified = known.stream().anyMatch(v ->
+                v.getStatus() == ro.uvt.pokedex.core.model.issn.IssnVerification.Status.VERIFIED);
+        boolean allDenied = known.size() == issns.size() && known.stream().allMatch(v ->
+                v.getStatus() == ro.uvt.pokedex.core.model.issn.IssnVerification.Status.NOT_FOUND);
+        if (allDenied) {
+            result.scoringInfo.put("zeroReason", "ISSN_NOT_FOUND");
+            return;
+        }
+        result.bestPoints.set(1.0);
+        result.bestCategory.set(CoreConferenceRanking.Rank.D);
+        result.bestYear.set(year);
+        result.scoringSource.set(verified ? "ISSN" : "ISSN neverificat");
+        result.scoringInfo.put("matchSource", "ISSN");
+        result.scoringInfo.put("issnStatus", verified ? "VERIFIED" : "UNVERIFIED");
+        known.stream().map(ro.uvt.pokedex.core.model.issn.IssnVerification::getKeyTitle)
+                .filter(java.util.Objects::nonNull).findFirst()
+                .ifPresent(title -> result.scoringInfo.put("issnKeyTitle", title));
     }
 
     /* ------------------------------------------------------------------ */

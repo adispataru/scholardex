@@ -599,7 +599,9 @@
     'NOT_TOP_RANKED':       'notTopRanked',
     'SELF_CITATION':        'selfCitation',
     'SCORE_BELOW_FORMULA_THRESHOLD': 'belowFormulaThreshold',
-    'MULTIPLE_GATES':       'multipleGates'
+    'MULTIPLE_GATES':       'multipleGates',
+    'ISSN_NOT_FOUND':       'issnNotFound',
+    'ISSN_INVALID':         'issnInvalid'
   };
 
   /** Full explanatory sentence for a zeroReason; falls back to the raw marker for an unknown code. */
