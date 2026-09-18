@@ -113,4 +113,14 @@ class DblpDumpConferenceSweepServiceTest {
         p.setDoiNormalized(doiNormalized);
         return p;
     }
+
+    @org.junit.jupiter.api.Test
+    void dumpVersionComesFromTheReleaseFileNameAndFallsBackToTheProperty() {
+        org.junit.jupiter.api.Assertions.assertEquals("2026.09.01",
+                DblpDumpConferenceSweepService.versionFor(java.nio.file.Path.of("/app/data/dblp-2026-09-01.xml.gz"), "2026.03.01"));
+        org.junit.jupiter.api.Assertions.assertEquals("2026.09.01",
+                DblpDumpConferenceSweepService.versionFor(java.nio.file.Path.of("dblp-2026-09-01.xml"), null));
+        org.junit.jupiter.api.Assertions.assertEquals("2026.03.01",
+                DblpDumpConferenceSweepService.versionFor(java.nio.file.Path.of("/app/data/dblp.xml.gz"), "2026.03.01"));
+    }
 }

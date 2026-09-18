@@ -176,3 +176,26 @@ directory's README). PII: from the local `data/backups/precious-pii-<timestamp>/
   from it. Either way a full rebuild re-derives facts deterministically.
 - `user_defined.*` events come from user uploads with no external source file — their ledger payload
   is the only copy, so it is always retained.
+
+## Refreshing the DBLP dump
+
+DBLP tells us which conference a paper belongs to when Scopus/OpenAlex file it under a book series or with no
+venue. Since 2026-09 dblp.org gates its whole site — the JSON search API and the dump downloads — behind an Anubis
+proof-of-work challenge that only a real browser passes, so the live per-paper lookup is off in prod
+(`dblpApiEnabled: "false"`) and the dump is the only DBLP path. The dump is frozen at its release date: papers DBLP
+indexed later are invisible until the file is replaced. Refresh monthly or quarterly, and before an evaluation campaign.
+
+1. **Download in a browser** (scripts get the challenge page): `https://dblp.org/xml/release/` → the newest
+   `dblp-YYYY-MM-DD.xml.gz` (~1 GB). Keep the release file name: the sweep derives the version stamped on the
+   evidence from it. Sanity check: `gzip -t dblp-YYYY-MM-DD.xml.gz` and size around 1 GB (a few KB = the HTML page).
+2. **Copy to the data volume.** `scholardex-data` is ReadWriteOnce and mounted read-only by the core pod, so use a
+   helper pod pinned to the core pod's node, mounting the PVC read-write (manifest in the ops repo notes below);
+   `kubectl cp` the file to `/data/`, verify size, delete the helper pod. Old dumps can stay (15 GB free) or go.
+3. **Point the app at it:** `config.dblpDumpFile: /app/data/dblp-YYYY-MM-DD.xml.gz` in `helm/scholardex/values.yaml`,
+   commit, push, deploy to prod.
+4. **Run the sweep:** Admin → Initialization → "DBLP LN chapter enrichment"
+   (`POST /admin/initialization/general/dblpLnChapterEnrichment`), a few minutes; the log line
+   `DBLP dump sweep: file=… version=…` confirms the file, the result shows `resolved=N`. Only still-unresolved
+   candidates are matched, so a refresh is cheap. The same sweep also runs inside every derived-data rebuild.
+5. **Refresh reports** for the people affected (or the department batch refresh): newly identified conferences
+   change categories only on a new run.

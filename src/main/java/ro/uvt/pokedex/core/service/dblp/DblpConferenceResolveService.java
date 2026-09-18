@@ -53,6 +53,10 @@ public class DblpConferenceResolveService {
     private final ScholardexPublicationDblpEvidenceRepository evidenceRepository;
     private final ScholardexSourceLinkRepository sourceLinkRepository;
 
+    /** Per-paper DBLP API lookup during syncs; the dump sweep is unaffected by this switch. */
+    @org.springframework.beans.factory.annotation.Value("${dblp.api.enabled:true}")
+    private boolean apiEnabled = true;
+
     /** Admin batch sweep — resolve every hidden-conference candidate in the corpus (replaces the dump sweep). */
     public ImportProcessingResult resolveAll() {
         return resolve(publicationFactRepository.findAll());
@@ -99,6 +103,12 @@ public class DblpConferenceResolveService {
     /** Tier-2 — resolve the hidden-conference candidates among the given (e.g. just-synced) publications. */
     public ImportProcessingResult resolve(Collection<ScholardexPublicationFact> publications) {
         ImportProcessingResult result = new ImportProcessingResult(20);
+        if (!apiEnabled) {
+            // dblp.org gates its whole site, search API included, behind an Anubis proof-of-work challenge that no
+            // server-side client can pass (seen 2026-09). While that lasts the dump sweep is the only DBLP path.
+            log.debug("DBLP live lookup disabled (dblp.api.enabled=false); dump sweep is the DBLP path");
+            return result;
+        }
         List<ScholardexPublicationFact> candidates = candidateDetector.detect(publications);
         for (int i = 0; i < candidates.size(); i++) {
             ScholardexPublicationFact pub = candidates.get(i);

@@ -74,6 +74,23 @@ public class DblpDumpConferenceSweepService {
     @Value("${dblp.dump.version:}")
     private String dumpVersion;
 
+    /** The version stamped on evidence by the running sweep: the release date in the file name, else the property. */
+    private String activeDumpVersion;
+
+    private static final Pattern RELEASE_FILE_NAME = Pattern.compile("dblp-(\\d{4})-(\\d{2})-(\\d{2})\\.xml(\\.gz)?$");
+
+    /**
+     * DBLP releases are named {@code dblp-YYYY-MM-DD.xml.gz}; the date IS the version. Deriving it means a dump
+     * refresh is one setting (the file path) and the provenance on the evidence can never name the wrong release.
+     */
+    static String versionFor(Path dumpPath, String configuredVersion) {
+        java.util.regex.Matcher m = RELEASE_FILE_NAME.matcher(dumpPath.getFileName().toString());
+        if (m.find()) {
+            return m.group(1) + "." + m.group(2) + "." + m.group(3);
+        }
+        return configuredVersion;
+    }
+
     /** Stream the configured DBLP dump once and resolve every hidden-conference candidate it matches. */
     public ImportProcessingResult sweep() {
         ImportProcessingResult result = new ImportProcessingResult(20);
@@ -86,6 +103,8 @@ public class DblpDumpConferenceSweepService {
             log.warn("DBLP dump sweep skipped: dump file not found at {}", dumpPath);
             return result;
         }
+        activeDumpVersion = versionFor(dumpPath, dumpVersion);
+        log.info("DBLP dump sweep: file={} version={}", dumpPath, activeDumpVersion);
         // DBLP's dump is Latin-1 and references DTD-declared HTML named entities; we read Latin-1 (1:1, never throws)
         // and strip those entities up front (see EntitySanitizingReader) so the parser runs with DTD + external
         // entities OFF — XXE-safe — without choking on the undeclared references.
@@ -159,7 +178,7 @@ public class DblpDumpConferenceSweepService {
             }
             result.markProcessed();
             if (resolveService.applyMatch(match, record.dblpKey(), record.booktitle(),
-                    record.doiNormalized(), record.title(), record.year(), method, dumpVersion)) {
+                    record.doiNormalized(), record.title(), record.year(), method, activeDumpVersion != null ? activeDumpVersion : dumpVersion)) {
                 result.markImported();
                 if ("dump-doi".equals(method)) {
                     byDoiHits++;

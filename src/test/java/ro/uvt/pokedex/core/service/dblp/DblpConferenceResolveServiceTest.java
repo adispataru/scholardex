@@ -237,4 +237,15 @@ class DblpConferenceResolveServiceTest {
         info.setTitle("A Paper");
         return info;
     }
+
+    @Test
+    void aDisabledLiveLookupAsksNothingAndReportsNothing() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "apiEnabled", false);
+
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult result = service.resolve(java.util.List.of(new ScholardexPublicationFact()));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, result.getProcessedCount());
+        org.junit.jupiter.api.Assertions.assertEquals(0, result.getErrorCount());
+        org.mockito.Mockito.verifyNoInteractions(candidateDetector, dblpClient);
+    }
 }
