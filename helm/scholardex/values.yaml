@@ -33,7 +33,7 @@ config:
   postgresUser: scholardex
   mongoHost: scholardex-mongo.scholardex.svc
   mongoDb: scholardex
-  dblpDumpFile: /app/data/dblp-2026-03-01.xml.gz
+  dblpDumpFile: /app/data/dblp-2026-09-01.xml.gz
   # dblp.org is behind an Anubis bot challenge (2026-09): the live per-paper lookup can only fail. Dump sweep only.
   dblpApiEnabled: "false"
 

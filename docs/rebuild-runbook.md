@@ -187,9 +187,9 @@ indexed later are invisible until the file is replaced. Refresh monthly or quart
 
 1. **Download in a browser** (scripts get the challenge page): `https://dblp.org/xml/release/` → the newest
    `dblp-YYYY-MM-DD.xml.gz` (~1 GB). Keep the release file name: the sweep derives the version stamped on the
-   evidence from it. Sanity check: `gzip -t dblp-YYYY-MM-DD.xml.gz` and size around 1 GB (a few KB = the HTML page).
+   evidence from it. Sanity check: `gzip -t dblp-YYYY-MM-DD.xml.gz` and size around 1 GB (a few KB = the HTML page). Safari unpacks downloads: if you end up with a ~5 GB `.xml`, run `gzip -k dblp-YYYY-MM-DD.xml` — the sweep reads gzip only.
 2. **Copy to the data volume.** `scholardex-data` is ReadWriteOnce and mounted read-only by the core pod, so use a
-   helper pod pinned to the core pod's node, mounting the PVC read-write (manifest in the ops repo notes below);
+   helper pod pinned to the core pod's node, mounting the PVC read-write, WITH cpu/memory requests and limits (the namespace `tenant-quota` rejects pods without them) (manifest in the ops repo notes below);
    `kubectl cp` the file to `/data/`, verify size, delete the helper pod. Old dumps can stay (15 GB free) or go.
 3. **Point the app at it:** `config.dblpDumpFile: /app/data/dblp-YYYY-MM-DD.xml.gz` in `helm/scholardex/values.yaml`,
    commit, push, deploy to prod.
