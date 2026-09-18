@@ -123,4 +123,27 @@ class DblpDumpConferenceSweepServiceTest {
         org.junit.jupiter.api.Assertions.assertEquals("2026.03.01",
                 DblpDumpConferenceSweepService.versionFor(java.nio.file.Path.of("/app/data/dblp.xml.gz"), "2026.03.01"));
     }
+
+    /**
+     * Prod 2026-09-18: the sweep died at row 89M with JAXP00010003 — entity "[xml]" is 100,001 > 100,000. JDK 24+
+     * caps general-entity size at 100,000 by default and counts every BUILT-IN reference (&amp;apos; &amp;amp; …)
+     * against the document entity, cumulatively, even with DTD support off. The dump has far more than that.
+     */
+    @org.junit.jupiter.api.Test
+    void aDocumentWithMoreThanAHundredThousandBuiltInEntityReferencesStillParses() throws Exception {
+        StringBuilder xml = new StringBuilder("<?xml version=\"1.0\"?><dblp>");
+        for (int i = 0; i < 150_000; i++) {
+            xml.append("<article><title>It&apos;s R&amp;D</title></article>");
+        }
+        xml.append("</dblp>");
+        javax.xml.stream.XMLStreamReader reader = DblpDumpConferenceSweepService.createXmlInputFactory()
+                .createXMLStreamReader(new java.io.StringReader(xml.toString()));
+        int titles = 0;
+        while (reader.hasNext()) {
+            if (reader.next() == javax.xml.stream.XMLStreamConstants.START_ELEMENT && "title".equals(reader.getLocalName())) {
+                titles++;
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(150_000, titles);
+    }
 }

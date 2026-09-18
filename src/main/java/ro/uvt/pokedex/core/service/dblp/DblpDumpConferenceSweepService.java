@@ -288,14 +288,25 @@ public class DblpDumpConferenceSweepService {
         return digits.length() >= 4 ? Integer.parseInt(digits.substring(0, 4)) : null;
     }
 
-    private XMLInputFactory createXmlInputFactory() {
+    static XMLInputFactory createXmlInputFactory() {
         XMLInputFactory factory = XMLInputFactory.newFactory();
         factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, false);
-        // XXE hardening: no DOCTYPE processing, no external entity/DTD resolution. The JDK's DEFAULT entity-expansion
-        // limits are left in place (a deliberate fix over the prior code, which set them to 0 = unlimited); with DTD
-        // off there are no entities to expand, so the defaults never bite while still guarding against malformed input.
+        // XXE hardening: no DOCTYPE processing, no external entity/DTD resolution.
         factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
         factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        // The two entity-SIZE caps must be lifted for THIS factory. JDK 24+ defaults them to 100,000 and counts every
+        // built-in reference (&amp; &apos; &lt; …) against the document entity "[xml]", cumulatively over the whole
+        // document, even with DTD off — a ~5 GB dump passes 100,000 such references and the sweep died at row 89M
+        // (prod 2026-09-18, JAXP00010003). Safe: with SUPPORT_DTD=false the document cannot DECLARE entities, so there
+        // is nothing to expand; the expansion-COUNT limit keeps its default. Not a JVM-wide jdk.xml.*=0.
+        for (String sizeLimit : List.of("jdk.xml.maxGeneralEntitySizeLimit", "jdk.xml.totalEntitySizeLimit")) {
+            try {
+                factory.setProperty(sizeLimit, 0);
+            } catch (IllegalArgumentException e) {
+                log.warn("XML factory {} does not support {}; large dumps may hit the JDK entity-size cap",
+                        factory.getClass().getName(), sizeLimit);
+            }
+        }
         return factory;
     }
 
