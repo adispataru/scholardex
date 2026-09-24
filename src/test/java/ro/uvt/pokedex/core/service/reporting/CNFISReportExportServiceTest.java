@@ -86,6 +86,34 @@ class CNFISReportExportServiceTest {
         }
     }
 
+    /** Prod 2026-09-24: a conference paper (forum without ISSNs) or a paper with no forum crashed the whole export. */
+    @Test
+    void forumsWithoutIssnsAndPublicationsWithoutAForumExportAsBlankCells() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        ScoringPublication withConferenceForum = publication("p1", "forum-conf", "2023-05-01", "10.1000/conf", "WOS-1", 3, "Conference paper");
+        ScoringPublication withoutForum = publication("p2", "forum-missing", "2022-05-01", "10.1000/orphan", "", 2, "Orphan paper");
+        ScholardexForumView conference = forum("Proceedings of Something", null, null);
+
+        byte[] bytes = service.generateCNFISReportWorkbook(
+                List.of(withConferenceForum, withoutForum),
+                List.of(report(r -> r.setIsiProceedings(true)), report(r -> r.setErihPlus(true))),
+                Map.of("forum-conf", conference), List.of(), false
+        );
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Row first = sheet.getRow(17);
+            assertEquals("Proceedings of Something", first.getCell(6).getStringCellValue());
+            assertEquals("", first.getCell(7).getStringCellValue());
+            assertEquals("", first.getCell(8).getStringCellValue());
+            assertEquals(1.0, first.getCell(19).getNumericCellValue());
+            Row second = sheet.getRow(18);
+            assertEquals("Orphan paper", second.getCell(2).getStringCellValue());
+            assertEquals("", second.getCell(6).getStringCellValue());
+            assertEquals(1.0, second.getCell(18).getNumericCellValue());
+        }
+    }
+
     @Test
     void generateWorkbookUsesGroupSheetAndQ4ColumnAndSkipsInvalidIds() throws Exception {
         CNFISReportExportService service = new CNFISReportExportService();

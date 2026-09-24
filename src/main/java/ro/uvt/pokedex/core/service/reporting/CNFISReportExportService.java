@@ -164,13 +164,11 @@ public class CNFISReportExportService {
             }
             String brevetCode = "";
             ScholardexForumView forum = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView());
-            String forumName = forum.getPublicationName();
-            String issnOnline = forum.getEIssn();
-            if(issnOnline.contains("null"))
-                issnOnline = "";
-            String issnPrint = forum.getIssn();
-            if(issnPrint.contains("null"))
-                issnPrint = "";
+            // A forum without an ISSN (conference series, book) or a publication without a forum at all is normal;
+            // the export used to NPE here (prod 2026-09-24, every researcher with one such confirmed paper).
+            String forumName = cellText(forum.getPublicationName());
+            String issnOnline = cellText(forum.getEIssn());
+            String issnPrint = cellText(forum.getIssn());
             String isbn = "";
             int totalAuthors = publication.getAuthorCount();
 
@@ -208,6 +206,15 @@ public class CNFISReportExportService {
             row.getCell(26).setCellValue(universityAuthors);
             rowNum++;
         }
+    }
+
+    /** Null, blank and the literal "null" (a legacy string on some forum rows) all render as an empty cell. */
+    private static String cellText(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() || trimmed.contains("null") ? "" : trimmed;
     }
 
     private int findNextUsableTemplateRow(Sheet sheet, int startRowNum) {
