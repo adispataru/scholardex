@@ -9,6 +9,18 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H114` WoS accession numbers (UT) for the CNFIS exports — **BUILT 2026-09-24, prod pending.** The resolver
+  shelled out to `curl` (absent in the container) against Clarivate's keyless OpenURL gateway, so 0 of 166,105
+  prod publications carry a `wosId` and Anexa 5's WoS-code column was empty. Verified 2026-09-24 that the gateway
+  still answers: `GET ws.isiknowledge.com/cps/openurl/service?rft_id=info:doi/<doi>` → 302 with `KeyUT=WOS:…`
+  (journal articles, Springer chapters AND IEEE/CPCI proceedings), or `OpenURLNoRecord.html`. Shipped
+  `service/wos/`: `WosOpenUrlClient` (WebClient, no redirect-follow, Location parsed, deadlines, 250 ms throttle,
+  FOUND/NOT_FOUND/UNAVAILABLE), spared `scholardex.wos_accession_lookups` + `WosAccessionService` (found = final,
+  no-record re-asked after 90 days, unavailable never cached), `WoSExtractor` delegates (the facades' injection
+  point is unchanged), nightly `WosAccessionSweepScheduler` (03:50, 400/night) over the platform researchers'
+  papers linking ids through `PublicationEnrichmentLinkerService` — which also makes conference papers eligible for
+  the "ISI Proceedings" flag. Properties `wos.openurl.*`. Tests: client (4 response shapes), cache policy, sweep.
+
 - [ ] `H113` CNFIS export assessment (2026-09-24, asked before the management demo) — **FIXED, prod pending.**
   The 2025 templates (Anexa 5 individual, Anexa 6 institutional) are the current ones — cnfis.ro still lists
   2025 as the latest round — and the writer's column mapping matches them cell for cell. Found on a live local
@@ -17,9 +29,8 @@ Done history moved to `TASKS-done.md`.
   was built from GROUP memberships (7 of 82 researchers) → 0 for almost everyone, now every profiled non-EXTERNAL
   user; (3) ESCI/AHCI journals without a quartile row for the paper's year exported unflagged → year-true edition
   membership fallback (+ ERIH from membership); (4) a forum without a name NPE'd the cp/ch path. Not fixed, noted:
-  the WoS accession-number resolver shells out to `curl`, which the container does not have, so column E stays
-  empty (DOI is accepted); ISI Proceedings for conference papers needs a stored WoS id, and the H76 CPCI roster is
-  not consulted here. Tests for all four; live export verified (17 rows).
+  the WoS accession-number column and the conference "ISI Proceedings" flag depended on a dead resolver → `H114`.
+  Tests for all four; live export verified (17 rows).
 
 - [ ] `H111` Faculty onboarding for the management demo (2026-09-24, presentation in 5 days; a competitor platform is
   being pitched). Readiness: Informatică ready; **Fizică** — faculty division + Matematică dept existed, no Fizică
@@ -33,8 +44,10 @@ Done history moved to `TASKS-done.md`.
   and parked the single-threaded scheduler; excluded from automatic import (HEPP exception is the commission's),
   task closed via H109 recovery after a restart. **FEAA / Psihologie:** fișe in prod, but no FEAA faculty at all and
   Psihologie = one test person under the environment institute → need staff lists from the deans (same 3 steps).
-  Left: select FV Fizică 2026 (+ Matematică 2026) on the faculty; bootstrap to DONE; score-provisional on the Fizică
-  department; then tell management perspectiva d is self-entered.
+  Fișe selected on the faculty (done). Syncs finished 2026-09-24 ~19:00 UTC: 25 publication, 23 citation, 20 OpenAlex
+  tasks completed (Grăvilă's ATLAS id excluded; his two other Scopus ids hold no documents). Left: one bootstrap run
+  (prints DONE), score-provisional on the Fizică department (FV Fizică 2026), tell management perspectiva d is
+  self-entered.
 - [ ] `H112` Deadlines on the core → scopus-python calls — **BUILT 2026-09-24, prod pending.** Same class as the DBLP
   (452a6266) and OpenAlex (f935d97a) holes: `scopusPythonClient` had no connector timeouts and the three scheduler
   calls (author-works, citations by-eid, by-title) `block()`ed without `.timeout()`. Now connect 10 s / idle-read

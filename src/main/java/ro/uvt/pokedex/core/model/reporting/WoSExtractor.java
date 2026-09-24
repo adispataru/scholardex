@@ -1,56 +1,29 @@
 package ro.uvt.pokedex.core.model.reporting;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import ro.uvt.pokedex.core.service.wos.WosAccessionService;
+
 import java.util.Optional;
 
+/**
+ * DOI → WoS accession number for the CNFIS exports (kept as the injection point the facades already use).
+ * Used to shell out to {@code curl} against the WoS OpenURL gateway — the container has no curl, so it
+ * silently resolved nothing. Now delegates to {@link WosAccessionService}: a proper HTTP client behind a
+ * spared cache, so a DOI is asked about once.
+ */
 @Component
 public class WoSExtractor {
-    private static final Logger log = LoggerFactory.getLogger(WoSExtractor.class);
 
-    public Optional<String> extractData(String doi) {
-        try {
-            // Build the curl command
-            String command = String.format(
-                "curl -s -I 'https://ws.isiknowledge.com/cps/openurl/service?url_ver=Z39.88-2004&rft_id=info:doi/%s' | grep Location",
-                doi
-            );
+    private final WosAccessionService wosAccessionService;
 
-            // Execute the command
-            ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
-            Process process = processBuilder.start();
-
-            // Read the output
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.contains("WOS:")) {
-                        // Extract the WoS ID from the Location header
-                        int startIndex = line.indexOf("WOS:");
-                        int endIndex = line.indexOf("&", startIndex);
-                        if (startIndex != -1 && endIndex != -1) {
-                            return Optional.of(line.substring(startIndex, endIndex));
-                        }
-                    }
-                }
-            }
-
-            // Wait for the process to complete
-            process.waitFor();
-        } catch (Exception e) {
-            log.error("Error during WoS data extraction for DOI {}", doi, e);
-        }
-
-        return Optional.empty();
+    public WoSExtractor(WosAccessionService wosAccessionService) {
+        this.wosAccessionService = wosAccessionService;
     }
 
     public Optional<String> resolveWosId(String doi) {
         if (doi == null || doi.isBlank()) {
             return Optional.empty();
         }
-        return extractData(doi);
+        return wosAccessionService.resolve(doi);
     }
 }
