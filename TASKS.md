@@ -9,6 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H111` Faculty onboarding for the management demo (2026-09-24, presentation in 5 days; a competitor platform is
+  being pitched). Readiness: Informatică ready; **Fizică** — faculty division + Matematică dept existed, no Fizică
+  department/staff, FV Fizică 2026 in prod but not selected for the faculty. Vice dean's sheet (`ORCID_Fizica.xlsm`,
+  24 staff, 19 ORCID-only / 5 Scopus-only) resolved to ids: ORCID public API (external-identifiers) + OpenAlex by
+  ORCID gave Scopus ids for 18, Ștefu's via Scopus DOI search in-pod; OpenAlex `filter=scopus:` for the 5; emails
+  from physics.uvt.ro (Călin Avram inferred). Ops files in rke2-overmind/feaa-2026-scripts: `fizica_staff_2026-09.csv`
+  (staff import at /admin/divisions, institution inst-uvt; imported 24 OK) + phased `h111_fizica_bootstrap.js`
+  (ORCID stamp → Scopus pubs FULL → citations FULL + OpenAlex; skips FAILED). **Trap found:** Paul Grăvilă is an
+  ATLAS collaboration author (Scopus 16318633900: 971 papers × ~3,000 authors) — the author-works call hung 40+ min
+  and parked the single-threaded scheduler; excluded from automatic import (HEPP exception is the commission's),
+  task closed via H109 recovery after a restart. **FEAA / Psihologie:** fișe in prod, but no FEAA faculty at all and
+  Psihologie = one test person under the environment institute → need staff lists from the deans (same 3 steps).
+  Left: select FV Fizică 2026 (+ Matematică 2026) on the faculty; bootstrap to DONE; score-provisional on the Fizică
+  department; then tell management perspectiva d is self-entered.
+- [ ] `H112` Deadlines on the core → scopus-python calls — **BUILT 2026-09-24, prod pending.** Same class as the DBLP
+  (452a6266) and OpenAlex (f935d97a) holes: `scopusPythonClient` had no connector timeouts and the three scheduler
+  calls (author-works, citations by-eid, by-title) `block()`ed without `.timeout()`. Now connect 10 s / idle-read
+  15 min on the bean + `.timeout(scopus.python.request-timeout-ms)` (15 min) per call, mapped to a retryable
+  `EXTERNAL_TIMEOUT`. Test: a never-answering author-works call fails the attempt at the deadline. NOTE: all
+  @Scheduled jobs (Scopus pubs, Scopus citations, OpenAlex) share ONE `scheduling-1` thread — everything serialises.
+
 - [ ] `H110` Category D journals on D(iv) editorial activity — Florin Fortiș, 2026-09-18. **BUILT 2026-09-18, prod pending.**
   His reading is the standard's own text (2026): «Categoria D: revistele ce nu se găsesc în categoriile A*, A, B și
   C», Beall's list excepted — no indexing condition, unlike conferences. The three roles (Director/editor/membru)

@@ -1031,4 +1031,41 @@ class ScopusUpdateSchedulerTest {
         assertEquals(attemptCount, task.getAttemptCount());
         assertEquals(maxAttempts, task.getMaxAttempts());
     }
+
+    /** H112: a Scopus-service call that never answers must fail the attempt at the deadline, not park the queue. */
+    @Test
+    void aPythonCallThatNeverAnswersFailsTheAttemptAtTheDeadline() {
+        ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
+        ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
+        ScholardexProjectionReadService projectionReadService = mock(ScholardexProjectionReadService.class);
+        ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
+        ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
+        WebClient webClient = mockAuthorWorksClient(Mono.never());
+        ScopusUpdateScheduler scheduler = new ScopusUpdateScheduler(
+                publicationTaskRepo,
+                citationTaskRepo,
+                projectionReadService,
+                ingestionService,
+                canonicalMaterializationService,
+                mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusExistingPublicationReenrichmentService.class),
+                mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService.class),
+                new SimpleMeterRegistry(),
+                webClient
+        );
+        ReflectionTestUtils.setField(scheduler, "pageSize", 100);
+        ReflectionTestUtils.setField(scheduler, "pythonRequestTimeoutMs", 1000L);
+        ReflectionTestUtils.setField(scheduler, "defaultMaxAttempts", 3);
+
+        ScopusPublicationUpdate task = new ScopusPublicationUpdate();
+        task.setId("t-hang");
+        task.setScopusId("16318633900");
+        task.setStatus(Status.PENDING);
+        when(publicationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of(task));
+
+        org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(20), scheduler::pollQueue);
+
+        org.junit.jupiter.api.Assertions.assertNotEquals(Status.IN_PROGRESS, task.getStatus(), "the attempt must end");
+        org.junit.jupiter.api.Assertions.assertEquals(1, task.getAttemptCount());
+        org.junit.jupiter.api.Assertions.assertNotNull(task.getLastErrorMessage());
+    }
 }

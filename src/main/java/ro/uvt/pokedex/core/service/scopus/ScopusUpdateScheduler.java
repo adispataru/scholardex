@@ -64,6 +64,17 @@ public class ScopusUpdateScheduler {
 
     @Value("${scopus.update.page-size:100}")
     private int pageSize;
+    /**
+     * H112: hard cap on ONE call to the Scopus service, body included. {@code block()} alone waits as long as the
+     * socket does, and the scheduler is single-threaded — one hung upstream read parked every queued sync
+     * (prod 2026-09-24). A legitimate FULL sync of a 150-work author answers in ~1 min; the cap only bites on hangs.
+     */
+    @Value("${scopus.python.request-timeout-ms:900000}")
+    private long pythonRequestTimeoutMs = 900_000L;
+
+    private java.time.Duration pythonRequestTimeout() {
+        return java.time.Duration.ofMillis(Math.max(1000, pythonRequestTimeoutMs));
+    }
     @Value("${scopus.update.max-attempts:3}")
     private int defaultMaxAttempts;
     @Value("${scopus.update.retry.initial-backoff-seconds:60}")
@@ -486,6 +497,7 @@ public class ScopusUpdateScheduler {
                     .bodyValue(req)
                     .retrieve()
                     .bodyToMono(CitationsByTitleResponse.class)
+                    .timeout(pythonRequestTimeout())
                     .onErrorResume(ex -> {
                         IntegrationException mapped = exceptionMapper.mapIntegrationException("citationsByTitle", ex);
                         log.error("Python reference-title service call failed: code={}, retryable={}, message={}",
@@ -561,6 +573,7 @@ public class ScopusUpdateScheduler {
                     .bodyValue(req)
                     .retrieve()
                     .bodyToMono(CitationsByEidResponse.class)
+                    .timeout(pythonRequestTimeout())
                     .onErrorResume(ex -> {
                         IntegrationException mapped = exceptionMapper.mapIntegrationException("citationsByEid", ex);
                         log.error("Python citations service call failed: code={}, retryable={}, message={}",
@@ -595,6 +608,7 @@ public class ScopusUpdateScheduler {
                     .bodyValue(req)
                     .retrieve()
                     .bodyToMono(AuthorWorksResponse.class)
+                    .timeout(pythonRequestTimeout())
                     .onErrorResume(ex -> {
                         IntegrationException mapped = exceptionMapper.mapIntegrationException("authorWorks", ex);
                         log.error("Python service call failed: code={}, retryable={}, message={}",

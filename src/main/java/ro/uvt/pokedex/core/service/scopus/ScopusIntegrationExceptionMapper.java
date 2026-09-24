@@ -44,6 +44,15 @@ final class ScopusIntegrationExceptionMapper {
                     exception
             );
         }
+        if (findCause(exception, java.util.concurrent.TimeoutException.class) != null) {
+            // H112: the per-call deadline in ScopusUpdateScheduler fired — retryable, like any other timeout.
+            return new IntegrationException(
+                    IntegrationErrorCode.EXTERNAL_TIMEOUT,
+                    true,
+                    operation + " exceeded the request deadline",
+                    exception
+            );
+        }
         if (findCause(exception, WebClientRequestException.class) != null) {
             return new IntegrationException(
                     IntegrationErrorCode.EXTERNAL_TIMEOUT,

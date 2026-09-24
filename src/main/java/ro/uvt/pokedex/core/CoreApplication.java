@@ -16,6 +16,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class CoreApplication {
     @Value("${scopus.python.base-url}")
     private String scopusServiceURL;
+
+    @Value("${scopus.python.connect-timeout-ms:10000}")
+    private long scopusPythonConnectTimeoutMs;
+
+    /** Idle-read deadline on the socket; a healthy author-works answer streams within seconds once it starts. */
+    @Value("${scopus.python.response-timeout-ms:900000}")
+    private long scopusPythonResponseTimeoutMs;
     @Value("${openalex.api.base-url:https://api.openalex.org}")
     private String openAlexBaseUrl;
 
@@ -38,7 +45,15 @@ public class CoreApplication {
         final ExchangeStrategies strategies = ExchangeStrategies.builder()
                 .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
                 .build();
+        // Transport deadlines (H112): prod 2026-09-24 — one author-works call for an ATLAS-collaboration profile
+        // (971 papers × ~3,000 authors) never answered; with no deadline the single-threaded Scopus scheduler sat
+        // behind it for 40+ minutes and 17 queued syncs waited. The per-call .timeout() in ScopusUpdateScheduler is
+        // the whole-request cap; these catch a dead peer / idle socket earlier.
+        final reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create()
+                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) Math.max(1000, scopusPythonConnectTimeoutMs))
+                .responseTimeout(java.time.Duration.ofMillis(Math.max(1000, scopusPythonResponseTimeoutMs)));
         return WebClient.builder()
+                .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(httpClient))
                 .exchangeStrategies(strategies)
                 .baseUrl("http://"+scopusServiceURL)
                 .build();
