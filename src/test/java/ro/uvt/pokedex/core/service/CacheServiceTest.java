@@ -68,7 +68,7 @@ class CacheServiceTest {
         when(coreConferenceRankingRepository.findAll()).thenReturn(List.of(core));
         when(scholardexProjectionReadService.findAllAuthors()).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllAffiliations()).thenReturn(List.of(affiliation));
-        when(groupRepository.findAll()).thenReturn(List.of());
+        when(userRepository.findAll()).thenReturn(List.of());
 
         cacheService = new CacheService(
                 scholardexProjectionReadService,
@@ -219,17 +219,14 @@ class CacheServiceTest {
     }
 
     @Test
-    void constructorResolvesUniversityAuthorIdsFromGroupMembers() {
-        Group group = new Group();
-        group.setId("g1");
+    void constructorResolvesUniversityAuthorIdsFromEveryProfiledResearcher() {
+        // H113: not group members — the staff-import path creates department affiliations, never memberships.
         User researcher = new User();
         researcher.setEmail("ada@uvt.ro");
         researcher.setResearcherProfile(new User.ResearcherProfile());
         ScholardexAuthorView universityAuthor = new ScholardexAuthorView();
         universityAuthor.setId("author-uvt");
-        when(groupRepository.findAll()).thenReturn(List.of(group));
-        when(groupMembershipService.listCurrentMemberUserIds("g1")).thenReturn(List.of("ada@uvt.ro"));
-        when(userRepository.findAllById(List.of("ada@uvt.ro"))).thenReturn(List.of(researcher));
+        when(userRepository.findAll()).thenReturn(List.of(researcher));
         when(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher.getResearcherProfile()))
                 .thenReturn(List.of("author-uvt"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("author-uvt")))
@@ -249,14 +246,14 @@ class CacheServiceTest {
     }
 
     @Test
-    void constructorSkipsGroupMembersWithoutResearcherProfiles() {
-        Group group = new Group();
-        group.setId("g1");
+    void constructorSkipsUsersWithoutResearcherProfilesAndExternalCandidates() {
         User admin = new User();
         admin.setEmail("admin@uvt.ro");
-        when(groupRepository.findAll()).thenReturn(List.of(group));
-        when(groupMembershipService.listCurrentMemberUserIds("g1")).thenReturn(List.of("admin@uvt.ro"));
-        when(userRepository.findAllById(List.of("admin@uvt.ro"))).thenReturn(List.of(admin));
+        User candidate = new User();
+        candidate.setEmail("cand@ext.ro");
+        candidate.setResearcherProfile(new User.ResearcherProfile());
+        candidate.setAccountKind(ro.uvt.pokedex.core.model.user.AccountKind.EXTERNAL);
+        when(userRepository.findAll()).thenReturn(List.of(admin, candidate));
 
         CacheService service = new CacheService(
                 scholardexProjectionReadService,

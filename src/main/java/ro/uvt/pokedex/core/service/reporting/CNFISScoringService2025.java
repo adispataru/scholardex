@@ -94,8 +94,27 @@ public class CNFISScoringService2025 {
                     }
                 }
             }
+            // ESCI / AHCI journals carry no quartile (or no ranking row for the paper's year); the CNFIS flags for
+            // them come from the year-true WoS edition membership, as the CS scorer does. Prod 2026-09-24: an ESCI
+            // journal with a 2025 row but no quartile, and one with rows only up to 2023, both exported unflagged.
+            if (!(report.isIsiQ1() || report.isIsiQ2() || report.isIsiQ3() || report.isIsiQ4()
+                    || report.isIsiEmergingSourcesCitationIndex() || report.isIsiArtsHumanities())
+                    && forum.getId() != null) {
+                int membershipYear = allowedYears.isEmpty() ? lookupPort.maxAvailableYear()
+                        : Math.min(allowedYears.get(0), lookupPort.maxAvailableYear());
+                report.setErihPlus(false);
+                if (lookupPort.isForumInEsci(forum.getId(), membershipYear)) {
+                    report.setIsiEmergingSourcesCitationIndex(true);
+                } else if (lookupPort.isForumInAhci(forum.getId(), membershipYear)) {
+                    report.setIsiArtsHumanities(true);
+                } else if (lookupPort.getForumIndexingDatabases(forum.getId()).stream()
+                        .anyMatch(db -> db != null && db.toUpperCase().startsWith("ERIH"))) {
+                    report.setErihPlus(true);
+                }
+            }
         }else if ("cp".equals(subtype)) {
-            if(forum.getPublicationName().contains("IEEE")) {
+            String forumName = forum.getPublicationName() == null ? "" : forum.getPublicationName();
+            if(forumName.contains("IEEE")) {
                 report.setIeeeProceedings(true);
             }else {
                 if(publication.getWosId() != null && !publication.getWosId().isEmpty()) {
@@ -103,7 +122,8 @@ public class CNFISScoringService2025 {
                 }
             }
         }else if("ch".equals(subtype)) {
-            if (forum.getPublicationName().contains("Lecture Notes")) {
+            String forumName = forum.getPublicationName() == null ? "" : forum.getPublicationName();
+            if (forumName.contains("Lecture Notes")) {
                 if (publication.getWosId() != null && !publication.getWosId().isEmpty()) {
                     report.setIsiProceedings(true);
                 }

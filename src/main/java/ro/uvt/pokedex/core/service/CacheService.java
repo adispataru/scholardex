@@ -67,17 +67,19 @@ public class CacheService {
         confRankingCache.putAll(allConferenceRankings.stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
         allConferenceRankings.forEach(this::indexConferenceRankingByTitle);
         List<ScholardexAuthorView> all = scholardexProjectionReadService.findAllAuthors();
-        groupRepository.findAll().forEach(group -> {
-            List<String> memberIds = groupMembershipService.listCurrentMemberUserIds(group.getId());
-            userRepository.findAllById(memberIds).stream()
-                    .filter(u -> u.getResearcherProfile() != null)
-                    .forEach(researcher -> {
-                        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher.getResearcherProfile());
-                        scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
-                                .map(ScholardexAuthorView::getId)
-                                .forEach(universityAuthorIds::add);
-                    });
-        });
+        // "University authors" = every researcher the platform knows, minus external candidates. This used to walk
+        // GROUP memberships only: prod 2026-09-24 had 82 researchers but 7 in groups, so the CNFIS export's
+        // "număr autori din universitate" column read 0 for almost everyone (the staff-import path creates
+        // department affiliations, never memberships).
+        universityAuthorIds.clear();
+        userRepository.findAll().stream()
+                .filter(u -> u.getResearcherProfile() != null && !u.isExternal())
+                .forEach(researcher -> {
+                    List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher.getResearcherProfile());
+                    scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                            .map(ScholardexAuthorView::getId)
+                            .forEach(universityAuthorIds::add);
+                });
         all.forEach(a -> {
             authorCache.put(a.getId(), a);
         });

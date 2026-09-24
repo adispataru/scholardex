@@ -55,6 +55,51 @@ class CNFISScoringService2025Test {
     }
 
     @Test
+    void anEsciJournalWithoutAQuartileIsFlaggedFromEditionMembership() {
+        ScoringPublication publication = publication("ar", null, "2025-03-01", null);
+        ScholardexForumView forum = baseForum("IEEE Communications Standards Magazine");
+        forum.setId("sforum_esci");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        org.mockito.Mockito.lenient().when(cacheService.getRankingsByForum(forum)).thenReturn(List.of());
+        when(cacheService.isForumInEsci("sforum_esci", 2023)).thenReturn(true);
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+
+        assertTrue(report.isIsiEmergingSourcesCitationIndex());
+        assertFalse(report.isErihPlus());
+        assertFalse(report.isIsiQ1() || report.isIsiQ2() || report.isIsiQ3() || report.isIsiQ4());
+    }
+
+    @Test
+    void anErihOnlyJournalIsFlaggedErihFromMembership() {
+        ScoringPublication publication = publication("ar", null, "2022-03-01", null);
+        ScholardexForumView forum = baseForum("Some Humanities Journal");
+        forum.setId("sforum_erih");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        org.mockito.Mockito.lenient().when(cacheService.getRankingsByForum(forum)).thenReturn(List.of());
+        when(cacheService.isForumInEsci("sforum_erih", 2022)).thenReturn(false);
+        when(cacheService.isForumInAhci("sforum_erih", 2022)).thenReturn(false);
+        when(cacheService.getForumIndexingDatabases("sforum_erih")).thenReturn(Set.of("ERIH"));
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+
+        assertTrue(report.isErihPlus());
+        assertFalse(report.isIsiEmergingSourcesCitationIndex());
+    }
+
+    @Test
+    void aConferencePaperWhoseForumHasNoNameDoesNotCrash() {
+        ScoringPublication publication = publication("cp", null, "2023-01-15", "WOS:000123");
+        ScholardexForumView forum = baseForum(null);
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+
+        assertTrue(report.isIsiProceedings());
+        assertFalse(report.isIeeeProceedings());
+    }
+
+    @Test
     void prefersScopusSubtypeOverSubtypeWhenBothPresent() {
         ScoringPublication publication = publication(" ar ", "cp", "2023-01-15", null);
 

@@ -246,9 +246,10 @@ public class UserReportFacade {
                 String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
-                String forumName = forumMap.getOrDefault(publication.getForum(), new ScholardexForumView()).getPublicationName();
-                String issnOnline = forumMap.getOrDefault(publication.getForum(), new ScholardexForumView()).getEIssn();
-                String issnPrint = forumMap.getOrDefault(publication.getForum(), new ScholardexForumView()).getIssn();
+                ScholardexForumView csvForum = forumMap.getOrDefault(publication.getForum(), new ScholardexForumView());
+                String forumName = csvForum.getPublicationName() == null ? "" : csvForum.getPublicationName();
+                String issnOnline = csvForum.getEIssn() == null ? "" : csvForum.getEIssn();
+                String issnPrint = csvForum.getIssn() == null ? "" : csvForum.getIssn();
                 int totalAuthors = publication.getAuthors().size();
                 long universityAuthors = publication.getAuthors().stream().filter(authorIds::contains).count();
 

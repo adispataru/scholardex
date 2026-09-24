@@ -9,6 +9,18 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H113` CNFIS export assessment (2026-09-24, asked before the management demo) — **FIXED, prod pending.**
+  The 2025 templates (Anexa 5 individual, Anexa 6 institutional) are the current ones — cnfis.ro still lists
+  2025 as the latest round — and the writer's column mapping matches them cell for cell. Found on a live local
+  export with a real researcher's confirmed papers: (1) the export answered 500 for anyone with a conference paper
+  (null e-ISSN `.contains`) — both the researcher button and the group export; (2) «număr autori din universitate»
+  was built from GROUP memberships (7 of 82 researchers) → 0 for almost everyone, now every profiled non-EXTERNAL
+  user; (3) ESCI/AHCI journals without a quartile row for the paper's year exported unflagged → year-true edition
+  membership fallback (+ ERIH from membership); (4) a forum without a name NPE'd the cp/ch path. Not fixed, noted:
+  the WoS accession-number resolver shells out to `curl`, which the container does not have, so column E stays
+  empty (DOI is accepted); ISI Proceedings for conference papers needs a stored WoS id, and the H76 CPCI roster is
+  not consulted here. Tests for all four; live export verified (17 rows).
+
 - [ ] `H111` Faculty onboarding for the management demo (2026-09-24, presentation in 5 days; a competitor platform is
   being pitched). Readiness: Informatică ready; **Fizică** — faculty division + Matematică dept existed, no Fizică
   department/staff, FV Fizică 2026 in prod but not selected for the faculty. Vice dean's sheet (`ORCID_Fizica.xlsm`,
