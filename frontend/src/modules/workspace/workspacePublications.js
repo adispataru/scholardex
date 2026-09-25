@@ -2369,7 +2369,9 @@ function _buildToolbar() {
           <a href="#" id="ws-pubs-add-btn" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-plus" aria-hidden="true"></i> ${_esc(t('workspace.pubs.wizard.heading'))}
           </a>
-          <a href="/user/publications" class="btn btn-sm btn-outline-secondary">
+          <!-- The export endpoint answers with an attachment, so the browser downloads without leaving the page.
+               It used to point at /user/publications, which now redirects back here: the click only reloaded. -->
+          <a href="/user/exports/cnfis" class="btn btn-sm btn-outline-secondary" id="ws-pubs-export-cnfis">
             <i class="fa-solid fa-file-export" aria-hidden="true"></i> ${t('workspace.publications.exportCnfis')}
           </a>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="ws-pubs-scopus-btn">
