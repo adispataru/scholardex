@@ -59,9 +59,21 @@ Define the authoritative CNFIS scoring behavior contract used by the active expo
 - Attempt publication year from `publication.coverDate` first 4 chars.
 - If parsing fails:
   - log warning
-  - use the latest year that has rankings loaded (`ReportingLookupPort.maxAvailableYear()`)
-- Any resolved year above that latest year is capped to it (`CNFISScoringService2025`). There is no fixed cap:
-  the year follows the data, so a 2024 article is ranked by JCR 2024 once that edition is loaded.
+  - use the last list of the edition (`CnfisEdition.lastListYear()`)
+- The list year is a rule of the EDITION (`CnfisEdition.listYearFor`, H129): the list of the publication year,
+  and for the last year of the window the list of the year before — CNFIS reports before the new list is
+  public ("pentru articolele publicate în anul 2024 … lista JCR din 2023"). Edition 2025 = window 2021–2024,
+  last list 2023; edition 2027 = window 2023–2026, last list 2025, provisional. Never newer than what is loaded
+  (`ReportingLookupPort.maxAvailableYear()`).
+
+> **H129 (2026-09-30) changed the rules below in this document; where they differ, this note wins.**
+> Quartile = the better of the AIS and the impact-factor quartile over all SCIE/SSCI categories. Arts &
+> Humanities and ESCI are reported in their own columns, without quartile, and a category the platform cannot
+> read is reported as nothing (it used to set ERIH+). Reported document types: Article, Review, Proceedings
+> Paper; a chapter counts as a proceedings paper only when its venue is a conference. ISI Proceedings = the
+> venue is in the conference index (`wosCpciIndexed`), not "the paper has a WoS code"; IEEE = the publisher or
+> the name of the venue. A publication without a DOI and a WoS code, or in none of the categories, gets no
+> row and is listed with its reason on the sheet "Neincluse (platforma)". A download looks nothing up.
 
 ### 6) Author counters
 

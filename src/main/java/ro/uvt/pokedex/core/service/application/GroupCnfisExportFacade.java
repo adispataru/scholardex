@@ -3,12 +3,10 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
-import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -20,6 +18,7 @@ import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
 import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
+import ro.uvt.pokedex.core.service.reporting.CnfisEdition;
 
 import java.io.IOException;
 import java.util.*;
@@ -29,17 +28,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class GroupCnfisExportFacade {
-    private static final String WOS_EXTRACTOR_SOURCE = "WOSEXTRACTOR";
-    private static final String LINKER_VERSION = "h17.10";
 
     private final GroupManagementFacade groupManagementFacade;
     private final GroupMembershipService groupMembershipService;
     private final UserRepository userRepository;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
-    private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final CNFISScoringService2025 cnfiSScoringService2025;
-    private final WoSExtractor woSExtractor;
     private final CNFISReportExportService exportService;
 
     public Optional<GroupCnfisExportViewModel> buildGroupCnfisExport(String groupId, int startYear, int endYear) {
@@ -64,9 +59,10 @@ public class GroupCnfisExportFacade {
 
         Domain allDomain = resolveAllDomain();
         List<ScoringPublicationReadModel> scoringPublications = publications.stream()
-                .map(this::withResolvedWosId)
+                .map(publication -> (ScoringPublicationReadModel) publication.toScoringPublication())
                 .toList();
-        List<CNFISReport2025> cnfisReports = generateReports(scoringPublications, allDomain);
+        List<CNFISReport2025> cnfisReports = generateReports(scoringPublications, allDomain,
+                CnfisEdition.forWindow(startYear, endYear));
         Map<String, ScholardexForumView> forumMap = loadForumMap(publications);
 
         return Optional.of(new GroupCnfisExportViewModel(scoringPublications, cnfisReports, forumMap, authorIds));
@@ -79,6 +75,7 @@ public class GroupCnfisExportFacade {
         }
 
         Domain allDomain = resolveAllDomain();
+        CnfisEdition edition = CnfisEdition.forWindow(startYear, endYear);
         List<GroupMemberCnfisWorkbook> workbooks = new ArrayList<>();
 
         for (User user : loadResearchers(group)) {
@@ -89,9 +86,9 @@ public class GroupCnfisExportFacade {
             publications = filterPublicationsByYear(publications, startYear, endYear);
 
             List<ScoringPublicationReadModel> scoringPublications = publications.stream()
-                    .map(this::withResolvedWosId)
+                    .map(publication -> (ScoringPublicationReadModel) publication.toScoringPublication())
                     .toList();
-            List<CNFISReport2025> cnfisReports = generateReports(scoringPublications, allDomain);
+            List<CNFISReport2025> cnfisReports = generateReports(scoringPublications, allDomain, edition);
             Map<String, ScholardexForumView> forumMap = loadForumMap(publications);
             byte[] reportBytes = exportService.generateCNFISReportWorkbook(scoringPublications, cnfisReports, forumMap, authorIds, false);
             String entryName = user.getResearcherProfile().getLastName() + "_" + user.getResearcherProfile().getFirstName().charAt(0) + "_AB.xlsx";
@@ -146,10 +143,12 @@ public class GroupCnfisExportFacade {
         }).toList();
     }
 
-    private List<CNFISReport2025> generateReports(List<? extends ScoringPublicationReadModel> publications, Domain domain) {
+    // H129: no WoS code is looked up here — a download uses what is stored (see UserReportFacade).
+    private List<CNFISReport2025> generateReports(List<? extends ScoringPublicationReadModel> publications, Domain domain,
+                                                  CnfisEdition edition) {
         List<CNFISReport2025> reports = new ArrayList<>();
         for (ScoringPublicationReadModel publication : publications) {
-            reports.add(cnfiSScoringService2025.getReport(publication, domain));
+            reports.add(cnfiSScoringService2025.getReport(publication, domain, edition));
         }
         return reports;
     }
@@ -158,25 +157,5 @@ public class GroupCnfisExportFacade {
         Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
         return scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
-    }
-
-    private ScoringPublicationReadModel withResolvedWosId(ScholardexPublicationView publication) {
-        String resolvedWosId = publication.getWosId();
-        if ((resolvedWosId == null || resolvedWosId.isBlank())
-                && publication.getDoi() != null && !publication.getDoi().isBlank()) {
-            resolvedWosId = woSExtractor.resolveWosId(publication.getDoi())
-                    .orElse(CanonicalPublicationConstants.NON_WOS_ID);
-        }
-        publicationEnrichmentLinkerService.linkWosEnrichment(
-                publication.getId(),
-                publication.getEid(),
-                publication.getDoi(),
-                resolvedWosId,
-                WOS_EXTRACTOR_SOURCE,
-                LINKER_VERSION,
-                "group-cnfis-" + System.currentTimeMillis()
-        );
-        publication.setWosId(resolvedWosId);
-        return publication.toScoringPublication();
     }
 }

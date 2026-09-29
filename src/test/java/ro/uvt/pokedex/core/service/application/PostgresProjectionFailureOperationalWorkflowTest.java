@@ -97,6 +97,7 @@ class PostgresProjectionFailureOperationalWorkflowTest {
                 mock(ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService.class),
                 mock(ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService.class),
                 mock(ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService.class),
+                mock(org.springframework.beans.factory.ObjectProvider.class),
                 mock(ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService.class),
                 mock(ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService.class),
                 mock(ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService.class)

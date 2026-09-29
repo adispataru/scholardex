@@ -48,6 +48,7 @@ public class CNFISReportExportService {
             int rowNum = group ? 9 : 17;
             int sampleRowNum = group ? 8 : 16;
             populateSheet(workbook, sheet, publications, cnfisReports, forumMap, rowNum, sampleRowNum);
+            addLeftOutSheet(workbook, publications, cnfisReports, forumMap);
 
             workbook.setForceFormulaRecalculation(true);
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -131,6 +132,7 @@ public class CNFISReportExportService {
             int sampleRowNum = group ? 8 : 16;
 
             populateSheet(workbook, sheet, publications, cnfisReports, forumMap, rowNum, sampleRowNum);
+            addLeftOutSheet(workbook, publications, cnfisReports, forumMap);
 
             workbook.setForceFormulaRecalculation(true);
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -148,6 +150,10 @@ public class CNFISReportExportService {
                        int sampleRowNum) {
         for (int i = 0; i < publications.size(); i++) {
             ScoringPublicationReadModel publication = publications.get(i);
+            // H129: decided BEFORE a template row is copied — a skipped publication used to leave a blank row
+            if (leftOutReason(publication, cnfisReports.get(i)) != null) {
+                continue;
+            }
             int usableTemplateRow = findNextUsableTemplateRow(sheet, sampleRowNum);
             if (usableTemplateRow < 0) {
                 throw new IllegalStateException("No suitable template row available for CNFIS export population.");
@@ -159,9 +165,6 @@ public class CNFISReportExportService {
             String doi = publication.getDoi() != null ? publication.getDoi() : "";
             String wosCode = publication.getWosId() != null && !publication.getWosId().equals(CanonicalPublicationConstants.NON_WOS_ID)
                     ? publication.getWosId() : "";
-            if ((doi.isEmpty() || doi.equals("null")) && wosCode.isEmpty()){
-                continue;
-            }
             String brevetCode = "";
             ScholardexForumView forum = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView());
             // A forum without an ISSN (conference series, book) or a publication without a forum at all is normal;
@@ -205,6 +208,68 @@ public class CNFISReportExportService {
             row.getCell(25).setCellValue(totalAuthors);
             row.getCell(26).setCellValue(universityAuthors);
             rowNum++;
+        }
+    }
+
+    /**
+     * H129 — why a publication has no row in the form, or null when it has one. The form asks for a DOI or a
+     * WoS code ("cel puțin unul din coduri") and has a place only for the categories it lists.
+     */
+    static String leftOutReason(ScoringPublicationReadModel publication, CNFISReport2025 report) {
+        String doi = publication.getDoi();
+        boolean hasDoi = doi != null && !doi.isBlank() && !doi.equals("null");
+        String wos = publication.getWosId();
+        boolean hasWos = wos != null && !wos.isBlank() && !wos.equals(CanonicalPublicationConstants.NON_WOS_ID);
+        if (!hasDoi && !hasWos) {
+            return "neither a DOI nor a WoS code: the form asks for at least one of them";
+        }
+        if (report == null || !report.isClassified()) {
+            return report != null && report.getLeftOutReason() != null
+                    ? report.getLeftOutReason()
+                    : "in none of the categories of the form";
+        }
+        return null;
+    }
+
+    static final String LEFT_OUT_SHEET = "Neincluse (platforma)";
+
+    /**
+     * H129 — the publications that got no row, each with its reason, on a sheet of its own at the end of the
+     * workbook. It is the platform's note to the person who checks the file, not part of the form: delete the
+     * sheet before the file is handed in.
+     */
+    void addLeftOutSheet(Workbook workbook,
+                         List<? extends ScoringPublicationReadModel> publications,
+                         List<CNFISReport2025> cnfisReports,
+                         Map<String, ScholardexForumView> forumMap) {
+        Sheet sheet = null;
+        int rowNum = 0;
+        for (int i = 0; i < publications.size(); i++) {
+            ScoringPublicationReadModel publication = publications.get(i);
+            String reason = leftOutReason(publication, cnfisReports.get(i));
+            if (reason == null) {
+                continue;
+            }
+            if (sheet == null) {
+                sheet = workbook.createSheet(LEFT_OUT_SHEET);
+                sheet.createRow(rowNum++).createCell(0).setCellValue(
+                        "Publicații fără rând în fișă / publications with no row in the form —"
+                                + " nota platformei, se șterge înainte de depunere");
+                Row header = sheet.createRow(rowNum++);
+                header.createCell(0).setCellValue("An");
+                header.createCell(1).setCellValue("Titlu");
+                header.createCell(2).setCellValue("Jurnal / volum");
+                header.createCell(3).setCellValue("DOI");
+                header.createCell(4).setCellValue("Motiv / reason");
+            }
+            ScholardexForumView forum = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView());
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(
+                    PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log));
+            row.createCell(1).setCellValue(publication.getTitle() == null ? "" : publication.getTitle());
+            row.createCell(2).setCellValue(cellText(forum.getPublicationName()));
+            row.createCell(3).setCellValue(cellText(publication.getDoi()));
+            row.createCell(4).setCellValue(reason);
         }
     }
 

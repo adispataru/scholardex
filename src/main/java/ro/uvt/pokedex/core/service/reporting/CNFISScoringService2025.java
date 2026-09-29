@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +20,25 @@ import java.util.Map;
 public class CNFISScoringService2025 {
     private static final Logger log = LoggerFactory.getLogger(CNFISScoringService2025.class);
     private final ReportingLookupPort lookupPort;
+    /** The sheet of edition 2025 — kept for the callers that report no window of their own. */
     public CNFISReport2025 getReport(ScoringPublicationReadModel publication, Domain domain) {
+        return getReport(publication, domain, CnfisEdition.EDITION_2025);
+    }
+
+    /**
+     * H129 — one row of Anexa 5, by the rules of the CNFIS guide (IC2.3):
+     * <ul>
+     * <li>reported are Article, Review and Proceedings Paper; a paper typed as a chapter counts as a
+     * proceedings paper when its venue is a conference (proceedings published in a book series);</li>
+     * <li>an article is classified by the list of {@link CnfisEdition#listYearFor its edition's year};</li>
+     * <li>"cea mai bună clasare din anul în care a fost publicat articolul, indiferent de clasificare IF sau AIS
+     * sau de categorie": the better of the AIS and the impact-factor quartile, over all SCIE/SSCI
+     * categories; Arts &amp; Humanities and ESCI are columns of their own, without quartile;</li>
+     * <li>ISI Proceedings is the conference index (CPCI) of the venue, not "the paper has a WoS code".</li>
+     * </ul>
+     * A publication the form has no place for comes back unclassified, with the reason.
+     */
+    public CNFISReport2025 getReport(ScoringPublicationReadModel publication, Domain domain, CnfisEdition edition) {
         ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
         CNFISReport2025 report = new CNFISReport2025();
         report.setTitlu(publication.getTitle());
@@ -31,6 +48,7 @@ public class CNFISScoringService2025 {
         report.setNumarAutoriUniversitate((int) authors.stream().filter(a -> lookupPort.getUniversityAuthorIds().contains(a)).count());
         if (forum == null) {
             log.warn("Missing forum for publication {}", publication.getForumId());
+            report.setLeftOutReason("the venue of the publication is not known to the platform");
             return report;
         }
         report.setDenumireJurnal(forum.getPublicationName());
@@ -38,98 +56,117 @@ public class CNFISScoringService2025 {
         report.setIssnPrint(forum.getIssn());
 
         String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
+        boolean conferenceVenue = forum.hasAggregationType("Conference Proceeding");
         if ("ar".equals(subtype) || "re".equals(subtype)) {
-            List<Integer> allowedYears = new ArrayList<>();
-            PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
-                    .ifPresent(allowedYears::add);
+            classifyArticle(report, publication, forum, domain, edition);
+        } else if ("cp".equals(subtype) || ("ch".equals(subtype) && conferenceVenue)) {
+            classifyProceedingsPaper(report, forum);
+        } else {
+            report.setLeftOutReason("document type '" + (subtype == null || subtype.isBlank() ? "unknown" : subtype)
+                    + "': reported are Article, Review and Proceedings Paper");
+        }
+        return report;
+    }
 
-            // H66 B3: resolve rankings by the canonical forum (stored-FK forum-keyed views first, with the
-            // legacy fuzzy ISSN/name resolution as fallback) instead of fuzzy ISSN matching alone.
-            List<WoSRanking> allByIssn = lookupPort.getRankingsByForum(forum);
+    private void classifyArticle(CNFISReport2025 report, ScoringPublicationReadModel publication,
+                                 ScholardexForumView forum, Domain domain, CnfisEdition edition) {
+        // The list year is the edition's; no list can be newer than what is loaded.
+        int year = PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
+                .map(edition::listYearFor)
+                .orElse(edition.lastListYear());
+        year = Math.min(year, lookupPort.maxAvailableYear());
+        report.setListYear(year);
 
-            for (WoSRanking ranking : allByIssn) {
-                for (Map.Entry<String, WoSRanking.Rank> entry : ranking.getWebOfScienceCategoryIndex().entrySet()) {
-                    String category = entry.getKey();
-                    String catIndex = extractCategoryIndex(category);
-                    CategoryIndexBucket catBucket = classifyCategoryIndex(catIndex);
-                    WoSRanking.Rank score = entry.getValue();
-
-                    if (!"ALL".equals(domain.getName()) && !domain.getWosCategories().contains(category)) {
-                        continue;
-                    }
-
-                    List<Integer> yearCandidates = allowedYears.isEmpty() ? List.of(lookupPort.maxAvailableYear()) : List.copyOf(allowedYears);
-                    for (int candidateYear : yearCandidates) {
-                        int year = Math.min(candidateYear, lookupPort.maxAvailableYear());
-
-                        if (score.getQAis().get(year) != null) {
-
-
-                            if(catBucket == CategoryIndexBucket.SCIE_OR_SSCI) {
-
-                                switch (score.getQAis().get(year)) {
-                                    case Q1 -> {
-                                        report.setIsiQ1(true);
-                                    }
-                                    case Q2 -> {
-                                        report.setIsiQ2(true);
-                                    }
-                                    case Q3 -> {
-                                        report.setIsiQ3(true);
-                                    }
-                                    case Q4 -> {
-                                        report.setIsiQ4(true);
-                                    }
-                                }
-                            }
-                            if(catBucket == CategoryIndexBucket.ESCI) {
-                                report.setIsiEmergingSourcesCitationIndex(true);
-                            }else if (catBucket == CategoryIndexBucket.AHCI) {
-                                report.setIsiArtsHumanities(true);
-                            }else {
-                                report.setErihPlus(true);
-                            }
-                            break;
+        // H66 B3: resolve rankings by the canonical forum (stored-FK forum-keyed views first, with the
+        // legacy fuzzy ISSN/name resolution as fallback) instead of fuzzy ISSN matching alone.
+        WoSRanking.Quarter best = null;
+        String bestBy = null;
+        boolean arts = false;
+        boolean emerging = false;
+        for (WoSRanking ranking : lookupPort.getRankingsByForum(forum)) {
+            for (Map.Entry<String, WoSRanking.Rank> entry : ranking.getWebOfScienceCategoryIndex().entrySet()) {
+                String category = entry.getKey();
+                if (!"ALL".equals(domain.getName()) && !domain.getWosCategories().contains(category)) {
+                    continue;
+                }
+                WoSRanking.Rank rank = entry.getValue();
+                WoSRanking.Quarter ais = quartile(rank.getQAis(), year);
+                WoSRanking.Quarter impactFactor = quartile(rank.getQIF(), year);
+                if (ais == null && impactFactor == null) {
+                    continue;
+                }
+                switch (classifyCategoryIndex(extractCategoryIndex(category))) {
+                    case SCIE_OR_SSCI -> {
+                        if (ais != null && (best == null || ais.ordinal() < best.ordinal())) {
+                            best = ais;
+                            bestBy = "AIS " + ais + " · " + category;
+                        }
+                        if (impactFactor != null && (best == null || impactFactor.ordinal() < best.ordinal())) {
+                            best = impactFactor;
+                            bestBy = "IF " + impactFactor + " · " + category;
                         }
                     }
-                }
-            }
-            // ESCI / AHCI journals carry no quartile (or no ranking row for the paper's year); the CNFIS flags for
-            // them come from the year-true WoS edition membership, as the CS scorer does. Prod 2026-09-24: an ESCI
-            // journal with a 2025 row but no quartile, and one with rows only up to 2023, both exported unflagged.
-            if (!(report.isIsiQ1() || report.isIsiQ2() || report.isIsiQ3() || report.isIsiQ4()
-                    || report.isIsiEmergingSourcesCitationIndex() || report.isIsiArtsHumanities())
-                    && forum.getId() != null) {
-                int membershipYear = allowedYears.isEmpty() ? lookupPort.maxAvailableYear()
-                        : Math.min(allowedYears.get(0), lookupPort.maxAvailableYear());
-                report.setErihPlus(false);
-                if (lookupPort.isForumInEsci(forum.getId(), membershipYear)) {
-                    report.setIsiEmergingSourcesCitationIndex(true);
-                } else if (lookupPort.isForumInAhci(forum.getId(), membershipYear)) {
-                    report.setIsiArtsHumanities(true);
-                } else if (lookupPort.getForumIndexingDatabases(forum.getId()).stream()
-                        .anyMatch(db -> db != null && db.toUpperCase().startsWith("ERIH"))) {
-                    report.setErihPlus(true);
-                }
-            }
-        }else if ("cp".equals(subtype)) {
-            String forumName = forum.getPublicationName() == null ? "" : forum.getPublicationName();
-            if(forumName.contains("IEEE")) {
-                report.setIeeeProceedings(true);
-            }else {
-                if(publication.getWosId() != null && !publication.getWosId().isEmpty()) {
-                    report.setIsiProceedings(true);
-                }
-            }
-        }else if("ch".equals(subtype)) {
-            String forumName = forum.getPublicationName() == null ? "" : forum.getPublicationName();
-            if (forumName.contains("Lecture Notes")) {
-                if (publication.getWosId() != null && !publication.getWosId().isEmpty()) {
-                    report.setIsiProceedings(true);
+                    case AHCI -> arts = true;
+                    case ESCI -> emerging = true;
+                    default -> { }
                 }
             }
         }
-        return report;
+        if (best != null) {
+            switch (best) {
+                case Q1 -> report.setIsiQ1(true);
+                case Q2 -> report.setIsiQ2(true);
+                case Q3 -> report.setIsiQ3(true);
+                default -> report.setIsiQ4(true);
+            }
+            report.setClassifiedBy(bestBy + " · list " + year);
+            return;
+        }
+        // No quartile in a core edition. Arts & Humanities and ESCI carry none (or have no row for the year):
+        // they come from the ranking rows above or, failing that, from the year-true edition membership, as the
+        // CS scorer does. Prod 2026-09-24: an ESCI journal with a 2025 row but no quartile, and one with rows
+        // only up to 2023, both exported unflagged.
+        if (arts || (forum.getId() != null && lookupPort.isForumInAhci(forum.getId(), year))) {
+            report.setIsiArtsHumanities(true);
+            report.setClassifiedBy("Arts & Humanities Citation Index · " + year);
+        } else if (emerging || (forum.getId() != null && lookupPort.isForumInEsci(forum.getId(), year))) {
+            report.setIsiEmergingSourcesCitationIndex(true);
+            report.setClassifiedBy("Emerging Sources Citation Index · " + year);
+        } else if (forum.getId() != null && lookupPort.getForumIndexingDatabases(forum.getId()).stream()
+                .anyMatch(db -> db != null && db.toUpperCase().startsWith("ERIH"))) {
+            report.setErihPlus(true);
+            report.setClassifiedBy("ERIH+");
+        } else {
+            report.setLeftOutReason("the journal is in none of the lists of " + year
+                    + " (SCIE/SSCI quartiles, Arts & Humanities, ESCI, ERIH+)");
+        }
+    }
+
+    private void classifyProceedingsPaper(CNFISReport2025 report, ScholardexForumView forum) {
+        if (isIeee(forum)) {
+            report.setIeeeProceedings(true);
+            report.setClassifiedBy("IEEE Proceedings");
+        } else if (forum.getId() != null && lookupPort.isForumCpciIndexed(forum.getId())) {
+            report.setIsiProceedings(true);
+            report.setClassifiedBy("ISI Proceedings (Conference Proceedings Citation Index)");
+        } else {
+            report.setLeftOutReason("the proceedings are neither IEEE nor in the Conference Proceedings Citation Index");
+        }
+    }
+
+    /** IEEE by the venue the platform resolved: its publisher, or its name. */
+    private static boolean isIeee(ScholardexForumView forum) {
+        String publisher = forum.getPublisher() == null ? "" : forum.getPublisher();
+        String name = forum.getPublicationName() == null ? "" : forum.getPublicationName();
+        return publisher.contains("IEEE") || publisher.contains("Institute of Electrical and Electronics Engineers")
+                || name.contains("IEEE");
+    }
+
+    /** Q1–Q4 of the year, or null: the quartile maps also hold markers that are no quartile (NOT_FOUND, …). */
+    private static WoSRanking.Quarter quartile(Map<Integer, WoSRanking.Quarter> byYear, int year) {
+        WoSRanking.Quarter q = byYear == null ? null : byYear.get(year);
+        return q == WoSRanking.Quarter.Q1 || q == WoSRanking.Quarter.Q2
+                || q == WoSRanking.Quarter.Q3 || q == WoSRanking.Quarter.Q4 ? q : null;
     }
 
     private String extractCategoryIndex(String category) {

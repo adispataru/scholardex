@@ -54,32 +54,68 @@ Done history moved to `TASKS-done.md`.
   unit roll-ups (`OrgUnitRunRollupService`) must give the same numbers before and after. Check what inside a
   stored run still names the person (evidence rows, activity text) and drop it. Also wanted: an export of a
   person's own data on request.
-- [ ] `H129` CNFIS reporting in the evaluation tab, one version per reporting year — **OPEN, decided with Adrian
-  2026-09-29 after the compliance audit (questions 19, 20, 22, 26).** Today the CNFIS sheet is an export
-  (`CNFISScoringService2025`, `CNFISReportExportService`, `GET /user/exports/cnfis`) with its rules in code.
-  Wanted: CNFIS as its own entry in the evaluation workbench, a version per reporting year, each carrying that
-  year's timing rules. **The rules, from the CNFIS guide** ("Cerințe și recomandări privind raportarea datelor
-  … IC2", January 2025, cnfis.ro — read 2026-09-29): (1) **edition by year** — an article is classified by the
-  JCR list of its publication year; for the LAST year of the window the list of the year before applies,
-  because reporting happens before the new list is public ("pentru articolele publicate în anul 2024 … lista
-  JCR din 2023 (publicată în 2024)"). The code uses `min(publication year, maxAvailableYear())`, so with JCR
-  2024 loaded a 2024 article is ranked by the wrong list: the cap belongs to the version (reporting 2025 →
-  window 2021–2024, last list 2023), not to what is loaded. (2) **best classification** — "cea mai bună clasare
-  din anul în care a fost publicat articolul, indiferent de clasificare IF sau AIS sau de categorie": the
-  export reads the AIS quartile only, so add the impact-factor quartile and take the better of the two, over
-  all categories. (3) **document types** — "Article, Review Article sau Proceedings Paper"; Book Review and
-  Letter are named as not reported. The export also lets chapters through; Adrian: that was for proceedings
-  indexed as chapters, which the DBLP / Crossref venue resolution now identifies — report proceedings by the
-  resolved venue and drop the chapter path after checking on real data how many rows it still carries. (4)
-  **columns** — SCIE/SSCI by quartile, Arts & Humanities and ESCI as their own columns without quartile (already
-  so), ERIH+, ISI Proceedings (CPCI-S, CPCI-SSH), IEEE Proceedings; no category-name column exists in the
-  template, so nothing is missing there. (5) **rows without DOI and WoS code** are dropped silently AFTER the
-  template row is copied, which leaves a blank row: skip before copying and tell the user which publications
-  were left out and why (the guide makes one of the two codes mandatory). (6) the side observation of the
-  audit: `CNFISScoringService2025` sets `erihPlus` for SCIE/SSCI categories too. Slice 1 = the rule corrections
-  on the existing export; slice 2 = the evaluation-tab entry with versions. To check: the guide speaks of an IF
-  classification on the UEFISCDI site, while the platform has the impact factor only from the JCR harvest
-  (`H122` b) — see what cnfis.ro/clasificare-reviste-isi publishes.
+- [ ] `H129` CNFIS reporting: its own sidebar entry, editions, the sheets of Anexa 5 and 6 — **OPEN; redesigned
+  with Adrian 2026-09-30 (supersedes the first entry of 2026-09-29); SLICE 1 BUILT 2026-09-30, not pushed.**
+  Slice 1 as built: `CnfisEdition` (2025, and 2027 provisional; an unknown window makes a provisional edition
+  of itself); `CNFISScoringService2025.getReport(publication, domain, edition)` with rules (1)–(5); each row
+  records the list year and what classified it, each left-out publication its reason; the workbook gets a last
+  sheet "Neincluse (platforma)" with the left-out publications — the platform's note, to delete before the file
+  is handed in (it moves to the page in slice 2); `ReportingLookupPort.isForumCpciIndexed`, answered by the
+  primary facade from the canonical forum; both CNFIS facades look nothing up and write nothing;
+  `WosAccessionSearchService` (was the sweep scheduler) behind `POST /admin/initialization/wos/accession/search`
+  (`limit`, default 400, at most 2000); `WoSExtractor` and the `wos.openurl.sweep.*` properties are gone.
+  **Changes a user will see in the file:** a publication in none of the categories no longer gets a row without
+  a mark; conference papers are "ISI Proceedings" by their venue, so a paper with a WoS code in a venue outside
+  the conference index loses the mark and one without a code in an indexed venue gains it; book chapters are
+  out. **To run on real data before relying on it (Adrian):** the count of rows per category before and
+  after, for one faculty. **Not built:** a button for the admin operation (it is an endpoint). Source of the rules: the
+  CNFIS guide "Cerințe și recomandări privind raportarea datelor … IC2" (January 2025, cnfis.ro).
+  **The shape.** Three sidebar entries instead of "Evaluation": **CNATDCU** (the domain reports: every FV, FEAA
+  included), **UEFISCDI** (Eligibilitate PD, PD 2026, Tinere Echipe) and **CNFIS**. A report carries a new field
+  naming the authority it applies to — it must get an input on the admin report form (`H116`: the form wipes
+  what it has no input for) and a value on every stored report, by script, at deploy. CNFIS is
+  **edition × sheet**. Reporting happens every two years over a four-year window, so windows overlap:
+  edition 2025 = reference date 1 January 2025, window 2021–2024; edition 2027 = 1 January 2027, window
+  2023–2026, PROVISIONAL (the 2025 rules on the new window) until CNFIS publishes its guide and templates.
+  Editions are defined in code (a few parameters + the template files), not as editable data. Sheets: **Anexa 5**
+  (articles and patents, everybody), **5.1** (artistic creation), **5.2** (sport), **5.3** (humanities: Scopus
+  articles by CiteScore quartile + books, edited volumes, chapters, critical editions, translations); the
+  institutional tables **6, 6.1, 6.2, 6.3** are the sums of the individual sheets. Which sheets a person fills
+  follows from their CNATDCU domain: the person picks it (list = the "Domenii-CNATDCU" sheet of the template),
+  the head sees the picks of the unit's members. Anexa 5 also asks for the CNATDCU score and the unmet
+  criterion: pre-filled from the person's CNATDCU report when the platform has one for the domain, typed in
+  otherwise; and for the three Hirsch values, which the platform shows for orientation only (`H128`).
+  **The rules of Anexa 5.** (1) list by year: JCR of the publication year, and for the LAST year of the window
+  the list of the year before ("pentru articolele publicate în anul 2024 … lista JCR din 2023"); a rule of the
+  edition, not of what is loaded — so the same 2024 article is ranked by JCR 2023 in edition 2025 and by JCR
+  2024 in edition 2027, both correct, and the page says why. (2) best classification of that year "indiferent
+  de clasificare IF sau AIS sau de categorie": the better of the AIS and the impact-factor quartile, over all
+  categories (the export read AIS only). (3) document types: Article, Review, Proceedings Paper; the chapter
+  path goes away — it was there for proceedings indexed as chapters, which are now found by their venue.
+  (4) ISI Proceedings = the conference-index flag of `H76` (`wosCpciIndexed`), no longer "has a WoS code"; IEEE
+  Proceedings by the resolved venue, no longer by "IEEE" in the name. (5) a row needs a DOI or a WoS code: the
+  rows without are listed to the user with the reason, not dropped after a blank row was copied. (6) patents
+  come from the declared activity type "Brevet" (its four types ARE the four CNFIS columns), which gains the
+  optional fields the form asks for: patent code, issuing office, authors from the university. (7) "authors
+  from the university" means the staff of Anexa 1 at the reference date (tenured or full-time fixed-term;
+  no doctoral students, associates, retirees) — the platform counts every non-external account. The staff
+  import carries no employment type nor dates: add the fields and let the users fill them in.
+  **No side effects in a download.** The export resolved WoS codes against Clarivate's link resolver and wrote
+  them back; it now uses only what is stored. Codes are found by an ADMIN OPERATION ("search WoS codes for the
+  new publications"), which REPLACES the scheduled sweep of `H114`/`H122` (c): only publications of the
+  university's own authors, never citing papers. A second admin operation refreshes the conference index from a
+  new library export, before each edition.
+  **Anexa 6** is a supervisor operation for the head's own unit (`@orgUnitAccess`, `H123`), built from the sheets
+  the members FROZE (the evaluation snapshots, reused); for a member without one the head generates a
+  PROVISIONAL sheet, marked as such, to hand over for signature. Frozen and provisional rows are told apart.
+  **Slices.** 1 = editions + rules (1)–(5) behind the existing download, no lookups in exports, the admin
+  operation for WoS codes. 2 = authority field, three sidebar entries, the CNFIS page with Anexa 5 (preview,
+  reasons, domain, CNATDCU score, patents, staff fields, snapshots). 3 = Anexa 6 for heads. 4 = Anexa 5.3.
+  5 = Anexa 5.1 and 5.2. Slices 4–5 wait for the templates (Adrian prepares them when the time comes).
+  **Classification source, to decide:** cnfis.ro/clasificare-reviste-isi publishes the lists CNFIS itself
+  expects (PDF, IF and AIS, 2020–2023 by CNFIS, earlier years by UEFISCDI). Loading them would make the CNFIS
+  sheets independent of the JCR harvest (`H122` b); slice 1 classifies from the quartiles already loaded.
+  Also noted by the audit: `CNFISScoringService2025` set `erihPlus` for SCIE/SSCI categories too.
 - [ ] `H128` Hardening after the compliance audit — **BUILT 2026-09-30, not pushed.** As listed below, with
   these differences: (4) the `agent-dev` guard looks at `KUBERNETES_SERVICE_HOST` (a pod always has it, a
   developer's machine never), not at the Keycloak issuer — a local `.env` may name the staging realm, and the

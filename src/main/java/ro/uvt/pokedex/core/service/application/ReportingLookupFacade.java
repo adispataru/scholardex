@@ -21,6 +21,18 @@ public class ReportingLookupFacade implements ReportingLookupPort {
 
     private final PostgresReportingLookupFacade postgresFacade;
     private final ScholardexBookFactRepository bookFactRepository;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
+
+    /** The flag lives on the canonical forum (H76), not in the read model — hence not delegated to Postgres. */
+    @Override
+    public boolean isForumCpciIndexed(String forumId) {
+        if (forumId == null || forumId.isBlank()) {
+            return false;
+        }
+        return forumFactRepository.findById(forumId)
+                .map(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact::isWosCpciIndexed)
+                .orElse(false);
+    }
 
     @Override
     public ScholardexForumView getForum(String forumId) {

@@ -13,7 +13,6 @@ import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
-import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -48,8 +47,6 @@ class GroupCnfisExportFacadeTest {
     private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     @Mock
     private CNFISScoringService2025 cnfiSScoringService2025;
-    @Mock
-    private WoSExtractor woSExtractor;
     @Mock
     private CNFISReportExportService exportService;
     @Mock
@@ -110,14 +107,7 @@ class GroupCnfisExportFacadeTest {
         when(groupManagementFacade.buildGroupListView()).thenReturn(groupListViewModel);
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(inRange, outOfRange));
-        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
-                        PublicationEnrichmentLinkerService.LinkState.LINKED,
-                        "linked",
-                        "p1",
-                        null
-                ));
-        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any())).thenReturn(new CNFISReport2025());
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(), any())).thenReturn(new CNFISReport2025());
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
@@ -126,7 +116,7 @@ class GroupCnfisExportFacadeTest {
         assertEquals(1, result.get().publications().size());
         assertEquals("p1", result.get().publications().get(0).getId());
         ArgumentCaptor<Domain> domainCaptor = ArgumentCaptor.forClass(Domain.class);
-        verify(cnfiSScoringService2025).getReport(any(ScoringPublicationReadModel.class), domainCaptor.capture());
+        verify(cnfiSScoringService2025).getReport(any(ScoringPublicationReadModel.class), domainCaptor.capture(), any());
         assertEquals("ALL", domainCaptor.getValue().getName());
     }
 
@@ -151,14 +141,7 @@ class GroupCnfisExportFacadeTest {
         ScholardexPublicationView p2 = publication("p2", "f2", "2023-01-01");
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a2"))).thenReturn(List.of(p2));
-        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
-                        PublicationEnrichmentLinkerService.LinkState.LINKED,
-                        "linked",
-                        "p1",
-                        null
-                ));
-        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class))).thenReturn(new CNFISReport2025());
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class), any())).thenReturn(new CNFISReport2025());
 
         ScholardexForumView f1 = new ScholardexForumView();
         f1.setId("f1");
@@ -194,14 +177,7 @@ class GroupCnfisExportFacadeTest {
 
         ScholardexPublicationView publication = publication("p1", "f1", "2022-01-01");
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
-        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
-                        PublicationEnrichmentLinkerService.LinkState.LINKED,
-                        "linked",
-                        "p1",
-                        null
-                ));
-        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class))).thenReturn(new CNFISReport2025());
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class), any())).thenReturn(new CNFISReport2025());
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), anyList(), eq(true)))
                 .thenReturn(new byte[]{9, 9, 9});
@@ -276,14 +252,7 @@ class GroupCnfisExportFacadeTest {
                 .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group()));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(start, end, out));
-        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
-                        PublicationEnrichmentLinkerService.LinkState.LINKED,
-                        "linked",
-                        "p1",
-                        null
-                ));
-        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class))).thenReturn(new CNFISReport2025());
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class), any())).thenReturn(new CNFISReport2025());
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
@@ -314,14 +283,7 @@ class GroupCnfisExportFacadeTest {
                 .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group()));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(valid, invalid));
-        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
-                        PublicationEnrichmentLinkerService.LinkState.LINKED,
-                        "linked",
-                        "pValid",
-                        null
-                ));
-        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class))).thenReturn(new CNFISReport2025());
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), any(Domain.class), any())).thenReturn(new CNFISReport2025());
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
@@ -329,7 +291,6 @@ class GroupCnfisExportFacadeTest {
         assertTrue(result.isPresent());
         assertEquals(1, result.get().publications().size());
         assertEquals("pValid", result.get().publications().getFirst().getId());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pValid"), any(), any(), any(), any(), any(), any());
     }
 
     private static User memberUser(String email, String firstName, String lastName, List<String> scopusIds) {

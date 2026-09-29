@@ -105,20 +105,18 @@ class ScholardexCutoverGuardrailTest {
     }
 
     @Test
-    void wosEnrichmentWritesAreRoutedThroughLinkerService() throws Exception {
-        Path userReportFacade = Path.of("src/main/java/ro/uvt/pokedex/core/service/application/UserReportFacade.java");
-        String userReportContent = Files.readString(userReportFacade);
-        assertTrue(userReportContent.contains("publicationEnrichmentLinkerService.linkWosEnrichment("),
-                "User report flow must route WoS enrichment through PublicationEnrichmentLinkerService.");
-        assertFalse(userReportContent.contains("savePublicationView("),
-                "User report flow must not directly persist publication enrichment.");
-
-        Path groupCnfisFacade = Path.of("src/main/java/ro/uvt/pokedex/core/service/application/GroupCnfisExportFacade.java");
-        String groupCnfisContent = Files.readString(groupCnfisFacade);
-        assertTrue(groupCnfisContent.contains("publicationEnrichmentLinkerService.linkWosEnrichment("),
-                "Group CNFIS flow must route WoS enrichment through PublicationEnrichmentLinkerService.");
-        assertFalse(groupCnfisContent.contains("savePublicationView("),
-                "Group CNFIS flow must not directly persist publication enrichment.");
+    void cnfisDownloadsNeitherLookUpNorWriteWosEnrichment() throws Exception {
+        // H129: a download has no side effects. The WoS codes are found by an admin operation
+        // (WosAccessionSearchService), which writes them through the linker service.
+        for (String file : List.of("UserReportFacade.java", "GroupCnfisExportFacade.java")) {
+            String content = Files.readString(Path.of("src/main/java/ro/uvt/pokedex/core/service/application/" + file));
+            assertFalse(content.contains("linkWosEnrichment("), file + " must not write WoS enrichment.");
+            assertFalse(content.contains("resolveWosId("), file + " must not look WoS codes up.");
+            assertFalse(content.contains("savePublicationView("), file + " must not persist publication enrichment.");
+        }
+        String search = Files.readString(Path.of("src/main/java/ro/uvt/pokedex/core/service/wos/WosAccessionSearchService.java"));
+        assertTrue(search.contains("linkerService.linkWosEnrichment("),
+                "The WoS accession search must route its writes through PublicationEnrichmentLinkerService.");
     }
 
     @Test

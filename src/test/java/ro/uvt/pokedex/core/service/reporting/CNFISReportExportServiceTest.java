@@ -309,6 +309,48 @@ class CNFISReportExportServiceTest {
         }
     }
 
+    @Test
+    void publicationsWithoutARowAreListedWithTheirReasonAndLeaveNoBlankRow() throws Exception {
+        // H129: they used to be dropped silently, after a template row had been copied for them
+        CNFISReportExportService service = new CNFISReportExportService();
+        ScoringPublication noCodes = publication("p1", "forum-1", "2023-03-01", null, null, 2, "No DOI, no WoS code");
+        ScoringPublication unclassified = publication("p2", "forum-1", "2023-03-01", "10.1000/two", null, 2, "Not in any list");
+        ScoringPublication reported = publication("p3", "forum-1", "2023-03-01", "10.1000/three", null, 2, "Reported");
+        CNFISReport2025 leftOut = report(r -> r.setLeftOutReason("the journal is in none of the lists of 2023"));
+
+        byte[] bytes = service.generateCNFISReportWorkbook(
+                List.of(noCodes, unclassified, reported),
+                List.of(report(r -> r.setIsiQ1(true)), leftOut, report(r -> r.setIsiQ2(true))),
+                Map.of("forum-1", forum("Forum Name", "1234-5678", "9876-5432")), List.of(), false);
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Row first = workbook.getSheetAt(0).getRow(17);
+            assertEquals("Reported", first.getCell(2).getStringCellValue(), "the first row of the form is the reported one");
+            assertEquals(1.0, first.getCell(13).getNumericCellValue());
+
+            Sheet notes = workbook.getSheet(CNFISReportExportService.LEFT_OUT_SHEET);
+            assertNotNull(notes);
+            assertEquals("No DOI, no WoS code", notes.getRow(2).getCell(1).getStringCellValue());
+            assertTrue(notes.getRow(2).getCell(4).getStringCellValue().contains("neither a DOI nor a WoS code"));
+            assertEquals("Not in any list", notes.getRow(3).getCell(1).getStringCellValue());
+            assertEquals("the journal is in none of the lists of 2023", notes.getRow(3).getCell(4).getStringCellValue());
+            assertEquals(3, notes.getLastRowNum());
+        }
+    }
+
+    @Test
+    void aWorkbookWithNothingLeftOutHasNoNotesSheet() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        byte[] bytes = service.generateCNFISReportWorkbook(
+                List.of(publication("p1", "forum-1", "2023-03-01", "10.1000/one", null, 2, "Reported")),
+                List.of(report(r -> r.setIsiQ1(true))),
+                Map.of("forum-1", forum("Forum Name", "1234-5678", "9876-5432")), List.of(), false);
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            assertEquals(null, workbook.getSheet(CNFISReportExportService.LEFT_OUT_SHEET));
+        }
+    }
+
     private ScoringPublication publication(String id, String forumId, String date, String doi, String wosId, int authorCount, String title) {
         return new ScoringPublication(id, "eid-" + id, forumId, date, "ar", null, List.of("a1"), authorCount, doi, wosId, title, 0, java.util.Set.of());
     }

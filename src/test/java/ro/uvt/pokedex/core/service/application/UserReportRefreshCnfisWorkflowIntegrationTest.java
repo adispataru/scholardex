@@ -20,7 +20,6 @@ import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.reporting.UserIndicatorResult;
-import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -86,7 +85,6 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
     private ScientificProductionService scientificProductionService;
     private DomainRepository domainRepository;
     private CNFISScoringService2025 cnfisScoringService2025;
-    private WoSExtractor woSExtractor;
     private CNFISReportExportService exportService;
     private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
@@ -111,7 +109,6 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         scientificProductionService = mock(ScientificProductionService.class);
         researcherAuthorLookupService = mock(ResearcherAuthorLookupService.class);
         cnfisScoringService2025 = mock(CNFISScoringService2025.class);
-        woSExtractor = mock(WoSExtractor.class);
         exportService = mock(CNFISReportExportService.class);
         CacheService cacheService = mock(CacheService.class);
         publicationEnrichmentLinkerService = mock(PublicationEnrichmentLinkerService.class);
@@ -131,10 +128,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 scientificProductionService,
                 researcherAuthorLookupService,
                 cnfisScoringService2025,
-                woSExtractor,
                 exportService,
                 cacheService,
-                publicationEnrichmentLinkerService,
                 reportingLookupPort,
                 effectiveAuthorshipReadService,
                 new ReportingLookupMemoization(),
@@ -251,7 +246,6 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         assertEquals(List.of("p1"), publicationCaptor.getValue().stream().map(ScoringPublicationReadModel::getId).toList());
         assertEquals(1, reportCaptor.getValue().size());
         assertEquals(List.of("a1"), authorIdsCaptor.getValue());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("p1"), any(), any(), any(), any(), any(), any());
     }
 
     private void seedWorkflowDefinitions() {
@@ -354,15 +348,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(woSExtractor.resolveWosId(any())).thenReturn(Optional.of("WOS:1"));
-        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
-                        PublicationEnrichmentLinkerService.LinkState.LINKED,
-                        "linked",
-                        "pub-fact-1",
-                        null
-                ));
-        when(cnfisScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(new CNFISReport2025());
+        when(cnfisScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain), any())).thenReturn(new CNFISReport2025());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{1, 2, 3});
 

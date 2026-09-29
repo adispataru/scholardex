@@ -48,6 +48,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService scopusCanonicalMaterializationService;
     private final ro.uvt.pokedex.core.service.importing.wos.WosCpciOnboardingService wosCpciOnboardingService;
+    private final ObjectProvider<ro.uvt.pokedex.core.service.wos.WosAccessionSearchService> wosAccessionSearchServiceProvider;
     private final ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
     private final ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
     private final ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService crossrefPublisherBackfillService;
@@ -87,6 +88,27 @@ public class AdminInitializationController {
     @ResponseBody
     public ro.uvt.pokedex.core.service.importing.wos.WosCpciMatchReport wosCpciDryRun() {
         return wosCpciOnboardingService.dryRun();
+    }
+
+    /**
+     * H129: search the WoS accession numbers ("cod WOS" of the CNFIS sheets) of the university's own
+     * publications that have a DOI and no code yet — never of citing papers. Replaces the scheduled sweep: the
+     * link resolver is asked only when an admin starts this. {@code limit} bounds the DOIs asked in one run
+     * (default 400, at most 2000); run it again for the rest.
+     */
+    @PostMapping("/wos/accession/search")
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<?> wosAccessionSearch(
+            @org.springframework.web.bind.annotation.RequestParam(name = "limit", required = false) Integer limit) {
+        ro.uvt.pokedex.core.service.wos.WosAccessionSearchService service = wosAccessionSearchServiceProvider.getIfAvailable();
+        if (service == null) {
+            return org.springframework.http.ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(java.util.Map.of("error", "The WoS accession search is not available in this deployment"));
+        }
+        int bounded = Math.max(1, Math.min(
+                limit == null ? ro.uvt.pokedex.core.service.wos.WosAccessionSearchService.DEFAULT_LIMIT : limit,
+                ro.uvt.pokedex.core.service.wos.WosAccessionSearchService.MAX_LIMIT));
+        return org.springframework.http.ResponseEntity.ok(service.search(bounded));
     }
 
     /**

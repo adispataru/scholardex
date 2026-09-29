@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class WosAccessionSweepSchedulerTest {
+class WosAccessionSearchServiceTest {
 
     @Mock private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock private CacheService cacheService;
@@ -48,13 +48,13 @@ class WosAccessionSweepSchedulerTest {
         when(wosAccessionService.resolve("10.1/shared")).thenReturn(Optional.of("WOS:1"));
         when(wosAccessionService.resolve("10.1/two")).thenReturn(Optional.empty());
         when(linkerService.linkWosEnrichment(eq("p-shared"), eq("eid-p-shared"), eq("10.1/shared"), eq("WOS:1"),
-                eq(WosAccessionSweepScheduler.SOURCE), eq(WosAccessionSweepScheduler.LINKER_VERSION), any()))
+                eq(WosAccessionSearchService.SOURCE), eq(WosAccessionSearchService.LINKER_VERSION), any()))
                 .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
                         PublicationEnrichmentLinkerService.LinkState.LINKED, "resolved", "p-shared", null));
 
-        WosAccessionSweepScheduler scheduler = new WosAccessionSweepScheduler(
+        WosAccessionSearchService service = new WosAccessionSearchService(
                 publicationFactRepository, cacheService, wosAccessionService, linkerService);
-        WosAccessionSweepScheduler.Result r = scheduler.sweep(2);
+        WosAccessionSearchService.Result r = service.search(2);
 
         assertEquals(3, r.candidates(), "shared once, two, three — not the resolved one, not the DOI-less one");
         assertEquals(2, r.asked(), "bounded by the limit");

@@ -14,7 +14,6 @@ import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
-import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
@@ -86,8 +85,6 @@ class UserReportFacadeTest {
     private ScientificProductionService scientificProductionService;
     @Mock
     private CNFISScoringService2025 cnfiSScoringService2025;
-    @Mock
-    private WoSExtractor woSExtractor;
     @Mock
     private CNFISReportExportService exportService;
     @Mock
@@ -295,9 +292,6 @@ class UserReportFacadeTest {
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
         // only in-range publications should be enriched/saved (2021..2024 inclusive)
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pStart"), any(), any(), any(), any(), any(), any());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pIn"), any(), any(), any(), any(), any(), any());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pEnd"), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -506,7 +500,7 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(pIn, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain), any())).thenReturn(report);
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{7});
@@ -545,7 +539,7 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(valid, invalid));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain), any())).thenReturn(report);
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{7});
@@ -553,7 +547,6 @@ class UserReportFacadeTest {
         var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("p-valid"), any(), any(), any(), any(), any(), any());
 
         ArgumentCaptor<List<ScoringPublicationReadModel>> publicationCaptor = ArgumentCaptor.forClass(List.class);
         verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), anyList(), anyMap(), eq(List.of("a1")), eq(false));

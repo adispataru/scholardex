@@ -36,6 +36,7 @@ import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
+import ro.uvt.pokedex.core.service.reporting.CnfisEdition;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
@@ -43,7 +44,6 @@ import ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext;
 import ro.uvt.pokedex.core.service.reporting.transfer.projection.ProjectLabelResolver;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
-import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.WoSRanking;
 
 import java.io.ByteArrayOutputStream;
@@ -59,8 +59,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class UserReportFacade {
-    private static final String WOS_EXTRACTOR_SOURCE = "WOSEXTRACTOR";
-    private static final String LINKER_VERSION = "h17.10";
     private static final Pattern ISSN_PATTERN = Pattern.compile("(?i)\\b[0-9]{4}-?[0-9]{3}[0-9x]\\b");
 
     private final UserService userService;
@@ -74,10 +72,8 @@ public class UserReportFacade {
     private final ScientificProductionService scientificProductionService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final CNFISScoringService2025 cnfiSScoringService2025;
-    private final WoSExtractor woSExtractor;
     private final CNFISReportExportService exportService;
     private final CacheService cacheService;
-    private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final ReportingLookupPort reportingLookupPort;
     private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
     private final ReportingLookupMemoization reportingLookupMemoization;
@@ -179,28 +175,14 @@ public class UserReportFacade {
 
         Domain domain = domainRepository.findByName("ALL").orElse(null);
         List<CNFISReport2025> cnfisReports = new ArrayList<>();
-        String linkerRunId = "user-cnfis-" + System.currentTimeMillis();
+        // H129: a download has no side effects — the WoS codes are the ones already stored (an admin operation
+        // finds them); it used to ask Clarivate's link resolver for every paper without one and write the answer.
+        CnfisEdition edition = CnfisEdition.forWindow(startYear, endYear);
         List<ScoringPublicationReadModel> scoringPublications = new ArrayList<>();
         for (ScholardexPublicationView publication : publications) {
-            String resolvedWosId = publication.getWosId();
-            if ((resolvedWosId == null || resolvedWosId.isBlank())
-                    && publication.getDoi() != null && !publication.getDoi().isBlank()) {
-                resolvedWosId = woSExtractor.resolveWosId(publication.getDoi())
-                        .orElse(CanonicalPublicationConstants.NON_WOS_ID);
-            }
-            publicationEnrichmentLinkerService.linkWosEnrichment(
-                    publication.getId(),
-                    publication.getEid(),
-                    publication.getDoi(),
-                    resolvedWosId,
-                    WOS_EXTRACTOR_SOURCE,
-                    LINKER_VERSION,
-                    linkerRunId
-            );
-            publication.setWosId(resolvedWosId);
             ScoringPublicationReadModel scoringPublication = publication.toScoringPublication();
             scoringPublications.add(scoringPublication);
-            cnfisReports.add(cnfiSScoringService2025.getReport(scoringPublication, domain));
+            cnfisReports.add(cnfiSScoringService2025.getReport(scoringPublication, domain, edition));
         }
 
         Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());

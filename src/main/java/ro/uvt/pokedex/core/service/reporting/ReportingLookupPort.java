@@ -131,6 +131,14 @@ public interface ReportingLookupPort {
     }
 
     /**
+     * H129: whether the venue is in the WoS conference index (CPCI-S / CPCI-SSH), as established from the
+     * library's Core Collection export (H76) — what CNFIS calls "ISI Proceedings". Default false.
+     */
+    default boolean isForumCpciIndexed(String forumId) {
+        return false;
+    }
+
+    /**
      * Whether the forum was indexed in WoS ESCI (Emerging Sources Citation Index, no JIF quartile) as of the given
      * publication year. Year-true with carry-forward: the latest recorded year is used when {@code year} is more
      * recent than the data. Default false; the Postgres facade overrides with the real membership query.

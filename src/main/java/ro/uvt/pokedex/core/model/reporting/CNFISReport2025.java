@@ -35,6 +35,17 @@ public class CNFISReport2025 {
     private boolean internationale;                // "Internaţionale"
     private boolean nationale;                              // "Naţionale"
 
+    // H129 — how the row was classified, for the person who checks it (not columns of the form)
+    private Integer listYear;           // the year of the classification list the article was reported by
+    private String classifiedBy;        // e.g. "IF Q1 · COMPUTER SCIENCE, THEORY & METHODS - SCIE"
+    private String leftOutReason;       // set when the form has no place for the publication
+
+    public boolean isClassified() {
+        return natureScience || isiQ1 || isiQ2 || isiQ3 || isiQ4 || isiArtsHumanities
+                || isiEmergingSourcesCitationIndex || erihPlus || isiProceedings || ieeeProceedings
+                || triadice || europene || internationale || nationale;
+    }
+
     // Authors
     private int numarAutori;                // "Număr autori"
     private int numarAutoriUniversitate;    // "Număr autori din universitate"
