@@ -664,19 +664,20 @@ class ScholardexPublicationCanonicalizationServiceTest {
         assertEquals(2, fact.getAuthorCount());
         assertEquals(List.of("sauth_1"), fact.getAuthorIds());
         assertEquals(List.of("au-2"), fact.getPendingAuthorSourceIds());
-        assertEquals(List.of("sauth_1"), fact.getCorrespondingAuthors());
+        // H120: what the Scopus fact still carries of these is not taken into the canonical record
+        assertTrue(fact.getCorrespondingAuthors().isEmpty());
         assertEquals(List.of(), fact.getAffiliationIds());
         assertEquals("sforum_1", fact.getForumId());
         assertEquals("42", fact.getVolume());
         assertEquals("7", fact.getIssueIdentifier());
         assertEquals("2024-02-02", fact.getCoverDate());
         assertEquals("2 Feb 2024", fact.getCoverDisplayDate());
-        assertEquals("Replay description", fact.getDescription());
+        assertNull(fact.getDescription());
         assertEquals(5, fact.getCitedByCount());
-        assertEquals(true, fact.getOpenAccess());
-        assertEquals("all", fact.getFreetoread());
-        assertEquals("repository", fact.getFreetoreadLabel());
-        assertEquals("fund-1", fact.getFundingId());
+        assertNull(fact.getOpenAccess());
+        assertNull(fact.getFreetoread());
+        assertNull(fact.getFreetoreadLabel());
+        assertNull(fact.getFundingId());
         assertEquals("A-1", fact.getArticleNumber());
         assertEquals("1-10", fact.getPageRange());
         assertEquals(true, fact.getApproved());

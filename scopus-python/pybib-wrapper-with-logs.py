@@ -229,8 +229,8 @@ def to_normalized(row, cdm_version: str = "1.0") -> Dict[str, Any]:
             "publisher": getattr(row, "publisher", None),
             "source_id": getattr(row, "source_id", None),
         },
-        "open_access": {"is_oa": getattr(row, "openaccess", None), "license": None},
-        "keywords": getattr(row, "authkeywords", []) or [],
+        "open_access": {"is_oa": None, "license": None},  # H120: not taken from Scopus
+        "keywords": [],                                   # H120: not taken from Scopus
         "subject_areas": [],
         "authors": [],
         "affiliations": [],
@@ -262,7 +262,6 @@ def to_legacy(
     subtype = getattr(row, "subtype", "") or ""
     subtypeDescription = getattr(row, "subtypeDescription", "") or ""   # sometimes on COMPLETE view
     citedby_count = getattr(row, "citedby_count", None)
-    openaccess = _int01(getattr(row, "openaccess", 0))
     pageRange = getattr(row, "pageRange", "") or ""
     coverDate = getattr(row, "coverDate", "") or ""
     coverDisplayDate = _display_month(coverDate)
@@ -289,12 +288,9 @@ def to_legacy(
     creator = author_names[0] if author_names else getattr(row, "creator", "") or ""
     author_count = len(author_ids) if author_ids else 0
 
-    # Description / isbn / funding defaults (may be filled by enrichment)
-    description = getattr(row, "description", "") or ""
+    # H120: abstract, author keywords, funding and open-access status are NOT taken from Scopus — they are
+    # outside the fields the CRIS policy lists. Funding and open access come from OpenAlex.
     isbn = getattr(row, "isbn", "") or ""
-    fund_acr = ""
-    fund_no = ""
-    fund_sponsor = ""
 
     # --- optional enrichment to fill blanks ---
     if include_enrichment and eid:
@@ -316,8 +312,6 @@ def to_legacy(
 
             if not subtypeDescription:
                 subtypeDescription = getattr(ar, "subtypeDescription", "") or subtypeDescription
-            if not description:
-                description = getattr(ar, "abstract", "") or description
             if not article_number:
                 article_number = getattr(ar, "article_number", "") or article_number
             if not isbn:
@@ -374,15 +368,6 @@ def to_legacy(
                         affilname_list.append(afname)
                         aff_city_list.append(afcity)
                         aff_country_list.append(afcountry)
-
-            # Funding (best-effort)
-            if not (fund_acr or fund_no or fund_sponsor):
-                funding = getattr(ar, "funding", None) or getattr(ar, "fundings", None)
-                if isinstance(funding, list) and funding:
-                    f0 = funding[0]
-                    fund_acr = str(getattr(f0, "acronym", "") or "")
-                    fund_no = str(getattr(f0, "number", "") or "")
-                    fund_sponsor = str(getattr(f0, "sponsor", "") or getattr(f0, "agency", "") or "")
         except Exception as ex:
             # return what we have — but say so: a silent miss here is how venue-less records reach the corpus
             logger.warning("Enrichment failed for %s (record kept as searched): %s", eid, ex)
@@ -400,9 +385,7 @@ def to_legacy(
         "subtypeDescription": subtypeDescription,
         "creator": creator,
         "author_count": int(author_count) if author_count is not None else 0,
-        "description": description,
         "citedby_count": int(citedby_count) if citedby_count is not None else 0,
-        "openaccess": int(openaccess),
         "article_number": article_number,
         "pageRange": pageRange,
         "coverDate": coverDate,
@@ -422,9 +405,6 @@ def to_legacy(
         "affilname": _join_sc(affilname_list),
         "affiliation_city": _join_sc(aff_city_list),
         "affiliation_country": _join_sc(aff_country_list),
-        "fund_acr": fund_acr,
-        "fund_no": fund_no,
-        "fund_sponsor": fund_sponsor,
     }
 
 
@@ -633,7 +613,7 @@ def fetch_citations_by_title(
     narrowed by the researcher's surname (REFAUTH). Finds what REF(eid) cannot: citations of works with
     no Scopus EID, and references Scopus failed to link (mangled author strings, fresh documents).
     Known citing EIDs are dropped; every remaining hit is verified against its own reference list unless
-    verify_references is off. Items carry 'cited_key', 'verified' and 'matched_reference'.
+    verify_references is off. Items carry 'cited_key' and 'verified'.
     """
     by_key: Dict[str, List[Dict[str, Any]]] = {}
     per_key_count: Dict[str, int] = {}
@@ -660,21 +640,18 @@ def fetch_citations_by_title(
             if not eid or eid in known:
                 continue
             verified = None
-            matched = None
             if verify_references:
                 try:
                     ar = AbstractRetrieval(eid, view="REF")
                     ref = _reference_match(getattr(ar, "references", None), spec.title, spec.surnames)
                     verified = ref is not None
-                    if ref is not None:
-                        matched = getattr(ref, "fulltext", None) or getattr(ref, "text", None) or getattr(ref, "title", None)
+                    # H120: the reference text itself is not returned, only whether it named the work
                 except Exception as ex:
                     logger.warning("Reference check failed for %s citing %s | %s", eid, key, ex)
                     verified = False
             legacy = to_legacy(r, include_enrichment=include_enrichment)
             legacy["cited_key"] = key
             legacy["verified"] = verified
-            legacy["matched_reference"] = matched
             legacy["search_query"] = query
             if verified is False:
                 unverified_total += 1

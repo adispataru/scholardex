@@ -28,7 +28,10 @@ public class ScholardexPublicationView {
     private String coverDisplayDate;
     private String volume;
     private String issueIdentifier;
+    // H120: never serialised — an abstract or keywords still stored from Scopus must not reach a browser
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String description;
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<String> authKeywords = new ArrayList<>();
     private int authorCount;
     private List<String> correspondingAuthors = new ArrayList<>();

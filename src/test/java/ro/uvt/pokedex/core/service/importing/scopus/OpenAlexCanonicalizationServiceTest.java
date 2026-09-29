@@ -98,6 +98,30 @@ class OpenAlexCanonicalizationServiceTest {
     }
 
     @Test
+    void linkingToForeignPubGivesItOpenAccessAndFundingFromOpenAlex() {
+        // H120: OpenAlex is the only source of these two, also on a record Scopus owns
+        OpenAlexPublicationFact source = source("W1", "10.1/known", "A paper", "sauth_self");
+        source.setCitedByCount(10);
+        source.setOpenAccess(true);
+        source.setFunding("UEFISCDI (PN-III-P4)");
+        ScholardexPublicationFact existing = new ScholardexPublicationFact();
+        existing.setId("spub_existing");
+        existing.setSource("SCOPUS");
+        existing.setTitle("Scopus title");
+        existing.setCitedByCount(99);
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/known")).thenReturn(List.of(existing));
+
+        service.rebuildCanonicalFacts();
+
+        verify(scholardexPublicationFactRepository).save(argThat(p ->
+                "spub_existing".equals(p.getId()) && Boolean.TRUE.equals(p.getOpenAccess())
+                        && "UEFISCDI (PN-III-P4)".equals(p.getFundingId())
+                        && Integer.valueOf(99).equals(p.getCitedByCount())
+                        && "Scopus title".equals(p.getTitle())));
+    }
+
+    @Test
     void linkingToForeignPubKeepsHigherExistingCitationCount() {
         OpenAlexPublicationFact source = source("W1", "10.1/known", "A paper", "sauth_self");
         source.setCitedByCount(10); // lower than the existing Scopus count

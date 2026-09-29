@@ -76,7 +76,6 @@ class PipelineRebuildDeterminismIntegrationTest {
                 factory.getRepository(ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository.class),
                 factory.getRepository(ScopusAuthorFactRepository.class),
                 factory.getRepository(ScopusAffiliationFactRepository.class),
-                factory.getRepository(ScopusFundingFactRepository.class),
                 mapper);
 
         seedLedger(mapper);

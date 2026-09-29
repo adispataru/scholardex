@@ -112,6 +112,7 @@ public class OpenAlexImportService {
         fact.setType(work.getType());
         fact.setCitedByCount(work.getCited_by_count());
         fact.setOpenAccess(work.getOpen_access() == null ? null : work.getOpen_access().getIs_oa());
+        fact.setFunding(OpenAlexFunding.describe(work));
         fact.setRetracted(work.getIs_retracted());
         // Kept when the payload has none: an older dump line must not erase what the API or the backfill gave.
         if (work.getLanguage() != null && !work.getLanguage().isBlank()) {
@@ -258,6 +259,7 @@ public class OpenAlexImportService {
             fact.setType(work.getType());
             fact.setCitedByCount(work.getCited_by_count());
             fact.setOpenAccess(work.getOpen_access() == null ? null : work.getOpen_access().getIs_oa());
+            fact.setFunding(OpenAlexFunding.describe(work));
             if (work.getAuthorships() != null && !work.getAuthorships().isEmpty()
                     && work.getAuthorships().getFirst().getAuthor() != null) {
                 fact.setCreator(work.getAuthorships().getFirst().getAuthor().getDisplay_name());

@@ -468,7 +468,6 @@ public class ScopusUpdateScheduler {
                         citationPayload.put("citedEid", citedKey);
                         citationPayload.put("citingEid", citingEid);
                         citationPayload.put("provenance", "SCOPUS_REFTITLE");
-                        citationPayload.put("matchedReference", hit.get("matched_reference"));
                         ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
                                 ScopusImportEntityType.CITATION,
                                 "SCOPUS_PYTHON_REFTITLE_EDGE",

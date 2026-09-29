@@ -41,6 +41,7 @@ public class OpenAlexPublicationFact {
     private Integer authorCount;
     private Integer citedByCount;
     private Boolean openAccess;
+    private String funding;          // H120: "Funder (award); Funder" from OpenAlex grants — shown as the funding
     private Boolean retracted;       // OpenAlex is_retracted — research-ethics gate (retracted must not score)
     private String language;         // OpenAlex language, ISO 639-1 — read by the Comisia 25 coefficient m
 

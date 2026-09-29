@@ -163,8 +163,24 @@ Done history moved to `TASKS-done.md`.
   count on the canonical publication (`citedByCount` is a max over Scopus and OpenAlex with no record of which
   won), so the public pages can show the OpenAlex count labelled as such. Public staff pages also need a line in
   the privacy notice, which does not exist yet.
-- [ ] `H120` Scopus: fetch and keep only the fields the CRIS policy allows — **OPEN, from the compliance audit of
-  2026-09-29.** The wrapper calls Abstract Retrieval `view=FULL` for every own AND every citing record, because
+- [ ] `H120` Scopus: fetch and keep only the fields the CRIS policy allows — **BUILT 2026-09-29 (stop sending +
+  stop collecting), not pushed; the purge waits for the next full rebuild.** Decided with Adrian: PII stays (it is
+  a merge key), funding and open access come from OpenAlex. **What changed:** (1) the wrapper no longer returns
+  abstract, funding, open access nor the matched reference text — the Abstract Retrieval call STAYS, because the
+  STANDARD search gives only the first author and the call is what supplies the author list, the affiliations
+  and the venue of fresh papers; (2) `ScopusLicensedFields` strips those fields from every Scopus publication and
+  citation payload where it enters the platform (`ScopusImportEventIngestionService`), so the dump import and the
+  raw event layer are covered too — a re-sync replaces a stored event with its stripped form; (3)
+  `ScopusFactBuilderService` clears them on the Scopus fact and no longer writes `scopus.funding_facts`; (4) the
+  canonical record takes none of them from Scopus, in BOTH paths (`ScholardexPublicationCanonicalizationService`
+  and `CanonicalGraphBuilder`); (5) funding is read from OpenAlex (`OpenAlexFunding`: "Funder (award); Funder",
+  from `grants`, else `funders`) and, with open access, written by OpenAlex also onto records Scopus owns; (6)
+  `ScholardexPublicationView` never serialises abstract and keywords, which closes the workspace citations
+  response. **Left as stored until a rebuild:** the fields on records nobody re-syncs, the open-access flag of
+  records OpenAlex does not know, `scopus.funding_facts`, the pod's pybliometrics cache and the local dump
+  files. **Not verified:** that the live OpenAlex API still names the field `grants` — the documentation page
+  had moved; check one real work before relying on the funding column. Original entry, from the compliance
+  audit of 2026-09-29: The wrapper calls Abstract Retrieval `view=FULL` for every own AND every citing record, because
   `include_enrichment` defaults to true in the three request DTOs (`AuthorWorksRequest`, `CitationsByEidRequest`,
   `CitationsByTitleRequest`) and no planner overrides it. Stored outside the allowed list: abstract
   (`description`), author keywords, funding (`fund_acr`/`fund_no`/`fund_sponsor`, plus the `scopus.funding_facts`

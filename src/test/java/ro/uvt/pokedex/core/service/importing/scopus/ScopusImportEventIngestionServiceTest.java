@@ -65,6 +65,7 @@ class ScopusImportEventIngestionServiceTest {
         LinkedHashMap<String, Object> payload = new LinkedHashMap<>();
         payload.put("eid", "2-s2.0-123");
         payload.put("title", "Sample");
+        payload.put("description", "An abstract"); // H120: not kept from a Scopus record
 
         ScopusImportEventIngestionService.EventIngestionOutcome outcome = service.ingest(
                 ScopusImportEntityType.PUBLICATION,
@@ -321,7 +322,8 @@ class ScopusImportEventIngestionServiceTest {
 
         assertEquals(
                 "{\"eid\":\"2-s2.0-123\",\"title\":\"Sample\"}",
-                ReflectionTestUtils.invokeMethod(service, "normalizePayload", payload)
+                ReflectionTestUtils.invokeMethod(service, "normalizePayload",
+                        ScopusImportEntityType.PUBLICATION, "SCOPUS_JSON_BOOTSTRAP", payload)
         );
         assertEquals(
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",

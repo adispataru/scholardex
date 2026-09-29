@@ -12,7 +12,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusFundingFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
@@ -20,7 +19,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepo
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusFundingFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
 import ro.uvt.pokedex.core.service.importing.BuilderVersion;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
@@ -66,7 +64,6 @@ public class ScopusFactBuilderService {
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     private final ScopusAuthorFactRepository authorFactRepository;
     private final ScopusAffiliationFactRepository affiliationFactRepository;
-    private final ScopusFundingFactRepository fundingFactRepository;
     private final ObjectMapper objectMapper;
 
     public ImportProcessingResult buildFactsFromImportEvents() {
@@ -396,7 +393,6 @@ public class ScopusFactBuilderService {
                 Map.of(),
                 mapByKey(forumFactRepository.findBySourceIdIn(sourceIds), ScopusForumFact::getSourceId),
                 Map.of(),
-                Map.of(),
                 Map.of()
         );
         long preloadFinishedAtNanos = System.nanoTime();
@@ -538,7 +534,6 @@ public class ScopusFactBuilderService {
         Set<String> sourceIds = new LinkedHashSet<>();
         Set<String> authorIds = new LinkedHashSet<>();
         Set<String> afids = new LinkedHashSet<>();
-        Set<String> fundingKeys = new LinkedHashSet<>();
 
         for (PublicationWorkItem item : items) {
             JsonNode payload = item.payload;
@@ -552,18 +547,13 @@ public class ScopusFactBuilderService {
             }
             authorIds.addAll(distinctNonBlank(splitSemicolon(text(payload, "author_ids"))));
             afids.addAll(distinctNonBlank(splitSemicolon(text(payload, "afid"))));
-            String acronym = text(payload, "fund_acr");
-            if (!isBlank(acronym)) {
-                fundingKeys.add(normalizeFundingKey(acronym, text(payload, "fund_no"), text(payload, "fund_sponsor")));
-            }
         }
 
         return new PublicationChunkState(
                 mapByKey(publicationFactRepository.findByEidIn(eids), ScopusPublicationFact::getEid),
                 mapByKey(forumFactRepository.findBySourceIdIn(sourceIds), ScopusForumFact::getSourceId),
                 mapByKey(authorFactRepository.findByAuthorIdIn(authorIds), ScopusAuthorFact::getAuthorId),
-                mapByKey(affiliationFactRepository.findByAfidIn(afids), ScopusAffiliationFact::getAfid),
-                mapByKey(fundingFactRepository.findByFundingKeyIn(fundingKeys), ScopusFundingFact::getFundingKey)
+                mapByKey(affiliationFactRepository.findByAfidIn(afids), ScopusAffiliationFact::getAfid)
         );
     }
 
@@ -583,10 +573,6 @@ public class ScopusFactBuilderService {
         if (!state.pendingAffiliationSaves.isEmpty()) {
             state.pendingAffiliationSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             affiliationFactRepository.saveAll(state.pendingAffiliationSaves.values());
-        }
-        if (!state.pendingFundingSaves.isEmpty()) {
-            state.pendingFundingSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
-            fundingFactRepository.saveAll(state.pendingFundingSaves.values());
         }
     }
 
@@ -614,7 +600,6 @@ public class ScopusFactBuilderService {
             result.markSkipped(sample(event, "publication payload unchanged"));
             upsertAuthorFacts(event, payload, result, state);
             upsertAffiliationFacts(event, payload, result, state);
-            upsertFundingFact(event, payload, result, state);
             return;
         }
 
@@ -624,7 +609,6 @@ public class ScopusFactBuilderService {
         }
         String subtype = text(payload, "subtype");
         String subtypeDescription = text(payload, "subtypeDescription");
-        String fundingKey = normalizeFundingKey(text(payload, "fund_acr"), text(payload, "fund_no"), text(payload, "fund_sponsor"));
         fact.setDoi(text(payload, "doi"));
         fact.setEid(eid);
         fact.setPii(text(payload, "pii"));
@@ -638,7 +622,10 @@ public class ScopusFactBuilderService {
         fact.setAuthorCount(intValue(payload, "author_count"));
         fact.setAuthors(distinctNonBlank(splitSemicolon(text(payload, "author_ids"))));
         fact.setAuthorAffiliationSourceIds(splitSemicolon(text(payload, "author_afids")));
-        fact.setCorrespondingAuthors(distinctNonBlank(splitSemicolon(text(payload, "correspondingAuthors"))));
+        // H120: corresponding authors, abstract, author keywords, funding and open-access status are not kept
+        // from Scopus (outside the fields the CRIS policy lists) — cleared here, so a re-read of an older event
+        // that still carries them does not bring them back. Funding and open access come from OpenAlex.
+        fact.setCorrespondingAuthors(new ArrayList<>());
         fact.setAffiliations(distinctNonBlank(splitSemicolon(text(payload, "afid"))));
         // H66B M7 — venue branch: a book-typed venue resolves to the book registry (bookId), not a forum.
         String venueSourceId = text(payload, "source_id");
@@ -653,13 +640,13 @@ public class ScopusFactBuilderService {
         fact.setIssueIdentifier(text(payload, "issueIdentifier"));
         fact.setCoverDate(text(payload, "coverDate"));
         fact.setCoverDisplayDate(text(payload, "coverDisplayDate"));
-        fact.setDescription(text(payload, "description"));
-        fact.setAuthKeywords(splitAuthKeywords(text(payload, "authkeywords")));
+        fact.setDescription(null);
+        fact.setAuthKeywords(new ArrayList<>());
         fact.setCitedByCount(intValue(payload, "citedby_count"));
-        fact.setOpenAccess(boolValue(payload, "openaccess"));
-        fact.setFreetoread(text(payload, "freetoread"));
-        fact.setFreetoreadLabel(text(payload, "freetoreadLabel"));
-        fact.setFundingId(isBlank(fundingKey) || "||".equals(fundingKey) ? "" : fundingKey);
+        fact.setOpenAccess(null);
+        fact.setFreetoread(null);
+        fact.setFreetoreadLabel(null);
+        fact.setFundingId(null);
         fact.setArticleNumber(text(payload, "article_number"));
         fact.setPageRange(text(payload, "pageRange"));
         fact.setApproved(boolValue(payload, "approved"));
@@ -673,7 +660,6 @@ public class ScopusFactBuilderService {
         // H66B M6: publications no longer write forum facts — venues are derived in flushObservedVenues.
         upsertAuthorFacts(event, payload, result, state);
         upsertAffiliationFacts(event, payload, result, state);
-        upsertFundingFact(event, payload, result, state);
     }
 
     private void upsertCitation(
@@ -1040,56 +1026,6 @@ public class ScopusFactBuilderService {
         }
     }
 
-    private void upsertFundingFact(
-            ScopusImportEvent event,
-            JsonNode payload,
-            ImportProcessingResult result,
-            PublicationChunkState state
-    ) {
-        String acronym = text(payload, "fund_acr");
-        if (isBlank(acronym)) {
-            return;
-        }
-        String fundingKey = normalizeFundingKey(acronym, text(payload, "fund_no"), text(payload, "fund_sponsor"));
-
-        ScopusFundingFact fact = state.fundingByKey.get(fundingKey);
-        boolean created = fact == null;
-        if (created) {
-            fact = new ScopusFundingFact();
-            state.fundingByKey.put(fundingKey, fact);
-        }
-        String payloadHash = hashKey("funding", acronym, text(payload, "fund_no"), text(payload, "fund_sponsor"));
-        if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
-            if (refreshLineageForReplay(fact, event)) {
-                state.pendingFundingSaves.put(fundingKey, fact);
-            }
-            return;
-        }
-
-        Instant now = Instant.now();
-        if (fact.getCreatedAt() == null) {
-            fact.setCreatedAt(now);
-        }
-        // H56: absorbed variant with no content change — skip the write (see author gate).
-        if (!created
-                && Objects.equals(fact.getAcronym(), acronym)
-                && Objects.equals(fact.getNumber(), text(payload, "fund_no"))
-                && Objects.equals(fact.getSponsor(), text(payload, "fund_sponsor"))
-                && Objects.equals(fact.getFundingKey(), fundingKey)) {
-            return;
-        }
-        fact.setAcronym(acronym);
-        fact.setNumber(text(payload, "fund_no"));
-        fact.setSponsor(text(payload, "fund_sponsor"));
-        fact.setFundingKey(fundingKey);
-        applyLineage(fact, event);
-        fact.setLastPayloadHash(payloadHash);
-        fact.setLastMaterializedAt(now);
-        fact.setUpdatedAt(now);
-        state.pendingFundingSaves.put(fundingKey, fact);
-        markImportOrUpdate(result, created);
-    }
-
     private void maybeLogProgress(ImportProcessingResult result) {
         if (result.getProcessedCount() % FACT_BUILD_HEARTBEAT_INTERVAL == 0) {
             log.info("Scopus fact-builder progress: processed={} imported={} updated={} skipped={} errors={}",
@@ -1171,21 +1107,6 @@ public class ScopusFactBuilderService {
 
     private List<String> splitSemicolonDecoded(String value) {
         return splitSemicolon(decodeHtmlEntities(value));
-    }
-
-    private List<String> splitAuthKeywords(String value) {
-        if (isBlank(value)) {
-            return List.of();
-        }
-        String[] raw = value.split("\\|", -1);
-        List<String> out = new ArrayList<>(raw.length);
-        for (String part : raw) {
-            String trimmed = trim(part);
-            if (!isBlank(trimmed)) {
-                out.add(trimmed);
-            }
-        }
-        return out;
     }
 
     private List<String> splitDash(String value) {
@@ -1348,10 +1269,6 @@ public class ScopusFactBuilderService {
         return normalized;
     }
 
-    private String normalizeFundingKey(String acronym, String number, String sponsor) {
-        return (trim(acronym) + "|" + trim(number) + "|" + trim(sponsor)).toLowerCase(Locale.ROOT);
-    }
-
     private long nanosToMillis(long nanos) {
         return nanos / 1_000_000L;
     }
@@ -1412,26 +1329,22 @@ public class ScopusFactBuilderService {
         private final Map<String, ScopusForumFact> forumBySourceId;
         private final Map<String, ScopusAuthorFact> authorById;
         private final Map<String, ScopusAffiliationFact> affiliationById;
-        private final Map<String, ScopusFundingFact> fundingByKey;
 
         private final Map<String, ScopusPublicationFact> pendingPublicationSaves = new LinkedHashMap<>();
         private final Map<String, ScopusForumFact> pendingForumSaves = new LinkedHashMap<>();
         private final Map<String, ScopusAuthorFact> pendingAuthorSaves = new LinkedHashMap<>();
         private final Map<String, ScopusAffiliationFact> pendingAffiliationSaves = new LinkedHashMap<>();
-        private final Map<String, ScopusFundingFact> pendingFundingSaves = new LinkedHashMap<>();
 
         private PublicationChunkState(
                 Map<String, ScopusPublicationFact> publicationByEid,
                 Map<String, ScopusForumFact> forumBySourceId,
                 Map<String, ScopusAuthorFact> authorById,
-                Map<String, ScopusAffiliationFact> affiliationById,
-                Map<String, ScopusFundingFact> fundingByKey
+                Map<String, ScopusAffiliationFact> affiliationById
         ) {
             this.publicationByEid = publicationByEid;
             this.forumBySourceId = forumBySourceId;
             this.authorById = authorById;
             this.affiliationById = affiliationById;
-            this.fundingByKey = fundingByKey;
         }
     }
 

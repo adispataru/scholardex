@@ -714,11 +714,18 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         fact.setBookId(scopusFact.getBookId());
         fact.setVolume(scopusFact.getVolume());
         fact.setIssueIdentifier(scopusFact.getIssueIdentifier());
-        fact.setDescription(scopusFact.getDescription());
-        fact.setAuthKeywords(scopusFact.getAuthKeywords() == null ? List.of() : new ArrayList<>(scopusFact.getAuthKeywords()));
-        fact.setFreetoread(scopusFact.getFreetoread());
-        fact.setFreetoreadLabel(scopusFact.getFreetoreadLabel());
-        fact.setFundingId(scopusFact.getFundingId());
+        // H120: abstract and author keywords are not kept from Scopus — cleared, so a stored Scopus fact that
+        // still carries them does not feed the canonical record. Funding and open access are OpenAlex's
+        // (OpenAlexCanonicalizationService writes them, on its own records and on Scopus-owned ones alike), so
+        // this path never sets them; it only drops a funding value in the old Scopus shape ("acr|no|sponsor").
+        // The open-access flag of a record OpenAlex does not know stays as stored until the next full rebuild.
+        fact.setDescription(null);
+        fact.setAuthKeywords(new ArrayList<>());
+        fact.setFreetoread(null);
+        fact.setFreetoreadLabel(null);
+        if (fact.getFundingId() != null && fact.getFundingId().contains("|")) {
+            fact.setFundingId(null);
+        }
         fact.setArticleNumber(scopusFact.getArticleNumber());
         fact.setPageRange(scopusFact.getPageRange());
         fact.setApproved(scopusFact.getApproved());
@@ -735,7 +742,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             fact.setAuthorCount(scopusFact.getAuthorCount());
             fact.setAuthorIds(authorBridgeResult.canonicalAuthorIds());
             fact.setPendingAuthorSourceIds(authorBridgeResult.pendingSourceIds());
-            fact.setCorrespondingAuthors(scopusFact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(scopusFact.getCorrespondingAuthors()));
+            fact.setCorrespondingAuthors(new ArrayList<>());
             // DBLP-evidence-stamped conference forums are authoritative — the mirror of the guard in
             // OpenAlexCanonicalizationService.applyOpenAlexFields. An incremental Scopus author refresh
             // never runs rebuildFromEvidence, so re-pointing here would silently revert an evidence-resolved
@@ -746,7 +753,6 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             fact.setCoverDate(scopusFact.getCoverDate());
             fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
             fact.setCitedByCount(scopusFact.getCitedByCount());
-            fact.setOpenAccess(scopusFact.getOpenAccess());
             fact.setSourceEventId(scopusFact.getSourceEventId());
             fact.setSource(scopusFact.getSource());
             fact.setSourceRecordId(scopusFact.getSourceRecordId());

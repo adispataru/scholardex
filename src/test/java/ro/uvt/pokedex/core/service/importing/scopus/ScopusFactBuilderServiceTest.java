@@ -17,7 +17,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusFundingFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
@@ -26,7 +25,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepo
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusFundingFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -55,7 +53,6 @@ class ScopusFactBuilderServiceTest {
     @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     @Mock private ScopusAuthorFactRepository authorFactRepository;
     @Mock private ScopusAffiliationFactRepository affiliationFactRepository;
-    @Mock private ScopusFundingFactRepository fundingFactRepository;
 
     private ScopusFactBuilderService service;
     private Logger serviceLogger;
@@ -72,7 +69,6 @@ class ScopusFactBuilderServiceTest {
                 bookFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
-                fundingFactRepository,
                 mapper
         );
         serviceLogger = (Logger) LoggerFactory.getLogger(ScopusFactBuilderService.class);
@@ -172,7 +168,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -213,7 +208,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -288,7 +282,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         ImportProcessingResult result = service.buildFactsFromImportEvents();
 
@@ -310,13 +303,16 @@ class ScopusFactBuilderServiceTest {
         assertEquals(10, savedPub.getCitedByCount());
         assertEquals("2025-01-01", savedPub.getCoverDate());
         assertEquals("January 2025", savedPub.getCoverDisplayDate());
-        assertEquals("Abstract", savedPub.getDescription());
+        // H120: abstract, keywords, funding, open access and the corresponding authors are not kept from Scopus,
+        // although this (older) payload carries them
+        assertNull(savedPub.getDescription());
+        assertTrue(savedPub.getAuthKeywords().isEmpty());
         assertEquals("42", savedPub.getVolume());
         assertEquals("7", savedPub.getIssueIdentifier());
-        assertEquals(Boolean.TRUE, savedPub.getOpenAccess());
-        assertEquals("all", savedPub.getFreetoread());
-        assertEquals("Open", savedPub.getFreetoreadLabel());
-        assertEquals("pnrr|123|uefiscdi", savedPub.getFundingId());
+        assertNull(savedPub.getOpenAccess());
+        assertNull(savedPub.getFreetoread());
+        assertNull(savedPub.getFreetoreadLabel());
+        assertNull(savedPub.getFundingId());
         assertEquals("A-7", savedPub.getArticleNumber());
         assertEquals("12-19", savedPub.getPageRange());
         assertEquals(Boolean.TRUE, savedPub.getApproved());
@@ -327,7 +323,7 @@ class ScopusFactBuilderServiceTest {
         assertEquals("f1", savedPub.getForumId());
         assertEquals(List.of("a1", "a2"), savedPub.getAuthors());
         assertEquals(List.of("af1-af2", "af2"), savedPub.getAuthorAffiliationSourceIds());
-        assertEquals(List.of("a1"), savedPub.getCorrespondingAuthors());
+        assertTrue(savedPub.getCorrespondingAuthors().isEmpty());
         assertEquals(List.of("af1", "af2"), savedPub.getAffiliations());
         assertNotNull(savedPub.getLastPayloadHash());
         assertNotNull(savedPub.getLastMaterializedAt());
@@ -351,21 +347,6 @@ class ScopusFactBuilderServiceTest {
         assertNotNull(savedForum.getLastMaterializedAt());
         assertNotNull(savedForum.getCreatedAt());
         assertNotNull(savedForum.getUpdatedAt());
-
-        ArgumentCaptor<java.util.Collection<ScopusFundingFact>> fundingCaptor =
-                ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(fundingFactRepository, atLeastOnce()).saveAll(fundingCaptor.capture());
-        ScopusFundingFact savedFunding = fundingCaptor.getValue().iterator().next();
-        assertEquals("PNRR", savedFunding.getAcronym());
-        assertEquals("123", savedFunding.getNumber());
-        assertEquals("UEFISCDI", savedFunding.getSponsor());
-        assertEquals("pnrr|123|uefiscdi", savedFunding.getFundingKey());
-        assertEquals("b1", savedFunding.getSourceBatchId());
-        assertEquals("c1", savedFunding.getSourceCorrelationId());
-        assertNotNull(savedFunding.getLastPayloadHash());
-        assertNotNull(savedFunding.getLastMaterializedAt());
-        assertNotNull(savedFunding.getCreatedAt());
-        assertNotNull(savedFunding.getUpdatedAt());
 
         ArgumentCaptor<java.util.Collection<ScopusCitationFact>> citationCaptor =
                 ArgumentCaptor.forClass(java.util.Collection.class);
@@ -454,7 +435,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of(existingForum));
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of(existingAffiliation));
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         ImportProcessingResult result = service.buildFactsFromImportEvents();
 
@@ -508,7 +488,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of(seededForum));
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -534,7 +513,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -588,7 +566,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         ImportProcessingResult result = service.buildFactsFromImportEvents();
 
@@ -745,7 +722,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         ImportProcessingResult result = service.buildFactsFromImportEvents();
 
@@ -813,7 +789,6 @@ class ScopusFactBuilderServiceTest {
         verify(forumFactRepository, never()).saveAll(anyCollection());
         verify(authorFactRepository, never()).saveAll(anyCollection());
         verify(affiliationFactRepository, never()).saveAll(anyCollection());
-        verify(fundingFactRepository, never()).saveAll(anyCollection());
     }
 
     @Test
@@ -844,7 +819,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -893,7 +867,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -947,7 +920,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         ImportProcessingResult result = service.buildFactsFromImportEvents("b-target");
 
@@ -1025,24 +997,11 @@ class ScopusFactBuilderServiceTest {
         existingAffiliation.setCity("Timisoara");
         existingAffiliation.setCountry("RO");
 
-        ScopusFundingFact existingFunding = new ScopusFundingFact();
-        existingFunding.setFundingKey("pnrr|123|uefiscdi");
-        existingFunding.setAcronym("PNRR");
-        existingFunding.setNumber("123");
-        existingFunding.setSponsor("UEFISCDI");
-        existingFunding.setLastPayloadHash(hashKey("funding", "PNRR", "123", "UEFISCDI"));
-        existingFunding.setSourceBatchId("b-old");
-        existingFunding.setSourceCorrelationId("corr-old");
-        existingFunding.setCreatedAt(java.time.Instant.parse("2025-01-03T00:00:00Z"));
-        existingFunding.setUpdatedAt(java.time.Instant.parse("2025-01-03T00:00:00Z"));
-        existingFunding.setLastMaterializedAt(java.time.Instant.parse("2025-01-03T00:00:00Z"));
-
         when(importEventRepository.findByBatchId("b-replay")).thenReturn(List.of(publicationEvent));
         when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of(existingPublication));
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of(existingForum));
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of(existingAffiliation));
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of(existingFunding));
 
         ImportProcessingResult result = service.buildFactsFromImportEvents("b-replay");
 
@@ -1054,19 +1013,16 @@ class ScopusFactBuilderServiceTest {
         ArgumentCaptor<java.util.Collection<ScopusPublicationFact>> publicationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         ArgumentCaptor<java.util.Collection<ScopusAffiliationFact>> affiliationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
-        ArgumentCaptor<java.util.Collection<ScopusFundingFact>> fundingCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         verify(publicationFactRepository).saveAll(publicationCaptor.capture());
         // H66 D4: a publication replay no longer touches its forum — forum lineage comes from FORUM sources,
         // not publications. The forum is link-only, so it is never re-saved by the publication path.
         verify(forumFactRepository, org.mockito.Mockito.never()).saveAll(anyCollection());
         verify(authorFactRepository).saveAll(authorCaptor.capture());
         verify(affiliationFactRepository).saveAll(affiliationCaptor.capture());
-        verify(fundingFactRepository).saveAll(fundingCaptor.capture());
 
         ScopusPublicationFact replayedPublication = publicationCaptor.getValue().iterator().next();
         ScopusAuthorFact replayedAuthor = authorCaptor.getValue().iterator().next();
         ScopusAffiliationFact replayedAffiliation = affiliationCaptor.getValue().iterator().next();
-        ScopusFundingFact replayedFunding = fundingCaptor.getValue().iterator().next();
 
         assertEquals("b-replay", replayedPublication.getSourceBatchId());
         assertEquals("corr-replay", replayedPublication.getSourceCorrelationId());
@@ -1084,16 +1040,6 @@ class ScopusFactBuilderServiceTest {
         assertEquals("UVT", replayedAffiliation.getName());
         assertEquals("Timisoara", replayedAffiliation.getCity());
         assertEquals("RO", replayedAffiliation.getCountry());
-
-        assertEquals("b-replay", replayedFunding.getSourceBatchId());
-        assertEquals("corr-replay", replayedFunding.getSourceCorrelationId());
-        assertEquals("PNRR", replayedFunding.getAcronym());
-        assertEquals("123", replayedFunding.getNumber());
-        assertEquals("UEFISCDI", replayedFunding.getSponsor());
-        assertEquals("pnrr|123|uefiscdi", replayedFunding.getFundingKey());
-        assertEquals(hashKey("funding", "PNRR", "123", "UEFISCDI"), replayedFunding.getLastPayloadHash());
-        assertEquals(java.time.Instant.parse("2025-01-03T00:00:00Z"), replayedFunding.getLastMaterializedAt());
-        assertEquals(java.time.Instant.parse("2025-01-03T00:00:00Z"), replayedFunding.getUpdatedAt());
     }
 
     @Test
@@ -1176,7 +1122,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1214,11 +1159,10 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
-        reset(publicationFactRepository, forumFactRepository, authorFactRepository, affiliationFactRepository, fundingFactRepository, importEventRepository);
+        reset(publicationFactRepository, forumFactRepository, authorFactRepository, affiliationFactRepository, importEventRepository);
 
         ScopusImportEvent malformedEvent = new ScopusImportEvent();
         malformedEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
@@ -1248,7 +1192,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of(existingAffiliation));
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         ImportProcessingResult result = service.buildFactsFromImportEvents();
 
@@ -1291,7 +1234,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         ImportProcessingResult result = service.buildFactsFromImportEvents();
 
@@ -1328,7 +1270,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1367,7 +1308,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1410,7 +1350,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingBob));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1457,7 +1396,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAlice, existingBob));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1500,7 +1438,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1541,7 +1478,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1582,7 +1518,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1623,7 +1558,6 @@ class ScopusFactBuilderServiceTest {
         when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
         when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
         when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
-        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
 
         service.buildFactsFromImportEvents();
 
@@ -1743,12 +1677,6 @@ class ScopusFactBuilderServiceTest {
     }
 
     @Test
-    void normalizeFundingKeyLowercasesAndPreservesEmptySegments() {
-        assertEquals("pnrr|123|uefis-cdi", normalizeFundingKey(" PNRR ", "123", "UEFIS-CDI"));
-        assertEquals("||", normalizeFundingKey(null, null, null));
-    }
-
-    @Test
     void textReturnsTrimmedValueAndEmptyForMissingOrNullField() throws Exception {
         com.fasterxml.jackson.databind.node.ObjectNode node = mapper.createObjectNode();
         node.put("title", "  Paper 1  ");
@@ -1858,10 +1786,6 @@ class ScopusFactBuilderServiceTest {
 
     private String normalizeIssn(String value) {
         return ReflectionTestUtils.invokeMethod(service, "normalizeIssn", value);
-    }
-
-    private String normalizeFundingKey(String acronym, String number, String sponsor) {
-        return ReflectionTestUtils.invokeMethod(service, "normalizeFundingKey", acronym, number, sponsor);
     }
 
     private String text(com.fasterxml.jackson.databind.JsonNode node, String field) {

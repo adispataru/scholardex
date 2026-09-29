@@ -71,7 +71,7 @@ public class ScopusImportEventIngestionService {
             Object payloadObject
     ) {
         try {
-            String payload = normalizePayload(payloadObject);
+            String payload = normalizePayload(entityType, source, payloadObject);
             String payloadHash = sha256Hex(payload);
             Instant now = Instant.now();
 
@@ -161,7 +161,7 @@ public class ScopusImportEventIngestionService {
         long serializeStart = System.nanoTime();
         for (BatchIngestionItem item : items) {
             try {
-                String payload = normalizePayload(item.payloadObject());
+                String payload = normalizePayload(entityType, source, item.payloadObject());
                 String payloadHash = sha256Hex(payload);
                 prepared.add(new PreparedBatchItem(item, payload, payloadHash));
             } catch (Exception e) {
@@ -246,8 +246,13 @@ public class ScopusImportEventIngestionService {
         return new UpdateOneModel<>(filter, List.of(new Document("$set", set)), new UpdateOptions().upsert(true));
     }
 
-    private String normalizePayload(Object payloadObject) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(payloadObject);
+    private String normalizePayload(ScopusImportEntityType entityType, String source, Object payloadObject)
+            throws JsonProcessingException {
+        // H120: publications and citation edges of a Scopus source are stored without the fields that are not
+        // kept; venue lists (FORUM events) are source lists, not records, and pass through.
+        boolean record = entityType == ScopusImportEntityType.PUBLICATION || entityType == ScopusImportEntityType.CITATION;
+        Object kept = record ? ScopusLicensedFields.strip(source, payloadObject, objectMapper) : payloadObject;
+        return objectMapper.writeValueAsString(kept);
     }
 
     private String sha256Hex(String payload) {

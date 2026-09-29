@@ -978,7 +978,8 @@ public class CanonicalGraphBuilder {
                              String scopusForumId, String openAlexHostVenueId, List<String> scopusAffiliations,
                              String sourceEventId, String sourceBatchId, String sourceCorrelationId,
                              Boolean retracted, Double fwci, Double citationNormalizedPercentile,
-                             String primaryTopicId, String primaryTopicName, String firstPage, String lastPage) {
+                             String primaryTopicId, String primaryTopicName, String firstPage, String lastPage,
+                             String funding) {
     }
 
     /** Forum + affiliation lookups so the V2 pub build can resolve {@code forumId} + {@code affiliationIds}. */
@@ -1052,7 +1053,9 @@ public class CanonicalGraphBuilder {
         // early in the wrong quartile), while Scopus carries the issue date the standards score by.
         // Same Scopus-first-biblio rule volume/issueIdentifier already follow below.
         fact.setCoverDate(scopus != null && scopus.coverDate() != null ? scopus.coverDate() : authoritative.coverDate());
-        fact.setOpenAccess(authoritative.openAccess());
+        // H120: open access and funding are OpenAlex's; a Scopus-only record carries neither.
+        fact.setOpenAccess(openAlex != null ? openAlex.openAccess() : null);
+        fact.setFundingId(openAlex != null ? openAlex.funding() : null);
         fact.setSubtype(authoritative.subtype());
         fact.setSubtypeDescription(authoritative.subtypeDescription());
         // Citation count: monotonic max across sources (best-available index never regresses).
@@ -1217,11 +1220,11 @@ public class CanonicalGraphBuilder {
         String titleNorm = ScholardexPublicationCanonicalizationService.normalizeTitle(s.getTitle());
         return new SourcePub(false, s.getSource(), s.getSourceRecordId(), s.getEid(), s.getDoi(), doiNorm,
                 s.getTitle(), titleNorm, s.getCoverDate(), s.getCreator(), s.getAuthorCount(), s.getCitedByCount(),
-                s.getOpenAccess(), s.getSubtype(), s.getSubtypeDescription(), s.getScopusSubtype(),
+                null, s.getSubtype(), s.getSubtypeDescription(), s.getScopusSubtype(),
                 s.getScopusSubtypeDescription(), s.getPii(), s.getPubmedId(), s.getVolume(), s.getIssueIdentifier(),
                 s.getBookId(), s.getForumId(), null, s.getAffiliations(),
                 s.getSourceEventId(), s.getSourceBatchId(), s.getSourceCorrelationId(),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     private static SourcePub fromOpenAlex(OpenAlexPublicationFact o) {
@@ -1233,7 +1236,7 @@ public class CanonicalGraphBuilder {
                 null, o.getHostVenueOpenAlexId(), null,
                 o.getSourceEventId(), o.getSourceBatchId(), o.getSourceCorrelationId(),
                 o.getRetracted(), o.getFwci(), o.getCitationNormalizedPercentile(),
-                o.getPrimaryTopicId(), o.getPrimaryTopicName(), o.getFirstPage(), o.getLastPage());
+                o.getPrimaryTopicId(), o.getPrimaryTopicName(), o.getFirstPage(), o.getLastPage(), o.getFunding());
     }
 
     /** Mirror of the importer's {@code toBackboneFact}: ROR-keyed backbone fact; null when the institution has no ROR. */

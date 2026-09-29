@@ -100,6 +100,30 @@ class PublicationBuilderV2Test {
     }
 
     @Test
+    void openAccessAndFundingComeFromOpenAlexNeverFromScopus() {
+        // H120: a stored Scopus fact may still carry them; they are not taken from there.
+        ScopusPublicationFact scopus = scopusPub("2-s2.0-G", "10.1/funded", "Funded Paper", 3);
+        scopus.setOpenAccess(false);
+        scopus.setFundingId("pnrr|123|uefiscdi");
+        OpenAlexPublicationFact openAlex = openAlexPub("W3", "10.1/funded", "Funded Paper", 4);
+        openAlex.setOpenAccess(true);
+        openAlex.setFunding("UEFISCDI (PN-III-P4)");
+        ScopusPublicationFact scopusOnly = scopusPub("2-s2.0-H", "10.1/scopus-only", "Scopus Only Paper", 1);
+        scopusOnly.setOpenAccess(true);
+        scopusOnly.setFundingId("pnrr|456|uefiscdi");
+
+        Map<String, ScholardexPublicationFact> byEid = builder
+                .buildPublications(List.of(scopus, scopusOnly), List.of(openAlex), CanonicalGraphBuilder.PubResolvers.empty())
+                .facts().stream()
+                .collect(Collectors.toMap(ScholardexPublicationFact::getEid, Function.identity()));
+
+        assertThat(byEid.get("2-s2.0-G").getOpenAccess()).isTrue();
+        assertThat(byEid.get("2-s2.0-G").getFundingId()).isEqualTo("UEFISCDI (PN-III-P4)");
+        assertThat(byEid.get("2-s2.0-H").getOpenAccess()).isNull();
+        assertThat(byEid.get("2-s2.0-H").getFundingId()).isNull();
+    }
+
+    @Test
     void carriesOpenAlexEnrichmentOntoCanonicalFact() {
         OpenAlexPublicationFact o = openAlexPub("W9", "10.1/enriched", "Enriched", 3);
         o.setRetracted(true);

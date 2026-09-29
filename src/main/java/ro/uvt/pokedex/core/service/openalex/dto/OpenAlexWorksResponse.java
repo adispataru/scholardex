@@ -52,8 +52,25 @@ public class OpenAlexWorksResponse {
         // H79: the venue's list APC (the price to publish, in USD via value_usd) — the fee-journal signal when
         // combined with primary_location.source.is_oa. `apc_paid` is what was actually paid; `apc_list` is the
         // journal's advertised price and is the stable per-venue signal (present even when apc_paid is null).
+        // H120 — funding. "grants" is the long-standing shape (funder name + award id per grant); "funders" is
+        // read as a fallback for payloads that list the funders without the awards.
+        private List<Grant> grants;
+        private List<Funder> funders;
         private Apc apc_list;
         private Apc apc_paid;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Grant {
+        private String funder_display_name;
+        private String award_id;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Funder {
+        private String display_name;
     }
 
     @Data

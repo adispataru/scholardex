@@ -240,7 +240,7 @@ public class OpenAlexCanonicalizationService {
                 // Foreign (Scopus/user-defined) pub: enrich provenance only, never overwrite its richer content —
                 // except the citation count, where OpenAlex's broader index is usually MORE complete. Surface the
                 // best-available count with a monotonic max so the reported "Times cited" never regresses.
-                bumpCitedByCount(target, source.getCitedByCount());
+                enrichForeignPublication(target, source);
                 sourceLinkService.link(
                         ScholardexEntityType.PUBLICATION,
                         SOURCE_OPENALEX,
@@ -265,7 +265,7 @@ public class OpenAlexCanonicalizationService {
             ScholardexPublicationFact mergeSurvivor = resolveMergeSurvivor(workId, canonicalPublicationId);
             if (mergeSurvivor != null) {
                 canonicalPublicationId = mergeSurvivor.getId();
-                bumpCitedByCount(mergeSurvivor, source.getCitedByCount());
+                enrichForeignPublication(mergeSurvivor, source);
                 sourceLinkService.link(
                         ScholardexEntityType.PUBLICATION,
                         SOURCE_OPENALEX,
@@ -303,17 +303,32 @@ public class OpenAlexCanonicalizationService {
      * capture); {@code citedByCount} and the rest always reflect the latest OpenAlex state.
      */
     /**
-     * Surface OpenAlex's citation count onto a foreign (Scopus/user-defined) pub WITHOUT touching its other content:
-     * a monotonic max so the reported "Times cited" reflects the best-available source and never regresses. No-op
-     * when OpenAlex has no higher count.
+     * What OpenAlex gives a foreign (Scopus/user-defined) pub WITHOUT touching its other content:
+     * <ul>
+     * <li>the citation count, as a monotonic max, so the reported "Times cited" reflects the best-available
+     * source and never regresses;</li>
+     * <li>H120: open access and funding — OpenAlex is their only source (they are not kept from Scopus), so
+     * they are written whenever OpenAlex states them.</li>
+     * </ul>
+     * Saves only when something changed.
      */
-    private void bumpCitedByCount(ScholardexPublicationFact target, Integer openAlexCount) {
-        if (openAlexCount == null) {
-            return;
-        }
+    private void enrichForeignPublication(ScholardexPublicationFact target, OpenAlexPublicationFact source) {
+        boolean changed = false;
+        Integer openAlexCount = source.getCitedByCount();
         int current = target.getCitedByCount() == null ? 0 : target.getCitedByCount();
-        if (openAlexCount > current) {
+        if (openAlexCount != null && openAlexCount > current) {
             target.setCitedByCount(openAlexCount);
+            changed = true;
+        }
+        if (source.getOpenAccess() != null && !source.getOpenAccess().equals(target.getOpenAccess())) {
+            target.setOpenAccess(source.getOpenAccess());
+            changed = true;
+        }
+        if (source.getFunding() != null && !source.getFunding().equals(target.getFundingId())) {
+            target.setFundingId(source.getFunding());
+            changed = true;
+        }
+        if (changed) {
             scholardexPublicationFactRepository.save(target);
         }
     }
@@ -356,6 +371,8 @@ public class OpenAlexCanonicalizationService {
         }
         fact.setCitedByCount(source.getCitedByCount());
         fact.setOpenAccess(source.getOpenAccess());
+        // H120: funding is OpenAlex's (Scopus funding is not kept) — mirrored in CanonicalGraphBuilder.
+        fact.setFundingId(source.getFunding());
         fact.setSubtype(source.getType());
         fact.setSubtypeDescription(source.getType());
         // OpenAlex enrichment — research-ethics gate + impact + subject (projection/scoring wiring follows).
