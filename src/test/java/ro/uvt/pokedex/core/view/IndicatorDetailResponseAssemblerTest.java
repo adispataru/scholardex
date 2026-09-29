@@ -76,6 +76,25 @@ class IndicatorDetailResponseAssemblerTest {
     }
 
     @Test
+    void theBasisOfTheCoefficientReachesTheItemAndIsAbsentWhereTheFormulaDoesNotUseIt() {
+        Score multiplied = score(2.0, 4.0, 2023, null);
+        multiplied.getScoringInfo().put("coefM", "INTERNATIONAL_LANGUAGE_PLACE_UNKNOWN");
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("Multiplied paper", multiplied);
+        scores.put("Plain paper", score(3.0, 3.0, 2022, "Q1"));
+        Map<String, Object> graph = new LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+
+        var items = IndicatorDetailResponseAssembler.buildDetail(dto(graph, 5.0), id -> null).items();
+
+        var byTitle = new java.util.HashMap<String, IndicatorDetailResponseAssembler.ScoredItem>();
+        items.forEach(item -> byTitle.put(item.key(), item));
+        assertEquals("INTERNATIONAL_LANGUAGE_PLACE_UNKNOWN", byTitle.get("Multiplied paper").coefMBasis());
+        org.junit.jupiter.api.Assertions.assertNull(byTitle.get("Plain paper").coefMBasis());
+    }
+
+    @Test
     void buildDetailShowsCategorizedItemsIncludingFormulaZeroedAndSkipsTotal() {
         Map<String, Object> scores = new LinkedHashMap<>();
         scores.put("Paper A", score(5.0, 3.0, 2022, "Q1"));   // author > 0 → shown

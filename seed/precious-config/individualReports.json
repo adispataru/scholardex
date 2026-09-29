@@ -4198,7 +4198,7 @@
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "FV Sociologie și Asistență Socială 2026",
-  "description": "Standarde minimale COMISIA 25, grupul Sociologie — specializările Sociologie, Resurse Umane, Antropologie și domeniul Asistență Socială (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. O publicație se punctează la un singur indicator; un articol dintr-o revistă cu factor de impact este pus la I.1. Coeficientul m este luat deocamdată 1 pentru publicațiile găsite automat, deci punctajele de la I.2–I.8 pot doar să crească. Citările sunt orientative, calculate din datele platformei. Cărțile, capitolele și articolele pe care platforma nu le găsește sau nu le poate verifica, precum și activitățile, se declară de către candidat.",
+  "description": "Standarde minimale COMISIA 25, grupul Sociologie — specializările Sociologie, Resurse Umane, Antropologie și domeniul Asistență Socială (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. O publicație se punctează la un singur indicator; un articol dintr-o revistă cu factor de impact este pus la I.1. Coeficientul m al publicațiilor găsite automat se stabilește din limba și locul apariției, așa cum le dă OpenAlex; unde acestea lipsesc, m este 1. Citările sunt orientative, calculate din datele platformei. Cărțile, capitolele și articolele pe care platforma nu le găsește sau nu le poate verifica, precum și activitățile, se declară de către candidat.",
   "indicators": [
    {
     "$ref": "indicators",

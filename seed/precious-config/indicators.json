@@ -5848,7 +5848,7 @@
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "IMPACT_FACTOR",
@@ -5872,13 +5872,13 @@
    "$oid": "6abbb4fcfe1896ef0369d311"
   },
   "name": "Soc26_I2",
-  "description": "Indicatorul I.2: articole în reviste fără factor de impact. Revistă indexată în SCOPUS: 4 × m / n. Revistă indexată în cel puțin 3 baze de date internaționale recunoscute: 2 × m / n. Platforma poate verifica Web of Science, SCOPUS, DOAJ și ERIH Plus; un articol dintr-o revistă care ajunge la 3 baze de date prin celelalte din lista standardului (EBSCO, CEEOL, ProQuest, Index Copernicus etc.) se declară ca activitate. Lucrările din volume ISI Proceedings nu pot fi recunoscute automat și sunt punctate la I.8. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "description": "Indicatorul I.2: articole în reviste fără factor de impact. Revistă indexată în SCOPUS: 4 × m / n. Revistă indexată în cel puțin 3 baze de date internaționale recunoscute: 2 × m / n. Platforma poate verifica Web of Science, SCOPUS, DOAJ și ERIH Plus; un articol dintr-o revistă care ajunge la 3 baze de date prin celelalte din lista standardului (EBSCO, CEEOL, ProQuest, Index Copernicus etc.) se declară ca activitate. Lucrările din volume ISI Proceedings nu pot fi recunoscute automat și sunt punctate la I.8. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "S * Coef_m / N",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "SOC_INDEXED_JOURNAL",
@@ -5914,7 +5914,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2fe"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -5935,13 +5935,13 @@
    "$oid": "6abbb4fcfe1896ef0369d313"
   },
   "name": "Soc26_I3",
-  "description": "Indicatorul I.3: cărți (inclusiv manuale) publicate ca autor sau coautor, cu cel mult 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 10 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "description": "Indicatorul I.3: cărți (inclusiv manuale) publicate ca autor sau coautor, cu cel mult 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 10 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "(docType == 'bk' && N <= 3) ? 10 * Coef_m / N : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "PSYCH_BOOK",
@@ -5977,7 +5977,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2ff"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -5998,13 +5998,13 @@
    "$oid": "6abbb4fcfe1896ef0369d315"
   },
   "name": "Soc26_I4",
-  "description": "Indicatorul I.4: cărți (inclusiv manuale) publicate în calitate de coautor, cu mai mult de 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 6 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "description": "Indicatorul I.4: cărți (inclusiv manuale) publicate în calitate de coautor, cu mai mult de 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 6 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "(docType == 'bk' && N > 3) ? 6 * Coef_m / N : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "PSYCH_BOOK",
@@ -6040,7 +6040,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2ff"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6073,7 +6073,7 @@
     "$oid": "6abbb4fbfe1896ef0369d300"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6094,13 +6094,13 @@
    "$oid": "6abbb4fcfe1896ef0369d318"
   },
   "name": "Soc26_I6",
-  "description": "Indicatorul I.6: capitole în volume colective. Capitol într-un volum apărut la o editură din Lista A1: 6 × m / n. Capitol într-un volum apărut la o editură din Lista A2: 3 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "description": "Indicatorul I.6: capitole în volume colective. Capitol într-un volum apărut la o editură din Lista A1: 6 × m / n. Capitol într-un volum apărut la o editură din Lista A2: 3 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "docType == 'ch' ? (category == 'A1' ? 6 : 3) * Coef_m / N : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "PSYCH_BOOK",
@@ -6136,7 +6136,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2ff"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6169,7 +6169,7 @@
     "$oid": "6abbb4fbfe1896ef0369d301"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6190,13 +6190,13 @@
    "$oid": "6abbb4fcfe1896ef0369d31b"
   },
   "name": "Soc26_I8",
-  "description": "Indicatorul I.8: lucrări publicate în volumele unor conferințe (cu ISSN sau ISBN) ori indexate în cel puțin una dintre bazele de date internaționale recunoscute. Fiecare aduce 1 × m / n. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "description": "Indicatorul I.8: lucrări publicate în volumele unor conferințe (cu ISSN sau ISBN) ori indexate în cel puțin una dintre bazele de date internaționale recunoscute. Fiecare aduce 1 × m / n. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "S * Coef_m / N",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "INDEXED_PROCEEDINGS",
@@ -6232,7 +6232,7 @@
     "$oid": "6abbb4fbfe1896ef0369d302"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6265,7 +6265,7 @@
     "$oid": "6abbb4fbfe1896ef0369d303"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6292,7 +6292,7 @@
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "policy": "CANDIDATE_ONLY",
    "strategy": "CITING_IMPACT_FACTOR",
@@ -6328,7 +6328,7 @@
     "$oid": "6abbb4fbfe1896ef0369d304"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6361,7 +6361,7 @@
     "$oid": "6abbb4fbfe1896ef0369d305"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6394,7 +6394,7 @@
     "$oid": "6abbb4fbfe1896ef0369d305"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6427,7 +6427,7 @@
     "$oid": "6abbb4fbfe1896ef0369d306"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6460,7 +6460,7 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6493,7 +6493,7 @@
     "$oid": "6abbb4fbfe1896ef0369d307"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6526,7 +6526,7 @@
     "$oid": "6abbb4fbfe1896ef0369d308"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6559,7 +6559,7 @@
     "$oid": "6abbb4fbfe1896ef0369d308"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6592,7 +6592,7 @@
     "$oid": "6abbb4fbfe1896ef0369d309"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6625,7 +6625,7 @@
     "$oid": "6abbb4fbfe1896ef0369d30a"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6658,7 +6658,7 @@
     "$oid": "6abbb4fbfe1896ef0369d30b"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6691,7 +6691,7 @@
     "$oid": "6abbb4fbfe1896ef0369d30c"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6724,7 +6724,7 @@
     "$oid": "6abbb4fbfe1896ef0369d30d"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6757,7 +6757,7 @@
     "$oid": "6abbb4fbfe1896ef0369d30e"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6784,7 +6784,7 @@
    "$ref": "domains",
    "$id": "Sociologie 2026 - nucleu"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "IMPACT_FACTOR",
@@ -6814,7 +6814,7 @@
    "$ref": "domains",
    "$id": "Sociologie 2026 - nucleu și conexe"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "IMPACT_FACTOR",
@@ -6844,7 +6844,7 @@
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "SOC_INDEXED_JOURNAL",
@@ -6880,7 +6880,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2fe"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6907,7 +6907,7 @@
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "PSYCH_BOOK",
@@ -6943,7 +6943,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2ff"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -6970,7 +6970,7 @@
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "PSYCH_BOOK",
@@ -7000,7 +7000,7 @@
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "role": "ALL",
    "strategy": "PSYCH_BOOK",
@@ -7036,7 +7036,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2ff"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -7069,7 +7069,7 @@
     "$oid": "6abbb4fbfe1896ef0369d2ff"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -7096,7 +7096,7 @@
    "$ref": "domains",
    "$id": "ALL"
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "policy": "CANDIDATE_ONLY",
    "strategy": "CITING_IMPACT_FACTOR",
@@ -7132,7 +7132,7 @@
     "$oid": "6abbb4fbfe1896ef0369d304"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -7165,7 +7165,7 @@
     "$oid": "6abbb4fbfe1896ef0369d30f"
    }
   },
-  "version": 2,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },

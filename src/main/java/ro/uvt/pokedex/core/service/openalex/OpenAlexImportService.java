@@ -32,6 +32,8 @@ public class OpenAlexImportService {
 
     private final OpenAlexClient openAlexClient;
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
+    /** Where the venues of the synced works are published. Optional: absent in slim test contexts. */
+    private final org.springframework.beans.factory.ObjectProvider<OpenAlexSourceCountryService> sourceCountryService;
 
     /**
      * H73 slice 1 — upsert a single <b>full</b> OpenAlex work parsed from the local bulk corpus
@@ -60,7 +62,33 @@ public class OpenAlexImportService {
             workIds.add(workId);
         }
         log.info("OpenAlex import for ORCID {} upserted {} source facts (batch {})", orcid, workIds.size(), batchId);
+        resolveVenueCountries(works);
         return workIds;
+    }
+
+    /**
+     * Asks once where the venues of these works are published. A sync must not fail because of it: the
+     * country only refines a coefficient, and the backfill asks again for whatever is still missing.
+     */
+    private void resolveVenueCountries(List<OpenAlexWorksResponse.OpenAlexWork> works) {
+        OpenAlexSourceCountryService service = sourceCountryService == null ? null : sourceCountryService.getIfAvailable();
+        if (service == null) {
+            return;
+        }
+        Set<String> sourceIds = new LinkedHashSet<>();
+        for (OpenAlexWorksResponse.OpenAlexWork work : works) {
+            if (work.getPrimary_location() != null && work.getPrimary_location().getSource() != null) {
+                String sourceId = stripPrefix(work.getPrimary_location().getSource().getId(), OPENALEX_ID_PREFIX);
+                if (sourceId != null && !sourceId.isBlank()) {
+                    sourceIds.add(sourceId);
+                }
+            }
+        }
+        try {
+            service.resolve(sourceIds);
+        } catch (RuntimeException e) {
+            log.warn("OpenAlex venue countries not resolved for {} venues: {}", sourceIds.size(), e.toString());
+        }
     }
 
     private void upsert(OpenAlexWorksResponse.OpenAlexWork work, String workId, String syncOrcid, String researcherAuthorId,
@@ -85,6 +113,10 @@ public class OpenAlexImportService {
         fact.setCitedByCount(work.getCited_by_count());
         fact.setOpenAccess(work.getOpen_access() == null ? null : work.getOpen_access().getIs_oa());
         fact.setRetracted(work.getIs_retracted());
+        // Kept when the payload has none: an older dump line must not erase what the API or the backfill gave.
+        if (work.getLanguage() != null && !work.getLanguage().isBlank()) {
+            fact.setLanguage(work.getLanguage().trim().toLowerCase(java.util.Locale.ROOT));
+        }
         if (work.getBiblio() != null) {
             fact.setVolume(work.getBiblio().getVolume());
             fact.setIssue(work.getBiblio().getIssue());

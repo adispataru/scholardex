@@ -29,6 +29,9 @@ public class CitingImpactFactorScoringService extends AbstractWoSForumScoringSer
 
     static final double FLOOR = 0.2;
     static final double PER_IMPACT_FACTOR = 4.0;
+    /** The formula's {@code category}, also what the researcher reads next to the citation. */
+    static final String WITH_IMPACT_FACTOR = "IF";
+    static final String WITHOUT_IMPACT_FACTOR = "fără IF";
 
     public CitingImpactFactorScoringService(ReportingLookupPort lookupPort) {
         super(lookupPort);
@@ -54,7 +57,7 @@ public class CitingImpactFactorScoringService extends AbstractWoSForumScoringSer
         double f = impactFactor.map(Score::getScore).orElse(0.0);
         score.setScore(FLOOR + PER_IMPACT_FACTOR * f);
         score.setYear(impactFactor.map(Score::getYear).orElse(0));
-        score.setCoreRankingEquivalent(impactFactor.isPresent() ? "IF" : "NO_IF"); // the formula's `category`
+        score.setCoreRankingEquivalent(impactFactor.isPresent() ? WITH_IMPACT_FACTOR : WITHOUT_IMPACT_FACTOR);
         score.setScoringSource(strategy().name());
         score.getScoringInfo().put("citingImpactFactor", f);
         return score;

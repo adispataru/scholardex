@@ -42,6 +42,7 @@ public class OpenAlexPublicationFact {
     private Integer citedByCount;
     private Boolean openAccess;
     private Boolean retracted;       // OpenAlex is_retracted — research-ethics gate (retracted must not score)
+    private String language;         // OpenAlex language, ISO 639-1 — read by the Comisia 25 coefficient m
 
     // Bibliographic detail (export completeness) — OpenAlex biblio.{volume,issue,first_page,last_page}
     private String volume;

@@ -12,9 +12,10 @@ import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
  *   <li>1 — everything else.</li>
  * </ul>
  *
- * <p>The platform holds neither the language of a publication nor the country of its publisher yet, so until a
- * {@link Resolver} is registered every publication gets <b>1</b>, marked {@link #NOT_DETERMINED}. That is the
- * lowest value the annex allows: the score it produces can only go up once the data exists.</p>
+ * <p>The values come from a {@link Resolver} — {@code PublicationCoefficientService}, which reads the language
+ * and the place of publication OpenAlex gives. Where there is no resolver (a unit test), or it has nothing to
+ * go by, the publication gets <b>1</b>, marked {@link #NOT_DETERMINED}: the lowest value the annex allows, so
+ * missing data can only lower a score.</p>
  *
  * <p>Static registry rather than a constructor dependency, like {@link PredatoryVenueSupport}: the variable is
  * bound in {@code ScientificProductionService}, whose constructor is spelled out by hand in several tests.</p>
@@ -45,6 +46,13 @@ public final class PublicationCoefficientSupport {
 
     public static void register(Resolver registered) {
         resolver = registered;
+    }
+
+    /** Removes the resolver if it is still the registered one (a closing application context). */
+    public static void unregister(Resolver registered) {
+        if (resolver == registered) {
+            resolver = null;
+        }
     }
 
     public static Coefficient coefficientFor(ScoringPublicationReadModel publication) {

@@ -234,7 +234,7 @@ class Comisia25ScoringTest {
 
         assertEquals(0.2, journal.getScore(), 1e-9);
         assertEquals(0.2, chapter.getScore(), 1e-9);
-        assertEquals("NO_IF", chapter.getCoreRankingEquivalent());
+        assertEquals("fără IF", chapter.getCoreRankingEquivalent());
         assertTrue(chapter.getScore() > 0, "S must stay positive or the engine never evaluates the formula");
     }
 

@@ -178,6 +178,82 @@ public class OpenAlexClient {
     }
 
     /**
+     * Language and venue of works, by OpenAlex id (bare {@code W…} form, ≤100 per request). Only the fields
+     * needed are asked for, so the page stays small.
+     */
+    public List<OpenAlexWorksResponse.OpenAlexWork> fetchWorkLanguages(java.util.Collection<String> openAlexWorkIds) {
+        List<OpenAlexWorksResponse.OpenAlexWork> works = new ArrayList<>();
+        List<String> distinct = openAlexWorkIds.stream().filter(id -> id != null && !id.isBlank()).distinct().toList();
+        for (int from = 0; from < distinct.size(); from += 100) {
+            List<String> batch = distinct.subList(from, Math.min(from + 100, distinct.size()));
+            String filter = "ids.openalex:" + String.join("|", batch);
+            OpenAlexWorksResponse response = openAlexWebClient.get()
+                    .uri(builder -> {
+                        builder.path("/works").queryParam("filter", filter)
+                                .queryParam("select", "id,language,primary_location").queryParam("per-page", 100);
+                        if (mailto != null && !mailto.isBlank()) {
+                            builder.queryParam("mailto", mailto);
+                        }
+                        return builder.build();
+                    })
+                    .retrieve()
+                    .bodyToMono(byte[].class)
+                    .map(this::parseWorksResponse)
+                    .timeout(requestTimeout)
+                    .block();
+            if (response != null && response.getResults() != null) {
+                works.addAll(response.getResults());
+            }
+        }
+        log.info("OpenAlex language fetch: requested={} returned={}", distinct.size(), works.size());
+        return works;
+    }
+
+    /**
+     * The source entities of the given OpenAlex source ids (bare {@code S…} form, ≤50 per request), for the
+     * country each venue is published in. A venue OpenAlex does not return is simply absent from the result.
+     */
+    public List<ro.uvt.pokedex.core.service.openalex.dto.OpenAlexSourcesResponse.Source> fetchSources(
+            java.util.Collection<String> openAlexSourceIds) {
+        List<ro.uvt.pokedex.core.service.openalex.dto.OpenAlexSourcesResponse.Source> sources = new ArrayList<>();
+        List<String> distinct = openAlexSourceIds.stream().filter(id -> id != null && !id.isBlank()).distinct().toList();
+        for (int from = 0; from < distinct.size(); from += 50) {
+            List<String> batch = distinct.subList(from, Math.min(from + 50, distinct.size()));
+            String filter = "ids.openalex:" + String.join("|", batch);
+            ro.uvt.pokedex.core.service.openalex.dto.OpenAlexSourcesResponse response = openAlexWebClient.get()
+                    .uri(builder -> {
+                        builder.path("/sources").queryParam("filter", filter)
+                                .queryParam("select", "id,display_name,country_code,host_organization_name")
+                                .queryParam("per-page", 50);
+                        if (mailto != null && !mailto.isBlank()) {
+                            builder.queryParam("mailto", mailto);
+                        }
+                        return builder.build();
+                    })
+                    .retrieve()
+                    .bodyToMono(byte[].class)
+                    .map(this::parseSourcesResponse)
+                    .timeout(requestTimeout)
+                    .block();
+            if (response != null && response.getResults() != null) {
+                sources.addAll(response.getResults());
+            }
+        }
+        log.info("OpenAlex source fetch: requested={} returned={}", distinct.size(), sources.size());
+        return sources;
+    }
+
+    ro.uvt.pokedex.core.service.openalex.dto.OpenAlexSourcesResponse parseSourcesResponse(byte[] body) {
+        if (body == null || body.length == 0) return null;
+        try {
+            return objectMapper.readValue(new String(body, java.nio.charset.StandardCharsets.UTF_8),
+                    ro.uvt.pokedex.core.service.openalex.dto.OpenAlexSourcesResponse.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("OpenAlex sources JSON parse failed: " + e.getOriginalMessage(), e);
+        }
+    }
+
+    /**
      * Fetch the works that CITE any of the given works (incoming citations, H66B Phase 4a Ext A) via the
      * {@code cites:W1|W2|…} filter — cursor-paginated, cited ids batched (≤50/filter). Each returned work carries its
      * own {@code referenced_works}, so the caller can tell which of the cited ids it cites.

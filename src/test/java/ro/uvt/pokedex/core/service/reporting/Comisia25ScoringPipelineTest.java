@@ -38,6 +38,8 @@ class Comisia25ScoringPipelineTest {
 
     @BeforeEach
     void setUp() {
+        // A Spring context started by another test of the same run may have left its resolver registered.
+        PublicationCoefficientSupport.register(null);
         lenient().when(lookupPort.maxAvailableYear()).thenReturn(2025);
         ro.uvt.pokedex.core.testsupport.ReportingLookupTestSupport.delegateForumLookupToIssn(lookupPort);
         ScoringFactoryService factory = new ScoringFactoryService(List.of(
@@ -112,7 +114,7 @@ class Comisia25ScoringPipelineTest {
     }
 
     @Test
-    void theCoefficientIsOneUntilLanguageAndPlaceOfPublicationAreKnown() {
+    void theCoefficientIsOneWhereNothingIsKnownAndTheResolvedValueOtherwise() {
         journal("scopus-only", "2222-2222", null, Set.of("SCOPUS"));
         Indicator second = indicator("PUBLICATIONS", "SOC_INDEXED_JOURNAL", "S * Coef_m / N");
         List<ScoringPublication> publications = List.of(publication("p2", "scopus-only", "ar", 2));

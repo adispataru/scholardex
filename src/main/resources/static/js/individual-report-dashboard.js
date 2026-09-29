@@ -553,6 +553,7 @@
           html += rankBadge(item.coreRankingEquivalent);
         }
         html += feeBadge(item);
+        html += coefBadge(item);
         if (item.forumScore) {
           html += '<span class="eval-scored-item__meta-text">· ' + toNumber(item.forumScore).toFixed(4) + '</span>';
         }
@@ -662,6 +663,23 @@
       esc(t('report.dash.apcBadge')) + '</span>';
   }
 
+  // Comisia 25 (2026): the multiplication coefficient m applied to the item, with what it rests on in
+  // the tooltip. Present only on indicators whose formula uses the coefficient.
+  var COEF_M = {
+    'ABROAD_INTERNATIONAL_LANGUAGE':        { value: '2',   key: 'abroad' },
+    'INTERNATIONAL_LANGUAGE':               { value: '1,5', key: 'international' },
+    'INTERNATIONAL_LANGUAGE_PLACE_UNKNOWN': { value: '1,5', key: 'placeUnknown' },
+    'OTHER_LANGUAGE':                       { value: '1',   key: 'otherLanguage' },
+    'NOT_DETERMINED':                       { value: '1',   key: 'notDetermined' }
+  };
+
+  function coefBadge(item) {
+    var coef = item && item.coefMBasis ? COEF_M[item.coefMBasis] : null;
+    if (!coef) return '';
+    return '<span class="eval-fee-badge" title="' + esc(t('report.dash.coefM.hint.' + coef.key)) + '">' +
+      esc(t('report.dash.coefM.badge', coef.value)) + '</span>';
+  }
+
   // Short label for the forum link: first 10 chars + ellipsis; the full name lives in the tooltip.
   function forumExcerpt(name) {
     if (!name) return t('report.dash.forumFallback');
@@ -725,6 +743,7 @@
         row += rankBadge(item.coreRankingEquivalent);
       }
       row += feeBadge(item);
+      row += coefBadge(item);
       if (item.scoringSource) {
         row += '<span class="eval-scored-item__meta-text">' + esc(item.scoringSource) + '</span>';
       }

@@ -9,6 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H125` Coefficient m from the language and place of publication (Comisia 25) — **BUILT 2026-09-29, prod
+  pending.** Replaces the provisional m = 1 of `H124`. **Data:** OpenAlex gives the language of a work
+  (`language`, ISO 639-1) and, on the SOURCE entity only, the country of the venue (`country_code`; the source
+  embedded in a work does not carry it — checked against the live API). The sync now stores the language on
+  `openalex.publication_facts` (a payload without one never erases a stored one) and asks `/sources` once per
+  venue, into the side collection `openalex.source_countries` (never rebuilt; "no country" is re-asked after
+  `openalex.source-country.retry-days`). A sync does not fail when that call does. **Scoring:**
+  `PublicationCoefficientService` registers as the resolver of `Coef_m` and reads only what is stored:
+  canonical publication → OPENALEX source links → work → venue country. International language (en, fr, de, it,
+  es) + venue abroad → 2; international language + Romania, or place unknown → 1,5; other language → 1; language
+  unknown → 1 (`NOT_DETERMINED`). Every unknown resolves downward. "International peer review", which the annex
+  also asks for m = 2, cannot be looked up. **Shown to the researcher:** a badge "m = …" next to each publication
+  of an indicator that uses the coefficient, the basis in the tooltip. **Backfill** for works synced earlier:
+  `POST /admin/openalex/language/backfill?limit=500` (platform admin; bounded; repeat until `candidates` is 0;
+  a work OpenAlex has no language for is marked `und` so it is not asked about again). FSAS needs none of it —
+  its staff had not synced before this. **Limits:** a publication the platform holds from Scopus only has no
+  OpenAlex record and stays at 1; books rarely have a venue in OpenAlex, so they reach 1,5 at most; declared
+  entries keep the coefficient the candidate picks. **Prod:** the five descriptions that mention the coefficient
+  and the description of the report are brought up to date by `h124_sociologie_2026.js` (regenerated; safe to
+  run again after an earlier run). **Not done:** no scheduled sweep — the sync covers new works and the backfill
+  is a one-off.
 - [ ] `H124` FV Sociologie și Asistență Socială 2026 (OM 3.019/2025, COMISIA 25) — **BUILT 2026-09-29, prod pending.**
   One report for the whole FSAS faculty: the annex treats Asistență Socială as part of the group "Sociologie"
   (same core/related categories, same column of the A2 publisher list, same thresholds). 42 indicators `Soc26_*`
@@ -42,9 +63,9 @@ Done history moved to `TASKS-done.md`.
   `m = c ? 2 : (d ? 1.5 : 1)` fails on the 1.5 branch and the item silently scores 0; every branch is written as
   a decimal, and `SeedFormulaLiteralTypesTest` guards all committed formulas (none was affected). Prod: script
   `h124_sociologie_2026.js` (deploy guard, idempotent, rehearsed on a scratch database: 0 type differences,
-  earlier documents untouched), then select the report for the FSAS division. **Next:** language and country of
-  publication from OpenAlex, to replace the provisional coefficient; Științe Administrative and Științe ale
-  Comunicării are one `Comisia25Rules` value, one publisher column and two domains away.
+  earlier documents untouched), then select the report for the FSAS division. The provisional coefficient is
+  replaced by `H125`. **Next:** Științe Administrative and Științe ale Comunicării are one `Comisia25Rules`
+  value, one publisher column and two domains away.
 - [ ] `H123` Heads can open the reports of their faculty or department — **FIXED and DEPLOYED 2026-09-29** (image
   `d58bbdaf`, `deploy-prod` succeeded 15:01). Found
   while drafting onboarding instructions for FPSE: appointing a head gave that person access to nothing. Three

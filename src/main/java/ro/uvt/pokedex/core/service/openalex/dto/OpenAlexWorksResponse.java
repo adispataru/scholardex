@@ -39,6 +39,9 @@ public class OpenAlexWorksResponse {
         private List<String> referenced_works;
         // Research-ethics gate: retracted works must not score (standard's Perspectiva a).
         private Boolean is_retracted;
+        // Language of the work, ISO 639-1 ("en", "ro", …) — what OpenAlex detected from title and abstract.
+        // Comisia 25 (2026) multiplies the points of a publication by a coefficient that depends on it.
+        private String language;
         // Bibliographic detail for complete citations in the verification-sheet export.
         private Biblio biblio;
         // Field-weighted citation impact + normalized percentile (impact, Perspectiva c).

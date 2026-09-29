@@ -55,7 +55,13 @@ public final class IndicatorDetailResponseAssembler {
                              /** Comma-joined gate reasons behind a MULTIPLE_GATES zero; null otherwise. */
                              String gateCauses,
                              /** H106 S4: the item's DOI (any shape the corpus holds); null when unknown. */
-                             String doi) {}
+                             String doi,
+                             /**
+                              * What the multiplication coefficient m of the item rests on (Comisia 25, 2026):
+                              * {@code ABROAD_INTERNATIONAL_LANGUAGE}, {@code NOT_DETERMINED}, … Null for every
+                              * indicator whose formula does not use the coefficient.
+                              */
+                             String coefMBasis) {}
 
     /** Publication/forum ids resolved for a scored item; both null when the title join is ambiguous. */
     private record PubLink(String publicationId, String forumId, String doi) {
@@ -138,7 +144,7 @@ public final class IndicatorDetailResponseAssembler {
                                 "publication", null, citing.publicationId(), null,
                                 zeroReason, null,
                                 extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()),
-                                citing.doi()));
+                                citing.doi(), null));
                         total += authorScore;
                     }
                 }
@@ -175,7 +181,7 @@ public final class IndicatorDetailResponseAssembler {
                                     extractScoringSource(totalObj), "citation", null,
                                     link.publicationId(), link.forumId(), null,
                                     forumNameResolver.apply(link.forumId()),
-                                    false, null, link.doi()));
+                                    false, null, link.doi(), null));
                         }
                     }
                 }
@@ -194,7 +200,7 @@ public final class IndicatorDetailResponseAssembler {
                                 authorScore, forumScore, extractQuarter(entry.getValue()),
                                 extractCoreRankingEquivalent(entry.getValue()),
                                 extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
-                                null, null, null, null, false, null, null));
+                                null, null, null, null, false, null, null, null));
                     }
                 }
             }
@@ -211,7 +217,7 @@ public final class IndicatorDetailResponseAssembler {
                             0.0, extractForumScore(entry.getValue()), extractQuarter(entry.getValue()),
                             extractCoreRankingEquivalent(entry.getValue()),
                             extractScoringSource(entry.getValue()), "activity", extractDetails(entry.getValue()),
-                            null, null, extractZeroReason(entry.getValue()), null, false, null, null));
+                            null, null, extractZeroReason(entry.getValue()), null, false, null, null, null));
                 }
             }
         } else {
@@ -236,7 +242,8 @@ public final class IndicatorDetailResponseAssembler {
                                 extractScoringSource(entry.getValue()), "publication", null,
                                 link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
                                 forumNameResolver.apply(link.forumId()),
-                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()), link.doi()));
+                                extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()), link.doi(),
+                                extractCoefBasis(entry.getValue())));
                     }
                 }
             }
@@ -253,7 +260,8 @@ public final class IndicatorDetailResponseAssembler {
                             extractScoringSource(entry.getValue()), "publication", null,
                             link.publicationId(), link.forumId(), extractZeroReason(entry.getValue()),
                             forumNameResolver.apply(link.forumId()),
-                            extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()), link.doi()));
+                            extractFeeJournal(entry.getValue()), extractGateCauses(entry.getValue()), link.doi(),
+                                extractCoefBasis(entry.getValue())));
                 }
             }
         }
@@ -300,6 +308,16 @@ public final class IndicatorDetailResponseAssembler {
     private static boolean extractFeeJournal(Object scoreObj) {
         return Boolean.TRUE.equals(extractScoringInfoValue(scoreObj, "feeJournal"))
                 || "true".equals(String.valueOf(extractScoringInfoValue(scoreObj, "feeJournal")));
+    }
+
+    /**
+     * Basis of the coefficient m stamped by the scoring engine under {@code scoringInfo.coefM}; null when the
+     * formula does not use it. The key is spelled out, like {@code feeJournal}: this layer reads the stored
+     * payload and does not reach into the scoring code.
+     */
+    private static String extractCoefBasis(Object scoreObj) {
+        Object basis = extractScoringInfoValue(scoreObj, "coefM");
+        return basis != null ? basis.toString() : null;
     }
 
     /** Comma-joined gate reasons behind a MULTIPLE_GATES zero; null when absent. */
