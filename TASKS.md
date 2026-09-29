@@ -9,6 +9,78 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H131` Citation counts with a recorded source — **OPEN, from the compliance audit of 2026-09-29 (question 8).**
+  The canonical `citedByCount` is the maximum over Scopus and OpenAlex (`CanonicalGraphBuilder.buildPublicationFact`,
+  `ScholardexPublicationCanonicalizationService`, `OpenAlexCanonicalizationService.enrichForeignPublication`,
+  `PublicationMergeService`), the projection falls back to the number of edges when there is none, and nothing
+  records which source the number came from — so a record badged "Scopus" can show OpenAlex's count. Users also
+  see two different totals: the Publications tab and the author page sum the scalar, the workspace overview
+  counts edges. Wanted: a count per source on the canonical publication (Scopus, OpenAlex) beside the edge count,
+  carried into the read model, and every displayed number labelled with its source; the Scopus count links to
+  the cited-by list on Scopus (Elsevier's attribution rule), and the public pages may then show the OpenAlex
+  count labelled as such (`H119` hides counts until this exists). One definition of "total citations" for the
+  workspace. Both canon paths change together; needs a rebuild, so plan it with the next one.
+- [ ] `H130` Privacy notice and complete deletion of a user — **OPEN, from the compliance audit of 2026-09-29
+  (question 29).** **(a) Notice.** The platform documents no legal basis, retention period or list of processed
+  fields, and has no privacy page. Build the page (public, linked from the footer, RO + EN) and draft the field
+  list from the models (`User` + `ResearcherProfile`: email, names, PhD year, position, Scopus / WoS / Google
+  Scholar ids, ORCID, affiliations; report runs, indicator results, authorship decisions, evaluation snapshots,
+  department affiliations, memberships, workspace preferences, declared activities). The legal basis, the
+  retention period and the contact are the university's to state: text from the data protection officer. The
+  page also says that staff publication pages are public (`H119`). **(b) Deletion.** `UserService` deletes only
+  the `users` document; `OrgHeadPruningListener` removes the person from head lists; report runs, indicator
+  results, authorship decisions, snapshots, affiliations, memberships, preferences and activity instances stay,
+  keyed by the email. **Decided with Adrian 2026-09-29: keep the scores, anonymised.** So deletion removes the
+  profile, the preferences, the declared activities and the authorship decisions, and re-keys the report runs
+  and indicator results to an opaque id that cannot be traced back, keeping the org unit they count for — the
+  unit roll-ups (`OrgUnitRunRollupService`) must give the same numbers before and after. Check what inside a
+  stored run still names the person (evidence rows, activity text) and drop it. Also wanted: an export of a
+  person's own data on request.
+- [ ] `H129` CNFIS reporting in the evaluation tab, one version per reporting year — **OPEN, decided with Adrian
+  2026-09-29 after the compliance audit (questions 19, 20, 22, 26).** Today the CNFIS sheet is an export
+  (`CNFISScoringService2025`, `CNFISReportExportService`, `GET /user/exports/cnfis`) with its rules in code.
+  Wanted: CNFIS as its own entry in the evaluation workbench, a version per reporting year, each carrying that
+  year's timing rules. **The rules, from the CNFIS guide** ("Cerințe și recomandări privind raportarea datelor
+  … IC2", January 2025, cnfis.ro — read 2026-09-29): (1) **edition by year** — an article is classified by the
+  JCR list of its publication year; for the LAST year of the window the list of the year before applies,
+  because reporting happens before the new list is public ("pentru articolele publicate în anul 2024 … lista
+  JCR din 2023 (publicată în 2024)"). The code uses `min(publication year, maxAvailableYear())`, so with JCR
+  2024 loaded a 2024 article is ranked by the wrong list: the cap belongs to the version (reporting 2025 →
+  window 2021–2024, last list 2023), not to what is loaded. (2) **best classification** — "cea mai bună clasare
+  din anul în care a fost publicat articolul, indiferent de clasificare IF sau AIS sau de categorie": the
+  export reads the AIS quartile only, so add the impact-factor quartile and take the better of the two, over
+  all categories. (3) **document types** — "Article, Review Article sau Proceedings Paper"; Book Review and
+  Letter are named as not reported. The export also lets chapters through; Adrian: that was for proceedings
+  indexed as chapters, which the DBLP / Crossref venue resolution now identifies — report proceedings by the
+  resolved venue and drop the chapter path after checking on real data how many rows it still carries. (4)
+  **columns** — SCIE/SSCI by quartile, Arts & Humanities and ESCI as their own columns without quartile (already
+  so), ERIH+, ISI Proceedings (CPCI-S, CPCI-SSH), IEEE Proceedings; no category-name column exists in the
+  template, so nothing is missing there. (5) **rows without DOI and WoS code** are dropped silently AFTER the
+  template row is copied, which leaves a blank row: skip before copying and tell the user which publications
+  were left out and why (the guide makes one of the two codes mandatory). (6) the side observation of the
+  audit: `CNFISScoringService2025` sets `erihPlus` for SCIE/SSCI categories too. Slice 1 = the rule corrections
+  on the existing export; slice 2 = the evaluation-tab entry with versions. To check: the guide speaks of an IF
+  classification on the UEFISCDI site, while the platform has the impact factor only from the JCR harvest
+  (`H122` b) — see what cnfis.ro/clasificare-reviste-isi publishes.
+- [ ] `H128` Hardening after the compliance audit — **OPEN, 2026-09-29; seven small items, none needs a decision.**
+  (1) **Scopus sync only for one's own ids** (question 4): `ResearcherWorkspaceController.triggerSyncPublications`
+  / `triggerSyncCitations` and the form endpoints in `UserViewController` take a Scopus author id from the
+  request, and `UserScopusTaskFacade` checks nothing — any signed-in user can make the platform pull another
+  person's record. Accept only ids on the caller's own profile; platform admins exempt (external candidates,
+  `H105`). (2) **Scopus rate limits** (13): the wrapper answers 429, and `ScopusIntegrationExceptionMapper` maps
+  it to a non-retryable failure; make it retryable with backoff, and log the remaining quota and reset time
+  (pybliometrics exposes both) so the weekly limits are visible before they are hit. (3) **Hirsch index
+  notice** (27): the CNFIS guide asks for signed print screens from Google Scholar, Web of Science and Scopus;
+  say next to every h-index and on the CNFIS page that the platform's values are for orientation and
+  pre-filling only. (4) **`agent-dev` cannot start in production** (28): today only a log warning; refuse to
+  start when the profile is active together with a configured Keycloak issuer. (5) **sign-in limited to the
+  university's accounts** (28): `KeycloakOAuth2LoginSuccessHandler` provisions any verified email; the
+  restriction lives only in the realm (confirmed by Adrian). Add the in-app allow-list as a second barrier,
+  reusing `app.roster.invite-allowed-domains`; existing accounts and EXTERNAL accounts created by an admin still
+  sign in. (6) **estimates labelled in the exports** (24): the indicator description ("valoare orientativă")
+  shows on the report page but not in the exported file. (7) **OpenAlex API key in the app** (16): the Java
+  client sends only `mailto`; send the key the Python scripts use (`OPENALEX_API_KEY`, from the secret, never
+  from a committed file), and handle 429 / Retry-After instead of failing the whole sync.
 - [ ] `H127` Declarations of principal authorship, approved by a head — **BUILT 2026-09-29, prod pending.** From the
   first feedback on FV Psihologie 2026 (Andrei Rusu, director of the Psychology department): most of his papers
   as corresponding or co-first author counted as co-author ones. **Cause:** the annex (Comisia 28) names five
