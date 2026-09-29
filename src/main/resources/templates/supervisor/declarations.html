@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{supervisor.declarations.meta.title}">Principal author declarations</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('supervisor-declarations')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(#{supervisor.declarations.meta.title})}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro" th:text="#{supervisor.declarations.intro}">
+                        Researchers declare that they are principal authors where no data source shows it.
+                    </p>
+                </div>
+
+                <div th:if="${doneKey}" class="app-feedback app-feedback--success" role="status">
+                    <p class="app-feedback__body" th:text="#{${doneKey}}">Done.</p>
+                </div>
+                <div th:if="${refusedKey}" class="app-feedback app-feedback--danger" role="alert">
+                    <p class="app-feedback__body" th:text="#{${refusedKey}}">Refused.</p>
+                </div>
+
+                <!-- ── Waiting for a decision ─────────────────────────────────── -->
+                <section class="app-summary-panel mb-4">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title">
+                            <span th:text="#{supervisor.declarations.pending.title}">Waiting for a decision</span>
+                            (<span th:text="${pending.size()}">0</span>)
+                        </h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p th:if="${pending.isEmpty()}" class="text-muted mb-0"
+                           th:text="#{supervisor.declarations.pending.empty}">Nothing is waiting.</p>
+
+                        <div th:each="declaration : ${pending}" class="app-declaration" data-declaration
+                             style="border-top:1px solid var(--bs-border-color, #dee2e6); padding:0.9rem 0;">
+                            <p class="mb-1">
+                                <strong th:text="${names.getOrDefault(declaration.userEmail, declaration.userEmail)}">Researcher</strong>
+                                ·
+                                <span th:text="#{${'supervisor.declarations.kind.' + declaration.kind}}">kind</span>
+                            </p>
+                            <p class="mb-1">
+                                <a th:href="@{/publications/{id}(id=${declaration.publicationId})}"
+                                   th:text="${declaration.publicationTitle}">Publication title</a>
+                                <span th:if="${declaration.year != null}" th:text="${'(' + declaration.year + ')'}">(2024)</span>
+                                <a th:if="${declaration.doiNormalized != null}" target="_blank" rel="noopener"
+                                   th:href="${'https://doi.org/' + declaration.doiNormalized}">doi</a>
+                            </p>
+                            <p class="mb-2">
+                                <span class="text-muted" th:text="#{supervisor.declarations.evidence}">Where the article says it</span>:
+                                <span th:text="${declaration.evidence}">footnote on the first page</span>
+                                <a th:if="${declaration.evidenceUrl != null}" target="_blank" rel="noopener"
+                                   th:href="${declaration.evidenceUrl}" th:text="#{supervisor.declarations.evidenceLink}">link</a>
+                            </p>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <form method="post" th:action="@{/supervisor/declarations/{id}/approve(id=${declaration.id})}"
+                                      style="display:flex; gap:0.4rem;">
+                                    <input type="text" name="note" class="form-control form-control-sm" maxlength="1000"
+                                           th:placeholder="#{supervisor.declarations.note.optional}"
+                                           th:attr="aria-label=#{supervisor.declarations.note.optional}">
+                                    <button type="submit" class="btn btn-sm btn-success"
+                                            th:text="#{supervisor.declarations.approve}">Approve</button>
+                                </form>
+                                <form method="post" th:action="@{/supervisor/declarations/{id}/reject(id=${declaration.id})}"
+                                      style="display:flex; gap:0.4rem;">
+                                    <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
+                                           th:placeholder="#{supervisor.declarations.note.required}"
+                                           th:attr="aria-label=#{supervisor.declarations.note.required}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            th:text="#{supervisor.declarations.reject}">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── Decided: the record ─────────────────────────────────────── -->
+                <section class="app-summary-panel">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title" th:text="#{supervisor.declarations.decided.title}">Decided</h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p th:if="${decided.isEmpty()}" class="text-muted mb-0"
+                           th:text="#{supervisor.declarations.decided.empty}">Nothing was decided yet.</p>
+
+                        <div th:unless="${decided.isEmpty()}" class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                <tr>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.researcher}">Researcher</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.publication}">Publication</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.declared}">Declared</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.decision}">Decision</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.by}">By</th>
+                                    <th scope="col"></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="declaration : ${decided}">
+                                    <td th:text="${names.getOrDefault(declaration.userEmail, declaration.userEmail)}">Researcher</td>
+                                    <td>
+                                        <a th:href="@{/publications/{id}(id=${declaration.publicationId})}"
+                                           th:text="${declaration.publicationTitle}">Title</a>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:text="${declaration.evidence}">evidence</div>
+                                    </td>
+                                    <td th:text="#{${'supervisor.declarations.kind.' + declaration.kind}}">kind</td>
+                                    <td>
+                                        <span th:text="#{${'supervisor.declarations.status.' + declaration.status}}">status</span>
+                                        <div th:if="${declaration.decisionNote != null}" class="text-muted" style="font-size:0.8rem;"
+                                             th:text="${declaration.decisionNote}">note</div>
+                                    </td>
+                                    <td>
+                                        <span th:text="${names.getOrDefault(declaration.decidedBy, declaration.decidedBy)}">head</span>
+                                        <div class="text-muted" style="font-size:0.8rem;"
+                                             th:text="${decidedOn.get(declaration.id)}">date</div>
+                                    </td>
+                                    <td>
+                                        <form th:if="${declaration.status.name() == 'APPROVED'}" method="post"
+                                              th:action="@{/supervisor/declarations/{id}/revoke(id=${declaration.id})}"
+                                              style="display:flex; gap:0.4rem;">
+                                            <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
+                                                   th:placeholder="#{supervisor.declarations.note.required}"
+                                                   th:attr="aria-label=#{supervisor.declarations.note.required}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                    th:text="#{supervisor.declarations.revoke}">Revoke</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted mt-2 mb-0" style="font-size:0.8rem;"
+                           th:text="#{supervisor.declarations.effect}">A decision changes the scores when the report is refreshed.</p>
+                    </div>
+                </section>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

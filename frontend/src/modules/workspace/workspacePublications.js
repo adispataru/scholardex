@@ -117,6 +117,10 @@ let _selectedPendingIds = new Set();
 let _mergeState = null;
 // H93 S3: venue-claim state — { claimStateByPublicationId: {id: 'PENDING'|'APPROVED'|'REJECTED'} }.
 let _claimState = null;
+// H127: principal-authorship state — { byPublicationId: {id: {role, declaration, kind, decisionNote}} }.
+// role is what the data shows (FIRST_AUTHOR | CORRESPONDING_AUTHOR | CO_AUTHOR); declaration is the
+// researcher's own statement, if any (PENDING | APPROVED | REJECTED | WITHDRAWN).
+let _principalState = null;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -194,10 +198,29 @@ function _fetchMergeState() {
             _renderPage();
         })
         .catch(() => { /* ditto */ });
+    // H127: principal-authorship roles and declarations, same contract.
+    _principalState = null;
+    _loadPrincipalState();
 }
 
 function _venueClaimStatus(pubId) {
     return _claimState?.claimStateByPublicationId?.[pubId] ?? null;
+}
+
+function _loadPrincipalState() {
+    return fetch('/user/workspace/publications/principal-author/state',
+                 { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => (res.ok ? res.json() : null))
+        .then(state => {
+            if (!state) return;
+            _principalState = state;
+            _renderPage();
+        })
+        .catch(() => { /* progressive enhancement, like the merge and claim hints */ });
+}
+
+function _principalOf(pubId) {
+    return _principalState?.byPublicationId?.[pubId] ?? null;
 }
 
 function _mergeRequestState(pubId) {
@@ -634,6 +657,9 @@ function _insertDetailRow(pub, tr) {
     // H93 S3: venue-claim picker
     _wireVenueClaimSection(pub, detailTr);
 
+    // H127: principal-authorship declaration
+    _wirePrincipalAuthorSection(pub, detailTr);
+
     // H84 S3: manual duplicate flag
     detailTr.querySelector('[data-flag-merge]')?.addEventListener('click', e => {
         const otherId = detailTr.querySelector('[data-merge-other-select]')?.value;
@@ -731,6 +757,7 @@ function _buildDetailPanel(pub) {
               </div>
               ${_buildMergeFlagSection(pub)}
               ${_buildVenueClaimSection(pub)}
+              ${_buildPrincipalAuthorSection(pub)}
             </div>
 
           </div>
@@ -886,6 +913,137 @@ function _wireVenueClaimSection(pub, detailTr) {
             .catch(err => {
                 submit.disabled = false;
                 window.appToast?.show({ message: t('workspace.pubs.venueClaim.failed', err.message), tone: 'error' });
+            });
+    });
+}
+
+/** H127: how the data sees the researcher on this publication, and the declaration that corrects it.
+ *  Corresponding authors come from one source only and equal contribution from none, so a co-author
+ *  may state either; the statement counts once a head has approved it against the article. */
+function _buildPrincipalAuthorSection(pub) {
+    const state = _principalOf(pub.id);
+    if (!state) return '';
+    const title = `<p class="app-ws-pubs__detail-section-title" style="margin-top:0.75rem;">${t('workspace.pubs.principal.title')}</p>`;
+    const line = text => `<p style="font-size:0.8rem; margin-bottom:0.25rem;" class="text-muted">${text}</p>`;
+    if (state.role === 'FIRST_AUTHOR') {
+        return `${title}${line(t('workspace.pubs.principal.role.FIRST_AUTHOR'))}`;
+    }
+    if (state.role === 'CORRESPONDING_AUTHOR') {
+        return `${title}${line(t('workspace.pubs.principal.role.CORRESPONDING_AUTHOR'))}`;
+    }
+    const withdraw = `
+        <button type="button" class="btn btn-sm btn-link px-0" data-principal-withdraw="${_esc(pub.id)}">
+          ${t('workspace.pubs.principal.withdraw')}
+        </button>`;
+    if (state.declaration === 'PENDING') {
+        return `${title}${line(t('workspace.pubs.principal.pending'))}${withdraw}`;
+    }
+    if (state.declaration === 'APPROVED') {
+        return `${title}${line(t('workspace.pubs.principal.approved'))}${withdraw}`;
+    }
+    const rejected = state.declaration === 'REJECTED'
+        ? line(state.decisionNote
+            ? t('workspace.pubs.principal.rejected', _esc(state.decisionNote))
+            : t('workspace.pubs.principal.rejectedNoReason'))
+        : '';
+    return `
+        ${title}
+        ${line(t('workspace.pubs.principal.role.CO_AUTHOR'))}
+        ${rejected}
+        <div data-principal-root="${_esc(pub.id)}">
+          <select class="form-control form-control-sm" data-principal-kind style="max-width:24rem;"
+                  aria-label="${_esc(t('workspace.pubs.principal.title'))}">
+            <option value="CORRESPONDING_AUTHOR">${t('workspace.pubs.principal.kind.CORRESPONDING_AUTHOR')}</option>
+            <option value="EQUAL_CONTRIBUTION">${t('workspace.pubs.principal.kind.EQUAL_CONTRIBUTION')}</option>
+          </select>
+          <textarea class="form-control form-control-sm" data-principal-evidence rows="2" maxlength="1000"
+                    style="max-width:32rem; margin-top:0.35rem;"
+                    placeholder="${_esc(t('workspace.pubs.principal.evidencePlaceholder'))}"
+                    aria-label="${_esc(t('workspace.pubs.principal.evidencePlaceholder'))}"></textarea>
+          <div style="display:flex; gap:0.4rem; margin-top:0.35rem; align-items:center; flex-wrap:wrap;">
+            <input type="url" class="form-control form-control-sm" data-principal-link maxlength="500"
+                   style="max-width:24rem;" placeholder="${_esc(t('workspace.pubs.principal.linkPlaceholder'))}"
+                   aria-label="${_esc(t('workspace.pubs.principal.linkPlaceholder'))}">
+            <button type="button" class="btn btn-sm btn-outline-primary" data-principal-submit disabled>
+              ${t('workspace.pubs.principal.submit')}
+            </button>
+          </div>
+          <p class="text-muted" style="font-size:0.75rem; margin:0.25rem 0 0;">
+            ${t('workspace.pubs.principal.explainer')}
+          </p>
+        </div>`;
+}
+
+// Every key is written out: the message-key check reads literals, and a refusal code without a sentence
+// must show up there rather than in front of a researcher.
+function _principalErrorText(code) {
+    switch (code) {
+        case 'NOT_YOUR_PUBLICATION': return t('workspace.pubs.principal.error.NOT_YOUR_PUBLICATION');
+        case 'ALREADY_PRINCIPAL': return t('workspace.pubs.principal.error.ALREADY_PRINCIPAL');
+        case 'ALREADY_PENDING': return t('workspace.pubs.principal.error.ALREADY_PENDING');
+        case 'ALREADY_APPROVED': return t('workspace.pubs.principal.error.ALREADY_APPROVED');
+        case 'KIND_MISSING': return t('workspace.pubs.principal.error.KIND_MISSING');
+        case 'EVIDENCE_TOO_SHORT': return t('workspace.pubs.principal.error.EVIDENCE_TOO_SHORT');
+        case 'EVIDENCE_TOO_LONG': return t('workspace.pubs.principal.error.EVIDENCE_TOO_LONG');
+        case 'LINK_NOT_A_WEB_ADDRESS': return t('workspace.pubs.principal.error.LINK_NOT_A_WEB_ADDRESS');
+        case 'NOTHING_TO_WITHDRAW': return t('workspace.pubs.principal.error.NOTHING_TO_WITHDRAW');
+        default: return t('workspace.pubs.principal.error.unknown');
+    }
+}
+
+function _postPrincipal(path, payload) {
+    return fetch('/user/workspace/publications/principal-author' + path, {
+        method: 'POST',
+        headers: postJsonHeaders(),
+        body: JSON.stringify(payload),
+    }).then(async res => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(_principalErrorText(body.error ?? 'unknown'));
+        }
+        return body;
+    });
+}
+
+function _wirePrincipalAuthorSection(pub, detailTr) {
+    detailTr.querySelector(`[data-principal-withdraw="${CSS.escape(pub.id)}"]`)?.addEventListener('click', e => {
+        e.target.disabled = true;
+        _postPrincipal('/withdraw', { publicationId: pub.id })
+            .then(() => {
+                window.appToast?.show({ message: t('workspace.pubs.principal.withdrawn'), tone: 'success' });
+                return _loadPrincipalState();
+            })
+            .catch(err => {
+                e.target.disabled = false;
+                window.appToast?.show({ message: t('workspace.pubs.principal.failed', err.message), tone: 'error' });
+            });
+    });
+
+    const root = detailTr.querySelector(`[data-principal-root="${CSS.escape(pub.id)}"]`);
+    if (!root) return;
+    const kind = root.querySelector('[data-principal-kind]');
+    const evidence = root.querySelector('[data-principal-evidence]');
+    const link = root.querySelector('[data-principal-link]');
+    const submit = root.querySelector('[data-principal-submit]');
+
+    // The server asks for at least ten characters: enough to say WHERE the article states it.
+    evidence.addEventListener('input', () => { submit.disabled = evidence.value.trim().length < 10; });
+
+    submit.addEventListener('click', () => {
+        submit.disabled = true;
+        _postPrincipal('', {
+            publicationId: pub.id,
+            kind: kind.value,
+            evidence: evidence.value.trim(),
+            evidenceUrl: link.value.trim() || null,
+        })
+            .then(() => {
+                window.appToast?.show({ message: t('workspace.pubs.principal.requested'), tone: 'success' });
+                return _loadPrincipalState();
+            })
+            .catch(err => {
+                submit.disabled = false;
+                window.appToast?.show({ message: t('workspace.pubs.principal.failed', err.message), tone: 'error' });
             });
     });
 }

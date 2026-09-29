@@ -59,6 +59,10 @@ A user who heads a faculty or a department, or supervises a group, signs in with
 
 What a head may open is decided per unit: a department director reaches the department, a faculty head reaches the faculty and every department in it. The report pages of a unit live under `/admin/divisions/{id}/reports/**` and `/admin/departments/{id}/reports/**`; they are the only paths under `/admin` open to supervisors besides `/admin/groups/**`.
 
+### Who decides on a declaration of principal authorship
+
+A researcher may declare that they are a principal author of a publication where no data source shows it (corresponding author, or a contribution equal to the first author's). The declaration counts in the reports only after it is approved on `/supervisor/declarations`. The URL rule lets supervisors and platform admins reach the page; which declarations each of them sees and may decide is checked per researcher by `declarationAccess.canDecide`: a head of a department the researcher is affiliated to, a head of the faculty above it, or a platform admin. A supervisor of a group is not enough. Nobody decides on their own declaration, a platform admin included, so a department director's declarations go to the faculty.
+
 ## Logout
 
 Logout is app-only. `POST /logout` invalidates the ScholarDex session, deletes `JSESSIONID`, and redirects to `/login?logout`. It does not end the Keycloak SSO session.

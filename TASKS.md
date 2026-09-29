@@ -9,6 +9,31 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H127` Declarations of principal authorship, approved by a head — **BUILT 2026-09-29, prod pending.** From the
+  first feedback on FV Psihologie 2026 (Andrei Rusu, director of the Psychology department): most of his papers
+  as corresponding or co-first author counted as co-author ones. **Cause:** the annex (Comisia 28) names five
+  kinds of principal author — single, first, corresponding, equal contribution with the first author, and last
+  author for sport only. The platform knew the first author and, of the corresponding ones, only those OpenAlex
+  marks (`is_corresponding`, a minority of papers); Scopus gives none through the bridge, and equal contribution
+  is in no source. **Flow:** on the publication row of the workspace a co-author declares "corresponding
+  author" or "equal contribution", says where the article states it (10–1000 characters) and may add a link.
+  The declaration is PENDING until a head of the researcher's department or of the faculty above it, or a
+  platform admin, approves or rejects it on `/supervisor/declarations` (rejection and revocation need a reason).
+  Nobody decides on their own declaration; a group supervisor is not enough. **Effect:** only APPROVED ones
+  count. `EffectiveAuthorshipReadService.findConfirmedPublicationsForScoring` hands the declared publication on
+  as a COPY that lists the researcher among its corresponding authors, which is what the role filter reads —
+  so every report with a principal/co-author split follows (Psihologie 2026, Științe ale Educației 2026, Fizică
+  2026, PD 2026) and nothing stored changes. Scores change at the next refresh of the report. **Record:**
+  `scholardex.principal_author_declarations`, a side collection that is never rebuilt, one document per
+  researcher and publication with its whole history (declared, approved, rejected, withdrawn, revoked: who,
+  when, note); the publication is also remembered by DOI, title and year and found again after a rebuild.
+  **Decisions (user, 2026-09-29):** either head approves, admins always; evidence is a short text plus an
+  optional link; do not wait for Scopus to supply corresponding authors. **Checked on the local instance:** the
+  form, the refusals, declare → pending → approve → take back, the review page at phone width. Found there and
+  fixed: a message with double quotes cut the placeholder attribute short, so attribute values are escaped.
+  **Not done:** no notification to the head when a declaration arrives; an approval does not refresh the report
+  by itself; a researcher without a department affiliation can only be decided by an admin; the 2016 Psychology
+  report (roles MAIN/CO) is not affected.
 - [ ] `H126` The language backfill covers the works nobody synced — **BUILT and DEPLOYED 2026-09-29** (image
   `392280bb`, GitHub `deploy-prod`: helm `--wait`, STATUS deployed, revision 73, 19:09 UTC; read from the deploy
   log, the cluster was not queried). The user started the job from the admin page the same evening. **Result

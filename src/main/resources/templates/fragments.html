@@ -375,6 +375,14 @@
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
+                    th:classappend="${activeSection == 'supervisor-declarations'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/supervisor/declarations}">
+                        <i class="fa-solid fa-fw fa-file-signature"></i>
+                        <span th:text="#{shell.item.declarations}">Principal author declarations</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
                     th:classappend="${activeSection == 'researcher-reports'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/reports/researcher}">
                         <i class="fa-solid fa-fw fa-chart-line"></i>
@@ -559,6 +567,14 @@
                     <a class="app-shell-sidebar__link" th:href="@{/supervisor}">
                         <i class="fa-solid fa-fw fa-user-shield"></i>
                         <span th:text="#{shell.item.supervisorWorkspace}">Supervisor workspace</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
+                    th:classappend="${activeSection == 'supervisor-declarations'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/supervisor/declarations}">
+                        <i class="fa-solid fa-fw fa-file-signature"></i>
+                        <span th:text="#{shell.item.declarations}">Principal author declarations</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"

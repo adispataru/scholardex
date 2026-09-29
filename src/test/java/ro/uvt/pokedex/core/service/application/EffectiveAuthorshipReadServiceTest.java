@@ -32,6 +32,8 @@ class EffectiveAuthorshipReadServiceTest {
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private PublicationAuthorshipDecisionRepository publicationAuthorshipDecisionRepository;
+    @Mock
+    private ro.uvt.pokedex.core.repository.scopus.canonical.PrincipalAuthorDeclarationRepository declarationRepository;
 
     private EffectiveAuthorshipReadService service;
 
@@ -41,8 +43,72 @@ class EffectiveAuthorshipReadServiceTest {
                 userService,
                 researcherAuthorLookupService,
                 scholardexProjectionReadService,
-                publicationAuthorshipDecisionRepository
+                publicationAuthorshipDecisionRepository,
+                new PrincipalAuthorDeclarationReadService(declarationRepository)
         );
+    }
+
+    // ------------------------------------------------------------------ approved principal-authorship declarations
+
+    private ro.uvt.pokedex.core.model.scopus.canonical.PrincipalAuthorDeclaration approvedDeclaration(String publicationId) {
+        var declaration = new ro.uvt.pokedex.core.model.scopus.canonical.PrincipalAuthorDeclaration();
+        declaration.setUserEmail("user@uvt.ro");
+        declaration.setPublicationId(publicationId);
+        declaration.setStatus(ro.uvt.pokedex.core.model.scopus.canonical.PrincipalAuthorDeclaration.Status.APPROVED);
+        declaration.setKind(ro.uvt.pokedex.core.model.scopus.canonical.PrincipalAuthorDeclaration.Kind.EQUAL_CONTRIBUTION);
+        return declaration;
+    }
+
+    private static ro.uvt.pokedex.core.model.reporting.Indicator indicator(String outputType) {
+        var indicator = new ro.uvt.pokedex.core.model.reporting.Indicator();
+        indicator.setKind(ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.of(outputType, "IMPACT_FACTOR"));
+        return indicator;
+    }
+
+    @Test
+    void anApprovedDeclarationMovesThePublicationFromTheCoAuthorIndicatorToThePrincipalOne() {
+        ScholardexPublicationView declared = publication("p1", "Declared paper");
+        declared.setAuthors(List.of("someone-else", "a1", "third"));
+        ScholardexPublicationView plain = publication("p2", "Plain co-authored paper");
+        plain.setAuthors(List.of("someone-else", "a1"));
+        when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
+                .thenReturn(List.of(decision("p1", PublicationAuthorshipDecision.Status.CONFIRMED),
+                        decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED)));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(anyCollection())).thenReturn(List.of(declared, plain));
+        when(declarationRepository.findByUserEmailAndStatus("user@uvt.ro",
+                ro.uvt.pokedex.core.model.scopus.canonical.PrincipalAuthorDeclaration.Status.APPROVED))
+                .thenReturn(List.of(approvedDeclaration("p1")));
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user("user@uvt.ro")));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author("a1")));
+
+        List<ScholardexPublicationView> scored = service.findConfirmedPublicationsForScoring("user@uvt.ro");
+
+        // What the reports do with it: the very filter the indicators use.
+        List<ScholardexAuthorView> me = List.of(author("a1"));
+        assertThat(ReportingComputationSupport.filterByAuthorRole(
+                indicator("PUBLICATIONS_FIRST_OR_CORRESPONDING"), me, scored))
+                .extracting(ScholardexPublicationView::getId).containsExactly("p1");
+        assertThat(ReportingComputationSupport.filterByAuthorRole(
+                indicator("PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING"), me, scored))
+                .extracting(ScholardexPublicationView::getId).containsExactly("p2");
+        // The stored view is not touched: another researcher's report reads it as it was.
+        assertThat(declared.getCorrespondingAuthorIds()).isEmpty();
+    }
+
+    @Test
+    void withoutAnApprovedDeclarationNothingIsLookedUpAndNothingChanges() {
+        ScholardexPublicationView paper = publication("p1", "Paper");
+        paper.setAuthors(List.of("someone-else", "a1"));
+        when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
+                .thenReturn(List.of(decision("p1", PublicationAuthorshipDecision.Status.CONFIRMED)));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(anyCollection())).thenReturn(List.of(paper));
+        when(declarationRepository.findByUserEmailAndStatus(any(), any())).thenReturn(List.of());
+
+        List<ScholardexPublicationView> scored = service.findConfirmedPublicationsForScoring("user@uvt.ro");
+
+        assertThat(scored).containsExactly(paper);
+        org.mockito.Mockito.verify(userService, org.mockito.Mockito.never()).getUserByEmail(any());
     }
 
     @Test

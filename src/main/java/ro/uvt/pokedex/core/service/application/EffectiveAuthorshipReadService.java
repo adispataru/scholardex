@@ -28,6 +28,22 @@ public class EffectiveAuthorshipReadService {
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final PublicationAuthorshipDecisionRepository publicationAuthorshipDecisionRepository;
+    private final PrincipalAuthorDeclarationReadService principalAuthorDeclarationReadService;
+
+    /** The canonical author ids the researcher is known by; empty without a researcher profile. */
+    public List<String> findCanonicalAuthorIdsForUser(String userEmail) {
+        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (userOpt.isEmpty() || userOpt.get().getResearcherProfile() == null) {
+            return List.of();
+        }
+        return scholardexProjectionReadService.findAuthorsByIdIn(
+                        researcherAuthorLookupService.resolveAuthorLookupKeys(userOpt.get().getResearcherProfile()))
+                .stream()
+                .map(ScholardexAuthorView::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
 
     public List<ScholardexPublicationView> findEffectivePublicationsForUser(String userEmail) {
         Optional<User> userOpt = userService.getUserByEmail(userEmail);
@@ -108,7 +124,25 @@ public class EffectiveAuthorshipReadService {
 
         List<ScholardexPublicationView> confirmed = new ArrayList<>(confirmedById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(confirmed);
-        return confirmed;
+        return withApprovedPrincipalAuthorship(userEmail, confirmed);
+    }
+
+    /**
+     * A publication the researcher declared themselves principal author of, with the approval of a head, is
+     * scored like one where the data names them corresponding author. The author ids are looked up only when
+     * there is such a declaration, so everybody else pays one indexed query and nothing more.
+     */
+    private List<ScholardexPublicationView> withApprovedPrincipalAuthorship(
+            String userEmail, List<ScholardexPublicationView> publications) {
+        if (principalAuthorDeclarationReadService == null || publications.isEmpty()) {
+            return publications;
+        }
+        var approved = principalAuthorDeclarationReadService.approvedFor(userEmail);
+        if (approved == null || approved.isEmpty()) {
+            return publications;
+        }
+        return principalAuthorDeclarationReadService.applyApproved(
+                approved, publications, findCanonicalAuthorIdsForUser(userEmail));
     }
 
     public List<ScholardexPublicationView> findWorkspaceReviewPublicationsForUser(String userEmail) {
