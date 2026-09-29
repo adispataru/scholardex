@@ -164,7 +164,7 @@ Done history moved to `TASKS-done.md`.
   won), so the public pages can show the OpenAlex count labelled as such. Public staff pages also need a line in
   the privacy notice, which does not exist yet.
 - [ ] `H120` Scopus: fetch and keep only the fields the CRIS policy allows — **BUILT 2026-09-29 (stop sending +
-  stop collecting), not pushed; the purge waits for the next full rebuild.** Decided with Adrian: PII stays (it is
+  stop collecting). No purge — decided 2026-09-29, see the end of this entry.** Decided with Adrian: PII stays (it is
   a merge key), funding and open access come from OpenAlex. **What changed:** (1) the wrapper no longer returns
   abstract, funding, open access nor the matched reference text — the Abstract Retrieval call STAYS, because the
   STANDARD search gives only the first author and the call is what supplies the author list, the affiliations
@@ -176,9 +176,12 @@ Done history moved to `TASKS-done.md`.
   and `CanonicalGraphBuilder`); (5) funding is read from OpenAlex (`OpenAlexFunding`: "Funder (award); Funder",
   from `grants`, else `funders`) and, with open access, written by OpenAlex also onto records Scopus owns; (6)
   `ScholardexPublicationView` never serialises abstract and keywords, which closes the workspace citations
-  response. **Left as stored until a rebuild:** the fields on records nobody re-syncs, the open-access flag of
-  records OpenAlex does not know, `scopus.funding_facts`, the pod's pybliometrics cache and the local dump
-  files. **Not verified:** that the live OpenAlex API still names the field `grants` — the documentation page
+  response. **No purge (decided with Adrian, 2026-09-29):** the fields are neither collected nor
+  displayed, the policy restricts the public DISPLAY of abstracts and lets stored metadata be kept, and a
+  re-sync overwrites a stored record with its stripped form — a full rebuild for this alone is not worth it.
+  What stays as stored: the fields on records nobody re-syncs, the open-access flag of records OpenAlex does
+  not know, `scopus.funding_facts`. The wrapper pod's pybliometrics cache has no volume and empties at every
+  deploy. The local dump files are a different matter (a plain file on a laptop) and moved to `H122` (d). **Not verified:** that the live OpenAlex API still names the field `grants` — the documentation page
   had moved; check one real work before relying on the funding column. Original entry, from the compliance
   audit of 2026-09-29: The wrapper calls Abstract Retrieval `view=FULL` for every own AND every citing record, because
   `include_enrichment` defaults to true in the three request DTOs (`AuthorWorksRequest`, `CitationsByEidRequest`,
@@ -216,7 +219,9 @@ Done history moved to `TASKS-done.md`.
   written by its researchers" and lists citation COUNT among the permitted metadata; citing documents are neither
   permitted nor forbidden there. Adrian recalls Elsevier allowing the extraction of citing papers for this API
   key; public display was not discussed. Needed: that permission in writing (find the message, or ask
-  integration support again), stating storage of citing-paper METADATA and its use in internal scoring. Until
+  integration support again), stating storage of citing-paper METADATA and its use in internal scoring. Ask
+  in the same message whether abstracts stored before `H120` must be deleted (they are no longer collected
+  nor displayed). Until
   then citing papers stay out of the public pages (`H119`). Fallback if the answer is no: OpenAlex-only citing
   works — measure first (edges by source, re-score the persisted runs without the Scopus edges). The same policy
   also narrows `H120`: abstracts "may not be displayed publicly", stored metadata may be kept in perpetuity and
@@ -228,10 +233,13 @@ Done history moved to `TASKS-done.md`.
   into an internal evaluation platform is covered, and how it may be obtained. The repository is public: the
   scripts carry no Clarivate data, but they document the method; move them out of the public repository.
   **(c) WoS accession sweep** — weekly since 2026-09-29 (`wos.openurl.sweep.cron`), was nightly; still only UVT's
-  own papers, 400 per run. **(d) AI tooling is a developer only:** no access to Scopus dumps, the
-  personal-data backups or production. Enforce it: move `data/scopus/`, `data/backups/` and the prod kubeconfig
-  out of reach, drop the kubectl/mongosh/psql permission from `.claude/settings.local.json`, develop on
-  synthetic or OpenAlex-only data.
+  own papers, 400 per run. **(d) Real data out of the development directory; AI tooling is a
+  developer only:** no access to Scopus dumps, the personal-data backups or production. Enforce it: move
+  `data/scopus/`, `data/backups/` and the prod kubeconfig out of reach, drop the kubectl/mongosh/psql
+  permission from `.claude/settings.local.json`, develop on synthetic or OpenAlex-only data. The Scopus dump
+  files (`data/scopus/complete_scopus_*.json`, 483 MB, ~150k abstracts of citing papers, and the copy under
+  `scopus-python/`) are what is left of the out-of-list fields outside the application's access control —
+  keep them on the server or on an encrypted volume, not on a laptop.
 - [ ] `H118` FV Științe ale Educației 2026 (OM 3.019/2025, COMISIA 28) — **BUILT, DEPLOYED and LOADED in prod 2026-09-29**
   (image `7a7bb39a`; `h118_comisia28_2026.js` renamed 12 activity types, changed the fields of 2, created 11, updated
   10 Psychology indicators, created the domain, 42 indicators and report `6abb957433192ec40a8e072f`; read back
