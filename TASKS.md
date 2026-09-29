@@ -68,7 +68,20 @@ Done history moved to `TASKS-done.md`.
   a mark; conference papers are "ISI Proceedings" by their venue, so a paper with a WoS code in a venue outside
   the conference index loses the mark and one without a code in an indexed venue gains it; book chapters are
   out. **To run on real data before relying on it (Adrian):** the count of rows per category before and
-  after, for one faculty. **Not built:** a button for the admin operation (it is an endpoint). Source of the rules: the
+  after, for one faculty. **Not built:** a button for the admin operation (it is an endpoint).
+  **Decided 2026-09-30:** the sheet of left-out publications stays in the file until the page shows them; the
+  CNFIS sheets classify from the quartiles already loaded (the lists on cnfis.ro are not loaded).
+  **SLICE 2a BUILT 2026-09-30, not pushed.** `ReportAuthority` (CNATDCU, UEFISCDI) and
+  `IndividualReport.authority`, read through `effectiveAuthority()` — a stored report that names none counts as
+  CNATDCU, so nothing changes until the three UEFISCDI reports are marked. The admin report form has the input
+  ("Applies the rules of"), pinned by the round-trip test. `/user/evaluation?authority=…` shows the reports of
+  one authority; a report asked for by id brings its own. The sidebar has three entries: CNATDCU, UEFISCDI,
+  CNFIS. `/user/cnfis` lists the editions with their window and the download of Anexa 5 — the page slice 2b
+  grows into. **At deploy:** open Eligibilitate PD, Eligibilitate PD 2026 and Eligibilitate Tinere Echipe in the
+  admin report form and set the authority to UEFISCDI (until then they show under CNATDCU and the UEFISCDI
+  entry is empty). **Left as it was:** the delegated view of a supervisor lists all the reports of a researcher
+  together; the preferred report is one per person, so it applies only under the entry it belongs to.
+  **Not checked in a browser** (a run needs real data). Source of the rules: the
   CNFIS guide "Cerințe și recomandări privind raportarea datelor … IC2" (January 2025, cnfis.ro).
   **The shape.** Three sidebar entries instead of "Evaluation": **CNATDCU** (the domain reports: every FV, FEAA
   included), **UEFISCDI** (Eligibilitate PD, PD 2026, Tinere Echipe) and **CNFIS**. A report carries a new field

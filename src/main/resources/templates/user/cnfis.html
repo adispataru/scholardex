@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{cnfis.title}">CNFIS reporting</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('cnfis')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('CNFIS')}"></div>
+
+            <div class="container-fluid app-page-content">
+                <p class="text-muted" th:text="#{cnfis.intro}">CNFIS reports every two years, over the four years before the reference date.</p>
+
+                <div class="card mb-3" th:each="edition : ${editions}">
+                    <div class="card-body">
+                        <h2 class="h5 mb-1">
+                            <span th:text="#{cnfis.edition(${edition.reportingYear()})}">Edition 2025</span>
+                            <span th:if="${edition.provisional()}" class="app-table-badge app-table-badge--warning"
+                                  th:text="#{cnfis.edition.provisional}">provisional</span>
+                        </h2>
+                        <p class="mb-2" th:text="#{cnfis.edition.window(${edition.reportingYear()}, ${edition.windowStart()}, ${edition.windowEnd()}, ${edition.lastListYear()})}">
+                            Reference date 1 January 2025; publications of 2021–2024; the last classification list is the one of 2023.
+                        </p>
+                        <p th:if="${edition.provisional()}" class="text-muted small mb-2" th:text="#{cnfis.edition.provisional.note}">
+                            CNFIS has not published the guide of this edition; the rules of the last one are applied.
+                        </p>
+                        <a class="btn btn-sm btn-primary"
+                           th:href="@{/user/exports/cnfis(start=${edition.windowStart()},end=${edition.windowEnd()})}">
+                            <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
+                            <span th:text="#{cnfis.download.anexa5}">Download Anexa 5 (articles and patents)</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="alert alert-info" role="status">
+                    <p class="mb-1" th:text="#{cnfis.note.leftOut}">Publications that get no row are listed, each with its reason, on the last sheet of the file; delete that sheet before you hand the file in.</p>
+                    <p class="mb-0" th:text="#{cnfis.note.hirsch}">The Hirsch index values of the form are taken from Google Scholar, Web of Science and Scopus, as signed print screens.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

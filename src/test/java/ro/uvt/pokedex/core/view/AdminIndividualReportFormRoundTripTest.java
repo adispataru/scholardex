@@ -284,6 +284,33 @@ class AdminIndividualReportFormRoundTripTest {
     }
 
     @Test
+    void theAuthorityOfAReportSurvivesASaveAndCanBeChangedOnThePage() throws Exception {
+        // H129: a field the form has no input for is wiped by a save (H116) — this one has its input
+        stored(() -> {
+            IndividualReport report = scriptedReport();
+            report.setAuthority(ro.uvt.pokedex.core.model.reporting.ReportAuthority.UEFISCDI);
+            return report;
+        });
+
+        List<String[]> untouched = renderedForm();
+        assertTrue(untouched.stream().anyMatch(f -> f[0].equals("authority") && f[1].equals("UEFISCDI")),
+                "the page must post the stored authority");
+        mockMvc.perform(buildPost(untouched)).andExpect(status().is3xxRedirection());
+        assertEquals(ro.uvt.pokedex.core.model.reporting.ReportAuthority.UEFISCDI, saved().getAuthority());
+    }
+
+    @Test
+    void aReportThatNamesNoAuthorityStaysSoAndCountsAsCnatdcu() throws Exception {
+        stored(AdminIndividualReportFormRoundTripTest::scriptedReport);
+
+        mockMvc.perform(buildPost(renderedForm())).andExpect(status().is3xxRedirection());
+
+        IndividualReport saved = saved();
+        assertEquals(null, saved.getAuthority());
+        assertEquals(ro.uvt.pokedex.core.model.reporting.ReportAuthority.CNATDCU, saved.effectiveAuthority());
+    }
+
+    @Test
     void thePageSendsNothingForTheScriptedFields() throws Exception {
         // The premise of every other test here: if the page ever grows inputs for these, the carry-over
         // below stops being the thing that protects them and this suite must be revisited.

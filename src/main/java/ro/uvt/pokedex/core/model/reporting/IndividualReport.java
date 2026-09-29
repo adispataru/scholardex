@@ -16,6 +16,17 @@ public class IndividualReport extends AbstractReport {
     @DBRef
     private Institution individualAffiliation = null;
 
+    /**
+     * H129: whose rules the report applies. Absent on the reports stored before the field existed — read it
+     * through {@link #effectiveAuthority()}.
+     */
+    private ReportAuthority authority;
+
+    /** {@link #authority}, or CNATDCU for a report that names none (all but three of them are). */
+    public ReportAuthority effectiveAuthority() {
+        return authority != null ? authority : ReportAuthority.CNATDCU;
+    }
+
     /** Binds this report to a registered {@code ReportTypeImportSupport} (H50). Null = export disabled. */
     private String reportTypeKey;
 

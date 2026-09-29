@@ -189,6 +189,53 @@ class EvaluationWorkspaceControllerContractTest {
     }
 
     @Test
+    void thePageShowsTheReportsOfOneAuthority() throws Exception {
+        // H129: the sidebar has an entry per authority; each opens the page on its own reports
+        User user = userPrincipal("u@uvt.ro");
+        IndividualReport standards = report("rep-fv", publicationIndicator("ind-1"));
+        IndividualReport eligibility = report("rep-pd", publicationIndicator("ind-2"));
+        eligibility.setAuthority(ro.uvt.pokedex.core.model.reporting.ReportAuthority.UEFISCDI);
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(standards, eligibility)));
+        when(userReportFacade.findIndividualReportById("rep-pd")).thenReturn(Optional.of(eligibility));
+        when(userReportFacade.findIndividualReportById("rep-fv")).thenReturn(Optional.of(standards));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-pd"))
+                .thenReturn(Optional.of(runDto("run-pd")));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-fv"))
+                .thenReturn(Optional.of(runDto("run-fv")));
+        when(workspacePreferencesRepository.findById("u@uvt.ro")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/user/evaluation").param("authority", "UEFISCDI").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("evaluationAuthority", "UEFISCDI"))
+                .andExpect(model().attribute("report", eligibility))
+                .andExpect(model().attribute("allReports", List.of(eligibility)));
+
+        // no parameter: CNATDCU, where a report that names no authority belongs
+        mockMvc.perform(get("/user/evaluation").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("evaluationAuthority", "CNATDCU"))
+                .andExpect(model().attribute("allReports", List.of(standards)));
+
+        // a report asked for by id brings its own authority, whatever the parameter says
+        mockMvc.perform(get("/user/evaluation").param("report", "rep-pd").param("authority", "CNATDCU")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("evaluationAuthority", "UEFISCDI"));
+    }
+
+    @Test
+    void anAuthorityWithoutReportsShowsTheEmptyState() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(userReportFacade.buildIndividualReportsListView("u@uvt.ro"))
+                .thenReturn(new UserReportsListViewModel(List.of(report("rep-fv", publicationIndicator("ind-1")))));
+
+        mockMvc.perform(get("/user/evaluation").param("authority", "UEFISCDI").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("noReports", true));
+    }
+
+    @Test
     void aStalePreferenceFallsBackToTheFirstReportAndOffersTheButton() throws Exception {
         User user = userPrincipal("u@uvt.ro");
         IndividualReport first = report("rep-1", publicationIndicator("ind-1"));

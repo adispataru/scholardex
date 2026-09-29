@@ -9,7 +9,7 @@
 <body id="page-top">
 
 <div id="wrapper">
-    <div th:replace="~{fragments :: sidebar(${#bools.isTrue(delegated)} ? 'researcher-reports' : 'individual-reports')}"></div>
+    <div th:replace="~{fragments :: sidebar(${#bools.isTrue(delegated)} ? 'researcher-reports' : (${evaluationAuthority == 'UEFISCDI'} ? 'evaluation-uefiscdi' : 'individual-reports'))}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">

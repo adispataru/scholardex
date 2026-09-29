@@ -101,6 +101,17 @@
                                         </ul>
                                     </div>
                                     <div class="form-group app-form-field">
+                                        <label for="authority">Applies the rules of</label>
+                                        <select class="form-control" id="authority" th:field="*{authority}">
+                                            <option value="">CNATDCU (not set)</option>
+                                            <option th:each="a : ${T(ro.uvt.pokedex.core.model.reporting.ReportAuthority).values()}"
+                                                    th:value="${a}" th:text="${a}"></option>
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            Decides under which sidebar entry researchers find the report.
+                                        </small>
+                                    </div>
+                                    <div class="form-group app-form-field">
                                         <label for="reportTypeKey">Report type key</label>
                                         <input type="text" class="form-control" id="reportTypeKey"
                                                th:field="*{reportTypeKey}"

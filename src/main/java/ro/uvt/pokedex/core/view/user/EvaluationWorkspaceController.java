@@ -58,13 +58,25 @@ public class EvaluationWorkspaceController {
 
     @GetMapping
     public String showEvaluation(@RequestParam(name = "report", required = false) String reportId,
+                                 @RequestParam(name = "authority", required = false) String authorityParam,
                                  Model model,
                                  Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
 
-        List<IndividualReport> reports = userReportFacade.buildIndividualReportsListView(currentUser.getEmail()).individualReports();
+        List<IndividualReport> visibleReports = userReportFacade.buildIndividualReportsListView(currentUser.getEmail()).individualReports();
+        // H129: the page shows the reports of ONE authority (the sidebar has an entry for each). A report asked
+        // for by id brings its own authority; otherwise the parameter says, CNATDCU by default.
+        ro.uvt.pokedex.core.model.reporting.ReportAuthority authority = visibleReports.stream()
+                .filter(r -> reportId != null && reportId.equals(r.getId()))
+                .map(IndividualReport::effectiveAuthority)
+                .findFirst()
+                .orElseGet(() -> ro.uvt.pokedex.core.model.reporting.ReportAuthority.parse(authorityParam));
+        model.addAttribute("evaluationAuthority", authority.name());
+        List<IndividualReport> reports = visibleReports.stream()
+                .filter(r -> r.effectiveAuthority() == authority)
+                .toList();
         if (reports.isEmpty()) {
             model.addAttribute("user", currentUser);
             model.addAttribute("noReports", true);
@@ -77,7 +89,7 @@ public class EvaluationWorkspaceController {
                 : preferredReportId != null ? preferredReportId : reports.get(0).getId();
         Optional<IndividualReport> reportOpt = userReportFacade.findIndividualReportById(resolvedReportId);
         if (reportOpt.isEmpty()) {
-            return "redirect:/user/evaluation";
+            return "redirect:/user/evaluation?authority=" + authority.name();
         }
         IndividualReport report = reportOpt.get();
         model.addAttribute("preferenceEnabled", true);
