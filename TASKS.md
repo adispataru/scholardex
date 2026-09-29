@@ -9,7 +9,8 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H123` Heads can open the reports of their faculty or department — **BUILT 2026-09-29, prod pending.** Found
+- [ ] `H123` Heads can open the reports of their faculty or department — **FIXED and DEPLOYED 2026-09-29** (image
+  `d58bbdaf`, `deploy-prod` succeeded 15:01). Found
   while drafting onboarding instructions for FPSE: appointing a head gave that person access to nothing. Three
   separate causes, all fixed. (1) Headship granted no role: `User.getAuthorities()` was the stored roles only, and
   every head in prod stored `RESEARCHER`. Now a user who heads a faculty or department, or supervises a group, signs
@@ -29,7 +30,9 @@ Done history moved to `TASKS-done.md`.
   these controllers run with filters off, which is how this stayed unnoticed. **Not checked in a browser as a
   head:** `agent-dev` signs every request in as an admin. **Not changed:** `ApiExceptionHandler` has the same
   catch-all for `/api`; the admin users page shows stored roles only, so a head appears there as a researcher.
-  Heads see the individual reports of their staff (user decision 2026-09-29).
+  Heads see the individual reports of their staff (user decision 2026-09-29). The three FPSE department directors
+  were appointed as heads by the user the same day. **Left to confirm:** a head signing in to prod and opening the
+  report of the unit — a person has to do it; tooling does not touch production (audit decision, see `H119`–`H122`).
 - [ ] `H119` Public pages: keep the UVT publication showcase, drop what the licences do not allow — **BUILT 2026-09-29, not pushed;
   from the compliance audit of that day.** How it was built: `PublicCatalogScope` answers, per request, either "no
   restriction" (signed in) or the set of author ids a visitor is limited to; "the university's authors" is the
