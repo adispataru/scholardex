@@ -58,7 +58,7 @@
                             label='Ranking Source',
                             value=${detail.forumType().name() == 'JOURNAL' ? (detail.wosIndexed() ? 'Web of Science' : 'Not indexed') : (detail.forumType().name() == 'CONFERENCE' ? 'CORE' : (detail.forumType().name() == 'BOOK' ? 'SENSE' : 'Not available'))},
                             accent=${detail.wosIndexed() or detail.coreRanking() != null or detail.senseBookRanking() != null ? 'success' : 'warning'},
-                            contextLine=${detail.wosIndexed() ? 'Authenticated ranking detail available' : (detail.coreRanking() != null ? 'Matched CORE entry: ' + detail.coreRanking().acronym : (detail.senseBookRanking() != null ? 'Matched SENSE publisher: ' + detail.senseBookRanking().name : 'No public metric detail'))},
+                            contextLine=${detail.wosIndexed() ? 'According to the lists loaded into the platform' : (detail.coreRanking() != null ? 'Matched CORE entry: ' + detail.coreRanking().acronym : (detail.senseBookRanking() != null ? 'Matched SENSE publisher: ' + detail.senseBookRanking().name : 'No public metric detail'))},
                             icon='fa-solid fa-ranking-star')}"></th:block>
                     </div>
                 </section>

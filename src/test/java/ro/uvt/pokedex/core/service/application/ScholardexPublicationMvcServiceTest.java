@@ -93,6 +93,54 @@ class ScholardexPublicationMvcServiceTest {
     }
 
     @Test
+    void publicSearchIsLimitedToTheGivenAuthorsAndCarriesNoCitationCount() {
+        ScholardexPublicationView pub = new ScholardexPublicationView();
+        pub.setId("spub_1");
+        pub.setTitle("Publication A");
+        pub.setAuthors(List.of("sa1"));
+        pub.setCitedbyCount(7);
+        pub.setEid("2-s2.0-111");
+
+        when(namedParameterJdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
+                .thenReturn(1L);
+        when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of(pub));
+
+        PublicationTablePageResponse result = service.search(0, 25, "citations", "desc", null, Set.of("sa1"));
+
+        assertEquals(null, result.items().getFirst().citedByCount());
+        assertEquals("https://www.scopus.com/inward/record.uri?partnerID=HzOxMe3b&scp=111&origin=inward",
+                result.items().getFirst().scopusUrl());
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<MapSqlParameterSource> params = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        verify(namedParameterJdbcTemplate).query(sql.capture(), params.capture(), any(org.springframework.jdbc.core.RowMapper.class));
+        assertTrue(sql.getValue().contains("author_ids && ARRAY[:onlyAuthorIds]::text[]"));
+        // the public list cannot be ordered by citations either
+        assertFalse(sql.getValue().contains("cited_by_count"));
+        assertEquals(Set.of("sa1"), params.getValue().getValue("onlyAuthorIds"));
+    }
+
+    @Test
+    void publicSearchWithNoUniversityAuthorsIsEmptyAndAsksNothing() {
+        PublicationTablePageResponse result = service.search(0, 25, "title", "asc", null, Set.of());
+
+        assertTrue(result.items().isEmpty());
+        assertEquals(0, result.totalItems());
+        org.mockito.Mockito.verifyNoInteractions(namedParameterJdbcTemplate);
+    }
+
+    @Test
+    void publicDetailOfAPublicationByOtherAuthorsIsNotFound() {
+        ScholardexPublicationView pub = new ScholardexPublicationView();
+        pub.setId("spub_citing");
+        pub.setAuthors(List.of("sa_other"));
+        when(projectionReadPort.findPublicationByAnyId("spub_citing")).thenReturn(Optional.of(pub));
+
+        assertTrue(service.findDetail("spub_citing", Set.of("sa1")).isEmpty());
+    }
+
+    @Test
     void findDetailReturnsEmptyWhenPublicationMissing() {
         when(projectionReadPort.findPublicationByAnyId("missing")).thenReturn(Optional.empty());
         assertTrue(service.findDetail("missing").isEmpty());

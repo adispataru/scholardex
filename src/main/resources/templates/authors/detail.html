@@ -37,6 +37,7 @@
                     accent='primary',
                     contextLine='Indexed records',
                     icon='fa-solid fa-file-lines')}"></th:block>
+                <th:block th:if="${showMetrics}">
                 <th:block th:replace="~{fragments :: stat-card(
                     label='Citations',
                     value=${#numbers.formatInteger(numCitations, 0, 'COMMA')},
@@ -49,6 +50,7 @@
                     accent='warning',
                     contextLine='Computed across listed publications',
                     icon='fa-solid fa-chart-line')}"></th:block>
+                </th:block>
                 <th:block th:replace="~{fragments :: stat-card(
                     label='Affiliations',
                     value=${affiliations != null ? affiliations.size() : 0},
@@ -99,7 +101,7 @@
                         <th scope="col"><span th:text="#{publications.column.authors}">Authors</span></th>
                         <th scope="col" th:text="#{common.type}">Type</th>
                         <th scope="col" th:text="#{authors.detail.venue}">Venue</th>
-                        <th scope="col" class="app-table__cell--numeric"><span th:text="#{common.citations}">Citations</span></th>
+                        <th scope="col" class="app-table__cell--numeric" th:if="${showMetrics}"><span th:text="#{common.citations}">Citations</span></th>
                     </tr>
                     </thead>
                     <tbody>
@@ -123,7 +125,7 @@
                                th:text="${forumMap.get(publication.forum).publicationName}">Venue</a>
                             <span th:if="${forumMap.get(publication.forum) == null}" th:text="${publication.forum}">Venue</span>
                         </td>
-                        <td class="app-table__cell--numeric" th:text="${publication.citedbyCount}">0</td>
+                        <td class="app-table__cell--numeric" th:if="${showMetrics}" th:text="${publication.citedbyCount}">0</td>
                     </tr>
                     </tbody>
                 </table>

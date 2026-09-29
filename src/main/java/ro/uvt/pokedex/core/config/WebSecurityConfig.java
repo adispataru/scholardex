@@ -65,7 +65,9 @@ public class WebSecurityConfig {
         http.csrf(csrf -> csrf.ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern("/api/**")))
                 .addFilterBefore(requestCorrelationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(ahr -> {
-                    ahr.requestMatchers("/api/rankings/wos", "/api/rankings/wos/**").authenticated();
+                    ahr.requestMatchers("/api/rankings/wos", "/api/rankings/wos/**",
+                                // H119: Web of Science category metrics are for signed-in users, like the rankings
+                                "/api/rankings/categories", "/api/rankings/categories/**").authenticated();
                     ahr.requestMatchers(
                             "/login",
                             "/error",

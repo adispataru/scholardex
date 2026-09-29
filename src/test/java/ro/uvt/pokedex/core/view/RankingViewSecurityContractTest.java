@@ -82,6 +82,9 @@ class RankingViewSecurityContractTest {
     private WosCategoryPageService wosCategoryPageService;
     @MockitoBean
     private ScholardexPublicationMvcService scholardexPublicationMvcService;
+    // H119: a mock answers "no restriction", so these tests exercise the signed-in (full) catalogue
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PublicCatalogScope publicCatalogScope;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.WelcomeFacade welcomeFacade;
     @MockitoBean

@@ -42,12 +42,14 @@
                     accent='primary',
                     contextLine='Cover date',
                     icon='fa-solid fa-calendar')}"></th:block>
+                <th:block th:if="${showMetrics}">
                 <th:block th:replace="~{fragments :: stat-card(
                     label='Citations',
                     value=${#numbers.formatInteger(publication.citedByCount, 0, 'COMMA')},
                     accent='success',
                     contextLine='Times cited',
                     icon='fa-solid fa-quote-right')}"></th:block>
+                </th:block>
                 <th:block th:replace="~{fragments :: stat-card(
                     label='Authors',
                     value=${#lists.size(detail.authors())},
@@ -132,7 +134,11 @@
                 </div>
                 <div>
                     <dt><span th:text="#{publications.detail.scopusEid}">Scopus EID</span></dt>
-                    <dd th:text="${publication.eid != null && !publication.eid.isBlank() ? publication.eid : '—'}">EID</dd>
+                    <dd th:if="${scopusUrl == null}" th:text="${publication.eid != null && !publication.eid.isBlank() ? publication.eid : '—'}">EID</dd>
+                    <dd th:if="${scopusUrl != null}">
+                        <a th:href="${scopusUrl}" th:text="${publication.eid}" rel="noopener" target="_blank">EID</a>
+                        <span class="text-muted" th:text="#{publications.detail.scopusSource}">(record on Scopus)</span>
+                    </dd>
                 </div>
                 <div>
                     <dt><span th:text="#{publications.detail.wosId}">Web of Science ID</span></dt>

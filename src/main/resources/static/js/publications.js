@@ -10,6 +10,8 @@
   let totalPages = 0;
   let totalItems = 0;
   let searchDebounce = null;
+  const tableEl = document.getElementById('publications-table');
+  const showCitations = !tableEl || tableEl.getAttribute('data-show-citations') === 'true';
 
   const els = {
     search: document.getElementById('publications-search'),
@@ -107,12 +109,19 @@
         ? escapeHtml(item.authorNames.join(', '))
         : '<span class="app-table__cell--muted">—</span>';
 
+      // Citation counts are shown to signed-in users only; the public list has no such column.
       const citations = typeof item.citedByCount === 'number'
         ? item.citedByCount.toLocaleString()
-        : '0';
+        : '—';
+      const citationsCell = showCitations
+        ? '<td class="app-table__cell--numeric">' + citations + '</td>'
+        : '';
 
+      const eidLabel = '<span class="app-table__cell--identifier">' + escapeHtml(item.eid || '') + '</span>';
       const eid = item.eid
-        ? '<span class="app-table__cell--identifier">' + escapeHtml(item.eid) + '</span>'
+        ? (item.scopusUrl
+            ? '<a href="' + escapeHtml(item.scopusUrl) + '" target="_blank" rel="noopener">' + eidLabel + '</a>'
+            : eidLabel)
         : '<span class="app-table__cell--muted">—</span>';
 
       return '<tr>' +
@@ -120,7 +129,7 @@
         '<td class="app-table__cell--identifier">' + escapeHtml(item.year || '—') + '</td>' +
         '<td>' + forumCell + '</td>' +
         '<td class="app-table__cell--secondary">' + authors + '</td>' +
-        '<td class="app-table__cell--numeric">' + citations + '</td>' +
+        citationsCell +
         '<td>' + eid + '</td>' +
         '</tr>';
     }).join('');

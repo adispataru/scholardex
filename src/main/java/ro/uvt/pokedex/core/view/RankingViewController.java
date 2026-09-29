@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -16,6 +17,7 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.ProvenanceBadges;
 import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
+import ro.uvt.pokedex.core.service.application.PublicCatalogScope;
 import ro.uvt.pokedex.core.service.application.ScholardexPublicationMvcService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
@@ -29,6 +31,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Controller
 @RequiredArgsConstructor
@@ -40,6 +43,7 @@ public class RankingViewController {
     private final ScholardexForumDetailService scholardexForumDetailService;
     private final WosCategoryPageService wosCategoryPageService;
     private final ScholardexPublicationMvcService scholardexPublicationMvcService;
+    private final PublicCatalogScope publicCatalogScope;
 
     /**
      * H104: a signed-in visitor is sent straight to THEIR home instead of the global landing page. The
@@ -91,20 +95,31 @@ public class RankingViewController {
             @RequestParam(defaultValue = "25") int size,
             @RequestParam(defaultValue = "title") String sort,
             @RequestParam(defaultValue = "asc") String direction,
-            @RequestParam(required = false) String q
+            @RequestParam(required = false) String q,
+            Authentication authentication
     ) {
+        // H119: a visitor sees the university's own publications, without citation counts.
+        Set<String> onlyAuthorIds = publicCatalogScope.restrictionFor(authentication).orElse(null);
+        if (onlyAuthorIds != null) {
+            return scholardexPublicationMvcService.search(page, size, sort, direction, q, onlyAuthorIds);
+        }
         return scholardexPublicationMvcService.search(page, size, sort, direction, q);
     }
 
     @GetMapping("/publications/{id}")
-    public String showPublicationDetailsPage(Model model, @PathVariable String id) {
-        Optional<ScholardexPublicationDetailViewModel> detail = scholardexPublicationMvcService.findDetail(id);
+    public String showPublicationDetailsPage(Model model, @PathVariable String id, Authentication authentication) {
+        Set<String> onlyAuthorIds = publicCatalogScope.restrictionFor(authentication).orElse(null);
+        Optional<ScholardexPublicationDetailViewModel> detail = onlyAuthorIds != null
+                ? scholardexPublicationMvcService.findDetail(id, onlyAuthorIds)
+                : scholardexPublicationMvcService.findDetail(id);
         if (detail.isEmpty()) {
             return "shared/not-found";
         }
         model.addAttribute("detail", detail.get());
         model.addAttribute("publication", detail.get().publication());
         // H106 S4: resolver link computed here — Thymeleaf 3.1 forbids static access in templates.
+        model.addAttribute("showMetrics", onlyAuthorIds == null);
+        model.addAttribute("scopusUrl", ro.uvt.pokedex.core.utils.ScopusLinks.recordUrl(detail.get().publication().getEid()));
         model.addAttribute("doiUrl", ro.uvt.pokedex.core.utils.DoiLinks.resolverUrl(detail.get().publication().getDoi()));
         model.addAttribute("badges", ProvenanceBadges.forPublication(detail.get().publication()));
         model.addAttribute("breadcrumbs", List.of(

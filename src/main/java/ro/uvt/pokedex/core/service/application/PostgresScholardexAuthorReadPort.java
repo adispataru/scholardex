@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -22,13 +23,27 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
 
     @Override
     public ScholardexAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q) {
+        return search(afid, page, size, sort, direction, q, null);
+    }
+
+    @Override
+    public ScholardexAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q,
+                                               Set<String> onlyAuthorIds) {
         String normalizedSort = normalizeSort(sort);
         String normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
         String normalizedAfid = normalizeAfid(afid);
 
+        if (onlyAuthorIds != null && onlyAuthorIds.isEmpty()) {
+            return new ScholardexAuthorPageResponse(List.of(), page, size, 0L, 0);
+        }
+
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         MapSqlParameterSource params = new MapSqlParameterSource();
+        if (onlyAuthorIds != null) {
+            whereClause.append(" AND a.id IN (:onlyAuthorIds)");
+            params.addValue("onlyAuthorIds", onlyAuthorIds);
+        }
         if (normalizedAfid != null) {
             // Use array containment so Postgres can leverage the GIN index on affiliation_ids.
             whereClause.append(" AND a.affiliation_ids @> ARRAY[:afid]::text[]");

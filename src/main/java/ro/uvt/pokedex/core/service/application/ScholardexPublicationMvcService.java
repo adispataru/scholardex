@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationDetailViewModel;
 import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationDetailViewModel.AuthorRef;
+import ro.uvt.pokedex.core.utils.ScopusLinks;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,20 +37,39 @@ public class ScholardexPublicationMvcService {
     private final PostgresScholardexProjectionReadPort projectionReadPort;
 
     public PublicationTablePageResponse search(int page, int size, String sort, String direction, String q) {
+        return search(page, size, sort, direction, q, null);
+    }
+
+    /**
+     * H119: with {@code onlyAuthorIds} the list holds only publications by one of those authors, carries no
+     * citation count and cannot be ordered by it — the public view. {@code null} is the unrestricted list.
+     */
+    public PublicationTablePageResponse search(int page, int size, String sort, String direction, String q,
+                                               Set<String> onlyAuthorIds) {
+        boolean publicView = onlyAuthorIds != null;
         int safeSize = (size == 50 || size == 100) ? size : 25;
         String safeSort = switch (sort != null ? sort : "") {
             case "year" -> "cover_date";
-            case "citations" -> "cited_by_count";
+            case "citations" -> publicView ? "title" : "cited_by_count";
             default -> "title";
         };
         String safeDir = "desc".equalsIgnoreCase(direction) ? "DESC" : "ASC";
 
+        if (publicView && onlyAuthorIds.isEmpty()) {
+            return new PublicationTablePageResponse(List.of(), 0, safeSize, 0L, 1);
+        }
+
         MapSqlParameterSource params = new MapSqlParameterSource();
-        String where = "";
+        List<String> conditions = new ArrayList<>();
         if (q != null && !q.isBlank() && q.length() <= 200) {
-            where = "WHERE title ILIKE :q";
+            conditions.add("title ILIKE :q");
             params.addValue("q", "%" + q.trim() + "%");
         }
+        if (publicView) {
+            conditions.add("author_ids && ARRAY[:onlyAuthorIds]::text[]");
+            params.addValue("onlyAuthorIds", onlyAuthorIds);
+        }
+        String where = conditions.isEmpty() ? "" : "WHERE " + String.join(" AND ", conditions);
 
         Long total = namedParameterJdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM reporting_read.scholardex_publication_view " + where, params, Long.class);
@@ -78,17 +98,25 @@ public class ScholardexPublicationMvcService {
                 .collect(Collectors.toMap(ScholardexForumView::getId, ScholardexForumView::getPublicationName, (a, b) -> a));
 
         List<PublicationTableItemResponse> items = publications.stream()
-                .map(pub -> toItem(pub, authorNameById, forumNameById))
+                .map(pub -> toItem(pub, authorNameById, forumNameById, !publicView))
                 .collect(Collectors.toCollection(ArrayList::new));
 
         return new PublicationTablePageResponse(items, safePage, safeSize, totalCount, totalPages);
     }
 
     public Optional<ScholardexPublicationDetailViewModel> findDetail(String id) {
+        return findDetail(id, null);
+    }
+
+    /** H119: with {@code onlyAuthorIds}, a publication none of those authors wrote is reported as not found. */
+    public Optional<ScholardexPublicationDetailViewModel> findDetail(String id, Set<String> onlyAuthorIds) {
         Optional<ScholardexPublicationView> pubOpt = projectionReadPort.findPublicationByAnyId(id);
         if (pubOpt.isEmpty()) return Optional.empty();
 
         ScholardexPublicationView pub = pubOpt.get();
+        if (onlyAuthorIds != null && pub.getAuthors().stream().noneMatch(onlyAuthorIds::contains)) {
+            return Optional.empty();
+        }
 
         Map<String, String> authorNameById = projectionReadPort.findAuthorsByIdIn(pub.getAuthors()).stream()
                 .collect(Collectors.toMap(ScholardexAuthorView::getId, ScholardexAuthorView::getName, (a, b) -> a));
@@ -111,7 +139,8 @@ public class ScholardexPublicationMvcService {
     private PublicationTableItemResponse toItem(
             ScholardexPublicationView pub,
             Map<String, String> authorNameById,
-            Map<String, String> forumNameById) {
+            Map<String, String> forumNameById,
+            boolean withCitations) {
 
         List<String> authorNames = pub.getAuthors().stream()
                 .limit(MAX_AUTHOR_NAMES)
@@ -125,8 +154,9 @@ public class ScholardexPublicationMvcService {
                 pub.getForum(),
                 displayForumName(pub.getForum(), forumNameById),
                 authorNames,
-                pub.getCitedbyCount(),
-                pub.getEid()
+                withCitations ? pub.getCitedbyCount() : null,
+                pub.getEid(),
+                ScopusLinks.recordUrl(pub.getEid())
         );
     }
 

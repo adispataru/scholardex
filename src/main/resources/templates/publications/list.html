@@ -34,7 +34,7 @@
                     <select id="publications-sort" class="form-control">
                         <option value="title" th:text="#{common.title}">Title</option>
                         <option value="year" th:text="#{common.year}">Year</option>
-                        <option value="citations" th:text="#{common.citations}">Citations</option>
+                        <option value="citations" th:if="${currentUser != null and currentUser.isPresent()}" th:text="#{common.citations}">Citations</option>
                     </select>
                 </div>
                 <div class="form-group app-table-filters__field app-table-filters__field--span-2">
@@ -67,15 +67,16 @@
                     <div id="publications-empty" class="app-table-state app-table-state--warning d-none" role="status" th:text="#{publications.empty}">No publications found.</div>
 
                     <div class="app-table-scroll">
-                        <table class="table table-bordered app-table" id="publications-table" width="100%" cellspacing="0">
+                        <table class="table table-bordered app-table" id="publications-table" width="100%" cellspacing="0"
+                               th:attr="data-show-citations=${currentUser != null and currentUser.isPresent()}">
                             <thead>
                             <tr>
                                 <th th:text="#{common.title}">Title</th>
                                 <th th:text="#{common.year}">Year</th>
                                 <th th:text="#{publications.column.forum}">Forum</th>
                                 <th th:text="#{publications.column.authors}">Authors</th>
-                                <th class="app-table__cell--numeric" th:text="#{common.citations}">Citations</th>
-                                <th>EID</th>
+                                <th class="app-table__cell--numeric" th:if="${currentUser != null and currentUser.isPresent()}" th:text="#{common.citations}">Citations</th>
+                                <th>Scopus</th>
                             </tr>
                             </thead>
                             <tbody id="publications-table-body"></tbody>

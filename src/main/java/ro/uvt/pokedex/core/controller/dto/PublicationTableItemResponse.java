@@ -9,7 +9,10 @@ public record PublicationTableItemResponse(
         String forumId,
         String forumName,
         List<String> authorNames,
-        int citedByCount,
-        String eid
+        /** null on the public view (H119): citation counts are shown only to signed-in users */
+        Integer citedByCount,
+        String eid,
+        /** the record's page on Scopus, null without a Scopus EID */
+        String scopusUrl
 ) {
 }

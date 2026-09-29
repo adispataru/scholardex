@@ -69,6 +69,9 @@ class ApiSecurityContractTest {
     private PostgresScholardexForumReadPort postgresScholardexForumReadPort;
     @MockitoBean
     private PostgresScholardexAuthorReadPort postgresScholardexAuthorReadPort;
+    // H119: a mock answers "no restriction", so these tests exercise the signed-in (full) catalogue
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PublicCatalogScope publicCatalogScope;
     @MockitoBean
     private PostgresScholardexAffiliationReadPort postgresScholardexAffiliationReadPort;
     @MockitoBean
