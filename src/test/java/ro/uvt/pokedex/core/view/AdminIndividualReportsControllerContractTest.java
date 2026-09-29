@@ -99,6 +99,9 @@ class AdminIndividualReportsControllerContractTest {
 
     @Test
     void updateBindsCriterionNameAndPersistsIt() throws Exception {
+        when(individualReportsManagementFacade.saveIndividualReportFromForm(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> new IndividualReportsManagementFacade.FormSaveResult(inv.getArgument(0), null));
+
         mockMvc.perform(post("/admin/individualReports/update")
                         .param("id", "rep-1")
                         .param("title", "T")
@@ -108,7 +111,7 @@ class AdminIndividualReportsControllerContractTest {
                 .andExpect(redirectedUrl("/admin/individualReports"));
 
         ArgumentCaptor<IndividualReport> captor = ArgumentCaptor.forClass(IndividualReport.class);
-        verify(individualReportsManagementFacade).saveIndividualReport(captor.capture());
+        verify(individualReportsManagementFacade).saveIndividualReportFromForm(captor.capture());
         IndividualReport saved = captor.getValue();
         assertEquals("Research Impact", saved.getCriteria().getFirst().getName());
         assertEquals(new ArrayList<>(), saved.getCriteria().getFirst().getIndicatorIndices());

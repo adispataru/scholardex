@@ -19,6 +19,9 @@
                 <div class="app-workflow">
                 <p class="app-workflow__intro">Edit the individual report in the same shared builder surface used across admin report workflows, with clearer grouping for affiliation, indicators, and criteria.</p>
 
+                        <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" role="alert"
+                             th:text="${errorMessage}"></div>
+
                         <form th:replace="~{fragments :: admin-form(
                                   id='individual-report-admin-form',
                                   action=@{/admin/individualReports/update},

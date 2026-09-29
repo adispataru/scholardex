@@ -43,6 +43,33 @@ public class IndividualReportsManagementFacade {
         return individualReportRepository.save(individualReport);
     }
 
+    /**
+     * Saves a report posted by the admin edit form. The form manages only part of a report, so the fields it
+     * has no inputs for (perspectives, criterion weights, percent caps, threshold-cap additions) are first
+     * carried over from the stored report — see {@link ReportFormCarryOver}. When the posted criteria or
+     * indicators no longer sit at the positions those fields point at, nothing is saved and the result
+     * carries the reason.
+     */
+    public FormSaveResult saveIndividualReportFromForm(IndividualReport posted) {
+        if (posted.getId() != null && !posted.getId().isBlank()) {
+            Optional<IndividualReport> stored = individualReportRepository.findById(posted.getId());
+            if (stored.isPresent()) {
+                Optional<String> refusal = ReportFormCarryOver.apply(stored.get(), posted);
+                if (refusal.isPresent()) {
+                    return new FormSaveResult(null, refusal.get());
+                }
+            }
+        }
+        return new FormSaveResult(individualReportRepository.save(posted), null);
+    }
+
+    /** Outcome of a form save: the saved report, or the reason the save was refused (exactly one is set). */
+    public record FormSaveResult(IndividualReport saved, String refusalReason) {
+        public boolean refused() {
+            return refusalReason != null;
+        }
+    }
+
     public IndividualReport findIndividualReportRequired(String id) {
         return individualReportRepository.findById(id).orElseThrow();
     }

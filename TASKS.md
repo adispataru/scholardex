@@ -9,6 +9,25 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H116` Admin report edit form wiped script-set fields on save — **FIXED 2026-09-29, prod pending.** The form
+  binds the whole `IndividualReport` and saved it as-is, but has no inputs for `perspectives` nor for a criterion's
+  `weights`, `maxPercentOfTotal` and `thresholdCapAdditions`, so ANY save through the page dropped them (seven
+  reports carry them: FV Matematică, FV Info 2016/2026, FEAA 2026, FV Matematică 2026, FV Fizică 2026, FV Psihologie
+  2026). Found while building `H115`; confirmed first by a test that renders the page, reads its form as a browser
+  submits it and posts that back. Fix: the update path goes through
+  `IndividualReportsManagementFacade.saveIndividualReportFromForm`, which carries those fields over from the stored
+  report (`ReportFormCarryOver`). What the request states wins, field by field, so direct POSTs with
+  `perspectives[…]` keep working; clearing such a field stays a script's job. Everything carried is keyed by
+  POSITION, and the form carries no identity for criteria or indicators, so the carry-over happens only while every
+  stored criterion is still at its position (same name OR same indicators — a rename is fine, a changed indicator
+  set is fine, both at once is not) and, when weights/caps are at stake, every stored indicator too; additions at
+  the end are fine. Otherwise the save is REFUSED with the reason shown on the edit page and nothing is written.
+  Reports without script-set fields behave exactly as before. **Left open:** (1) the page's "Remove Criterion"
+  script renumbers inputs named `criteria…` but not the hidden checkbox markers `_criteria[n].contributesToTotal`,
+  so a removal posts a phantom empty criterion at the end (pre-existing, visible on reports without script-set
+  fields); (2) `AdminGroupReportsController.update` has the same save-as-posted shape — no group report exists
+  today, `ReportFormCarryOver` works on `AbstractReport` and can be wired there; (3) a first save through the form
+  of a script-created report still normalises `reportTypeKey` null → "" and the two binding maps to empty maps.
 - [ ] `H115` FV Psihologie 2026 (OM 3.019/2025, COMISIA 28, domeniul Psihologie) — **BUILT 2026-09-29, prod pending.**
   Asked for the management demo once FPSE was onboarded (`H111`); only the 2016 fișă existed. The 2026 standard is a
   rewrite, not a re-thresholding: three areas (A1 realizări, A2 vizibilitate, A3 competitivitate), I1 split by

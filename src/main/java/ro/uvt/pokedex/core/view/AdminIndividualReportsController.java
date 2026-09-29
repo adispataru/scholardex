@@ -84,7 +84,14 @@ public class AdminIndividualReportsController {
     @PostMapping("/update")
     public String updateIndividualReport(@ModelAttribute IndividualReport individualReport, RedirectAttributes redirectAttributes) {
         normalizeIndicatorsAndMaps(individualReport);
-        individualReportsManagementFacade.saveIndividualReport(individualReport);
+        // The form has no inputs for perspectives, weights and caps; the facade carries them over from the
+        // stored report, and refuses the save when the posted shape would leave their indices stale.
+        IndividualReportsManagementFacade.FormSaveResult result =
+                individualReportsManagementFacade.saveIndividualReportFromForm(individualReport);
+        if (result.refused()) {
+            redirectAttributes.addFlashAttribute("errorMessage", result.refusalReason());
+            return "redirect:/admin/individualReports/edit/" + individualReport.getId();
+        }
         redirectAttributes.addFlashAttribute("successMessage", "Individual Report updated successfully.");
         return "redirect:/admin/individualReports";
     }
