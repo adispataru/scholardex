@@ -22,12 +22,24 @@ Done history moved to `TASKS-done.md`.
   stored criterion is still at its position (same name OR same indicators — a rename is fine, a changed indicator
   set is fine, both at once is not) and, when weights/caps are at stake, every stored indicator too; additions at
   the end are fine. Otherwise the save is REFUSED with the reason shown on the edit page and nothing is written.
-  Reports without script-set fields behave exactly as before. **Left open:** (1) the page's "Remove Criterion"
-  script renumbers inputs named `criteria…` but not the hidden checkbox markers `_criteria[n].contributesToTotal`,
-  so a removal posts a phantom empty criterion at the end (pre-existing, visible on reports without script-set
-  fields); (2) `AdminGroupReportsController.update` has the same save-as-posted shape — no group report exists
-  today, `ReportFormCarryOver` works on `AbstractReport` and can be wired there; (3) a first save through the form
-  of a script-created report still normalises `reportTypeKey` null → "" and the two binding maps to empty maps.
+  Reports without script-set fields behave exactly as before. **Follow-up 2026-09-29 (same task): phantom
+  criterion after "Remove Criterion".** The page renumbered inputs named `criteria…` but not the hidden checkbox
+  markers Thymeleaf renders (`_criteria[n].contributesToTotal`), and the binder grows a list up to the highest index
+  it is told about, so a removal stored an empty criterion at the end. The same script left gaps when an indicator
+  or threshold ROW inside a criterion was removed (stored as a `null` indicator index / an empty threshold), and
+  "Add Indicator" could then reuse an index. Fixed twice: the page renumbers cards, markers and rows through one
+  `reindexCriteria()` after every removal; and the controller drops what only a gap can produce
+  (`dropBinderLeftovers`, for tabs opened before the deploy and hand-made requests) — null indices and empty
+  thresholds anywhere, empty criteria ONLY FROM THE END, because positions are what perspectives and cap additions
+  point at; a criterion with just a name, a plafon or the total flag is kept. Prod and local checked read-only:
+  no report stores a phantom, a null index or an empty threshold, so nothing needs cleaning. **Left open:**
+  (1) `edit-groupReport.html` carries a copy of the old script and `AdminGroupReportsController.update` the old
+  save-as-posted shape — no group report exists today; `ReportFormCarryOver` works on `AbstractReport`; (2) a
+  first save through the form of a script-created report still normalises `reportTypeKey` null → "" and the two
+  binding maps to empty maps; (3) on server-rendered cards the label of "Contributes to total score" is not
+  linked to its checkbox (Thymeleaf suffixes the checkbox id), cosmetic; (4) a scripted report whose STORED
+  criteria already end in an empty one would be refused on every form save, since the net trims the posted
+  copy — none exists.
 - [ ] `H115` FV Psihologie 2026 (OM 3.019/2025, COMISIA 28, domeniul Psihologie) — **BUILT 2026-09-29, prod pending.**
   Asked for the management demo once FPSE was onboarded (`H111`); only the 2016 fișă existed. The 2026 standard is a
   rewrite, not a re-thresholding: three areas (A1 realizări, A2 vizibilitate, A3 competitivitate), I1 split by

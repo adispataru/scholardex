@@ -84,6 +84,7 @@ public class AdminIndividualReportsController {
     @PostMapping("/update")
     public String updateIndividualReport(@ModelAttribute IndividualReport individualReport, RedirectAttributes redirectAttributes) {
         normalizeIndicatorsAndMaps(individualReport);
+        dropBinderLeftovers(individualReport);
         // The form has no inputs for perspectives, weights and caps; the facade carries them over from the
         // stored report, and refuses the save when the posted shape would leave their indices stale.
         IndividualReportsManagementFacade.FormSaveResult result =
@@ -112,6 +113,60 @@ public class AdminIndividualReportsController {
         }
         sanitize(report.getIndicatorRolesByIndicatorId());
         sanitize(report.getBlockByIndicatorId());
+    }
+
+    /**
+     * Removes what only a gap in the posted indices can produce. The binder grows a list up to the highest
+     * index it is told about and fills what was not posted: a {@code null} indicator index, a threshold with
+     * neither position nor value, a criterion with nothing in it. The page renumbers its inputs so that no
+     * gap is posted, but a tab opened before that fix, or a hand-made request, still can — and the hidden
+     * checkbox markers ({@code _criteria[n].contributesToTotal}) count as "told about" too.
+     *
+     * <p>Rows inside a criterion are dropped wherever they are: nothing refers to a row by its position.
+     * Criteria are only trimmed <b>from the end</b>: perspectives and threshold-cap additions point at
+     * criteria by position, so dropping one in the middle would silently re-aim them. A criterion counts as
+     * empty only when it carries nothing at all — one that has just a name, a plafon or the total flag is
+     * somebody's unfinished work and stays.</p>
+     */
+    private void dropBinderLeftovers(IndividualReport report) {
+        if (report.getCriteria() == null) {
+            return;
+        }
+        List<ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion> criteria =
+                new java.util.ArrayList<>(report.getCriteria());
+        for (var criterion : criteria) {
+            if (criterion == null) {
+                continue;
+            }
+            if (criterion.getIndicatorIndices() != null) {
+                List<Integer> indices = new java.util.ArrayList<>(criterion.getIndicatorIndices());
+                indices.removeIf(java.util.Objects::isNull);
+                criterion.setIndicatorIndices(indices);
+            }
+            if (criterion.getThresholds() != null) {
+                var thresholds = new java.util.ArrayList<>(criterion.getThresholds());
+                thresholds.removeIf(t -> t == null || (t.getPosition() == null && t.getValue() == null));
+                criterion.setThresholds(thresholds);
+            }
+        }
+        while (!criteria.isEmpty() && carriesNothing(criteria.getLast())) {
+            criteria.removeLast();
+        }
+        report.setCriteria(criteria);
+    }
+
+    private static boolean carriesNothing(ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion criterion) {
+        if (criterion == null) {
+            return true;
+        }
+        return (criterion.getName() == null || criterion.getName().isBlank())
+                && (criterion.getIndicatorIndices() == null || criterion.getIndicatorIndices().isEmpty())
+                && (criterion.getThresholds() == null || criterion.getThresholds().isEmpty())
+                && !criterion.isContributesToTotal()
+                && criterion.getMaxTotal() == null
+                && (criterion.getWeights() == null || criterion.getWeights().isEmpty())
+                && (criterion.getMaxPercentOfTotal() == null || criterion.getMaxPercentOfTotal().isEmpty())
+                && (criterion.getThresholdCapAdditions() == null || criterion.getThresholdCapAdditions().isEmpty());
     }
 
     private void sanitize(java.util.Map<String, String> map) {

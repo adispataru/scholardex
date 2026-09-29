@@ -366,11 +366,26 @@ class AdminIndividualReportFormRoundTripTest {
 
     /**
      * What the page's own script does when "Remove Criterion" is pressed: drop the card with everything in
-     * it, then renumber the inputs of the cards after it. The script renumbers names starting with
-     * {@code criteria}, so the hidden checkbox markers ({@code _criteria[n].contributesToTotal}) of the
-     * following cards keep their old number — reproduced here, because that is what reaches the server.
+     * it, then renumber the cards after it — their inputs and the hidden checkbox markers Thymeleaf renders
+     * next to each checkbox ({@code _criteria[n].contributesToTotal}).
      */
     private static void removeCriterionAsThePageDoes(List<String[]> payload, int index, int count) {
+        removeCriterionAsThePageUsedTo(payload, index, count);
+        for (int i = index + 1; i < count; i++) {
+            for (String[] field : payload) {
+                if (field[0].startsWith("_criteria[" + i + "].")) {
+                    field[0] = "_criteria[" + (i - 1) + "]." + field[0].substring(("_criteria[" + i + "].").length());
+                }
+            }
+        }
+    }
+
+    /**
+     * The page before H116's follow-up: the markers of the following cards kept their old number, and the
+     * binder, which grows a list up to the highest index it is told about, added an empty criterion for the
+     * last of them. A browser tab opened before the deploy still posts this.
+     */
+    private static void removeCriterionAsThePageUsedTo(List<String[]> payload, int index, int count) {
         remove(payload, "criteria[" + index + "].");
         remove(payload, "_criteria[" + index + "].");
         for (int i = index + 1; i < count; i++) {
@@ -451,9 +466,124 @@ class AdminIndividualReportFormRoundTripTest {
 
         IndividualReport saved = saved();
         assertEquals(List.of("I — articole", "T — punctaj total"),
-                saved.getCriteria().stream().map(Criterion::getName).filter(java.util.Objects::nonNull).toList());
+                saved.getCriteria().stream().map(Criterion::getName).toList());
         assertEquals(2, saved.getIndicators().size());
         assertNull(saved.getPerspectives());
+    }
+
+    // ------------------------------------------------------------------ gaps in what is posted
+
+    private static List<String> criterionNames(IndividualReport report) {
+        return report.getCriteria().stream().map(Criterion::getName).toList();
+    }
+
+    @Test
+    void removingACriterionLeavesNoEmptyOneBehind() throws Exception {
+        stored(AdminIndividualReportFormRoundTripTest::plainReport);
+        List<String[]> payload = renderedForm();
+        removeCriterionAsThePageDoes(payload, 1, 3);
+
+        mockMvc.perform(buildPost(payload)).andExpect(redirectedUrl("/admin/individualReports"));
+
+        assertEquals(List.of("I — articole", "T — punctaj total"), criterionNames(saved()));
+    }
+
+    @Test
+    void aPageOpenedBeforeTheFixStillSavesWithoutAPhantomCriterion() throws Exception {
+        // The server-side net: whatever numbering the markers arrive with, a criterion that carries
+        // nothing at all at the end of the list is not a criterion anybody entered.
+        stored(AdminIndividualReportFormRoundTripTest::plainReport);
+        List<String[]> payload = renderedForm();
+        removeCriterionAsThePageUsedTo(payload, 0, 3);
+
+        mockMvc.perform(buildPost(payload)).andExpect(redirectedUrl("/admin/individualReports"));
+
+        assertEquals(List.of("C — citări și Hirsch", "T — punctaj total"), criterionNames(saved()));
+    }
+
+    @Test
+    void severalStrayMarkersAreAllDropped() throws Exception {
+        stored(AdminIndividualReportFormRoundTripTest::plainReport);
+        List<String[]> payload = renderedForm();
+        payload.add(new String[]{"_criteria[5].contributesToTotal", "on"});
+
+        mockMvc.perform(buildPost(payload)).andExpect(redirectedUrl("/admin/individualReports"));
+
+        assertEquals(3, saved().getCriteria().size());
+    }
+
+    @Test
+    void aCriterionSomebodyStartedIsKeptEvenWhenItIsLast() throws Exception {
+        // "Add Criterion" followed by a save: no name yet, but it sums an indicator and has a threshold.
+        // And a criterion that only has a name, or only the plafon, or only the total flag, is kept too.
+        stored(AdminIndividualReportFormRoundTripTest::plainReport);
+        List<String[]> payload = renderedForm();
+        payload.add(new String[]{"criteria[3].name", ""});
+        payload.add(new String[]{"criteria[3].indicatorIndices[0]", "0"});
+        payload.add(new String[]{"criteria[3].thresholds[0].position", "CONF_UNIV"});
+        payload.add(new String[]{"criteria[3].thresholds[0].value", "0.0"});
+        payload.add(new String[]{"criteria[4].name", "Doar nume"});
+        payload.add(new String[]{"criteria[5].maxTotal", "50"});
+        payload.add(new String[]{"criteria[6].contributesToTotal", "true"});
+
+        mockMvc.perform(buildPost(payload)).andExpect(redirectedUrl("/admin/individualReports"));
+
+        IndividualReport saved = saved();
+        assertEquals(7, saved.getCriteria().size());
+        assertEquals(List.of(0), saved.getCriteria().get(3).getIndicatorIndices());
+        assertEquals("Doar nume", saved.getCriteria().get(4).getName());
+        assertEquals(50.0, saved.getCriteria().get(5).getMaxTotal());
+        assertTrue(saved.getCriteria().get(6).isContributesToTotal());
+    }
+
+    @Test
+    void anEmptyCriterionInTheMiddleIsLeftAlone() throws Exception {
+        // Dropping it would move every criterion after it up by one, and positions are what perspectives
+        // and threshold-cap additions point at. Only the end of the list is safe to trim.
+        stored(AdminIndividualReportFormRoundTripTest::plainReport);
+        List<String[]> payload = renderedForm();
+        remove(payload, "criteria[1].");
+
+        mockMvc.perform(buildPost(payload)).andExpect(redirectedUrl("/admin/individualReports"));
+
+        IndividualReport saved = saved();
+        assertEquals(3, saved.getCriteria().size());
+        assertEquals("T — punctaj total", saved.getCriteria().get(2).getName());
+    }
+
+    @Test
+    void aGapInTheRowsOfACriterionLeavesNoEmptyRowBehind() throws Exception {
+        // Removing the middle indicator row or threshold row used to leave the rows after it with their old
+        // numbers; the binder fills such a gap with a null index and an empty threshold.
+        stored(() -> {
+            IndividualReport copy = plainReport();
+            copy.getCriteria().get(2).getThresholds().add(1, threshold(Position.PROF_UNIV, 12.5));
+            return copy;
+        });
+        List<String[]> payload = renderedForm();
+        remove(payload, "criteria[2].indicatorIndices[1]");
+        remove(payload, "criteria[2].thresholds[1].");
+
+        mockMvc.perform(buildPost(payload)).andExpect(redirectedUrl("/admin/individualReports"));
+
+        Criterion total = saved().getCriteria().get(2);
+        assertEquals(List.of(0, 2), total.getIndicatorIndices());
+        assertEquals(List.of(threshold(Position.CONF_UNIV, 5), threshold(Position.HABIL, 11.5)), total.getThresholds());
+    }
+
+    @Test
+    void aScriptedReportSavedFromAStalePageKeepsItsFieldsAndGainsNoCriterion() throws Exception {
+        // Untouched save, but with a marker beyond the last criterion: the net trims it before the
+        // carry-over looks at positions, so this is an ordinary save.
+        stored(AdminIndividualReportFormRoundTripTest::scriptedReport);
+        List<String[]> payload = renderedForm();
+        payload.add(new String[]{"_criteria[3].contributesToTotal", "on"});
+
+        mockMvc.perform(buildPost(payload)).andExpect(redirectedUrl("/admin/individualReports"));
+
+        IndividualReport saved = saved();
+        assertScriptedFieldsIntact(saved);
+        assertEquals(3, saved.getCriteria().size());
     }
 
     @Test

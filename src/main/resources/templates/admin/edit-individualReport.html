@@ -334,26 +334,46 @@
             criteriaContainer.append(criterionTemplate);
         });
 
-        criteriaContainer.on('click', '.remove-criterion', function() {
-            $(this).closest('.card').remove();
-            // Re-index all remaining criteria
+        // The rows of one kind inside a criterion card, renumbered in page order. `property` is the list
+        // they post into: indicatorIndices or thresholds.
+        function reindexRows(card, property) {
+            let pattern = new RegExp(`\\.${property}\\[\\d+\\]`);
+            card.find('.input-group').filter(function() {
+                return $(this).find(`[name*=".${property}["]`).length > 0;
+            }).each(function(rowIndex, row) {
+                $(row).find(`[name*=".${property}["]`).each(function() {
+                    $(this).attr('name', $(this).attr('name').replace(pattern, `.${property}[${rowIndex}]`));
+                });
+            });
+        }
+
+        // Renumbers every criterion card and the rows inside it, so that what is posted has no gaps: the
+        // server grows each list up to the highest index it sees and fills a gap with an empty element.
+        // The hidden markers rendered next to each checkbox (_criteria[n].contributesToTotal) are names
+        // too — left with their old number they made the server add an empty criterion at the end.
+        function reindexCriteria() {
             criteriaContainer.children().each(function(index, element) {
-                $(element).find('.card-title').text(`Criterion ${index + 1}`);
-                $(element).find('select[name^="criteria"]').each(function() {
-                    $(this).attr('name', $(this).attr('name').replace(/\[\d+\]/, `[${index}]`));
+                let card = $(element);
+                card.find('.card-title').text(`Criterion ${index + 1}`);
+                card.find('[name^="criteria["], [name^="_criteria["]').each(function() {
+                    $(this).attr('name', $(this).attr('name').replace(/^(_?criteria)\[\d+\]/, `$1[${index}]`));
                 });
-                $(element).find('input[name^="criteria"]').each(function() {
-                    $(this).attr('name', $(this).attr('name').replace(/\[\d+\]/, `[${index}]`));
-                });
+                reindexRows(card, 'indicatorIndices');
+                reindexRows(card, 'thresholds');
                 // Re-index checkbox id/for so labels stay linked
-                $(element).find('input[type="checkbox"][id^="criteria"]').each(function() {
+                card.find('input[type="checkbox"][id^="criteria"]').each(function() {
                     let oldId = $(this).attr('id');
                     let newId = oldId.replace(/^criteria\d+/, `criteria${index}`);
                     $(this).attr('id', newId);
-                    $(element).find(`label[for="${oldId}"]`).attr('for', newId);
+                    card.find(`label[for="${oldId}"]`).attr('for', newId);
                 });
-                $(element).find('.add-indicator, .add-threshold').attr('data-criterion-index', index);
+                card.find('.add-indicator, .add-threshold').attr('data-criterion-index', index);
             });
+        }
+
+        criteriaContainer.on('click', '.remove-criterion', function() {
+            $(this).closest('.card').remove();
+            reindexCriteria();
         });
 
         criteriaContainer.on('click', '.add-indicator', function() {
@@ -385,10 +405,12 @@
 
         criteriaContainer.on('click', '.remove-indicator', function() {
             $(this).closest('.input-group').remove();
+            reindexCriteria();
         });
 
         criteriaContainer.on('click', '.remove-threshold', function() {
             $(this).closest('.input-group').remove();
+            reindexCriteria();
         });
     });
 </script>
