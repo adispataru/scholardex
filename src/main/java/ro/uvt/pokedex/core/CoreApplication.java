@@ -25,6 +25,9 @@ public class CoreApplication {
     private long scopusPythonResponseTimeoutMs;
     @Value("${openalex.api.base-url:https://api.openalex.org}")
     private String openAlexBaseUrl;
+    // H128: the OpenAlex API key, from the environment (a Kubernetes secret in the cluster). Blank = keyless.
+    @Value("${openalex.api.key:}")
+    private String openAlexApiKey;
 
     @Value("${openalex.api.connect-timeout-ms:10000}")
     private long openAlexConnectTimeoutMs;
@@ -61,7 +64,7 @@ public class CoreApplication {
 
     @Bean
     public WebClient openAlexWebClient() {
-        // OpenAlex is a keyless public REST API; a 200-result /works page can be large, so allow a
+        // A 200-result /works page can be large, so allow a
         // generous in-memory buffer (H66B Phase 4a).
         final int size = (int) DataSize.ofMegabytes(32).toBytes();
         final ExchangeStrategies strategies = ExchangeStrategies.builder()
@@ -72,11 +75,16 @@ public class CoreApplication {
         final reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create()
                 .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) Math.max(1000, openAlexConnectTimeoutMs))
                 .responseTimeout(java.time.Duration.ofMillis(Math.max(1000, openAlexResponseTimeoutMs)));
-        return WebClient.builder()
+        WebClient.Builder builder = WebClient.builder()
                 .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(httpClient))
                 .exchangeStrategies(strategies)
-                .baseUrl(openAlexBaseUrl)
-                .build();
+                .baseUrl(openAlexBaseUrl);
+        if (openAlexApiKey != null && !openAlexApiKey.isBlank()) {
+            // As a header, never as the api_key query parameter: a request URL ends up in error messages,
+            // and those are stored on the sync task and shown to the user.
+            builder.defaultHeader(org.springframework.http.HttpHeaders.AUTHORIZATION, "Bearer " + openAlexApiKey.trim());
+        }
+        return builder.build();
     }
 
     @Bean

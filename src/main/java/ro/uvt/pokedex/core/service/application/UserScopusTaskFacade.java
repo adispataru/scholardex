@@ -35,6 +35,7 @@ public class UserScopusTaskFacade {
     }
 
     public ScopusPublicationUpdate createPublicationTask(String userEmail, ScopusPublicationUpdate draft) {
+        requireOwnScopusId(userEmail, draft.getScopusId());
         initializeDraft(draft, userEmail);
         ScopusPublicationUpdate saved = scopusPublicationUpdateRepository.save(draft);
         // Kick the scheduler so this runs within seconds instead of waiting for the next poll.
@@ -44,11 +45,35 @@ public class UserScopusTaskFacade {
     }
 
     public ScopusCitationsUpdate createCitationTask(String userEmail, ScopusCitationsUpdate draft) {
+        requireOwnScopusId(userEmail, draft.getScopusId());
         initializeDraft(draft, userEmail);
         ScopusCitationsUpdate saved = scopusCitationUpdateRepository.save(draft);
         scopusUpdateScheduler.ifAvailable(
                 ro.uvt.pokedex.core.service.scopus.ScopusUpdateScheduler::triggerImmediatePoll);
         return saved;
+    }
+
+    /**
+     * H128: a sync pulls a person's record from Scopus, so a user may ask it only for a Scopus author id on
+     * their OWN profile — the id came from the request and used to be taken as given. Platform admins are
+     * exempt: they start the syncs of candidates and of staff who have not signed in yet.
+     */
+    private void requireOwnScopusId(String userEmail, String scopusId) {
+        User user = userService.getUserByEmail(userEmail).orElse(null);
+        if (user != null && user.hasRole(ro.uvt.pokedex.core.model.user.UserRole.PLATFORM_ADMIN.name())) {
+            return;
+        }
+        String asked = scopusId == null ? "" : scopusId.trim();
+        boolean own = !asked.isEmpty()
+                && user != null
+                && user.getResearcherProfile() != null
+                && user.getResearcherProfile().getScopusId() != null
+                && user.getResearcherProfile().getScopusId().stream()
+                        .anyMatch(id -> id != null && asked.equals(id.trim()));
+        if (!own) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "A Scopus sync can be started only for a Scopus author id of one's own profile");
+        }
     }
 
     private void initializeDraft(ScopusPublicationUpdate draft, String userEmail) {

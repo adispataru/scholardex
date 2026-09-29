@@ -123,13 +123,13 @@ class KeycloakOAuth2LoginSuccessHandlerTest {
 
     @Test
     void unknownVerifiedEmailCreatesResearcherUser() {
-        when(userRepository.findById("new.user@uvt.ro")).thenReturn(Optional.empty());
+        when(userRepository.findById("new.user@e-uvt.ro")).thenReturn(Optional.empty());
         when(passwordEncoder.encode(any())).thenReturn("encoded-random-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        User resolved = handler.resolveLocalUser(oauth2Authentication("new.user@uvt.ro", true));
+        User resolved = handler.resolveLocalUser(oauth2Authentication("new.user@e-uvt.ro", true));
 
-        assertThat(resolved.getEmail()).isEqualTo("new.user@uvt.ro");
+        assertThat(resolved.getEmail()).isEqualTo("new.user@e-uvt.ro");
         assertThat(resolved.getPassword()).isEqualTo("encoded-random-password");
         assertThat(resolved.getRoles()).containsExactly(UserRole.RESEARCHER);
         assertThat(resolved.isLocked()).isFalse();
@@ -138,19 +138,39 @@ class KeycloakOAuth2LoginSuccessHandlerTest {
         ArgumentCaptor<String> generatedPassword = ArgumentCaptor.forClass(String.class);
         verify(passwordEncoder).encode(generatedPassword.capture());
         assertThat(generatedPassword.getValue()).isNotBlank();
-        assertThat(generatedPassword.getValue()).isNotEqualTo("new.user@uvt.ro");
+        assertThat(generatedPassword.getValue()).isNotEqualTo("new.user@e-uvt.ro");
+    }
+
+    @Test
+    void firstSignInFromAnotherDomainCreatesNoAccount() {
+        // H128: the second barrier — the realm should never let such an account through, but if it does
+        when(userRepository.findById("someone@gmail.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> handler.resolveLocalUser(oauth2Authentication("someone@gmail.com", true)))
+                .isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
+
+        verify(userRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void anAccountThatExistsSignsInWhateverItsDomain() {
+        // an external candidate, created by an admin
+        User candidate = localUser("candidate@gmail.com", Set.of(UserRole.RESEARCHER), false);
+        when(userRepository.findById("candidate@gmail.com")).thenReturn(Optional.of(candidate));
+
+        assertThat(handler.resolveLocalUser(oauth2Authentication("candidate@gmail.com", true))).isSameAs(candidate);
     }
 
     @Test
     void emailIsNormalizedBeforeLookupAndCreate() {
-        when(userRepository.findById("mixed.case@uvt.ro")).thenReturn(Optional.empty());
+        when(userRepository.findById("mixed.case@e-uvt.ro")).thenReturn(Optional.empty());
         when(passwordEncoder.encode(any())).thenReturn("encoded-random-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        User resolved = handler.resolveLocalUser(oauth2Authentication("  Mixed.Case@UVT.RO  ", true));
+        User resolved = handler.resolveLocalUser(oauth2Authentication("  Mixed.Case@E-UVT.RO  ", true));
 
-        assertThat(resolved.getEmail()).isEqualTo("mixed.case@uvt.ro");
-        verify(userRepository).findById("mixed.case@uvt.ro");
+        assertThat(resolved.getEmail()).isEqualTo("mixed.case@e-uvt.ro");
+        verify(userRepository).findById("mixed.case@e-uvt.ro");
     }
 
     @Test

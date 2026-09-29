@@ -22,6 +22,18 @@ public class OpenAlexClient {
 
     private final WebClient openAlexWebClient;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    /**
+     * H128: OpenAlex answers 429 past 100 requests a second or past the day's budget. The first passes in
+     * seconds, so the request is tried again (5 s, 10 s, 20 s) instead of failing a sync that may be hundreds
+     * of pages in; the second does not pass, the retries run out and the task fails into its own backoff.
+     */
+    private static final reactor.util.retry.Retry RATE_LIMIT_RETRY = reactor.util.retry.Retry
+            .backoff(3, java.time.Duration.ofSeconds(5))
+            .filter(ex -> ex instanceof org.springframework.web.reactive.function.client.WebClientResponseException r
+                    && r.getStatusCode().value() == 429)
+            .doBeforeRetry(signal -> log.warn("OpenAlex rate limit (HTTP 429), retry {} of 3", signal.totalRetries() + 1))
+            .onRetryExhaustedThrow((spec, signal) -> signal.failure());
+
     private final String mailto;
     private final int perPage;
     private final int maxPages;
@@ -131,6 +143,7 @@ public class OpenAlexClient {
                     })
                     .retrieve()
                     .bodyToMono(byte[].class)
+                    .retryWhen(RATE_LIMIT_RETRY)
                     .map(this::parseWorksResponse)
                     .timeout(requestTimeout)
                     .block();
@@ -166,6 +179,7 @@ public class OpenAlexClient {
                     })
                     .retrieve()
                     .bodyToMono(byte[].class)
+                    .retryWhen(RATE_LIMIT_RETRY)
                     .map(this::parseWorksResponse)
                     .timeout(requestTimeout)
                     .block();
@@ -198,6 +212,7 @@ public class OpenAlexClient {
                     })
                     .retrieve()
                     .bodyToMono(byte[].class)
+                    .retryWhen(RATE_LIMIT_RETRY)
                     .map(this::parseWorksResponse)
                     .timeout(requestTimeout)
                     .block();
@@ -232,6 +247,7 @@ public class OpenAlexClient {
                     })
                     .retrieve()
                     .bodyToMono(byte[].class)
+                    .retryWhen(RATE_LIMIT_RETRY)
                     .map(this::parseSourcesResponse)
                     .timeout(requestTimeout)
                     .block();
@@ -279,6 +295,7 @@ public class OpenAlexClient {
                         })
                         .retrieve()
                         .bodyToMono(byte[].class)
+                        .retryWhen(RATE_LIMIT_RETRY)
                         .map(this::parseWorksResponse)
                         .timeout(requestTimeout)
                     .block();

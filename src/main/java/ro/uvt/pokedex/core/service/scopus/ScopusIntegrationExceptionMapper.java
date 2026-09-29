@@ -29,6 +29,16 @@ final class ScopusIntegrationExceptionMapper {
         WebClientResponseException responseException = findCause(exception, WebClientResponseException.class);
         if (responseException != null) {
             int status = responseException.getStatusCode().value();
+            if (status == 429) {
+                // H128: Scopus throttled the key (the wrapper passes its 429 on). A later attempt can
+                // succeed, so the task is retried with the scheduler's backoff instead of failing for good.
+                return new IntegrationException(
+                        IntegrationErrorCode.EXTERNAL_RATE_LIMITED,
+                        true,
+                        operation + " was rate limited by Scopus (HTTP 429)",
+                        exception
+                );
+            }
             if (status >= 500) {
                 return new IntegrationException(
                         IntegrationErrorCode.EXTERNAL_5XX,

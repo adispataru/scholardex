@@ -42,6 +42,23 @@ public class AgentDevSecurityConfig {
 
     static final String AGENT_EMAIL = "agent@dev.local";
 
+    /**
+     * H128: the profile switches every access check off, so it must not come up where real users are. A pod
+     * always carries {@code KUBERNETES_SERVICE_HOST}; a developer's machine never does — that, not the
+     * presence of a Keycloak issuer, is the sign (a local {@code .env} may well name the staging realm).
+     */
+    public AgentDevSecurityConfig(org.springframework.core.env.Environment environment) {
+        refuseInsideACluster(environment.getProperty("KUBERNETES_SERVICE_HOST"));
+    }
+
+    static void refuseInsideACluster(String kubernetesServiceHost) {
+        if (kubernetesServiceHost != null && !kubernetesServiceHost.isBlank()) {
+            throw new IllegalStateException(
+                    "The agent-dev profile bypasses authentication and refuses to start inside a Kubernetes"
+                            + " cluster. Remove it from SPRING_PROFILES_ACTIVE.");
+        }
+    }
+
     @Bean
     @Order(1)
     public SecurityFilterChain agentDevFilterChain(HttpSecurity http,

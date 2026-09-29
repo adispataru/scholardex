@@ -39,6 +39,15 @@ public class KeycloakOAuth2LoginSuccessHandler implements AuthenticationSuccessH
     private final SavedRequestAwareAuthenticationSuccessHandler successHandler;
     private final AuthenticationFailureHandler failureHandler;
 
+    /**
+     * H128: the domains whose accounts are created at first sign-in (the same list a head may invite from).
+     * The realm restricts sign-in to the university's accounts already; this is the second barrier, inside
+     * the application. It gates only the CREATION of an account: whoever already has one — an external
+     * candidate an admin created, a realm-local break-glass user — signs in as before.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.roster.invite-allowed-domains:e-uvt.ro}")
+    private String allowedDomainsCsv = "e-uvt.ro";
+
     public KeycloakOAuth2LoginSuccessHandler(UserRepository userRepository, PasswordEncoder passwordEncoder,
                                              SupervisorWorkspaceService supervisorWorkspaceService) {
         this.userRepository = userRepository;
@@ -105,12 +114,31 @@ public class KeycloakOAuth2LoginSuccessHandler implements AuthenticationSuccessH
             throw new BadCredentialsException("Verified email is required");
         }
 
-        User user = userRepository.findById(email).orElseGet(() -> createResearcherUser(email));
+        User user = userRepository.findById(email).orElse(null);
+        if (user == null) {
+            if (!isAllowedDomain(email)) {
+                log.warn("Keycloak OAuth2 principal {} has no account and its domain is not one the platform"
+                        + " creates accounts for", email);
+                throw new BadCredentialsException("No account for this email");
+            }
+            user = createResearcherUser(email);
+        }
         if (user.isLocked()) {
             log.warn("Keycloak OAuth2 principal for {} matched a locked local user", email);
             throw new LockedException("User account is locked");
         }
         return user;
+    }
+
+    private boolean isAllowedDomain(String email) {
+        int at = email.lastIndexOf('@');
+        if (at < 0 || at == email.length() - 1) {
+            return false;
+        }
+        String domain = email.substring(at + 1);
+        return java.util.Arrays.stream(allowedDomainsCsv.split(","))
+                .map(d -> d.strip().toLowerCase(java.util.Locale.ROOT))
+                .anyMatch(domain::equals);
     }
 
     private User createResearcherUser(String email) {

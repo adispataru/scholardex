@@ -80,7 +80,20 @@ Done history moved to `TASKS-done.md`.
   on the existing export; slice 2 = the evaluation-tab entry with versions. To check: the guide speaks of an IF
   classification on the UEFISCDI site, while the platform has the impact factor only from the JCR harvest
   (`H122` b) — see what cnfis.ro/clasificare-reviste-isi publishes.
-- [ ] `H128` Hardening after the compliance audit — **OPEN, 2026-09-29; seven small items, none needs a decision.**
+- [ ] `H128` Hardening after the compliance audit — **BUILT 2026-09-30, not pushed.** As listed below, with
+  these differences: (4) the `agent-dev` guard looks at `KUBERNETES_SERVICE_HOST` (a pod always has it, a
+  developer's machine never), not at the Keycloak issuer — a local `.env` may name the staging realm, and the
+  documented local run must keep working; (5) the allow-list gates only the CREATION of an account at first
+  sign-in, so existing accounts of any domain sign in as before; (6) the note went into the per-indicator
+  workbook (a "Notes" sheet) — the fișa de verificare exports are official forms and were left alone; (7) the
+  key travels as an `Authorization: Bearer` header, never in the URL (request URLs end up in the error message
+  stored on the sync task), and a 429 is retried inside the call (5 s, 10 s, 20 s) before the task fails into
+  its own backoff. New error code `EXTERNAL_RATE_LIMITED`. The wrapper logs the remaining Scopus quota after
+  every call (warning under 500). **Not done:** the h-index stat of the workspace Publications tab is drawn by
+  the frontend bundle and has no caption to carry the notice (the overview card and the publications page do).
+  **To do at deploy:** put `OPENALEX_API_KEY` into the application secret. **Known limit of (1):** the Scopus
+  ids of a profile are self-declared, so the check makes a pull attributable, not impossible. Original list —
+  seven small items, none needs a decision.
   (1) **Scopus sync only for one's own ids** (question 4): `ResearcherWorkspaceController.triggerSyncPublications`
   / `triggerSyncCitations` and the form endpoints in `UserViewController` take a Scopus author id from the
   request, and `UserScopusTaskFacade` checks nothing — any signed-in user can make the platform pull another

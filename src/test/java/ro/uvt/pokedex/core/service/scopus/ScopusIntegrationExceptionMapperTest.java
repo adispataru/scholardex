@@ -76,6 +76,24 @@ class ScopusIntegrationExceptionMapperTest {
     }
 
     @Test
+    void mapIntegrationExceptionMapsHttp429AsRetryableRateLimit() {
+        WebClientResponseException exception = WebClientResponseException.create(
+                HttpStatus.TOO_MANY_REQUESTS.value(),
+                "Too Many Requests",
+                HttpHeaders.EMPTY,
+                new byte[0],
+                null
+        );
+
+        IntegrationException mapped = mapper.mapIntegrationException("citationsByEid", exception);
+
+        assertEquals(IntegrationErrorCode.EXTERNAL_RATE_LIMITED, mapped.getErrorCode());
+        assertTrue(mapped.isRetryable());
+        assertEquals("citationsByEid was rate limited by Scopus (HTTP 429)", mapped.getMessage());
+        assertSame(exception, mapped.getCause());
+    }
+
+    @Test
     void mapIntegrationExceptionMapsHttp4xxAsNonRetryableBadPayload() {
         WebClientResponseException nested = WebClientResponseException.create(
                 HttpStatus.BAD_REQUEST.value(),

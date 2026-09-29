@@ -40,6 +40,8 @@ class UserScopusTaskFacadeTest {
     @Test
     void createPublicationTaskSetsInitiatorAndPendingStatus() {
         ScopusPublicationUpdate draft = new ScopusPublicationUpdate();
+        draft.setScopusId("57000000001");
+        owner("57000000001");
         when(scopusPublicationUpdateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         ScopusPublicationUpdate saved = facade.createPublicationTask("user@uvt.ro", draft);
@@ -70,6 +72,8 @@ class UserScopusTaskFacadeTest {
     @Test
     void createPublicationTaskKeepsPositiveMaxAttempts() {
         ScopusPublicationUpdate draft = new ScopusPublicationUpdate();
+        draft.setScopusId("57000000001");
+        owner("57000000001");
         draft.setMaxAttempts(5);
         draft.setAttemptCount(7);
         draft.setNextAttemptAt("soon");
@@ -88,6 +92,8 @@ class UserScopusTaskFacadeTest {
     @Test
     void createCitationTaskSetsDefaults() {
         ScopusCitationsUpdate draft = new ScopusCitationsUpdate();
+        draft.setScopusId("57000000001");
+        owner("57000000001");
         when(scopusCitationUpdateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         ScopusCitationsUpdate saved = facade.createCitationTask("user@uvt.ro", draft);
@@ -104,6 +110,8 @@ class UserScopusTaskFacadeTest {
     @Test
     void createCitationTaskKeepsPositiveMaxAttemptsAndResetsFields() {
         ScopusCitationsUpdate draft = new ScopusCitationsUpdate();
+        draft.setScopusId("57000000001");
+        owner("57000000001");
         draft.setMaxAttempts(4);
         draft.setAttemptCount(2);
         draft.setNextAttemptAt("soon");
@@ -117,5 +125,46 @@ class UserScopusTaskFacadeTest {
         assertNull(saved.getNextAttemptAt());
         assertNull(saved.getLastErrorCode());
         assertNull(saved.getLastErrorMessage());
+    }
+
+    @Test
+    void aSyncForAScopusIdOfAnotherPersonIsRefused() {
+        // H128: the id comes from the request; only one's own may be synced
+        owner("57000000001");
+        ScopusPublicationUpdate publications = new ScopusPublicationUpdate();
+        publications.setScopusId("57999999999");
+        ScopusCitationsUpdate citations = new ScopusCitationsUpdate();
+        citations.setScopusId("57999999999");
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
+                () -> facade.createPublicationTask("user@uvt.ro", publications));
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
+                () -> facade.createCitationTask("user@uvt.ro", citations));
+        org.mockito.Mockito.verifyNoInteractions(scopusPublicationUpdateRepository, scopusCitationUpdateRepository);
+    }
+
+    @Test
+    void aPlatformAdminStartsTheSyncOfAnybody() {
+        User admin = new User();
+        admin.setEmail("admin@uvt.ro");
+        admin.setRoles(java.util.Set.of(ro.uvt.pokedex.core.model.user.UserRole.PLATFORM_ADMIN));
+        when(userService.getUserByEmail("admin@uvt.ro")).thenReturn(Optional.of(admin));
+        when(scopusPublicationUpdateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ScopusPublicationUpdate draft = new ScopusPublicationUpdate();
+        draft.setScopusId("57999999999");
+
+        assertEquals("admin@uvt.ro", facade.createPublicationTask("admin@uvt.ro", draft).getInitiator());
+    }
+
+    private void owner(String scopusId) {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        user.setRoles(java.util.Set.of(ro.uvt.pokedex.core.model.user.UserRole.RESEARCHER));
+        ro.uvt.pokedex.core.model.user.User.ResearcherProfile profile = new ro.uvt.pokedex.core.model.user.User.ResearcherProfile();
+        profile.setScopusId(new java.util.ArrayList<>(List.of(scopusId)));
+        user.setResearcherProfile(profile);
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
     }
 }

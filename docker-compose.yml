@@ -39,6 +39,7 @@ services:
     environment:
       SCOPUS_PYTHON_BASE_URL: scopus-python:65008
       OPENALEX_MAILTO: ${OPENALEX_MAILTO:-}
+      OPENALEX_API_KEY: ${OPENALEX_API_KEY:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
       SPRING_MONGODB_URI: mongodb://mongo:27017/scholardex
       POSTGRES_URL: jdbc:postgresql://postgres:5432/core

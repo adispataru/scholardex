@@ -137,6 +137,23 @@ def _int01(val) -> int:
 # -------------------------
 # Core fetch
 # -------------------------
+def _log_quota(api: str, obj) -> None:
+    """H128: what is left of the key's weekly quota for this API and when it resets — logged after a call,
+    so the limits are visible before they are hit. Absent on a cached answer (no request was made)."""
+    try:
+        remaining = obj.get_key_remaining_quota()
+        reset = obj.get_key_reset_time()
+    except Exception:
+        return
+    if remaining is None:
+        return
+    try:
+        low = int(remaining) < 500
+    except (TypeError, ValueError):
+        low = False
+    (logger.warning if low else logger.info)("Scopus quota | api=%s remaining=%s reset=%s", api, remaining, reset)
+
+
 def fetch_author_rows(
     author_id: str,
     from_date: Optional[str],
@@ -169,6 +186,7 @@ def fetch_author_rows(
     try:
         logger.info("Calling ScopusSearch | query=%s | count=%s | cursor=%s", upstream_query, page_size, cursor)
         s = ScopusSearch(query=upstream_query, view="STANDARD", refresh=False, count=page_size, cursor=cursor)
+        _log_quota("search", s)
         rows = s.results or []
         total = getattr(s, "get_results_size", lambda: None)() or getattr(s, "results_size", None) or 0
         next_cursor = getattr(s, "next_cursor", None) or getattr(s, "_next", None)
@@ -182,6 +200,7 @@ def fetch_author_rows(
                 start = 0
         logger.info("Calling ScopusSearch (offset fallback) | query=%s | count=%s | start=%s", upstream_query, page_size, start)
         s = ScopusSearch(query=upstream_query, view="STANDARD", refresh=False, count=page_size, start=start)
+        _log_quota("search", s)
         rows = s.results or []
         total = getattr(s, "get_results_size", lambda: None)() or getattr(s, "results_size", None) or 0
         next_cursor = f"offset:{start + page_size}" if len(rows) == page_size else None
@@ -296,6 +315,7 @@ def to_legacy(
     if include_enrichment and eid:
         try:
             ar = AbstractRetrieval(eid, view="FULL")
+            _log_quota("abstract", ar)
             # H106 S5 follow-up: a very fresh document's SEARCH row can miss its venue entirely (seen on a
             # 2026 reference-title hit: no publicationName/ISSN/authors → forum-less record → scored D).
             # The FULL record carries the venue; fill it the same way the other blanks are filled.
@@ -484,6 +504,7 @@ def fetch_citations_for_eids(
                 refresh=False,
                 count=page_size_per_eid,
             )
+            _log_quota("search", s)
         except Exception as ex:
             print(f"[WARN] Failed to fetch citations for {eid}: {ex}")
             by_eid[eid] = []
@@ -628,6 +649,7 @@ def fetch_citations_by_title(
         query = _build_title_query(spec)
         try:
             s = ScopusSearch(query=query, view="STANDARD", refresh=False, count=page_size_per_item)
+            _log_quota("search", s)
         except Exception as ex:
             logger.warning("Reverse-title search failed for %s | query=%s | %s", key, query, ex)
             by_key[key] = []
@@ -643,6 +665,7 @@ def fetch_citations_by_title(
             if verify_references:
                 try:
                     ar = AbstractRetrieval(eid, view="REF")
+                    _log_quota("abstract", ar)
                     ref = _reference_match(getattr(ar, "references", None), spec.title, spec.surnames)
                     verified = ref is not None
                     # H120: the reference text itself is not returned, only whether it named the work

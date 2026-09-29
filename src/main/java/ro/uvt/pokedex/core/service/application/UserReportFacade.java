@@ -146,6 +146,7 @@ public class UserReportFacade {
                     return null;
                 });
             }
+            addNotesSheet(workbook, indicator);
 
             workbook.write(outputStream);
             return Optional.of(new UserIndicatorWorkbookExportViewModel(
@@ -1128,6 +1129,30 @@ public class UserReportFacade {
                 )
                 .score();
     }
+
+    /**
+     * H128: what the numbers of the file are, said in the file itself — the report page shows the indicator's
+     * description (where an estimate is called an estimate), a downloaded workbook used to carry none of it.
+     */
+    private void addNotesSheet(Workbook workbook, Indicator indicator) {
+        org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Notes");
+        int row = 0;
+        if (indicator != null) {
+            sheet.createRow(row++).createCell(0).setCellValue(indicator.getName());
+            if (indicator.getDescription() != null && !indicator.getDescription().isBlank()) {
+                sheet.createRow(row++).createCell(0).setCellValue(indicator.getDescription());
+            }
+        }
+        sheet.createRow(row++).createCell(0).setCellValue(EXPORT_NOTE);
+        if (indicator != null && indicator.isCitationsOutput()) {
+            sheet.createRow(row).createCell(0).setCellValue(EXPORT_NOTE_CITATIONS);
+        }
+    }
+
+    static final String EXPORT_NOTE = "Values computed by the platform from the data it holds (Scopus, OpenAlex,"
+            + " the journal lists loaded into it), for orientation and pre-filling; the official sources decide.";
+    static final String EXPORT_NOTE_CITATIONS = "Citations are counted in the platform's own citation graph:"
+            + " an estimate, not a citation count of Web of Science or Scopus.";
 
     private void handlePublicationsWorkbook(Workbook workbook, Indicator indicator, List<ScholardexPublicationView> publications, Map<String, ScholardexForumView> forumMap) {
         Map<String, Score> scores = scoredPublicationMap(indicator, publications);
