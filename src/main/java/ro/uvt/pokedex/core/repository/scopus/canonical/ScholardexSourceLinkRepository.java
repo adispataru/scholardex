@@ -45,6 +45,13 @@ public interface ScholardexSourceLinkRepository extends MongoRepository<Scholard
             String canonicalEntityId
     );
 
+    /** The links of many canonical entities to one source, in one query (served by the entity/canonical index). */
+    List<ScholardexSourceLink> findByEntityTypeAndSourceAndCanonicalEntityIdIn(
+            ScholardexEntityType entityType,
+            String source,
+            Collection<String> canonicalEntityIds
+    );
+
     Page<ScholardexSourceLink> findBySourceOrderByUpdatedAtDesc(String source, Pageable pageable);
 
     Page<ScholardexSourceLink> findAllBySourceContainingIgnoreCaseAndLinkStateContainingIgnoreCaseAndUpdatedAtBetween(

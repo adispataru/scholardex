@@ -470,6 +470,33 @@
 
                         <section class="app-summary-panel">
                             <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">Publication Language (coefficient m)</h6>
+                            </div>
+                            <div class="app-summary-panel__body">
+                                <p class="app-ops-section-note">The Comisia 25 reports multiply the points of a publication by a coefficient that depends on its language and on where it was published. A sync stores both; this fills them in from OpenAlex for the publications of the platform's researchers that were here before. It runs in the background and can be started again at any time.</p>
+                                <div class="app-ops-action-list">
+                                    <div class="app-ops-action-row">
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Fill in language and place of publication</p>
+                                            <p class="app-ops-action-meta">Scores follow when a report is refreshed.</p>
+                                        </div>
+                                        <form th:action="@{/admin/openalex/language/backfill/start}" method="post">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">Start</button>
+                                        </form>
+                                    </div>
+                                    <div class="app-ops-action-row">
+                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Show the state of the job</p></div>
+                                        <form th:action="@{/admin/openalex/language/backfill/showStatus}" method="post">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <p class="app-dashboard-copy">JSON status endpoint: <code>/admin/openalex/language/backfill/status</code></p>
+                            </div>
+                        </section>
+
+                        <section class="app-summary-panel">
+                            <div class="app-summary-panel__header">
                                 <h6 class="app-summary-panel__title">Postgres Operational Status</h6>
                             </div>
                             <div class="app-summary-panel__body">

@@ -21,4 +21,8 @@ public interface ScholardexPublicationFactRepository extends MongoRepository<Sch
     List<ScholardexPublicationFact> findByForumId(String forumId);
     List<ScholardexPublicationFact> findAllByTitleNormalized(String titleNormalized);
     List<ScholardexPublicationFact> findByAuthorIdsContains(String authorId);
+
+    /** Only the ids of the publications any of these authors signed: the documents themselves are not loaded. */
+    @org.springframework.data.mongodb.repository.Query(value = "{ 'authorIds': { $in: ?0 } }", fields = "{ '_id': 1 }")
+    List<ScholardexPublicationFact> findIdsByAuthorIdsIn(java.util.Collection<String> authorIds);
 }

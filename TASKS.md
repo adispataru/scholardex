@@ -9,6 +9,20 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H126` The language backfill covers the works nobody synced — **BUILT 2026-09-29, prod pending.** Found
+  the evening `H125` went live: a researcher needs no personal sync to get a report — the publications of the
+  author ids on the profile are in the corpus from the bulk import, the researcher confirms them and is scored.
+  Those works were stored before the platform read the language and carry no `syncedResearchers`, so the `H125`
+  backfill (synced works only) never reached them and their coefficient m stayed 1. Now a pass takes the synced
+  works first and then the works of the platform's researchers, however they came: researcher → author ids
+  (`CacheService.getUniversityAuthorIds`) → publication ids (one projected query) → OPENALEX source links →
+  works without a language, in chunks of 500, leaving as soon as the pass is full. Works of third parties stay
+  out. **Background job** (`OpenAlexLanguageBackfillJob`): passes until one finds nothing, one job at a time,
+  state in memory (IDLE / RUNNING / DONE / STOPPED_AT_LIMIT / FAILED); started and read from the admin
+  initialization page, section "Publication Language", JSON at `/admin/openalex/language/backfill/status`.
+  Checked on the local instance: both kinds of works are taken, 100 works in about 3 s, the second start while
+  running changes nothing. In that sample OpenAlex had a country for roughly 8 venues in 10; the rest give
+  m = 1,5 ("place unknown"), never 2. **Prod:** deploy, press Start once, refresh the reports afterwards.
 - [ ] `H125` Coefficient m from the language and place of publication (Comisia 25) — **BUILT and DEPLOYED
   2026-09-29** (image `1cadccb2`, with `H124`). Replaces the provisional m = 1 of `H124`. **Data:** OpenAlex gives the language of a work
   (`language`, ISO 639-1) and, on the SOURCE entity only, the country of the venue (`country_code`; the source
@@ -23,8 +37,8 @@ Done history moved to `TASKS-done.md`.
   also asks for m = 2, cannot be looked up. **Shown to the researcher:** a badge "m = …" next to each publication
   of an indicator that uses the coefficient, the basis in the tooltip. **Backfill** for works synced earlier:
   `POST /admin/openalex/language/backfill?limit=500` (platform admin; bounded; repeat until `candidates` is 0;
-  a work OpenAlex has no language for is marked `und` so it is not asked about again). FSAS needs none of it —
-  its staff had not synced before this. **Limits:** a publication the platform holds from Scopus only has no
+  a work OpenAlex has no language for is marked `und` so it is not asked about again). It reached only the
+  works a researcher had synced personally — widened by `H126`. **Limits:** a publication the platform holds from Scopus only has no
   OpenAlex record and stays at 1; books rarely have a venue in OpenAlex, so they reach 1,5 at most; declared
   entries keep the coefficient the candidate picks. **Prod:** the five descriptions that mention the coefficient
   and the description of the report are brought up to date by `h124_sociologie_2026.js` (regenerated; safe to
