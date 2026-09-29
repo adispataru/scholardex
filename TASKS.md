@@ -9,7 +9,7 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H116` Admin report edit form wiped script-set fields on save — **FIXED 2026-09-29, prod pending.** The form
+- [ ] `H116` Admin report edit form wiped script-set fields on save — **FIXED and DEPLOYED 2026-09-29** (image `68d3f657`). The form
   binds the whole `IndividualReport` and saved it as-is, but has no inputs for `perspectives` nor for a criterion's
   `weights`, `maxPercentOfTotal` and `thresholdCapAdditions`, so ANY save through the page dropped them (seven
   reports carry them: FV Matematică, FV Info 2016/2026, FEAA 2026, FV Matematică 2026, FV Fizică 2026, FV Psihologie
@@ -40,7 +40,11 @@ Done history moved to `TASKS-done.md`.
   linked to its checkbox (Thymeleaf suffixes the checkbox id), cosmetic; (4) a scripted report whose STORED
   criteria already end in an empty one would be refused on every form save, since the net trims the posted
   copy — none exists.
-- [ ] `H115` FV Psihologie 2026 (OM 3.019/2025, COMISIA 28, domeniul Psihologie) — **BUILT 2026-09-29, prod pending.**
+- [ ] `H115` FV Psihologie 2026 (OM 3.019/2025, COMISIA 28, domeniul Psihologie) — **BUILT, DEPLOYED and LOADED in prod
+  2026-09-29** (image `68d3f657`; `h115_psihologie_2026.js` created 12 activities, 30 indicators and report
+  `6abb7bad05b6723f97a6377f`; read back clean, 0 errors after restart). Still to do in the admin pages: select the
+  report for the FPSE division, hide it for Științe ale Educației and DPPD, score Departamentul de Psihologie
+  provisionally (29 of its 33 members already have publications in the corpus).
   Asked for the management demo once FPSE was onboarded (`H111`); only the 2016 fișă existed. The 2026 standard is a
   rewrite, not a re-thresholding: three areas (A1 realizări, A2 vizibilitate, A3 competitivitate), I1 split by
   publication fee (I1A/I1B), books 16×m and chapters 4×m with no author split, WoS citations + squared WoS h-index
