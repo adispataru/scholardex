@@ -9,7 +9,10 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H126` The language backfill covers the works nobody synced — **BUILT 2026-09-29, prod pending.** Found
+- [ ] `H126` The language backfill covers the works nobody synced — **BUILT and DEPLOYED 2026-09-29** (image
+  `392280bb`, GitHub `deploy-prod`: helm `--wait`, STATUS deployed, revision 73, 19:09 UTC; read from the deploy
+  log, the cluster was not queried). The user started the job from the admin page the same evening; its final
+  state is still to be recorded here. Found
   the evening `H125` went live: a researcher needs no personal sync to get a report — the publications of the
   author ids on the profile are in the corpus from the bulk import, the researcher confirms them and is scored.
   Those works were stored before the platform read the language and carry no `syncedResearchers`, so the `H125`
