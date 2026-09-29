@@ -9,7 +9,75 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H118` FV Științe ale Educației 2026 (OM 3.019/2025, COMISIA 28) — **BUILT 2026-09-29, prod pending.** Same annex
+- [ ] `H119` Public pages: keep the UVT publication showcase, drop what the licences do not allow — **OPEN, from the
+  compliance audit of 2026-09-29.** `/publications/**`, `/authors/**`, `/api/entities/authors/**` and
+  `/api/rankings/**` are `permitAll` (`WebSecurityConfig`), and today they serve the WHOLE corpus (including the
+  ~150k third-party citing papers and their authors), per-author total citations and h-index
+  (`AuthorViewController` → `authors/detail.html`), per-publication citation counts of unknown source, and WoS
+  category metrics (`/api/rankings/categories`). Decision: the pages stay public, the content narrows.
+  (1) public publication list and detail only for publications with at least one UVT-affiliated author
+  (`ScholardexPublicationMvcService.search`, `RankingViewController`); (2) author directory, author page and the
+  authors API only for UVT authors; (3) total citations, h-index and per-publication citation counts hidden for
+  anonymous visitors, unchanged after login; (4) the Scopus EID becomes a link to the Scopus record, labelled
+  "Scopus"; (5) `/api/rankings/categories` requires login; (6) the positive "WoS indexed" labels on `/forums/**`
+  get the "according to the platform data" qualifier. **Follow-up, not part of this task:** a per-source citation
+  count on the canonical publication (`citedByCount` is a max over Scopus and OpenAlex with no record of which
+  won), so the public pages can show the OpenAlex count labelled as such. Public staff pages also need a line in
+  the privacy notice, which does not exist yet.
+- [ ] `H120` Scopus: fetch and keep only the fields the CRIS policy allows — **OPEN, from the compliance audit of
+  2026-09-29.** The wrapper calls Abstract Retrieval `view=FULL` for every own AND every citing record, because
+  `include_enrichment` defaults to true in the three request DTOs (`AuthorWorksRequest`, `CitationsByEidRequest`,
+  `CitationsByTitleRequest`) and no planner overrides it. Stored outside the allowed list: abstract
+  (`description`), author keywords, funding (`fund_acr`/`fund_no`/`fund_sponsor`, plus the `scopus.funding_facts`
+  collection), open-access flags, corresponding authors, PII, matched reference text. They sit in the raw
+  `scopus.import_events` payload, `scopus.publication_facts`, `scholardex.publication_facts`, the Postgres
+  `scholardex_publication_view`, the local dump files under `data/scopus/` and the pybliometrics cache in the
+  scopus-python pod. Abstracts and keywords are not rendered but reach the browser through
+  `GET /user/workspace/publications/{id}/citations`, which serialises the whole `ScholardexPublicationView`;
+  funding and open access are displayed (`user/publications.html`, `publications/detail.html`). Work: (1) stop
+  fetching — enrichment off, or reduced to the allowed fields; (2) stop storing — drop the fields at ingestion,
+  raw event payload included; (3) stop sending — a DTO for the citations endpoint; (4) purge what is stored, in
+  Mongo, Postgres, the pod cache and the dump files, and check the backups; (5) open access and funding may come
+  back from OpenAlex, labelled as such. Both canon paths copy these fields (`applyOpenAlexFields` and
+  `CanonicalGraphBuilder`), so both need the change. Open-access status feeds the APC/fee gate — check what reads
+  it before removing.
+- [ ] `H121` Repository housekeeping after the compliance audit — **OPEN, 2026-09-29.** (1) The deactivated Scopus key
+  (`H88`, Elsevier's written confirmation 2026-07-28) is quoted in full in `TASKS-done.md`; truncate it to its
+  first four characters. No history rewrite: the key is dead. (2) Secret scanning in CI (gitleaks) —
+  `security-gates.yml` runs only dependency review and CodeQL. (3) `src/test/resources/h52/replay-fixture.json`
+  (1.5 MB, 97 Scopus EIDs with titles and authors, captured from real indicator results) sits in a public
+  repository; replace it with synthetic records. (4) Remove the dead `scopus.api.*` properties from
+  `application.properties` and the legacy `charts/core` chart. (5) Stale docs found along the way:
+  `docs/authentication.md` (describes the password login), `docs/c01-cnfis-rule-spec.md` §5 (says the JCR year
+  caps at 2023; the code uses `maxAvailableYear()`).
+- [ ] `H122` Licence questions left by the compliance audit (2026-09-29) — **OPEN, waits on written answers.**
+  **(a) Scopus citing papers.** The wrapper asks `REF(eid)` for every UVT paper and stores each citing paper as a
+  record (~150k), which the citation indicators need (citing venue, citing authors, citing year). Elsevier's
+  published CRIS policy (dev.elsevier.com/policy.html) says the application may query "to identify publications
+  written by its researchers" and lists citation COUNT among the permitted metadata; citing documents are neither
+  permitted nor forbidden there. Adrian recalls Elsevier allowing the extraction of citing papers for this API
+  key; public display was not discussed. Needed: that permission in writing (find the message, or ask
+  integration support again), stating storage of citing-paper METADATA and its use in internal scoring. Until
+  then citing papers stay out of the public pages (`H119`). Fallback if the answer is no: OpenAlex-only citing
+  works — measure first (edges by source, re-score the persisted runs without the Scopus edges). The same policy
+  also narrows `H120`: abstracts "may not be displayed publicly", stored metadata may be kept in perpetuity and
+  shown to any user, and cited-by counts may not be aggregated for external display.
+  **(b) JCR data.** `scopus-python/jcr_discover.py` + `jcr_dump.py` page the whole JCR journal list (2020–2025)
+  through a signed-in browser session. UEFISCDI publishes AIS and RIS but NOT the impact factor, so the impact
+  factor (Psihologie, Științe ale Educației, the best-of in Informatică) and the AHCI/ESCI editions come only
+  from there. Ask the library, which holds the Clarivate contract, to confirm in writing that loading JCR data
+  into an internal evaluation platform is covered, and how it may be obtained. The repository is public: the
+  scripts carry no Clarivate data, but they document the method; move them out of the public repository.
+  **(c) WoS accession sweep** — weekly since 2026-09-29 (`wos.openurl.sweep.cron`), was nightly; still only UVT's
+  own papers, 400 per run. **(d) AI tooling is a developer only:** no access to Scopus dumps, the
+  personal-data backups or production. Enforce it: move `data/scopus/`, `data/backups/` and the prod kubeconfig
+  out of reach, drop the kubectl/mongosh/psql permission from `.claude/settings.local.json`, develop on
+  synthetic or OpenAlex-only data.
+- [ ] `H118` FV Științe ale Educației 2026 (OM 3.019/2025, COMISIA 28) — **BUILT, DEPLOYED and LOADED in prod 2026-09-29**
+  (image `7a7bb39a`; `h118_comisia28_2026.js` renamed 12 activity types, changed the fields of 2, created 11, updated
+  10 Psychology indicators, created the domain, 42 indicators and report `6abb957433192ec40a8e072f`; read back
+  clean, 0 errors after restart). Still to do in the admin pages: select the report for the FPSE division and score
+  the departments provisionally. Same annex
   and indicator table as Psychology (`H115`); what differs is values, thirteen extra indicators and the criteria.
   Decisions taken as defaults, all reversible by data: (1) the strict indicators I1A/I1B/I5 count journals in the
   education categories (Education & Educational Research; Education, Scientific Disciplines; Education, Special;
@@ -30,7 +98,9 @@ Done history moved to `TASKS-done.md`.
   (9 of 12 points from Q1/Q2 articles), the two-per-edition proceedings cap ACROSS I8 and I9 (each is capped at two
   on its own), whether a conference is international, the pre-PN II exemption from the grant floor. Prod: deploy,
   then `h118_comisia28_2026.js --restart`, then select the report for the FPSE division.
-- [ ] `H117` FV Psihologie 2026 skipped the ESCI edition on its strict indicators — **FIXED 2026-09-29, prod pending.**
+- [ ] `H117` FV Psihologie 2026 skipped the ESCI edition on its strict indicators — **FIXED, DEPLOYED and LOADED in prod
+  2026-09-29** (with `H118`). Measured on the 33 staff of Departamentul de Psihologie (507 journal articles in the
+  platform): 8 articles move to the full rate, all through the ESCI edition.
   Found while investigating Științe ale Educației, before any run existed. The 2026 annex spells "Web of Science Core
   Collection" as SCIE, SSCI, AHCI and ESCI, but `ImpactFactorJournalScoringService` admits only SCIE/SSCI category
   keys and the Psychology domain lists no ESCI key, so an article in a psychology journal that sits only in ESCI
