@@ -30,8 +30,16 @@ Done history moved to `TASKS-done.md`.
   head:** `agent-dev` signs every request in as an admin. **Not changed:** `ApiExceptionHandler` has the same
   catch-all for `/api`; the admin users page shows stored roles only, so a head appears there as a researcher.
   Heads see the individual reports of their staff (user decision 2026-09-29).
-- [ ] `H119` Public pages: keep the UVT publication showcase, drop what the licences do not allow — **OPEN, from the
-  compliance audit of 2026-09-29.** `/publications/**`, `/authors/**`, `/api/entities/authors/**` and
+- [ ] `H119` Public pages: keep the UVT publication showcase, drop what the licences do not allow — **BUILT 2026-09-29, not pushed;
+  from the compliance audit of that day.** How it was built: `PublicCatalogScope` answers, per request, either "no
+  restriction" (signed in) or the set of author ids a visitor is limited to; "the university's authors" is the
+  platform's own notion (`CacheService.getUniversityAuthorIds()`: every researcher account that is not an
+  external candidate — the one the CNFIS export counts by), NOT an affiliation match, so a UVT author without an
+  account is not on the public pages yet. A publication or author outside that set answers "not found" to a
+  visitor. Points (1)–(6) below are all done; the citation column and the "sort by citations" option are absent
+  from the public list, and the JSON carries `citedByCount: null`. Pinned by `PublicCatalogContractTest` (real
+  security chain, real templates). Not checked in a browser: the `agent-dev` profile signs every request in, so
+  it cannot show the visitor's view. Original entry: `/publications/**`, `/authors/**`, `/api/entities/authors/**` and
   `/api/rankings/**` are `permitAll` (`WebSecurityConfig`), and today they serve the WHOLE corpus (including the
   ~150k third-party citing papers and their authors), per-author total citations and h-index
   (`AuthorViewController` → `authors/detail.html`), per-publication citation counts of unknown source, and WoS
@@ -62,7 +70,11 @@ Done history moved to `TASKS-done.md`.
   back from OpenAlex, labelled as such. Both canon paths copy these fields (`applyOpenAlexFields` and
   `CanonicalGraphBuilder`), so both need the change. Open-access status feeds the APC/fee gate — check what reads
   it before removing.
-- [ ] `H121` Repository housekeeping after the compliance audit — **OPEN, 2026-09-29.** (1) The deactivated Scopus key
+- [ ] `H121` Repository housekeeping after the compliance audit — **DONE 2026-09-29, not pushed.** Done as listed
+  below, plus: the secret scan is the `secret-scan` job of `security-gates.yml` (gitleaks over the checked-out
+  tree, config `.gitleaks.toml`; NOT over the history, which holds the dead key); the replay fixture keeps its
+  captured shape and carries generated values (it also held abstracts); the two JCR harvest scripts left the
+  repository for the ignored `scopus-python/_local/` (`H122` b). Original list: (1) The deactivated Scopus key
   (`H88`, Elsevier's written confirmation 2026-07-28) is quoted in full in `TASKS-done.md`; truncate it to its
   first four characters. No history rewrite: the key is dead. (2) Secret scanning in CI (gitleaks) —
   `security-gates.yml` runs only dependency review and CodeQL. (3) `src/test/resources/h52/replay-fixture.json`

@@ -46,14 +46,14 @@ public class WosAccessionSweepScheduler {
         this.linkerService = linkerService;
     }
 
-    @Scheduled(cron = "${wos.openurl.sweep.cron:0 50 3 * * *}")
+    @Scheduled(cron = "${wos.openurl.sweep.cron:0 50 3 * * SUN}")
     public void sweepNightly() {
         try {
             Result r = sweep(nightlyLimit);
-            log.info("Nightly WoS accession sweep: candidates={} asked={} found={} linked={}",
+            log.info("WoS accession sweep: candidates={} asked={} found={} linked={}",
                     r.candidates, r.asked, r.found, r.linked);
         } catch (RuntimeException ex) {
-            log.warn("Nightly WoS accession sweep failed: {}", ex.toString());
+            log.warn("WoS accession sweep failed: {}", ex.toString());
         }
     }
 
