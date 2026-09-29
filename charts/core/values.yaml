@@ -56,9 +56,6 @@ affinity: {}
 app:
   springProfilesActive: ""
   appFooterMessage: "Copyright ScholarDex 2026"
-  scopusApiUrl: "https://api.elsevier.com/content/search/scopus?query=DOI({doi})&field=citedby-count"
-  scopusApiCiteUrl: "https://api.elsevier.com/content/abstract/citations"
-  scopusAuthUrl: "https://api.elsevier.com/authenticate?platform=SCOPUS"
   h14WosOfficialJsonDir: "data/wos-json-1997-2019"
   h14WosMigrationDataDir: "data/loaded"
 
@@ -69,7 +66,6 @@ secrets:
     springDataMongodbUri: ""
     adminEmail: ""
     adminPassword: ""
-    scopusApiKey: ""
     h14WosGovAisPassword: ""
 
 livenessProbe:

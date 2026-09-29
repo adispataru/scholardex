@@ -28,9 +28,11 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>The fixture at {@code src/test/resources/h52/replay-fixture.json} was captured
  * on 2026-06-01 from the {@code test} database. Re-generation is documented in the
- * H52 design doc. PII (researcher emails) has been redacted to
- * {@code redacted@test.local}; researcher-authored publication titles are left intact
- * because they are public scholarly metadata.</p>
+ * H52 design doc. Since H121 (2026-09-29) it is SYNTHETIC: the shape (keys, types, list
+ * lengths, enum-like values, scores) is the captured one, while every bibliographic and
+ * user-entered value (titles, authors, ids, DOIs, venues, abstracts, activity fields) is
+ * generated. A re-captured fixture must be scrubbed the same way before it is committed —
+ * the repository is public.</p>
  *
  * <p>The test deliberately uses generic {@link JsonNode} access rather than binding to
  * the concrete view-model classes. The goal is to prove the cached JSON shape stays

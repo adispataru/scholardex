@@ -4,12 +4,17 @@ Status: active authentication and SSO configuration reference.
 
 ## Login Modes
 
-ScholarDex supports two login paths on `/login`:
+ScholarDex has no local password login (H84): form login and HTTP basic are disabled in `WebSecurityConfig`, and
+every sign-in goes through one Keycloak OIDC client.
 
-- Local account login posts to `/login` with `username` and `password`.
-- Institutional sign-in starts at `/oauth2/authorization/keycloak` and uses one configured Keycloak OIDC client.
+- Default: `/oauth2/authorization/keycloak`, with `kc_idp_hint` (default `google`) so the user lands directly on the
+  brokered Google Workspace identity provider.
+- Break-glass: `/oauth2/authorization/keycloak?direct`, without the hint, for a realm-local Keycloak user.
 
-The app talks to a single Keycloak realm/client. Keycloak handles institutional identity selection and federation outside ScholarDex.
+The app talks to a single Keycloak realm/client. Keycloak handles institutional identity selection and federation
+outside ScholarDex. **The application does not check the email domain:** any verified email Keycloak lets through is
+provisioned as a `RESEARCHER`, so restricting sign-in to the university's accounts is the realm's job (the Google
+identity provider's hosted domain).
 
 ## Keycloak Configuration
 
@@ -22,7 +27,8 @@ KEYCLOAK_CLIENT_SECRET=
 KEYCLOAK_SCOPES=openid,profile,email
 ```
 
-Leave `KEYCLOAK_ISSUER_URI` or `KEYCLOAK_CLIENT_ID` blank to run with local login only.
+With `KEYCLOAK_ISSUER_URI` or `KEYCLOAK_CLIENT_ID` blank there is no way to sign in; local development uses the
+`agent-dev` profile instead.
 
 The Keycloak client must allow the authorization-code flow and this redirect URI:
 

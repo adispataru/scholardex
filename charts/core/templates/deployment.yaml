@@ -55,11 +55,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "core.secretName" . }}
                   key: ADMIN_PASSWORD
-            - name: SCOPUS_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "core.secretName" . }}
-                  key: SCOPUS_API_KEY
             - name: H14_WOS_GOV_AIS_PASSWORD
               valueFrom:
                 secretKeyRef:

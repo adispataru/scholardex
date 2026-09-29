@@ -29,6 +29,22 @@ jobs:
         with:
           fail-on-severity: high
 
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Scans the checked-out tree, not the history: the history holds a Scopus key that Elsevier
+      # deactivated (H88), which would fail every run without telling anything new.
+      - name: Gitleaks
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 \
+            dir /repo --config /repo/.gitleaks.toml --redact --no-banner
+
   codeql-analysis:
     name: codeql-analysis
     runs-on: ubuntu-latest

@@ -1,0 +1,12 @@
+# Secret scanning for the working tree (security-gates.yml, job secret-scan).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Committed build output, lock files, spreadsheets (encryption headers read as keys)"
+paths = [
+  '''.*\.xlsx?$''',
+  '''src/main/resources/static/assets/.*''',
+  '''package-lock\.json''',
+  '''frontend/package-lock\.json''',
+]

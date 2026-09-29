@@ -66,6 +66,9 @@ backups/
 
 # JCR harvest session state (Clarivate SSO cookies) — never commit
 scopus-python/_state/
+# H121/H122: the JCR harvest scripts stay out of the public repository until the licence question is answered
+scopus-python/_local/
+scopus-python/_checkpoint/jcr_done.json
 
 # ops snapshots from scripts/ops/check-user-data-integrity.sh
 user-data-integrity-*.txt

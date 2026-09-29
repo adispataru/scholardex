@@ -59,8 +59,9 @@ Define the authoritative CNFIS scoring behavior contract used by the active expo
 - Attempt publication year from `publication.coverDate` first 4 chars.
 - If parsing fails:
   - log warning
-  - use fallback year `LAST_YEAR` (currently `2023`)
-- Any resolved year above `LAST_YEAR` is capped to `LAST_YEAR`.
+  - use the latest year that has rankings loaded (`ReportingLookupPort.maxAvailableYear()`)
+- Any resolved year above that latest year is capped to it (`CNFISScoringService2025`). There is no fixed cap:
+  the year follows the data, so a 2024 article is ranked by JCR 2024 once that edition is loaded.
 
 ### 6) Author counters
 

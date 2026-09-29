@@ -4596,7 +4596,7 @@ audit text preserved here verbatim:
     `scrambledUsers: 56`) already neutralized every stored password for exactly this reason. Nothing
     guessable survives even if a password path were reintroduced.
   - **EXPOSED KEY — the old Elsevier key is in PUBLIC git history. Revoke it.** Found 2026-07-25 while
-    confirming which key `.env` holds. `scopus.api.key=186f196685e39c011a1c1a0123630231` was committed in
+    confirming which key `.env` holds. `scopus.api.key=186f…` was committed in
     `application.properties` on 2025-12-12 (`74b0fa97`, "first push") and removed 2026-07-13 (`48f31efd`,
     when the key moved to the container env). `github.com/adispataru/scholardex` is **PUBLIC**, and the value
     is still reachable from history on `origin/main` plus five other remote branches — roughly seven months
