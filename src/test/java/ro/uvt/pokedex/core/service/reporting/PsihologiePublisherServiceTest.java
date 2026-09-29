@@ -75,19 +75,19 @@ class PsihologiePublisherServiceTest {
     @Test
     void the2026ListKeepsTheA2PublishersAndAddsTheNewTierBOnes() {
         PsihologiePublisherService s = serviceWith(pub("Editura All", "B"));
-        assertEquals("A2", s.tierFor2026("Editura Polirom, Iași"));
-        assertEquals("A2", s.tierFor2026("ASCR"));
-        assertEquals("B", s.tierFor2026("Humanitas"));
-        assertEquals("B", s.tierFor2026("Editura Pro Universitaria"));
-        assertEquals("B", s.tierFor2026("Editura Universității Transilvania din Brașov"));
-        assertEquals("B", s.tierFor2026("Editura Didactică și Pedagogică R.A."));
+        assertEquals("A2", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Polirom, Iași"));
+        assertEquals("A2", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "ASCR"));
+        assertEquals("B", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Humanitas"));
+        assertEquals("B", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Pro Universitaria"));
+        assertEquals("B", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Universității Transilvania din Brașov"));
+        assertEquals("B", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Didactică și Pedagogică R.A."));
     }
 
     @Test
     void the2026ListNoLongerCarriesAllAndTritonic() {
         PsihologiePublisherService s = serviceWith(pub("Editura All", "B"), pub("Tritonic", "B"));
-        assertNull(s.tierFor2026("Editura All"));
-        assertNull(s.tierFor2026("Tritonic"));
+        assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura All"));
+        assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Tritonic"));
         // …while the 2016 list, which the frozen 2016 report scores with, is untouched.
         assertEquals("B", s.tierFor("Editura All"));
         assertEquals("B", s.tierFor("Tritonic"));
@@ -96,8 +96,8 @@ class PsihologiePublisherServiceTest {
     @Test
     void the2026ListHasNoA1AndIgnoresBlankNames() {
         PsihologiePublisherService s = serviceWith();
-        assertNull(s.tierFor2026("Cambridge University Press"));
-        assertNull(s.tierFor2026(null));
-        assertNull(s.tierFor2026("  "));
+        assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Cambridge University Press"));
+        assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, null));
+        assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "  "));
     }
 }

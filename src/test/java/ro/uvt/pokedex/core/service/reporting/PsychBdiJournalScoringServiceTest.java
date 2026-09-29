@@ -199,6 +199,47 @@ class PsychBdiJournalScoringServiceTest {
     }
 
     @Test
+    void rules2026SkipAnEsciJournalOfTheDomainThatTheStrictIndicatorsNowCount() {
+        // PSYCHOLOGY - ESCI with IF >= 1: I1A/I1B/I5 count it under the 2026 annex, so it must not score here.
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678"))
+                .thenReturn(List.of(rankingWithIf("PSYCHOLOGY - ESCI", 2024, 1.4, WoSRanking.Quarter.Q3)));
+
+        Score flagged = service.getScore(publication("ar", "2024"), psychologyIndicator2026());
+        assertEquals(0.0, flagged.getScore());
+        assertEquals("SCORED_BY_STRICTER", flagged.getScoringInfo().get("zeroReason"));
+
+        // …while the 2016 indicator, whose strict sibling ignores ESCI, keeps scoring it as a WoS journal.
+        Score frozen = service.getScore(publication("ar", "2024"), psychologyIndicator());
+        assertEquals(4.4, frozen.getScore(), 1e-9);
+        assertEquals("WOS", frozen.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void rules2026ScoreAWebOfScienceJournalWithoutAnyImpactFactor() {
+        // ESCI before JCR 2023 (or AHCI): "IF mai mic decât p" with IF = 0, so 3 points.
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
+        when(lookupPort.isForumInEsci("forum-1", 2019)).thenReturn(true);
+
+        Score s = service.getScore(publication("ar", "2019"), psychologyIndicator2026());
+
+        assertEquals(3.0, s.getScore(), 1e-9);
+        assertEquals("WOS", s.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void the2016RulesDoNotAskForWebOfScienceMembership() {
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
+        when(lookupPort.getForumIndexingDatabases("forum-1")).thenReturn(Set.of());
+
+        assertEquals(0.0, service.getScore(publication("ar", "2019"), psychologyIndicator()).getScore());
+        org.mockito.Mockito.verify(lookupPort, org.mockito.Mockito.never())
+                .isForumInEsci(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
     void unindexedVenueAndNonArticleGetNoScore() {
         when(lookupPort.getForum("forum-1")).thenReturn(forum());
         when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());

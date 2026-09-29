@@ -207,8 +207,10 @@ class Psihologie2026ReportDefinitionTest {
                 flagged.add(name);
             }
         });
-        assertEquals(Set.of("Psiho26_I2", "Psiho26_I6", "Psiho26_I3A", "Psiho26_I3B", "Psiho26_I4A",
-                "Psiho26_I4B", "Psiho26_I13"), flagged);
+        // Every indicator that reads journals, publishers or Web of Science venues. The strict journal
+        // indicators are in: without the flag they would skip the ESCI edition of the domain's categories.
+        assertEquals(Set.of("Psiho26_I1A", "Psiho26_I1B", "Psiho26_I5", "Psiho26_I2", "Psiho26_I6",
+                "Psiho26_I3A", "Psiho26_I3B", "Psiho26_I4A", "Psiho26_I4B", "Psiho26_I13"), flagged);
         assertEquals("PSYCH_BDI_JOURNAL", kindField("Psiho26_I2", "strategy"));
         assertEquals("PSYCH_BOOK", kindField("Psiho26_I3A", "strategy"));
     }

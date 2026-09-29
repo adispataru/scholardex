@@ -21,8 +21,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
  * Books/chapters whose publisher is not on any FSP tier score 0 (fișă: "publicaţiile care nu îndeplinesc
  * criteriile minime … nu se punctează"). Journal articles/proceedings are scored by other strategies.
  *
- * <p><b>2026 rules</b> ({@link Indicator#usesPsihologie2026()}, OM 3019/2025 Comisia 28): the A2/B tiers
- * come from the 2026 lists, and a publisher on neither list is classified <b>A1 when it is on the WoS
+ * <p><b>2026 rules</b> ({@link Comisia28Rules}, OM 3019/2025 Comisia 28): the A2/B tiers come from the
+ * 2026 lists of the indicator's domain, and a publisher on neither list is classified <b>A1 when it is on the WoS
  * Master Book List</b>. The standard defines A1 per publication (held by at least 25 EU/OECD university
  * libraries in WorldCat), which the platform cannot query; an international house on the Master Book
  * List is the closest computable stand-in, so the result is marked {@code tierBasis=WOS_MASTER_BOOK_LIST}
@@ -64,8 +64,9 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
         }
         String publisher = resolvePublisher(publication);
         String tier;
-        if (indicator != null && indicator.usesPsihologie2026()) {
-            tier = publisherService.tierFor2026(publisher);
+        java.util.Optional<Comisia28Rules> rules = Comisia28Rules.of(indicator);
+        if (rules.isPresent()) {
+            tier = publisherService.tierFor2026(rules.get(), publisher);
             if (tier == null && wosMasterBookListService.isRecognized(publisher)) {
                 tier = "A1";
                 score.getScoringInfo().put("tierBasis", "WOS_MASTER_BOOK_LIST");

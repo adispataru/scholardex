@@ -765,7 +765,9 @@ public class UserReportFacade {
         ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind = indicator.hIndexKind();
         boolean itemYear = "IY".equals(indicator.getScoreYearRange());
         if (kind.source() == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE || kind.excludeSelf()) {
-            return hIndexFromGraph(kind, itemYear, indicator.usesPsihologie2026(), authors, publications);
+            return hIndexFromGraph(kind, itemYear,
+                    ro.uvt.pokedex.core.service.reporting.Comisia28Rules.of(indicator).isPresent(),
+                    authors, publications);
         }
         int h = HIndexCalculator.hIndexForSource(publications, kind.source());
         int totalCit = publications.stream().mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();

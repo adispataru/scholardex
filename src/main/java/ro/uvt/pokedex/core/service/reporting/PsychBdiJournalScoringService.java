@@ -43,13 +43,6 @@ public class PsychBdiJournalScoringService extends AbstractWoSForumScoringServic
     /** Fișă-recognized BDIs we have membership data for, WoS editions excluded ("altele decât WoS"). */
     private static final Set<String> RECOGNIZED_BDI = Set.of("SCOPUS", "DOAJ", "ERIH");
 
-    /**
-     * The 2026 Psychology list (OM 3019/2025, Comisia 28) restricted to what we hold membership data for:
-     * Scopus and ERIH Plus. DOAJ is recognised for Educational Sciences and Sport only, not for Psychology;
-     * PsycINFO, PubMed, ERIC, ProQuest and EBSCO are on the list but not in our data.
-     */
-    private static final Set<String> RECOGNIZED_BDI_2026 = Set.of("SCOPUS", "ERIH");
-
     public PsychBdiJournalScoringService(ReportingLookupPort lookupPort) {
         super(lookupPort);
     }
@@ -80,9 +73,17 @@ public class PsychBdiJournalScoringService extends AbstractWoSForumScoringServic
             allowedYears.set(0, maxYear);
         }
 
-        // 1. Strict-path re-check: anything Psiho_I1/I5 counts must not double-count here.
-        Score strict = bestIfScore(indicator.getDomain(), forum, allowedYears);
-        if (strict != null && qualifiesForStrictPath(strict)) {
+        // 1. Strict-path re-check: anything Psiho_I1/I5 counts must not double-count here. The 2026 annex
+        //    (Comisia28Rules) has its own threshold per domain and counts the ESCI edition of the domain's
+        //    categories — the gate here has to be the very one the strict indicators apply.
+        java.util.Optional<Comisia28Rules> rules = Comisia28Rules.of(indicator);
+        Domain strictDomain = rules.isPresent()
+                ? Comisia28Rules.withEmergingSources(indicator.getDomain())
+                : indicator.getDomain();
+        Score strict = bestIfScore(strictDomain, forum, allowedYears);
+        if (strict != null && (rules.isPresent()
+                ? rules.get().countsOnStrictPath(strict.getScore(), strict.getQuarter())
+                : qualifiesForStrictPath(strict))) {
             score.getScoringInfo().put("zeroReason", "SCORED_BY_STRICTER");
             return score;
         }
@@ -104,10 +105,21 @@ public class PsychBdiJournalScoringService extends AbstractWoSForumScoringServic
             return score;
         }
 
-        // 3. Recognized-BDI membership count (non-WoS): >=2 → 3 + IF·0 = 3 points. The 2026 standard asks
+        // 3. 2026 only: a Web of Science journal without any impact factor. The annex scores "IF mai mic
+        //    decât p" at 3 + IF, and a journal that had no IF yet (ESCI before JCR 2023, AHCI) is that case
+        //    with IF = 0.
+        boolean rules2026 = rules.isPresent();
+        if (rules2026 && isInWebOfScience(publication.getForumId(), allowedYears)) {
+            score.setScore(BASE_POINTS);
+            score.setCoreRankingEquivalent("WOS");
+            score.setScoringSource(strategy().name());
+            score.setYear(allowedYears.isEmpty() ? 0 : allowedYears.getFirst());
+            return score;
+        }
+
+        // 4. Recognized-BDI membership count (non-WoS): >=2 → 3 + IF·0 = 3 points. The 2026 standard asks
         //    for ONE database ("indexate într-una sau mai multe baze de date internaționale recunoscute").
-        boolean rules2026 = indicator.usesPsihologie2026();
-        Set<String> recognized = rules2026 ? RECOGNIZED_BDI_2026 : RECOGNIZED_BDI;
+        Set<String> recognized = rules2026 ? rules.get().recognisedDatabases() : RECOGNIZED_BDI;
         long bdiCount = lookupPort.getForumIndexingDatabases(publication.getForumId()).stream()
                 .filter(recognized::contains)
                 .count();
@@ -129,6 +141,16 @@ public class PsychBdiJournalScoringService extends AbstractWoSForumScoringServic
             score.setYear(allowedYears.isEmpty() ? 0 : allowedYears.getFirst());
         }
         return score;
+    }
+
+    /** Membership in any Web of Science edition the platform tracks, in the publication's own year. */
+    private boolean isInWebOfScience(String forumId, List<Integer> allowedYears) {
+        if (forumId == null || forumId.isBlank() || allowedYears.isEmpty()) {
+            return false;
+        }
+        int year = allowedYears.getFirst();
+        return lookupPort.isForumInSsci(forumId, year) || lookupPort.isForumInScie(forumId, year)
+                || lookupPort.isForumInEsci(forumId, year) || lookupPort.isForumInAhci(forumId, year);
     }
 
     /** True when the resolved in-domain IF score passes the Psiho_I1 gate (IF>=p or above-median Q1/Q2). */

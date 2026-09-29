@@ -9,6 +9,22 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H117` FV Psihologie 2026 skipped the ESCI edition on its strict indicators — **FIXED 2026-09-29, prod pending.**
+  Found while investigating Științe ale Educației, before any run existed. The 2026 annex spells "Web of Science Core
+  Collection" as SCIE, SSCI, AHCI and ESCI, but `ImpactFactorJournalScoringService` admits only SCIE/SSCI category
+  keys and the Psychology domain lists no ESCI key, so an article in a psychology journal that sits only in ESCI
+  scored 3 + IF at I2/I6 instead of 3 + 3×IF at I1A/I1B/I5 (119 such journals with IF ≥ 1 in 2024). Fix:
+  `Comisia28Rules` now carries the per-domain values of the annex (threshold p, the above-median exception, the
+  recognised databases, the publisher list) and the scorers read them instead of their own constants. For a flagged
+  indicator the IMPACT_FACTOR scorer scores against a copy of the domain widened with the ESCI edition of each
+  category (the STORED domain is untouched — the 2016 report shares it), takes the last available IF when the
+  publication year has none ("ultimul IF disponibil"), and ignores an ESCI quartile from before the unified ranking
+  (2023). The I2/I6 scorer applies the very same gate in its "counted by the stricter indicator" check, and — 2026
+  only — gives the base 3 points to a Web of Science journal that had no impact factor at all (ESCI before JCR
+  2023, AHCI). Data: `psihologie2026` set on `Psiho26_I1A`, `Psiho26_I1B`, `Psiho26_I5`; descriptions of I1A and I2
+  updated. Local rescoring of 38 researchers: no score moved, no errors (nobody in the local corpus publishes in
+  such journals); the proof on real data comes from the Psychology staff in prod. Prod: deploy, then
+  `h117_psihologie_2026_esci.js --restart`.
 - [ ] `H116` Admin report edit form wiped script-set fields on save — **FIXED and DEPLOYED 2026-09-29** (image `68d3f657`). The form
   binds the whole `IndividualReport` and saved it as-is, but has no inputs for `perspectives` nor for a criterion's
   `weights`, `maxPercentOfTotal` and `thresholdCapAdditions`, so ANY save through the page dropped them (seven

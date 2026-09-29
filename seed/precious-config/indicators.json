@@ -3536,13 +3536,13 @@
    "$oid": "6abb5d97b866c60b6bfff104"
   },
   "name": "Psiho26_I1A",
-  "description": "Indicatorul I1A (aria A1, autor principal): articole sau review-uri in extenso în reviste indexate Web of Science Core Collection care NU condiționează publicarea de plata unei taxe și al căror factor de impact (IF) este cel puțin pragul p = 1,00 al domeniului Psihologie. Prin excepție, se punctează și revistele cu IF sub prag aflate deasupra medianei categoriei WoS (zona roșie sau galbenă, Q1/Q2). Fiecare articol aduce 3 + 3 × IF, cu IF din anul publicării sau, când acesta nu este încă disponibil, ultimul IF cunoscut. O revistă nu condiționează publicarea de taxă dacă nu percepe taxă sau dacă lasă autorul să aleagă (reviste hibride); platforma marchează ca «reviste cu taxă» revistele cu acces deschis integral care percep taxă de publicare. «Autor principal» înseamnă autor unic, prim autor sau autor corespondent; contribuția egală cu primul autor, declarată în articol, nu este detectată automat. Standardul împarte punctajul la N, numărul de autori principali, doar când aceștia sunt trei sau mai mulți; platforma consideră N = 1. Praguri (criteriul C1, împreună cu bonusul de preînregistrare): fără prag pentru Conferențiar, 15 pentru Profesor și pentru abilitare.",
+  "description": "Indicatorul I1A (aria A1, autor principal): articole sau review-uri in extenso în reviste indexate Web of Science Core Collection care NU condiționează publicarea de plata unei taxe și al căror factor de impact (IF) este cel puțin pragul p = 1,00 al domeniului Psihologie. Prin excepție, se punctează și revistele cu IF sub prag aflate deasupra medianei categoriei WoS (zona roșie sau galbenă, Q1/Q2). Fiecare articol aduce 3 + 3 × IF, cu IF din anul publicării sau, când acesta nu este încă disponibil, ultimul IF cunoscut. Se iau în considerare revistele încadrate în categoriile Web of Science ale domeniului Psihologie, în oricare dintre edițiile SCIE, SSCI sau ESCI; revistele din ESCI au factor de impact începând cu ediția JCR 2023, iar încadrarea lor deasupra medianei se ia în considerare din același an. O revistă nu condiționează publicarea de taxă dacă nu percepe taxă sau dacă lasă autorul să aleagă (reviste hibride); platforma marchează ca «reviste cu taxă» revistele cu acces deschis integral care percep taxă de publicare. «Autor principal» înseamnă autor unic, prim autor sau autor corespondent; contribuția egală cu primul autor, declarată în articol, nu este detectată automat. Standardul împarte punctajul la N, numărul de autori principali, doar când aceștia sunt trei sau mai mulți; platforma consideră N = 1. Praguri (criteriul C1, împreună cu bonusul de preînregistrare): fără prag pentru Conferențiar, 15 pentru Profesor și pentru abilitare.",
   "formula": "(!feeJournal && (S>=1 || Q=='Q1' || Q=='Q2')) ? (3 + 3 * S) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "role": "FIRST_OR_CORRESPONDING",
    "strategy": "IMPACT_FACTOR",
@@ -3558,6 +3558,7 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
+  "psihologie2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
@@ -3604,7 +3605,7 @@
    "$ref": "domains",
    "$id": "Psychology"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "role": "FIRST_OR_CORRESPONDING",
    "strategy": "IMPACT_FACTOR",
@@ -3620,6 +3621,7 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
+  "psihologie2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {
@@ -3660,13 +3662,13 @@
    "$oid": "6abb5d97b866c60b6bfff108"
   },
   "name": "Psiho26_I2",
-  "description": "Indicatorul I2 (aria A1, autor principal): articole sau review-uri in extenso în reviste Web of Science cu IF sub pragul p = 1,00, ori în reviste indexate într-o altă bază de date internațională recunoscută pentru Psihologie (Scopus, PsycINFO, PubMed/Medline, ERIC, ERIH Plus, ProQuest Central, EBSCO Academic Search Complete). Punctaj: 3 + IF pentru revistele Web of Science, inclusiv ESCI și revistele din categorii de graniță cu psihologia; 3 puncte pentru revistele din celelalte baze de date. Standardul din 2026 cere o singură bază de date recunoscută. Platforma deține date de indexare doar pentru Scopus și ERIH Plus, deci o revistă prezentă numai în PsycINFO, PubMed, ERIC, ProQuest sau EBSCO nu este recunoscută automat. O lucrare se punctează o singură dată: articolele care îndeplinesc condițiile I1A sau I1B se numără acolo.",
+  "description": "Indicatorul I2 (aria A1, autor principal): articole sau review-uri in extenso în reviste Web of Science cu IF sub pragul p = 1,00, ori în reviste indexate într-o altă bază de date internațională recunoscută pentru Psihologie (Scopus, PsycINFO, PubMed/Medline, ERIC, ERIH Plus, ProQuest Central, EBSCO Academic Search Complete). Punctaj: 3 + IF pentru revistele Web of Science, inclusiv cele din categorii de graniță cu psihologia; 3 puncte pentru revistele Web of Science care nu aveau încă factor de impact în anul publicării (de exemplu reviste ESCI înainte de 2023) și pentru revistele din celelalte baze de date. Standardul din 2026 cere o singură bază de date recunoscută. Platforma deține date de indexare doar pentru Scopus și ERIH Plus, deci o revistă prezentă numai în PsycINFO, PubMed, ERIC, ProQuest sau EBSCO nu este recunoscută automat. O lucrare se punctează o singură dată: articolele care îndeplinesc condițiile I1A sau I1B se numără acolo.",
   "formula": "S",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "role": "FIRST_OR_CORRESPONDING",
    "strategy": "PSYCH_BDI_JOURNAL",
@@ -3816,7 +3818,7 @@
    "$ref": "domains",
    "$id": "Psychology"
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "role": "NOT_FIRST_NOR_CORRESPONDING",
    "strategy": "IMPACT_FACTOR",
@@ -3832,6 +3834,7 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
+  "psihologie2026": true,
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  },
  {

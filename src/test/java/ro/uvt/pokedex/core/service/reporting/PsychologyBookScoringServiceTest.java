@@ -106,7 +106,7 @@ class PsychologyBookScoringServiceTest {
     @Test
     void rules2026ReadTheTierFromThe2026ListNotThe2016One() {
         ScoringPublicationReadModel p = pub("bk", "Editura Humanitas", null); // not on the 2016 list
-        when(publishers.tierFor2026("Editura Humanitas")).thenReturn("B");
+        when(publishers.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Humanitas")).thenReturn("B");
 
         Score s = service.getScore(p, indicator2026());
 
@@ -119,7 +119,7 @@ class PsychologyBookScoringServiceTest {
     void rules2026DropAPublisherThatOnlyThe2016ListKnows() {
         // Editura All was tier B in 2016 and is on neither 2026 list.
         ScoringPublicationReadModel p = pub("bk", "Editura All", "B");
-        when(publishers.tierFor2026("Editura All")).thenReturn(null);
+        when(publishers.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura All")).thenReturn(null);
         when(masterBookList.isRecognized("Editura All")).thenReturn(false);
 
         assertEquals(0.0, service.getScore(p, indicator2026()).getScore());
@@ -128,7 +128,7 @@ class PsychologyBookScoringServiceTest {
     @Test
     void rules2026ClassifyAMasterBookListPublisherAsIndicativeA1() {
         ScoringPublicationReadModel p = pub("ch", "Routledge", null);
-        when(publishers.tierFor2026("Routledge")).thenReturn(null);
+        when(publishers.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Routledge")).thenReturn(null);
         when(masterBookList.isRecognized("Routledge")).thenReturn(true);
 
         Score s = service.getScore(p, indicator2026());
@@ -141,7 +141,7 @@ class PsychologyBookScoringServiceTest {
     @Test
     void rules2026KeepTheListedTierEvenWhenThePublisherIsAlsoOnTheMasterBookList() {
         ScoringPublicationReadModel p = pub("bk", "Editura Polirom", null);
-        when(publishers.tierFor2026("Editura Polirom")).thenReturn("A2");
+        when(publishers.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Polirom")).thenReturn("A2");
 
         Score s = service.getScore(p, indicator2026());
 
@@ -154,7 +154,7 @@ class PsychologyBookScoringServiceTest {
     void the2016RulesNeverConsultTheMasterBookList() {
         service.getScore(pub("bk", "Routledge", null), indicator);
         verify(masterBookList, never()).isRecognized(any());
-        verify(publishers, never()).tierFor2026(any());
+        verify(publishers, never()).tierFor2026(any(), any());
     }
 
     @Test

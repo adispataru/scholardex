@@ -112,6 +112,91 @@ class ImpactFactorJournalScoringServiceTest {
         assertEquals(1.0, meterRegistry.get("pokedex.reporting.if.missing").counter().count());
     }
 
+    // ── COMISIA 28, 2026 (Comisia28Rules): ESCI counts as Web of Science Core Collection ──
+
+    private Indicator psychologyIndicator(boolean rules2026) {
+        Domain domain = new Domain();
+        domain.setName("Psychology");
+        domain.setWosCategories(new java.util.ArrayList<>(List.of("PSYCHOLOGY, CLINICAL - SSCI", "PSYCHOLOGY - SCIE")));
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        if (rules2026) {
+            indicator.setPsihologie2026(true);
+        }
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+        return indicator;
+    }
+
+    private ImpactFactorJournalScoringService journalWith(WoSRanking... rankings) {
+        when(lookupPort.getForum("forum-1")).thenReturn(forum("1234-5678", null));
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of(rankings));
+        return new ImpactFactorJournalScoringService(lookupPort, new SimpleMeterRegistry());
+    }
+
+    @Test
+    void aDomainCategoryReachedThroughEsciCountsForThe2026Annex() {
+        ImpactFactorJournalScoringService service =
+                journalWith(rankingWithIf("PSYCHOLOGY, CLINICAL - ESCI", 2023, 1.8, WoSRanking.Quarter.Q2));
+
+        Score score = service.getScore(publication("forum-1", "ar", "2023-05-01"), psychologyIndicator(true));
+
+        assertEquals(1.8, score.getScore());
+        assertEquals("Q2", score.getQuarter());
+        assertEquals(2023, score.getYear());
+    }
+
+    @Test
+    void theSameJournalStaysOutForAnIndicatorWithoutTheFlag() {
+        // The 2016 report shares the domain and must keep scoring as it did.
+        ImpactFactorJournalScoringService service =
+                journalWith(rankingWithIf("PSYCHOLOGY, CLINICAL - ESCI", 2023, 1.8, WoSRanking.Quarter.Q2));
+
+        assertEquals(0.0, service.getScore(publication("forum-1", "ar", "2023-05-01"), psychologyIndicator(false)).getScore());
+    }
+
+    @Test
+    void esciOutsideTheDomainCategoriesStaysOutEvenWithTheFlag() {
+        ImpactFactorJournalScoringService service =
+                journalWith(rankingWithIf("EDUCATION & EDUCATIONAL RESEARCH - ESCI", 2023, 3.0, WoSRanking.Quarter.Q1));
+
+        assertEquals(0.0, service.getScore(publication("forum-1", "ar", "2023-05-01"), psychologyIndicator(true)).getScore());
+    }
+
+    @Test
+    void theCatchAllDomainDoesNotStartCountingEsci() {
+        // IMPACT_FACTOR with domain ALL is SCIE/SSCI only, flag or no flag on some other indicator.
+        ImpactFactorJournalScoringService service =
+                journalWith(rankingWithIf("ECONOMICS - ESCI", 2023, 2.5, WoSRanking.Quarter.Q1));
+
+        assertEquals(0.0, service.getScore(publication("forum-1", "ar", "2023-01-01"), indicatorForAllDomain()).getScore());
+    }
+
+    @Test
+    void anEsciQuartileFromBeforeTheUnifiedRankingIsNotAnAboveMedianPlacement() {
+        ImpactFactorJournalScoringService service =
+                journalWith(rankingWithIf("PSYCHOLOGY, CLINICAL - ESCI", 2022, 0.6, WoSRanking.Quarter.Q1));
+
+        Score score = service.getScore(publication("forum-1", "ar", "2022-05-01"), psychologyIndicator(true));
+
+        assertEquals(0.6, score.getScore());
+        // The quartile is reported as unknown, which no "Q1 or Q2" formula gate accepts.
+        assertEquals("NOT_FOUND", score.getQuarter());
+    }
+
+    @Test
+    void aYearWithoutImpactFactorTakesTheLastOneAvailableForThe2026Annex() {
+        // maxAvailableYear is 2023 in this suite; the journal's latest impact factor is from 2021.
+        ImpactFactorJournalScoringService service =
+                journalWith(rankingWithIf("PSYCHOLOGY, CLINICAL - SSCI", 2021, 2.2, WoSRanking.Quarter.Q2));
+
+        Score carried = service.getScore(publication("forum-1", "ar", "2023-05-01"), psychologyIndicator(true));
+        assertEquals(2.2, carried.getScore());
+        assertEquals(2021, carried.getYear());
+
+        assertEquals(0.0, service.getScore(publication("forum-1", "ar", "2023-05-01"), psychologyIndicator(false)).getScore(),
+                "indicators outside the annex keep the exact-year rule");
+    }
+
     private Indicator indicatorForAllDomain() {
         Domain domain = new Domain();
         domain.setName("ALL");

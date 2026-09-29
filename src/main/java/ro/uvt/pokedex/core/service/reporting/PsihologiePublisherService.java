@@ -41,12 +41,6 @@ public class PsihologiePublisherService {
 
     private static final Logger log = LoggerFactory.getLogger(PsihologiePublisherService.class);
     private static final String FIXTURE = "report-data/psihologie-publishers.csv";
-    /**
-     * The OM 3019/2025 Comisia 28 lists (Domeniul Psihologie). Read straight from the classpath, never from
-     * Mongo: the collection holds the 2016 list that the frozen FV Psihologie 2016 report keeps scoring with,
-     * and it seeds only when empty, so it could not pick the 2026 rows up on an already-seeded database.
-     */
-    private static final String FIXTURE_2026 = "report-data/psihologie-publishers-2026.csv";
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
     private static final Pattern NON_ALNUM_OR_SPACE = Pattern.compile("[^\\p{Alnum}\\s]");
     private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
@@ -55,8 +49,13 @@ public class PsihologiePublisherService {
     /** normalized publisher name → tier (A1/A2/B). */
     private final AtomicReference<Map<String, String>> tierByName = new AtomicReference<>(Map.of());
     private final AtomicBoolean loaded = new AtomicBoolean(false);
-    /** normalized publisher name → 2026 tier (A2/B); loaded lazily from {@link #FIXTURE_2026}. */
-    private final AtomicReference<Map<String, String>> tierByName2026 = new AtomicReference<>();
+    /**
+     * Per domain of the 2026 annex: normalized publisher name → tier (A2/B). Read straight from the
+     * classpath ({@link Comisia28Rules#publisherList()}), never from Mongo: the collection holds the 2016
+     * list that the frozen FV Psihologie 2016 report keeps scoring with, and it seeds only when empty, so it
+     * could not pick the 2026 rows up on an already-seeded database.
+     */
+    private final Map<Comisia28Rules, Map<String, String>> tiers2026 = new java.util.concurrent.ConcurrentHashMap<>();
 
     @PostConstruct
     void init() {
@@ -79,21 +78,16 @@ public class PsihologiePublisherService {
     }
 
     /**
-     * The 2026 (OM 3019/2025, Comisia 28) tier — A2 or B — for a publisher, or {@code null} when it is on
-     * neither list. Same matching as {@link #tierFor}; A1 is not a list (the standard defines it by WorldCat
+     * The 2026 (OM 3019/2025, Comisia 28) tier — A2 or B — for a publisher in the lists of the given
+     * domain, or {@code null} when it is on neither list. Same matching as {@link #tierFor}; A1 is not a list (the standard defines it by WorldCat
      * holdings), so it never comes from here.
      */
-    public String tierFor2026(String publisherName) {
+    public String tierFor2026(Comisia28Rules rules, String publisherName) {
         String normalized = normalize(publisherName);
         if (normalized.isEmpty()) {
             return null;
         }
-        Map<String, String> tiers = tierByName2026.get();
-        if (tiers == null) {
-            tiers = loadFixture2026();
-            tierByName2026.set(tiers);
-        }
-        return match(tiers, normalized);
+        return match(tiers2026.computeIfAbsent(rules, r -> loadFixture2026(r.publisherList())), normalized);
     }
 
     private static String match(Map<String, String> tiers, String normalized) {
@@ -113,9 +107,9 @@ public class PsihologiePublisherService {
         return bestMatch != null ? tiers.get(bestMatch) : null;
     }
 
-    private static Map<String, String> loadFixture2026() {
+    private static Map<String, String> loadFixture2026(String fixture) {
         Map<String, String> tiers = new HashMap<>();
-        try (InputStream in = new ClassPathResource(FIXTURE_2026).getInputStream();
+        try (InputStream in = new ClassPathResource(fixture).getInputStream();
              BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             String line;
             boolean header = true;
@@ -130,9 +124,9 @@ public class PsihologiePublisherService {
                     tiers.put(name, tier);
                 }
             }
-            log.info("Psihologie 2026 publisher list loaded from {}: {} publishers", FIXTURE_2026, tiers.size());
+            log.info("COMISIA 28 2026 publisher list loaded from {}: {} publishers", fixture, tiers.size());
         } catch (IOException e) {
-            log.error("Failed to load the Psihologie 2026 publisher list from {}", FIXTURE_2026, e);
+            log.error("Failed to load the COMISIA 28 2026 publisher list from {}", fixture, e);
         }
         return Map.copyOf(tiers);
     }

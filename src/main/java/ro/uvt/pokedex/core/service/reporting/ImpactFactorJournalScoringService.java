@@ -21,6 +21,11 @@ import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 /**
  * Scoring service that evaluates journals using the Impact Factor metric.
  * The implementation follows the pattern used in {@link AISJournalScoringService}.
+ *
+ * <p><b>COMISIA 28, 2026</b> ({@link Comisia28Rules}): the annex counts ESCI as Web of Science Core
+ * Collection, so for its indicators a journal placed in a domain category through the ESCI edition is
+ * scored like one in SCIE/SSCI, and a publication year without an impact factor takes the last one
+ * available. Every other indicator keeps the SCIE/SSCI-only, exact-year behaviour.</p>
  */
 @Service
 public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringService {
@@ -45,7 +50,10 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
     @Override
     public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         requestsCounter.increment();
-        Domain domain = indicator.getDomain();
+        boolean comisia28 = Comisia28Rules.of(indicator).isPresent();
+        Domain domain = comisia28
+                ? Comisia28Rules.withEmergingSources(indicator.getDomain())
+                : indicator.getDomain();
         ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
 
         ScoreResult scoreResult = initializeScoreResult();
@@ -69,10 +77,16 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
                         Score score = new Score();
                         score.setScore(ranking.getScore().getIF().get(year));
                         WoSRanking.Quarter qIF = rank.getQIF() != null ? rank.getQIF().get(year) : null;
-                        score.setQuarter(qIF != null ? qIF.toString() : null);
+                        // Before the unified ranking an ESCI quartile was computed against the edition's own
+                        // small cohort — not the "above the median of the category" the annex means.
+                        boolean cohortQuartile = ScoringCategorySupport.isEsciIndex(
+                                ScoringCategorySupport.extractCategoryIndex(category))
+                                && year < ScoringCategorySupport.ESCI_UNIFIED_FROM_YEAR;
+                        score.setQuarter(qIF != null && !cohortQuartile ? qIF.toString() : null);
                         return Optional.of(score);
                     },
-                    this::compareScoresByPoints
+                    this::compareScoresByPoints,
+                    comisia28 // "ultimul IF disponibil" when the publication year has none yet
             );
         }
         return finalizeWithTelemetry(
@@ -125,6 +139,22 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    /**
+     * An ESCI key counts only when the domain lists it <b>explicitly</b>. No stored domain does; the
+     * COMISIA 28 path hands in a widened copy ({@link Comisia28Rules#withEmergingSources}). The catch-all
+     * domain {@code ALL} is deliberately not enough, so nothing changes for any other indicator.
+     */
+    @Override
+    protected boolean isCategoryInDomain(Domain domain, String category) {
+        if (super.isCategoryInDomain(domain, category)) {
+            return true;
+        }
+        return domain != null
+                && domain.getWosCategories() != null
+                && domain.getWosCategories().contains(category)
+                && ScoringCategorySupport.isEsciIndex(ScoringCategorySupport.extractCategoryIndex(category));
+    }
 
     @Override
     public ScoringStrategy strategy() {
