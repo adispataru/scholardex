@@ -55,6 +55,15 @@ public abstract class AbstractReport {
          * {@code criteriaScores} never include these additions.
          */
         private List<ThresholdCapAddition> thresholdCapAdditions;
+        /**
+         * Share criteria ("ponderea", OM 3019/2025 Comisia 25, C.2 and C.3): when set, the criterion is a
+         * PERCENTAGE — {@code 100 · Σ(its own indicators) / Σ(these indicators)} — and its thresholds are
+         * percentages too. The numerator is the criterion's ordinary weighted sum; the denominator is the plain
+         * sum of the indicators listed here. A denominator of zero gives 0: with nothing to take a share of,
+         * the share is not met. Null or empty = an ordinary sum criterion (every earlier report). Set by
+         * scripts; the edit form has no input for it and carries it over like the weights.
+         */
+        private List<Integer> shareOfIndicatorIndices;
     }
 
     /** See {@link Criterion#thresholdCapAdditions}. */

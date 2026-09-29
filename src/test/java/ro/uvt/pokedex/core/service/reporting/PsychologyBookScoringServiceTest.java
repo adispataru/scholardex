@@ -157,6 +157,49 @@ class PsychologyBookScoringServiceTest {
         verify(publishers, never()).tierFor2026(any(), any());
     }
 
+    // ── Sociologie 2026 (OM 3019/2025, Comisia 25) — sociologie2026 flag ──
+
+    private static Indicator indicatorComisia25() {
+        Indicator i = new Indicator();
+        i.setSociologie2026(true);
+        return i;
+    }
+
+    @Test
+    void comisia25ReadsTheA2ListOfItsGroupAndReturnsOneForEveryTier() {
+        ScoringPublicationReadModel p = pub("ch", "Editura Polirom", null);
+        when(publishers.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), "Editura Polirom")).thenReturn("A2");
+
+        Score s = service.getScore(p, indicatorComisia25());
+
+        assertEquals(1.0, s.getScore(), "the points are in the formula; the tier only reaches it as category");
+        assertEquals("A2", s.getCoreRankingEquivalent());
+        verify(masterBookList, never()).isRecognized(any());
+        verify(publishers, never()).tierFor(any());
+    }
+
+    @Test
+    void comisia25TakesAnInternationalPublisherAsA1() {
+        ScoringPublicationReadModel p = pub("bk", "Routledge", null);
+        when(publishers.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), "Routledge")).thenReturn(null);
+        when(masterBookList.isRecognized("Routledge")).thenReturn(true);
+
+        Score s = service.getScore(p, indicatorComisia25());
+
+        assertEquals(1.0, s.getScore());
+        assertEquals("A1", s.getCoreRankingEquivalent());
+        assertEquals("WOS_MASTER_BOOK_LIST", s.getScoringInfo().get("tierBasis"));
+    }
+
+    @Test
+    void comisia25DoesNotCountAPublisherOnNeitherList() {
+        ScoringPublicationReadModel p = pub("bk", "Random Press", null);
+        when(publishers.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), "Random Press")).thenReturn(null);
+        when(masterBookList.isRecognized("Random Press")).thenReturn(false);
+
+        assertEquals(0.0, service.getScore(p, indicatorComisia25()).getScore());
+    }
+
     @Test
     void nullPublicationScoresZeroWithoutSettingCategory() {
         Score s = service.getScore((ScoringPublicationReadModel) null, indicator);

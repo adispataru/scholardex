@@ -538,6 +538,14 @@ public class ScientificProductionService {
             // path (book_facts by bookId, else the forum's publisher) so it agrees with the FEAA book
             // scorer. Bound lazily; false for anything without a resolvable publisher, which is how the
             // A4/A5 "national or other publishers" complement picks those items up.
+            // Comisia 25 (2026), definition [6]: coefficient m of the candidate's own publication. Without
+            // language and place-of-publication data it is the floor, 1, and the item says so.
+            if (formulaReferences(indicator.getFormula(), "Coef_m")) {
+                PublicationCoefficientSupport.Coefficient coefficient =
+                        PublicationCoefficientSupport.coefficientFor(cited);
+                builder.put("Coef_m", coefficient.value());
+                result.getScoringInfo().put(PublicationCoefficientSupport.BASIS_KEY, coefficient.basis());
+            }
             if (formulaReferences(indicator.getFormula(), "wosBookPublisher")) {
                 builder.put("wosBookPublisher", wosMasterBookListService.isRecognized(
                         PublicationPublisherSupport.resolvePublisher(cited, reportingLookupPort)));

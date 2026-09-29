@@ -9,6 +9,42 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H124` FV Sociologie și Asistență Socială 2026 (OM 3.019/2025, COMISIA 25) — **BUILT 2026-09-29, prod pending.**
+  One report for the whole FSAS faculty: the annex treats Asistență Socială as part of the group "Sociologie"
+  (same core/related categories, same column of the A2 publisher list, same thresholds). 42 indicators `Soc26_*`
+  (29 that score, 13 that only count or take a share), 18 activity types "(Comisia 25, …)", «Grant Cercetare»
+  reused, 2 domains, 10 criteria, 5 perspectives. Thresholds conf/prof/abilitare: C.1 I.1 10/15/15 · C.2 core share
+  -/30/30 % · C.3 core+related 50/70/70 % · C.4 articles+chapters 5/10/10 · C.5 books 1/2/2 · C.6 I.1–I.8 50/100/100 ·
+  C.7 I.9 10/20/20 · C.8 citations 25/50/50 · C.9 total 130/200/200 · C.10 after habilitation, professor only.
+  **Engine.** (1) Share criteria: `Criterion.shareOfIndicatorIndices` turns a criterion into a percentage of the
+  sum of the listed indicators (0 when that sum is 0); computed at the one aggregation point
+  (`ReportingComputationSupport`), carried over by the edit form like the weights. (2) Indicator flag
+  `sociologie2026` → `Comisia25Rules`: an impact factor counts in EVERY Web of Science edition (the related list
+  holds AHCI-only categories), exact publication year, latest value only for an article newer than the published
+  data. (3) `SOC_INDEXED_JOURNAL` (I.2): Scopus journal 4, three recognised databases 2, an article with impact
+  factor is left to I.1. (4) `CITING_IMPACT_FACTOR` (I.9): S = 0,2 + 4·f of the CITING journal, never 0, so a
+  citation from a book or a journal without impact factor reaches the formula. (5) `PSYCH_BOOK` gets a Comisia 25
+  branch (A2 list of the group, WoS Master Book List as A1, S = 1 for both). (6) Formula variable `Coef_m`,
+  bound from `PublicationCoefficientSupport`. C.5 "one A1 book or two A2 books" is a weighted count (A1 = 2).
+  **Decisions (user, 2026-09-29):** list A1 = WoS Master Book List; an article with impact factor goes to I.1;
+  a MEMBER of a project above 30.000 EUR gets 4 points (the annex prints a value for coordination only);
+  WorldCat holdings are declared by the candidate. **Chosen without being asked, to confirm with the faculty:**
+  C.4 counts only what is scored at I.2 and I.6 (the letter of "(I.2+I.6)"), not the articles placed at I.1;
+  a grant without a stated budget scores at the first tier; "Planning & Development" (the name Development
+  Studies had until 2017) is in the core; the related list repeats "Language Linguistics" where it may have meant
+  Linguistics — only the category printed is applied. **Provisional:** `Coef_m` is 1 for every publication the
+  platform finds (it holds neither the language nor the country of the publisher), so I.2–I.8 can only rise;
+  declared entries carry the coefficient the candidate picks. **Not computable, declared instead:** journals
+  reaching three databases through EBSCO/CEEOL/ProQuest/… (the platform knows WoS, Scopus, DOAJ, ERIH Plus),
+  books and chapters the platform does not hold, coordinated books, reviews, translations, citations outside the
+  platform; ISI Proceedings papers score at I.8 (1 point), not at I.2. **Found while building:** in an
+  ASSIGNMENT the formula engine takes the type of the variable from the LAST literal of a conditional —
+  `m = c ? 2 : (d ? 1.5 : 1)` fails on the 1.5 branch and the item silently scores 0; every branch is written as
+  a decimal, and `SeedFormulaLiteralTypesTest` guards all committed formulas (none was affected). Prod: script
+  `h124_sociologie_2026.js` (deploy guard, idempotent, rehearsed on a scratch database: 0 type differences,
+  earlier documents untouched), then select the report for the FSAS division. **Next:** language and country of
+  publication from OpenAlex, to replace the provisional coefficient; Științe Administrative and Științe ale
+  Comunicării are one `Comisia25Rules` value, one publisher column and two domains away.
 - [ ] `H123` Heads can open the reports of their faculty or department — **FIXED and DEPLOYED 2026-09-29** (image
   `d58bbdaf`, `deploy-prod` succeeded 15:01). Found
   while drafting onboarding instructions for FPSE: appointing a head gave that person access to nothing. Three

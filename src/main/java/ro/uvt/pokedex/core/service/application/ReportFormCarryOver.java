@@ -16,7 +16,8 @@ import java.util.Optional;
  *
  * <p>The form manages title, indicators, export binding, and per criterion the name, indicators, thresholds
  * and the plafon. It has no inputs for {@code perspectives} nor for a criterion's {@code weights},
- * {@code maxPercentOfTotal} and {@code thresholdCapAdditions} — those are written by scripts. Saving the
+ * {@code maxPercentOfTotal}, {@code thresholdCapAdditions} and {@code shareOfIndicatorIndices} — those are
+ * written by scripts. Saving the
  * bound form object as-is therefore wiped them (FV Fizică 2026 lost the weights of its total and its three
  * perspectives on any edit), so the save path first carries them over from the stored report.</p>
  *
@@ -57,7 +58,9 @@ public final class ReportFormCarryOver {
             if ((notEmpty(kept.getWeights()) && (sent == null || sent.getWeights() == null))
                     || (notEmpty(kept.getMaxPercentOfTotal()) && (sent == null || sent.getMaxPercentOfTotal() == null))
                     || (notEmpty(kept.getThresholdCapAdditions())
-                    && (sent == null || sent.getThresholdCapAdditions() == null))) {
+                    && (sent == null || sent.getThresholdCapAdditions() == null))
+                    || (notEmpty(kept.getShareOfIndicatorIndices())
+                    && (sent == null || sent.getShareOfIndicatorIndices() == null))) {
                 carryCriterionFields = true;
             }
         }
@@ -90,6 +93,9 @@ public final class ReportFormCarryOver {
             }
             if (sent.getThresholdCapAdditions() == null && notEmpty(kept.getThresholdCapAdditions())) {
                 sent.setThresholdCapAdditions(kept.getThresholdCapAdditions());
+            }
+            if (sent.getShareOfIndicatorIndices() == null && notEmpty(kept.getShareOfIndicatorIndices())) {
+                sent.setShareOfIndicatorIndices(kept.getShareOfIndicatorIndices());
             }
         }
         return Optional.empty();

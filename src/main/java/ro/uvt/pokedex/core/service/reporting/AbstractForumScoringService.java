@@ -123,6 +123,11 @@ public abstract class AbstractForumScoringService implements ScoringService {
     }
 
     protected boolean isCategoryInDomain(Domain domain, String category) {
+        // A domain handed in through Comisia25Rules.anyEdition counts in every Web of Science edition.
+        // No stored domain is of that type, so nothing changes for any other indicator.
+        if (Comisia25Rules.admits(domain, category)) {
+            return true;
+        }
         return ScoringCategorySupport.isCategoryEligibleForDomain(domain, category);
     }
 

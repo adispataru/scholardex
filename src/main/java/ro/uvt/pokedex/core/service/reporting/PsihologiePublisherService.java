@@ -50,12 +50,13 @@ public class PsihologiePublisherService {
     private final AtomicReference<Map<String, String>> tierByName = new AtomicReference<>(Map.of());
     private final AtomicBoolean loaded = new AtomicBoolean(false);
     /**
-     * Per domain of the 2026 annex: normalized publisher name → tier (A2/B). Read straight from the
-     * classpath ({@link Comisia28Rules#publisherList()}), never from Mongo: the collection holds the 2016
+     * Per 2026 list (keyed by its classpath location): normalized publisher name → tier (A2/B). Read
+     * straight from the classpath ({@link Comisia28Rules#publisherList()},
+     * {@link Comisia25Rules#publisherList()}), never from Mongo: the collection holds the 2016
      * list that the frozen FV Psihologie 2016 report keeps scoring with, and it seeds only when empty, so it
      * could not pick the 2026 rows up on an already-seeded database.
      */
-    private final Map<Comisia28Rules, Map<String, String>> tiers2026 = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Map<String, String>> tiers2026 = new java.util.concurrent.ConcurrentHashMap<>();
 
     @PostConstruct
     void init() {
@@ -83,11 +84,20 @@ public class PsihologiePublisherService {
      * holdings), so it never comes from here.
      */
     public String tierFor2026(Comisia28Rules rules, String publisherName) {
+        return tierFromList(rules.publisherList(), publisherName);
+    }
+
+    /**
+     * The tier a publisher has in one of the 2026 classpath lists ({@code nr,name,tier}), or {@code null}
+     * when it is not on it. Serves every commission that publishes such a list: Comisia 28 through
+     * {@link #tierFor2026}, Comisia 25 ({@link Comisia25Rules#publisherList()}) directly.
+     */
+    public String tierFromList(String classpathList, String publisherName) {
         String normalized = normalize(publisherName);
-        if (normalized.isEmpty()) {
+        if (normalized.isEmpty() || classpathList == null) {
             return null;
         }
-        return match(tiers2026.computeIfAbsent(rules, r -> loadFixture2026(r.publisherList())), normalized);
+        return match(tiers2026.computeIfAbsent(classpathList, PsihologiePublisherService::loadFixture2026), normalized);
     }
 
     private static String match(Map<String, String> tiers, String normalized) {
@@ -124,9 +134,9 @@ public class PsihologiePublisherService {
                     tiers.put(name, tier);
                 }
             }
-            log.info("COMISIA 28 2026 publisher list loaded from {}: {} publishers", fixture, tiers.size());
+            log.info("2026 publisher list loaded from {}: {} names", fixture, tiers.size());
         } catch (IOException e) {
-            log.error("Failed to load the COMISIA 28 2026 publisher list from {}", fixture, e);
+            log.error("Failed to load the 2026 publisher list from {}", fixture, e);
         }
         return Map.copyOf(tiers);
     }

@@ -106,6 +106,56 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
         }
     }
 
+    /**
+     * OM 3.019/2025, Comisia 25, definition [9]: the impact factor of the journal in the publication year, in
+     * whatever category of {@code domain} and whatever Web of Science edition it sits. An article newer than
+     * the last published impact factors takes the latest one the journal has; an older article whose year
+     * has none gets nothing — the journal had no impact factor when the article appeared.
+     *
+     * @return the impact factor as the score (with its year), or empty when there is none
+     */
+    protected Optional<Score> impactFactorOfPublicationYear(
+            Domain domain, ScholardexForumView forum, List<Integer> allowedYears) {
+        if (forum == null || allowedYears == null || allowedYears.isEmpty()) {
+            return Optional.empty();
+        }
+        List<Integer> years = new java.util.ArrayList<>(allowedYears);
+        int lastPublished = lookupPort.maxAvailableYear();
+        boolean newerThanTheData = years.size() == 1 && years.getFirst() >= lastPublished;
+        if (years.size() == 1 && years.getFirst() > lastPublished) {
+            years.set(0, lastPublished);
+        }
+        ScoreResult result = initializeScoreResult();
+        computeScores(
+                Comisia25Rules.anyEdition(domain),
+                forum,
+                years,
+                result,
+                (ranking, year, category, rank) -> {
+                    if (ranking.getScore() == null || ranking.getScore().getIF() == null
+                            || ranking.getScore().getIF().get(year) == null) {
+                        return Optional.empty();
+                    }
+                    Score score = new Score();
+                    score.setScore(ranking.getScore().getIF().get(year));
+                    return Optional.of(score);
+                },
+                this::compareScoresByPoints,
+                newerThanTheData);
+        if (result.bestYear.get() == 0 || !(result.bestPoints.get() > 0)) {
+            return Optional.empty();
+        }
+        return Optional.of(createScore(result));
+    }
+
+    /** The catch-all domain: every Web of Science category. */
+    protected static Domain everyCategory() {
+        Domain all = new Domain();
+        all.setId("ALL");
+        all.setName("ALL");
+        return all;
+    }
+
     protected boolean compareScoresByPoints(Score score, ScoreResult result) {
         if (Math.abs(score.getScore() - result.bestPoints.get()) < 0.00000001) {
             // If either quarter is unknown, don't displace an existing best

@@ -136,6 +136,42 @@ final class SeedReportDefinition {
         return names;
     }
 
+    /** Short names of the indicators a share criterion is a percentage OF; empty for a sum criterion. */
+    Set<String> shareOf(String criterionPrefix) {
+        Set<String> names = new HashSet<>();
+        JsonNode whole = criterion(criterionPrefix).get("shareOfIndicatorIndices");
+        if (whole != null) {
+            whole.forEach(index -> names.add(reportIndicatorNames.get(index.asInt()).substring(prefix.length())));
+        }
+        return names;
+    }
+
+    /** Weight of a member inside a criterion; 1 when the criterion carries none for it. */
+    double weight(String criterionPrefix, String shortName) {
+        JsonNode weights = criterion(criterionPrefix).get("weights");
+        int index = reportIndicatorNames.indexOf(prefix + shortName);
+        assertTrue(index >= 0, prefix + shortName + " is not in the report");
+        return weights == null || !weights.has(String.valueOf(index))
+                ? 1.0 : weights.get(String.valueOf(index)).asDouble();
+    }
+
+    /** The WoS category keys of the domain an indicator is bound to. */
+    Set<String> domainCategories(String shortName) {
+        String domainId = indicator(shortName).get("domain").get("$id").asText();
+        try {
+            for (JsonNode domain : JSON.readTree(Files.readString(SEED.resolve("domains.json")))) {
+                if (domainId.equals(domain.get("_id").asText())) {
+                    Set<String> keys = new HashSet<>();
+                    domain.get("wosCategories").forEach(key -> keys.add(key.asText()));
+                    return keys;
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        throw new AssertionError("domain " + domainId + " is missing from the seed");
+    }
+
     List<Integer> criteriaOf(int perspective) {
         List<Integer> indices = new ArrayList<>();
         report.get("perspectives").get(perspective).get("composition").get("all")
@@ -198,6 +234,14 @@ final class SeedReportDefinition {
         return EVALUATOR.eval(indicator(shortName).get("formula").asText(), FormulaContext.builder()
                 .put("S", s).put("Q", quartile).put("feeJournal", feeJournal).put("N", authors)
                 .put("category", category).put("docType", docType).build());
+    }
+
+    /** A publication formula of a standard that multiplies by the coefficient m ({@code Coef_m}). */
+    double publication(String shortName, double s, int authors, String category, String docType,
+                       double coefficient) {
+        return EVALUATOR.eval(indicator(shortName).get("formula").asText(), FormulaContext.builder()
+                .put("S", s).put("N", authors).put("category", category).put("docType", docType)
+                .put("Coef_m", coefficient).build());
     }
 
     double onScore(String shortName, double s) {

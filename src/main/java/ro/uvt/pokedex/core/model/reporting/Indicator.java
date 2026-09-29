@@ -151,6 +151,20 @@ public class Indicator {
     }
 
     /**
+     * Sociologie 2026 — OM 3019/2025, Comisia 25, the "Sociologie" group of the annex (specialisations
+     * Sociologie, Resurse Umane, Antropologie and the domain Asistență Socială). What the scorers do with it
+     * is in {@code Comisia25Rules}: an impact factor counts in whatever Web of Science edition the journal
+     * sits (SCIE, SSCI, AHCI, ESCI), books and chapters are tiered A1/A2 with the group's own A2 list.
+     * {@code null}/false leaves the indicator alone. Nullable-only like the other 2026 flags.
+     */
+    private Boolean sociologie2026;
+
+    /** True when this indicator applies the 2026 Comisia 25 rules of the sociology group. */
+    public boolean usesSociologie2026() {
+        return Boolean.TRUE.equals(sociologie2026);
+    }
+
+    /**
      * RETIRED (2026-07-24): best-of-AIS/JIF journal classification is now universal in
      * {@code ComputerScienceJournalScoringService} — the 2016 standard's AIS-only regime applied to too
      * few years to be worth keeping distinguishable. The field stays only so persisted documents that

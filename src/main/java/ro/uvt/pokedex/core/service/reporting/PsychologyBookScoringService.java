@@ -28,6 +28,9 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
  * List is the closest computable stand-in, so the result is marked {@code tierBasis=WOS_MASTER_BOOK_LIST}
  * and is indicative. The 2026 formulas use 16 (book) and 4 (chapter) as the base and never divide by the
  * number of authors for Psychology.</p>
+ *
+ * <p><b>Comisia 25, 2026</b> ({@link Comisia25Rules}): two tiers, A1 and A2, both returning S = 1 — see
+ * {@link #scoreForComisia25}.</p>
  */
 @Service
 public class PsychologyBookScoringService extends AbstractForumScoringService {
@@ -63,6 +66,10 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
             return score;
         }
         String publisher = resolvePublisher(publication);
+        java.util.Optional<Comisia25Rules> comisia25 = Comisia25Rules.of(indicator);
+        if (comisia25.isPresent()) {
+            return scoreForComisia25(comisia25.get(), publisher);
+        }
         String tier;
         java.util.Optional<Comisia28Rules> rules = Comisia28Rules.of(indicator);
         if (rules.isPresent()) {
@@ -80,6 +87,31 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
         }
         score.setScore(m);
         score.setCoreRankingEquivalent(tier); // reaches the formula as `category`
+        score.setScoringSource(strategy().name());
+        return score;
+    }
+
+    /**
+     * COMISIA 25, 2026 (definition [4]): a book or chapter counts when its publisher is on the A2 list of the
+     * group, or has international prestige (A1). The annex points at "Lista A1, în vigoare" without printing
+     * it; the WoS Master Book List stands in for it, as it does for Comisia 28, and the result says so
+     * ({@code tierBasis=WOS_MASTER_BOOK_LIST}). The listed tier wins over the stand-in. Both tiers return
+     * S = 1: here the tier changes the points of a chapter only, and the formula reads it as {@code category}.
+     * Holdings in at least six WorldCat libraries, which the annex treats like A2, cannot be looked up and
+     * are declared by the candidate as an activity.
+     */
+    private Score scoreForComisia25(Comisia25Rules rules, String publisher) {
+        Score score = new Score();
+        String tier = publisherService.tierFromList(rules.publisherList(), publisher);
+        if (tier == null && wosMasterBookListService.isRecognized(publisher)) {
+            tier = "A1";
+            score.getScoringInfo().put("tierBasis", "WOS_MASTER_BOOK_LIST");
+        }
+        if (tier == null) {
+            return score; // publisher on neither list → not counted
+        }
+        score.setScore(1.0);
+        score.setCoreRankingEquivalent(tier);
         score.setScoringSource(strategy().name());
         return score;
     }

@@ -4189,5 +4189,596 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d33a"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "FV Sociologie și Asistență Socială 2026",
+  "description": "Standarde minimale COMISIA 25, grupul Sociologie — specializările Sociologie, Resurse Umane, Antropologie și domeniul Asistență Socială (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. O publicație se punctează la un singur indicator; un articol dintr-o revistă cu factor de impact este pus la I.1. Coeficientul m este luat deocamdată 1 pentru publicațiile găsite automat, deci punctajele de la I.2–I.8 pot doar să crească. Citările sunt orientative, calculate din datele platformei. Cărțile, capitolele și articolele pe care platforma nu le găsește sau nu le poate verifica, precum și activitățile, se declară de către candidat.",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d310"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d311"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d312"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d313"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d314"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d315"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d316"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d317"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d318"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d319"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d31a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d31b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d31c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d31d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d31e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d31f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d320"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d321"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d322"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d323"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d324"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d325"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d326"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d327"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fcfe1896ef0369d328"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d329"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d32a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d32b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d32c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d32d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d32e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d32f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d330"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d331"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d332"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d333"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d334"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d335"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d336"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d337"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d338"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbb4fdfe1896ef0369d339"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "C.1: punctaj I.1 (articole în reviste cu factor de impact)",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 10
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 15
+     },
+     {
+      "position": "HABIL",
+      "value": 15
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C.2: ponderea nucleului domeniului în punctajul I.1 (%)",
+    "indicatorIndices": [
+     29
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 30
+     },
+     {
+      "position": "HABIL",
+      "value": 30
+     }
+    ],
+    "contributesToTotal": false,
+    "shareOfIndicatorIndices": [
+     0
+    ]
+   },
+   {
+    "name": "C.3: ponderea nucleului și a domeniilor conexe în punctajul I.1 (%)",
+    "indicatorIndices": [
+     30
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 70
+     },
+     {
+      "position": "HABIL",
+      "value": 70
+     }
+    ],
+    "contributesToTotal": false,
+    "shareOfIndicatorIndices": [
+     0
+    ]
+   },
+   {
+    "name": "C.4: număr de articole (I.2) și de capitole în volume colective (I.6)",
+    "indicatorIndices": [
+     31,
+     32,
+     33,
+     34
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 10
+     },
+     {
+      "position": "HABIL",
+      "value": 10
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C.5: cărți cu cel mult 3 autori (o carte la o editură A1 valorează 2, una la o editură A2 valorează 1)",
+    "indicatorIndices": [
+     35,
+     37,
+     36,
+     38
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false,
+    "weights": {
+     "35": 2,
+     "37": 2
+    }
+   },
+   {
+    "name": "C.6: suma punctajelor I.1–I.8",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 100
+     },
+     {
+      "position": "HABIL",
+      "value": 100
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C.7: punctaj I.9 (citări)",
+    "indicatorIndices": [
+     14,
+     15
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 10
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 20
+     },
+     {
+      "position": "HABIL",
+      "value": 20
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C.8: număr de citări",
+    "indicatorIndices": [
+     39,
+     40
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 25
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "HABIL",
+      "value": 50
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C.9: punctaj total (I.1–I.19)",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 130
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 200
+     },
+     {
+      "position": "HABIL",
+      "value": 200
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C.10: condiție îndeplinită după abilitare",
+    "indicatorIndices": [
+     41
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Articole în reviste cu factor de impact (C.1–C.3)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 2
+      }
+     ]
+    }
+   },
+   {
+    "name": "Publicații (C.4–C.6)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 3
+      },
+      {
+       "criterion": 4
+      },
+      {
+       "criterion": 5
+      }
+     ]
+    }
+   },
+   {
+    "name": "Citări (C.7–C.8)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 6
+      },
+      {
+       "criterion": 7
+      }
+     ]
+    }
+   },
+   {
+    "name": "Punctaj total (C.9)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 8
+      }
+     ]
+    }
+   },
+   {
+    "name": "După abilitare (C.10, doar profesor)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 9
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  }
 ]

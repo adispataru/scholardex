@@ -241,6 +241,17 @@ class StiinteEducatiei2026ReportDefinitionTest {
         }
     }
 
+    @Test
+    void aCoordinatedBookScoresInEveryPublisherTier() {
+        // Every tier, the decimal one included: see SeedFormulaLiteralTypesTest for why that is worth pinning.
+        for (SeedReportDefinition report : List.of(edu, psy)) {
+            assertEquals(12.0, report.activity("I17", fields("Categorie_editura", "A1", "N_coordonatori", "2")), 1e-9);
+            assertEquals(4.0, report.activity("I17", fields("Categorie_editura", "A2", "N_coordonatori", "2")), 1e-9);
+            assertEquals(2.0, report.activity("I17", fields("Categorie_editura", "B", "N_coordonatori", "2")), 1e-9);
+            assertEquals(4.0, report.activity("I17", fields("Categorie_editura", "B")), 1e-9);
+        }
+    }
+
     // ------------------------------------------------------------------ indicators only this domain has
 
     @Test

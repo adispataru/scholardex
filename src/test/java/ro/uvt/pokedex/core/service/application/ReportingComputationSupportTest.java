@@ -349,6 +349,46 @@ class ReportingComputationSupportTest {
     }
 
     @Test
+    void shareCriterionIsThePercentageItsIndicatorsTakeOfTheOthers() {
+        // Comisia 25, C.2/C.3: points from core categories as a share of all the points of I.1.
+        Indicator total = new Indicator();
+        total.setId("I1");
+        Indicator core = new Indicator();
+        core.setId("I1_N");
+        List<Indicator> indicators = List.of(total, core);
+
+        AbstractReport.Criterion share = new AbstractReport.Criterion();
+        share.setIndicatorIndices(new ArrayList<>(java.util.List.of(1)));
+        share.setShareOfIndicatorIndices(new ArrayList<>(java.util.List.of(0)));
+        AbstractReport.Criterion sum = new AbstractReport.Criterion();
+        sum.setIndicatorIndices(new ArrayList<>(java.util.List.of(0)));
+
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(share, sum), indicators, Map.of("I1", 40.0, "I1_N", 12.0));
+
+        assertEquals(30.0, out.get(0), 0.0001); // 100 · 12 / 40
+        assertEquals(40.0, out.get(1), 0.0001); // an ordinary criterion next to it is a plain sum
+    }
+
+    @Test
+    void shareCriterionIsZeroWhenThereIsNothingToTakeAShareOf() {
+        Indicator total = new Indicator();
+        total.setId("I1");
+        Indicator core = new Indicator();
+        core.setId("I1_N");
+
+        AbstractReport.Criterion share = new AbstractReport.Criterion();
+        share.setIndicatorIndices(new ArrayList<>(java.util.List.of(1)));
+        share.setShareOfIndicatorIndices(new ArrayList<>(java.util.Arrays.asList(0, null, 7)));
+
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(share), List.of(total, core), Map.of("I1", 0.0, "I1_N", 0.0));
+
+        assertEquals(0.0, out.get(0), 0.0001);
+        assertFalse(out.get(0).isNaN());
+    }
+
+    @Test
     void computeCriterionScoresAppliesCriterionLevelCap() {
         // H68 slice 2: maxTotal clamps the aggregated (post-weight) criterion score.
         Indicator a = new Indicator();

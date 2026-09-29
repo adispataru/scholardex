@@ -26,6 +26,9 @@ import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
  * Collection, so for its indicators a journal placed in a domain category through the ESCI edition is
  * scored like one in SCIE/SSCI, and a publication year without an impact factor takes the last one
  * available. Every other indicator keeps the SCIE/SSCI-only, exact-year behaviour.</p>
+ *
+ * <p><b>COMISIA 25, 2026</b> ({@link Comisia25Rules}): an impact factor counts in every edition, and the
+ * latest one available is taken only for an article newer than the published data.</p>
  */
 @Service
 public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringService {
@@ -50,6 +53,9 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
     @Override
     public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         requestsCounter.increment();
+        if (Comisia25Rules.of(indicator).isPresent()) {
+            return scoreForComisia25(publication, indicator);
+        }
         boolean comisia28 = Comisia28Rules.of(indicator).isPresent();
         Domain domain = comisia28
                 ? Comisia28Rules.withEmergingSources(indicator.getDomain())
@@ -91,6 +97,30 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
         }
         return finalizeWithTelemetry(
                 createScore(scoreResult),
+                "publication",
+                publication == null ? null : publication.getId(),
+                forum == null ? null : forum.getPublicationName()
+        );
+    }
+
+    /**
+     * COMISIA 25, 2026 ({@link Comisia25Rules}), indicator I.1: the impact factor of the publication year in
+     * any category of the indicator's domain, whatever the edition. With the domain {@code ALL} that is "the
+     * journal has an impact factor"; with the core or the core-and-related domain it is the part of I.1 the
+     * share criteria C.2 and C.3 ask about.
+     */
+    private Score scoreForComisia25(ScoringPublicationReadModel publication, Indicator indicator) {
+        ScholardexForumView forum = publication == null ? null : lookupPort.getForum(publication.getForumId());
+        Score score = new Score();
+        if (publication != null && isArticleOrReview(publication)) {
+            score = impactFactorOfPublicationYear(
+                    indicator.getDomain(), forum, getAllowedYearsForPublication(publication, indicator))
+                    .orElseGet(Score::new);
+        } else if (publication != null) {
+            score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
+        }
+        return finalizeWithTelemetry(
+                score,
                 "publication",
                 publication == null ? null : publication.getId(),
                 forum == null ? null : forum.getPublicationName()

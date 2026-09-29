@@ -187,4 +187,18 @@ class ReportFormCarryOverTest {
         nothingStored.setIndicators(null);
         assertTrue(ReportFormCarryOver.apply(nothingStored, noCriteria).isEmpty());
     }
+
+    @Test
+    void theIndicatorsAShareCriterionIsMeasuredAgainstSurviveASave() {
+        // Set by a script (Comisia 25, C.2/C.3); the form has no input for it.
+        Criterion stored = criterion("C2", 1);
+        stored.setShareOfIndicatorIndices(new ArrayList<>(List.of(0)));
+        IndividualReport kept = report(List.of("i1", "i1n"), stored);
+        IndividualReport posted = report(List.of("i1", "i1n"), criterion("C2 renamed", 1));
+
+        Optional<String> refusal = ReportFormCarryOver.apply(kept, posted);
+
+        assertTrue(refusal.isEmpty());
+        assertEquals(List.of(0), posted.getCriteria().get(0).getShareOfIndicatorIndices());
+    }
 }

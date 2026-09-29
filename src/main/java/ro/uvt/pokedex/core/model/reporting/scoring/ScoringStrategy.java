@@ -67,6 +67,19 @@ public enum ScoringStrategy {
      */
     WOS_INDEXED,
     /**
+     * Sociologie 2026 (Comisia 25) I.2 — journal articles outside I.1: a Scopus journal returns the full
+     * 4 points as S ({@code category="SCOPUS"}), a journal in at least three recognised databases 2
+     * ({@code category="BDI3"}). An article whose journal has an impact factor is left to I.1
+     * (zeroReason SCORED_BY_STRICTER). Formula: {@code S * Coef_m / N}.
+     */
+    SOC_INDEXED_JOURNAL,
+    /**
+     * Sociologie 2026 (Comisia 25) I.9 — a citation is priced by the impact factor f of the CITING journal:
+     * S = 0,2 + 4·f, with f = 0 when the citing source has none (a book, a volume, a journal without impact
+     * factor), so every citation scores. Formula: {@code S * 2 / N}, N being the authors of the cited work.
+     */
+    CITING_IMPACT_FACTOR,
+    /**
      * H67 S4a: the Hirsch (h-index) aggregate. Unlike the others this is NOT a per-item {@code ScoringService} —
      * h-index is non-additive, so it is handled inline at the combine step (like {@link #GENERIC_COUNT}); no
      * {@code ScoringService} bean claims it. Carried as a strategy only so {@code IndicatorKind.HIndex} round-trips.

@@ -5836,5 +5836,1350 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d310"
+  },
+  "name": "Soc26_I1",
+  "description": "Indicatorul I.1: articole în reviste indexate ISI/Web of Science care au factor de impact (f). Se folosește factorul de impact din anul publicării; pentru un articol mai nou decât ultimele date publicate se ia cel mai recent factor disponibil. Contează orice ediție Web of Science (SCIE, SSCI, AHCI, ESCI). Fiecare articol aduce (2 + 4 × f) × 2 / n, unde n este numărul de autori. Contează orice categorie; încadrarea în nucleu sau în domeniile conexe este folosită doar de criteriile C.2 și C.3. O publicație se punctează la un singur indicator: platforma pune la I.1 orice articol dintr-o revistă cu factor de impact. De verificat de candidat: codul de înregistrare WOS al articolului, cerut de standard.",
+  "formula": "(2 + 4 * S) * 2 / N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "f3fd5a08e8a0fd14f58bf41f64c009e4e7366577428d2836e2fefa43f2e4a54e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d311"
+  },
+  "name": "Soc26_I2",
+  "description": "Indicatorul I.2: articole în reviste fără factor de impact. Revistă indexată în SCOPUS: 4 × m / n. Revistă indexată în cel puțin 3 baze de date internaționale recunoscute: 2 × m / n. Platforma poate verifica Web of Science, SCOPUS, DOAJ și ERIH Plus; un articol dintr-o revistă care ajunge la 3 baze de date prin celelalte din lista standardului (EBSCO, CEEOL, ProQuest, Index Copernicus etc.) se declară ca activitate. Lucrările din volume ISI Proceedings nu pot fi recunoscute automat și sunt punctate la I.8. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "formula": "S * Coef_m / N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "SOC_INDEXED_JOURNAL",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "fc09b3fb3423b5cfaeeb65f0b5a4e74dc314b77a2afc05b840f26006ade0b3f6",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d312"
+  },
+  "name": "Soc26_I2_decl",
+  "description": "Indicatorul I.2, articole declarate de candidat: articole în reviste indexate în cel puțin 3 baze de date internaționale recunoscute, pe care platforma nu le poate verifica. Fiecare aduce 2 × m / n. Bazele de date se trec în câmpul dedicat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; 2 * m / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2fe"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "0b438eefd5a3bf4907c671d5dcd104bbba7a1c78095dfcb50682258f8bac58eb",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d313"
+  },
+  "name": "Soc26_I3",
+  "description": "Indicatorul I.3: cărți (inclusiv manuale) publicate ca autor sau coautor, cu cel mult 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 10 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "formula": "(docType == 'bk' && N <= 3) ? 10 * Coef_m / N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "44db24ec7835f3423d88a3288bf201911d0da50f1ee4c0cd45fae3ce2a648934",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d314"
+  },
+  "name": "Soc26_I3_decl",
+  "description": "Indicatorul I.3, cărți declarate de candidat: cărți cu cel mult 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 10 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura != null && n <= 3) ? 10 * m / n : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2ff"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "a69c45e86a30dad24b9914e1922f9fb566e70c1b9d092227c2b0e9c6c0f7abc8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d315"
+  },
+  "name": "Soc26_I4",
+  "description": "Indicatorul I.4: cărți (inclusiv manuale) publicate în calitate de coautor, cu mai mult de 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 6 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "formula": "(docType == 'bk' && N > 3) ? 6 * Coef_m / N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "96dddeda5428d702a07444bd3af5eb45fb2e4f3f016fb49bfc132e0ed76f1c6a",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d316"
+  },
+  "name": "Soc26_I4_decl",
+  "description": "Indicatorul I.4, cărți declarate de candidat: cărți cu mai mult de 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 6 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura != null && n > 3) ? 6 * m / n : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2ff"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "a503be7929d5542f8dae362b9a3f8c70a34648f655f5d74b4ed456d6bf755d07",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d317"
+  },
+  "name": "Soc26_I5",
+  "description": "Indicatorul I.5: cărți coordonate (inclusiv manuale). Fiecare aduce 6 × m / n, unde n este numărul de coordonatori. Se declară de candidat, pentru că platforma nu distinge un coordonator de un autor. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 6 * m / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d300"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "345714ad2a4ffdd449b5b8ea18d90f197d69a2d332dff2767bd662ca8b0a408e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d318"
+  },
+  "name": "Soc26_I6",
+  "description": "Indicatorul I.6: capitole în volume colective. Capitol într-un volum apărut la o editură din Lista A1: 6 × m / n. Capitol într-un volum apărut la o editură din Lista A2: 3 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "formula": "docType == 'ch' ? (category == 'A1' ? 6 : 3) * Coef_m / N : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "2c521eeba63f12826ee22d62a618bf87676f51845a46309fff208a9f59770486",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d319"
+  },
+  "name": "Soc26_I6_decl",
+  "description": "Indicatorul I.6, capitole declarate de candidat: 6 × m / n pentru o editură din Lista A1; 3 × m / n pentru o editură din Lista A2 sau pentru un volum cuprins în cel puțin 6 biblioteci din worldcat.org. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Incadrare_editura != null) ? (Incadrare_editura == 'Lista A1' ? 6 : 3) * m / n : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2ff"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "70bb1ec799436263c36f522be9622e02366ac77ec01b9ae26deea44ea10ad956",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d31a"
+  },
+  "name": "Soc26_I7",
+  "description": "Indicatorul I.7: recenzie publicată într-o revistă indexată ISI/Web of Science: 3 × m / n. Recenzie într-o revistă indexată în cel puțin 3 baze de date recunoscute sau termen de minimum o pagină într-o enciclopedie ori într-un dicționar de specialitate: 1 × m / n. Se declară de candidat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Recenzie în revistă ISI/WoS' ? 3 : 1) * m / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d301"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "0521444f3611d32ed1d1a0e3ab71d4034973d151dd201e264de9e0740e10997b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d31b"
+  },
+  "name": "Soc26_I8",
+  "description": "Indicatorul I.8: lucrări publicate în volumele unor conferințe (cu ISSN sau ISBN) ori indexate în cel puțin una dintre bazele de date internaționale recunoscute. Fiecare aduce 1 × m / n. Coeficientul m (2, 1,5 sau 1, după limba și locul publicării) este luat deocamdată 1 pentru publicațiile găsite automat, pentru că platforma nu are încă limba publicației și țara editurii; punctajul poate doar să crească.",
+  "formula": "S * Coef_m / N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "INDEXED_PROCEEDINGS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "fc09b3fb3423b5cfaeeb65f0b5a4e74dc314b77a2afc05b840f26006ade0b3f6",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d31c"
+  },
+  "name": "Soc26_I8_decl",
+  "description": "Indicatorul I.8, lucrări declarate de candidat: lucrări în volumele unor conferințe, cu ISSN sau ISBN, care nu apar în platformă. Fiecare aduce 1 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; 1 * m / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d302"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d35a57e3f17505f1b3011dad45fb41516a443e258139ffe1a5cc921dbd2ae976",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d31d"
+  },
+  "name": "Soc26_I8_trad",
+  "description": "Indicatorul I.8, traduceri: traducerea unei lucrări fundamentale din domeniul științelor sociale, la o editură din Lista A2: 2 puncte; însoțită de aparat critic: 4 puncte. Se declară de candidat.",
+  "formula": "Tip == 'Cu aparat critic' ? 4 : 2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d303"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "98b5d2c8a930f0ea1c54f7524970aa6543cafe41721a8e4877ca4c25de51540d",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d31e"
+  },
+  "name": "Soc26_I9",
+  "description": "Indicatorul I.9: citări ale publicațiilor candidatului, fără autocitări. Fiecare citare aduce (0,2 + 4 × f) × 2 / n, unde f este factorul de impact al revistei care citează (0 când sursa nu are factor de impact: carte, volum, revistă fără factor) și n este numărul de autori ai lucrării citate. Valoarea este orientativă: se calculează din citările cunoscute platformei.",
+  "formula": "S * 2 / N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "policy": "CANDIDATE_ONLY",
+   "strategy": "CITING_IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "5b48a0742c2a5567987deb6f4b534142a91b2bfe49a967e7be3be88dd16e5fe8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d31f"
+  },
+  "name": "Soc26_I9_decl",
+  "description": "Indicatorul I.9, citări declarate de candidat: citări care nu apar în platformă și recenzii la cărțile candidatului, pe care standardul le asimilează citărilor. Fiecare aduce (0,2 + 4 × f) × 2 / n, cu f factorul de impact al sursei care citează (gol dacă nu are) și n numărul de autori ai lucrării citate. Câte o înregistrare pentru fiecare citare. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "fi = (IF_sursa == null || IF_sursa < 0) ? 0 : IF_sursa; n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (0.2 + 4 * fi) * 2 / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d304"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "7c165d4edcd12f6b05df507deaac87ed76c1a181e1df00d6df35e17b513ea41b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d320"
+  },
+  "name": "Soc26_I10",
+  "description": "Indicatorul I.10: reviste indexate ISI/Web of Science sau SCOPUS. Editor, redactor-șef sau redactor delegat: 5 puncte pe an. Membru în comitetul de redacție sau științific: 3 puncte pe an. Editor invitat: 2 puncte pentru fiecare număr special. Numărul de ani rezultă din anul de început și anul de sfârșit.",
+  "formula": "k = (N_numere_speciale == null || N_numere_speciale < 1) ? 1 : N_numere_speciale; Indexare == 'ISI/WoS sau SCOPUS' ? (Rol == 'Editor, redactor-șef sau redactor delegat' ? 5 * N_editii : (Rol == 'Membru în comitetul de redacție sau științific' ? 3 * N_editii : (Rol == 'Editor invitat al unui număr special' ? 2 * k : 0))) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d305"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "856ae82e3d37d0ddaf05565e7ab0c62cbb16397a683d6fc7565e4e5f034408aa",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d321"
+  },
+  "name": "Soc26_I11",
+  "description": "Indicatorul I.11: reviste indexate în trei baze de date recunoscute, altele decât ISI/Web of Science și SCOPUS. Editor: 2 puncte pe an. Membru în comitetul de redacție sau științific: 1 punct pe an. Editor invitat: 1 punct pentru fiecare număr special.",
+  "formula": "k = (N_numere_speciale == null || N_numere_speciale < 1) ? 1 : N_numere_speciale; Indexare == 'Trei baze de date recunoscute, altele decât ISI/WoS și SCOPUS' ? (Rol == 'Editor, redactor-șef sau redactor delegat' ? 2 * N_editii : (Rol == 'Membru în comitetul de redacție sau științific' ? 1 * N_editii : (Rol == 'Editor invitat al unui număr special' ? 1 * k : 0))) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d305"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f5ead11e88dc0cfb53ca0c7850021c2c4b2a70013925b9e222154446fdd29a85",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d322"
+  },
+  "name": "Soc26_I12",
+  "description": "Indicatorul I.12: colecții (serii de volume). Editură din Lista A1: coordonator 8 puncte, membru în comitetul științific 4 puncte. Editură din Lista A2: coordonator 4 puncte, membru 2 puncte. Punctajul se acordă pentru fiecare colecție.",
+  "formula": "Lista == 'Lista A1' ? (Rol == 'Coordonator' ? 8 : 4) : (Rol == 'Coordonator' ? 4 : 2)",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d306"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "1484ed8944bf323d8289b0d46fbf530814e11545c311daa09ea4313b81d9ace3",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d323"
+  },
+  "name": "Soc26_I13",
+  "description": "Indicatorul I.13: coordonarea sau participarea ca membru la un proiect de cercetare ori contract câștigat prin competiție (fără burse postdoctorale). Până la 10.000 EUR: coordonare 5, membru 2. Între 10.000 și 20.000 EUR: 10, respectiv 3. Între 20.000 și 30.000 EUR: 15, respectiv 4. Peste 30.000 EUR: coordonare 20. Pentru un membru al unui proiect de peste 30.000 EUR standardul nu dă o valoare; platforma acordă 4 puncte, ca la treapta anterioară. Bugetul se trece în EUR, la cursul BNR din data semnării contractului; un proiect fără buget completat este punctat la prima treaptă.",
+  "formula": "c = (Rol != null && Rol != 'Membru'); (Buget_eur == null || Buget_eur <= 10000) ? (c ? 5 : 2) : (Buget_eur <= 20000 ? (c ? 10 : 3) : (Buget_eur <= 30000 ? (c ? 15 : 4) : (c ? 20 : 4)))",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "e4130f4f6bf77f320bfe7c3da93f2f4f09f6daf72dcbca133994420adad384a3",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d324"
+  },
+  "name": "Soc26_I14",
+  "description": "Indicatorul I.14: profesor visiting la o universitate din primele 1000 (QS, Times Higher Education sau Shanghai), cu toate obligațiile din norma unui cadru didactic al instituției gazdă: 10 puncte. Cercetător invitat la o asemenea universitate, cel puțin o lună: 5 puncte. Stagiu Erasmus: 0,5 puncte.",
+  "formula": "Tip == 'Profesor visiting, universitate din primele 1000' ? 10 : (Tip == 'Cercetător invitat cel puțin o lună, universitate din primele 1000' ? 5 : (Tip == 'Stagiu Erasmus' ? 0.5 : 0))",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d307"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "dfb446816fa505d7e91b67f2485043a6b4aef5152df0e1835a655e54929c69e1",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d325"
+  },
+  "name": "Soc26_I15",
+  "description": "Indicatorul I.15: lucrări prezentate la conferințe științifice organizate în străinătate: 1 punct pentru fiecare conferință. Este nevoie de link la program sau de altă dovadă.",
+  "formula": "Loc == 'În străinătate' ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d308"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f2096c3cd0dcb67c93e7cbaf592a7dd94a083e8acb8d89c94b38abd2e91c9f06",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d326"
+  },
+  "name": "Soc26_I16",
+  "description": "Indicatorul I.16: lucrări prezentate la conferințe organizate în țară: 0,5 puncte pentru fiecare conferință. Este nevoie de link la program sau de altă dovadă.",
+  "formula": "Loc == 'În țară' ? 0.5 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d308"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "7109f6b4eba428a50160e7d690ca489077d0f6fa3ab26460a3f5cac8d56fd85a",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d327"
+  },
+  "name": "Soc26_I17",
+  "description": "Indicatorul I.17: studiu, individual sau colectiv, de evaluare și fundamentare de politici publice, realizat prin contract cu transfer de cunoaștere, pentru instituții publice, organizații naționale sau internaționale ori centre de cercetare: 2 × m. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); 2 * m",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d309"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f7b9afdee827da8aac8ce6c7c461fd66972acfcbec4b0bdb3df798318501baa4",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fcfe1896ef0369d328"
+  },
+  "name": "Soc26_I18",
+  "description": "Indicatorul I.18: participare în colectivele de implementare a granturilor, a contractelor ori a proiectelor de dezvoltare instituțională, socială și regională: 1 punct pentru fiecare grant sau contract.",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d30a"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d329"
+  },
+  "name": "Soc26_I19_1",
+  "description": "Indicatorul I.19: participare la un BIP (Blended Intensive Program) sau la o școală de vară: 1 punct pentru fiecare participare.",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d30b"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d32a"
+  },
+  "name": "Soc26_I19_2",
+  "description": "Indicatorul I.19: suport de curs sau de seminar de minimum 20 de pagini, cu ISBN sau diseminat pe internet: 4 × m / n. Capitol într-un asemenea suport: 1 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Suport de curs sau de seminar, minimum 20 de pagini' ? 4 : 1) * m / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d30c"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "47aee3e3a4e2091b24c311f23cc56356470ba6d9e6b629b24d77dbb50fd2f66e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d32b"
+  },
+  "name": "Soc26_I19_3",
+  "description": "Indicatorul I.19: stagiu postdoctoral cu o durată de cel puțin 6 luni: 2 puncte pentru fiecare stagiu.",
+  "formula": "2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d30d"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d32c"
+  },
+  "name": "Soc26_I19_4",
+  "description": "Indicatorul I.19: inițierea, coordonarea sau responsabilitatea unui program de studii universitare: 2 puncte pentru fiecare program. Se anexează o dovadă.",
+  "formula": "2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d30e"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d32d"
+  },
+  "name": "Soc26_I1_N",
+  "description": "Partea din I.1 care provine din reviste încadrate în NUCLEUL domeniului: articole în reviste indexate ISI/Web of Science care au factor de impact (f). Se folosește factorul de impact din anul publicării; pentru un articol mai nou decât ultimele date publicate se ia cel mai recent factor disponibil. Contează orice ediție Web of Science (SCIE, SSCI, AHCI, ESCI). Nu adaugă puncte la total; este numărătorul ponderii de la criteriul C.2. Dacă revista are mai multe categorii, este de ajuns ca una dintre ele să fie în nucleu.",
+  "formula": "(2 + 4 * S) * 2 / N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Sociologie 2026 - nucleu"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "f3fd5a08e8a0fd14f58bf41f64c009e4e7366577428d2836e2fefa43f2e4a54e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d32e"
+  },
+  "name": "Soc26_I1_NC",
+  "description": "Partea din I.1 care provine din reviste încadrate în nucleul domeniului sau în domeniile CONEXE: articole în reviste indexate ISI/Web of Science care au factor de impact (f). Se folosește factorul de impact din anul publicării; pentru un articol mai nou decât ultimele date publicate se ia cel mai recent factor disponibil. Contează orice ediție Web of Science (SCIE, SSCI, AHCI, ESCI). Nu adaugă puncte la total; este numărătorul ponderii de la criteriul C.3.",
+  "formula": "(2 + 4 * S) * 2 / N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Sociologie 2026 - nucleu și conexe"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "f3fd5a08e8a0fd14f58bf41f64c009e4e7366577428d2836e2fefa43f2e4a54e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d32f"
+  },
+  "name": "Soc26_C4_articole",
+  "description": "Numărul articolelor punctate la I.2 (reviste indexate în SCOPUS sau în cel puțin 3 baze de date recunoscute). Intră în criteriul C.4. Articolele punctate la I.1 nu sunt numărate aici, pentru că o publicație se declară la un singur indicator.",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "SOC_INDEXED_JOURNAL",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d330"
+  },
+  "name": "Soc26_C4_articole_decl",
+  "description": "Numărul articolelor declarate de candidat la I.2. Intră în criteriul C.4.",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2fe"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d331"
+  },
+  "name": "Soc26_C4_capitole",
+  "description": "Numărul capitolelor în volume colective punctate la I.6. Intră în criteriul C.4.",
+  "formula": "docType == 'ch' ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "eca2990f367f897feb072bd0cb8ce8ce20a49e1665732951e5315d217f905221",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d332"
+  },
+  "name": "Soc26_C4_capitole_decl",
+  "description": "Numărul capitolelor declarate de candidat la I.6. Intră în criteriul C.4.",
+  "formula": "(Tip == 'Capitol în volum colectiv' && Incadrare_editura != null) ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2ff"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d09d3cbfc05263b9dfc371d99a5610916332b67bce284155e927a67769ed8a25",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d333"
+  },
+  "name": "Soc26_C5_A1",
+  "description": "Numărul cărților cu cel mult 3 autori apărute la edituri din Lista A1. Intră în criteriul C.5, unde o carte A1 valorează cât două cărți A2.",
+  "formula": "(docType == 'bk' && N <= 3 && category == 'A1') ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "88834eb6ba5ad0c4297361e4d533a5a75df352af65521b05fd01877fa1e0cd85",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d334"
+  },
+  "name": "Soc26_C5_A2",
+  "description": "Numărul cărților cu cel mult 3 autori apărute la edituri din Lista A2. Intră în criteriul C.5.",
+  "formula": "(docType == 'bk' && N <= 3 && category == 'A2') ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "75ed7a9cfa963d45b2889921bc37085890de9cdaae3b4ccc95ec8e99e71bedb0",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d335"
+  },
+  "name": "Soc26_C5_A1_decl",
+  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A1. Intră în criteriul C.5.",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura == 'Lista A1' && n <= 3) ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2ff"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "7c156b1aed7aa54759fb563e14b54fbdb975b2c443a2958c0f99d1a7f4d4da07",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d336"
+  },
+  "name": "Soc26_C5_A2_decl",
+  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A2 sau cuprinse în cel puțin 6 biblioteci din worldcat.org. Intră în criteriul C.5.",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura != null && !(Incadrare_editura == 'Lista A1') && n <= 3) ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d2ff"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6472b8fd994f0aeb61f87cddd0cbf1028d38340849ee0223ff776f0287c86f06",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d337"
+  },
+  "name": "Soc26_C8",
+  "description": "Numărul citărilor, fără autocitări, cunoscute platformei. Intră în criteriul C.8. Valoare orientativă.",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "version": 2,
+  "kind": {
+   "policy": "CANDIDATE_ONLY",
+   "strategy": "CITING_IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "sociologie2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d338"
+  },
+  "name": "Soc26_C8_decl",
+  "description": "Numărul citărilor declarate de candidat. Intră în criteriul C.8.",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d304"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fdfe1896ef0369d339"
+  },
+  "name": "Soc26_C10",
+  "description": "Criteriul C.10, doar pentru profesor: după obținerea abilitării, candidatul coordonează cel puțin un doctorand, cu afiliere la o școală doctorală, sau a publicat un articol într-o revistă ISI/Web of Science din nucleul disciplinei ori din domeniile conexe. Se declară de candidat; o singură condiție îndeplinită este de ajuns.",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abbb4fbfe1896ef0369d30f"
+   }
+  },
+  "version": 2,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "maxPoints": 1,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

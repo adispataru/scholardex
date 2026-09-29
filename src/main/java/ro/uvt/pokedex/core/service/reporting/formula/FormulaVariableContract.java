@@ -148,6 +148,9 @@ public final class FormulaVariableContract {
         // calculateScientificProductionScoreDetailed's selector pass, which the citations paths do not
         // share — allowing Poz there would evaluate per-position item scores that never reach a total.
         if (kind instanceof IndicatorKind.Publications) {
+            // Comisia 25 (2026), definition [6]: the multiplication coefficient m of a publication — 2, 1.5 or
+            // 1 by language and place of publication. Bound lazily; 1 while the platform has no such data.
+            allowed.add("Coef_m");
             allowed.add("Poz");
             // FEAA point 6: author count restricted to Romania-affiliated authors, bound lazily by
             // ScientificProductionService only when the formula references it.

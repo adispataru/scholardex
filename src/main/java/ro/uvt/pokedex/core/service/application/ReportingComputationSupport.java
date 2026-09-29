@@ -198,7 +198,8 @@ public final class ReportingComputationSupport {
 
     /**
      * The one place criterion scores are aggregated: weighted sum over the criterion's indicators (H65 weights;
-     * absent → 1.0) clamped to the optional criterion cap (H68 {@code maxTotal}; null → no cap). The score lookup is
+     * absent → 1.0), turned into a percentage for a share criterion ({@code shareOfIndicatorIndices}), then
+     * clamped to the optional criterion cap (H68 {@code maxTotal}; null → no cap). The score lookup is
      * supplied by the caller so both the id-keyed and object-keyed paths share this logic.
      */
     private static Map<Integer, Double> computeCriterionScores(
@@ -232,6 +233,21 @@ public final class ReportingComputationSupport {
                         criterionScore += weight * score;
                     }
                 }
+            }
+            // Share criterion ("ponderea"): the weighted sum above becomes a percentage of the sum of the
+            // indicators it is a share of. Nothing to take a share of → 0, never NaN.
+            if (criterion.getShareOfIndicatorIndices() != null && !criterion.getShareOfIndicatorIndices().isEmpty()) {
+                double whole = 0.0;
+                for (Integer indicatorIndex : criterion.getShareOfIndicatorIndices()) {
+                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()
+                            || indicators.get(indicatorIndex) == null) {
+                        continue;
+                    }
+                    whole += effectiveScoreOverrides.containsKey(indicatorIndex)
+                            ? effectiveScoreOverrides.get(indicatorIndex)
+                            : scoreLookup.applyAsDouble(indicators.get(indicatorIndex));
+                }
+                criterionScore = whole > 0.0 ? 100.0 * criterionScore / whole : 0.0;
             }
             // H68 slice 2: criterion-level cap (plafon) — clamp the aggregated score. Null = no cap.
             if (criterion.getMaxTotal() != null) {

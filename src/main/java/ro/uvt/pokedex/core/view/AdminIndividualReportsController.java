@@ -166,7 +166,8 @@ public class AdminIndividualReportsController {
                 && criterion.getMaxTotal() == null
                 && (criterion.getWeights() == null || criterion.getWeights().isEmpty())
                 && (criterion.getMaxPercentOfTotal() == null || criterion.getMaxPercentOfTotal().isEmpty())
-                && (criterion.getThresholdCapAdditions() == null || criterion.getThresholdCapAdditions().isEmpty());
+                && (criterion.getThresholdCapAdditions() == null || criterion.getThresholdCapAdditions().isEmpty())
+                && (criterion.getShareOfIndicatorIndices() == null || criterion.getShareOfIndicatorIndices().isEmpty());
     }
 
     private void sanitize(java.util.Map<String, String> map) {
