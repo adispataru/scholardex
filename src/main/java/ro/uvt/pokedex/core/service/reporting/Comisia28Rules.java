@@ -14,7 +14,8 @@ import java.util.Set;
  * fizică și sport). The three domains share one indicator table; what differs is a handful of values, and
  * those are what the scorers read from here instead of carrying their own constants.
  *
- * <p>An indicator opts in through its flag ({@link Indicator#usesPsihologie2026()}). Without a flag the
+ * <p>An indicator opts in through the flag of its domain ({@link Indicator#usesPsihologie2026()},
+ * {@link Indicator#usesStiinteEducatiei2026()}). Without a flag the
  * scorers keep the frozen 2016 behaviour, so {@link #of} returning empty means "not a 2026 indicator".</p>
  *
  * <p>Common to every domain of the 2026 annex:</p>
@@ -28,7 +29,16 @@ import java.util.Set;
 public enum Comisia28Rules {
 
     /** p = 1,00; below p a journal still counts when it is above the median of its category (Q1/Q2). */
-    PSIHOLOGIE(1.0, true, Set.of("SCOPUS", "ERIH"), "report-data/psihologie-publishers-2026.csv");
+    PSIHOLOGIE(1.0, true, Set.of("SCOPUS", "ERIH"), "report-data/psihologie-publishers-2026.csv"),
+
+    /**
+     * p = 0,10 and no exception below it. The domain's list of recognised databases is longer than
+     * Psychology's; of the additions the platform holds membership data for DOAJ only. CrossRef, JSTOR,
+     * CEEOL and Ovid are on the list too and are <b>not</b> applied: read literally "indexed in CrossRef"
+     * is true of any journal that registers DOIs, which is a decision for the faculty, not for a default.
+     */
+    STIINTE_EDUCATIEI(0.10, false, Set.of("SCOPUS", "ERIH", "DOAJ"),
+            "report-data/stiinte-educatiei-publishers-2026.csv");
 
     private final double impactFactorThreshold;
     private final boolean aboveMedianException;
@@ -80,6 +90,9 @@ public enum Comisia28Rules {
         }
         if (indicator.usesPsihologie2026()) {
             return Optional.of(PSIHOLOGIE);
+        }
+        if (indicator.usesStiinteEducatiei2026()) {
+            return Optional.of(STIINTE_EDUCATIEI);
         }
         return Optional.empty();
     }

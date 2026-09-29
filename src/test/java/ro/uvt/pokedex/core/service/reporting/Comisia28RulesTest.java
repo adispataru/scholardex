@@ -44,6 +44,28 @@ class Comisia28RulesTest {
     }
 
     @Test
+    void theEducationalSciencesFlagSelectsItsOwnValues() {
+        Indicator indicator = new Indicator();
+        indicator.setStiinteEducatiei2026(true);
+
+        Comisia28Rules rules = Comisia28Rules.of(indicator).orElseThrow();
+
+        assertEquals(Comisia28Rules.STIINTE_EDUCATIEI, rules);
+        assertEquals(0.10, rules.impactFactorThreshold());
+        assertFalse(rules.aboveMedianException());
+        assertTrue(rules.recognisedDatabases().contains("DOAJ"));
+        assertFalse(rules.recognisedDatabases().contains("CROSSREF"), "left out until the faculty decides");
+    }
+
+    @Test
+    void educationalSciencesCountTheThresholdAndNothingBelowItWhateverTheQuartile() {
+        Comisia28Rules rules = Comisia28Rules.STIINTE_EDUCATIEI;
+        assertTrue(rules.countsOnStrictPath(0.10, "Q4"));
+        assertTrue(rules.countsOnStrictPath(2.4, null));
+        assertFalse(rules.countsOnStrictPath(0.09, "Q1"));
+    }
+
+    @Test
     void wideningAddsTheEsciEditionOfEveryCategoryAndLeavesTheStoredDomainAlone() {
         Domain stored = new Domain();
         stored.setId("Psychology");

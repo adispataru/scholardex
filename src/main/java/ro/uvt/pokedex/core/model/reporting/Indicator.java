@@ -137,6 +137,20 @@ public class Indicator {
     }
 
     /**
+     * Științe ale Educației 2026 — the same annex (OM 3019/2025, Comisia 28) with the values of the
+     * educational sciences domain: impact-factor threshold p = 0,10 without the above-median exception, DOAJ
+     * among the recognised databases, and the domain's own A2/B publisher lists. What the scorers do with it
+     * is in {@code Comisia28Rules}. {@code null}/false leaves the indicator alone. Nullable-only like the
+     * other 2026 flags.
+     */
+    private Boolean stiinteEducatiei2026;
+
+    /** True when this indicator applies the 2026 Comisia 28 rules of the educational sciences domain. */
+    public boolean usesStiinteEducatiei2026() {
+        return Boolean.TRUE.equals(stiinteEducatiei2026);
+    }
+
+    /**
      * RETIRED (2026-07-24): best-of-AIS/JIF journal classification is now universal in
      * {@code ComputerScienceJournalScoringService} — the 2016 standard's AIS-only regime applied to too
      * few years to be worth keeping distinguishable. The field stays only so persisted documents that

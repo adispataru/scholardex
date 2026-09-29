@@ -9,6 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H118` FV Științe ale Educației 2026 (OM 3.019/2025, COMISIA 28) — **BUILT 2026-09-29, prod pending.** Same annex
+  and indicator table as Psychology (`H115`); what differs is values, thirteen extra indicators and the criteria.
+  Decisions taken as defaults, all reversible by data: (1) the strict indicators I1A/I1B/I5 count journals in the
+  education categories (Education & Educational Research; Education, Scientific Disciplines; Education, Special;
+  Psychology, Educational — any edition) and every other Web of Science journal scores at I2/I6, the reading already
+  used for Psychology; of the 229 publications the 40 FPSE staff have in the platform 61 are articles in such
+  other-category journals, so this is THE question to put to the faculty (switching = pointing the indicators at
+  domain `ALL`); (2) CrossRef, JSTOR, CEEOL and Ovid are not applied as recognised databases; (3) activity types
+  are shared by both reports, so one declared entry scores in both. Engine: `Comisia28Rules.STIINTE_EDUCATIEI`
+  (p = 0,10, no above-median exception, DOAJ recognised, own A2/B publisher lists) behind the new
+  `Indicator.stiinteEducatiei2026` flag. Config: domain `Educational Sciences`, 42 `Edu26_*` indicators, 11 new
+  activity types, report with 10 criteria (C3 = books at A1/A2 publishers; C6 = the GOOGLE SCHOLAR h-index squared,
+  self-declared) and 4 perspectives; thresholds total 105 / 200 / 180. **Corrections to the Psychology report made
+  along the way:** grants count from 20.000 EUR upward (a rule of the annex missed in `H115`; `Buget_eur` must be
+  known, so a grant with no budget declared scores nothing), the twelve activity types are renamed "(Comisia 28, …)"
+  and the editorial one now takes the journal's impact factor so it can serve both thresholds. Both definitions are
+  pinned by tests that score declared activities through the real `ActivityReportingService`
+  (`SeedReportDefinition`). **Not computed:** N (principal-author count, ≠ 1 only from four), the C8 compensation
+  (9 of 12 points from Q1/Q2 articles), the two-per-edition proceedings cap ACROSS I8 and I9 (each is capped at two
+  on its own), whether a conference is international, the pre-PN II exemption from the grant floor. Prod: deploy,
+  then `h118_comisia28_2026.js --restart`, then select the report for the FPSE division.
 - [ ] `H117` FV Psihologie 2026 skipped the ESCI edition on its strict indicators — **FIXED 2026-09-29, prod pending.**
   Found while investigating Științe ale Educației, before any run existed. The 2026 annex spells "Web of Science Core
   Collection" as SCIE, SSCI, AHCI and ESCI, but `ImpactFactorJournalScoringService` admits only SCIE/SSCI category
@@ -24,7 +45,7 @@ Done history moved to `TASKS-done.md`.
   2023, AHCI). Data: `psihologie2026` set on `Psiho26_I1A`, `Psiho26_I1B`, `Psiho26_I5`; descriptions of I1A and I2
   updated. Local rescoring of 38 researchers: no score moved, no errors (nobody in the local corpus publishes in
   such journals); the proof on real data comes from the Psychology staff in prod. Prod: deploy, then
-  `h117_psihologie_2026_esci.js --restart`.
+  `h118_comisia28_2026.js --restart` (one script covers H117 and H118).
 - [ ] `H116` Admin report edit form wiped script-set fields on save — **FIXED and DEPLOYED 2026-09-29** (image `68d3f657`). The form
   binds the whole `IndividualReport` and saved it as-is, but has no inputs for `perspectives` nor for a criterion's
   `weights`, `maxPercentOfTotal` and `thresholdCapAdditions`, so ANY save through the page dropped them (seven
@@ -78,8 +99,8 @@ Done history moved to `TASKS-done.md`.
   = 1; Google Scholar (I12, I14), the preregistration bonus and I15–I27 are self-declared; WoS values are
   indicative (citation graph, no CPCI/BKCI); A1 is a publisher-level stand-in for a per-publication WorldCat rule;
   the C7 compensation (18 of 27 points via three principal-author AIS-Q1 articles) is not computed. **Left open:**
-  Științe ale Educației and Educație fizică și sport share the annex but have their own indicators (I8–I10, I18–I23,
-  I28–I32) and thresholds — not built; the admin report edit form does not round-trip `perspectives`/`weights`,
+  Științe ale Educației is built as `H118`; Educație fizică și sport (its own I32, author rules and thresholds)
+  is not; the admin report edit form does not round-trip `perspectives`/`weights`,
   so a report carrying them must not be saved through it. Prod: deploy, then load the definitions with
   `h115_psihologie_2026.js` and select the report for the FPSE division.
 - [ ] `H114` WoS accession numbers (UT) for the CNFIS exports — **BUILT 2026-09-24, prod pending.** The resolver

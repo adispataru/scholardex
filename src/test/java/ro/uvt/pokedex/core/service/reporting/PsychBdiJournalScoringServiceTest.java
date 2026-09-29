@@ -239,6 +239,71 @@ class PsychBdiJournalScoringServiceTest {
                 .isForumInEsci(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
+    // ── Științe ale Educației 2026 — stiinteEducatiei2026 flag ──
+
+    private Indicator educationIndicator2026() {
+        Domain domain = new Domain();
+        domain.setName("Educational Sciences");
+        domain.setWosCategories(new java.util.ArrayList<>(List.of("EDUCATION & EDUCATIONAL RESEARCH - SSCI")));
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        indicator.setStiinteEducatiei2026(true);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
+        return indicator;
+    }
+
+    @Test
+    void educationalSciencesLeaveToTheStrictIndicatorsEverythingFromTheirOwnThresholdUp() {
+        // IF 0.4 is below psychology's p and above educational sciences' p = 0.10.
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of(
+                rankingWithIf("EDUCATION & EDUCATIONAL RESEARCH - ESCI", 2024, 0.4, WoSRanking.Quarter.Q4)));
+
+        Score s = service.getScore(publication("ar", "2024"), educationIndicator2026());
+
+        assertEquals(0.0, s.getScore());
+        assertEquals("SCORED_BY_STRICTER", s.getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void educationalSciencesHaveNoAboveMedianException() {
+        // Q1 with IF 0.05: psychology's exception would hand it to I1; here it stays an I2 article.
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of(
+                rankingWithIf("EDUCATION & EDUCATIONAL RESEARCH - SSCI", 2024, 0.05, WoSRanking.Quarter.Q1)));
+
+        Score s = service.getScore(publication("ar", "2024"), educationIndicator2026());
+
+        assertEquals(3.05, s.getScore(), 1e-9);
+        assertEquals("WOS", s.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void educationalSciencesRecogniseDoaj() {
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
+        when(lookupPort.getForumIndexingDatabases("forum-1")).thenReturn(Set.of("DOAJ", "OPENALEX"));
+
+        Score s = service.getScore(publication("ar", "2024"), educationIndicator2026());
+
+        assertEquals(3.0, s.getScore(), 1e-9);
+        assertEquals("BDI", s.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void aJournalOfAnotherDomainIsScoredHereWhateverItsImpactFactor() {
+        // The platform's reading of "domenii de graniță": a WoS journal outside the domain's categories is
+        // not counted by the strict indicators and scores 3 + IF here.
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of(
+                rankingWithIf("ENVIRONMENTAL SCIENCES - SCIE", 2024, 3.3, WoSRanking.Quarter.Q2)));
+
+        Score s = service.getScore(publication("ar", "2024"), educationIndicator2026());
+
+        assertEquals(6.3, s.getScore(), 1e-9);
+        assertEquals("WOS", s.getCoreRankingEquivalent());
+    }
+
     @Test
     void unindexedVenueAndNonArticleGetNoScore() {
         when(lookupPort.getForum("forum-1")).thenReturn(forum());

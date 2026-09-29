@@ -3872,7 +3872,7 @@
    "$oid": "6abb5d97b866c60b6bfff10f"
   },
   "name": "Psiho26_I7",
-  "description": "Indicatorul I7 (aria A1): materiale curriculare, teste psihologice avizate de Colegiul Psihologilor din România, teste educaționale acreditate, softuri specializate pentru care există brevet de invenție sau drepturi de autor ori mărci înregistrate OSIM/ORDA, ca urmare a unui demers de inovare științifică. Fiecare realizare aduce 5 / n puncte, unde n este numărul de autori. Se declară la activități («Material curricular, test psihologic sau soft înregistrat»); fără numărul de autori completat se consideră n = 1.",
+  "description": "Indicatorul I7 (aria A1): materiale curriculare, teste psihologice avizate de Colegiul Psihologilor din România, teste educaționale acreditate, softuri specializate pentru care există brevet de invenție sau drepturi de autor ori mărci înregistrate OSIM/ORDA, ca urmare a unui demers de inovare științifică. Fiecare realizare aduce 5 / n puncte, unde n este numărul de autori. Se declară la activități («Material curricular, test sau soft înregistrat»); fără numărul de autori completat se consideră n = 1.",
   "formula": "(N_autori == null || N_autori < 1) ? 5 : 5/N_autori",
   "domain": {
    "$ref": "domains",
@@ -3884,7 +3884,7 @@
     "$oid": "6abb5d97b866c60b6bfff0f9"
    }
   },
-  "version": 1,
+  "version": 2,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
@@ -4030,8 +4030,8 @@
    "$oid": "6abb5d97b866c60b6bfff114"
   },
   "name": "Psiho26_I15",
-  "description": "Indicatorul I15 (aria A2): calitatea de redactor-șef (e = 3), editor asociat (e = 2) sau membru (e = 1) în comitetul editorial al unei reviste cu comitet științific și evaluare colegială, cu condiția ca revista să fi fost indexată în baza de date respectivă pe durata mandatului. Punctaj: 4 × e × m, cu m = 3 pentru reviste Web of Science cu IF de cel puțin 1,00 și m = 1 pentru reviste Web of Science cu IF mai mic sau pentru reviste dintr-o altă bază de date recunoscută. Se punctează o singură calitate pe revistă, cea mai favorabilă. Se declară la activități («Membru în comitetul editorial al unei reviste»); încadrarea revistei este declarată de candidat și se verifică de comisie.",
-  "formula": "e = Rol == 'Redactor-șef' ? 3 : (Rol == 'Editor asociat' ? 2 : 1); m = Indexare == 'WoS cu IF de cel puțin 1' ? 3 : 1; 4 * e * m",
+  "description": "Indicatorul I15 (aria A2): calitatea de redactor-șef (e = 3), editor asociat (e = 2) sau membru (e = 1) în comitetul editorial al unei reviste cu comitet științific și evaluare colegială, cu condiția ca revista să fi fost indexată în baza de date respectivă pe durata mandatului. Punctaj: 4 × e × m, cu m = 3 pentru reviste Web of Science cu IF de cel puțin 1,00 și m = 1 pentru reviste Web of Science cu IF mai mic sau pentru reviste dintr-o altă bază de date recunoscută. Se punctează o singură calitate pe revistă, cea mai favorabilă. Se declară la activități («Membru în comitetul editorial al unei reviste»), alegând indexarea și completând factorul de impact al revistei din perioada mandatului; fără factor de impact completat se consideră m = 1. Valorile sunt declarate de candidat și se verifică de comisie.",
+  "formula": "e = Rol == 'Redactor-șef' ? 3 : (Rol == 'Editor asociat' ? 2 : 1); m = (Indexare == 'Web of Science' && IF_revista != null && IF_revista >= 1) ? 3 : 1; 4 * e * m",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -4042,11 +4042,11 @@
     "$oid": "6abb5d97b866c60b6bfff0fb"
    }
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "be9d297b0abd0fe796519b44fd3c33b5e23c52891952fe68b4080e49afac5380",
+  "formulaHash": "1fc69f34e9c601ab89d2fe0dd134a584efe471ce14e3f3c9262426e75ddfb232",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4129,8 +4129,8 @@
    "$oid": "6abb5d97b866c60b6bfff117"
   },
   "name": "Psiho26_I24",
-  "description": "Indicatorul I24 (aria A3): conducerea granturilor de cercetare cu relevanță publică largă, cu 27 × m puncte pe grant — director de grant obținut prin competiție internațională (m = 3, 81 de puncte), director de grant obținut prin competiție națională (m = 1, 27 de puncte), coordonator partener într-un grant internațional (m = 1, 27 de puncte), coordonator partener într-un grant național (m = 0,333, aproximativ 9 puncte). Granturile se declară la activități («Grant Cercetare»), alegând rolul corespunzător. Praguri (criteriul C7): fără prag pentru Conferențiar, 27 pentru Profesor și pentru abilitare. Standardul permite compensarea a cel mult 18 din cele 27 de puncte prin trei articole ca autor principal în reviste Web of Science din zona Q1 după AIS, articole care atunci nu se mai numără la C1, C2 și C3; această compensare nu se calculează automat și rămâne în sarcina comisiei.",
-  "formula": "Rol == 'Director (proiect internațional)' ? 81 : (Rol == 'Director (proiect național)' ? 27 : (Rol == 'Coordonator local (proiect internațional)' ? 27 : (Rol == 'Coordonator local (proiect național)' ? 27 * 0.333 : 0)))",
+  "description": "Indicatorul I24 (aria A3): conducerea granturilor de cercetare cu relevanță publică largă, cu 27 × m puncte pe grant — director de grant obținut prin competiție internațională (m = 3, 81 de puncte), director de grant obținut prin competiție națională (m = 1, 27 de puncte), coordonator partener într-un grant internațional (m = 1, 27 de puncte), coordonator partener într-un grant național (m = 0,333, aproximativ 9 puncte). Granturile se declară la activități («Grant Cercetare»), alegând rolul corespunzător. Se punctează granturile care asigură o finanțare de cel puțin 20.000 EUR (sau echivalentul) entității la care candidatul este angajat. Platforma ia suma din proiectul legat, când există, altfel din bugetul declarat: alegeți intervalul de buget, iar pentru granturile sub 50.000 EUR completați și suma exactă în EUR; un grant fără buget declarat nu este punctat. Excepția pentru granturile finanțate înainte de PN II, la care plafonul nu se aplică, nu este tratată automat. Praguri (criteriul C7): fără prag pentru Conferențiar, 27 pentru Profesor și pentru abilitare. Standardul permite compensarea a cel mult 18 din cele 27 de puncte prin trei articole ca autor principal în reviste Web of Science din zona Q1 după AIS, articole care atunci nu se mai numără la C1, C2 și C3; această compensare nu se calculează automat și rămâne în sarcina comisiei.",
+  "formula": "(Buget_eur != null && Buget_eur >= 20000) ? (Rol == 'Director (proiect internațional)' ? 81 : (Rol == 'Director (proiect național)' ? 27 : (Rol == 'Coordonator local (proiect internațional)' ? 27 : (Rol == 'Coordonator local (proiect național)' ? 27 * 0.333 : 0)))) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -4141,11 +4141,11 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6d6626317bde2da7981acbf87ba4bc5e6343f6604d7941d84f5c60546827a474",
+  "formulaHash": "0ed3aa51f9db24c6bbfb69050d6e3bdf981baaa397944dd2780b37c73069aa4e",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4162,8 +4162,8 @@
    "$oid": "6abb5d97b866c60b6bfff118"
   },
   "name": "Psiho26_I25",
-  "description": "Indicatorul I25 (aria A3): 9 × m puncte pentru director sau coordonator partener al unui grant de dezvoltare instituțională (de tip FSE, FDI, Erasmus+) ori al unui grant de cercetare aplicativă cu relevanță specifică, de exemplu finanțat de o companie (m = 0,5 pentru Psihologie, adică 4,5 puncte), precum și pentru fellowship-uri (m = 0,5) sau chair-uri (m = 1, adică 9 puncte) obținute prin competiții internaționale. Se declară la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair»).",
-  "formula": "Tip == 'Chair' ? 9 : (Tip == 'Fellowship' ? 4.5 : (Rol != 'Membru' ? 4.5 : 0))",
+  "description": "Indicatorul I25 (aria A3): 9 × m puncte pentru director sau coordonator partener al unui grant de dezvoltare instituțională (de tip FSE, FDI, Erasmus+) ori al unui grant de cercetare aplicativă cu relevanță specifică, de exemplu finanțat de o companie (m = 0,5 pentru Psihologie, adică 4,5 puncte), precum și pentru fellowship-uri (m = 0,5) sau chair-uri (m = 1, adică 9 puncte) obținute prin competiții internaționale. Se declară la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair»). Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon. Bursele postdoctorale obținute prin proiecte instituționale și granturile instituționale interne nu se punctează.",
+  "formula": "Tip == 'Chair' ? 9 : (Tip == 'Fellowship' ? 4.5 : ((Rol != 'Membru' && (Buget_eur != null && Buget_eur >= 20000)) ? 4.5 : 0))",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -4174,11 +4174,11 @@
     "$oid": "6abb5d97b866c60b6bfff0fe"
    }
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a5b4239864998f5b62ea81ddf6d3a45369429a2df2b7333b240bab6c7b58406a",
+  "formulaHash": "8ec47baeaa66582713d86c508d95a973086334ffd608d5d1b05b480059c76562",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4195,8 +4195,8 @@
    "$oid": "6abb5d97b866c60b6bfff119"
   },
   "name": "Psiho26_I26_1",
-  "description": "Indicatorul I26.1 (aria A3): membru în echipa unui grant de cercetare cu relevanță publică largă, de tipul celor de la I24, cu 3 puncte pe grant (3 × m, m = 1). Se punctează granturile declarate la activități («Grant Cercetare») cu rolul «Membru».",
-  "formula": "Rol == 'Membru' ? 3 : 0",
+  "description": "Indicatorul I26.1 (aria A3): membru în echipa unui grant de cercetare cu relevanță publică largă, de tipul celor de la I24, cu 3 puncte pe grant (3 × m, m = 1). Se punctează granturile declarate la activități («Grant Cercetare») cu rolul «Membru». Se punctează granturile care asigură o finanțare de cel puțin 20.000 EUR (sau echivalentul) entității la care candidatul este angajat. Platforma ia suma din proiectul legat, când există, altfel din bugetul declarat: alegeți intervalul de buget, iar pentru granturile sub 50.000 EUR completați și suma exactă în EUR; un grant fără buget declarat nu este punctat. Excepția pentru granturile finanțate înainte de PN II, la care plafonul nu se aplică, nu este tratată automat.",
+  "formula": "(Rol == 'Membru' && (Buget_eur != null && Buget_eur >= 20000)) ? 3 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -4207,11 +4207,11 @@
     "$oid": "66d09cd3c325b4405b312d23"
    }
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "1994e1578670582d9fee77a5a76044bfe49e392df89a156a6bba27455c38ae03",
+  "formulaHash": "f63f50f09e5c91402a1e7e130eeda8757be6c6f008862a58740309738b0f6612",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4228,8 +4228,8 @@
    "$oid": "6abb5d97b866c60b6bfff11a"
   },
   "name": "Psiho26_I26_2",
-  "description": "Indicatorul I26.2 (aria A3): membru în echipa unui grant de dezvoltare instituțională sau de cercetare aplicativă, de tipul celor de la I25, cu 1,5 puncte pe grant (3 × m, m = 0,5). Se punctează înregistrările de la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair») cu rolul «Membru».",
-  "formula": "(Rol == 'Membru' && Tip != 'Chair' && Tip != 'Fellowship') ? 1.5 : 0",
+  "description": "Indicatorul I26.2 (aria A3): membru în echipa unui grant de dezvoltare instituțională sau de cercetare aplicativă, de tipul celor de la I25, cu 1,5 puncte pe grant (3 × m, m = 0,5). Se punctează înregistrările de la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair») cu rolul «Membru». Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon.",
+  "formula": "(Rol == 'Membru' && Tip != 'Chair' && Tip != 'Fellowship' && (Buget_eur != null && Buget_eur >= 20000)) ? 1.5 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -4240,11 +4240,11 @@
     "$oid": "6abb5d97b866c60b6bfff0fe"
    }
   },
-  "version": 1,
+  "version": 3,
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e73541781237b1367561a3cf23179842dd48c1332c2dea44d63e882818fd9e9e",
+  "formulaHash": "07dfb893c75086f96d238193d6df760e45cfad1893684bce956fad70cb2adc44",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4478,6 +4478,1354 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
   "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f401c"
+  },
+  "name": "Edu26_I1A",
+  "description": "Indicatorul I1A (aria A1, autor principal): articole sau review-uri in extenso în reviste indexate Web of Science Core Collection care NU condiționează publicarea de plata unei taxe și al căror factor de impact (IF) este cel puțin pragul p = 0,10 al domeniului Științe ale Educației. Fiecare articol aduce 3 + 3 × IF, cu IF din anul publicării sau, când acesta nu este încă disponibil, ultimul IF cunoscut. Se iau în considerare revistele încadrate în categoriile Web of Science de educație (Education & Educational Research; Education, Scientific Disciplines; Education, Special; Psychology, Educational), în oricare dintre edițiile SCIE, SSCI sau ESCI; revistele din ESCI au factor de impact începând cu ediția JCR 2023. Articolele din reviste Web of Science încadrate în alte categorii sunt tratate ca domenii de graniță și se punctează la I2. O revistă nu condiționează publicarea de taxă dacă nu percepe taxă sau dacă lasă autorul să aleagă (reviste hibride); platforma marchează ca «reviste cu taxă» revistele cu acces deschis integral care percep taxă de publicare. «Autor principal» înseamnă autor unic, prim autor sau autor corespondent; contribuția egală cu primul autor, declarată în articol, nu este detectată automat. Standardul împarte punctajul la N, numărul de autori principali, doar când aceștia sunt patru sau mai mulți; platforma consideră N = 1. Praguri (criteriul C1, împreună cu bonusul de preînregistrare): fără prag pentru Conferențiar, 3 pentru Profesor și pentru abilitare.",
+  "formula": "(!feeJournal && S >= 0.1) ? (3 + 3 * S) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "FIRST_OR_CORRESPONDING",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "6ed8441fa3f4114e6318c156c0b457c3dd68dc716cc122a6c1536711855c6153",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f401d"
+  },
+  "name": "Edu26_I1A_bonus",
+  "description": "Bonusul indicatorului I1A: 1 punct pentru fiecare articol empiric sau meta-analiză, publicat ca autor principal într-o revistă fără taxă de publicare, care îndeplinește cumulativ trei condiții — studiul a fost preînregistrat (Open Science Framework, AsPredicted sau o arhivă specializată), baza de date, sintaxa și celelalte materiale sunt disponibile în acces deschis, iar articolul conține linkurile care dovedesc cele două condiții. Bonusul nu poate fi detectat automat: se declară la activități («Articol preînregistrat, cu date deschise»), alegând tipul revistei «Fără taxă de publicare». Punctele se adună la I1A în criteriile C1, C2 și C3.",
+  "formula": "Tip_revista == 'Fără taxă de publicare' ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0f8"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "0f83b402839c575f7352f7e91b92e4745202ddc3d3a0c157fcf0eef7b590c37e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f401e"
+  },
+  "name": "Edu26_I1B",
+  "description": "Indicatorul I1B (aria A1, autor principal): aceleași condiții și aceeași formulă ca la I1A — 3 + 3 × IF pentru articole în reviste Web of Science din categoriile de educație, cu IF de cel puțin 0,10 — dar pentru revistele care CONDIȚIONEAZĂ publicarea de plata unei taxe, adică cele care nici nu publică gratuit, nici nu lasă autorul să aleagă. Platforma recunoaște aceste reviste după statutul de acces deschis integral cu taxă de publicare. I1B nu intră în criteriul C1, dar se adună cu I1A în criteriul C2. Praguri (C2 = I1A + I1B): 3 pentru Conferențiar, 6 pentru Profesor și pentru abilitare.",
+  "formula": "(feeJournal && S >= 0.1) ? (3 + 3 * S) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "FIRST_OR_CORRESPONDING",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "24ab6d9e7663cea43ecc3f919b466a29b42a9727b6c65927a1dff49aaadedd81",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f401f"
+  },
+  "name": "Edu26_I1B_bonus",
+  "description": "Bonusul indicatorului I1B: 1 punct pentru fiecare articol empiric sau meta-analiză preînregistrat, cu date și materiale în acces deschis și cu linkurile doveditoare în articol, publicat ca autor principal într-o revistă cu taxă de publicare. Se declară la activități («Articol preînregistrat, cu date deschise»), alegând tipul revistei «Cu taxă de publicare». Punctele se adună la I1B în criteriile C2 și C3.",
+  "formula": "Tip_revista == 'Cu taxă de publicare' ? 1 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0f8"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f1f1b017e2df7850de819a70796f217b368bca8cf583b7cc066d3d5f2fccb6f4",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4020"
+  },
+  "name": "Edu26_I2",
+  "description": "Indicatorul I2 (aria A1, autor principal): articole sau review-uri in extenso în reviste Web of Science cu IF sub pragul p = 0,10, ori în reviste indexate într-o altă bază de date internațională recunoscută pentru Științe ale Educației (Scopus, PsycInfo, ERIC, PubMed/Medline, ERIH Plus, DOAJ, EBSCO, ProQuest, Ovid/Informa, CrossRef, JSTOR, CEEOL). Punctaj: 3 + IF pentru revistele Web of Science, inclusiv cele din categorii din afara educației; 3 puncte pentru revistele Web of Science care nu aveau încă factor de impact în anul publicării (de exemplu reviste ESCI înainte de 2023) și pentru revistele din celelalte baze de date. Este suficientă o singură bază de date recunoscută. Platforma deține date de indexare pentru Scopus, ERIH Plus și DOAJ; o revistă prezentă numai în celelalte baze de date nu este recunoscută automat. CrossRef, JSTOR, CEEOL și Ovid nu sunt aplicate: citit literal, «indexat CrossRef» este adevărat pentru orice revistă care înregistrează DOI-uri, iar decizia aparține facultății. O lucrare se punctează o singură dată: articolele care îndeplinesc condițiile I1A sau I1B se numără acolo.",
+  "formula": "S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "FIRST_OR_CORRESPONDING",
+   "strategy": "PSYCH_BDI_JOURNAL",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4021"
+  },
+  "name": "Edu26_I3A",
+  "description": "Indicatorul I3A (aria A1): cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 16 × m puncte pe carte (m = 3 pentru A1, m = 1 pentru A2). Pentru Științe ale Educației punctajul nu se împarte la numărul de autori. Edituri A2: Polirom, Trei, Editura Didactică și Pedagogică. Categoria A1 este definită de standard pe fiecare publicație, prin prezența în cel puțin 25 de biblioteci universitare din state UE sau OCDE, conform WorldCat; platforma nu poate interoga WorldCat și consideră A1 editurile internaționale din lista Web of Science Master Book List. Încadrarea este orientativă: ruta complementară (tiraj, citări, premii ale Academiei Române) și verificarea WorldCat rămân în sarcina comisiei. Praguri (criteriul C3 = I3A + I4A): 20 pentru Conferențiar, 30 pentru Profesor și pentru abilitare.",
+  "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 16*S : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "7f1ae6fb9cc685e26c57758e6416d4a0224ee9247fa02f874891d98d2cfbc94d",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4022"
+  },
+  "name": "Edu26_I3B",
+  "description": "Indicatorul I3B (aria A1): cărți publicate ca autor sau coautor la edituri clasificate B, cu 16 × 0,5 = 8 puncte pe carte, fără împărțire la numărul de autori. Edituri B pentru Științe ale Educației: Editura Academiei Române, Humanitas, Editura Universității din București, Editura Universitară, Editura Universității «A. I. Cuza», Institutul European, Presa Universitară Clujeană, Paralela 45, Editura Universității de Vest, DPH. O carte apărută la o editură necuprinsă în liste poate fi încadrată prin ruta complementară, la decizia comisiei. Nu intră în criteriul C3, dar se adună în totalul A1.",
+  "formula": "category=='B' && docType=='bk' ? 16*S : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "470fa40c0c2e830f9b20eea6d61ddc994c4261abffc83c60e536853ee4d466dc",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4023"
+  },
+  "name": "Edu26_I4A",
+  "description": "Indicatorul I4A (aria A1): capitole în cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 4 × m puncte pe capitol (m = 3 pentru A1, m = 1 pentru A2), fără împărțire la numărul de autori. Încadrarea editurilor este cea de la I3A: A2 după lista standardului, A1 aproximat prin lista Web of Science Master Book List. Intră, împreună cu I3A, în criteriul C3.",
+  "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 4*S : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "b402f39f8e5c50e33656f0d3c01e967237c9f2b95ffb605acabca8fbaf5f9fee",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4024"
+  },
+  "name": "Edu26_I4B",
+  "description": "Indicatorul I4B (aria A1): capitole în cărți publicate ca autor sau coautor la edituri clasificate B, cu 4 × 0,5 = 2 puncte pe capitol, fără împărțire la numărul de autori. Lista editurilor B este cea de la I3B.",
+  "formula": "category=='B' && docType=='ch' ? 4*S : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PSYCH_BOOK",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "462f728bad604b42241ec6cc6d1b4c47e27a8ab0183962b3ae173e8fd3b8984e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4025"
+  },
+  "name": "Edu26_I5",
+  "description": "Indicatorul I5 (aria A1, coautor): articole sau review-uri in extenso în reviste Web of Science din categoriile de educație, cu IF de cel puțin 0,10, realizate în calitate de coautor. Fiecare articol aduce 3 + (3 × IF) / n, unde n este numărul total de autori. Coautor înseamnă orice alt caz decât autor unic, prim autor sau autor corespondent, astfel încât un articol se numără fie la I1A/I1B, fie la I5, niciodată la ambele. La I5 standardul nu face distincție între revistele cu și fără taxă de publicare.",
+  "formula": "S >= 0.1 ? (3 + (3 * S)/N) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "NOT_FIRST_NOR_CORRESPONDING",
+   "strategy": "IMPACT_FACTOR",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "776d858189acc41204deeee37ec3522f2304b03a32aebea7a68bb800427da85b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4026"
+  },
+  "name": "Edu26_I6",
+  "description": "Indicatorul I6 (aria A1, coautor): articole sau review-uri in extenso, realizate în calitate de coautor, în reviste Web of Science cu IF sub 0,10 sau din afara categoriilor de educație, ori în reviste dintr-o altă bază de date recunoscută. Punctaj: (3 + IF) / n, unde n este numărul total de autori; pentru revistele fără factor de impact IF este 0. Se aplică aceleași reguli de recunoaștere a bazelor de date ca la I2.",
+  "formula": "S/N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "NOT_FIRST_NOR_CORRESPONDING",
+   "strategy": "PSYCH_BDI_JOURNAL",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4027"
+  },
+  "name": "Edu26_I7",
+  "description": "Indicatorul I7 (aria A1): materiale curriculare, teste psihologice avizate de Colegiul Psihologilor din România, teste educaționale acreditate, softuri specializate pentru care există brevet de invenție sau drepturi de autor ori mărci înregistrate OSIM/ORDA, ca urmare a unui demers de inovare științifică. Fiecare realizare aduce 5 / n puncte, unde n este numărul de autori. Se declară la activități («Material curricular, test sau soft înregistrat»); fără numărul de autori completat se consideră n = 1.",
+  "formula": "(N_autori == null || N_autori < 1) ? 5 : 5/N_autori",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0f9"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "cda92ee5aff4cae70df7f16b68fc00b66a6f89bd387137350c9160546ba87d61",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4028"
+  },
+  "name": "Edu26_I8",
+  "description": "Indicatorul I8 (aria A1, autor principal): lucrări in extenso de tip proceedings, indexate Web of Science sau într-o altă bază de date recunoscută, publicate în volumele unor conferințe internaționale cu relevanță pentru domeniu, cu 1 punct pe lucrare. La I8 și I9 se pot puncta cumulat cel mult două contribuții pe ediție de conferință; platforma aplică plafonul de două lucrări pe ediție separat pentru fiecare dintre cei doi indicatori, deci un candidat cu lucrări și ca autor principal, și ca coautor la aceeași ediție poate primi mai mult decât permite standardul. Caracterul internațional al conferinței nu este verificat automat.",
+  "formula": "S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "FIRST_OR_CORRESPONDING",
+   "strategy": "INDEXED_PROCEEDINGS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "n": 2,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4029"
+  },
+  "name": "Edu26_I9",
+  "description": "Indicatorul I9 (aria A1, coautor): lucrări in extenso de tip proceedings, indexate Web of Science sau într-o altă bază de date recunoscută, publicate în volumele unor conferințe internaționale, realizate în calitate de coautor, cu 1 / n puncte pe lucrare, unde n este numărul total de autori. Se aplică plafonul de cel mult două contribuții pe ediție de conferință descris la I8.",
+  "formula": "S/N",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "role": "NOT_FIRST_NOR_CORRESPONDING",
+   "strategy": "INDEXED_PROCEEDINGS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "34851f1b0f183636fd7a7d1af7cb7bf308f1cf04e374d863a35a124d739a150b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "n": 2,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f402a"
+  },
+  "name": "Edu26_I10",
+  "description": "Indicatorul I10 (aria A1): autor sau coautor de rapoarte de analiză de politici ori strategii educaționale, cu 8 × m / n puncte pe raport, unde n este numărul de autori, m = 3 pentru rapoarte internaționale și m = 1 pentru rapoarte naționale. Un raport este internațional dacă este redactat la solicitarea și sub sigla unei organizații internaționale de prestigiu (UNICEF, UNESCO, Banca Mondială, OECD, Comisia Europeană), integral într-o limbă de circulație internațională, cu o analiză relevantă internațional. Un raport este național dacă este redactat la solicitarea și sub sigla unei organizații cu prestigiu național, cu o analiză relevantă la nivel național. Se declară la activități («Raport de analiză de politici sau strategii educaționale»); fără numărul de autori completat se consideră n = 1.",
+  "formula": "m = Nivel == 'Internațional' ? 3 : 1; n = (N_autori == null || N_autori < 1) ? 1 : N_autori; 8 * m / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4011"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "808d01d370e1cd3303e7f82e8033ed4a97ebc2ed057e602c224b86a21f7bd7ea",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f402b"
+  },
+  "name": "Edu26_I11",
+  "description": "Indicatorul I11 (aria A2): numărul de citări primite în Web of Science Core Collection, fără autocitări, cu 0,5 puncte pe citare. Standardul cere valoarea din Web of Science («Citing Articles without self-citations»). Platforma o estimează din graful propriu de citări: numără lucrările care citează și au apărut în reviste indexate în SCIE, SSCI, AHCI sau ESCI în anul publicării lor, excluzând lucrările la care candidatul este autor. Valoarea este orientativă și de regulă mai mică decât cea din Web of Science, deoarece indexurile de conferințe și de cărți nu sunt acoperite. Praguri (criteriul C5): 2 pentru Conferențiar, 4 pentru Profesor și pentru abilitare, adică 4, respectiv 8 citări.",
+  "formula": "0.5 * S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "policy": "CANDIDATE_ONLY",
+   "strategy": "WOS_INDEXED",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
+  },
+  "formulaHash": "f3bae96d0d7d787c52c1602dc897c19945a186b8626c6daac62317cf4f86c77d",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f402c"
+  },
+  "name": "Edu26_I12",
+  "description": "Indicatorul I12 (aria A2): citări în Google Scholar, altele decât cele de la I11, cu 0,05 puncte pe citare. Numărul de citări este diferența dintre totalul din Google Scholar și numărul de citări Web of Science. Platforma nu are acces la Google Scholar: valorile se declară la activități («Profil Google Scholar»), completând totalul citărilor Google Scholar și numărul citărilor Web of Science fără autocitări. Se păstrează o singură înregistrare, actualizată la nevoie; mai multe înregistrări s-ar aduna.",
+  "formula": "Citari_GS == null ? 0 : 0.05 * max(Citari_GS - (Citari_WoS == null ? 0 : Citari_WoS), 0)",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0fa"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f02eae6fcb88098eef60481cab744defd04124561c712481251dc55f1f6cb7a8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f402d"
+  },
+  "name": "Edu26_I13",
+  "description": "Indicatorul I13 (aria A2): indicele Hirsch din Web of Science Core Collection, ridicat la pătrat (h × h). Platforma calculează h din graful propriu de citări, restrâns la citările din reviste indexate în SCIE, SSCI, AHCI sau ESCI în anul lucrării care citează; autocitările sunt incluse, ca în raportul de citări Web of Science. Valoarea este orientativă și poate diferi de cea afișată de Web of Science. Pentru Științe ale Educației indicatorul nu are prag propriu — criteriul privind indicele Hirsch este C6, pe baza Google Scholar — dar punctele intră în totalul A2.",
+  "formula": "S * S",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "version": 1,
+  "kind": {
+   "source": "WOS_VENUE",
+   "excludeSelf": false,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$HIndex"
+  },
+  "formulaHash": "9dbc62977a827a0b077fc7591237b5443028cb34671afcb6f185610562e0f21f",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "stiinteEducatiei2026": true,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f402e"
+  },
+  "name": "Edu26_I14",
+  "description": "Indicatorul I14 (aria A2): indicele Hirsch din Google Scholar, ridicat la pătrat, cu m = 1 pentru Științe ale Educației (hGS × hGS). Platforma nu are acces la Google Scholar: valoarea se declară la activități («Profil Google Scholar», câmpul h_GS) și se verifică de comisie. Se păstrează o singură înregistrare, actualizată la nevoie. Punctajul afișat este pătratul indicelui: 16 înseamnă h = 4. Praguri (criteriul C6): 16 pentru Conferențiar, 49 pentru Profesor și pentru abilitare, adică h = 4, respectiv h = 7.",
+  "formula": "h_GS == null ? 0 : h_GS * h_GS",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0fa"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "69396769f0c1596595a9382db07b97be057de563863f69e6a000ea15625f0230",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f402f"
+  },
+  "name": "Edu26_I15",
+  "description": "Indicatorul I15 (aria A2): calitatea de redactor-șef (e = 3), editor asociat (e = 2) sau membru (e = 1) în comitetul editorial al unei reviste cu comitet științific și evaluare colegială, cu condiția ca revista să fi fost indexată în baza de date respectivă pe durata mandatului. Punctaj: 4 × e × m, cu m = 3 pentru reviste Web of Science cu IF de cel puțin 0,10 și m = 1 pentru reviste Web of Science cu IF mai mic sau pentru reviste dintr-o altă bază de date recunoscută. Se punctează o singură calitate pe revistă, cea mai favorabilă. Se declară la activități («Membru în comitetul editorial al unei reviste»), alegând indexarea și completând factorul de impact al revistei din perioada mandatului; fără factor de impact completat se consideră m = 1. Valorile sunt declarate de candidat și se verifică de comisie.",
+  "formula": "e = Rol == 'Redactor-șef' ? 3 : (Rol == 'Editor asociat' ? 2 : 1); m = (Indexare == 'Web of Science' && IF_revista != null && IF_revista >= 0.1) ? 3 : 1; 4 * e * m",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0fb"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "1070a4d2363d8de1d003317899701e994e309aa1ec7008b59ca9046dc5ab3c21",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4030"
+  },
+  "name": "Edu26_I16",
+  "description": "Indicatorul I16 (aria A2): comunicare științifică în plen (keynote speaker), cu 2 × m puncte pe conferință — 6 puncte pentru conferințe internaționale (m = 3) și 2 puncte pentru conferințe naționale (m = 1). O conferință este internațională dacă îndeplinește cel puțin două dintre condițiile standardului: organizator internațional, program și volum publicate într-o limbă de circulație internațională, lucrări desfășurate exclusiv într-o astfel de limbă. Se declară la activități («Keynote speaker, comunicare în plen»).",
+  "formula": "Nivel == 'Internațională' ? 6 : 2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0fc"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "269667ab38733eaf68905bab081898baa80575ecb9120e3e2e2e21c9acb9993f",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4031"
+  },
+  "name": "Edu26_I17",
+  "description": "Indicatorul I17 (aria A2): cărți coordonate la edituri clasificate A1, A2 sau B din domeniu, cu 8 × m / n puncte pe carte (m = 3 pentru A1, 1 pentru A2, 0,5 pentru B), unde n este numărul de coordonatori ai volumului. Se declară la activități («Carte coordonată»), cu categoria editurii și numărul de coordonatori; fără numărul de coordonatori se consideră n = 1.",
+  "formula": "m = Categorie_editura == 'A1' ? 3 : (Categorie_editura == 'A2' ? 1 : 0.5); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 8 * m / n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0fd"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f24e5a1cc267d0092b90011b8d1faa0872a01186473b38872acb8c7dbfb8495d",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4032"
+  },
+  "name": "Edu26_I18",
+  "description": "Indicatorul I18 (aria A2): membru în comitetul științific, referent științific pentru evaluarea și selecția lucrărilor, membru în comitetul de organizare sau coordonator de simpozion la o conferință, cu 1 × m puncte pe conferință — 3 puncte pentru conferințe internaționale, 1 punct pentru conferințe naționale. Se punctează o singură calitate pe conferință. Se declară la activități («Comitet științific, de organizare sau de evaluare la o conferință»), câte o înregistrare pe conferință.",
+  "formula": "Nivel == 'Internațională' ? 3 : 1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4012"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "79a5f452f9babc92cce830d2308949de85a73b91281c5e26d9ef7536dd7535b8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4033"
+  },
+  "name": "Edu26_I19",
+  "description": "Indicatorul I19 (aria A2): apartenența la asociații profesionale, cu 2 × m puncte pe asociație. Președinte sau membru în comitetul executiv: m = 3 pentru o asociație internațională (6 puncte), m = 1 pentru una națională (2 puncte). Membru: m = 1 pentru o asociație internațională (2 puncte), m = 0,5 pentru una națională (1 punct). Se declară la activități («Asociație profesională»).",
+  "formula": "Rol == 'Membru' ? (Nivel == 'Internațională' ? 2 : 1) : (Nivel == 'Internațională' ? 6 : 2)",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4013"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6fa6f94d29a8a111c3fa529e3fa884e772959bf2c7470a29ddda04fd61dd0356",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4034"
+  },
+  "name": "Edu26_I20",
+  "description": "Indicatorul I20 (aria A2): premii și distincții, cu 4 × m puncte pe premiu. Premii pentru activitatea științifică acordate de instituții sau asociații științifice ori profesionale internaționale: m = 3 (12 puncte); acordate de instituții naționale de prestigiu: m = 1 (4 puncte). Premii pentru activitatea didactică și rezultate de prestigiu privind promovarea țării și a învățământului românesc: m = 1 (4 puncte). Nu se includ granturile de deplasare și nici premierea articolelor. Se declară la activități («Premiu sau distincție»).",
+  "formula": "Tip == 'Științific internațional' ? 12 : 4",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4014"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6e36a5a9323b4c13dd0c3e3e2b5ee1d8fe27bd241c35a1fb6a3a76e7f7881fc1",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4035"
+  },
+  "name": "Edu26_I21",
+  "description": "Indicatorul I21 (aria A2): coordonator al unei colecții de carte la o editură clasificată A1, A2 sau B, cu 6 puncte pe colecție. Se declară la activități («Coordonator al unei colecții de carte»).",
+  "formula": "6",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4015"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "e7f6c011776e8db7cd330b54174fd76f7d0216b612387a5ffcfb81e6f0919683",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4036"
+  },
+  "name": "Edu26_I22",
+  "description": "Indicatorul I22 (aria A2): referent științific ad hoc pentru reviste cu comitet științific și evaluare colegială, cu 0,3 puncte pe articol evaluat pentru o revistă indexată Web of Science și 0,2 puncte pentru o revistă indexată într-o altă bază de date recunoscută. Se declară la activități («Referent științific ad hoc pentru reviste»), câte o înregistrare pe revistă, cu numărul de articole evaluate; fără număr completat se consideră un articol.",
+  "formula": "n = (N_articole == null || N_articole < 1) ? 1 : N_articole; (Indexare == 'Web of Science' ? 0.3 : 0.2) * n",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4016"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "51ebb75e13e4315d1846961931543ab19e3857c7443d659a5dfe9c3be4af5f02",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4037"
+  },
+  "name": "Edu26_I23",
+  "description": "Indicatorul I23 (aria A2): profesor asociat sau visiting scholar pentru cel puțin o lună, ori susținerea unei conferințe sau prelegeri în fața cadrelor didactice sau a doctoranzilor, cu 0,5 × m puncte pe instituție. La o universitate din TOP 500 URAP: m = 3 (1,5 puncte); la o altă universitate, ca urmare a unei invitații nominale: m = 1 (0,5 puncte); la asociații profesionale internaționale: m = 1; la asociații profesionale naționale: m = 0,5 (0,25 puncte). Se punctează un singur aspect pe universitate, iar schimburile Erasmus nu se includ. Se declară la activități («Profesor asociat, visiting scholar sau prelegere invitată»); încadrarea universității în TOP 500 URAP este declarată de candidat.",
+  "formula": "Tip == 'Universitate din TOP 500 URAP' ? 1.5 : (Tip == 'Asociație profesională națională' ? 0.25 : 0.5)",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4017"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "482ad6090b3700875ac8188f9ab63a330a09266e0eb121420c86b530e8cf129f",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4038"
+  },
+  "name": "Edu26_I24",
+  "description": "Indicatorul I24 (aria A3): conducerea granturilor de cercetare cu relevanță publică largă, cu 27 × m puncte pe grant — director de grant obținut prin competiție internațională (m = 3, 81 de puncte), director de grant obținut prin competiție națională (m = 1, 27 de puncte), coordonator partener într-un grant internațional (m = 1, 27 de puncte), coordonator partener într-un grant național (m = 0,333, aproximativ 9 puncte). Granturile se declară la activități («Grant Cercetare»), alegând rolul corespunzător. Se punctează granturile care asigură o finanțare de cel puțin 20.000 EUR (sau echivalentul) entității la care candidatul este angajat. Platforma ia suma din proiectul legat, când există, altfel din bugetul declarat: alegeți intervalul de buget, iar pentru granturile sub 50.000 EUR completați și suma exactă în EUR; un grant fără buget declarat nu este punctat. Excepția pentru granturile finanțate înainte de PN II, la care plafonul nu se aplică, nu este tratată automat. Intră, împreună cu I25, în criteriul C8, cu pragurile: fără prag pentru Conferențiar, 12 pentru Profesor și pentru abilitare. Standardul permite compensarea a cel mult 9 din cele 12 puncte prin puncte acumulate din articole în reviste Web of Science din Q1 și Q2, peste minimul de la C1 și C2; această compensare nu se calculează automat și rămâne în sarcina comisiei.",
+  "formula": "(Buget_eur != null && Buget_eur >= 20000) ? (Rol == 'Director (proiect internațional)' ? 81 : (Rol == 'Director (proiect național)' ? 27 : (Rol == 'Coordonator local (proiect internațional)' ? 27 : (Rol == 'Coordonator local (proiect național)' ? 27 * 0.333 : 0)))) : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "0ed3aa51f9db24c6bbfb69050d6e3bdf981baaa397944dd2780b37c73069aa4e",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4039"
+  },
+  "name": "Edu26_I25",
+  "description": "Indicatorul I25 (aria A3): 9 × m puncte pentru director sau coordonator partener al unui grant de dezvoltare instituțională (de tip FSE, FDI, Erasmus+) ori al unui grant de cercetare aplicativă cu relevanță specifică, de exemplu finanțat de o companie (m = 1 pentru Științe ale Educației, adică 9 puncte), precum și pentru fellowship-uri (m = 0,5, adică 4,5 puncte) sau chair-uri (m = 1, adică 9 puncte) obținute prin competiții internaționale. Se declară la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair»). Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon. Bursele postdoctorale obținute prin proiecte instituționale și granturile instituționale interne nu se punctează. Intră, împreună cu I24, în criteriul C8.",
+  "formula": "Tip == 'Chair' ? 9 : (Tip == 'Fellowship' ? 4.5 : ((Rol != 'Membru' && (Buget_eur != null && Buget_eur >= 20000)) ? 9 : 0))",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0fe"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d7f1193525f2ffe1130354f15f5351503fc75583a9bd0adff462e6d897b5fd09",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f403a"
+  },
+  "name": "Edu26_I26_1",
+  "description": "Indicatorul I26.1 (aria A3): membru în echipa unui grant de cercetare cu relevanță publică largă, de tipul celor de la I24, cu 3 puncte pe grant (3 × m, m = 1). Se punctează granturile declarate la activități («Grant Cercetare») cu rolul «Membru». Se punctează granturile care asigură o finanțare de cel puțin 20.000 EUR (sau echivalentul) entității la care candidatul este angajat. Platforma ia suma din proiectul legat, când există, altfel din bugetul declarat: alegeți intervalul de buget, iar pentru granturile sub 50.000 EUR completați și suma exactă în EUR; un grant fără buget declarat nu este punctat. Excepția pentru granturile finanțate înainte de PN II, la care plafonul nu se aplică, nu este tratată automat.",
+  "formula": "(Rol == 'Membru' && (Buget_eur != null && Buget_eur >= 20000)) ? 3 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "66d09cd3c325b4405b312d23"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "f63f50f09e5c91402a1e7e130eeda8757be6c6f008862a58740309738b0f6612",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f403b"
+  },
+  "name": "Edu26_I26_2",
+  "description": "Indicatorul I26.2 (aria A3): membru în echipa unui grant de dezvoltare instituțională sau de cercetare aplicativă, de tipul celor de la I25, cu 1,5 puncte pe grant (3 × m, m = 0,5). Se punctează înregistrările de la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair») cu rolul «Membru». Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon.",
+  "formula": "(Rol == 'Membru' && Tip != 'Chair' && Tip != 'Fellowship' && (Buget_eur != null && Buget_eur >= 20000)) ? 1.5 : 0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0fe"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "07dfb893c75086f96d238193d6df760e45cfad1893684bce956fad70cb2adc44",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f403c"
+  },
+  "name": "Edu26_I27_1",
+  "description": "Indicatorul I27.1 (aria A3): inițierea sau coordonarea unor programe de studii universitare sau postuniversitare, cu 2 puncte pe program. Se declară la activități («Program de studii inițiat sau coordonat»).",
+  "formula": "2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff0ff"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f403d"
+  },
+  "name": "Edu26_I27_2",
+  "description": "Indicatorul I27.2 (aria A3): publicarea unor cursuri universitare, cu 2 puncte pe curs. Nu se pot puncta aici contribuțiile deja incluse la indicatorii I3 sau I4. Cursurile tipărite se declară la activități («Publicarea unui curs universitar»); cele în format digital au un indicator separat.",
+  "formula": "2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "68233847cf66a42617d2b6c7"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f403e"
+  },
+  "name": "Edu26_I27_2_digital",
+  "description": "Indicatorul I27.2 (aria A3), cursuri în format digital: 2 puncte pentru fiecare curs universitar publicat în format electronic, cu aceeași restricție ca la cursurile tipărite — nu se punctează contribuțiile incluse deja la I3 sau I4. Se declară la activități («Publicarea unui curs universitar în format electronic»).",
+  "formula": "2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6820ca61fe404029dad193d0"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f403f"
+  },
+  "name": "Edu26_I27_3",
+  "description": "Indicatorul I27.3 (aria A3): introducerea unor discipline noi în planul de învățământ, cu 0,5 puncte pe disciplină. Se declară la activități («Disciplină nouă introdusă în planul de învățământ»).",
+  "formula": "0.5",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff100"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d2cbad71ff333de67d07ec676e352ab7f38248eb69c942950157220607c55e84",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4040"
+  },
+  "name": "Edu26_I27_4",
+  "description": "Indicatorul I27.4 (aria A3): conducător științific sau membru în comisia de îndrumare ori de evaluare a tezelor de doctorat, cu 0,5 puncte pentru fiecare doctorand sau comisie. Punctajul total al indicatorului este plafonat la 10 puncte. Se declară la activități («Conducere de doctorat, comisie de îndrumare sau de evaluare a tezei»).",
+  "formula": "0.5",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff101"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d2cbad71ff333de67d07ec676e352ab7f38248eb69c942950157220607c55e84",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "maxPoints": 10,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4041"
+  },
+  "name": "Edu26_I27_5",
+  "description": "Indicatorul I27.5 (aria A3): activități de popularizare a științei în comunitate, de exemplu podcasturi sau materiale audio-video publicate online, cu 1 punct pe activitate. Punctajul total al indicatorului este plafonat la 2 puncte. Se declară la activități («Popularizarea științei în comunitate»).",
+  "formula": "1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb5d97b866c60b6bfff102"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "maxPoints": 2,
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4042"
+  },
+  "name": "Edu26_I28",
+  "description": "Indicatorul I28 (aria A3): coordonarea unui centru sau laborator de cercetare recunoscut de Senatul universității sau de Consiliul științific al institutului de cercetare, cu 2 puncte pe centru. Se declară la activități («Coordonarea unui centru sau laborator de cercetare»).",
+  "formula": "2",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4018"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4043"
+  },
+  "name": "Edu26_I29",
+  "description": "Indicatorul I29 (aria A3): evaluator de proiecte sau membru în panel în competiții de granturi de cercetare, cu 1 × m puncte pe ediție de competiție — 3 puncte pentru competiții internaționale, 1 punct pentru competiții naționale. Se declară la activități («Evaluator de proiecte sau membru în panel»), câte o înregistrare pe ediție.",
+  "formula": "Nivel == 'Internațională' ? 3 : 1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f4019"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "79a5f452f9babc92cce830d2308949de85a73b91281c5e26d9ef7536dd7535b8",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4044"
+  },
+  "name": "Edu26_I30",
+  "description": "Indicatorul I30 (aria A3): membru în grupuri de experți, comisii sau consilii științifice, cu 1 × m puncte pe comisie — 3 puncte pentru organisme internaționale (de exemplu UNESCO, UNICEF), 1 punct pentru organisme naționale (CNATDCU, CNCS, ARACIS sau un grup de lucru constituit prin ordin de ministru). Se declară la activități («Membru în grup de experți, comisie sau consiliu științific»).",
+  "formula": "Nivel == 'Internațional' ? 3 : 1",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f401a"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "4770f92a9fa7c92589d23dc98846c4f3eb90b199828c3c4173b636bfd47e0b02",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8564ab83be698e2f4045"
+  },
+  "name": "Edu26_I31",
+  "description": "Indicatorul I31 (aria A3): furnizarea de servicii pentru beneficiarii externi ai instituției — cursuri sau programe de formare ori perfecționare profesională în domeniu —, cu 0,5 puncte pe curs avizat. Se declară la activități («Curs sau program de formare pentru beneficiari externi»).",
+  "formula": "0.5",
+  "domain": {
+   "$ref": "domains",
+   "$id": "Educational Sciences"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abb8563ab83be698e2f401b"
+   }
+  },
+  "version": 1,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "d2cbad71ff333de67d07ec676e352ab7f38248eb69c942950157220607c55e84",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },

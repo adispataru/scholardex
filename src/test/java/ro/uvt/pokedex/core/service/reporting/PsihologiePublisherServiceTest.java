@@ -100,4 +100,18 @@ class PsihologiePublisherServiceTest {
         assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, null));
         assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "  "));
     }
+
+    @Test
+    void educationalSciencesHaveTheirOwnLists() {
+        PsihologiePublisherService s = serviceWith();
+        // Didactică și Pedagogică is A2 for educational sciences and B for psychology.
+        assertEquals("A2", s.tierFor2026(Comisia28Rules.STIINTE_EDUCATIEI, "Editura Didactică și Pedagogică R.A."));
+        assertEquals("B", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Didactică și Pedagogică R.A."));
+        assertEquals("B", s.tierFor2026(Comisia28Rules.STIINTE_EDUCATIEI, "Editura Paralela 45, Pitești"));
+        assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Paralela 45, Pitești"));
+        // ASCR and Sper are on the psychology lists only.
+        assertNull(s.tierFor2026(Comisia28Rules.STIINTE_EDUCATIEI, "Editura ASCR"));
+        assertNull(s.tierFor2026(Comisia28Rules.STIINTE_EDUCATIEI, "Editura Sper"));
+        assertEquals("A2", s.tierFor2026(Comisia28Rules.STIINTE_EDUCATIEI, "Polirom"));
+    }
 }

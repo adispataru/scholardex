@@ -462,6 +462,8 @@ public class AdminViewController {
         private Boolean feaaBookTiers2026;
         /** Psihologie 2026 — Comisia 28 rules flag; hidden-input round-trip like {@link #workshopCategory2026}. */
         private Boolean psihologie2026;
+        /** Științe ale Educației 2026 — Comisia 28 rules flag; hidden-input round-trip like the others. */
+        private Boolean stiinteEducatiei2026;
 
         static IndicatorForm fromIndicator(Indicator indicator) {
             IndicatorForm form = new IndicatorForm();
@@ -485,6 +487,7 @@ public class AdminViewController {
             form.economicsM2026 = indicator.getEconomicsM2026();
             form.feaaBookTiers2026 = indicator.getFeaaBookTiers2026();
             form.psihologie2026 = indicator.getPsihologie2026();
+            form.stiinteEducatiei2026 = indicator.getStiinteEducatiei2026();
             return form;
         }
 
@@ -507,6 +510,7 @@ public class AdminViewController {
             indicator.setEconomicsM2026(economicsM2026);
             indicator.setFeaaBookTiers2026(feaaBookTiers2026);
             indicator.setPsihologie2026(psihologie2026);
+            indicator.setStiinteEducatiei2026(stiinteEducatiei2026);
             return indicator;
         }
     }
