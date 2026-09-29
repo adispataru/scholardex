@@ -48,6 +48,19 @@ Done history moved to `TASKS-done.md`.
   tasks completed (Grăvilă's ATLAS id excluded; his two other Scopus ids hold no documents). Left: one bootstrap run
   (prints DONE), score-provisional on the Fizică department (FV Fizică 2026), tell management perspectiva d is
   self-entered.
+  **2026-09-29 — FPSE, FSAS, FMT (structure only; decision: each researcher triggers their own syncs, no tasks queued).**
+  Sheets: `FPSE_Lista_ORCID.xlsx` (3 sheets = Psihologie 33 / DSE 16 / DPPD 24, with emails + positions),
+  `2026_ORCID ID_CD_FSAS.xlsx` (39, names + ORCID only), `FMT_Conturi Orcid_titulari.xlsx` (59, positions + ORCID, no
+  emails). Emails/positions for FSAS from the two staff pages (titles parse cleanly, 39 = 39); FMT emails by
+  matching sheet names to the site's e-uvt addresses on name tokens (the table keeps name and email in separate
+  columns). Scopus ids: ORCID person API + OpenAlex, then Scopus Author Search in-pod by `ORCID()` and, conservatively,
+  by `AUTHLASTNAME AND AUTHFIRST AND AF-ID(60000434)` (single full-name hit only) → FPSE 62/73, FSAS 29/39, FMT 2/59.
+  Ops files (rke2-overmind/feaa-2026-scripts): `fpse_staff_2026-09.csv` (73), `fsas_staff_2026-09.csv` (38),
+  `fmt_staff_2026-09.csv` (54), `h111_orcid_stamp_fpse_fsas_fmt.js` (stamps ORCID only where absent, queues nothing),
+  `staff_pending_confirmation_2026-09.csv` (6 people whose e-uvt address is unconfirmed — do NOT import as is).
+  Dry-run on the local app: 165 rows, 3 faculties, 7 departments, 0 skipped; script idempotent. Five of them already
+  have prod accounts (ids agree). Open: the 6 emails; which fișă each faculty sees (only FV Psihologie 2016 exists —
+  Anexa 28 also covers Științe ale Educației but with p = 0.10, our report uses p = 1.00; FSAS and FMT have none).
 - [ ] `H112` Deadlines on the core → scopus-python calls — **BUILT 2026-09-24, prod pending.** Same class as the DBLP
   (452a6266) and OpenAlex (f935d97a) holes: `scopusPythonClient` had no connector timeouts and the three scheduler
   calls (author-works, citations by-eid, by-title) `block()`ed without `.timeout()`. Now connect 10 s / idle-read
