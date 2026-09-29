@@ -9,8 +9,8 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H125` Coefficient m from the language and place of publication (Comisia 25) — **BUILT 2026-09-29, prod
-  pending.** Replaces the provisional m = 1 of `H124`. **Data:** OpenAlex gives the language of a work
+- [ ] `H125` Coefficient m from the language and place of publication (Comisia 25) — **BUILT and DEPLOYED
+  2026-09-29** (image `1cadccb2`, with `H124`). Replaces the provisional m = 1 of `H124`. **Data:** OpenAlex gives the language of a work
   (`language`, ISO 639-1) and, on the SOURCE entity only, the country of the venue (`country_code`; the source
   embedded in a work does not carry it — checked against the live API). The sync now stores the language on
   `openalex.publication_facts` (a payload without one never erases a stored one) and asks `/sources` once per
@@ -30,7 +30,13 @@ Done history moved to `TASKS-done.md`.
   and the description of the report are brought up to date by `h124_sociologie_2026.js` (regenerated; safe to
   run again after an earlier run). **Not done:** no scheduled sweep — the sync covers new works and the backfill
   is a one-off.
-- [ ] `H124` FV Sociologie și Asistență Socială 2026 (OM 3.019/2025, COMISIA 25) — **BUILT 2026-09-29, prod pending.**
+- [ ] `H124` FV Sociologie și Asistență Socială 2026 (OM 3.019/2025, COMISIA 25) — **BUILT, DEPLOYED and LOADED in
+  prod 2026-09-29.** Image `1cadccb2` (GitHub `deploy-prod`: helm `--wait`, STATUS deployed, revision 71, 17:24
+  UTC; read from the deploy log, the cluster was not queried). `h124_sociologie_2026.js` run by the user with
+  `--restart`: 18 activity types, 2 domains, 42 indicators (14 flagged) and the report created, 0 unresolved
+  references, indicators in the committed order; report id `6abbfc470faa5f42002d72e0`, FSAS division
+  `6abb581c2fb0d9482997faec`. **Left for the user:** select the report for the FSAS division; the faculty's
+  answers on the readings listed below.
   One report for the whole FSAS faculty: the annex treats Asistență Socială as part of the group "Sociologie"
   (same core/related categories, same column of the A2 publisher list, same thresholds). 42 indicators `Soc26_*`
   (29 that score, 13 that only count or take a share), 18 activity types "(Comisia 25, …)", «Grant Cercetare»
