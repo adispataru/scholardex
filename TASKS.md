@@ -9,6 +9,24 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H132` Staff import reads quoted fields; FEAA starts with three test users — **BUILT 2026-09-30, prod
+  pending.** Two of the four FEAA departments have commas in their names ("Finanțe, Sisteme Informaționale și
+  Modelare pentru Afaceri", "Marketing, Afaceri Internaționale și Economie") and the staff import split every
+  line at every comma, so such a row came out with shifted columns. **Fix:** `StaffImportService.splitCsvLine`
+  reads a field between double quotes as one value (a quote inside it is written twice), for the header too;
+  a byte order mark in front of the header is dropped; a row whose quotes do not match is skipped with its own
+  message and the rest of the file is imported. Files without quotes are read as before. The help text on
+  `/admin/divisions` shows the quoted form. **FEAA:** prod has the reports (FEAA 2016, FEAA 2026) and no FEAA
+  faculty. Test users chosen by Adrian, all professors in the Finance department: Cosmin Eugen Enache, Flavia
+  Barna, Marilen Gabriel Pirtea. Identifiers from public sources only: the ORCID records of Enache and Pirtea
+  carry a Scopus Author ID asserted by Scopus; Flavia Barna's record has none and OpenAlex gives none either,
+  so her Scopus id is empty in the file. Ops files (rke2-overmind/feaa-2026-scripts):
+  `feaa_test_users_2026-09.csv`, `h132_orcid_stamp_feaa_test_users.js` (stamps only where the profile has no
+  ORCID, queues nothing). **Dry run on the local app:** 3 rows, 1 faculty, 1 department with its full name, 3
+  professors, 3 affiliations; a second import and a second run of the script changed nothing; the records were
+  removed afterwards. **Order in prod:** deploy the image, import the file at `/admin/divisions` (institution
+  `inst-uvt`), run the script, select FEAA 2026 for the new faculty. **Open:** Flavia Barna's Scopus id; the
+  other staff of the four departments (the site lists 136, without academic rank).
 - [ ] `H131` Citation counts with a recorded source — **OPEN, from the compliance audit of 2026-09-29 (question 8).**
   The canonical `citedByCount` is the maximum over Scopus and OpenAlex (`CanonicalGraphBuilder.buildPublicationFact`,
   `ScholardexPublicationCanonicalizationService`, `OpenAlexCanonicalizationService.enrichForeignPublication`,
@@ -81,7 +99,9 @@ Done history moved to `TASKS-done.md`.
   shows on the report page but not in the exported file. (7) **OpenAlex API key in the app** (16): the Java
   client sends only `mailto`; send the key the Python scripts use (`OPENALEX_API_KEY`, from the secret, never
   from a committed file), and handle 429 / Retry-After instead of failing the whole sync.
-- [ ] `H127` Declarations of principal authorship, approved by a head — **BUILT 2026-09-29, prod pending.** From the
+- [ ] `H127` Declarations of principal authorship, approved by a head — **BUILT and DEPLOYED 2026-09-29** (image
+  `05218a47`, GitHub `deploy-prod`: STATUS deployed, revision 74, 20:02 UTC; read from the deploy log, the
+  cluster was not queried). From the
   first feedback on FV Psihologie 2026 (Andrei Rusu, director of the Psychology department): most of his papers
   as corresponding or co-first author counted as co-author ones. **Cause:** the annex (Comisia 28) names five
   kinds of principal author — single, first, corresponding, equal contribution with the first author, and last

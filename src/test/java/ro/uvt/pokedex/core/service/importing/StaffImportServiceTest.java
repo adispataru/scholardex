@@ -282,6 +282,112 @@ class StaffImportServiceTest {
         assertNull(aff.getValidTo());
     }
 
+    // --- quoted fields: a name may hold a comma ---
+
+    private static final String FINANCE = "Finanțe, Sisteme Informaționale și Modelare pentru Afaceri";
+
+    @Test
+    void aQuotedDepartmentNameKeepsItsCommas() throws Exception {
+        StaffImportService.StaffImportResult r = service.importStaffFromCsv(csv(HEADER
+                + "Facultatea de Economie,\"" + FINANCE + "\",cosmin.enache@e-uvt.ro,Enache,Cosmin,Prof. univ. dr.,123\n"),
+                INST);
+
+        ArgumentCaptor<Department> department = ArgumentCaptor.forClass(Department.class);
+        verify(departmentRepository).save(department.capture());
+        assertEquals(FINANCE, department.getValue().getName());
+        assertEquals(1, r.usersCreated);
+        assertTrue(r.skipped.isEmpty(), () -> String.join(" ", r.skipped));
+    }
+
+    @Test
+    void rowsOfTheSameQuotedDepartmentShareIt() throws Exception {
+        StaffImportService.StaffImportResult r = service.importStaffFromCsv(csv(HEADER
+                + "Facultatea de Economie,\"" + FINANCE + "\",a@e-uvt.ro,Enache,Cosmin,Prof. univ. dr.,\n"
+                + "Facultatea de Economie, \"" + FINANCE + "\" ,b@e-uvt.ro,Barna,Flavia,Prof. univ. dr.,\n"),
+                INST);
+
+        assertEquals(1, r.divisionsCreated);
+        assertEquals(1, r.departmentsCreated, "blanks around the quotes are not part of the name");
+        assertEquals(2, r.usersCreated);
+    }
+
+    @Test
+    void aQuoteInsideAQuotedNameIsWrittenTwice() throws Exception {
+        service.importStaffFromCsv(csv(HEADER
+                + "\"Facultatea \"\"X\"\", Timișoara\",Dept,a@e-uvt.ro,Doe,John,Lect. Dr.,\n"), INST);
+
+        ArgumentCaptor<OrgDivision> division = ArgumentCaptor.forClass(OrgDivision.class);
+        verify(orgDivisionRepository).save(division.capture());
+        assertEquals("Facultatea \"X\", Timișoara", division.getValue().getName());
+    }
+
+    @Test
+    void everyColumnMayBeQuotedTheHeaderIncluded() throws Exception {
+        // What a spreadsheet writes when asked to quote all fields, with its byte-order mark in front.
+        String quotedHeader = "\uFEFF\"Faculty\",\"Department\",\"Email\",\"Last Name\",\"First Name\",\"Position\",\"Id SCOPUS\"\n";
+        StaffImportService.StaffImportResult r = service.importStaffFromCsv(csv(quotedHeader
+                + "\"Fac\",\"Dept\",\"a@e-uvt.ro\",\"Doe\",\"John\",\"Conf. univ. dr.\",\"111;222\"\n"), INST);
+
+        assertEquals(1, r.usersCreated);
+        ArgumentCaptor<User> user = ArgumentCaptor.forClass(User.class);
+        verify(userService).createUser(user.capture());
+        assertEquals(List.of("111", "222"), user.getValue().getResearcherProfile().getScopusId());
+        assertEquals(Position.CONF_UNIV, user.getValue().getResearcherProfile().getPosition());
+    }
+
+    @Test
+    void aQuoteThatIsNeverClosedSkipsTheRowAndTheRestIsImported() throws Exception {
+        StaffImportService.StaffImportResult r = service.importStaffFromCsv(csv(HEADER
+                + "Fac,\"Dept, never closed,a@e-uvt.ro,Doe,John,Lect. Dr.,\n"
+                + "Fac,Dept,b@e-uvt.ro,Roe,Jane,Lect. Dr.,\n"), INST);
+
+        assertEquals(1, r.usersCreated);
+        assertEquals(1, r.skipped.size());
+        assertTrue(r.skipped.getFirst().startsWith("Row 2:"), r.skipped.getFirst());
+        assertTrue(r.skipped.getFirst().contains("quot"), r.skipped.getFirst());
+    }
+
+    @Test
+    void textAfterAClosingQuoteSkipsTheRow() throws Exception {
+        StaffImportService.StaffImportResult r = service.importStaffFromCsv(csv(HEADER
+                + "Fac,\"Dept, A\"B,a@e-uvt.ro,Doe,John,Lect. Dr.,\n"), INST);
+
+        assertEquals(0, r.usersCreated);
+        assertEquals(1, r.skipped.size());
+    }
+
+    @Test
+    void aQuoteInTheMiddleOfAnUnquotedValueIsJustACharacter() throws Exception {
+        // As before the change: a file without quoted fields is read the way it always was.
+        service.importStaffFromCsv(csv(HEADER + "Fac,Dept 5\" screens,a@e-uvt.ro,Doe,John,Lect. Dr.,\n"), INST);
+
+        ArgumentCaptor<Department> department = ArgumentCaptor.forClass(Department.class);
+        verify(departmentRepository).save(department.capture());
+        assertEquals("Dept 5\" screens", department.getValue().getName());
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', quoteCharacter = '\0', value = {
+            "a,b,c | a/b/c",
+            "a,,c | a//c",
+            "a,b, | a/b/",
+            "\"a,b\",c | a,b/c",
+            "\"a\"\"b\",c | a\"b/c",
+            " \"a, b\" ,c | a, b/c",
+            "\"\",x | /x",
+    })
+    void oneLineIsSplitIntoItsFields(String line, String expected) {
+        List<String> fields = StaffImportService.splitCsvLine(line);
+        assertEquals(expected == null ? "" : expected,
+                String.join("/", fields.stream().map(String::trim).toList()));
+    }
+
+    @Test
+    void unbalancedQuotesAreNotSplitAtAll() {
+        assertNull(StaffImportService.splitCsvLine("a,\"b,c"));
+        assertNull(StaffImportService.splitCsvLine("\"a\"x,b"));
+    }
+
     // --- helpers ---
 
     private static MockMultipartFile csv(String body) {

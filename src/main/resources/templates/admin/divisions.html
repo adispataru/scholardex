@@ -214,7 +214,7 @@
                     <div class="form-group app-form-field app-form-section">
                         <div class="app-form-section__header">
                             <h6 class="app-form-section__title">CSV import</h6>
-                            <p class="app-form-section__description">Required columns: <code>Faculty,Department,Email,Last Name,First Name,Position[,Id SCOPUS]</code>. Faculty and Department are matched by name within the target institution and <strong>created if they don't exist yet</strong> (Faculty → a FACULTY division). <code>Id SCOPUS</code> is an optional <code>;</code>-separated list.</p>
+                            <p class="app-form-section__description">Required columns: <code>Faculty,Department,Email,Last Name,First Name,Position[,Id SCOPUS]</code>. Faculty and Department are matched by name within the target institution and <strong>created if they don't exist yet</strong> (Faculty → a FACULTY division). <code>Id SCOPUS</code> is an optional <code>;</code>-separated list. A name that contains a comma goes between double quotes: <code>"Finanțe, Sisteme Informaționale și Modelare pentru Afaceri"</code>.</p>
                         </div>
                         <label for="importStaffInstitutionId">Target institution</label>
                         <select class="form-control" id="importStaffInstitutionId" name="institutionId" required>

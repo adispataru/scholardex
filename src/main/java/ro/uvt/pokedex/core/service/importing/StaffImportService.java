@@ -44,6 +44,10 @@ import java.util.regex.Pattern;
  * {@link DivisionType#FACULTY} division, a Department a {@link Department} under it. {@code Id SCOPUS} is an
  * optional {@code ;}-separated list of Scopus author ids.
  *
+ * <p>A value that holds a comma is written between double quotes
+ * ({@code "Finanțe, Sisteme Informaționale și Modelare pentru Afaceri"}); a quote inside such a value is
+ * written twice. One record per line: a quoted value cannot run over a line break.
+ *
  * <p>Best-effort, not all-or-nothing: malformed rows are skipped and reported in the {@link StaffImportResult}
  * so a single bad row does not block the rest of the sheet.
  */
@@ -264,10 +268,14 @@ public class StaffImportService {
         List<CsvRow> rows = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvStream, StandardCharsets.UTF_8))) {
             String header = reader.readLine();
+            if (header != null && header.startsWith("\uFEFF")) {
+                header = header.substring(1); // the byte-order mark a spreadsheet puts in front of the file
+            }
             if (header == null || header.isBlank()) {
                 throw new IllegalArgumentException("CSV header is missing.");
             }
-            if (header.split(",", -1).length < requiredColumnCount) {
+            List<String> headerFields = splitCsvLine(header);
+            if (headerFields == null || headerFields.size() < requiredColumnCount) {
                 throw new IllegalArgumentException(
                         "CSV schema is invalid. Expected at least " + requiredColumnCount + " columns "
                                 + "(Faculty, Department, Email, Last Name, First Name, Position, [Id SCOPUS]).");
@@ -279,7 +287,12 @@ public class StaffImportService {
                 rowNumber++;
                 if (line.isBlank()) continue;
 
-                String[] f = line.split(",", -1);
+                List<String> fields = splitCsvLine(line);
+                if (fields == null) {
+                    rows.add(CsvRow.invalid("Row " + rowNumber + ": the double quotes do not match."));
+                    continue;
+                }
+                String[] f = fields.toArray(String[]::new);
                 if (f.length < requiredColumnCount) {
                     rows.add(CsvRow.invalid("Row " + rowNumber + ": expected at least " + requiredColumnCount + " columns."));
                     continue;
@@ -316,6 +329,54 @@ public class StaffImportService {
             throw new IllegalArgumentException("CSV parsing failed. Ensure the file is valid UTF-8 CSV.");
         }
         return rows;
+    }
+
+    /**
+     * One CSV line as its fields. A field may be wrapped in double quotes: inside them a comma belongs to the
+     * value and a quote is written twice. Blanks around the quotes are dropped. A quote that does not open a
+     * field is an ordinary character, so a file without quoted fields is read exactly as before.
+     *
+     * @return the fields, or {@code null} when a quote is never closed or text follows a closing quote
+     */
+    static List<String> splitCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder field = new StringBuilder();
+        boolean insideQuotes = false;
+        boolean closed = false; // the current field was quoted and its closing quote has been read
+        int i = 0;
+        while (i < line.length()) {
+            char c = line.charAt(i);
+            if (insideQuotes) {
+                if (c != '"') {
+                    field.append(c);
+                } else if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    field.append('"');
+                    i++;
+                } else {
+                    insideQuotes = false;
+                    closed = true;
+                }
+            } else if (c == ',') {
+                fields.add(field.toString());
+                field.setLength(0);
+                closed = false;
+            } else if (closed) {
+                if (!Character.isWhitespace(c)) {
+                    return null;
+                }
+            } else if (c == '"' && field.toString().isBlank()) {
+                field.setLength(0);
+                insideQuotes = true;
+            } else {
+                field.append(c);
+            }
+            i++;
+        }
+        if (insideQuotes) {
+            return null;
+        }
+        fields.add(field.toString());
+        return fields;
     }
 
     private static Position parsePosition(String field) {
