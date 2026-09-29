@@ -555,6 +555,14 @@
                 </li>
                 <li class="app-shell-sidebar__item"
                     th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
+                    th:classappend="${activeSection == 'supervisor-workspace'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/supervisor}">
+                        <i class="fa-solid fa-fw fa-user-shield"></i>
+                        <span th:text="#{shell.item.supervisorWorkspace}">Supervisor workspace</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
                     th:classappend="${activeSection == 'researcher-reports'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/reports/researcher}">
                         <i class="fa-solid fa-fw fa-chart-line"></i>

@@ -9,6 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H123` Heads can open the reports of their faculty or department — **BUILT 2026-09-29, prod pending.** Found
+  while drafting onboarding instructions for FPSE: appointing a head gave that person access to nothing. Three
+  separate causes, all fixed. (1) Headship granted no role: `User.getAuthorities()` was the stored roles only, and
+  every head in prod stored `RESEARCHER`. Now a user who heads a faculty or department, or supervises a group, signs
+  in as SUPERVISOR — derived in `KeycloakOAuth2LoginSuccessHandler` from `SupervisorWorkspaceService`, carried by the
+  transient `User.supervisorByPosition`, NEVER stored (the signed-in object is saved back by the profile pages, so
+  a role added to `roles` would have been persisted). It follows the appointment from the next sign-in; external
+  candidates never get it; a stored SUPERVISOR role keeps working. (2) The org-unit report pages live under
+  `/admin/**`, which the URL rule reserves for platform admins, so the handlers' "supervisors allowed" never
+  mattered; `/admin/divisions/*/reports/**` and `/admin/departments/*/reports/**` are now open to supervisors and
+  nothing else under `/admin` is. (3) Those handlers checked the role, not the unit: they now use
+  `@orgUnitAccess.canManageDepartment` (director, or a head of the faculty above) and the new `canManageDivision`
+  (heads of that faculty only — a director does not see the faculty roll-up). Also: a refusal raised inside MVC
+  (`@PreAuthorize` with a bean check, or a handler's own `AccessDeniedException`) was answered by the catch-all as
+  "500 unexpected error" with a stack trace in the log; `MvcExceptionHandler` now hands it back to Spring Security
+  (access-denied page). Back links and the sidebar no longer offer a head admin pages. Pinned by
+  `OrgUnitReportPagesSecurityContractTest`, which runs the REAL filter chain and templates — the page tests of
+  these controllers run with filters off, which is how this stayed unnoticed. **Not checked in a browser as a
+  head:** `agent-dev` signs every request in as an admin. **Not changed:** `ApiExceptionHandler` has the same
+  catch-all for `/api`; the admin users page shows stored roles only, so a head appears there as a researcher.
+  Heads see the individual reports of their staff (user decision 2026-09-29).
 - [ ] `H119` Public pages: keep the UVT publication showcase, drop what the licences do not allow — **OPEN, from the
   compliance audit of 2026-09-29.** `/publications/**`, `/authors/**`, `/api/entities/authors/**` and
   `/api/rankings/**` are `permitAll` (`WebSecurityConfig`), and today they serve the WHOLE corpus (including the

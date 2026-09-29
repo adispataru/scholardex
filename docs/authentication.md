@@ -47,6 +47,12 @@ The email is normalized to lowercase before local lookup. Existing local users k
 
 Locked local users cannot sign in through Keycloak.
 
+### Supervisor rights come from the appointment
+
+A user who heads a faculty or a department, or supervises a group, signs in with the `SUPERVISOR` authority even when the account stores only `RESEARCHER`. The right is derived at sign-in from the unit (`headUserIds`, group supervisors) and is never written to the account, so appointing or removing a head is the only step; it takes effect at that person's next sign-in. A `SUPERVISOR` role stored on an account keeps working as before. External candidate accounts never receive it.
+
+What a head may open is decided per unit: a department director reaches the department, a faculty head reaches the faculty and every department in it. The report pages of a unit live under `/admin/divisions/{id}/reports/**` and `/admin/departments/{id}/reports/**`; they are the only paths under `/admin` open to supervisors besides `/admin/groups/**`.
+
 ## Logout
 
 Logout is app-only. `POST /logout` invalidates the ScholarDex session, deletes `JSESSIONID`, and redirects to `/login?logout`. It does not end the Keycloak SSO session.

@@ -51,6 +51,23 @@ public class User implements UserDetails {
     private boolean locked = false;
 
     /**
+     * True when the user heads a faculty or a department, or supervises a group — established at sign-in
+     * and <b>never stored</b>. It is what makes a head a SUPERVISOR: appointing a head writes a name on the
+     * unit and nothing on the account, so a stored role would have to be granted, remembered and revoked by
+     * hand. Derived, it follows the appointment in both directions from the next sign-in on.
+     *
+     * <p>Kept apart from {@link #roles} on purpose: the signed-in object is saved back to the database by
+     * the profile pages, and a role added to that set would be persisted with it.</p>
+     */
+    @Transient
+    private boolean supervisorByPosition;
+
+    public void setSupervisorByPosition(boolean supervisorByPosition) {
+        this.supervisorByPosition = supervisorByPosition;
+        this.authority = null; // computed lazily from the roles; must see the new value
+    }
+
+    /**
      * H105: an EXTERNAL account can only ever act as a RESEARCHER — supervisor and admin roles are
      * dropped at the authority level, whichever way the account was authenticated, so the org-unit
      * and admin surfaces stay closed even if a role is granted by mistake.
@@ -59,10 +76,14 @@ public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (authority == null) {
-            authority = roles.stream()
+            List<SimpleGrantedAuthority> granted = roles.stream()
                     .filter(role -> !isExternal() || role == UserRole.RESEARCHER)
                     .map(role -> new SimpleGrantedAuthority(role.name()))
                     .collect(Collectors.toList());
+            if (isSupervisorByPosition() && !isExternal() && !roles.contains(UserRole.SUPERVISOR)) {
+                granted.add(new SimpleGrantedAuthority(UserRole.SUPERVISOR.name()));
+            }
+            authority = granted;
         }
         return authority;
     }
@@ -98,7 +119,14 @@ public class User implements UserDetails {
         return !locked;
     }
 
+    /**
+     * What the pages ask to decide which menus to show. Agrees with {@link #getAuthorities()} on the
+     * supervisor role: a head sees the supervisor entries exactly when the server lets them in.
+     */
     public boolean hasRole(String roleName) {
+        if (UserRole.SUPERVISOR.name().equals(roleName) && isSupervisorByPosition() && !isExternal()) {
+            return true;
+        }
         return roles.stream().anyMatch(role -> role.name().equals(roleName));
     }
 

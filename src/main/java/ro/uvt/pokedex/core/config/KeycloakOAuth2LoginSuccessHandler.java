@@ -18,6 +18,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
+import ro.uvt.pokedex.core.service.application.SupervisorWorkspaceService;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.repository.UserRepository;
@@ -34,12 +35,15 @@ public class KeycloakOAuth2LoginSuccessHandler implements AuthenticationSuccessH
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SupervisorWorkspaceService supervisorWorkspaceService;
     private final SavedRequestAwareAuthenticationSuccessHandler successHandler;
     private final AuthenticationFailureHandler failureHandler;
 
-    public KeycloakOAuth2LoginSuccessHandler(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public KeycloakOAuth2LoginSuccessHandler(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                                             SupervisorWorkspaceService supervisorWorkspaceService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.supervisorWorkspaceService = supervisorWorkspaceService;
         this.successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
         this.successHandler.setDefaultTargetUrl("/");
         this.failureHandler = new SimpleUrlAuthenticationFailureHandler("/login?error");
@@ -53,6 +57,10 @@ public class KeycloakOAuth2LoginSuccessHandler implements AuthenticationSuccessH
     ) throws IOException, ServletException {
         try {
             User localUser = resolveLocalUser(authentication);
+            // A head of a faculty or department, or a group supervisor, signs in as a SUPERVISOR. Derived
+            // from the appointment, not stored on the account (see User#supervisorByPosition).
+            localUser.setSupervisorByPosition(
+                    !supervisorWorkspaceService.buildView(localUser.getEmail()).isEmpty());
             UsernamePasswordAuthenticationToken localAuthentication =
                     UsernamePasswordAuthenticationToken.authenticated(localUser, null, localUser.getAuthorities());
             localAuthentication.setDetails(authentication.getDetails());

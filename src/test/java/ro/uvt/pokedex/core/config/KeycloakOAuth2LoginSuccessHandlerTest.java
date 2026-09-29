@@ -37,12 +37,72 @@ class KeycloakOAuth2LoginSuccessHandlerTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+    private final ro.uvt.pokedex.core.service.application.SupervisorWorkspaceService supervisorWorkspaceService =
+            mock(ro.uvt.pokedex.core.service.application.SupervisorWorkspaceService.class);
     private final KeycloakOAuth2LoginSuccessHandler handler =
-            new KeycloakOAuth2LoginSuccessHandler(userRepository, passwordEncoder);
+            new KeycloakOAuth2LoginSuccessHandler(userRepository, passwordEncoder, supervisorWorkspaceService);
+
+    @org.junit.jupiter.api.BeforeEach
+    void nobodyHeadsAnythingUnlessATestSaysSo() {
+        when(supervisorWorkspaceService.buildView(any())).thenReturn(
+                ro.uvt.pokedex.core.service.application.SupervisorWorkspaceService.SupervisorWorkspaceView.empty());
+    }
 
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    private void heads(String email) {
+        ro.uvt.pokedex.core.model.org.Department department = new ro.uvt.pokedex.core.model.org.Department();
+        department.setId("dept-psy");
+        when(supervisorWorkspaceService.buildView(email)).thenReturn(
+                new ro.uvt.pokedex.core.service.application.SupervisorWorkspaceService.SupervisorWorkspaceView(
+                        List.of(), List.of(department), List.of(), Map.of(), Map.of(), Map.of()));
+    }
+
+    @Test
+    void aHeadSignsInAsSupervisorWithoutTheRoleBeingStored() throws Exception {
+        User director = localUser("director@uvt.ro", new java.util.HashSet<>(Set.of(UserRole.RESEARCHER)), false);
+        when(userRepository.findById("director@uvt.ro")).thenReturn(Optional.of(director));
+        heads("director@uvt.ro");
+
+        handler.onAuthenticationSuccess(new MockHttpServletRequest(), new MockHttpServletResponse(),
+                oauth2Authentication("director@uvt.ro", true));
+
+        Authentication bridged = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(bridged.getAuthorities()).extracting("authority")
+                .containsExactlyInAnyOrder("RESEARCHER", "SUPERVISOR");
+        // The account is untouched: nothing to revoke when the appointment ends.
+        assertThat(director.getRoles()).containsExactly(UserRole.RESEARCHER);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void someoneWhoHeadsNothingStaysAResearcher() throws Exception {
+        User researcher = localUser("researcher@uvt.ro", Set.of(UserRole.RESEARCHER), false);
+        when(userRepository.findById("researcher@uvt.ro")).thenReturn(Optional.of(researcher));
+
+        handler.onAuthenticationSuccess(new MockHttpServletRequest(), new MockHttpServletResponse(),
+                oauth2Authentication("researcher@uvt.ro", true));
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting("authority").containsExactly("RESEARCHER");
+        assertThat(researcher.hasRole("SUPERVISOR")).isFalse();
+    }
+
+    @Test
+    void anExternalCandidateNeverBecomesASupervisorEvenIfNamedAsHead() throws Exception {
+        User external = localUser("candidate@scholardex.uvt.ro", Set.of(UserRole.RESEARCHER), false);
+        external.setAccountKind(ro.uvt.pokedex.core.model.user.AccountKind.EXTERNAL);
+        when(userRepository.findById("candidate@scholardex.uvt.ro")).thenReturn(Optional.of(external));
+        heads("candidate@scholardex.uvt.ro");
+
+        handler.onAuthenticationSuccess(new MockHttpServletRequest(), new MockHttpServletResponse(),
+                oauth2Authentication("candidate@scholardex.uvt.ro", true));
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting("authority").containsExactly("RESEARCHER");
     }
 
     @Test

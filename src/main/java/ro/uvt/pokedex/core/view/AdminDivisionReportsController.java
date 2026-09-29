@@ -32,21 +32,23 @@ public class AdminDivisionReportsController {
     private final ReportComparisonFacade reportComparisonFacade;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
-    public String listReports(@PathVariable String divisionId, Model model) {
+    @PreAuthorize("@orgUnitAccess.canManageDivision(#divisionId, authentication)")
+    public String listReports(@PathVariable String divisionId,
+                              org.springframework.security.core.Authentication authentication, Model model) {
         var division = divisionReportFacade.findDivision(divisionId);
-        if (division.isEmpty()) return "redirect:/admin/divisions";
+        if (division.isEmpty()) return "redirect:" + OrgUnitBackLink.forPrincipal(authentication, "/admin/divisions");
         model.addAttribute("unitType", "division");
         model.addAttribute("unitName", division.get().getName());
         model.addAttribute("unitId", divisionId);
-        model.addAttribute("backHref", "/admin/divisions");
+        // The list of all divisions is an admin page; a head goes back to the supervisor cockpit.
+        model.addAttribute("backHref", OrgUnitBackLink.forPrincipal(authentication, "/admin/divisions"));
         model.addAttribute("reports", divisionReportFacade.listReportsVisibleForDivision(divisionId));
         model.addAttribute("reportLinkPrefix", "/admin/divisions/" + divisionId + "/reports/");
         return "admin/orgunit-reports-list";
     }
 
     @GetMapping("/{reportId}")
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    @PreAuthorize("@orgUnitAccess.canManageDivision(#divisionId, authentication)")
     public String viewReport(@PathVariable String divisionId,
                              @PathVariable String reportId,
                              @RequestParam(value = "compareTo", required = false)
@@ -69,7 +71,7 @@ public class AdminDivisionReportsController {
     }
 
     @GetMapping("/{reportId}/compare")
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    @PreAuthorize("@orgUnitAccess.canManageDivision(#divisionId, authentication)")
     public String compareReports(@PathVariable String divisionId, @PathVariable String reportId, Model model) {
         var view = orgUnitReportComparisonService.build(
                 ro.uvt.pokedex.core.service.application.reporting.OrgUnitPromotionBoardService.OrgUnitType.DIVISION,
@@ -82,7 +84,7 @@ public class AdminDivisionReportsController {
     }
 
     @GetMapping("/{reportId}/promotions")
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    @PreAuthorize("@orgUnitAccess.canManageDivision(#divisionId, authentication)")
     public String promotionBoard(@PathVariable String divisionId,
                                  @PathVariable String reportId,
                                  @RequestParam(name = "exclude", required = false) String exclude,

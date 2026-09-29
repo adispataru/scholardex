@@ -12,7 +12,8 @@ import ro.uvt.pokedex.core.repository.org.OrgDivisionRepository;
 import java.util.Optional;
 
 /**
- * Resolves whether the current principal may manage the roster of a department. A head of the
+ * Resolves whether the current principal may manage a department or a faculty: its roster, and the
+ * report pages of the unit (dashboard, comparison, promotions, refresh, provisional scoring). A head of the
  * department ({@code Department.headUserIds}) qualifies, as does the head of the division above it
  * ({@code OrgDivision.headUserIds}) — the same implicit-supervision cascade {@link GroupAccessService}
  * uses for groups. PLATFORM_ADMIN bypasses every check.
@@ -51,6 +52,28 @@ public class OrgUnitAccessService {
             return false;
         }
         return orgDivisionRepository.findById(department.getDivisionId())
+                .map(OrgDivision::getHeadUserIds)
+                .map(heads -> heads != null && heads.contains(userId))
+                .orElse(false);
+    }
+
+    /**
+     * Whether the principal may see and run the reports of a faculty: its heads, and platform admins. A
+     * department director is deliberately NOT enough — a director sees the department, not the faculty
+     * roll-up nor the other departments.
+     */
+    public boolean canManageDivision(String divisionId, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        if (hasPlatformAdmin(authentication)) {
+            return true;
+        }
+        String userId = authentication.getName();
+        if (userId == null || userId.isBlank() || divisionId == null || divisionId.isBlank()) {
+            return false;
+        }
+        return orgDivisionRepository.findById(divisionId)
                 .map(OrgDivision::getHeadUserIds)
                 .map(heads -> heads != null && heads.contains(userId))
                 .orElse(false);

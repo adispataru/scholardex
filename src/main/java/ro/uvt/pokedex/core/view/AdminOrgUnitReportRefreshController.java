@@ -24,7 +24,7 @@ public class AdminOrgUnitReportRefreshController {
     private final OrgUnitReportRefreshService orgUnitReportRefreshService;
 
     @PostMapping("/admin/divisions/{divisionId}/reports/{reportId}/refresh-all")
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    @PreAuthorize("@orgUnitAccess.canManageDivision(#divisionId, authentication)")
     public String refreshDivision(@PathVariable String divisionId,
                                   @PathVariable String reportId,
                                   @RequestParam(defaultValue = "stale") String scope,
@@ -37,7 +37,7 @@ public class AdminOrgUnitReportRefreshController {
     }
 
     @PostMapping("/admin/departments/{departmentId}/reports/{reportId}/refresh-all")
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    @PreAuthorize("@orgUnitAccess.canManageDepartment(#departmentId, authentication)")
     public String refreshDepartment(@PathVariable String departmentId,
                                     @PathVariable String reportId,
                                     @RequestParam(defaultValue = "stale") String scope,
@@ -50,7 +50,7 @@ public class AdminOrgUnitReportRefreshController {
     }
 
     @PostMapping("/admin/divisions/{divisionId}/reports/{reportId}/score-provisional")
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    @PreAuthorize("@orgUnitAccess.canManageDivision(#divisionId, authentication)")
     public String scoreProvisionalDivision(@PathVariable String divisionId,
                                            @PathVariable String reportId,
                                            @RequestParam(required = false) String label,
@@ -62,7 +62,7 @@ public class AdminOrgUnitReportRefreshController {
     }
 
     @PostMapping("/admin/departments/{departmentId}/reports/{reportId}/score-provisional")
-    @PreAuthorize("hasAuthority('PLATFORM_ADMIN') or hasAuthority('SUPERVISOR')")
+    @PreAuthorize("@orgUnitAccess.canManageDepartment(#departmentId, authentication)")
     public String scoreProvisionalDepartment(@PathVariable String departmentId,
                                              @PathVariable String reportId,
                                              @RequestParam(required = false) String label,

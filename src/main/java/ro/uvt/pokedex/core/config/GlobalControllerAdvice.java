@@ -37,11 +37,13 @@ public class GlobalControllerAdvice {
         if (path == null || path.isBlank()) {
             return "user";
         }
-        if (path.startsWith("/admin/")) {
-            return "admin";
-        }
-        if (path.equals("/admin")) {
-            return "admin";
+        if (path.startsWith("/admin/") || path.equals("/admin")) {
+            // Heads reach a few pages under /admin (the reports of their faculty or department, their
+            // groups). The admin sidebar is a list of pages they cannot open, so they keep the user one.
+            return currentUser()
+                    .filter(user -> !user.hasRole("PLATFORM_ADMIN"))
+                    .map(user -> "user")
+                    .orElse("admin");
         }
         if (path.startsWith("/user/")) {
             return "user";

@@ -98,6 +98,13 @@ public class WebSecurityConfig {
                     ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
                     // Groups admin is reachable by supervisors too; per-handler @PreAuthorize enforces ownership.
                     ahr.requestMatchers("/admin/groups/**").hasAnyAuthority("PLATFORM_ADMIN", "SUPERVISOR");
+                    // The report pages of a faculty or department (dashboard, comparison, promotions, refresh,
+                    // provisional scoring, report selection and visibility) are for its heads too. Only these
+                    // paths: creating units, appointing heads and everything else under /admin stays with
+                    // platform admins. Which unit a head may open is decided per handler (@orgUnitAccess).
+                    ahr.requestMatchers("/admin/divisions/*/reports", "/admin/divisions/*/reports/**",
+                                    "/admin/departments/*/reports", "/admin/departments/*/reports/**")
+                            .hasAnyAuthority("PLATFORM_ADMIN", "SUPERVISOR");
                     ahr.requestMatchers("/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/entities/forums/**").authenticated();

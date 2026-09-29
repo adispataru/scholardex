@@ -75,6 +75,48 @@ class OrgUnitAccessServiceTest {
         assertFalse(service().canManageDepartment("dept-cs", null));
     }
 
+    // ── faculties ──
+
+    @Test
+    void aFacultyHeadCanManageTheFaculty() {
+        when(orgDivisionRepository.findById("div-fpse"))
+                .thenReturn(Optional.of(division("div-fpse", List.of("dean@uvt.ro", "vicedean@uvt.ro"))));
+
+        assertTrue(service().canManageDivision("div-fpse", auth("dean@uvt.ro", "SUPERVISOR")));
+        assertTrue(service().canManageDivision("div-fpse", auth("vicedean@uvt.ro", "SUPERVISOR")));
+    }
+
+    @Test
+    void aDepartmentDirectorCannotManageTheFacultyAboveTheDepartment() {
+        when(orgDivisionRepository.findById("div-fpse"))
+                .thenReturn(Optional.of(division("div-fpse", List.of("dean@uvt.ro"))));
+
+        assertFalse(service().canManageDivision("div-fpse", auth("director@uvt.ro", "SUPERVISOR")));
+    }
+
+    @Test
+    void theHeadOfAnotherFacultyCannotManageThisOne() {
+        when(orgDivisionRepository.findById("div-fpse"))
+                .thenReturn(Optional.of(division("div-fpse", List.of("dean@uvt.ro"))));
+
+        assertFalse(service().canManageDivision("div-fpse", auth("other.dean@uvt.ro", "SUPERVISOR")));
+    }
+
+    @Test
+    void aPlatformAdminCanManageAnyFacultyWithoutALookup() {
+        assertTrue(service().canManageDivision("div-fpse", auth("admin@uvt.ro", "PLATFORM_ADMIN")));
+        org.mockito.Mockito.verifyNoInteractions(orgDivisionRepository);
+    }
+
+    @Test
+    void aMissingFacultyOrPrincipalIsRefused() {
+        lenient().when(orgDivisionRepository.findById("gone")).thenReturn(Optional.empty());
+
+        assertFalse(service().canManageDivision("gone", auth("dean@uvt.ro", "SUPERVISOR")));
+        assertFalse(service().canManageDivision(" ", auth("dean@uvt.ro", "SUPERVISOR")));
+        assertFalse(service().canManageDivision("div-fpse", null));
+    }
+
     private Authentication auth(String name, String authority) {
         return new TestingAuthenticationToken(name, null, authority);
     }

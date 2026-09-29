@@ -35,6 +35,19 @@ public class MvcExceptionHandler {
         return "errors/error";
     }
 
+    /**
+     * A refusal is not a failure. {@code @PreAuthorize} checks that look at the unit or the person
+     * ({@code @orgUnitAccess}, {@code @researcherAccess}, {@code @groupAccess}) and handlers that refuse on
+     * their own raise {@link org.springframework.security.access.AccessDeniedException} from inside the
+     * MVC call, where the catch-all below used to answer "500 — unexpected error" and log a stack trace.
+     * Rethrowing hands it back to Spring Security, which answers as it does for a URL rule: the
+     * access-denied page for a signed-in user, the sign-in page for a visitor.
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public void handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+        throw ex;
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public String handleUnexpected(Exception ex, HttpServletRequest request, Model model) {
