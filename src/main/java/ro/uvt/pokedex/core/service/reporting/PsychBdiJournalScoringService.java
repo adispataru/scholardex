@@ -43,6 +43,13 @@ public class PsychBdiJournalScoringService extends AbstractWoSForumScoringServic
     /** Fișă-recognized BDIs we have membership data for, WoS editions excluded ("altele decât WoS"). */
     private static final Set<String> RECOGNIZED_BDI = Set.of("SCOPUS", "DOAJ", "ERIH");
 
+    /**
+     * The 2026 Psychology list (OM 3019/2025, Comisia 28) restricted to what we hold membership data for:
+     * Scopus and ERIH Plus. DOAJ is recognised for Educational Sciences and Sport only, not for Psychology;
+     * PsycINFO, PubMed, ERIC, ProQuest and EBSCO are on the list but not in our data.
+     */
+    private static final Set<String> RECOGNIZED_BDI_2026 = Set.of("SCOPUS", "ERIH");
+
     public PsychBdiJournalScoringService(ReportingLookupPort lookupPort) {
         super(lookupPort);
     }
@@ -97,11 +104,19 @@ public class PsychBdiJournalScoringService extends AbstractWoSForumScoringServic
             return score;
         }
 
-        // 3. Recognized-BDI membership count (non-WoS): >=2 → 3 + IF·0 = 3 points.
+        // 3. Recognized-BDI membership count (non-WoS): >=2 → 3 + IF·0 = 3 points. The 2026 standard asks
+        //    for ONE database ("indexate într-una sau mai multe baze de date internaționale recunoscute").
+        boolean rules2026 = indicator.usesPsihologie2026();
+        Set<String> recognized = rules2026 ? RECOGNIZED_BDI_2026 : RECOGNIZED_BDI;
         long bdiCount = lookupPort.getForumIndexingDatabases(publication.getForumId()).stream()
-                .filter(RECOGNIZED_BDI::contains)
+                .filter(recognized::contains)
                 .count();
-        if (bdiCount >= 2) {
+        if (rules2026 && bdiCount >= 1) {
+            score.setScore(BASE_POINTS);
+            score.setCoreRankingEquivalent("BDI");
+            score.setScoringSource(strategy().name());
+            score.setYear(allowedYears.isEmpty() ? 0 : allowedYears.getFirst());
+        } else if (bdiCount >= 2) {
             score.setScore(BASE_POINTS);
             score.setCoreRankingEquivalent("BDI2");
             score.setScoringSource(strategy().name());

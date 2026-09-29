@@ -303,6 +303,8 @@ public class AdminViewController {
             "PUBLICATIONS", "PUBLICATIONS_MAIN_AUTHOR", "PUBLICATIONS_COAUTHOR",
             // H63: first author OR corresponding author (e.g. physics P = "prim autor sau autor corespondent").
             "PUBLICATIONS_FIRST_OR_CORRESPONDING",
+            // Psihologie 2026 co-author: neither first nor corresponding (the complement of the role above).
+            "PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING",
             // H61: EXCLUDE_SELF = candidate-only self-citations; EXCLUDE_COAUTHORS = any author of the cited paper.
             "CITATIONS", "CITATIONS_EXCLUDE_SELF", "CITATIONS_EXCLUDE_COAUTHORS",
             // H67 S4b: aggregate Hirsch indicators (pair with the HIRSCH strategy). Indicative — see the h-index plan.
@@ -458,6 +460,8 @@ public class AdminViewController {
         private Boolean economicsM2026;
         /** FEAA 2026 — five-tier book coefficients flag; hidden-input round-trip like {@link #workshopCategory2026}. */
         private Boolean feaaBookTiers2026;
+        /** Psihologie 2026 — Comisia 28 rules flag; hidden-input round-trip like {@link #workshopCategory2026}. */
+        private Boolean psihologie2026;
 
         static IndicatorForm fromIndicator(Indicator indicator) {
             IndicatorForm form = new IndicatorForm();
@@ -480,6 +484,7 @@ public class AdminViewController {
             form.acmEptcsCFloor2026 = indicator.getAcmEptcsCFloor2026();
             form.economicsM2026 = indicator.getEconomicsM2026();
             form.feaaBookTiers2026 = indicator.getFeaaBookTiers2026();
+            form.psihologie2026 = indicator.getPsihologie2026();
             return form;
         }
 
@@ -501,6 +506,7 @@ public class AdminViewController {
             indicator.setAcmEptcsCFloor2026(acmEptcsCFloor2026);
             indicator.setEconomicsM2026(economicsM2026);
             indicator.setFeaaBookTiers2026(feaaBookTiers2026);
+            indicator.setPsihologie2026(psihologie2026);
             return indicator;
         }
     }

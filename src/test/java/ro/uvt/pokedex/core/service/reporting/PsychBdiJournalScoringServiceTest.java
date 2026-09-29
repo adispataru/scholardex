@@ -149,6 +149,55 @@ class PsychBdiJournalScoringServiceTest {
         assertEquals("BDI1", s.getCoreRankingEquivalent());
     }
 
+    // ── Psihologie 2026 (OM 3019/2025, Comisia 28) — psihologie2026 flag ──
+
+    private Indicator psychologyIndicator2026() {
+        Indicator indicator = psychologyIndicator();
+        indicator.setPsihologie2026(true);
+        return indicator;
+    }
+
+    @Test
+    void rules2026AcceptASingleRecognisedDatabase() {
+        // "indexate într-una sau mai multe baze de date internaționale recunoscute": Scopus alone is enough.
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
+        when(lookupPort.getForumIndexingDatabases("forum-1")).thenReturn(Set.of("SCOPUS", "OPENALEX"));
+
+        Score s = service.getScore(publication("ar", "2024"), psychologyIndicator2026());
+
+        assertEquals(3.0, s.getScore(), 1e-9); // 3 + IF, IF = 0
+        assertEquals("BDI", s.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void rules2026DoNotRecogniseDoajForPsychology() {
+        // DOAJ is on the Educational Sciences and Sport lists only; a DOAJ-only journal scores nothing here.
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
+        when(lookupPort.getForumIndexingDatabases("forum-1")).thenReturn(Set.of("DOAJ", "OPENALEX"));
+
+        Score s = service.getScore(publication("ar", "2024"), psychologyIndicator2026());
+
+        assertEquals(0.0, s.getScore());
+        assertNull(s.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void rules2026StillSkipWhatTheStrictIndicatorsCountAndStillPreferTheWosBranch() {
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678"))
+                .thenReturn(List.of(rankingWithIf("PSYCHOLOGY - SSCI", 2024, 2.7, WoSRanking.Quarter.Q2)));
+        Score strict = service.getScore(publication("ar", "2024"), psychologyIndicator2026());
+        assertEquals("SCORED_BY_STRICTER", strict.getScoringInfo().get("zeroReason"));
+
+        when(lookupPort.getRankingsByIssn("1234-5678"))
+                .thenReturn(List.of(rankingWithIf("PSYCHOLOGY - SSCI", 2024, 0.5, WoSRanking.Quarter.Q3)));
+        Score lowIf = service.getScore(publication("ar", "2024"), psychologyIndicator2026());
+        assertEquals(3.5, lowIf.getScore(), 1e-9);
+        assertEquals("WOS", lowIf.getCoreRankingEquivalent());
+    }
+
     @Test
     void unindexedVenueAndNonArticleGetNoScore() {
         when(lookupPort.getForum("forum-1")).thenReturn(forum());

@@ -596,6 +596,7 @@
     'FEE_JOURNAL':          'feeJournal',
     'OVER_PER_FORUM_CAP':   'overPerForumCap',
     'SCORED_BY_STRICTER':   'scoredByStricter',
+    'NOT_WOS_INDEXED':      'notWosIndexed',
     'NOT_TOP_RANKED':       'notTopRanked',
     'SELF_CITATION':        'selfCitation',
     'SCORE_BELOW_FORMULA_THRESHOLD': 'belowFormulaThreshold',

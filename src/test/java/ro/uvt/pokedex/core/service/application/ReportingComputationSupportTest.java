@@ -247,6 +247,44 @@ class ReportingComputationSupportTest {
     }
 
     @Test
+    void notFirstNorCorrespondingIsTheExactComplementOfFirstOrCorresponding() {
+        // Psihologie 2026 (Comisia 28): a corresponding author is a PRINCIPAL author, so the co-author
+        // indicators must not see that paper — which the older CO role ("not first") would count again.
+        ScholardexAuthorView a1 = new ScholardexAuthorView();
+        a1.setId("a1");
+
+        ScholardexPublicationView firstAuthor = publication("p-first", List.of("a1", "x"));
+        ScholardexPublicationView correspondingNotFirst = publication("p-corr", List.of("x", "a1"));
+        correspondingNotFirst.setCorrespondingAuthorIds(List.of("a1"));
+        ScholardexPublicationView plainCoauthor = publication("p-co", List.of("x", "a1"));
+        ScholardexPublicationView coauthorOtherCorresponding = publication("p-co2", List.of("x", "a1", "y"));
+        coauthorOtherCorresponding.setCorrespondingAuthorIds(List.of("y"));
+        List<ScholardexPublicationView> pubs =
+                List.of(firstAuthor, correspondingNotFirst, plainCoauthor, coauthorOtherCorresponding);
+
+        Indicator principal = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(principal, "PUBLICATIONS_FIRST_OR_CORRESPONDING");
+        Indicator coauthor = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(coauthor, "PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING");
+        Indicator legacyCo = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(legacyCo, "PUBLICATIONS_COAUTHOR");
+
+        List<String> principalIds = ReportingComputationSupport.filterByAuthorRole(principal, List.of(a1), pubs)
+                .stream().map(ScholardexPublicationView::getId).toList();
+        List<String> coauthorIds = ReportingComputationSupport.filterByAuthorRole(coauthor, List.of(a1), pubs)
+                .stream().map(ScholardexPublicationView::getId).toList();
+        List<String> legacyCoIds = ReportingComputationSupport.filterByAuthorRole(legacyCo, List.of(a1), pubs)
+                .stream().map(ScholardexPublicationView::getId).toList();
+
+        assertEquals(List.of("p-first", "p-corr"), principalIds);
+        assertEquals(List.of("p-co", "p-co2"), coauthorIds);
+        // The two roles partition the list: nothing counted twice, nothing dropped.
+        assertEquals(pubs.size(), principalIds.size() + coauthorIds.size());
+        // The legacy role is what made the new one necessary — it keeps the corresponding-author paper.
+        assertEquals(List.of("p-corr", "p-co", "p-co2"), legacyCoIds);
+    }
+
+    @Test
     void calculatePublicationScoreDoesNotTreatMissingFirstAuthorAsEmptyStringMatch() {
         ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
         ScholardexAuthorView blankAuthor = new ScholardexAuthorView();

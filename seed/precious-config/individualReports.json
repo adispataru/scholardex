@@ -3081,5 +3081,498 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d98b866c60b6bfff122"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "FV Psihologie 2026",
+  "description": "Standarde minimale COMISIA 28, domeniul Psihologie (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. Trei arii: realizări științifice (A1), vizibilitate și impact (A2), competitivitate și coordonare (A3). Valorile WoS (citări I11, indice Hirsch I13) sunt orientative, calculate din graful de citări al platformei; valorile Google Scholar, bonusul de preînregistrare și activitățile se declară de către candidat. Compensarea criteriului C7 cu trei articole Q1 (AIS) ca autor principal nu se calculează automat.",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff104"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff105"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff106"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff107"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff108"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff109"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff10a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff10b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff10c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff10d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff10e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff10f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff110"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff111"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff112"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff113"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff114"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff115"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff116"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff117"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff118"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff119"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff11a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff11b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff11c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff11d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff11e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff11f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff120"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb5d97b866c60b6bfff121"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "C1: I1A (autor principal, reviste fără taxă)",
+    "indicatorIndices": [
+     0,
+     1
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 15
+     },
+     {
+      "position": "HABIL",
+      "value": 15
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C2: I1A + I1B (autor principal)",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 12
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 30
+     },
+     {
+      "position": "HABIL",
+      "value": 30
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C3: Total A1 (I1A–I7)",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 60
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 100
+     },
+     {
+      "position": "HABIL",
+      "value": 90
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C4: I11 (citări WoS, fără autocitări)",
+    "indicatorIndices": [
+     12
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 10
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 38
+     },
+     {
+      "position": "HABIL",
+      "value": 38
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C5: I13 (indice Hirsch WoS la pătrat)",
+    "indicatorIndices": [
+     14
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 9
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 64
+     },
+     {
+      "position": "HABIL",
+      "value": 64
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C6: Total A2 (I11–I17)",
+    "indicatorIndices": [
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 24
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 120
+     },
+     {
+      "position": "HABIL",
+      "value": 103
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C7: I24 (director sau coordonator de grant)",
+    "indicatorIndices": [
+     19
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 27
+     },
+     {
+      "position": "HABIL",
+      "value": 27
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "C8: Total A3 (I24–I27)",
+    "indicatorIndices": [
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 30
+     },
+     {
+      "position": "HABIL",
+      "value": 27
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "CTOTAL: Total general (A1 + A2 + A3)",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 85
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 250
+     },
+     {
+      "position": "HABIL",
+      "value": 220
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Realizări științifice (A1)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 2
+      }
+     ]
+    }
+   },
+   {
+    "name": "Vizibilitate și impact (A2)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 3
+      },
+      {
+       "criterion": 4
+      },
+      {
+       "criterion": 5
+      }
+     ]
+    }
+   },
+   {
+    "name": "Competitivitate și coordonare (A3)",
+    "composition": {
+     "all": [
+      {
+       "criterion": 6
+      },
+      {
+       "criterion": 7
+      }
+     ]
+    }
+   },
+   {
+    "name": "Punctaj total",
+    "composition": {
+     "all": [
+      {
+       "criterion": 8
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  }
 ]

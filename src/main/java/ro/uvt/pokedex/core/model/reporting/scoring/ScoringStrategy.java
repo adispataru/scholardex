@@ -59,6 +59,14 @@ public enum ScoringStrategy {
      */
     INDEXED_PROCEEDINGS,
     /**
+     * Psihologie 2026 (Comisia 28) I11 — "citări primite în Web of Science Core Collection": an item scores a
+     * flat 1.0 when its forum was indexed in any WoS edition we track (SCIE/SSCI/AHCI/ESCI) in the item's own
+     * year (year-true with carry-forward), whatever the WoS category or domain. The winning edition reaches the
+     * formula as {@code category}. Indicative: it counts our citation graph restricted to WoS-indexed journals,
+     * not the official WoS citation report (proceedings and book indexes are not covered by our data).
+     */
+    WOS_INDEXED,
+    /**
      * H67 S4a: the Hirsch (h-index) aggregate. Unlike the others this is NOT a per-item {@code ScoringService} —
      * h-index is non-additive, so it is handled inline at the combine step (like {@link #GENERIC_COUNT}); no
      * {@code ScoringService} bean claims it. Carried as a strategy only so {@code IndicatorKind.HIndex} round-trips.

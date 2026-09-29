@@ -9,6 +9,28 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H115` FV Psihologie 2026 (OM 3.019/2025, COMISIA 28, domeniul Psihologie) — **BUILT 2026-09-29, prod pending.**
+  Asked for the management demo once FPSE was onboarded (`H111`); only the 2016 fișă existed. The 2026 standard is a
+  rewrite, not a re-thresholding: three areas (A1 realizări, A2 vizibilitate, A3 competitivitate), I1 split by
+  publication fee (I1A/I1B), books 16×m and chapters 4×m with no author split, WoS citations + squared WoS h-index
+  as criteria, a grants criterion. One indicator table serves conferențiar / profesor / abilitare (totals 85 / 250 /
+  220); the standard sets nothing for asistent/lector. Engine: `AuthorRole.NOT_FIRST_NOR_CORRESPONDING` (the exact
+  complement of first-or-corresponding — `CO` counted a corresponding author twice), `ScoringStrategy.WOS_INDEXED`
+  (SCIE/SSCI/AHCI/ESCI membership in the item year, for I11), h-index indicators now evaluate their formula with
+  `S = h` (`HIndexScoreSupport`; physics' `S` is unchanged, Psychology uses `S * S`), and an `Indicator.psihologie2026`
+  flag that switches `PSYCH_BOOK` to the 2026 publisher lists (classpath CSV) with an indicative A1 tier from the WoS
+  Master Book List, `PSYCH_BDI_JOURNAL` to "one recognised database is enough" without DOAJ, and the WoS h-index to
+  admit ESCI. Config: 30 `Psiho26_*` indicators, 12 new activity types, one new role on the shared «Grant
+  Cercetare» («Coordonator local (proiect național)», I24.4), report with 9 criteria + 4 perspectives, descriptions
+  in `indicator-descriptions/psihologie-2026.json`; all in `seed/precious-config`, pinned by
+  `Psihologie2026ReportDefinitionTest`. **Platform readings, stated in the descriptions:** N (principal-author count)
+  = 1; Google Scholar (I12, I14), the preregistration bonus and I15–I27 are self-declared; WoS values are
+  indicative (citation graph, no CPCI/BKCI); A1 is a publisher-level stand-in for a per-publication WorldCat rule;
+  the C7 compensation (18 of 27 points via three principal-author AIS-Q1 articles) is not computed. **Left open:**
+  Științe ale Educației and Educație fizică și sport share the annex but have their own indicators (I8–I10, I18–I23,
+  I28–I32) and thresholds — not built; the admin report edit form does not round-trip `perspectives`/`weights`,
+  so a report carrying them must not be saved through it. Prod: deploy, then load the definitions with
+  `h115_psihologie_2026.js` and select the report for the FPSE division.
 - [ ] `H114` WoS accession numbers (UT) for the CNFIS exports — **BUILT 2026-09-24, prod pending.** The resolver
   shelled out to `curl` (absent in the container) against Clarivate's keyless OpenURL gateway, so 0 of 166,105
   prod publications carry a `wosId` and Anexa 5's WoS-code column was empty. Verified 2026-09-24 that the gateway

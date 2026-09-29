@@ -69,4 +69,35 @@ class PsihologiePublisherServiceTest {
                 pub("Editura Universitatii de Vest", "B"));
         assertEquals("B", s.tierFor("Editura Universitatii de Vest Timisoara"));
     }
+
+    // ── 2026 lists (OM 3019/2025, Comisia 28) — read from the classpath, independent of Mongo ──
+
+    @Test
+    void the2026ListKeepsTheA2PublishersAndAddsTheNewTierBOnes() {
+        PsihologiePublisherService s = serviceWith(pub("Editura All", "B"));
+        assertEquals("A2", s.tierFor2026("Editura Polirom, Iași"));
+        assertEquals("A2", s.tierFor2026("ASCR"));
+        assertEquals("B", s.tierFor2026("Humanitas"));
+        assertEquals("B", s.tierFor2026("Editura Pro Universitaria"));
+        assertEquals("B", s.tierFor2026("Editura Universității Transilvania din Brașov"));
+        assertEquals("B", s.tierFor2026("Editura Didactică și Pedagogică R.A."));
+    }
+
+    @Test
+    void the2026ListNoLongerCarriesAllAndTritonic() {
+        PsihologiePublisherService s = serviceWith(pub("Editura All", "B"), pub("Tritonic", "B"));
+        assertNull(s.tierFor2026("Editura All"));
+        assertNull(s.tierFor2026("Tritonic"));
+        // …while the 2016 list, which the frozen 2016 report scores with, is untouched.
+        assertEquals("B", s.tierFor("Editura All"));
+        assertEquals("B", s.tierFor("Tritonic"));
+    }
+
+    @Test
+    void the2026ListHasNoA1AndIgnoresBlankNames() {
+        PsihologiePublisherService s = serviceWith();
+        assertNull(s.tierFor2026("Cambridge University Press"));
+        assertNull(s.tierFor2026(null));
+        assertNull(s.tierFor2026("  "));
+    }
 }

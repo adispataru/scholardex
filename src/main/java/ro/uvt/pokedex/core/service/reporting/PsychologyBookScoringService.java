@@ -20,16 +20,27 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
  * </ul>
  * Books/chapters whose publisher is not on any FSP tier score 0 (fișă: "publicaţiile care nu îndeplinesc
  * criteriile minime … nu se punctează"). Journal articles/proceedings are scored by other strategies.
+ *
+ * <p><b>2026 rules</b> ({@link Indicator#usesPsihologie2026()}, OM 3019/2025 Comisia 28): the A2/B tiers
+ * come from the 2026 lists, and a publisher on neither list is classified <b>A1 when it is on the WoS
+ * Master Book List</b>. The standard defines A1 per publication (held by at least 25 EU/OECD university
+ * libraries in WorldCat), which the platform cannot query; an international house on the Master Book
+ * List is the closest computable stand-in, so the result is marked {@code tierBasis=WOS_MASTER_BOOK_LIST}
+ * and is indicative. The 2026 formulas use 16 (book) and 4 (chapter) as the base and never divide by the
+ * number of authors for Psychology.</p>
  */
 @Service
 public class PsychologyBookScoringService extends AbstractForumScoringService {
 
     private final PsihologiePublisherService publisherService;
+    private final WosMasterBookListService wosMasterBookListService;
 
     public PsychologyBookScoringService(ReportingLookupPort lookupPort,
-                                        PsihologiePublisherService publisherService) {
+                                        PsihologiePublisherService publisherService,
+                                        WosMasterBookListService wosMasterBookListService) {
         super(lookupPort);
         this.publisherService = publisherService;
+        this.wosMasterBookListService = wosMasterBookListService;
     }
 
     @Override
@@ -51,7 +62,17 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
             score.getScoringInfo().put("zeroReason", "VENUE_TYPE_MISMATCH");
             return score;
         }
-        String tier = publisherService.tierFor(resolvePublisher(publication));
+        String publisher = resolvePublisher(publication);
+        String tier;
+        if (indicator != null && indicator.usesPsihologie2026()) {
+            tier = publisherService.tierFor2026(publisher);
+            if (tier == null && wosMasterBookListService.isRecognized(publisher)) {
+                tier = "A1";
+                score.getScoringInfo().put("tierBasis", "WOS_MASTER_BOOK_LIST");
+            }
+        } else {
+            tier = publisherService.tierFor(publisher);
+        }
         Double m = multiplierFor(tier);
         if (m == null) {
             return score; // unlisted publisher → not punctable

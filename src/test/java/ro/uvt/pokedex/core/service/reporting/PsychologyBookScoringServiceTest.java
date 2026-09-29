@@ -19,8 +19,16 @@ class PsychologyBookScoringServiceTest {
 
     private final ReportingLookupPort lookupPort = mock(ReportingLookupPort.class);
     private final PsihologiePublisherService publishers = mock(PsihologiePublisherService.class);
-    private final PsychologyBookScoringService service = new PsychologyBookScoringService(lookupPort, publishers);
+    private final WosMasterBookListService masterBookList = mock(WosMasterBookListService.class);
+    private final PsychologyBookScoringService service =
+            new PsychologyBookScoringService(lookupPort, publishers, masterBookList);
     private final Indicator indicator = new Indicator();
+
+    private static Indicator indicator2026() {
+        Indicator i = new Indicator();
+        i.setPsihologie2026(true);
+        return i;
+    }
 
     private ScoringPublicationReadModel pub(String subtype, String publisher, String tier) {
         ScholardexForumView forum = new ScholardexForumView();
@@ -91,6 +99,62 @@ class PsychologyBookScoringServiceTest {
 
         assertEquals(1.0, service.getScore(p, indicator).getScore());
         verify(lookupPort, never()).getForum(any());
+    }
+
+    // ── Psihologie 2026 (OM 3019/2025, Comisia 28) — psihologie2026 flag ──
+
+    @Test
+    void rules2026ReadTheTierFromThe2026ListNotThe2016One() {
+        ScoringPublicationReadModel p = pub("bk", "Editura Humanitas", null); // not on the 2016 list
+        when(publishers.tierFor2026("Editura Humanitas")).thenReturn("B");
+
+        Score s = service.getScore(p, indicator2026());
+
+        assertEquals(0.5, s.getScore());
+        assertEquals("B", s.getCoreRankingEquivalent());
+        verify(publishers, never()).tierFor(any());
+    }
+
+    @Test
+    void rules2026DropAPublisherThatOnlyThe2016ListKnows() {
+        // Editura All was tier B in 2016 and is on neither 2026 list.
+        ScoringPublicationReadModel p = pub("bk", "Editura All", "B");
+        when(publishers.tierFor2026("Editura All")).thenReturn(null);
+        when(masterBookList.isRecognized("Editura All")).thenReturn(false);
+
+        assertEquals(0.0, service.getScore(p, indicator2026()).getScore());
+    }
+
+    @Test
+    void rules2026ClassifyAMasterBookListPublisherAsIndicativeA1() {
+        ScoringPublicationReadModel p = pub("ch", "Routledge", null);
+        when(publishers.tierFor2026("Routledge")).thenReturn(null);
+        when(masterBookList.isRecognized("Routledge")).thenReturn(true);
+
+        Score s = service.getScore(p, indicator2026());
+
+        assertEquals(3.0, s.getScore());
+        assertEquals("A1", s.getCoreRankingEquivalent());
+        assertEquals("WOS_MASTER_BOOK_LIST", s.getScoringInfo().get("tierBasis"));
+    }
+
+    @Test
+    void rules2026KeepTheListedTierEvenWhenThePublisherIsAlsoOnTheMasterBookList() {
+        ScoringPublicationReadModel p = pub("bk", "Editura Polirom", null);
+        when(publishers.tierFor2026("Editura Polirom")).thenReturn("A2");
+
+        Score s = service.getScore(p, indicator2026());
+
+        assertEquals(1.0, s.getScore());
+        assertEquals("A2", s.getCoreRankingEquivalent());
+        verify(masterBookList, never()).isRecognized(any());
+    }
+
+    @Test
+    void the2016RulesNeverConsultTheMasterBookList() {
+        service.getScore(pub("bk", "Routledge", null), indicator);
+        verify(masterBookList, never()).isRecognized(any());
+        verify(publishers, never()).tierFor2026(any());
     }
 
     @Test

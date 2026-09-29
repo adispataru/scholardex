@@ -35,7 +35,8 @@ public final class ReportingComputationSupport {
         return scores.get("total").getAuthorScore();
     }
 
-    /** The indicator's typed author-role filter (ALL / MAIN / CO / FIRST_OR_CORRESPONDING), extracted so callers
+    /** The indicator's typed author-role filter (ALL / MAIN / CO / FIRST_OR_CORRESPONDING and its complement
+     *  NOT_FIRST_NOR_CORRESPONDING), extracted so callers
      *  that memoize the scoring step can filter first and key the cache by the actual publication set. */
     public static List<ScholardexPublicationView> filterByAuthorRole(
             Indicator indicator,
@@ -59,9 +60,14 @@ public final class ReportingComputationSupport {
                         return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
                     })
                     .collect(Collectors.toList());
-        } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_OR_CORRESPONDING) {
+        } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_OR_CORRESPONDING
+                || role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.NOT_FIRST_NOR_CORRESPONDING) {
             // H63: keep a publication if the researcher is its first author OR one of its corresponding authors.
             // Publications with no known corresponding author (correspondingAuthorIds empty) fall back to first-author.
+            // NOT_FIRST_NOR_CORRESPONDING (Psihologie 2026 co-author) keeps exactly the rest, so the two roles
+            // partition the researcher's publications and no item is counted under both.
+            boolean keepPrincipal =
+                    role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_OR_CORRESPONDING;
             Set<String> candidateIds = authors.stream()
                     .map(ScholardexAuthorView::getId)
                     .filter(Objects::nonNull)
@@ -72,7 +78,7 @@ public final class ReportingComputationSupport {
                         boolean isFirst = firstAuthorId != null && candidateIds.contains(firstAuthorId);
                         boolean isCorresponding = p.getCorrespondingAuthorIds() != null
                                 && p.getCorrespondingAuthorIds().stream().anyMatch(candidateIds::contains);
-                        return isFirst || isCorresponding;
+                        return (isFirst || isCorresponding) == keepPrincipal;
                     })
                     .collect(Collectors.toList());
         } else {

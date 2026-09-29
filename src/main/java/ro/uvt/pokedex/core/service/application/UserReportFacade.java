@@ -329,7 +329,9 @@ public class UserReportFacade {
         boolean itemYear = "IY".equals(indicator.getScoreYearRange());
         int[] r = computeHIndex(indicator, authors, publications);
         attrs.put("outputMode", "hindex");
-        attrs.put("total", String.valueOf(r[0]));
+        // The indicator's points are formula(S = h): h itself for physics, h×h for Psihologie 2026.
+        attrs.put("total", HIndexScoreSupport.format(HIndexScoreSupport.score(indicator, r[0])));
+        attrs.put("hIndex", r[0]);
         attrs.put("totalCit", r[1]);
         attrs.put("hIndexSource", kind.source().name());
         attrs.put("hIndexYearBasis", itemYear ? "ITEM_YEAR" : "CURRENT");
@@ -506,7 +508,9 @@ public class UserReportFacade {
             } else if (indicator != null && indicator.isHIndexOutput()) {
                 // H67: the aggregate Hirsch reduce — h over the per-pub source citation counts, NOT a sum. Same
                 // computation the indicator detail uses, so the roll-up score (and the H77 provisional table) agree.
-                indicatorScore = computeHIndex(indicator, authors, publications)[0];
+                // The points are formula(S = h), so a standard can count h×h (Psihologie 2026 I13).
+                indicatorScore = HIndexScoreSupport.score(indicator,
+                        computeHIndex(indicator, authors, publications)[0]);
             }
 
             // Per-indicator absolute cap (e.g. Info_D_ix visiting-professor "maximum 24 puncte").
@@ -696,8 +700,10 @@ public class UserReportFacade {
             int[] r = computeHIndex(indicator, authors, publications);
             int h = r[0];
             int totalCit = r[1];
+            double hScore = HIndexScoreSupport.score(indicator, h);
             rawGraph.put("hIndexYearBasis", itemYear ? "ITEM_YEAR" : "CURRENT");
-            rawGraph.put("total", String.valueOf(h));
+            rawGraph.put("total", HIndexScoreSupport.format(hScore));
+            rawGraph.put("hIndex", h);
             rawGraph.put("totalCit", totalCit);
             rawGraph.put("outputMode", "hindex");
             rawGraph.put("hIndexSource", kind.source().name());
@@ -705,7 +711,7 @@ public class UserReportFacade {
                     null, indicatorId,
                     ReportScopedIndicatorScoringSupport.viewNameFor(indicator),
                     rawGraph,
-                    new IndicatorApplyResultDto.Summary((double) h, totalCit, List.of(), List.of()),
+                    new IndicatorApplyResultDto.Summary(hScore, totalCit, List.of(), List.of()),
                     IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
         }
 
@@ -759,15 +765,21 @@ public class UserReportFacade {
         ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind = indicator.hIndexKind();
         boolean itemYear = "IY".equals(indicator.getScoreYearRange());
         if (kind.source() == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE || kind.excludeSelf()) {
-            return hIndexFromGraph(kind, itemYear, authors, publications);
+            return hIndexFromGraph(kind, itemYear, indicator.usesPsihologie2026(), authors, publications);
         }
         int h = HIndexCalculator.hIndexForSource(publications, kind.source());
         int totalCit = publications.stream().mapToInt(HIndexCalculator.extractorFor(kind.source())).sum();
         return new int[]{h, totalCit};
     }
 
+    /**
+     * @param includeEsci Psihologie 2026 (Comisia 28) lists ESCI under "Web of Science Core Collection", so its
+     *                    WoS h-index counts citations from ESCI journals too; every other standard keeps the
+     *                    SCIE/SSCI/AHCI policy.
+     */
     private int[] hIndexFromGraph(ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.HIndex kind,
                                   boolean itemYear,
+                                  boolean includeEsci,
                                   List<ScholardexAuthorView> authors,
                                   List<ScholardexPublicationView> publications) {
         boolean excludeSelf = kind.excludeSelf();
@@ -800,14 +812,18 @@ public class UserReportFacade {
                 }
             }
             Map<String, Set<Integer>> coreYears =
-                    scholardexProjectionReadService.findForumCoreCollectionYears(citingForumIds, years);
+                    includeEsci
+                            ? scholardexProjectionReadService.findForumCoreCollectionYears(citingForumIds, years, true)
+                            : scholardexProjectionReadService.findForumCoreCollectionYears(citingForumIds, years);
             venueOk = c -> {
                 Integer y = parseYear(c.getCoverDate());
                 return y != null && c.getForum() != null
                         && coreYears.getOrDefault(c.getForum(), Set.of()).contains(y);
             };
         } else if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.WOS_VENUE) {
-            Set<String> currentCore = scholardexProjectionReadService.findForumsCurrentlyInCore(citingForumIds);
+            Set<String> currentCore = includeEsci
+                    ? scholardexProjectionReadService.findForumsCurrentlyInCore(citingForumIds, true)
+                    : scholardexProjectionReadService.findForumsCurrentlyInCore(citingForumIds);
             venueOk = c -> c.getForum() != null && currentCore.contains(c.getForum());
         } else if (source == ro.uvt.pokedex.core.model.reporting.scoring.HIndexSource.SCOPUS_VENUE) {
             Map<String, ScholardexForumView> forums = new HashMap<>();

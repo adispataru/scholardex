@@ -118,6 +118,25 @@ public class Indicator {
     }
 
     /**
+     * Psihologie 2026 — opt into the OM 3019/2025 Comisia 28 rules where they differ from the 2016 Anexa 28:
+     * <ul>
+     *   <li>{@code PSYCH_BOOK}: the 2026 A2/B publisher lists (B drops All and Tritonic, adds Humanitas,
+     *       Universitatea Transilvania, Pro Universitaria, Didactică și Pedagogică), plus the indicative A1
+     *       tier for publishers on the WoS Master Book List;</li>
+     *   <li>{@code PSYCH_BDI_JOURNAL}: ONE recognised database is enough ("indexate într-una sau mai multe
+     *       baze de date"), and DOAJ is no longer on the Psychology list;</li>
+     *   <li>h-index with the WoS venue source: ESCI counts as Web of Science Core Collection.</li>
+     * </ul>
+     * {@code null}/false keeps the frozen 2016 behaviour. Nullable-only like the other 2026 flags.
+     */
+    private Boolean psihologie2026;
+
+    /** True when this indicator applies the 2026 Comisia 28 (Psihologie) rules. */
+    public boolean usesPsihologie2026() {
+        return Boolean.TRUE.equals(psihologie2026);
+    }
+
+    /**
      * RETIRED (2026-07-24): best-of-AIS/JIF journal classification is now universal in
      * {@code ComputerScienceJournalScoringService} — the 2016 standard's AIS-only regime applied to too
      * few years to be worth keeping distinguishable. The field stays only so persisted documents that

@@ -78,6 +78,13 @@ class LegacyMappingTest {
         assertEquals("PUBLICATIONS_FIRST_OR_CORRESPONDING",
                 new IndicatorKind.Publications(AuthorRole.FIRST_OR_CORRESPONDING, ScoringStrategy.GENERIC_COUNT)
                         .toLegacy().outputTypeName());
+        // Psihologie 2026 co-author: the complement role round-trips both ways.
+        assertEquals(AuthorRole.NOT_FIRST_NOR_CORRESPONDING,
+                ((IndicatorKind.Publications) IndicatorKind.of(
+                        "PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING", "IMPACT_FACTOR")).role());
+        assertEquals("PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING",
+                new IndicatorKind.Publications(AuthorRole.NOT_FIRST_NOR_CORRESPONDING, ScoringStrategy.IMPACT_FACTOR)
+                        .toLegacy().outputTypeName());
     }
 
     @Test

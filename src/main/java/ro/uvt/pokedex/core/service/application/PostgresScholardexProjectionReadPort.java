@@ -196,14 +196,24 @@ public class PostgresScholardexProjectionReadPort {
      */
     public java.util.Map<String, Set<Integer>> findForumCoreCollectionYears(
             Collection<String> forumIds, Collection<Integer> years) {
+        return findForumCoreCollectionYears(forumIds, years, false);
+    }
+
+    /**
+     * As {@link #findForumCoreCollectionYears(Collection, Collection)}, optionally admitting ESCI — the
+     * 2026 Psihologie standard (Comisia 28) lists ESCI under "Web of Science Core Collection".
+     */
+    public java.util.Map<String, Set<Integer>> findForumCoreCollectionYears(
+            Collection<String> forumIds, Collection<Integer> years, boolean includeEsci) {
         if (isNullOrEmpty(forumIds) || years == null || years.isEmpty()) {
             return java.util.Map.of();
         }
         java.util.Map<String, Set<Integer>> out = new java.util.HashMap<>();
         namedParameterJdbcTemplate.query(
                 "SELECT DISTINCT forum_id, year FROM reporting_read.scholardex_forum_category_view "
-                        + "WHERE forum_id IN (:ids) AND year IN (:years) AND edition::text IN ('SCIE','SSCI','AHCI')",
-                new MapSqlParameterSource().addValue("ids", forumIds).addValue("years", years),
+                        + "WHERE forum_id IN (:ids) AND year IN (:years) AND edition::text IN (:editions)",
+                new MapSqlParameterSource().addValue("ids", forumIds).addValue("years", years)
+                        .addValue("editions", coreEditions(includeEsci)),
                 (org.springframework.jdbc.core.RowCallbackHandler) rs ->
                         out.computeIfAbsent(rs.getString("forum_id"), k -> new java.util.HashSet<>()).add(rs.getInt("year")));
         return out;
@@ -215,13 +225,25 @@ public class PostgresScholardexProjectionReadPort {
      * {@link #findForumCoreCollectionYears} ("item year"). Empty input short-circuits.
      */
     public Set<String> findForumsCurrentlyInCore(Collection<String> forumIds) {
+        return findForumsCurrentlyInCore(forumIds, false);
+    }
+
+    /** As {@link #findForumsCurrentlyInCore(Collection)}, optionally admitting ESCI (Psihologie 2026). */
+    public Set<String> findForumsCurrentlyInCore(Collection<String> forumIds, boolean includeEsci) {
         if (isNullOrEmpty(forumIds)) {
             return Set.of();
         }
         return new java.util.HashSet<>(namedParameterJdbcTemplate.queryForList(
                 "SELECT DISTINCT forum_id FROM reporting_read.scholardex_forum_membership_view "
-                        + "WHERE forum_id IN (:ids) AND database IN ('SCIE','SSCI','AHCI')",
-                new MapSqlParameterSource("ids", forumIds), String.class));
+                        + "WHERE forum_id IN (:ids) AND database IN (:editions)",
+                new MapSqlParameterSource("ids", forumIds).addValue("editions", coreEditions(includeEsci)),
+                String.class));
+    }
+
+    private static java.util.List<String> coreEditions(boolean includeEsci) {
+        return includeEsci
+                ? java.util.List.of("SCIE", "SSCI", "AHCI", "ESCI")
+                : java.util.List.of("SCIE", "SSCI", "AHCI");
     }
 
     /**

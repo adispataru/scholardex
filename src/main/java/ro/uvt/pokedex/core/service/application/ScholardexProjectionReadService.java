@@ -187,6 +187,17 @@ public class ScholardexProjectionReadService {
         return postgresProjectionReadPort.findForumsCurrentlyInCore(forumIds);
     }
 
+    /** Psihologie 2026: the year-true Core read with ESCI admitted ("WoS Core Collection" per Comisia 28). */
+    public java.util.Map<String, java.util.Set<Integer>> findForumCoreCollectionYears(
+            Collection<String> forumIds, Collection<Integer> years, boolean includeEsci) {
+        return postgresProjectionReadPort.findForumCoreCollectionYears(forumIds, years, includeEsci);
+    }
+
+    /** Psihologie 2026: the current-snapshot Core read with ESCI admitted. */
+    public java.util.Set<String> findForumsCurrentlyInCore(Collection<String> forumIds, boolean includeEsci) {
+        return postgresProjectionReadPort.findForumsCurrentlyInCore(forumIds, includeEsci);
+    }
+
     /** A forum's current indexing membership (databases + APC) for the public provenance badges. */
     public ro.uvt.pokedex.core.service.application.model.ForumIndexingSnapshot findForumIndexing(String forumId) {
         String canonical = resolveCanonicalIds(ScholardexEntityType.FORUM, List.of(forumId))
