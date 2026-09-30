@@ -9,7 +9,8 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H133` The institution page failed on a record without Scopus affiliations — **FIXED 2026-09-30, prod pending.**
+- [ ] `H133` The institution page failed on a record without Scopus affiliations — **FIXED and DEPLOYED 2026-09-30**
+  (image `f95628a3`, GitHub `deploy-prod`: STATUS deployed, revision 77, 08:27 UTC; read from the deploy log).
   `/admin/institutions/inst-uvt` answered 500 (request `3d8abfbc…`, 07:10 UTC): a NullPointerException in
   `AdminInstitutionReportFacade.loadInstitutionPublications`, which iterated the institution's Scopus
   affiliations, and the seeded `inst-uvt` record has none (only the edit form sets them, nobody ever did).
