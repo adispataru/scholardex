@@ -351,6 +351,38 @@ class CNFISReportExportServiceTest {
         }
     }
 
+    @Test
+    void anexa5CarriesThePatentsAfterThePublications() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        CNFISReport2025 patent = new CNFISReport2025();
+        patent.setTitlu("Sistem de răcire");
+        patent.setBrevetCode("EP123");
+        patent.setOficiuBrevet("EPO");
+        patent.setListYear(2023);
+        patent.setEuropene(true);
+        patent.setNumarAutori(3);
+        patent.setNumarAutoriUniversitate(2);
+
+        byte[] bytes = service.generateAnexa5(
+                List.of(publication("p1", "forum-1", "2023-03-01", "10.1000/one", null, 2, "Reported")),
+                List.of(report(r -> r.setIsiQ1(true))),
+                Map.of("forum-1", forum("Forum Name", "1234-5678", "9876-5432")),
+                List.of(patent));
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            assertEquals("Reported", sheet.getRow(17).getCell(2).getStringCellValue());
+            Row row = sheet.getRow(18);
+            assertEquals("2023", row.getCell(1).getStringCellValue());
+            assertEquals("Sistem de răcire", row.getCell(2).getStringCellValue());
+            assertEquals("EP123", row.getCell(5).getStringCellValue());
+            assertEquals("EPO", row.getCell(10).getStringCellValue());
+            assertEquals(1.0, row.getCell(22).getNumericCellValue(), "the European column");
+            assertEquals(3.0, row.getCell(25).getNumericCellValue());
+            assertEquals(2.0, row.getCell(26).getNumericCellValue());
+        }
+    }
+
     private ScoringPublication publication(String id, String forumId, String date, String doi, String wosId, int authorCount, String title) {
         return new ScoringPublication(id, "eid-" + id, forumId, date, "ar", null, List.of("a1"), authorCount, doi, wosId, title, 0, java.util.Set.of());
     }

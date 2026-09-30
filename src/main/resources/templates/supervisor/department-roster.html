@@ -99,6 +99,7 @@
                                         <th scope="col" th:text="#{supervisor.roster.col.researcher}">Researcher</th>
                                         <th scope="col" th:text="#{supervisor.roster.col.email}">Email</th>
                                         <th scope="col" th:text="#{supervisor.roster.col.position}">Position</th>
+                                        <th scope="col" th:text="#{supervisor.roster.col.staff}">Employment (CNFIS)</th>
                                         <th scope="col"><span class="sr-only" th:text="#{supervisor.roster.col.remove}">Remove</span></th>
                                     </tr>
                                     </thead>
@@ -129,6 +130,28 @@
                                                 <button type="submit" class="btn btn-sm btn-outline-primary"
                                                         th:attr="aria-label=#{supervisor.roster.position.updateAria(${u.email})}"
                                                         th:title="#{supervisor.roster.position.updateTitle}">
+                                                    <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <!-- H129: what CNFIS counts a university author by, at the reference date -->
+                                            <form th:action="@{/supervisor/departments/{id}/members/staff(id=${departmentId})}"
+                                                  method="post" class="form-inline flex-nowrap" th:with="sr=${u.staffRecord}">
+                                                <input type="hidden" name="userId" th:value="${u.email}">
+                                                <select name="employmentType" class="form-control form-control-sm mr-1" style="width: auto;"
+                                                        th:attr="aria-label=#{supervisor.roster.staff.aria(${u.email})}">
+                                                    <option value="" th:selected="${sr == null or sr.employmentType == null}"
+                                                            th:text="#{supervisor.roster.staff.none}">not filled in</option>
+                                                    <option th:each="t : ${T(ro.uvt.pokedex.core.model.user.StaffRecord.EmploymentType).values()}"
+                                                            th:value="${t}" th:text="#{'supervisor.roster.staff.type.' + ${t}}"
+                                                            th:selected="${sr != null and t == sr.employmentType}"></option>
+                                                </select>
+                                                <input type="date" name="employedFrom" class="form-control form-control-sm mr-1" style="width: auto;"
+                                                       th:value="${sr != null ? sr.employedFrom : null}" th:attr="aria-label=#{supervisor.roster.staff.from}">
+                                                <input type="date" name="employedTo" class="form-control form-control-sm mr-1" style="width: auto;"
+                                                       th:value="${sr != null ? sr.employedTo : null}" th:attr="aria-label=#{supervisor.roster.staff.to}">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary" th:title="#{supervisor.roster.staff.update}">
                                                     <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i>
                                                 </button>
                                             </form>

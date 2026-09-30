@@ -154,47 +154,61 @@ public class UserReportFacade {
     }
 
     public UserWorkbookExportResult buildUserCnfisWorkbookExport(String userEmail, int startYear, int endYear) throws IOException {
-        Optional<User> userOpt = userService.getUserByEmail(userEmail);
-        if (userOpt.isEmpty()) {
+        if (userService.getUserByEmail(userEmail).isEmpty()) {
             return UserWorkbookExportResult.unauthorized();
         }
-
-        User user0 = userOpt.get();
-        if (user0.getResearcherProfile() == null) {
+        Optional<CnfisSheetData> sheet = buildCnfisSheet(userEmail, CnfisEdition.forWindow(startYear, endYear));
+        if (sheet.isEmpty()) {
             return UserWorkbookExportResult.notFound();
         }
+        CnfisSheetData data = sheet.get();
+        byte[] workbookBytes = exportService.generateCNFISReportWorkbook(
+                data.publications(), data.reports(), data.forumMap(), data.authorIds(), false);
+        return UserWorkbookExportResult.ok(
+                workbookBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx"
+        );
+    }
 
-        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(user0.getResearcherProfile());
+    /** The publications of a person's Anexa 5, classified, with what the workbook needs around them. */
+    public record CnfisSheetData(List<ScoringPublicationReadModel> publications,
+                                 List<CNFISReport2025> reports,
+                                 Map<String, ScholardexForumView> forumMap,
+                                 List<String> authorIds) {
+    }
+
+    /**
+     * H129: the sheet of one edition — the confirmed publications of the window, each classified by the
+     * edition's rules. Read by the download and by the CNFIS page alike; it looks nothing up and writes
+     * nothing (the WoS codes are the stored ones — an admin operation finds them). Empty when the person
+     * has no profile.
+     */
+    public Optional<CnfisSheetData> buildCnfisSheet(String userEmail, CnfisEdition edition) {
+        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (userOpt.isEmpty() || userOpt.get().getResearcherProfile() == null) {
+            return Optional.empty();
+        }
+        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(userOpt.get().getResearcherProfile());
         List<String> authorIds = findAuthorsByIds(lookupKeys).stream().map(ScholardexAuthorView::getId).toList();
-        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
-        publications = publications.stream().filter(publication -> {
-            return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
-                    .map(pubYear -> pubYear >= startYear && pubYear <= endYear)
-                    .orElse(false);
-        }).toList();
+        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail).stream()
+                .filter(publication -> PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
+                        .map(edition::covers)
+                        .orElse(false))
+                .toList();
 
         Domain domain = domainRepository.findByName("ALL").orElse(null);
         List<CNFISReport2025> cnfisReports = new ArrayList<>();
-        // H129: a download has no side effects — the WoS codes are the ones already stored (an admin operation
-        // finds them); it used to ask Clarivate's link resolver for every paper without one and write the answer.
-        CnfisEdition edition = CnfisEdition.forWindow(startYear, endYear);
         List<ScoringPublicationReadModel> scoringPublications = new ArrayList<>();
         for (ScholardexPublicationView publication : publications) {
             ScoringPublicationReadModel scoringPublication = publication.toScoringPublication();
             scoringPublications.add(scoringPublication);
             cnfisReports.add(cnfiSScoringService2025.getReport(scoringPublication, domain, edition));
         }
-
         Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
         Map<String, ScholardexForumView> forumMap = findForumsByIds(forumKeys).stream()
                 .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
-
-        byte[] workbookBytes = exportService.generateCNFISReportWorkbook(scoringPublications, cnfisReports, forumMap, authorIds, false);
-        return UserWorkbookExportResult.ok(
-                workbookBytes,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx"
-        );
+        return Optional.of(new CnfisSheetData(scoringPublications, cnfisReports, forumMap, authorIds));
     }
 
     public UserWorkbookExportResult buildLegacyUserCnfisWorkbookExport(String userEmail) throws IOException {

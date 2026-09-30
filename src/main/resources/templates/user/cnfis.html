@@ -15,33 +15,226 @@
             <div th:replace="~{fragments :: navbar('CNFIS')}"></div>
 
             <div class="container-fluid app-page-content">
+                <div th:if="${successMessage != null}" class="alert alert-success" role="status" th:text="#{${successMessage}}">Saved.</div>
+                <div th:if="${errorMessage != null}" class="alert alert-danger" role="alert" th:text="#{${errorMessage}}">Not possible.</div>
+
                 <p class="text-muted" th:text="#{cnfis.intro}">CNFIS reports every two years, over the four years before the reference date.</p>
 
-                <div class="card mb-3" th:each="edition : ${editions}">
-                    <div class="card-body">
-                        <h2 class="h5 mb-1">
-                            <span th:text="#{cnfis.edition(${edition.reportingYear()})}">Edition 2025</span>
-                            <span th:if="${edition.provisional()}" class="app-table-badge app-table-badge--warning"
-                                  th:text="#{cnfis.edition.provisional}">provisional</span>
-                        </h2>
-                        <p class="mb-2" th:text="#{cnfis.edition.window(${edition.reportingYear()}, ${edition.windowStart()}, ${edition.windowEnd()}, ${edition.lastListYear()})}">
-                            Reference date 1 January 2025; publications of 2021–2024; the last classification list is the one of 2023.
-                        </p>
-                        <p th:if="${edition.provisional()}" class="text-muted small mb-2" th:text="#{cnfis.edition.provisional.note}">
-                            CNFIS has not published the guide of this edition; the rules of the last one are applied.
-                        </p>
-                        <a class="btn btn-sm btn-primary"
-                           th:href="@{/user/exports/cnfis(start=${edition.windowStart()},end=${edition.windowEnd()})}">
-                            <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
-                            <span th:text="#{cnfis.download.anexa5}">Download Anexa 5 (articles and patents)</span>
-                        </a>
-                    </div>
+                <!-- ── Edition picker ─────────────────────────────────────── -->
+                <nav class="mb-3" aria-label="CNFIS editions">
+                    <a th:each="e : ${editions}"
+                       th:href="@{/user/cnfis(edition=${e.reportingYear()})}"
+                       th:classappend="${e.reportingYear() == edition} ? ' btn-primary' : ' btn-outline-secondary'"
+                       class="btn btn-sm mr-1">
+                        <span th:text="#{cnfis.edition(${e.reportingYear()})}">Edition 2025</span>
+                        <span th:if="${e.provisional()}" th:text="'(' + #{cnfis.edition.provisional} + ')'">(provisional)</span>
+                    </a>
+                </nav>
+
+                <div th:if="${noProfile == true}" class="app-empty-state">
+                    <p class="app-empty-state__title" th:text="#{cnfis.noProfile}">Complete your researcher profile first.</p>
                 </div>
 
-                <div class="alert alert-info" role="status">
-                    <p class="mb-1" th:text="#{cnfis.note.leftOut}">Publications that get no row are listed, each with its reason, on the last sheet of the file; delete that sheet before you hand the file in.</p>
-                    <p class="mb-0" th:text="#{cnfis.note.hirsch}">The Hirsch index values of the form are taken from Google Scholar, Web of Science and Scopus, as signed print screens.</p>
-                </div>
+                <th:block th:if="${sheet != null}" th:with="ed=${sheet.edition()}, header=${sheet.header()}, counts=${sheet.counts()}">
+                    <p class="mb-3" th:text="#{cnfis.edition.window(${ed.reportingYear()}, ${ed.windowStart()}, ${ed.windowEnd()}, ${ed.lastListYear()})}">
+                        Reference date 1 January 2025; publications of 2021–2024; the last classification list is the one of 2023.
+                    </p>
+                    <p th:if="${ed.provisional()}" class="text-muted small" th:text="#{cnfis.edition.provisional.note}">provisional</p>
+
+                    <!-- ── Head of the sheet ───────────────────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-header-title">
+                        <div class="card-body">
+                            <h2 id="cnfis-header-title" class="h5" th:text="#{cnfis.header.title}">Head of the sheet</h2>
+                            <form th:action="@{/user/cnfis/{y}/header(y=${ed.reportingYear()})}" method="post" class="app-form-grid">
+                                <div class="form-group">
+                                    <label for="cnfis-domain" th:text="#{cnfis.header.domain}">CNATDCU domain</label>
+                                    <select id="cnfis-domain" name="domainCode" class="form-control form-control-sm">
+                                        <option value="" th:text="#{cnfis.header.domain.none}">— choose —</option>
+                                        <option th:each="d : ${sheet.domains()}" th:value="${d.code()}" th:text="${d.label()}"
+                                                th:selected="${d.code() == header.domainCode}"></option>
+                                    </select>
+                                    <small class="form-text text-muted" th:text="#{cnfis.header.domain.hint}">The post you hold, or the habilitation domain if later.</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cnfis-score-report" th:text="#{cnfis.header.score}">CNATDCU score</label>
+                                    <select id="cnfis-score-report" name="scoreReportId" class="form-control form-control-sm">
+                                        <option value="" th:text="#{cnfis.header.score.typed}">typed in</option>
+                                        <option th:each="r : ${sheet.cnatdcuReports()}" th:value="${r.id()}" th:text="${r.title()}"
+                                                th:selected="${r.id() == header.scoreReportId}"></option>
+                                    </select>
+                                    <input type="number" step="0.01" name="scoreTyped" class="form-control form-control-sm mt-1"
+                                           th:value="${header.scoreTyped}" th:placeholder="#{cnfis.header.score.typed}">
+                                    <small class="form-text text-muted">
+                                        <span th:text="#{cnfis.header.score.current}">Value on the sheet:</span>
+                                        <strong th:text="${sheet.cnatdcuScore() != null ? #numbers.formatDecimal(sheet.cnatdcuScore(), 1, 2) : '—'}">—</strong>
+                                    </small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cnfis-unmet" th:text="#{cnfis.header.unmet}">Unmet CNATDCU criterion</label>
+                                    <input id="cnfis-unmet" type="text" name="unmetCriterion" class="form-control form-control-sm" th:value="${header.unmetCriterion}">
+                                </div>
+                                <div class="form-group">
+                                    <label th:text="#{cnfis.header.hirsch}">Hirsch index</label>
+                                    <div class="d-flex">
+                                        <input type="number" min="0" name="hirschGoogleScholar" class="form-control form-control-sm mr-1" placeholder="Google Scholar" th:value="${header.hirschGoogleScholar}" aria-label="Google Scholar">
+                                        <input type="number" min="0" name="hirschWebOfScience" class="form-control form-control-sm mr-1" placeholder="Web of Science" th:value="${header.hirschWebOfScience}" aria-label="Web of Science">
+                                        <input type="number" min="0" name="hirschScopus" class="form-control form-control-sm" placeholder="Scopus" th:value="${header.hirschScopus}" aria-label="Scopus">
+                                    </div>
+                                    <small class="form-text text-muted" th:text="#{cnfis.note.hirsch}">from signed print screens</small>
+                                </div>
+                                <div class="form-group app-form-grid--full">
+                                    <button type="submit" class="btn btn-sm btn-primary" th:text="#{common.save}">Save</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- ── Totals ──────────────────────────────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-counts-title">
+                        <div class="card-body">
+                            <h2 id="cnfis-counts-title" class="h5" th:text="#{cnfis.counts.title}">Totals</h2>
+                            <table class="table table-sm mb-0" id="cnfis-counts">
+                                <thead><tr>
+                                    <th>ISI Q1</th><th>ISI Q2</th><th>ISI Q3</th><th>ISI Q4</th>
+                                    <th>ISI Arts &amp; Humanities</th><th>ISI ESCI</th><th>ERIH+</th>
+                                    <th>ISI Proceedings</th><th>IEEE Proceedings</th><th th:text="#{cnfis.patents}">Patents</th>
+                                </tr></thead>
+                                <tbody><tr>
+                                    <td th:text="${counts.q1()}">0</td><td th:text="${counts.q2()}">0</td>
+                                    <td th:text="${counts.q3()}">0</td><td th:text="${counts.q4()}">0</td>
+                                    <td th:text="${counts.artsHumanities()}">0</td><td th:text="${counts.esci()}">0</td>
+                                    <td th:text="${counts.erihPlus()}">0</td><td th:text="${counts.isiProceedings()}">0</td>
+                                    <td th:text="${counts.ieeeProceedings()}">0</td><td th:text="${counts.patents()}">0</td>
+                                </tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- ── Rows ────────────────────────────────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-rows-title">
+                        <div class="card-body">
+                            <h2 id="cnfis-rows-title" class="h5" th:text="#{cnfis.rows.title(${#lists.size(sheet.rows())})}">Rows of the form</h2>
+                            <div th:if="${#lists.isEmpty(sheet.rows())}" class="app-table-state app-table-state--warning" role="status" th:text="#{cnfis.rows.none}">No publication of this window is in a category of the form.</div>
+                            <div th:unless="${#lists.isEmpty(sheet.rows())}" class="app-table-scroll">
+                                <table class="table table-sm app-table" id="cnfis-rows">
+                                    <thead><tr>
+                                        <th th:text="#{common.year}">Year</th>
+                                        <th th:text="#{common.title}">Title</th>
+                                        <th th:text="#{authors.detail.venue}">Venue</th>
+                                        <th>DOI / WoS</th>
+                                        <th th:text="#{cnfis.rows.category}">Category</th>
+                                        <th th:text="#{cnfis.rows.classifiedBy}">Classified by</th>
+                                        <th th:text="#{cnfis.rows.authors}">Authors / from the university</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    <tr th:each="r : ${sheet.rows()}">
+                                        <td th:text="${r.year()}">2023</td>
+                                        <td><a th:href="@{/publications/{id}(id=${r.publicationId()})}" th:text="${r.title()}">Title</a></td>
+                                        <td th:text="${r.venue()}">Venue</td>
+                                        <td class="app-table__cell--identifier">
+                                            <span th:text="${r.doi()}">doi</span>
+                                            <span th:if="${r.wosCode() != null and !r.wosCode().isBlank()}" th:text="' · ' + ${r.wosCode()}"></span>
+                                        </td>
+                                        <td><strong th:text="${r.category()}">ISI Q1</strong></td>
+                                        <td class="text-muted small" th:text="${r.classifiedBy()}">AIS Q1 · category · list 2023</td>
+                                        <td th:text="${r.authorCount()} + ' / ' + ${r.universityAuthorCount()}">3 / 2</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p th:if="${!#lists.isEmpty(sheet.staffRecordMissing())}" class="text-muted small mt-2">
+                                <span th:text="#{cnfis.rows.staffMissing}">Counted as university authors, though their employment record is not filled in (the head of the department fills it):</span>
+                                <span th:text="${#strings.listJoin(sheet.staffRecordMissing(), ', ')}">names</span>
+                            </p>
+                        </div>
+                    </section>
+
+                    <!-- ── Patents ─────────────────────────────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-patents-title">
+                        <div class="card-body">
+                            <h2 id="cnfis-patents-title" class="h5" th:text="#{cnfis.patents.title(${#lists.size(sheet.patents())})}">Patents</h2>
+                            <p class="text-muted small" th:text="#{cnfis.patents.hint}">From the activities you declared as "Brevet" (in the workspace); the patent code, the office and the university authors are fields of the activity.</p>
+                            <table th:unless="${#lists.isEmpty(sheet.patents())}" class="table table-sm app-table" id="cnfis-patents">
+                                <thead><tr>
+                                    <th th:text="#{common.year}">Year</th><th th:text="#{common.title}">Title</th>
+                                    <th th:text="#{cnfis.patents.code}">Code</th><th th:text="#{cnfis.patents.office}">Office</th>
+                                    <th th:text="#{common.type}">Type</th><th th:text="#{cnfis.rows.authors}">Authors / from the university</th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="p : ${sheet.patents()}">
+                                    <td th:text="${p.year()}">2023</td><td th:text="${p.title()}">Title</td>
+                                    <td th:text="${p.code()}">code</td><td th:text="${p.office()}">office</td>
+                                    <td th:text="${p.type()}">National</td>
+                                    <td th:text="${p.authorCount()} + ' / ' + ${p.universityAuthorCount()}">2 / 2</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- ── Left out ────────────────────────────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-leftout-title">
+                        <div class="card-body">
+                            <h2 id="cnfis-leftout-title" class="h5" th:text="#{cnfis.leftOut.title(${#lists.size(sheet.leftOut())})}">Left out</h2>
+                            <p class="text-muted small" th:text="#{cnfis.leftOut.hint}">Publications of the window that get no row, each with the reason.</p>
+                            <table th:unless="${#lists.isEmpty(sheet.leftOut())}" class="table table-sm app-table" id="cnfis-left-out">
+                                <thead><tr>
+                                    <th th:text="#{common.year}">Year</th><th th:text="#{common.title}">Title</th>
+                                    <th th:text="#{authors.detail.venue}">Venue</th><th th:text="#{cnfis.leftOut.reason}">Reason</th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="l : ${sheet.leftOut()}">
+                                    <td th:text="${l.year()}">2023</td>
+                                    <td><a th:href="@{/publications/{id}(id=${l.publicationId()})}" th:text="${l.title()}">Title</a></td>
+                                    <td th:text="${l.venue()}">Venue</td>
+                                    <td th:text="${l.reason()}">reason</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- ── Downloads and frozen copies ─────────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-copies-title">
+                        <div class="card-body">
+                            <h2 id="cnfis-copies-title" class="h5" th:text="#{cnfis.copies.title}">Download and freeze</h2>
+                            <div class="mb-3">
+                                <a class="btn btn-sm btn-primary mr-1" th:href="@{/user/cnfis/{y}/export(y=${ed.reportingYear()})}">
+                                    <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
+                                    <span th:text="#{cnfis.download.anexa5}">Download Anexa 5</span>
+                                </a>
+                                <form th:action="@{/user/cnfis/{y}/freeze(y=${ed.reportingYear()})}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" th:text="#{cnfis.freeze}">Freeze this sheet</button>
+                                </form>
+                            </div>
+                            <p class="text-muted small" th:text="#{cnfis.freeze.hint}">A frozen copy is the sheet as you hand it in: it does not change when the data does, and the head builds the institutional table from it. You can release it until the head has done so.</p>
+                            <p class="text-muted small" th:text="#{cnfis.note.leftOut}">left-out sheet</p>
+                            <table th:unless="${#lists.isEmpty(sheet.snapshots())}" class="table table-sm app-table" id="cnfis-snapshots">
+                                <thead><tr>
+                                    <th th:text="#{cnfis.copies.frozenAt}">Frozen at</th>
+                                    <th th:text="#{cnfis.copies.rows}">Rows</th>
+                                    <th th:text="#{cnfis.patents}">Patents</th>
+                                    <th></th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="s : ${sheet.snapshots()}">
+                                    <td th:text="${s.createdAt()}">2026-…</td>
+                                    <td th:text="${s.rows()}">0</td>
+                                    <td th:text="${s.patents()}">0</td>
+                                    <td>
+                                        <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/user/cnfis/snapshots/{id}/export(id=${s.id()})}" th:text="#{cnfis.copies.download}">Download</a>
+                                        <span th:if="${s.locked()}" class="app-table-badge app-table-badge--success" th:text="#{cnfis.copies.locked}">in an institutional table</span>
+                                        <form th:unless="${s.locked()}" th:action="@{/user/cnfis/snapshots/{id}/release(id=${s.id()})}" method="post" class="d-inline">
+                                            <input type="hidden" name="edition" th:value="${ed.reportingYear()}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" th:text="#{cnfis.copies.release}">Release</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </th:block>
             </div>
         </div>
     </div>

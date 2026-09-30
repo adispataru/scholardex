@@ -82,7 +82,26 @@ Done history moved to `TASKS-done.md`.
   of each in the admin report form (until then they show under CNATDCU and the UEFISCDI
   entry is empty). **Left as it was:** the delegated view of a supervisor lists all the reports of a researcher
   together; the preferred report is one per person, so it applies only under the entry it belongs to.
-  **Not checked in a browser** (a run needs real data). Source of the rules: the
+  **Not checked in a browser** (a run needs real data).
+  **SLICE 2b BUILT 2026-09-30, not pushed** — the CNFIS page proper (`/user/cnfis?edition=`), per edition:
+  (1) the preview of Anexa 5: rows with the list year and what classified each, the left-out publications with
+  their reason, the totals by column (`CnfisReportingFacade.buildSheet`, on `UserReportFacade.buildCnfisSheet`,
+  which the download uses too); (2) the head of the sheet the person fills in (`cnfisSheets`): the CNATDCU
+  domain from the template's own "Domenii-CNATDCU" list (`CnfisDomainCatalog`, 84 codes), the CNATDCU score
+  from a chosen CNATDCU report (the sum of its contributing criteria, the evaluation page's rule) or typed in,
+  the unmet criterion, the three Hirsch values typed from the print screens; (3) patents from the declared
+  activity "Brevet", which gains the fields "Cod brevet", "Oficiu", "N_autori_universitate" (seed +
+  `scripts/ops/add-brevet-fields.sh`); written to the form after the publications; (4) `User.staffRecord`
+  (employment type of the CNFIS staff sheet + from/to), filled by the head on the department roster page;
+  "authors from the university" = co-authors with an account who are staff at the reference date; a
+  co-author without a record is counted and NAMED on the page; (5) frozen copies (`cnfisSheetSnapshots`):
+  the sheet as handed in, rows + left-out + patents + head + score, downloadable from what it holds; the
+  person releases a copy unless `lockedByUnitSheetId` is set (slice 3 sets it when Anexa 6 is built).
+  Decisions: the head fills the staff fields, the person sees them; the left-out sheet stays in the file; the
+  person releases until Anexa 6 is built, then only the head. **At deploy:** run `add-brevet-fields.sh`.
+  **Not done:** the Hirsch values of the platform are not shown beside the typed ones; the domain does not yet
+  hide sheets 5.1–5.3 (they do not exist); the old `/user/exports/cnfis` download stays (no patents in it).
+  **Not checked in a browser.** Source of the rules: the
   CNFIS guide "Cerințe și recomandări privind raportarea datelor … IC2" (January 2025, cnfis.ro).
   **The shape.** Three sidebar entries instead of "Evaluation": **CNATDCU** (the domain reports: every FV, FEAA
   included), **UEFISCDI** (Eligibilitate PD, PD 2026, Tinere Echipe) and **CNFIS**. A report carries a new field

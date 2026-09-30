@@ -46,6 +46,9 @@ public class User implements UserDetails {
      */
     private AccountKind accountKind = AccountKind.INSTITUTIONAL;
 
+    /** H129: the employment facts CNFIS counts university authors by; filled by the head of the department. */
+    private StaffRecord staffRecord;
+
     @Transient
     private List<SimpleGrantedAuthority> authority;
     private boolean locked = false;

@@ -130,6 +130,44 @@ class SupervisorRosterControllerContractTest {
     }
 
     @Test
+    void theHeadFillsTheEmploymentRecordOfAMember() throws Exception {
+        // H129: what CNFIS counts a university author by, at the reference date
+        when(departmentAffiliationService.listCurrentAffiliations("dept-cs"))
+                .thenReturn(List.of(affiliation("ana@uvt.ro")));
+
+        mockMvc.perform(post("/supervisor/departments/dept-cs/members/staff")
+                        .param("userId", "ana@uvt.ro")
+                        .param("employmentType", "PERIOADA_DETERMINATA_NORMA_INTREAGA")
+                        .param("employedFrom", "2021-10-01")
+                        .param("employedTo", "")
+                        .with(user("head@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/supervisor/departments/dept-cs/members"));
+
+        org.mockito.ArgumentCaptor<ro.uvt.pokedex.core.model.user.StaffRecord> record =
+                org.mockito.ArgumentCaptor.forClass(ro.uvt.pokedex.core.model.user.StaffRecord.class);
+        verify(userService).updateStaffRecord(org.mockito.ArgumentMatchers.eq("ana@uvt.ro"), record.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                ro.uvt.pokedex.core.model.user.StaffRecord.EmploymentType.PERIOADA_DETERMINATA_NORMA_INTREAGA,
+                record.getValue().getEmploymentType());
+        org.junit.jupiter.api.Assertions.assertEquals(java.time.LocalDate.of(2021, 10, 1), record.getValue().getEmployedFrom());
+        org.junit.jupiter.api.Assertions.assertNull(record.getValue().getEmployedTo());
+    }
+
+    @Test
+    void theEmploymentRecordOfSomebodyOutsideTheDepartmentIsNotTouched() throws Exception {
+        when(departmentAffiliationService.listCurrentAffiliations("dept-cs"))
+                .thenReturn(List.of(affiliation("ana@uvt.ro")));
+
+        mockMvc.perform(post("/supervisor/departments/dept-cs/members/staff")
+                        .param("userId", "outsider@uvt.ro")
+                        .param("employmentType", "ASOCIAT")
+                        .with(user("head@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().is3xxRedirection());
+        verify(userService, org.mockito.Mockito.never()).updateStaffRecord(any(), any());
+    }
+
+    @Test
     void setPositionRejectsAUserWhoIsNotACurrentMember() throws Exception {
         when(departmentAffiliationService.listCurrentAffiliations("dept-cs"))
                 .thenReturn(List.of(affiliation("ana@uvt.ro")));

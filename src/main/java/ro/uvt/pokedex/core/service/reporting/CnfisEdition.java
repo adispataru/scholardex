@@ -56,6 +56,16 @@ public record CnfisEdition(int reportingYear, int windowStart, int windowEnd, bo
         return Math.min(publicationYear, lastListYear());
     }
 
+    /** The reference date, 1 January of the reporting year. */
+    public java.time.LocalDate referenceDate() {
+        return java.time.LocalDate.of(reportingYear, 1, 1);
+    }
+
+    /** The Anexa 5 template of the edition; a provisional edition fills the last published one. */
+    public String anexa5Template() {
+        return "data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx";
+    }
+
     public boolean covers(int publicationYear) {
         return publicationYear >= windowStart && publicationYear <= windowEnd;
     }

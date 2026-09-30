@@ -141,13 +141,64 @@ public class CNFISReportExportService {
         }
     }
 
-    void populateSheet(Workbook workbook,
-                       Sheet sheet,
-                       List<? extends ScoringPublicationReadModel> publications,
-                       List<CNFISReport2025> cnfisReports,
-                       Map<String, ScholardexForumView> forumMap,
-                       int rowNum,
-                       int sampleRowNum) {
+    /**
+     * H129 — the Anexa 5 workbook of a person: the classified publications, then the patents (from the
+     * declared activity "Brevet"), then the platform's sheet of left-out publications.
+     */
+    public byte[] generateAnexa5(List<? extends ScoringPublicationReadModel> publications,
+                                 List<CNFISReport2025> cnfisReports,
+                                 Map<String, ScholardexForumView> forumMap,
+                                 List<CNFISReport2025> patents) throws IOException {
+        try (InputStream resource = new FileInputStream("data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx");
+             Workbook workbook = new XSSFWorkbook(resource)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            int next = populateSheet(workbook, sheet, publications, cnfisReports, forumMap, 17, 16);
+            populatePatents(workbook, sheet, patents, next, 16);
+            addLeftOutSheet(workbook, publications, cnfisReports, forumMap);
+            workbook.setForceFormulaRecalculation(true);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            return bos.toByteArray();
+        }
+    }
+
+    /** One row per patent: year, title, patent code, office, the category column, the author counts. */
+    void populatePatents(Workbook workbook, Sheet sheet, List<CNFISReport2025> patents, int rowNum, int sampleRowNum) {
+        for (CNFISReport2025 patent : patents) {
+            int usableTemplateRow = findNextUsableTemplateRow(sheet, sampleRowNum);
+            if (usableTemplateRow < 0) {
+                throw new IllegalStateException("No suitable template row available for CNFIS export population.");
+            }
+            sampleRowNum = usableTemplateRow;
+            Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
+            row.getCell(1).setCellValue(patent.getListYear() == null ? "" : String.valueOf(patent.getListYear()));
+            row.getCell(2).setCellValue(cellText(patent.getTitlu()));
+            row.getCell(5).setCellValue(cellText(patent.getBrevetCode()));
+            row.getCell(6).setCellValue(cellText(patent.getDenumireJurnal()));
+            row.getCell(10).setCellValue(cellText(patent.getOficiuBrevet()));
+            if (patent.isTriadice()) {
+                row.getCell(21).setCellValue(1);
+            } else if (patent.isEuropene()) {
+                row.getCell(22).setCellValue(1);
+            } else if (patent.isInternationale()) {
+                row.getCell(23).setCellValue(1);
+            } else if (patent.isNationale()) {
+                row.getCell(24).setCellValue(1);
+            }
+            row.getCell(25).setCellValue(patent.getNumarAutori());
+            row.getCell(26).setCellValue(patent.getNumarAutoriUniversitate());
+            rowNum++;
+        }
+    }
+
+    /** @return the row number after the last row written */
+    int populateSheet(Workbook workbook,
+                      Sheet sheet,
+                      List<? extends ScoringPublicationReadModel> publications,
+                      List<CNFISReport2025> cnfisReports,
+                      Map<String, ScholardexForumView> forumMap,
+                      int rowNum,
+                      int sampleRowNum) {
         for (int i = 0; i < publications.size(); i++) {
             ScoringPublicationReadModel publication = publications.get(i);
             // H129: decided BEFORE a template row is copied — a skipped publication used to leave a blank row
@@ -209,13 +260,14 @@ public class CNFISReportExportService {
             row.getCell(26).setCellValue(universityAuthors);
             rowNum++;
         }
+        return rowNum;
     }
 
     /**
      * H129 — why a publication has no row in the form, or null when it has one. The form asks for a DOI or a
      * WoS code ("cel puțin unul din coduri") and has a place only for the categories it lists.
      */
-    static String leftOutReason(ScoringPublicationReadModel publication, CNFISReport2025 report) {
+    public static String leftOutReason(ScoringPublicationReadModel publication, CNFISReport2025 report) {
         String doi = publication.getDoi();
         boolean hasDoi = doi != null && !doi.isBlank() && !doi.equals("null");
         String wos = publication.getWosId();

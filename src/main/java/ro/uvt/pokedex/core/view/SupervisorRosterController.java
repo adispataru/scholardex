@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.model.org.Department;
 import ro.uvt.pokedex.core.model.reporting.Position;
+import ro.uvt.pokedex.core.model.user.StaffRecord;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.DepartmentAffiliationService;
@@ -114,6 +115,38 @@ public class SupervisorRosterController {
         }
         userService.updateResearcherPosition(userId, position);
         redirectAttributes.addFlashAttribute("successMessage", "Updated position for " + userId + ".");
+        return "redirect:/supervisor/departments/" + departmentId + "/members";
+    }
+
+    /**
+     * H129: the employment facts CNFIS counts a university author by ("Anexa 1" staff at the reference date).
+     * The head fills them; the person sees them on their CNFIS sheet.
+     */
+    @PostMapping("/staff")
+    @PreAuthorize("@orgUnitAccess.canManageDepartment(#departmentId, authentication)")
+    public String setStaffRecord(@PathVariable String departmentId,
+                                 @RequestParam("userId") String userId,
+                                 @RequestParam(value = "employmentType", required = false) StaffRecord.EmploymentType employmentType,
+                                 @RequestParam(value = "employedFrom", required = false)
+                                 @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                                 java.time.LocalDate employedFrom,
+                                 @RequestParam(value = "employedTo", required = false)
+                                 @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                                 java.time.LocalDate employedTo,
+                                 RedirectAttributes redirectAttributes) {
+        boolean isCurrentMember = departmentAffiliationService.listCurrentAffiliations(departmentId).stream()
+                .anyMatch(a -> a.getUserId().equals(userId));
+        if (!isCurrentMember) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    userId + " is not a current member of this department.");
+            return "redirect:/supervisor/departments/" + departmentId + "/members";
+        }
+        StaffRecord record = new StaffRecord();
+        record.setEmploymentType(employmentType);
+        record.setEmployedFrom(employedFrom);
+        record.setEmployedTo(employedTo);
+        userService.updateStaffRecord(userId, record);
+        redirectAttributes.addFlashAttribute("successMessage", "Updated employment record for " + userId + ".");
         return "redirect:/supervisor/departments/" + departmentId + "/members";
     }
 

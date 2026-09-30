@@ -185,6 +185,17 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    /**
+     * H129: the employment facts CNFIS counts university authors by, set by the head of the department on
+     * the roster page. A record without a type clears it (the person is then counted, and named as unfilled).
+     */
+    public Optional<User> updateStaffRecord(String email, ro.uvt.pokedex.core.model.user.StaffRecord record) {
+        return userRepository.findById(email).map(user -> {
+            user.setStaffRecord(record == null || record.getEmploymentType() == null ? null : record);
+            return userRepository.save(user);
+        });
+    }
+
     /** Removes the researcher profile from the user (account is kept). */
     public void deleteResearcherProfile(String email) {
         userRepository.findById(email).ifPresent(user -> {
