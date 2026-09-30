@@ -9,8 +9,8 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H132` Staff import reads quoted fields; FEAA starts with three test users — **BUILT 2026-09-30, prod
-  pending.** Two of the four FEAA departments have commas in their names ("Finanțe, Sisteme Informaționale și
+- [ ] `H132` Staff import reads quoted fields; FEAA starts with three test users — **BUILT and DEPLOYED 2026-09-30**
+  (image `d2d29af1`); **the file is imported in prod and the ORCID script stamped 3** (2026-09-30 morning, user-run). Two of the four FEAA departments have commas in their names ("Finanțe, Sisteme Informaționale și
   Modelare pentru Afaceri", "Marketing, Afaceri Internaționale și Economie") and the staff import split every
   line at every comma, so such a row came out with shifted columns. **Fix:** `StaffImportService.splitCsvLine`
   reads a field between double quotes as one value (a quote inside it is written twice), for the header too;
@@ -24,8 +24,8 @@ Done history moved to `TASKS-done.md`.
   `feaa_test_users_2026-09.csv`, `h132_orcid_stamp_feaa_test_users.js` (stamps only where the profile has no
   ORCID, queues nothing). **Dry run on the local app:** 3 rows, 1 faculty, 1 department with its full name, 3
   professors, 3 affiliations; a second import and a second run of the script changed nothing; the records were
-  removed afterwards. **Order in prod:** deploy the image, import the file at `/admin/divisions` (institution
-  `inst-uvt`), run the script, select FEAA 2026 for the new faculty. **Open:** Flavia Barna's Scopus id; the
+  removed afterwards. **Done in prod:** image deployed, file imported at `/admin/divisions` (institution
+  `inst-uvt`), script run. **Left:** select FEAA 2026 for the new faculty. **Open:** Flavia Barna's Scopus id; the
   other staff of the four departments (the site lists 136, without academic rank).
 - [ ] `H131` Citation counts with a recorded source — **OPEN, from the compliance audit of 2026-09-29 (question 8).**
   The canonical `citedByCount` is the maximum over Scopus and OpenAlex (`CanonicalGraphBuilder.buildPublicationFact`,
