@@ -9,8 +9,8 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H134` The institution page shows the publications of its faculties' staff — **BUILT 2026-09-30, prod
-  pending.** After H133 the page rendered but showed 0 publications: it found them only through the Scopus
+- [ ] `H134` The institution page shows the publications of its faculties' staff — **BUILT and DEPLOYED 2026-09-30**
+  (image `bda96cdc`, GitHub `deploy-prod`: STATUS deployed, revision 78, 13:52 UTC; read from the deploy log). After H133 the page rendered but showed 0 publications: it found them only through the Scopus
   affiliations linked to the institution record, and `inst-uvt` was linked to none. Linking "West University of
   Timişoara" (Scopus 60000434, canonical `saff_e5c95b34ac384552866dc020`) would have walked 4,466 authors and
   18,712 publications (prod, 2026-09-30) and rendered them all on one page. **Decision (user):** derive the page
@@ -26,6 +26,9 @@ Done history moved to `TASKS-done.md`.
   0.4 s, the export in 5 s. Prod has ~250 staff, so expect a few seconds: the page resolves each researcher
   separately (three queries per person). **Not done:** no caching; a researcher affiliated to a department
   without a faculty is not counted; the 2016 affiliation-based export columns are unchanged.
+  **H127 in use (2026-09-30):** Andrei Rusu declared equal contribution on one article, Adrian approved it as
+  admin, two refreshes later the article moved from I6 to I2 (+6.2, its journal is a management one, so not I1A) —
+  the flow works end to end; the head could not see the change because the run is only rebuilt by the Refresh button.
 - [ ] `H133` The institution page failed on a record without Scopus affiliations — **FIXED and DEPLOYED 2026-09-30**
   (image `f95628a3`, GitHub `deploy-prod`: STATUS deployed, revision 77, 08:27 UTC; read from the deploy log).
   `/admin/institutions/inst-uvt` answered 500 (request `3d8abfbc…`, 07:10 UTC): a NullPointerException in
