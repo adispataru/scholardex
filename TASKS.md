@@ -101,7 +101,20 @@ Done history moved to `TASKS-done.md`.
   person releases until Anexa 6 is built, then only the head. **At deploy:** run `add-brevet-fields.sh`.
   **Not done:** the Hirsch values of the platform are not shown beside the typed ones; the domain does not yet
   hide sheets 5.1–5.3 (they do not exist); the old `/user/exports/cnfis` download stays (no patents in it).
-  **Not checked in a browser.** Source of the rules: the
+  **Not checked in a browser.**
+  **SLICE 3 BUILT 2026-09-30, not pushed** — Anexa 6 for heads: `/supervisor/departments/{id}/cnfis` (the
+  department's heads and the faculty's, as the roster) and `/supervisor/divisions/{id}/cnfis` (the faculty's
+  heads only), linked from the supervisor workspace rows. The page lists the members with the sheet that
+  represents each: their own latest FROZEN copy; failing that, the latest PROVISIONAL copy a head generated
+  (`CnfisReportingFacade.freezeProvisional`, marked and signed by the head, shown on the member's own page with
+  a badge; the member's own frozen copy replaces it). The head generates provisional copies one by one or for
+  everyone without a sheet. "Build Anexa 6" (`cnfisUnitSheets`, `CnfisUnitFacade.buildTable`) takes the
+  representing sheets, LOCKS them (`lockedByUnitSheetId` — the member can no longer release), names the
+  members without any sheet, and downloads as the institutional template with a paper two members share
+  ONCE (and a patent once). Deleting a table releases its sheets. A faculty is one table over all its
+  departments, with the department shown per member on the page (the template has no such column).
+  **Not decided by the guide as far as I read it:** whether Anexa 6 dedups co-authored papers — the export
+  does; check with the guide's "centralizare" wording before the first real hand-in. Source of the rules: the
   CNFIS guide "Cerințe și recomandări privind raportarea datelor … IC2" (January 2025, cnfis.ro).
   **The shape.** Three sidebar entries instead of "Evaluation": **CNATDCU** (the domain reports: every FV, FEAA
   included), **UEFISCDI** (Eligibilitate PD, PD 2026, Tinere Echipe) and **CNFIS**. A report carries a new field

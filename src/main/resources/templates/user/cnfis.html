@@ -218,7 +218,11 @@
                                 </tr></thead>
                                 <tbody>
                                 <tr th:each="s : ${sheet.snapshots()}">
-                                    <td th:text="${s.createdAt()}">2026-…</td>
+                                    <td>
+                                        <span th:text="${s.createdAt()}">2026-…</span>
+                                        <span th:if="${s.provisional()}" class="app-table-badge app-table-badge--warning"
+                                              th:title="#{cnfis.copies.provisional.hint}" th:text="#{cnfis.copies.provisional}">provisional, by the head</span>
+                                    </td>
                                     <td th:text="${s.rows()}">0</td>
                                     <td th:text="${s.patents()}">0</td>
                                     <td>

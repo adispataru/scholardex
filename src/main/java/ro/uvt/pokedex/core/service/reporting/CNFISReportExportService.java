@@ -149,11 +149,29 @@ public class CNFISReportExportService {
                                  List<CNFISReport2025> cnfisReports,
                                  Map<String, ScholardexForumView> forumMap,
                                  List<CNFISReport2025> patents) throws IOException {
-        try (InputStream resource = new FileInputStream("data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx");
+        return generate("data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx", 0, 17, 16,
+                publications, cnfisReports, forumMap, patents);
+    }
+
+    /** Slice 3 — the institutional table (Anexa 6) of a unit, from what its members' frozen sheets hold. */
+    public byte[] generateAnexa6(List<? extends ScoringPublicationReadModel> publications,
+                                 List<CNFISReport2025> cnfisReports,
+                                 Map<String, ScholardexForumView> forumMap,
+                                 List<CNFISReport2025> patents) throws IOException {
+        return generate("data/templates/AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx", 1, 9, 8,
+                publications, cnfisReports, forumMap, patents);
+    }
+
+    private byte[] generate(String template, int sheetIndex, int firstRow, int sampleRow,
+                            List<? extends ScoringPublicationReadModel> publications,
+                            List<CNFISReport2025> cnfisReports,
+                            Map<String, ScholardexForumView> forumMap,
+                            List<CNFISReport2025> patents) throws IOException {
+        try (InputStream resource = new FileInputStream(template);
              Workbook workbook = new XSSFWorkbook(resource)) {
-            Sheet sheet = workbook.getSheetAt(0);
-            int next = populateSheet(workbook, sheet, publications, cnfisReports, forumMap, 17, 16);
-            populatePatents(workbook, sheet, patents, next, 16);
+            Sheet sheet = workbook.getSheetAt(sheetIndex);
+            int next = populateSheet(workbook, sheet, publications, cnfisReports, forumMap, firstRow, sampleRow);
+            populatePatents(workbook, sheet, patents, next, sampleRow);
             addLeftOutSheet(workbook, publications, cnfisReports, forumMap);
             workbook.setForceFormulaRecalculation(true);
             ByteArrayOutputStream bos = new ByteArrayOutputStream();

@@ -34,7 +34,7 @@ public record CnfisSheetViewModel(
                          int authorCount, int universityAuthorCount) {
     }
 
-    public record Snapshot(String id, String createdAt, int rows, int patents, boolean locked) {
+    public record Snapshot(String id, String createdAt, int rows, int patents, boolean locked, boolean provisional) {
     }
 
     /** The totals of the form's classification columns, in its order. */

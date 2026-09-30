@@ -75,8 +75,8 @@ class CnfisWorkspaceControllerContractTest {
                         "document type 'le': reported are Article, Review and Proceedings Paper")),
                 List.of(new CnfisSheetViewModel.Patent("act-1", "2023", "Sistem de răcire", "EP123", "EPO", "European", 3, 2)),
                 List.of("Ion Popescu"),
-                List.of(new CnfisSheetViewModel.Snapshot("s1", "2026-09-30T10:00:00Z", 1, 1, false),
-                        new CnfisSheetViewModel.Snapshot("s0", "2026-09-01T10:00:00Z", 1, 0, true)),
+                List.of(new CnfisSheetViewModel.Snapshot("s1", "2026-09-30T10:00:00Z", 1, 1, false, false),
+                        new CnfisSheetViewModel.Snapshot("s0", "2026-09-01T10:00:00Z", 1, 0, true, true)),
                 new CnfisSheetViewModel.Counts(1, 0, 0, 0, 0, 0, 0, 0, 0, 1));
         when(cnfisReportingFacade.buildSheet("u@e-uvt.ro", 2025)).thenReturn(Optional.of(sheet));
 

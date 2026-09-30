@@ -136,7 +136,7 @@ public class CnfisReportingFacade {
         List<CnfisSheetViewModel.Snapshot> snapshots = snapshotRepository
                 .findByUserEmailAndReportingYearOrderByCreatedAtDesc(userEmail, edition.reportingYear()).stream()
                 .map(s -> new CnfisSheetViewModel.Snapshot(s.getId(), s.getCreatedAt().toString(),
-                        s.getRows().size(), s.getPatents().size(), s.getLockedByUnitSheetId() != null))
+                        s.getRows().size(), s.getPatents().size(), s.getLockedByUnitSheetId() != null, s.isProvisional()))
                 .toList();
 
         return Optional.of(new CnfisSheetViewModel(toViewModel(edition), header, domainCatalog.domains(), reports,
@@ -179,6 +179,18 @@ public class CnfisReportingFacade {
     }
 
     Optional<CnfisSheetSnapshot> freeze(String userEmail, CnfisEdition edition) {
+        return snapshot(userEmail, edition, false, userEmail);
+    }
+
+    /**
+     * Slice 3: the copy a HEAD generates for a member who froze none — the same sheet, marked provisional and
+     * signed by the head; it stands in for the member's own until the member freezes one.
+     */
+    public Optional<CnfisSheetSnapshot> freezeProvisional(String userEmail, CnfisEdition edition, String headEmail) {
+        return snapshot(userEmail, edition, true, headEmail);
+    }
+
+    private Optional<CnfisSheetSnapshot> snapshot(String userEmail, CnfisEdition edition, boolean provisional, String createdBy) {
         Optional<UserReportFacade.CnfisSheetData> dataOpt = userReportFacade.buildCnfisSheet(userEmail, edition);
         if (dataOpt.isEmpty()) {
             return Optional.empty();
@@ -192,6 +204,8 @@ public class CnfisReportingFacade {
                 .orElse(userEmail));
         snapshot.setReportingYear(edition.reportingYear());
         snapshot.setCreatedAt(Instant.now());
+        snapshot.setProvisional(provisional);
+        snapshot.setCreatedBy(createdBy);
         CnfisSheetHeader header = headerRepository.findByUserEmailAndReportingYear(userEmail, edition.reportingYear()).orElse(null);
         snapshot.setHeader(header);
         snapshot.setCnatdcuScore(cnatdcuScore(userEmail, header));

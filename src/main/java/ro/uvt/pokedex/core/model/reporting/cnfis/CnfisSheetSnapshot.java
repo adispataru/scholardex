@@ -39,6 +39,14 @@ public class CnfisSheetSnapshot {
 
     private String lockedByUnitSheetId;
 
+    /**
+     * True when the HEAD generated this copy from live data for a member who had frozen none: it stands in
+     * for the person's sheet in the institutional table until the person freezes their own, and is marked
+     * as such wherever it shows.
+     */
+    private boolean provisional;
+    private String createdBy;
+
     /** One row of the form: the publication, as it was, and its classification. */
     @Data
     public static class Row {
