@@ -71,6 +71,25 @@ class AdminInstitutionReportFacadeTest {
     }
 
     @Test
+    void anInstitutionWithoutScopusAffiliationsRendersWithNoPublications() {
+        // The seeded inst-uvt never had the list set; the page used to fail with a NullPointerException
+        // (prod, 2026-09-30, request 3d8abfbc-…) instead of rendering empty.
+        Institution institution = new Institution();
+        institution.setName("inst");
+        institution.setScopusAffiliations(null);
+        when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
+        when(individualReportRepository.findAll()).thenReturn(List.of());
+
+        var result = facade.buildInstitutionPublicationsView("inst");
+
+        assertTrue(result.isPresent());
+        assertTrue(result.get().publications().isEmpty());
+        assertTrue(result.get().publicationsByYear().isEmpty());
+        assertTrue(result.get().authorMap().isEmpty());
+        assertTrue(result.get().forumMap().isEmpty());
+    }
+
+    @Test
     void buildInstitutionPublicationsViewSkipsMalformedPublicationDatesInYearMaps() {
         Institution institution = institution("inst", "af1");
         ScholardexPublicationView validPublication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Valid");

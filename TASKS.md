@@ -9,6 +9,14 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H133` The institution page failed on a record without Scopus affiliations — **FIXED 2026-09-30, prod pending.**
+  `/admin/institutions/inst-uvt` answered 500 (request `3d8abfbc…`, 07:10 UTC): a NullPointerException in
+  `AdminInstitutionReportFacade.loadInstitutionPublications`, which iterated the institution's Scopus
+  affiliations, and the seeded `inst-uvt` record has none (only the edit form sets them, nobody ever did).
+  Not a regression: the page had failed in that state since the seed. The list is now read as empty, so the
+  page renders with no publications; regression test in `AdminInstitutionReportFacadeTest`. **Not done
+  (option 2, the user's data change):** setting the UVT affiliation on the form would fill the page, which
+  then loads every publication, author and forum of the institution in one request.
 - [ ] `H132` Staff import reads quoted fields; FEAA starts with three test users — **BUILT and DEPLOYED 2026-09-30**
   (image `d2d29af1`); **the file is imported in prod and the ORCID script stamped 3** (2026-09-30 morning, user-run). Two of the four FEAA departments have commas in their names ("Finanțe, Sisteme Informaționale și
   Modelare pentru Afaceri", "Marketing, Afaceri Internaționale și Economie") and the staff import split every

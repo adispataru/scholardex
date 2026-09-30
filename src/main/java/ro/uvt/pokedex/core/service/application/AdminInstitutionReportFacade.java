@@ -84,9 +84,16 @@ public class AdminInstitutionReportFacade {
         ));
     }
 
+    /**
+     * Every publication found through the institution's Scopus affiliation ids. An institution whose record
+     * carries no affiliations (the seeded {@code inst-uvt} never had any; only the edit form sets them) has
+     * no publications here rather than no page.
+     */
     private List<ScholardexPublicationView> loadInstitutionPublications(Institution institution) {
         Map<String, ScholardexPublicationView> publicationsById = new LinkedHashMap<>();
-        for (ScholardexAffiliationView affiliation : institution.getScopusAffiliations()) {
+        List<ScholardexAffiliationView> affiliations = institution.getScopusAffiliations() != null
+                ? institution.getScopusAffiliations() : List.of();
+        for (ScholardexAffiliationView affiliation : affiliations) {
             findPublicationsByAffiliation(affiliation.getAfid())
                     .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         }
