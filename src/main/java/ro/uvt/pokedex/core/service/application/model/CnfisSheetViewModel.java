@@ -16,6 +16,7 @@ public record CnfisSheetViewModel(
         List<Row> rows,
         List<LeftOut> leftOut,
         List<Patent> patents,
+        Arts arts,
         List<String> staffRecordMissing,
         List<Snapshot> snapshots,
         Counts counts
@@ -32,6 +33,14 @@ public record CnfisSheetViewModel(
 
     public record Patent(String activityInstanceId, String year, String title, String code, String office, String type,
                          int authorCount, int universityAuthorCount) {
+    }
+
+    /** Anexa 5.1: shown to a person of an artistic domain (and to anyone who declared performances). */
+    public record Arts(boolean applies, List<ArtsRow> rows, List<LeftOut> leftOut) {
+    }
+
+    public record ArtsRow(String activityInstanceId, String year, String work, String event, String level, String kind,
+                          int universityParticipants) {
     }
 
     public record Snapshot(String id, String createdAt, int rows, int patents, boolean locked, boolean provisional) {

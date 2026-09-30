@@ -224,6 +224,21 @@ public class CnfisUnitFacade {
                 new ArrayList<>(reports.values()), forumMap, new ArrayList<>(patents.values())));
     }
 
+    /** Anexa 6.1 of a table: the artistic performances of its members' sheets, each performance once. */
+    public Optional<byte[]> exportArtsTable(CnfisUnitSheet.UnitKind kind, String unitId, String tableId) throws IOException {
+        Optional<CnfisUnitSheet> tableOpt = unitSheetRepository.findById(tableId)
+                .filter(t -> t.getUnitKind() == kind && unitId.equals(t.getUnitId()));
+        if (tableOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Map<String, CnfisSheetSnapshot.ArtsRow> rows = new LinkedHashMap<>();
+        for (CnfisUnitSheet.Member member : tableOpt.get().getMembers()) {
+            snapshotRepository.findById(member.getSnapshotId())
+                    .ifPresent(s -> s.getArtsRows().forEach(r -> rows.putIfAbsent(r.getActivityInstanceId(), r)));
+        }
+        return Optional.of(exportService.generateAnexa61(CnfisReportingFacade.toExportArts(new ArrayList<>(rows.values()))));
+    }
+
     // ── pieces ──────────────────────────────────────────────────────────────
 
     private Optional<Unit> unit(CnfisUnitSheet.UnitKind kind, String unitId) {

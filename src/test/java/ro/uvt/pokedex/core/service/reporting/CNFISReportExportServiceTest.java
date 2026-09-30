@@ -42,6 +42,8 @@ class CNFISReportExportServiceTest {
     static void stageTemplates() throws Exception {
         stage("AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx");
         stage("AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx");
+        stage("AC2025_Anexa5.1-Performanta_creatie_artistica-2025.xlsx");
+        stage("AC2025_Anexa6.1-Tabel_institutional_creatie_artistica-2025.xlsx");
     }
 
     private static void stage(String filename) throws Exception {
@@ -380,6 +382,45 @@ class CNFISReportExportServiceTest {
             assertEquals(1.0, row.getCell(22).getNumericCellValue(), "the European column");
             assertEquals(3.0, row.getCell(25).getNumericCellValue());
             assertEquals(2.0, row.getCell(26).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void anexa51MarksTheCellOfTheKindAndTheLevelAndCountsParticipantsForGroups() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        byte[] bytes = service.generateAnexa51(List.of(
+                new CNFISReportExportService.ArtsExportRow("2023", "Expoziție personală", "Bienala de la Veneția", "INTERNATIONAL_TOP", "INDIVIDUAL", 0),
+                new CNFISReportExportService.ArtsExportRow("2022", "Spectacol", "Festivalul Național de Teatru", "NATIONAL", "GROUP", 3),
+                new CNFISReportExportService.ArtsExportRow("2024", "Film", "TIFF", "INTERNATIONAL", "PRIZE", 0)));
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Row first = sheet.getRow(12);
+            assertEquals("2023", first.getCell(1).getStringCellValue());
+            assertEquals("Expoziție personală", first.getCell(2).getStringCellValue());
+            assertEquals("Bienala de la Veneția", first.getCell(3).getStringCellValue());
+            assertEquals(1.0, first.getCell(6).getNumericCellValue(), "individual × top international = column G");
+            Row second = sheet.getRow(13);
+            assertEquals(1.0, second.getCell(7).getNumericCellValue(), "group × national = column H");
+            assertEquals(3.0, second.getCell(19).getNumericCellValue(), "participants from the university, for a group");
+            Row third = sheet.getRow(14);
+            assertEquals(1.0, third.getCell(17).getNumericCellValue(), "prize × international = column R");
+        }
+        assertEquals(4, CNFISReportExportService.artsColumn("INDIVIDUAL", "NATIONAL"));
+        assertEquals(18, CNFISReportExportService.artsColumn("PRIZE", "INTERNATIONAL_TOP"));
+        assertEquals(-1, CNFISReportExportService.artsColumn("PRIZE", null));
+    }
+
+    @Test
+    void anexa61StartsAtItsOwnFirstRow() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        byte[] bytes = service.generateAnexa61(List.of(
+                new CNFISReportExportService.ArtsExportRow("2023", "Concert", "Enescu", "INTERNATIONAL_TOP", "COLLECTIVE", 12)));
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Row row = workbook.getSheetAt(0).getRow(9);
+            assertEquals("Concert", row.getCell(2).getStringCellValue());
+            assertEquals(1.0, row.getCell(12).getNumericCellValue(), "collective × top international = column M");
+            assertEquals(12.0, row.getCell(19).getNumericCellValue());
         }
     }
 

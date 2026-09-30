@@ -172,6 +172,43 @@
                         </div>
                     </section>
 
+                    <!-- ── Anexa 5.1: artistic performances ─────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-arts-title" th:if="${sheet.arts().applies()}" th:with="arts=${sheet.arts()}">
+                        <div class="card-body">
+                            <h2 id="cnfis-arts-title" class="h5" th:text="#{cnfis.arts.title(${#lists.size(arts.rows())})}">Anexa 5.1 — artistic performances</h2>
+                            <p class="text-muted small" th:text="#{cnfis.arts.hint}">From the activities you declared as "Participare eveniment artistic": the event's rank in the registry is the level of the form, the declared kind of the work is its column.</p>
+                            <table th:unless="${#lists.isEmpty(arts.rows())}" class="table table-sm app-table" id="cnfis-arts-rows">
+                                <thead><tr>
+                                    <th th:text="#{common.year}">Year</th><th th:text="#{cnfis.arts.work}">Work</th>
+                                    <th th:text="#{cnfis.arts.event}">Event</th><th th:text="#{cnfis.arts.level}">Level</th>
+                                    <th th:text="#{cnfis.arts.kind}">Kind</th><th th:text="#{cnfis.arts.participants}">Participants from the university</th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="r : ${arts.rows()}">
+                                    <td th:text="${r.year()}">2023</td><td th:text="${r.work()}">Work</td>
+                                    <td th:text="${r.event()}">Event</td>
+                                    <td th:text="#{'cnfis.arts.level.' + ${r.level()}}">international</td>
+                                    <td th:text="#{'cnfis.arts.kind.' + ${r.kind()}}">individual</td>
+                                    <td th:text="${r.universityParticipants()}">0</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <table th:unless="${#lists.isEmpty(arts.leftOut())}" class="table table-sm app-table" id="cnfis-arts-left-out">
+                                <caption class="app-table-caption" th:text="#{cnfis.leftOut.hint}">left out</caption>
+                                <thead><tr><th th:text="#{common.year}">Year</th><th th:text="#{cnfis.arts.work}">Work</th><th th:text="#{cnfis.arts.event}">Event</th><th th:text="#{cnfis.leftOut.reason}">Reason</th></tr></thead>
+                                <tbody>
+                                <tr th:each="l : ${arts.leftOut()}">
+                                    <td th:text="${l.year()}">2023</td><td th:text="${l.title()}">Work</td><td th:text="${l.venue()}">Event</td><td th:text="${l.reason()}">reason</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <a class="btn btn-sm btn-primary" th:href="@{/user/cnfis/{y}/export-arts(y=${ed.reportingYear()})}">
+                                <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
+                                <span th:text="#{cnfis.download.anexa51}">Download Anexa 5.1</span>
+                            </a>
+                        </div>
+                    </section>
+
                     <!-- ── Left out ────────────────────────────────────────── -->
                     <section class="card mb-3" aria-labelledby="cnfis-leftout-title">
                         <div class="card-body">
@@ -227,6 +264,7 @@
                                     <td th:text="${s.patents()}">0</td>
                                     <td>
                                         <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/user/cnfis/snapshots/{id}/export(id=${s.id()})}" th:text="#{cnfis.copies.download}">Download</a>
+                                        <a th:if="${sheet.arts().applies()}" class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/user/cnfis/snapshots/{id}/export-arts(id=${s.id()})}" th:text="#{cnfis.copies.download51}">Anexa 5.1</a>
                                         <span th:if="${s.locked()}" class="app-table-badge app-table-badge--success" th:text="#{cnfis.copies.locked}">in an institutional table</span>
                                         <form th:unless="${s.locked()}" th:action="@{/user/cnfis/snapshots/{id}/release(id=${s.id()})}" method="post" class="d-inline">
                                             <input type="hidden" name="edition" th:value="${ed.reportingYear()}">

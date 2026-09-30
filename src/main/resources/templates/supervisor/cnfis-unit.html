@@ -103,7 +103,8 @@
                                 <td th:text="${t.rows()}">0</td>
                                 <td th:text="${t.patents()}">0</td>
                                 <td>
-                                    <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.copies.download}">Download</a>
+                                    <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download6}">Anexa 6</a>
+                                    <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-arts(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download61}">Anexa 6.1</a>
                                     <form th:action="@{/supervisor/{k}/{id}/cnfis/tables/{t}/delete(k=${kind},id=${unit.unitId()},t=${t.id()})}" method="post" class="d-inline">
                                         <input type="hidden" name="edition" th:value="${ed.reportingYear()}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" th:text="#{cnfis.unit.tables.delete}">Delete and release the sheets</button>

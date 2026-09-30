@@ -119,14 +119,14 @@ Done history moved to `TASKS-done.md`.
   from a chosen CNATDCU report (the sum of its contributing criteria, the evaluation page's rule) or typed in,
   the unmet criterion, the three Hirsch values typed from the print screens; (3) patents from the declared
   activity "Brevet", which gains the fields "Cod brevet", "Oficiu", "N_autori_universitate" (seed +
-  `scripts/ops/add-brevet-fields.sh`); written to the form after the publications; (4) `User.staffRecord`
+  `scripts/ops/add-cnfis-activity-fields.sh`); written to the form after the publications; (4) `User.staffRecord`
   (employment type of the CNFIS staff sheet + from/to), filled by the head on the department roster page;
   "authors from the university" = co-authors with an account who are staff at the reference date; a
   co-author without a record is counted and NAMED on the page; (5) frozen copies (`cnfisSheetSnapshots`):
   the sheet as handed in, rows + left-out + patents + head + score, downloadable from what it holds; the
   person releases a copy unless `lockedByUnitSheetId` is set (slice 3 sets it when Anexa 6 is built).
   Decisions: the head fills the staff fields, the person sees them; the left-out sheet stays in the file; the
-  person releases until Anexa 6 is built, then only the head. **At deploy:** run `add-brevet-fields.sh`.
+  person releases until Anexa 6 is built, then only the head. **At deploy:** run `add-cnfis-activity-fields.sh`.
   **Not done:** the Hirsch values of the platform are not shown beside the typed ones; the domain does not yet
   hide sheets 5.1–5.3 (they do not exist); the old `/user/exports/cnfis` download stays (no patents in it).
   **Not checked in a browser.**
@@ -141,7 +141,26 @@ Done history moved to `TASKS-done.md`.
   members without any sheet, and downloads as the institutional template with a paper two members share
   ONCE (and a patent once). Deleting a table releases its sheets. A faculty is one table over all its
   departments, with the department shown per member on the page (the template has no such column).
-  Anexa 6 lists a paper two members share ONCE (confirmed by Adrian 2026-09-30: duplicates are removed). Source of the rules: the
+  Anexa 6 lists a paper two members share ONCE (confirmed by Adrian 2026-09-30: duplicates are removed).
+  **Templates:** all six of the 2025 edition (5.1, 5.2, 5.3, 6.1, 6.2, 6.3) downloaded 2026-09-30 from
+  cnfis.ro/raportare-2025-… into `data/templates/` (NOT in git: `data/` is ignored; production reads them
+  from the data volume at /app/data — copy them there; the tests use small copies under
+  `src/test/resources/fixtures/templates/`). The template's own festival list (`Lista_festivaluri`) is EMPTY
+  in the published file ("definitivată cu consultarea unui grup de experți"), so the platform's registry of
+  artistic events (303 events, five arts domains, ranks INTERNATIONAL_TOP / INTERNATIONAL / NATIONAL) is the
+  source of the level.
+  **SLICE 5 (Anexa 5.1) BUILT 2026-09-30, not pushed.** A person's sheet follows their CNATDCU domain
+  (`CnfisDomains`: arts 70–75; sport 76–77; humanities 63–69, 721, 751 — the guide's list). Anexa 5.1 comes
+  from the declared activity "Participare eveniment artistic": the event's rank in the registry is the level
+  of the form, the declared kind is the column group — the type gains the fields "Tip" (Proiect individual /
+  de grup (2-4) / colectiv (5+) / Nominalizare individuală / Premiu individual) and
+  "N_participanti_universitate" (`scripts/ops/add-cnfis-activity-fields.sh` now does both types). A
+  performance without a kind, or at an event the registry does not rank, is left out and says so. Shown on
+  the CNFIS page when the domain is artistic or performances exist; frozen with the sheet (`artsRows`);
+  downloads: `/user/cnfis/{edition}/export-arts`, per frozen copy, and Anexa 6.1 per unit table (each
+  performance once). Anexa 5.2 (sport) is fully declared and has no activity type yet — left for when the
+  sport domain asks. Anexa 5.3 (humanities) waits for the CiteScore lists of 2021 and 2022 (Scopus Sources
+  page, "CiteScore year" filter, Export) — the book side could be built before. Source of the rules: the
   CNFIS guide "Cerințe și recomandări privind raportarea datelor … IC2" (January 2025, cnfis.ro).
   **The shape.** Three sidebar entries instead of "Evaluation": **CNATDCU** (the domain reports: every FV, FEAA
   included), **UEFISCDI** (Eligibilitate PD, PD 2026, Tinere Echipe) and **CNFIS**. A report carries a new field

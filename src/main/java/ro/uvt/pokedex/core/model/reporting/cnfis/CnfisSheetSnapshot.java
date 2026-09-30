@@ -36,6 +36,8 @@ public class CnfisSheetSnapshot {
     private List<Row> rows = new ArrayList<>();
     private List<LeftOut> leftOut = new ArrayList<>();
     private List<Patent> patents = new ArrayList<>();
+    /** Anexa 5.1 — the artistic performances, for a person of an artistic domain. */
+    private List<ArtsRow> artsRows = new ArrayList<>();
 
     private String lockedByUnitSheetId;
 
@@ -68,6 +70,20 @@ public class CnfisSheetSnapshot {
         private String venue;
         private String doi;
         private String reason;
+    }
+
+    /** One row of Anexa 5.1, from the declared activity "Participare eveniment artistic". */
+    @Data
+    public static class ArtsRow {
+        private String activityInstanceId;
+        private String year;
+        private String work;
+        private String event;
+        /** NATIONAL, INTERNATIONAL, INTERNATIONAL_TOP — the rank of the event in the registry. */
+        private String level;
+        /** INDIVIDUAL, GROUP, COLLECTIVE, NOMINATION, PRIZE — the declared kind of the work. */
+        private String kind;
+        private int universityParticipants;
     }
 
     /** A patent, from the declared activity "Brevet". */

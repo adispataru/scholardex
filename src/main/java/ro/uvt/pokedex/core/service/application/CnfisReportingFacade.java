@@ -52,6 +52,10 @@ public class CnfisReportingFacade {
     static final String FIELD_CODE = "Cod brevet";
     static final String FIELD_OFFICE = "Oficiu";
     static final String FIELD_UNIVERSITY_AUTHORS = "N_autori_universitate";
+    /** The declared activity type whose instances are the rows of Anexa 5.1. */
+    static final String ARTS_ACTIVITY = "Participare eveniment artistic";
+    static final String FIELD_ARTS_KIND = "Tip";
+    static final String FIELD_ARTS_PARTICIPANTS = "N_participanti_universitate";
 
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
@@ -63,6 +67,7 @@ public class CnfisReportingFacade {
     private final CnfisSheetSnapshotRepository snapshotRepository;
     private final CnfisDomainCatalog domainCatalog;
     private final CNFISReportExportService exportService;
+    private final ro.uvt.pokedex.core.repository.ArtisticEventRepository artisticEventRepository;
 
     public List<CnfisEditionViewModel> editions() {
         return CnfisEdition.known().stream()
@@ -125,6 +130,10 @@ public class CnfisReportingFacade {
                     r.getNumarAutori(), r.getNumarAutoriUniversitate()));
         }
         List<CnfisSheetViewModel.Patent> patents = patents(userEmail, edition);
+        ArtsSheet artsSheet = arts(userEmail, edition);
+        CnfisSheetViewModel.Arts arts = new CnfisSheetViewModel.Arts(
+                ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsArts(header.getDomainCode()) || !artsSheet.rows().isEmpty(),
+                artsSheet.rows(), artsSheet.leftOut());
 
         List<CnfisSheetViewModel.ReportChoice> reports = userReportFacade.buildIndividualReportsListView(userEmail)
                 .individualReports().stream()
@@ -140,7 +149,7 @@ public class CnfisReportingFacade {
                 .toList();
 
         return Optional.of(new CnfisSheetViewModel(toViewModel(edition), header, domainCatalog.domains(), reports,
-                score, rows, leftOut, patents, staff.missingRecords, snapshots, counts(data.reports(), patents)));
+                score, rows, leftOut, patents, arts, staff.missingRecords, snapshots, counts(data.reports(), patents)));
     }
 
     // ── the head of the sheet ────────────────────────────────────────────────
@@ -250,6 +259,17 @@ public class CnfisReportingFacade {
             patent.setUniversityAuthorCount(p.universityAuthorCount());
             snapshot.getPatents().add(patent);
         }
+        for (CnfisSheetViewModel.ArtsRow r : arts(userEmail, edition).rows()) {
+            CnfisSheetSnapshot.ArtsRow row = new CnfisSheetSnapshot.ArtsRow();
+            row.setActivityInstanceId(r.activityInstanceId());
+            row.setYear(r.year());
+            row.setWork(r.work());
+            row.setEvent(r.event());
+            row.setLevel(r.level());
+            row.setKind(r.kind());
+            row.setUniversityParticipants(r.universityParticipants());
+            snapshot.getArtsRows().add(row);
+        }
         return Optional.of(snapshotRepository.save(snapshot));
     }
 
@@ -288,6 +308,36 @@ public class CnfisReportingFacade {
         countUniversityAuthors(data, edition.referenceDate());
         return Optional.of(exportService.generateAnexa5(data.publications(), data.reports(), data.forumMap(),
                 patents(userEmail, edition).stream().map(CnfisReportingFacade::toExportPatent).toList()));
+    }
+
+    /** Anexa 5.1 of the live data; empty when the edition is unknown or the person has no profile. */
+    public Optional<byte[]> exportArtsLive(String userEmail, int reportingYear) throws IOException {
+        Optional<CnfisEdition> edition = CnfisEdition.ofReportingYear(reportingYear);
+        if (edition.isEmpty() || userReportFacade.buildCnfisSheet(userEmail, edition.get()).isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(exportService.generateAnexa51(toExportArts(arts(userEmail, edition.get()).rows())));
+    }
+
+    public Optional<byte[]> exportArtsSnapshot(String userEmail, String snapshotId) throws IOException {
+        Optional<CnfisSheetSnapshot> snapshotOpt = snapshotRepository.findById(snapshotId)
+                .filter(s -> userEmail.equals(s.getUserEmail()));
+        if (snapshotOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(exportService.generateAnexa51(toExportArts(snapshotOpt.get().getArtsRows())));
+    }
+
+    static List<CNFISReportExportService.ArtsExportRow> toExportArts(List<? extends Object> rows) {
+        List<CNFISReportExportService.ArtsExportRow> out = new ArrayList<>();
+        for (Object o : rows) {
+            if (o instanceof CnfisSheetViewModel.ArtsRow r) {
+                out.add(new CNFISReportExportService.ArtsExportRow(r.year(), r.work(), r.event(), r.level(), r.kind(), r.universityParticipants()));
+            } else if (o instanceof CnfisSheetSnapshot.ArtsRow r) {
+                out.add(new CNFISReportExportService.ArtsExportRow(r.getYear(), r.getWork(), r.getEvent(), r.getLevel(), r.getKind(), r.getUniversityParticipants()));
+            }
+        }
+        return out;
     }
 
     public Optional<byte[]> exportSnapshot(String userEmail, String snapshotId) throws IOException {
@@ -395,6 +445,64 @@ public class CnfisReportingFacade {
             data.reports().get(i).setNumarAutoriUniversitate(counted);
         }
         return new StaffCount(new ArrayList<>(missing));
+    }
+
+    record ArtsSheet(List<CnfisSheetViewModel.ArtsRow> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {
+    }
+
+    /**
+     * Anexa 5.1 from the declared activity "Participare eveniment artistic": the event is looked up in the
+     * registry of artistic events, whose rank IS the level of the form (national, international, top
+     * international); the declared kind (individual, group, collective, nomination, prize) is the column
+     * group. A performance without a kind, or at an event the registry does not rank, is left out and says so.
+     */
+    ArtsSheet arts(String userEmail, CnfisEdition edition) {
+        List<CnfisSheetViewModel.ArtsRow> rows = new ArrayList<>();
+        List<CnfisSheetViewModel.LeftOut> leftOut = new ArrayList<>();
+        for (ActivityInstance instance : activityInstanceRepository.findAllByResearcherId(userEmail)) {
+            if (instance.getActivity() == null || !ARTS_ACTIVITY.equals(instance.getActivity().getName())) {
+                continue;
+            }
+            Integer year = parseYear(instance.getDate());
+            if (year == null || !edition.covers(year)) {
+                continue;
+            }
+            String yearText = String.valueOf(year);
+            String event = instance.getReferenceFields() == null ? null
+                    : instance.getReferenceFields().get(ro.uvt.pokedex.core.model.activities.Activity.ReferenceField.EVENT_NAME);
+            Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
+            String kind = artsKind(f.get(FIELD_ARTS_KIND));
+            if (kind == null) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), event, null,
+                        "the kind of the work (individual, group, collective, nomination, prize) is not declared"));
+                continue;
+            }
+            String level = event == null ? null : artisticEventRepository.findAllByNameIgnoreCase(event.trim()).stream()
+                    .findFirst().map(e -> e.getRank() == null ? null : e.getRank().name()).orElse(null);
+            if (level == null) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), event, null,
+                        event == null ? "no event declared" : "the event is not in the registry of ranked events (national / international / top)"));
+                continue;
+            }
+            rows.add(new CnfisSheetViewModel.ArtsRow(instance.getId(), yearText, instance.getName(), event, level, kind,
+                    parseInt(f.get(FIELD_ARTS_PARTICIPANTS))));
+        }
+        rows.sort(Comparator.comparing(CnfisSheetViewModel.ArtsRow::year).thenComparing(CnfisSheetViewModel.ArtsRow::work));
+        return new ArtsSheet(rows, leftOut);
+    }
+
+    /** The declared kind, as the activity's allowed values name it, to the column group of the form. */
+    static String artsKind(String declared) {
+        if (declared == null) {
+            return null;
+        }
+        String d = declared.trim().toLowerCase(java.util.Locale.ROOT);
+        if (d.startsWith("proiect individual")) return "INDIVIDUAL";
+        if (d.startsWith("proiect de grup")) return "GROUP";
+        if (d.startsWith("proiect colectiv")) return "COLLECTIVE";
+        if (d.startsWith("nominalizare")) return "NOMINATION";
+        if (d.startsWith("premiu")) return "PRIZE";
+        return null;
     }
 
     private List<CnfisSheetViewModel.Patent> patents(String userEmail, CnfisEdition edition) {

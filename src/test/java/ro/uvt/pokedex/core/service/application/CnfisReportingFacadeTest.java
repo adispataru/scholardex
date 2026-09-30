@@ -33,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,6 +58,7 @@ class CnfisReportingFacadeTest {
     @Mock private CnfisSheetSnapshotRepository snapshotRepository;
     @Mock private CnfisDomainCatalog domainCatalog;
     @Mock private CNFISReportExportService exportService;
+    @Mock private ro.uvt.pokedex.core.repository.ArtisticEventRepository artisticEventRepository;
 
     private CnfisReportingFacade facade;
 
@@ -64,7 +66,7 @@ class CnfisReportingFacadeTest {
     void setUp() {
         facade = new CnfisReportingFacade(userReportFacade, runService, userRepository, lookupService,
                 projectionReadService, activityInstanceRepository, headerRepository, snapshotRepository,
-                domainCatalog, exportService);
+                domainCatalog, exportService, artisticEventRepository);
         lenient().when(userReportFacade.buildIndividualReportsListView(EMAIL))
                 .thenReturn(new UserReportsListViewModel(List.of()));
         lenient().when(headerRepository.findByUserEmailAndReportingYear(any(), org.mockito.ArgumentMatchers.anyInt()))
@@ -260,6 +262,61 @@ class CnfisReportingFacadeTest {
         assertTrue(patents.getValue().getFirst().isNationale());
         assertEquals(2022, patents.getValue().getFirst().getListYear());
         verify(userReportFacade, never()).buildCnfisSheet(any(), any());
+    }
+
+    // ── Anexa 5.1 ──────────────────────────────────────────────────────────
+
+    @Test
+    void artisticPerformancesTakeTheirLevelFromTheRegistryAndTheirKindFromTheDeclaration() {
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+        when(userRepository.findAll()).thenReturn(List.of());
+        ro.uvt.pokedex.core.model.ArtisticEvent venice = new ro.uvt.pokedex.core.model.ArtisticEvent();
+        venice.setName("Bienala de la Veneția");
+        venice.setRank(ro.uvt.pokedex.core.model.ArtisticEvent.Rank.INTERNATIONAL_TOP);
+        when(artisticEventRepository.findAllByNameIgnoreCase("Bienala de la Veneția")).thenReturn(List.of(venice));
+        when(artisticEventRepository.findAllByNameIgnoreCase("Un festival oarecare")).thenReturn(List.of());
+        when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
+                performance("Expoziție", "2023-05-10", "Bienala de la Veneția", Map.of("Tip", "Proiect de grup (2-4)", "N_participanti_universitate", "3")),
+                performance("Fără tip", "2023-05-10", "Bienala de la Veneția", Map.of()),
+                performance("Festival necunoscut", "2022-05-10", "Un festival oarecare", Map.of("Tip", "Proiect individual")),
+                performance("Prea veche", "2019-05-10", "Bienala de la Veneția", Map.of("Tip", "Proiect individual"))));
+        // a person of an artistic domain
+        CnfisSheetHeader header = new CnfisSheetHeader();
+        header.setDomainCode("72");
+        when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
+
+        CnfisSheetViewModel sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+
+        assertTrue(sheet.arts().applies());
+        assertEquals(1, sheet.arts().rows().size());
+        CnfisSheetViewModel.ArtsRow row = sheet.arts().rows().getFirst();
+        assertEquals("INTERNATIONAL_TOP", row.level());
+        assertEquals("GROUP", row.kind());
+        assertEquals(3, row.universityParticipants());
+        assertEquals(2, sheet.arts().leftOut().size());
+        assertTrue(sheet.arts().leftOut().get(0).reason().contains("kind of the work"));
+        assertTrue(sheet.arts().leftOut().get(1).reason().contains("not in the registry"));
+    }
+
+    @Test
+    void theArtsSheetDoesNotApplyToSomebodyOutsideTheArtsWhoDeclaredNothing() {
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+        when(userRepository.findAll()).thenReturn(List.of());
+        CnfisSheetHeader header = new CnfisSheetHeader();
+        header.setDomainCode("2");
+        when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
+
+        assertFalse(facade.buildSheet(EMAIL, 2025).orElseThrow().arts().applies());
+    }
+
+    private static ActivityInstance performance(String name, String date, String event, Map<String, String> fields) {
+        ActivityInstance instance = other(name, date);
+        instance.getActivity().setName("Participare eveniment artistic");
+        instance.setFields(new java.util.HashMap<>(fields));
+        instance.setReferenceFields(new java.util.HashMap<>(Map.of(Activity.ReferenceField.EVENT_NAME, event)));
+        return instance;
     }
 
     // ── fixtures ───────────────────────────────────────────────────────────

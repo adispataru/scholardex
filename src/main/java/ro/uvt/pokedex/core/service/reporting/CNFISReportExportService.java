@@ -180,6 +180,74 @@ public class CNFISReportExportService {
         }
     }
 
+    /** One row of Anexa 5.1 / 6.1, as the facade hands it over. */
+    public record ArtsExportRow(String year, String work, String event, String level, String kind, int universityParticipants) {
+    }
+
+    /** Anexa 5.1 — the artistic performances of a person: a "1" in the cell of the kind × the level. */
+    public byte[] generateAnexa51(List<ArtsExportRow> rows) throws IOException {
+        return generateArts("data/templates/AC2025_Anexa5.1-Performanta_creatie_artistica-2025.xlsx", 12, rows);
+    }
+
+    /** Anexa 6.1 — the institutional table of artistic performances, the same columns from row 9. */
+    public byte[] generateAnexa61(List<ArtsExportRow> rows) throws IOException {
+        return generateArts("data/templates/AC2025_Anexa6.1-Tabel_institutional_creatie_artistica-2025.xlsx", 9, rows);
+    }
+
+    private byte[] generateArts(String template, int firstRow, List<ArtsExportRow> rows) throws IOException {
+        try (InputStream resource = new FileInputStream(template);
+             Workbook workbook = new XSSFWorkbook(resource)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            int rowNum = firstRow;
+            int sampleRowNum = firstRow;
+            for (ArtsExportRow r : rows) {
+                int usable = findNextUsableTemplateRow(sheet, sampleRowNum, 20);
+                if (usable < 0) {
+                    throw new IllegalStateException("No suitable template row available for CNFIS export population.");
+                }
+                sampleRowNum = usable;
+                Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
+                row.getCell(1).setCellValue(cellText(r.year()));
+                row.getCell(2).setCellValue(cellText(r.work()));
+                row.getCell(3).setCellValue(cellText(r.event()));
+                int column = artsColumn(r.kind(), r.level());
+                if (column >= 0) {
+                    row.getCell(column).setCellValue(1);
+                }
+                if ("GROUP".equals(r.kind()) || "COLLECTIVE".equals(r.kind())) {
+                    row.getCell(19).setCellValue(r.universityParticipants());
+                }
+                rowNum++;
+            }
+            workbook.setForceFormulaRecalculation(true);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            return bos.toByteArray();
+        }
+    }
+
+    /**
+     * The cell of the form: five groups of three columns (individual, group, collective, nominations,
+     * prizes) × (national, international, top international), columns E to S (0-based 4 to 18).
+     */
+    static int artsColumn(String kind, String level) {
+        int group = switch (kind == null ? "" : kind) {
+            case "INDIVIDUAL" -> 0;
+            case "GROUP" -> 1;
+            case "COLLECTIVE" -> 2;
+            case "NOMINATION" -> 3;
+            case "PRIZE" -> 4;
+            default -> -1;
+        };
+        int offset = switch (level == null ? "" : level) {
+            case "NATIONAL" -> 0;
+            case "INTERNATIONAL" -> 1;
+            case "INTERNATIONAL_TOP" -> 2;
+            default -> -1;
+        };
+        return group < 0 || offset < 0 ? -1 : 4 + group * 3 + offset;
+    }
+
     /** One row per patent: year, title, patent code, office, the category column, the author counts. */
     void populatePatents(Workbook workbook, Sheet sheet, List<CNFISReport2025> patents, int rowNum, int sampleRowNum) {
         for (CNFISReport2025 patent : patents) {
@@ -353,9 +421,13 @@ public class CNFISReportExportService {
     }
 
     private int findNextUsableTemplateRow(Sheet sheet, int startRowNum) {
+        return findNextUsableTemplateRow(sheet, startRowNum, 25);
+    }
+
+    private int findNextUsableTemplateRow(Sheet sheet, int startRowNum, int minimumCells) {
         for (int rowNum = Math.max(0, startRowNum); rowNum <= sheet.getLastRowNum(); rowNum++) {
             Row candidate = sheet.getRow(rowNum);
-            if (candidate != null && candidate.getLastCellNum() >= 25) {
+            if (candidate != null && candidate.getLastCellNum() >= minimumCells) {
                 return rowNum;
             }
         }
