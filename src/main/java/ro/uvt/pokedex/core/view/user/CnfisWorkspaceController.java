@@ -6,9 +6,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.service.reporting.CnfisEdition;
-
-import java.util.Comparator;
+import ro.uvt.pokedex.core.service.application.CnfisReportingFacade;
 
 /**
  * H129 — the CNFIS entry of the sidebar: the editions of the reporting and, for each, the sheets a person
@@ -17,7 +15,10 @@ import java.util.Comparator;
  */
 @Controller
 @RequestMapping("/user/cnfis")
+@lombok.RequiredArgsConstructor
 public class CnfisWorkspaceController {
+
+    private final CnfisReportingFacade cnfisReportingFacade;
 
     @GetMapping
     public String showCnfis(Model model, Authentication authentication) {
@@ -25,9 +26,7 @@ public class CnfisWorkspaceController {
             return "redirect:/login";
         }
         model.addAttribute("user", currentUser);
-        model.addAttribute("editions", CnfisEdition.known().stream()
-                .sorted(Comparator.comparingInt(CnfisEdition::reportingYear).reversed())
-                .toList());
+        model.addAttribute("editions", cnfisReportingFacade.editions());
         return "user/cnfis";
     }
 }

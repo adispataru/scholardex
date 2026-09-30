@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** H129 — the CNFIS entry of the sidebar: the editions, each with the download of its Anexa 5. */
 @WebMvcTest(CnfisWorkspaceController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(GlobalControllerAdvice.class)
+@Import({GlobalControllerAdvice.class, ro.uvt.pokedex.core.service.application.CnfisReportingFacade.class})
 class CnfisWorkspaceControllerContractTest {
 
     @Autowired
