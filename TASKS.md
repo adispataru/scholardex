@@ -113,8 +113,7 @@ Done history moved to `TASKS-done.md`.
   members without any sheet, and downloads as the institutional template with a paper two members share
   ONCE (and a patent once). Deleting a table releases its sheets. A faculty is one table over all its
   departments, with the department shown per member on the page (the template has no such column).
-  **Not decided by the guide as far as I read it:** whether Anexa 6 dedups co-authored papers — the export
-  does; check with the guide's "centralizare" wording before the first real hand-in. Source of the rules: the
+  Anexa 6 lists a paper two members share ONCE (confirmed by Adrian 2026-09-30: duplicates are removed). Source of the rules: the
   CNFIS guide "Cerințe și recomandări privind raportarea datelor … IC2" (January 2025, cnfis.ro).
   **The shape.** Three sidebar entries instead of "Evaluation": **CNATDCU** (the domain reports: every FV, FEAA
   included), **UEFISCDI** (Eligibilitate PD, PD 2026, Tinere Echipe) and **CNFIS**. A report carries a new field
