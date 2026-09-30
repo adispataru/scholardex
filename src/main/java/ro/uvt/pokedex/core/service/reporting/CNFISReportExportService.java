@@ -180,6 +180,79 @@ public class CNFISReportExportService {
         }
     }
 
+    /** One row of Anexa 5.3 / 6.3, as the facade hands it over. */
+    public record HumanitiesExportRow(String year, String containerTitle, String publisher, String isbn, String issnOnline,
+                                      String issnPrint, String doi, String itemTitle, String category, Integer pages,
+                                      int authorCount, int universityAuthorCount) {
+    }
+
+    public byte[] generateAnexa53(List<HumanitiesExportRow> rows) throws IOException {
+        return generateHumanities("data/templates/AC2025_Anexa5.3-Performanta_stiinte_umaniste-2025.xlsx", 17, rows);
+    }
+
+    public byte[] generateAnexa63(List<HumanitiesExportRow> rows) throws IOException {
+        return generateHumanities("data/templates/AC2025_Anexa6.3-Tabel_institutional_performanta_stiinte_umaniste-2025.xlsx", 9, rows);
+    }
+
+    /**
+     * Columns of 5.3 and 6.3 (0-based): 1 year, 2 journal/book/volume, 3 publisher, 4 ISBN, 5 ISSN online,
+     * 6 ISSN print, 7 DOI, 8 article/chapter title, 9 KVK link (the person's), 10–13 Scopus Q1–Q4, 14 book,
+     * 15 edited volume, 16 chapter, 17 critical edition, 18 translation, 19 pages, 20 authors, 21 from the university.
+     */
+    private byte[] generateHumanities(String template, int firstRow, List<HumanitiesExportRow> rows) throws IOException {
+        try (InputStream resource = new FileInputStream(template);
+             Workbook workbook = new XSSFWorkbook(resource)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            int rowNum = firstRow;
+            int sampleRowNum = firstRow;
+            for (HumanitiesExportRow r : rows) {
+                int usable = findNextUsableTemplateRow(sheet, sampleRowNum, 22);
+                if (usable < 0) {
+                    throw new IllegalStateException("No suitable template row available for CNFIS export population.");
+                }
+                sampleRowNum = usable;
+                Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
+                row.getCell(1).setCellValue(cellText(r.year()));
+                row.getCell(2).setCellValue(cellText(r.containerTitle()));
+                row.getCell(3).setCellValue(cellText(r.publisher()));
+                row.getCell(4).setCellValue(cellText(r.isbn()));
+                row.getCell(5).setCellValue(cellText(r.issnOnline()));
+                row.getCell(6).setCellValue(cellText(r.issnPrint()));
+                row.getCell(7).setCellValue(cellText(r.doi()));
+                row.getCell(8).setCellValue(cellText(r.itemTitle()));
+                int column = humanitiesColumn(r.category());
+                if (column >= 0) {
+                    row.getCell(column).setCellValue(1);
+                }
+                if (r.pages() != null) {
+                    row.getCell(19).setCellValue(r.pages());
+                }
+                row.getCell(20).setCellValue(r.authorCount());
+                row.getCell(21).setCellValue(r.universityAuthorCount());
+                rowNum++;
+            }
+            workbook.setForceFormulaRecalculation(true);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            return bos.toByteArray();
+        }
+    }
+
+    static int humanitiesColumn(String category) {
+        return switch (category == null ? "" : category) {
+            case "SCOPUS_Q1" -> 10;
+            case "SCOPUS_Q2" -> 11;
+            case "SCOPUS_Q3" -> 12;
+            case "SCOPUS_Q4" -> 13;
+            case "BOOK" -> 14;
+            case "EDITED_VOLUME" -> 15;
+            case "CHAPTER" -> 16;
+            case "CRITICAL_EDITION" -> 17;
+            case "TRANSLATION" -> 18;
+            default -> -1;
+        };
+    }
+
     /** One row of Anexa 5.1 / 6.1, as the facade hands it over. */
     public record ArtsExportRow(String year, String work, String event, String level, String kind, int universityParticipants) {
     }

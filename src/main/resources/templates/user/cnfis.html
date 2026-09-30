@@ -209,6 +209,46 @@
                         </div>
                     </section>
 
+                    <!-- ── Anexa 5.3: humanities ────────────────────────────── -->
+                    <section class="card mb-3" aria-labelledby="cnfis-hum-title" th:if="${sheet.humanities().applies()}" th:with="hum=${sheet.humanities()}">
+                        <div class="card-body">
+                            <h2 id="cnfis-hum-title" class="h5" th:text="#{cnfis.hum.title(${#lists.size(hum.rows())})}">Anexa 5.3 — humanities</h2>
+                            <p class="text-muted small" th:text="#{cnfis.hum.hint}">Scopus articles by CiteScore quartile, books and chapters from your publications; edited volumes, translations and declared books from your activities. The KVK library link is yours to add in the file.</p>
+                            <p class="text-muted small" th:if="${!#lists.isEmpty(hum.citeScoreYears())}"
+                               th:text="#{cnfis.hum.citeScoreYears(${#strings.listJoin(hum.citeScoreYears(), ', ')})}">CiteScore lists loaded: 2023</p>
+                            <table th:unless="${#lists.isEmpty(hum.rows())}" class="table table-sm app-table" id="cnfis-hum-rows">
+                                <thead><tr>
+                                    <th th:text="#{common.year}">Year</th><th th:text="#{cnfis.hum.container}">Journal / book / volume</th>
+                                    <th th:text="#{cnfis.hum.item}">Article / chapter</th><th th:text="#{cnfis.hum.publisher}">Publisher</th>
+                                    <th th:text="#{cnfis.rows.category}">Category</th><th th:text="#{cnfis.rows.classifiedBy}">Classified by</th>
+                                    <th th:text="#{cnfis.rows.authors}">Authors / from the university</th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="r : ${hum.rows()}">
+                                    <td th:text="${r.year()}">2023</td><td th:text="${r.containerTitle()}">Journal</td>
+                                    <td th:text="${r.itemTitle()}">Article</td><td th:text="${r.publisher()}">Publisher</td>
+                                    <td><strong th:text="#{'cnfis.hum.category.' + ${r.category()}}">Scopus Q1</strong></td>
+                                    <td class="text-muted small" th:text="${r.classifiedBy()}">by</td>
+                                    <td th:text="${r.authorCount()} + ' / ' + ${r.universityAuthorCount()}">2 / 1</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <table th:unless="${#lists.isEmpty(hum.leftOut())}" class="table table-sm app-table" id="cnfis-hum-left-out">
+                                <caption class="app-table-caption" th:text="#{cnfis.leftOut.hint}">left out</caption>
+                                <thead><tr><th th:text="#{common.year}">Year</th><th th:text="#{common.title}">Title</th><th th:text="#{authors.detail.venue}">Venue</th><th th:text="#{cnfis.leftOut.reason}">Reason</th></tr></thead>
+                                <tbody>
+                                <tr th:each="l : ${hum.leftOut()}">
+                                    <td th:text="${l.year()}">2023</td><td th:text="${l.title()}">Title</td><td th:text="${l.venue()}">Venue</td><td th:text="${l.reason()}">reason</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <a class="btn btn-sm btn-primary" th:href="@{/user/cnfis/{y}/export-humanities(y=${ed.reportingYear()})}">
+                                <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
+                                <span th:text="#{cnfis.download.anexa53}">Download Anexa 5.3</span>
+                            </a>
+                        </div>
+                    </section>
+
                     <!-- ── Left out ────────────────────────────────────────── -->
                     <section class="card mb-3" aria-labelledby="cnfis-leftout-title">
                         <div class="card-body">
@@ -265,6 +305,7 @@
                                     <td>
                                         <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/user/cnfis/snapshots/{id}/export(id=${s.id()})}" th:text="#{cnfis.copies.download}">Download</a>
                                         <a th:if="${sheet.arts().applies()}" class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/user/cnfis/snapshots/{id}/export-arts(id=${s.id()})}" th:text="#{cnfis.copies.download51}">Anexa 5.1</a>
+                                        <a th:if="${sheet.humanities().applies()}" class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/user/cnfis/snapshots/{id}/export-humanities(id=${s.id()})}" th:text="#{cnfis.copies.download53}">Anexa 5.3</a>
                                         <span th:if="${s.locked()}" class="app-table-badge app-table-badge--success" th:text="#{cnfis.copies.locked}">in an institutional table</span>
                                         <form th:unless="${s.locked()}" th:action="@{/user/cnfis/snapshots/{id}/release(id=${s.id()})}" method="post" class="d-inline">
                                             <input type="hidden" name="edition" th:value="${ed.reportingYear()}">

@@ -68,6 +68,8 @@ public class CnfisReportingFacade {
     private final CnfisDomainCatalog domainCatalog;
     private final CNFISReportExportService exportService;
     private final ro.uvt.pokedex.core.repository.ArtisticEventRepository artisticEventRepository;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
+    private final ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles citeScoreQuartiles;
 
     public List<CnfisEditionViewModel> editions() {
         return CnfisEdition.known().stream()
@@ -131,6 +133,10 @@ public class CnfisReportingFacade {
         }
         List<CnfisSheetViewModel.Patent> patents = patents(userEmail, edition);
         ArtsSheet artsSheet = arts(userEmail, edition);
+        HumanitiesSheet humanitiesSheet = humanities(userEmail, edition, data);
+        CnfisSheetViewModel.Humanities humanities = new CnfisSheetViewModel.Humanities(
+                ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsHumanities(header.getDomainCode()),
+                humanitiesSheet.rows(), humanitiesSheet.leftOut(), citeScoreQuartiles.availableYears());
         CnfisSheetViewModel.Arts arts = new CnfisSheetViewModel.Arts(
                 ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsArts(header.getDomainCode()) || !artsSheet.rows().isEmpty(),
                 artsSheet.rows(), artsSheet.leftOut());
@@ -149,7 +155,7 @@ public class CnfisReportingFacade {
                 .toList();
 
         return Optional.of(new CnfisSheetViewModel(toViewModel(edition), header, domainCatalog.domains(), reports,
-                score, rows, leftOut, patents, arts, staff.missingRecords, snapshots, counts(data.reports(), patents)));
+                score, rows, leftOut, patents, arts, humanities, staff.missingRecords, snapshots, counts(data.reports(), patents)));
     }
 
     // ── the head of the sheet ────────────────────────────────────────────────
@@ -270,6 +276,9 @@ public class CnfisReportingFacade {
             row.setUniversityParticipants(r.universityParticipants());
             snapshot.getArtsRows().add(row);
         }
+        for (CnfisSheetViewModel.HumanitiesRow r : humanities(userEmail, edition, data).rows()) {
+            snapshot.getHumanitiesRows().add(toSnapshotHumanities(r));
+        }
         return Optional.of(snapshotRepository.save(snapshot));
     }
 
@@ -338,6 +347,62 @@ public class CnfisReportingFacade {
             }
         }
         return out;
+    }
+
+    public Optional<byte[]> exportHumanitiesLive(String userEmail, int reportingYear) throws IOException {
+        Optional<CnfisEdition> edition = CnfisEdition.ofReportingYear(reportingYear);
+        if (edition.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<UserReportFacade.CnfisSheetData> dataOpt = userReportFacade.buildCnfisSheet(userEmail, edition.get());
+        if (dataOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        countUniversityAuthors(dataOpt.get(), edition.get().referenceDate());
+        return Optional.of(exportService.generateAnexa53(toExportHumanities(humanities(userEmail, edition.get(), dataOpt.get()).rows())));
+    }
+
+    public Optional<byte[]> exportHumanitiesSnapshot(String userEmail, String snapshotId) throws IOException {
+        Optional<CnfisSheetSnapshot> snapshotOpt = snapshotRepository.findById(snapshotId)
+                .filter(s -> userEmail.equals(s.getUserEmail()));
+        if (snapshotOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(exportService.generateAnexa53(toExportHumanities(snapshotOpt.get().getHumanitiesRows())));
+    }
+
+    static List<CNFISReportExportService.HumanitiesExportRow> toExportHumanities(List<? extends Object> rows) {
+        List<CNFISReportExportService.HumanitiesExportRow> out = new ArrayList<>();
+        for (Object o : rows) {
+            if (o instanceof CnfisSheetViewModel.HumanitiesRow r) {
+                out.add(new CNFISReportExportService.HumanitiesExportRow(r.year(), r.containerTitle(), r.publisher(), r.isbn(),
+                        r.issnOnline(), r.issnPrint(), r.doi(), r.itemTitle(), r.category(), r.pages(), r.authorCount(), r.universityAuthorCount()));
+            } else if (o instanceof CnfisSheetSnapshot.HumanitiesRow r) {
+                out.add(new CNFISReportExportService.HumanitiesExportRow(r.getYear(), r.getContainerTitle(), r.getPublisher(), r.getIsbn(),
+                        r.getIssnOnline(), r.getIssnPrint(), r.getDoi(), r.getItemTitle(), r.getCategory(), r.getPages(), r.getAuthorCount(), r.getUniversityAuthorCount()));
+            }
+        }
+        return out;
+    }
+
+    private static CnfisSheetSnapshot.HumanitiesRow toSnapshotHumanities(CnfisSheetViewModel.HumanitiesRow r) {
+        CnfisSheetSnapshot.HumanitiesRow row = new CnfisSheetSnapshot.HumanitiesRow();
+        row.setSourceId(r.sourceId());
+        row.setYear(r.year());
+        row.setContainerTitle(r.containerTitle());
+        row.setPublisher(r.publisher());
+        row.setIsbn(r.isbn());
+        row.setIssnOnline(r.issnOnline());
+        row.setIssnPrint(r.issnPrint());
+        row.setDoi(r.doi());
+        row.setItemTitle(r.itemTitle());
+        row.setCategory(r.category());
+        row.setListYear(r.listYear());
+        row.setClassifiedBy(r.classifiedBy());
+        row.setPages(r.pages());
+        row.setAuthorCount(r.authorCount());
+        row.setUniversityAuthorCount(r.universityAuthorCount());
+        return row;
     }
 
     public Optional<byte[]> exportSnapshot(String userEmail, String snapshotId) throws IOException {
@@ -445,6 +510,96 @@ public class CnfisReportingFacade {
             data.reports().get(i).setNumarAutoriUniversitate(counted);
         }
         return new StaffCount(new ArrayList<>(missing));
+    }
+
+    record HumanitiesSheet(List<CnfisSheetViewModel.HumanitiesRow> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {
+    }
+
+    /**
+     * Anexa 5.3 (the humanities): from the publications of the window — an Article or Review in a journal
+     * Scopus indexes, by the best CiteScore quartile of the edition's list year (nearest loaded list when that
+     * year's is not, and the row says so); a book (carte de autor); a chapter in a collective volume — and from
+     * the declared activities: an edited volume ("Carte coordonată …"), a translation ("Traducere …"), a book
+     * or chapter declared by the candidate. The KVK library link is the person's to add in the file.
+     */
+    HumanitiesSheet humanities(String userEmail, CnfisEdition edition, UserReportFacade.CnfisSheetData data) {
+        List<CnfisSheetViewModel.HumanitiesRow> rows = new ArrayList<>();
+        List<CnfisSheetViewModel.LeftOut> leftOut = new ArrayList<>();
+        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(getClass());
+        for (int i = 0; i < data.publications().size(); i++) {
+            ScoringPublicationReadModel p = data.publications().get(i);
+            CNFISReport2025 r = data.reports().get(i);
+            Integer year = ro.uvt.pokedex.core.service.application.PersistenceYearSupport.extractYear(p.getCoverDate(), p.getId(), log).orElse(null);
+            String yearText = year == null ? "" : String.valueOf(year);
+            ScholardexForumView forum = data.forumMap().get(p.getForumId());
+            String subtype = ro.uvt.pokedex.core.service.reporting.PublicationSubtypeSupport.resolveSubtype(p);
+            String container = forum == null ? "" : nz(forum.getPublicationName());
+            String venue = container;
+            if ("ar".equals(subtype) || "re".equals(subtype)) {
+                if (forum == null || forum.getScopusId() == null || forum.getScopusId().isBlank()) {
+                    leftOut.add(new CnfisSheetViewModel.LeftOut(p.getId(), yearText, p.getTitle(), venue, p.getDoi(),
+                            "Anexa 5.3 reports articles in journals Scopus indexes; this journal is not one"));
+                    continue;
+                }
+                int wanted = year == null ? edition.lastListYear() : edition.listYearFor(year);
+                Optional<ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles.Placement> placement =
+                        citeScoreQuartiles.placement(forum.getScopusId(), wanted);
+                if (placement.isEmpty()) {
+                    leftOut.add(new CnfisSheetViewModel.LeftOut(p.getId(), yearText, p.getTitle(), venue, p.getDoi(),
+                            "the journal has no CiteScore quartile in the lists loaded"));
+                    continue;
+                }
+                String by = "CiteScore Q" + placement.get().quartile() + " · list " + placement.get().listYear()
+                        + (placement.get().listYear() == wanted ? "" : " (the " + wanted + " list is not loaded)");
+                rows.add(new CnfisSheetViewModel.HumanitiesRow(p.getId(), yearText, container, nz(forum.getPublisher()), "",
+                        nz(forum.getEIssn()), nz(forum.getIssn()), nz(p.getDoi()), nz(p.getTitle()),
+                        "SCOPUS_Q" + placement.get().quartile(), placement.get().listYear(), by, null,
+                        r.getNumarAutori(), r.getNumarAutoriUniversitate()));
+            } else if ("bk".equals(subtype) || "ch".equals(subtype)) {
+                ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact book = p.getBookId() == null ? null
+                        : bookFactRepository.findById(p.getBookId()).orElse(null);
+                String publisher = book != null && book.getPublisher() != null ? book.getPublisher() : forum == null ? "" : nz(forum.getPublisher());
+                String isbn = book != null ? nz(book.getPrintIsbn() != null ? book.getPrintIsbn() : book.getElectronicIsbn())
+                        : forum == null ? "" : nz(forum.getIsbn());
+                String bookTitle = book != null && book.getTitle() != null ? book.getTitle() : container;
+                boolean chapter = "ch".equals(subtype);
+                rows.add(new CnfisSheetViewModel.HumanitiesRow(p.getId(), yearText,
+                        chapter ? bookTitle : nz(p.getTitle()), publisher, isbn, "", "", nz(p.getDoi()),
+                        chapter ? nz(p.getTitle()) : "", chapter ? "CHAPTER" : "BOOK", null,
+                        chapter ? "chapter in a collective volume (from the publication record)" : "book (from the publication record)",
+                        null, r.getNumarAutori(), r.getNumarAutoriUniversitate()));
+            }
+        }
+        for (ActivityInstance instance : activityInstanceRepository.findAllByResearcherId(userEmail)) {
+            String type = instance.getActivity() == null || instance.getActivity().getName() == null ? "" : instance.getActivity().getName();
+            Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
+            String category;
+            if (type.startsWith("Carte coordonat")) {
+                category = "EDITED_VOLUME";
+            } else if (type.startsWith("Traducere")) {
+                category = "TRANSLATION";
+            } else if (type.startsWith("Carte sau capitol")) {
+                category = nz(f.get("Tip")).toLowerCase(java.util.Locale.ROOT).startsWith("capitol") ? "CHAPTER" : "BOOK";
+            } else {
+                continue;
+            }
+            Integer year = parseYear(instance.getDate());
+            if (year == null || !edition.covers(year)) {
+                continue;
+            }
+            String title = f.getOrDefault("Titlu", instance.getName());
+            int authors = Math.max(1, parseInt(f.getOrDefault("N_autori", f.getOrDefault("N_coordonatori", "1"))));
+            rows.add(new CnfisSheetViewModel.HumanitiesRow(instance.getId(), String.valueOf(year),
+                    "CHAPTER".equals(category) ? nz(f.get("Volum")) : nz(title), nz(f.get("Editura")), "", "", "", "",
+                    "CHAPTER".equals(category) ? nz(title) : "", category, null,
+                    "declared: " + type, null, authors, 1));
+        }
+        rows.sort(Comparator.comparing(CnfisSheetViewModel.HumanitiesRow::year).thenComparing(CnfisSheetViewModel.HumanitiesRow::containerTitle));
+        return new HumanitiesSheet(rows, leftOut);
+    }
+
+    private static String nz(String value) {
+        return value == null ? "" : value;
     }
 
     record ArtsSheet(List<CnfisSheetViewModel.ArtsRow> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {

@@ -119,6 +119,21 @@ public class CnfisUnitController {
         response.getOutputStream().write(bytes.get());
     }
 
+    @GetMapping("/tables/{tableId}/export-humanities")
+    @PreAuthorize("(#kind == 'departments' and @orgUnitAccess.canManageDepartment(#unitId, authentication))"
+            + " or (#kind == 'divisions' and @orgUnitAccess.canManageDivision(#unitId, authentication))")
+    public void exportHumanities(@PathVariable String kind, @PathVariable String unitId, @PathVariable String tableId,
+                                 HttpServletResponse response) throws IOException {
+        Optional<byte[]> bytes = cnfisUnitFacade.exportHumanitiesTable(unitKind(kind), unitId, tableId);
+        if (bytes.isEmpty()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"Anexa6.3_CNFIS.xlsx\"");
+        response.getOutputStream().write(bytes.get());
+    }
+
     private static CnfisUnitSheet.UnitKind unitKind(String kind) {
         return "divisions".equals(kind) ? CnfisUnitSheet.UnitKind.DIVISION : CnfisUnitSheet.UnitKind.DEPARTMENT;
     }

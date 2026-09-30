@@ -38,6 +38,8 @@ public class CnfisSheetSnapshot {
     private List<Patent> patents = new ArrayList<>();
     /** Anexa 5.1 — the artistic performances, for a person of an artistic domain. */
     private List<ArtsRow> artsRows = new ArrayList<>();
+    /** Anexa 5.3 — Scopus articles, books, edited volumes, chapters, critical editions, translations (humanities). */
+    private List<HumanitiesRow> humanitiesRows = new ArrayList<>();
 
     private String lockedByUnitSheetId;
 
@@ -84,6 +86,30 @@ public class CnfisSheetSnapshot {
         /** INDIVIDUAL, GROUP, COLLECTIVE, NOMINATION, PRIZE — the declared kind of the work. */
         private String kind;
         private int universityParticipants;
+    }
+
+    /** One row of Anexa 5.3. */
+    @Data
+    public static class HumanitiesRow {
+        /** the publication, or the declared activity, the row came from */
+        private String sourceId;
+        private String year;
+        /** the journal, the book, the volume the chapter is in */
+        private String containerTitle;
+        private String publisher;
+        private String isbn;
+        private String issnOnline;
+        private String issnPrint;
+        private String doi;
+        /** the article or the chapter; empty for a book */
+        private String itemTitle;
+        /** SCOPUS_Q1..SCOPUS_Q4, BOOK, EDITED_VOLUME, CHAPTER, CRITICAL_EDITION, TRANSLATION */
+        private String category;
+        private Integer listYear;
+        private String classifiedBy;
+        private Integer pages;
+        private int authorCount;
+        private int universityAuthorCount;
     }
 
     /** A patent, from the declared activity "Brevet". */

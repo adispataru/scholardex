@@ -13,4 +13,5 @@ data:
   SCOPUS_PYTHON_BASE_URL: "scholardex-scopus-python.{{ .Release.Namespace }}.svc:65008"
   DBLP_DUMP_FILE: {{ .Values.config.dblpDumpFile | quote }}
   DBLP_API_ENABLED: {{ .Values.config.dblpApiEnabled | default "true" | quote }}
+  CNFIS_CITESCORE_DIR: {{ .Values.config.cnfisCiteScoreDir | default "data/scopus" | quote }}
   JAVA_TOOL_OPTIONS: {{ .Values.core.javaToolOptions | quote }}

@@ -36,6 +36,8 @@ config:
   dblpDumpFile: /app/data/dblp-2026-09-01.xml.gz
   # dblp.org is behind an Anubis bot challenge (2026-09): the live per-paper lookup can only fail. Dump sweep only.
   dblpApiEnabled: "false"
+  # H129: the yearly CiteScore exports ("CiteScore <year> per <month>.csv") for Anexa 5.3, on the data volume.
+  cnfisCiteScoreDir: /app/data/scopus
 
 ingress:
   host: scholardex.rdi.info.uvt.ro

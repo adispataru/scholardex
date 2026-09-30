@@ -159,8 +159,19 @@ Done history moved to `TASKS-done.md`.
   the CNFIS page when the domain is artistic or performances exist; frozen with the sheet (`artsRows`);
   downloads: `/user/cnfis/{edition}/export-arts`, per frozen copy, and Anexa 6.1 per unit table (each
   performance once). Anexa 5.2 (sport) is fully declared and has no activity type yet — left for when the
-  sport domain asks. Anexa 5.3 (humanities) waits for the CiteScore lists of 2021 and 2022 (Scopus Sources
-  page, "CiteScore year" filter, Export) — the book side could be built before. Source of the rules: the
+  sport domain asks. **SLICE 4 (Anexa 5.3) BUILT 2026-09-30, not
+  pushed.** Adrian cannot export CiteScore lists himself (Scopus sends him to "contact us"; the 2023 file came
+  that way): the 2023 list serves every year until the others arrive. `CiteScoreQuartiles` reads every
+  `CiteScore <year> per <month>.csv` in `cnfis.citescore.dir` (default `data/scopus`; Latin-1, the export is not
+  UTF-8), best (lowest) quartile over a source's subject areas; a list year that is not loaded takes the
+  nearest one and the row says so. Rows: an Article/Review in a journal with a Scopus id → CiteScore quartile
+  of the edition's list year; a book (bk) / a chapter (ch) from the publication record, publisher and ISBN
+  from the book fact or the venue; declared "Carte coordonată …" → edited volume, "Traducere …" →
+  translation, "Carte sau capitol declarat …" → book/chapter by its "Tip". Critical editions have no source.
+  The KVK link column stays empty (the person's). Shown when the domain is one of the guide's humanities
+  codes; frozen with the sheet (`humanitiesRows`); downloads 5.3 live and per copy, 6.3 per unit table (each
+  work once — the template says "Fără dubluri"). **To do when the 2021/2022 (and 2024, 2025) CiteScore
+  lists arrive:** drop them into `data/scopus/` on the data volume, named as the 2023 one; nothing else. Source of the rules: the
   CNFIS guide "Cerințe și recomandări privind raportarea datelor … IC2" (January 2025, cnfis.ro).
   **The shape.** Three sidebar entries instead of "Evaluation": **CNATDCU** (the domain reports: every FV, FEAA
   included), **UEFISCDI** (Eligibilitate PD, PD 2026, Tinere Echipe) and **CNFIS**. A report carries a new field

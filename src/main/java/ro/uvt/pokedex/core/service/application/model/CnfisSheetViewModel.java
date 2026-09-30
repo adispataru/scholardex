@@ -17,6 +17,7 @@ public record CnfisSheetViewModel(
         List<LeftOut> leftOut,
         List<Patent> patents,
         Arts arts,
+        Humanities humanities,
         List<String> staffRecordMissing,
         List<Snapshot> snapshots,
         Counts counts
@@ -41,6 +42,15 @@ public record CnfisSheetViewModel(
 
     public record ArtsRow(String activityInstanceId, String year, String work, String event, String level, String kind,
                           int universityParticipants) {
+    }
+
+    /** Anexa 5.3: shown to a person of a humanities domain. */
+    public record Humanities(boolean applies, List<HumanitiesRow> rows, List<LeftOut> leftOut, List<Integer> citeScoreYears) {
+    }
+
+    public record HumanitiesRow(String sourceId, String year, String containerTitle, String publisher, String isbn,
+                                String issnOnline, String issnPrint, String doi, String itemTitle, String category,
+                                Integer listYear, String classifiedBy, Integer pages, int authorCount, int universityAuthorCount) {
     }
 
     public record Snapshot(String id, String createdAt, int rows, int patents, boolean locked, boolean provisional) {

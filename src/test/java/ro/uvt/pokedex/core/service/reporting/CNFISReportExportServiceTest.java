@@ -44,6 +44,8 @@ class CNFISReportExportServiceTest {
         stage("AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx");
         stage("AC2025_Anexa5.1-Performanta_creatie_artistica-2025.xlsx");
         stage("AC2025_Anexa6.1-Tabel_institutional_creatie_artistica-2025.xlsx");
+        stage("AC2025_Anexa5.3-Performanta_stiinte_umaniste-2025.xlsx");
+        stage("AC2025_Anexa6.3-Tabel_institutional_performanta_stiinte_umaniste-2025.xlsx");
     }
 
     private static void stage(String filename) throws Exception {
@@ -421,6 +423,52 @@ class CNFISReportExportServiceTest {
             assertEquals("Concert", row.getCell(2).getStringCellValue());
             assertEquals(1.0, row.getCell(12).getNumericCellValue(), "collective × top international = column M");
             assertEquals(12.0, row.getCell(19).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void anexa53WritesTheIdentifiersAndMarksTheCategoryColumn() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        byte[] bytes = service.generateAnexa53(List.of(
+                new CNFISReportExportService.HumanitiesExportRow("2023", "Studia Philologica", "", "", "1234-5678", "8765-4321",
+                        "10.1/one", "On something", "SCOPUS_Q2", null, 2, 1),
+                new CNFISReportExportService.HumanitiesExportRow("2022", "O carte", "Humanitas", "978-973-50-0000-0", "", "", "",
+                        "", "BOOK", 320, 1, 1),
+                new CNFISReportExportService.HumanitiesExportRow("2024", "Volum", "Polirom", "978-973-46-0000-0", "", "", "",
+                        "Un capitol", "CHAPTER", null, 3, 2)));
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Row article = sheet.getRow(17);
+            assertEquals("Studia Philologica", article.getCell(2).getStringCellValue());
+            assertEquals("1234-5678", article.getCell(5).getStringCellValue());
+            assertEquals("10.1/one", article.getCell(7).getStringCellValue());
+            assertEquals("On something", article.getCell(8).getStringCellValue());
+            assertEquals(1.0, article.getCell(11).getNumericCellValue(), "Scopus Q2 = column L");
+            assertEquals(2.0, article.getCell(20).getNumericCellValue());
+            assertEquals(1.0, article.getCell(21).getNumericCellValue());
+            Row book = sheet.getRow(18);
+            assertEquals("Humanitas", book.getCell(3).getStringCellValue());
+            assertEquals("978-973-50-0000-0", book.getCell(4).getStringCellValue());
+            assertEquals(1.0, book.getCell(14).getNumericCellValue(), "book = column O");
+            assertEquals(320.0, book.getCell(19).getNumericCellValue());
+            Row chapter = sheet.getRow(19);
+            assertEquals("Un capitol", chapter.getCell(8).getStringCellValue());
+            assertEquals(1.0, chapter.getCell(16).getNumericCellValue(), "chapter = column Q");
+        }
+        assertEquals(18, CNFISReportExportService.humanitiesColumn("TRANSLATION"));
+        assertEquals(-1, CNFISReportExportService.humanitiesColumn("?"));
+    }
+
+    @Test
+    void anexa63StartsAtItsOwnFirstRow() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        byte[] bytes = service.generateAnexa63(List.of(
+                new CNFISReportExportService.HumanitiesExportRow("2023", "Journal", "", "", "", "", "10.1/x", "Article", "SCOPUS_Q1", null, 1, 1)));
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Row row = workbook.getSheetAt(0).getRow(9);
+            assertEquals("Journal", row.getCell(2).getStringCellValue());
+            assertEquals(1.0, row.getCell(10).getNumericCellValue());
         }
     }
 

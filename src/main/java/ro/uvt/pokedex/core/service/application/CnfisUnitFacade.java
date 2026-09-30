@@ -239,6 +239,21 @@ public class CnfisUnitFacade {
         return Optional.of(exportService.generateAnexa61(CnfisReportingFacade.toExportArts(new ArrayList<>(rows.values()))));
     }
 
+    /** Anexa 6.3 of a table: the humanities rows of its members' sheets, each work once ("Fără dubluri"). */
+    public Optional<byte[]> exportHumanitiesTable(CnfisUnitSheet.UnitKind kind, String unitId, String tableId) throws IOException {
+        Optional<CnfisUnitSheet> tableOpt = unitSheetRepository.findById(tableId)
+                .filter(t -> t.getUnitKind() == kind && unitId.equals(t.getUnitId()));
+        if (tableOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Map<String, CnfisSheetSnapshot.HumanitiesRow> rows = new LinkedHashMap<>();
+        for (CnfisUnitSheet.Member member : tableOpt.get().getMembers()) {
+            snapshotRepository.findById(member.getSnapshotId())
+                    .ifPresent(s -> s.getHumanitiesRows().forEach(r -> rows.putIfAbsent(r.getSourceId(), r)));
+        }
+        return Optional.of(exportService.generateAnexa63(CnfisReportingFacade.toExportHumanities(new ArrayList<>(rows.values()))));
+    }
+
     // ── pieces ──────────────────────────────────────────────────────────────
 
     private Optional<Unit> unit(CnfisUnitSheet.UnitKind kind, String unitId) {

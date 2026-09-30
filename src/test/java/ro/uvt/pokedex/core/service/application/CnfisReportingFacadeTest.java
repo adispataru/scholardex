@@ -59,6 +59,8 @@ class CnfisReportingFacadeTest {
     @Mock private CnfisDomainCatalog domainCatalog;
     @Mock private CNFISReportExportService exportService;
     @Mock private ro.uvt.pokedex.core.repository.ArtisticEventRepository artisticEventRepository;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
+    @Mock private ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles citeScoreQuartiles;
 
     private CnfisReportingFacade facade;
 
@@ -66,7 +68,7 @@ class CnfisReportingFacadeTest {
     void setUp() {
         facade = new CnfisReportingFacade(userReportFacade, runService, userRepository, lookupService,
                 projectionReadService, activityInstanceRepository, headerRepository, snapshotRepository,
-                domainCatalog, exportService, artisticEventRepository);
+                domainCatalog, exportService, artisticEventRepository, bookFactRepository, citeScoreQuartiles);
         lenient().when(userReportFacade.buildIndividualReportsListView(EMAIL))
                 .thenReturn(new UserReportsListViewModel(List.of()));
         lenient().when(headerRepository.findByUserEmailAndReportingYear(any(), org.mockito.ArgumentMatchers.anyInt()))
@@ -75,6 +77,7 @@ class CnfisReportingFacadeTest {
                 .thenReturn(List.of());
         lenient().when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of());
         lenient().when(domainCatalog.domains()).thenReturn(List.of());
+        lenient().when(citeScoreQuartiles.availableYears()).thenReturn(List.of(2023));
     }
 
     // ── the sheet ──────────────────────────────────────────────────────────
@@ -316,6 +319,64 @@ class CnfisReportingFacadeTest {
         instance.getActivity().setName("Participare eveniment artistic");
         instance.setFields(new java.util.HashMap<>(fields));
         instance.setReferenceFields(new java.util.HashMap<>(Map.of(Activity.ReferenceField.EVENT_NAME, event)));
+        return instance;
+    }
+
+    // ── Anexa 5.3 ──────────────────────────────────────────────────────────
+
+    @Test
+    void theHumanitiesSheetTakesScopusArticlesBooksChaptersAndDeclaredVolumes() {
+        ScoringPublication article = new ScoringPublication("p-art", null, "f-scopus", "2024-02-01", "ar", "ar", List.of("a-ana"), 2, "10.1/art", null, "An article", 0, Set.of());
+        ScoringPublication nonScopus = new ScoringPublication("p-non", null, "f-plain", "2023-02-01", "ar", "ar", List.of("a-ana"), 1, "10.1/non", null, "Elsewhere", 0, Set.of());
+        ScoringPublication chapter = new ScoringPublication("p-ch", null, "f-book", "2022-02-01", "ch", "ch", List.of("a-ana"), 3, "10.1/ch", null, "A chapter", 0, Set.of());
+        CNFISReport2025 r1 = new CNFISReport2025(); r1.setNumarAutori(2);
+        CNFISReport2025 r2 = new CNFISReport2025(); r2.setNumarAutori(1);
+        CNFISReport2025 r3 = new CNFISReport2025(); r3.setNumarAutori(3);
+        ScholardexForumView scopus = new ScholardexForumView();
+        scopus.setId("f-scopus"); scopus.setPublicationName("Studia"); scopus.setScopusId("21100"); scopus.setEIssn("1234-5678");
+        ScholardexForumView plain = new ScholardexForumView();
+        plain.setId("f-plain"); plain.setPublicationName("Revista locală");
+        ScholardexForumView bookVenue = new ScholardexForumView();
+        bookVenue.setId("f-book"); bookVenue.setPublicationName("Un volum colectiv"); bookVenue.setPublisher("Polirom"); bookVenue.setIsbn("978-1");
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(article, nonScopus, chapter), List.of(r1, r2, r3),
+                        Map.of("f-scopus", scopus, "f-plain", plain, "f-book", bookVenue), List.of("a-ana"))));
+        staff(List.of(user("ana@e-uvt.ro", "Ana", "a-ana", record(StaffRecord.EmploymentType.TITULAR_FUNCTIA_DE_BAZA, null, null))));
+        // the 2024 article wants the 2023 list; only 2023 is loaded
+        when(citeScoreQuartiles.placement("21100", 2023)).thenReturn(Optional.of(new ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles.Placement(2, 2023)));
+        when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
+                declared("Carte coordonată (Comisia 28, I17)", "Volumul nostru", "2023-06-01", Map.of("Titlu", "Volumul nostru", "N_coordonatori", "2", "Editura", "Humanitas")),
+                declared("Traducere a unei lucrări fundamentale din științele sociale (Comisia 25, I.8)", "Tr", "2019-06-01", Map.of("Titlu", "Prea veche"))));
+        CnfisSheetHeader header = new CnfisSheetHeader();
+        header.setDomainCode("63");
+        when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
+
+        CnfisSheetViewModel sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+
+        assertTrue(sheet.humanities().applies());
+        List<CnfisSheetViewModel.HumanitiesRow> rows = sheet.humanities().rows();
+        assertEquals(List.of("CHAPTER", "EDITED_VOLUME", "SCOPUS_Q2"), rows.stream().map(CnfisSheetViewModel.HumanitiesRow::category).toList());
+        CnfisSheetViewModel.HumanitiesRow ch = rows.get(0);
+        assertEquals("Un volum colectiv", ch.containerTitle());
+        assertEquals("A chapter", ch.itemTitle());
+        assertEquals("Polirom", ch.publisher());
+        assertEquals("978-1", ch.isbn());
+        assertEquals(1, ch.universityAuthorCount());
+        CnfisSheetViewModel.HumanitiesRow volume = rows.get(1);
+        assertEquals("Humanitas", volume.publisher());
+        assertEquals(2, volume.authorCount());
+        CnfisSheetViewModel.HumanitiesRow art = rows.get(2);
+        assertEquals("1234-5678", art.issnOnline());
+        assertEquals(2023, art.listYear());
+        assertTrue(art.classifiedBy().startsWith("CiteScore Q2 · list 2023"));
+        assertEquals(1, sheet.humanities().leftOut().size());
+        assertTrue(sheet.humanities().leftOut().getFirst().reason().contains("not one"));
+    }
+
+    private static ActivityInstance declared(String type, String name, String date, Map<String, String> fields) {
+        ActivityInstance instance = other(name, date);
+        instance.getActivity().setName(type);
+        instance.setFields(new java.util.HashMap<>(fields));
         return instance;
     }
 

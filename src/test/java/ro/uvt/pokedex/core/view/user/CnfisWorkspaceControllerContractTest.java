@@ -77,6 +77,10 @@ class CnfisWorkspaceControllerContractTest {
                 new CnfisSheetViewModel.Arts(true,
                         List.of(new CnfisSheetViewModel.ArtsRow("act-2", "2023", "Expoziție personală", "Bienala de la Veneția", "INTERNATIONAL_TOP", "INDIVIDUAL", 0)),
                         List.of()),
+                new CnfisSheetViewModel.Humanities(true,
+                        List.of(new CnfisSheetViewModel.HumanitiesRow("spub_h", "2023", "Studia Philologica", "", "", "1234-5678", "", "10.1/h",
+                                "On something", "SCOPUS_Q2", 2023, "CiteScore Q2 · list 2023", null, 2, 1)),
+                        List.of(), List.of(2023)),
                 List.of("Ion Popescu"),
                 List.of(new CnfisSheetViewModel.Snapshot("s1", "2026-09-30T10:00:00Z", 1, 1, false, false),
                         new CnfisSheetViewModel.Snapshot("s0", "2026-09-01T10:00:00Z", 1, 0, true, true)),
@@ -96,6 +100,7 @@ class CnfisWorkspaceControllerContractTest {
                 "the stored domain is the selected one");
         assertTrue(html.contains("/user/cnfis/2025/export"));
         assertTrue(html.contains("Bienala de la Veneția") && html.contains("/user/cnfis/2025/export-arts"), "Anexa 5.1 for an arts domain");
+        assertTrue(html.contains("Studia Philologica") && html.contains("/user/cnfis/2025/export-humanities"), "Anexa 5.3 for a humanities domain");
         assertTrue(html.contains("/user/cnfis/2025/freeze"));
         assertTrue(html.contains("/user/cnfis/snapshots/s1/release"), "an unlocked copy can be released");
         assertTrue(!html.contains("/user/cnfis/snapshots/s0/release"), "a copy in an institutional table cannot");
