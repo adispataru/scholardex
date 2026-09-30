@@ -77,8 +77,9 @@ Done history moved to `TASKS-done.md`.
   ("Applies the rules of"), pinned by the round-trip test. `/user/evaluation?authority=…` shows the reports of
   one authority; a report asked for by id brings its own. The sidebar has three entries: CNATDCU, UEFISCDI,
   CNFIS. `/user/cnfis` lists the editions with their window and the download of Anexa 5 — the page slice 2b
-  grows into. **At deploy:** open Eligibilitate PD, Eligibilitate PD 2026 and Eligibilitate Tinere Echipe in the
-  admin report form and set the authority to UEFISCDI (until then they show under CNATDCU and the UEFISCDI
+  grows into. **At deploy:** run `scripts/ops/set-report-authority.sh` (marks Eligibilitate PD, Eligibilitate PD 2026
+  and Eligibilitate Tinere Echipe as UEFISCDI, by title, keeping the previous values), or set the authority
+  of each in the admin report form (until then they show under CNATDCU and the UEFISCDI
   entry is empty). **Left as it was:** the delegated view of a supervisor lists all the reports of a researcher
   together; the preferred report is one per person, so it applies only under the entry it belongs to.
   **Not checked in a browser** (a run needs real data). Source of the rules: the
