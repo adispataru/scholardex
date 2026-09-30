@@ -483,7 +483,9 @@ Done history moved to `TASKS-done.md`.
   permission from `.claude/settings.local.json`, develop on synthetic or OpenAlex-only data. The Scopus dump
   files (`data/scopus/complete_scopus_*.json`, 483 MB, ~150k abstracts of citing papers, and the copy under
   `scopus-python/`) are what is left of the out-of-list fields outside the application's access control —
-  keep them on the server or on an encrypted volume, not on a laptop.
+  keep them on the server or on an encrypted volume, not on a laptop. Seen 2026-09-30 on the production data
+  volume (`/app/data/scopus/`): the same full dump (483 MB, March 2026) and the incremental one — the inputs
+  of the one-time bulk import (`scopus.data.file`), not read at runtime; deleting them there is Adrian's call.
 - [ ] `H118` FV Științe ale Educației 2026 (OM 3.019/2025, COMISIA 28) — **BUILT, DEPLOYED and LOADED in prod 2026-09-29**
   (image `7a7bb39a`; `h118_comisia28_2026.js` renamed 12 activity types, changed the fields of 2, created 11, updated
   10 Psychology indicators, created the domain, 42 indicators and report `6abb957433192ec40a8e072f`; read back
