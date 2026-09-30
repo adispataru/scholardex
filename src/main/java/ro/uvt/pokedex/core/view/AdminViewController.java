@@ -191,18 +191,23 @@ public class AdminViewController {
     }
 
     @GetMapping("/institutions/{id}")
-    public String viewInstitutionWorkspace(@PathVariable String id, Model model) {
-        Optional<AdminInstitutionPublicationsViewModel> viewModel = adminInstitutionReportFacade.buildInstitutionPublicationsView(id);
+    public String viewInstitutionWorkspace(@PathVariable String id,
+                                           @RequestParam(value = "year", required = false) Integer year,
+                                           Model model) {
+        Optional<AdminInstitutionPublicationsViewModel> viewModel = adminInstitutionReportFacade.buildInstitutionPublicationsView(id, year);
         if (viewModel.isEmpty()) {
             return "redirect:/admin/institutions";
         }
         AdminInstitutionPublicationsViewModel vm = viewModel.get();
-        model.addAttribute("authorMap", vm.authorMap());
-        model.addAttribute("publicationsByYear", vm.publicationsByYear());
-        model.addAttribute("individualReports", vm.individualReports());
-        model.addAttribute("forumMap", vm.forumMap());
-        model.addAttribute("publications", vm.publications());
         model.addAttribute("institution", vm.institution());
+        model.addAttribute("faculties", vm.faculties());
+        model.addAttribute("staffCount", vm.staffCount());
+        model.addAttribute("publicationCount", vm.publicationCount());
+        model.addAttribute("publicationsCountByYear", vm.publicationsCountByYear());
+        model.addAttribute("selectedYear", vm.selectedYear());
+        model.addAttribute("publications", vm.publications());
+        model.addAttribute("authorMap", vm.authorMap());
+        model.addAttribute("forumMap", vm.forumMap());
         return "admin/institution-workspace";
     }
 

@@ -604,6 +604,64 @@ class AdminViewControllerContractTest {
     }
 
     @Test
+    void institutionWorkspaceRendersFacultiesYearsAndTheSelectedYearOnly() throws Exception {
+        // H134: the page shows the staff corpus — counts per faculty, one link per year, one year's list.
+        Institution institution = new Institution();
+        institution.setId("inst-uvt");
+        institution.setName("UVT");
+        institution.setDescription("University");
+        ScholardexPublicationView publication = new ScholardexPublicationView();
+        publication.setId("p1");
+        publication.setTitle("Listed paper of 2024");
+        publication.setCoverDate("2024-05-01");
+        publication.setAuthors(List.of("a1"));
+        publication.setForum("f1");
+        ScholardexAuthorView author = new ScholardexAuthorView();
+        author.setId("a1");
+        author.setName("Ana Author");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("f1");
+        forum.setPublicationName("Forum One");
+        java.util.TreeMap<Integer, Long> byYear = new java.util.TreeMap<>(java.util.Comparator.reverseOrder());
+        byYear.put(2024, 1L);
+        byYear.put(2023, 4L);
+        byYear.put(0, 2L);
+        var viewModel = new ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel(
+                institution,
+                List.of(new ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel.FacultySummary("div-feaa", "FEAA", 3, 5)),
+                3, 7, byYear, 2024, List.of(publication), Map.of("a1", author), Map.of("f1", forum));
+        when(adminInstitutionReportFacade.buildInstitutionPublicationsView("inst-uvt", 2024)).thenReturn(Optional.of(viewModel));
+
+        mockMvc.perform(get("/admin/institutions/{id}", "inst-uvt").param("year", "2024"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/institution-workspace"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("FEAA")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/institutions/inst-uvt?year=2023#publications")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/institutions/inst-uvt?year=0#publications")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("No year")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Publications of 2024")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Listed paper of 2024")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Ana Author")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Forum One")));
+    }
+
+    @Test
+    void institutionWorkspaceWithoutAYearAsksTheFacadeForTheNewest() throws Exception {
+        Institution institution = new Institution();
+        institution.setId("inst-uvt");
+        institution.setName("UVT");
+        var viewModel = new ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel(
+                institution, List.of(), 0, 0, new java.util.TreeMap<>(), null, List.of(), Map.of(), Map.of());
+        when(adminInstitutionReportFacade.buildInstitutionPublicationsView("inst-uvt", null)).thenReturn(Optional.of(viewModel));
+
+        mockMvc.perform(get("/admin/institutions/{id}", "inst-uvt"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/institution-workspace"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("No faculties yet")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("No publications yet")));
+    }
+
+    @Test
     void institutionEditPageRedirectsAndEditDataReturnsJson() throws Exception {
         Institution institution = new Institution();
         institution.setName("UVT");

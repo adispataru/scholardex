@@ -9,15 +9,31 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H134` The institution page shows the publications of its faculties' staff — **BUILT 2026-09-30, prod
+  pending.** After H133 the page rendered but showed 0 publications: it found them only through the Scopus
+  affiliations linked to the institution record, and `inst-uvt` was linked to none. Linking "West University of
+  Timişoara" (Scopus 60000434, canonical `saff_e5c95b34ac384552866dc020`) would have walked 4,466 authors and
+  18,712 publications (prod, 2026-09-30) and rendered them all on one page. **Decision (user):** derive the page
+  from the faculties' staff instead. **Now:** every faculty (division) of the institution → its departments'
+  current staff (`OrgUnitRosterService.divisionRoster`, STAFF scope) → each researcher's effective publications
+  (`EffectiveAuthorshipReadService.findEffectivePublicationsForUser`: profile identifiers with the researcher's
+  confirmations and rejections applied); a publication shared by two researchers counts once for the
+  institution and once per faculty. The overview shows faculties, staff and publications and a table per
+  faculty; the publications tab shows one link per year with its count and the list of ONE year (`?year=`,
+  newest by default; undated papers under "No year"). The Excel export draws on the same corpus. The
+  affiliation walk is gone from the page; the institution form still keeps the affiliation links for other uses.
+  **Local check** (2 faculties, 56 staff, 1,430 publications): the page answers in ~1 s, a year's list in
+  0.4 s, the export in 5 s. Prod has ~250 staff, so expect a few seconds: the page resolves each researcher
+  separately (three queries per person). **Not done:** no caching; a researcher affiliated to a department
+  without a faculty is not counted; the 2016 affiliation-based export columns are unchanged.
 - [ ] `H133` The institution page failed on a record without Scopus affiliations — **FIXED and DEPLOYED 2026-09-30**
   (image `f95628a3`, GitHub `deploy-prod`: STATUS deployed, revision 77, 08:27 UTC; read from the deploy log).
   `/admin/institutions/inst-uvt` answered 500 (request `3d8abfbc…`, 07:10 UTC): a NullPointerException in
   `AdminInstitutionReportFacade.loadInstitutionPublications`, which iterated the institution's Scopus
   affiliations, and the seeded `inst-uvt` record has none (only the edit form sets them, nobody ever did).
   Not a regression: the page had failed in that state since the seed. The list is now read as empty, so the
-  page renders with no publications; regression test in `AdminInstitutionReportFacadeTest`. **Not done
-  (option 2, the user's data change):** setting the UVT affiliation on the form would fill the page, which
-  then loads every publication, author and forum of the institution in one request.
+  page renders with no publications; regression test in `AdminInstitutionReportFacadeTest`. **Superseded by H134:**
+  the page no longer reads the affiliations at all.
 - [ ] `H132` Staff import reads quoted fields; FEAA starts with three test users — **BUILT and DEPLOYED 2026-09-30**
   (image `d2d29af1`); **the file is imported in prod and the ORCID script stamped 3** (2026-09-30 morning, user-run). Two of the four FEAA departments have commas in their names ("Finanțe, Sisteme Informaționale și
   Modelare pentru Afaceri", "Marketing, Afaceri Internaționale și Economie") and the staff import split every

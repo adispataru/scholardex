@@ -67,12 +67,54 @@
                                     </div>
                                     <div class="app-summary-panel__body">
                                         <p th:text="${institution.description}">Description.</p>
+                                        <p class="text-muted mb-2">The publications of the staff of every faculty below: each researcher's profile resolves to their publications, with their own confirmations and rejections applied. A publication shared by two researchers counts once.</p>
                                         <div>
-                                            <span class="font-weight-bold">Total Publications: </span>
-                                            <span th:text="${publications.size()}">0</span>
+                                            <span class="font-weight-bold">Faculties: </span>
+                                            <span th:text="${faculties.size()}">0</span>
+                                            <span class="mx-2">·</span>
+                                            <span class="font-weight-bold">Staff: </span>
+                                            <span th:text="${staffCount}">0</span>
+                                            <span class="mx-2">·</span>
+                                            <span class="font-weight-bold">Publications: </span>
+                                            <span th:text="${publicationCount}">0</span>
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="app-table-section mt-3" th:if="${!faculties.isEmpty()}">
+                                    <div class="app-table-section__surface">
+                                        <div class="app-table-section__header app-table-toolbar">
+                                            <h6 class="app-table-section__title">Faculties</h6>
+                                        </div>
+                                        <div class="app-table-section__body">
+                                            <div class="app-table-scroll">
+                                                <table class="table app-table" width="100%" cellspacing="0">
+                                                    <thead>
+                                                    <tr>
+                                                        <th>Faculty</th>
+                                                        <th class="text-right">Staff</th>
+                                                        <th class="text-right">Publications</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    <tr th:each="faculty : ${faculties}">
+                                                        <td th:text="${faculty.name}">Faculty</td>
+                                                        <td class="text-right" th:text="${faculty.staff}">0</td>
+                                                        <td class="text-right" th:text="${faculty.publications}">0</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <th:block th:if="${faculties.isEmpty()}">
+                                    <th:block th:replace="~{fragments :: admin-empty-state(
+                                        'No faculties yet',
+                                        'Import the staff of a faculty on the Divisions page; its publications appear here.',
+                                        'Divisions', '/admin/divisions')}"></th:block>
+                                </th:block>
 
                                 <div class="app-page-toolbar mt-3">
                                     <a th:href="@{/admin/institutions/{id}/publications/exportExcel(id=${institution.id})}"
@@ -94,11 +136,22 @@
                                      class="app-tab-bar__panel"
                                      hidden>
 
-                                <div th:each="entry : ${publicationsByYear}"
-                                     class="app-table-section mb-4">
+                                <div class="mb-3" th:if="${!publicationsCountByYear.isEmpty()}" aria-label="Years">
+                                    <span class="text-muted mr-2">Year</span>
+                                    <a th:each="entry : ${publicationsCountByYear}"
+                                       th:href="@{/admin/institutions/{id}(id=${institution.id}, year=${entry.key})} + '#publications'"
+                                       th:classappend="${entry.key == selectedYear} ? 'btn-primary' : 'btn-outline-secondary'"
+                                       class="btn btn-sm mr-1 mb-1">
+                                        <span th:text="${entry.key == 0} ? 'No year' : ${entry.key}">2025</span>
+                                        <span class="badge badge-light ml-1" th:text="${entry.value}">0</span>
+                                    </a>
+                                </div>
+
+                                <div class="app-table-section mb-4" th:if="${selectedYear != null}">
                                     <div class="app-table-section__surface">
                                         <div class="app-table-section__header app-table-toolbar">
-                                            <h6 class="app-table-section__title" th:text="${entry.key}">Year</h6>
+                                            <h6 class="app-table-section__title"
+                                                th:text="${selectedYear == 0} ? 'Publications without a year' : 'Publications of ' + ${selectedYear}">Year</h6>
                                         </div>
                                         <div class="app-table-section__body">
                                             <div class="app-table-scroll">
@@ -106,26 +159,26 @@
                                                     <thead>
                                                     <tr>
                                                         <th>Title</th>
-                                                        <th>Year</th>
+                                                        <th>Date</th>
                                                         <th>Authors</th>
                                                         <th>Type</th>
-                                                        <th>Venue</th>
+                                                        <th>Forum</th>
                                                         <th>Citations</th>
                                                     </tr>
                                                     </thead>
                                                     <tbody>
-                                                    <tr th:each="publication : ${entry.value}">
+                                                    <tr th:each="publication : ${publications}">
                                                         <td>
                                                             <a th:href="@{/admin/scholardex/publications/citations(id=${publication.id})}"
                                                                th:text="${publication.title}">Title</a>
                                                         </td>
                                                         <td th:text="${publication.coverDate}">Year</td>
                                                         <td>
-                                                            <div th:each="author, iterStat : ${publication.authors}">
-                                                                <a th:if="${authorMap.get(publication.authors[iterStat.index]) != null}"
-                                                                   th:text="${authorMap.get(publication.authors[iterStat.index]).name}"
+                                                            <div th:each="author : ${publication.authors}">
+                                                                <a th:if="${authorMap.get(author) != null}"
+                                                                   th:text="${authorMap.get(author).name}"
                                                                    th:href="@{/admin/scholardex/publications(authorId=${author})}"></a>
-                                                                <span th:if="${authorMap.get(publication.authors[iterStat.index]) == null}"
+                                                                <span th:if="${authorMap.get(author) == null}"
                                                                       th:text="${author}"></span>
                                                             </div>
                                                         </td>
@@ -143,10 +196,10 @@
                                     </div>
                                 </div>
 
-                                <th:block th:if="${publications.isEmpty()}">
+                                <th:block th:if="${publicationsCountByYear.isEmpty()}">
                                     <th:block th:replace="~{fragments :: admin-empty-state(
                                         'No publications yet',
-                                        'No publications have been linked to this institution.',
+                                        'No faculty staff of this institution resolves to a publication yet.',
                                         null, null)}"></th:block>
                                 </th:block>
 
