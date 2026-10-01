@@ -181,6 +181,52 @@ class CnfisReportingFacadeTest {
         assertEquals(2025, saved.getReportingYear());
     }
 
+    @Test
+    void theScoreOfTheChosenReportIsTheTotalAtTheStaffPosition() {
+        // A report whose Total criterion diverges by position (the Info D-gate shape): canonical 100,
+        // 80 for a conferențiar. The researcher's position comes from the staff list, not the page.
+        ro.uvt.pokedex.core.model.reporting.Indicator indicator = new ro.uvt.pokedex.core.model.reporting.Indicator();
+        indicator.setId("ind-total");
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion total = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        total.setName("Total");
+        total.setIndicatorIndices(List.of(0));
+        total.setContributesToTotal(true);
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold conf = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        conf.setPosition(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
+        conf.setValue(50.0);
+        total.setThresholds(List.of(conf));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion aside = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        aside.setName("Not in the total");
+        aside.setContributesToTotal(false);
+        ro.uvt.pokedex.core.model.reporting.IndividualReport report = new ro.uvt.pokedex.core.model.reporting.IndividualReport();
+        report.setId("rep-fv");
+        report.setIndicators(List.of(indicator));
+        report.setCriteria(List.of(total, aside));
+        when(userReportFacade.findIndividualReportById("rep-fv")).thenReturn(Optional.of(report));
+        when(runService.getOrCreateLatestRun(EMAIL, "rep-fv")).thenReturn(Optional.of(
+                new ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto("run-1", "rep-fv", List.of(),
+                        Map.of("ind-total", 100.0), Map.of("ind-total", Map.of("CONF_UNIV", 80.0)),
+                        Map.of(0, 100.0, 1, 7.0), null,
+                        ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto.Source.PERSISTED, EMAIL)));
+        CnfisSheetHeader header = new CnfisSheetHeader();
+        header.setScoreReportId("rep-fv");
+        when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+        when(userRepository.findAll()).thenReturn(List.of());
+
+        User ana = user(EMAIL, "Ana", "a-ana", null);
+        ana.getResearcherProfile().setPosition(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
+        when(userRepository.findById(EMAIL)).thenReturn(Optional.of(ana));
+        assertEquals(80.0, facade.buildSheet(EMAIL, 2025).orElseThrow().cnatdcuScore(),
+                "a conferențiar gets the position-effective total, as on the evaluation page");
+
+        User noPosition = user(EMAIL, "Ana", "a-ana", null);
+        when(userRepository.findById(EMAIL)).thenReturn(Optional.of(noPosition));
+        assertEquals(100.0, facade.buildSheet(EMAIL, 2025).orElseThrow().cnatdcuScore(),
+                "without a staff position the canonical sum stands");
+    }
+
     // ── frozen copies ──────────────────────────────────────────────────────
 
     @Test

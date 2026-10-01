@@ -106,6 +106,7 @@
                                     <small class="form-text text-muted">
                                         <span th:text="#{cnfis.header.score.current}">Value on the sheet:</span>
                                         <strong th:text="${sheet.cnatdcuScore() != null ? #numbers.formatDecimal(sheet.cnatdcuScore(), 1, 2) : '—'}">—</strong>
+                                        <span th:if="${header.scoreReportId != null}" th:text="#{cnfis.header.score.fromReport}">at your staff position</span>
                                     </small>
                                 </div>
                                 <div class="app-form-field">

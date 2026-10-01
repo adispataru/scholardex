@@ -447,7 +447,13 @@ public class CnfisReportingFacade {
 
     // ── pieces ──────────────────────────────────────────────────────────────
 
-    /** The CNATDCU score the head of the sheet asks for: the report's latest total, or what was typed. */
+    /**
+     * The CNATDCU score the head of the sheet asks for: the chosen report's latest total, or what was typed.
+     * The total is the one the evaluation page shows for the researcher's position — the position of the
+     * department's staff list (staff import, roster), not a position picked on the page: each contributing
+     * criterion at its position-effective value (threshold-cap additions, {@code Poz} formulas) where one
+     * exists, canonical otherwise. A researcher without a position gets the canonical sum.
+     */
     private Double cnatdcuScore(String userEmail, CnfisSheetHeader header) {
         if (header == null) {
             return null;
@@ -460,15 +466,26 @@ public class CnfisReportingFacade {
         if (report.isEmpty() || run.isEmpty() || report.get().getCriteria() == null) {
             return null;
         }
-        // the same rule as the evaluation page: the sum of the criteria that contribute to the total
+        String position = userRepository.findById(userEmail)
+                .map(User::getResearcherProfile)
+                .map(p -> p.getPosition() == null ? null : p.getPosition().name())
+                .orElse(null);
+        Map<Integer, Double> canonical = run.get().criteriaScores() == null ? Map.of() : run.get().criteriaScores();
+        Map<Integer, Map<String, Double>> byPosition = ReportingComputationSupport.computePositionEffectiveScores(
+                report.get().getCriteria(), report.get().getIndicators(), run.get().indicatorScoresByIndicatorId(),
+                canonical, run.get().indicatorScoresByPositionByIndicatorId());
         List<AbstractReport.Criterion> criteria = report.get().getCriteria();
         boolean any = false;
         double total = 0.0;
         for (int i = 0; i < criteria.size(); i++) {
-            if (criteria.get(i).isContributesToTotal()) {
-                any = true;
-                total += run.get().criteriaScores().getOrDefault(i, 0.0);
+            if (!criteria.get(i).isContributesToTotal()) {
+                continue;
             }
+            any = true;
+            Map<String, Double> effective = byPosition.get(i);
+            total += position != null && effective != null && effective.containsKey(position)
+                    ? effective.get(position)
+                    : canonical.getOrDefault(i, 0.0);
         }
         return any ? total : null;
     }
