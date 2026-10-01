@@ -9,6 +9,40 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H136` UEFISCDI eligibility for the social/economic and the humanities families — **OPEN, scoped 2026-10-01.**
+  Both 2026 packages (PD: PN-IV-RU-SC-PD-2026-1, TE: PN-IV-RU-SC-TE-2026-2, Anexa 2) have three families keyed to the
+  13 competition domains of Anexa 1; `H135` built only «Științele naturii, exacte și inginerești» (domains 1–10).
+  Not covered: **Științe sociale și economice** (domains 11–12) and **Științe umaniste** (13).
+  **The rules.** Social/economic = points, "ca autor sau coautor" (no principal-author test): per article
+  A_i = 70 × AIS / N (WoS SCIE/SSCI/AHCI, Q1/Q2 by AIS of the publication year, 2025–26 → JCR-2024, strictly
+  article/review with an accession number, subject strictly social/economic); per book C_i = 60 / N and per chapter
+  K_i = 30 / N, only at the 253 publishers of Anexa 7c (same list in both packages), with ISBN; N = authors.
+  Thresholds: PD director P ≥ 30 and ΣA ≥ 15 (after PhD admission); PD mentor P ≥ 100 and ΣA ≥ 50 (2015–2026);
+  TE director P ≥ 50 and ΣA ≥ 25 (2015–2026, after the PhD). Humanities = a CNCS-style table (books 100/50,
+  edited volumes 50/25, articles 5.1 WoS-or-Scopus Q1/Q2 by AIS/SJR 40, 5.2 WoS incl. ESCI / Scopus / CNCS A-B 20,
+  chapters 20/10; abroad vs Romania CNCS A-B; quality bar 30 or 10 library-catalogue entries, or open access at the
+  publisher; CNCS domain identity; arts and 2024–26 volumes at 15/5): PD director ≥ 30 points with ≥ 20 from
+  categories 1/3/5.1/6.1; PD mentor ≥ 100 with ≥ 40; TE director ≥ 40 with ≥ 20.
+  **Scope — slice 1, social/economic (PD + TE, one report pair, serves FEAA/FSP/FSAS/FPSE):** (a) a `PD_WOS`
+  indicator with formula `70 * AIS / N` on Q1/Q2 article/review 2015–2026 — needs `AIS` as a formula variable
+  (the strategy already resolves the AIS placement; expose the value next to `Q`) and `N` (exists); (b) books and
+  chapters as declared activities «Carte / Capitol (UEFISCDI, Anexa 7c)» with fields Editura, ISBN, N_autori,
+  scored 60/N and 30/N when the publisher is on the 7c list (data file `data/uefiscdi/anexa7c_edituri.csv`,
+  whole-name match with the normalisation of `PredatoryVenueService`; unmatched → 0 with a reason); (c) reports
+  «Eligibilitate PD 2026 — științe sociale și economice» (director P ≥ 30 ∧ ΣA ≥ 15; mentor P ≥ 100 ∧ ΣA ≥ 50 as two
+  verdicts) and «Eligibilitate TE 2026 — științe sociale și economice» (P ≥ 50 ∧ ΣA ≥ 25), authority UEFISCDI,
+  one bar for every position (the page hides the selector, `H135`); domain = the social/economic SSCI categories
+  (a new domain «UEFISCDI științe sociale și economice», from the SSCI category list); the "subject strictly
+  social/economic" and accession-number conditions stated as approximations. Pinned by a definition test like
+  `Uefiscdi2026EligibilityDefinitionTest`; loaded by one prod script in the `h135` style. Estimate: 1 session.
+  **Slice 2, humanities (FLIT / arts, declared checklist):** the platform cannot know catalogue entries, open-access
+  status or CNCS publisher categories; build it as declared activities per table category (1–6.2) with the points of
+  the table, pre-filling only 5.1/5.2 from WoS/Scopus (AIS quartile from `PD_WOS`, SJR quartile from the Scopus
+  ladder) and the CNCS journal list already loaded for FSP; two sums per report (total, international categories
+  1/3/5.1/6.1) → PD director 30/20, PD mentor 100/40, TE director 40/20. Needs the CNCS publisher list
+  (cncs-nrc.ro, categorii.Edituri 2020) loaded as data. Do only on request from a humanities faculty.
+  **Out of scope:** PhD-date limits (8 / 12 years) and "after the PhD" windows — stated in descriptions as in `H135`.
+
 - [ ] `H135` UEFISCDI eligibility reports brought to the 2026 packages — **DEPLOYED and LOADED in prod 2026-10-01** (`18ccccbe`; `h135_uefiscdi_2026.js` run by Adrian: TE 2026 id `6abea3c87314b64bf9e53f95`, old reports had 0 runs and 0 division selections — neither was ever visible; **still to do:** select «Eligibilitate TE 2026» (and check PD 2026) for the divisions in the admin UI).
   Audit of the three UEFISCDI reports against PN-IV-RU-SC-PD-2026-1 (`~/Downloads/Pachet informatii PD 2026.pdf`) and
   PN-IV-RU-SC-TE-2026-2 (uefiscdi.gov.ro, resource 832286): «Eligibilitate PD» was the JIF approximation (superseded,
