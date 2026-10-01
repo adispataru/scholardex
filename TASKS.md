@@ -9,7 +9,7 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H135` UEFISCDI eligibility reports brought to the 2026 packages — **BUILT 2026-10-01, prod script ready, not run.**
+- [ ] `H135` UEFISCDI eligibility reports brought to the 2026 packages — **DEPLOYED and LOADED in prod 2026-10-01** (`18ccccbe`; `h135_uefiscdi_2026.js` run by Adrian: TE 2026 id `6abea3c87314b64bf9e53f95`, old reports had 0 runs and 0 division selections — neither was ever visible; **still to do:** select «Eligibilitate TE 2026» (and check PD 2026) for the divisions in the admin UI).
   Audit of the three UEFISCDI reports against PN-IV-RU-SC-PD-2026-1 (`~/Downloads/Pachet informatii PD 2026.pdf`) and
   PN-IV-RU-SC-TE-2026-2 (uefiscdi.gov.ro, resource 832286): «Eligibilitate PD» was the JIF approximation (superseded,
   misleading under the UEFISCDI entry); «Eligibilitate PD 2026» matched the final package except the mentor rule on
