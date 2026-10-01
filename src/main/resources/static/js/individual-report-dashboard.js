@@ -1239,6 +1239,21 @@
     }
   }
 
+  /** True when every criterion that has thresholds sets the same value for each of its positions. */
+  function positionIndependent() {
+    var any = false;
+    var independent = true;
+    _thresholds.forEach(function (entry) {
+      if (!entry || !Array.isArray(entry.thresholds) || entry.thresholds.length === 0) return;
+      any = true;
+      var first = toNumber(entry.thresholds[0].value);
+      entry.thresholds.forEach(function (th) {
+        if (toNumber(th.value) !== first) independent = false;
+      });
+    });
+    return any && independent;
+  }
+
   function reportPositions() {
     var seen = {};
     var positions = [];
@@ -1283,6 +1298,18 @@
       // No thresholds at all — hide the selector cell
       var cell = select.closest('.app-eval-aggregate__cell');
       if (cell) cell.hidden = true;
+      return;
+    }
+
+    // H135: a standard that sets one bar for everyone (the UEFISCDI PD/TE eligibility: director and mentor are
+    // roles in the project, not academic positions) carries the same threshold under every position. Switching
+    // positions would change nothing, so the control is hidden; the verdicts still evaluate at one of them.
+    if (positionIndependent()) {
+      var switcher = select.closest('.app-eval-report-switcher');
+      if (switcher) switcher.hidden = true;
+      _position = positions.indexOf(researcherPosition) >= 0 ? researcherPosition : positions[0];
+      root.setAttribute('data-researcher-position', _position);
+      updateCriteriaMet(_position);
       return;
     }
 

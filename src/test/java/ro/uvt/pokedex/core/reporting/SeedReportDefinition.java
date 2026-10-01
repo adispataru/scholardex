@@ -83,6 +83,20 @@ final class SeedReportDefinition {
         }
     }
 
+    /** The committed report with this exact title, or null when the seed has none (for superseded reports). */
+    static JsonNode find(String title) {
+        try {
+            for (JsonNode candidate : JSON.readTree(Files.readString(SEED.resolve("individualReports.json")))) {
+                if (title.equals(candidate.get("title").asText())) {
+                    return candidate;
+                }
+            }
+            return null;
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     // ------------------------------------------------------------------ report structure
 
     JsonNode report() {

@@ -9,6 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H135` UEFISCDI eligibility reports brought to the 2026 packages — **BUILT 2026-10-01, prod script ready, not run.**
+  Audit of the three UEFISCDI reports against PN-IV-RU-SC-PD-2026-1 (`~/Downloads/Pachet informatii PD 2026.pdf`) and
+  PN-IV-RU-SC-TE-2026-2 (uefiscdi.gov.ro, resource 832286): «Eligibilitate PD» was the JIF approximation (superseded,
+  misleading under the UEFISCDI entry); «Eligibilitate PD 2026» matched the final package except the mentor rule on
+  distinct Q2 journals, which the package applies only when 3 of the 5 reference works are Q2 (a mentor with 5 Q1 works
+  failed it); «Eligibilitate Tinere Echipe» carried the previous edition (2015–2025, article/review only, no JCR-2024 cap,
+  no distinct-journal / article-type notes, no CORE route, generic AIS strategy with no edition gate). Built as data in
+  `seed/precious-config` (pinned by `Uefiscdi2026EligibilityDefinitionTest`): PD 2026 gets a 7th criterion «Mentor: Q1 ≥ 3»
+  and two verdict perspectives (Director; Mentor = top50 ∧ Q1 ∧ article ∧ (Q1 ≥ 3 ∨ distinct Q2 ≥ 2)), its description
+  and authority UEFISCDI; «Eligibilitate TE 2026» on 4 `TE26_Dir_*` indicators (PD_WOS 2015–2026 on the new domain
+  «UEFISCDI 6(e) — ordine alfabetică», 17 SCIE/SSCI keys; CORE A/A* first/corresponding as a threshold-cap addition
+  limited to 2 of 3; distinct journals ≥ 2; type article ≥ 2; one verdict); the two old reports and their 6 indicators
+  are deleted (archived in `app_migrations/h135-uefiscdi-2026`). Descriptions in `eligibilitate-granturi.json`.
+  **Prod (Adrian):** `./run-mongo-script.sh h135_uefiscdi_2026.js --restart` (rke2-overmind/feaa-2026-scripts; rehearse
+  on the local db first: `mongosh scholardex h135_uefiscdi_2026.js`), then select «Eligibilitate TE 2026» for the
+  divisions the script prints. **Approximations stated in the report descriptions:** PhD-date limits (8 / 12 years),
+  "după obținerea titlului de doctor" (fixed windows), 6(e) "all authors" applied without checking alphabetical order,
+  WoS dual-typed "article; proceedings paper" invisible in Scopus subtypes, TE CORE route's journal notes to check by
+  hand. **Next (code):** a principal-author role for UEFISCDI = first ∨ corresponding ∨ declared (H127) ∨ alphabetical
+  order in a 6(e) category.
+
 - [ ] `H134` The institution page shows the publications of its faculties' staff — **BUILT and DEPLOYED 2026-09-30**
   (image `bda96cdc`, GitHub `deploy-prod`: STATUS deployed, revision 78, 13:52 UTC; read from the deploy log). After H133 the page rendered but showed 0 publications: it found them only through the Scopus
   affiliations linked to the institution record, and `inst-uvt` was linked to none. Linking "West University of
