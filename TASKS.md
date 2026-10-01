@@ -105,10 +105,11 @@ Done history moved to `TASKS-done.md`.
   ("Applies the rules of"), pinned by the round-trip test. `/user/evaluation?authority=…` shows the reports of
   one authority; a report asked for by id brings its own. The sidebar has three entries: CNATDCU, UEFISCDI,
   CNFIS. `/user/cnfis` lists the editions with their window and the download of Anexa 5 — the page slice 2b
-  grows into. **At deploy:** run `scripts/ops/set-report-authority.sh` (marks Eligibilitate PD, Eligibilitate PD 2026
-  and Eligibilitate Tinere Echipe as UEFISCDI, by title, keeping the previous values), or set the authority
-  of each in the admin report form (until then they show under CNATDCU and the UEFISCDI
-  entry is empty). **Left as it was:** the delegated view of a supervisor lists all the reports of a researcher
+  grows into. **Deploy step DONE 2026-10-01 (Adrian):** `scripts/ops/set-report-authority.sh` marked Eligibilitate PD,
+  Eligibilitate PD 2026 and Eligibilitate Tinere Echipe as UEFISCDI in prod (previous values under
+  `app_migrations/set-report-authority-v1`); the eleven standards stay CNATDCU. **Also 2026-10-01:** the CNFIS
+  sheet's score from a chosen report is the position-effective total at the staff-list position (`a628da6e`);
+  both CNFIS pages restyled with the app's components (`2968e018`). **Left as it was:** the delegated view of a supervisor lists all the reports of a researcher
   together; the preferred report is one per person, so it applies only under the entry it belongs to.
   **Not checked in a browser** (a run needs real data).
   **SLICE 2b BUILT 2026-09-30, not pushed** — the CNFIS page proper (`/user/cnfis?edition=`), per edition:
