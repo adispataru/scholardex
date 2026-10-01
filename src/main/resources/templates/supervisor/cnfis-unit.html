@@ -14,55 +14,90 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('CNFIS — ' + ${unit.unitName()})}"></div>
 
-            <div class="container-fluid app-page-content" th:with="ed=${unit.edition()}">
-                <div th:if="${successMessage != null}" class="alert alert-success" role="status">
-                    <span th:text="#{${successMessage}}">Done.</span>
-                    <span th:if="${successCount != null}" th:text="'(' + ${successCount} + ')'"></span>
-                </div>
+            <div class="container-fluid app-page-content">
+                <div class="app-dashboard" th:with="ed=${unit.edition()}">
+                    <div th:if="${successMessage != null}" class="alert alert-success" role="status">
+                        <span th:text="#{${successMessage}}">Done.</span>
+                        <span th:if="${successCount != null}" th:text="'(' + ${successCount} + ')'"></span>
+                    </div>
 
-                <p><a th:href="@{/supervisor}" th:text="#{cnfis.unit.back}">← Supervisor workspace</a></p>
+                    <!-- ── Edition pills + actions ─────────────────────────── -->
+                    <div class="app-page-toolbar d-flex flex-wrap align-items-start" style="gap: 0.75rem;">
+                        <nav class="app-dashboard__actions" style="width: auto; flex: 1 1 auto; justify-content: flex-start;" aria-label="CNFIS editions">
+                            <a class="btn btn-sm btn-link pl-0" th:href="@{/supervisor}" th:text="#{cnfis.unit.back}">← Supervisor workspace</a>
+                            <a th:each="e : ${editions}"
+                               th:href="@{/supervisor/{k}/{id}/cnfis(k=${kind},id=${unit.unitId()},edition=${e.reportingYear()})}"
+                               th:classappend="${e.reportingYear() == ed.reportingYear()} ? ' btn-primary' : ' btn-outline-secondary'"
+                               class="btn btn-sm">
+                                <span th:text="#{cnfis.edition(${e.reportingYear()})}">Edition 2025</span>
+                                <span th:if="${e.provisional()}" class="small" th:text="'· ' + #{cnfis.edition.provisional}">· provisional</span>
+                            </a>
+                        </nav>
+                        <div class="app-dashboard__actions" style="width: auto; flex: 0 1 auto;">
+                            <form th:action="@{/supervisor/{k}/{id}/cnfis/{y}/provisional(k=${kind},id=${unit.unitId()},y=${ed.reportingYear()})}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="fa-solid fa-wand-magic-sparkles fa-sm" aria-hidden="true"></i>
+                                    <span th:text="#{cnfis.unit.provisional.all}">Generate provisional sheets for everyone without one</span>
+                                </button>
+                            </form>
+                            <form th:action="@{/supervisor/{k}/{id}/cnfis/{y}/build(k=${kind},id=${unit.unitId()},y=${ed.reportingYear()})}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="fa-solid fa-table-cells fa-sm" aria-hidden="true"></i>
+                                    <span th:text="#{cnfis.unit.build}">Build Anexa 6 from the sheets</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
 
-                <nav class="mb-3" aria-label="CNFIS editions">
-                    <a th:each="e : ${editions}"
-                       th:href="@{/supervisor/{k}/{id}/cnfis(k=${kind},id=${unit.unitId()},edition=${e.reportingYear()})}"
-                       th:classappend="${e.reportingYear() == ed.reportingYear()} ? ' btn-primary' : ' btn-outline-secondary'"
-                       class="btn btn-sm mr-1" th:text="#{cnfis.edition(${e.reportingYear()})}">Edition 2025</a>
-                </nav>
-                <p th:text="#{cnfis.edition.window(${ed.reportingYear()}, ${ed.windowStart()}, ${ed.windowEnd()}, ${ed.lastListYear()})}">window</p>
+                    <p class="app-dashboard__intro">
+                        <span th:text="#{cnfis.edition.window(${ed.reportingYear()}, ${ed.windowStart()}, ${ed.windowEnd()}, ${ed.lastListYear()})}">window</span>
+                        <span th:if="${ed.provisional()}" class="text-muted" th:text="#{cnfis.edition.provisional.note}">provisional</span>
+                    </p>
 
-                <!-- ── Members ─────────────────────────────────────────────── -->
-                <section class="card mb-3" aria-labelledby="cnfis-unit-members-title">
-                    <div class="card-body">
-                        <h2 id="cnfis-unit-members-title" class="h5" th:text="#{cnfis.unit.members.title(${#lists.size(unit.members())})}">Members</h2>
-                        <p class="text-muted small" th:text="#{cnfis.unit.members.hint}">Each member's sheet is the one they froze themselves; for a member who froze none you can generate a provisional one from the platform's data, marked as such, to hand over for signature.</p>
-                        <form th:action="@{/supervisor/{k}/{id}/cnfis/{y}/provisional(k=${kind},id=${unit.unitId()},y=${ed.reportingYear()})}" method="post" class="mb-2">
-                            <button type="submit" class="btn btn-sm btn-outline-primary" th:text="#{cnfis.unit.provisional.all}">Generate provisional sheets for everyone without one</button>
-                        </form>
-                        <div class="app-table-scroll">
-                            <table class="table table-sm app-table" id="cnfis-unit-members">
+                    <!-- ── Totals ──────────────────────────────────────────── -->
+                    <div class="app-summary-grid" th:with="frozen=${unit.members().?[hasSheet() and !provisional()].size()}, prov=${unit.members().?[hasSheet() and provisional()].size()}, missing=${unit.members().?[!hasSheet()].size()}">
+                        <th:block th:replace="~{fragments :: stat-card(label=#{cnfis.unit.counts.members}, value=${#lists.size(unit.members())}, accent='primary', contextLine=#{cnfis.unit.counts.membersMeta}, icon='fa-solid fa-users')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(label=#{cnfis.unit.counts.frozen}, value=${frozen}, accent='success', contextLine=#{cnfis.unit.counts.frozenMeta}, icon='fa-solid fa-snowflake')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(label=#{cnfis.unit.counts.provisional}, value=${prov}, accent=${prov == 0} ? 'neutral' : 'warning', contextLine=#{cnfis.unit.counts.provisionalMeta}, icon='fa-solid fa-wand-magic-sparkles')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(label=#{cnfis.unit.counts.missing}, value=${missing}, accent=${missing == 0} ? 'success' : 'danger', contextLine=#{cnfis.unit.counts.missingMeta}, icon='fa-solid fa-circle-question')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(label=#{cnfis.unit.counts.tables}, value=${#lists.size(unit.tables())}, accent='neutral', contextLine=#{cnfis.unit.counts.tablesMeta}, icon='fa-solid fa-table-cells')}"></th:block>
+                    </div>
+
+                    <!-- ── Members ─────────────────────────────────────────────── -->
+                    <section class="app-university-detail__section mt-3" aria-labelledby="cnfis-unit-members-title">
+                        <div class="app-university-detail__section-header">
+                            <div>
+                                <p class="app-university-detail__eyebrow" th:text="#{cnfis.anexa.5}">Anexa 5</p>
+                                <h2 id="cnfis-unit-members-title" class="app-university-detail__section-title" th:text="#{cnfis.unit.members.title(${#lists.size(unit.members())})}">Members</h2>
+                                <p class="text-muted small mb-0 mt-1" th:text="#{cnfis.unit.members.hint}">Each member's sheet is the one they froze themselves; for a member who froze none you can generate a provisional one from the platform's data, marked as such, to hand over for signature.</p>
+                            </div>
+                        </div>
+                        <div th:if="${#lists.isEmpty(unit.members())}" class="app-table-state" role="status" th:text="#{cnfis.unit.members.none}">No member of this unit has a researcher profile.</div>
+                        <div th:unless="${#lists.isEmpty(unit.members())}" class="app-table-scroll">
+                            <table class="table table-bordered app-table" width="100%" cellspacing="0" id="cnfis-unit-members">
                                 <thead><tr>
                                     <th th:text="#{supervisor.roster.col.researcher}">Researcher</th>
                                     <th th:if="${kind == 'divisions'}" th:text="#{cnfis.unit.department}">Department</th>
                                     <th th:text="#{cnfis.header.domain}">Domain</th>
                                     <th th:text="#{cnfis.unit.sheet}">Sheet</th>
-                                    <th th:text="#{cnfis.copies.rows}">Rows</th>
-                                    <th th:text="#{cnfis.patents}">Patents</th>
+                                    <th class="app-table__cell--numeric" th:text="#{cnfis.copies.rows}">Rows</th>
+                                    <th class="app-table__cell--numeric" th:text="#{cnfis.patents}">Patents</th>
                                     <th></th>
                                 </tr></thead>
                                 <tbody>
                                 <tr th:each="m : ${unit.members()}">
                                     <td th:text="${m.displayName()}">Name</td>
-                                    <td th:if="${kind == 'divisions'}" th:text="${m.departmentName()}">Dept</td>
-                                    <td th:text="${m.domain() != null ? m.domain() : '—'}">Informatică</td>
+                                    <td th:if="${kind == 'divisions'}" class="app-table__cell--secondary" th:text="${m.departmentName()}">Dept</td>
+                                    <td class="app-table__cell--secondary" th:text="${m.domain() != null ? m.domain() : '—'}">Informatică</td>
                                     <td>
                                         <span th:if="${!m.hasSheet()}" class="app-table-badge app-table-badge--danger" th:text="#{cnfis.unit.sheet.none}">none</span>
                                         <span th:if="${m.hasSheet() and !m.provisional()}" class="app-table-badge app-table-badge--success" th:text="#{cnfis.unit.sheet.frozen(${m.frozenAt()})}">frozen</span>
                                         <span th:if="${m.hasSheet() and m.provisional()}" class="app-table-badge app-table-badge--warning" th:text="#{cnfis.unit.sheet.provisional(${m.frozenAt()})}">provisional</span>
-                                        <span th:if="${m.locked()}" class="text-muted small" th:text="#{cnfis.copies.locked}">in a table</span>
+                                        <span th:if="${m.locked()}" class="text-muted small ml-1" th:text="#{cnfis.copies.locked}">in a table</span>
                                     </td>
-                                    <td th:text="${m.rows()}">0</td>
-                                    <td th:text="${m.patents()}">0</td>
-                                    <td>
+                                    <td class="app-table__cell--numeric" th:text="${m.rows()}">0</td>
+                                    <td class="app-table__cell--numeric" th:text="${m.patents()}">0</td>
+                                    <td class="text-right">
                                         <form th:if="${!m.hasSheet() or m.provisional()}"
                                               th:action="@{/supervisor/{k}/{id}/cnfis/{y}/provisional(k=${kind},id=${unit.unitId()},y=${ed.reportingYear()})}" method="post" class="d-inline">
                                             <input type="hidden" name="member" th:value="${m.email()}">
@@ -73,49 +108,55 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                <!-- ── Anexa 6 ─────────────────────────────────────────────── -->
-                <section class="card mb-3" aria-labelledby="cnfis-unit-tables-title">
-                    <div class="card-body">
-                        <h2 id="cnfis-unit-tables-title" class="h5" th:text="#{cnfis.unit.tables.title}">Anexa 6</h2>
-                        <p class="text-muted small" th:text="#{cnfis.unit.tables.hint}">The institutional table is the sum of the members' sheets; building it locks them (a member can no longer release their copy). A paper two members share appears once.</p>
-                        <form th:action="@{/supervisor/{k}/{id}/cnfis/{y}/build(k=${kind},id=${unit.unitId()},y=${ed.reportingYear()})}" method="post" class="mb-3">
-                            <button type="submit" class="btn btn-sm btn-primary" th:text="#{cnfis.unit.build}">Build Anexa 6 from the sheets</button>
-                        </form>
-                        <table th:unless="${#lists.isEmpty(unit.tables())}" class="table table-sm app-table" id="cnfis-unit-tables">
-                            <thead><tr>
-                                <th th:text="#{cnfis.unit.tables.builtAt}">Built at</th>
-                                <th th:text="#{cnfis.unit.tables.by}">By</th>
-                                <th th:text="#{cnfis.unit.tables.members}">Members (provisional)</th>
-                                <th th:text="#{cnfis.unit.tables.missing}">Not in the table</th>
-                                <th th:text="#{cnfis.copies.rows}">Rows</th>
-                                <th th:text="#{cnfis.patents}">Patents</th>
-                                <th></th>
-                            </tr></thead>
-                            <tbody>
-                            <tr th:each="t : ${unit.tables()}">
-                                <td th:text="${t.createdAt()}">…</td>
-                                <td th:text="${t.createdBy()}">head</td>
-                                <td th:text="${t.members()} + ' (' + ${t.provisionalMembers()} + ')'">10 (2)</td>
-                                <td th:text="${#lists.isEmpty(t.missingMembers()) ? '—' : #strings.listJoin(t.missingMembers(), ', ')}">—</td>
-                                <td th:text="${t.rows()}">0</td>
-                                <td th:text="${t.patents()}">0</td>
-                                <td>
-                                    <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download6}">Anexa 6</a>
-                                    <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-arts(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download61}">Anexa 6.1</a>
-                                    <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-humanities(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download63}">Anexa 6.3</a>
-                                    <form th:action="@{/supervisor/{k}/{id}/cnfis/tables/{t}/delete(k=${kind},id=${unit.unitId()},t=${t.id()})}" method="post" class="d-inline">
-                                        <input type="hidden" name="edition" th:value="${ed.reportingYear()}">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" th:text="#{cnfis.unit.tables.delete}">Delete and release the sheets</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                    <!-- ── Anexa 6 ─────────────────────────────────────────────── -->
+                    <section class="app-university-detail__section mt-3" aria-labelledby="cnfis-unit-tables-title">
+                        <div class="app-university-detail__section-header">
+                            <div>
+                                <p class="app-university-detail__eyebrow" th:text="#{cnfis.anexa.6}">Anexa 6</p>
+                                <h2 id="cnfis-unit-tables-title" class="app-university-detail__section-title" th:text="#{cnfis.unit.tables.title}">Anexa 6</h2>
+                                <p class="text-muted small mb-0 mt-1" th:text="#{cnfis.unit.tables.hint}">The institutional table is the sum of the members' sheets; building it locks them (a member can no longer release their copy). A paper two members share appears once.</p>
+                            </div>
+                        </div>
+                        <div th:if="${#lists.isEmpty(unit.tables())}" class="app-table-state" role="status" th:text="#{cnfis.unit.tables.none}">No table built yet for this edition.</div>
+                        <div th:unless="${#lists.isEmpty(unit.tables())}" class="app-table-scroll">
+                            <table class="table table-bordered app-table" width="100%" cellspacing="0" id="cnfis-unit-tables">
+                                <thead><tr>
+                                    <th th:text="#{cnfis.unit.tables.builtAt}">Built at</th>
+                                    <th th:text="#{cnfis.unit.tables.by}">By</th>
+                                    <th class="app-table__cell--numeric" th:text="#{cnfis.unit.tables.members}">Members (provisional)</th>
+                                    <th th:text="#{cnfis.unit.tables.missing}">Not in the table</th>
+                                    <th class="app-table__cell--numeric" th:text="#{cnfis.copies.rows}">Rows</th>
+                                    <th class="app-table__cell--numeric" th:text="#{cnfis.patents}">Patents</th>
+                                    <th></th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="t : ${unit.tables()}">
+                                    <td class="app-table__cell--identifier" th:text="${t.createdAt() != null and #strings.length(t.createdAt()) >= 16 ? #strings.replace(#strings.substring(t.createdAt(), 0, 16), 'T', ' ') : t.createdAt()}">…</td>
+                                    <td class="app-table__cell--secondary" th:text="${t.createdBy()}">head</td>
+                                    <td class="app-table__cell--numeric" th:text="${t.members()} + ' (' + ${t.provisionalMembers()} + ')'">10 (2)</td>
+                                    <td class="app-table__cell--secondary" th:text="${#lists.isEmpty(t.missingMembers()) ? '—' : #strings.listJoin(t.missingMembers(), ', ')}">—</td>
+                                    <td class="app-table__cell--numeric" th:text="${t.rows()}">0</td>
+                                    <td class="app-table__cell--numeric" th:text="${t.patents()}">0</td>
+                                    <td class="text-right text-nowrap">
+                                        <a class="btn btn-sm btn-outline-primary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export(k=${kind},id=${unit.unitId()},t=${t.id()})}">
+                                            <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
+                                            <span th:text="#{cnfis.unit.tables.download6}">Anexa 6</span>
+                                        </a>
+                                        <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-arts(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download61}">Anexa 6.1</a>
+                                        <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-humanities(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download63}">Anexa 6.3</a>
+                                        <form th:action="@{/supervisor/{k}/{id}/cnfis/tables/{t}/delete(k=${kind},id=${unit.unitId()},t=${t.id()})}" method="post" class="d-inline">
+                                            <input type="hidden" name="edition" th:value="${ed.reportingYear()}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" th:text="#{cnfis.unit.tables.delete}">Delete and release the sheets</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
