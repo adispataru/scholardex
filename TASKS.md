@@ -9,6 +9,17 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H142` FV Muzică 2026 (Comisia 35) and the CNFIS gaps for music — **SCOPED 2026-10-02, decisions pending
+  (Adrian).** Asked by FMT (vice-dean for research, 2026-10-02), the first vocational faculty. Plan and the
+  standard transcribed (the standards folder is git-ignored) in `docs/tasks/active/h142-fv-muzica-2026.md`.
+  **Found:** the official text differs from the faculty's Word template (16 recognised databases, not 13;
+  recordings may be streamed); counts depend on a teoretician / compozitor / interpret profile; CNFIS
+  Anexa 5.1 / 6.1 already exist (`H129`) but rank only events the registry lists by EXACT name, with no picker —
+  measured on the faculty's own 2021–2024 Anexa 6.1, 124 of 515 rows name a listed event; Anexa 4.1 (citations
+  of artistic works) does not exist. **Slices:** A data (an ORCID and the Google Scholar ids, user-run);
+  B the FV Muzică 2026 report (27 indicators, three tables and a total for CONF/PROF/HABIL, the minimum counts
+  as three labelled routes); C CNFIS (event picker, registry additions with aliases, Anexa 4.1); D Theatre,
+  after the faculty's grid. **Decisions:** six, listed in the doc, each with a recommendation.
 - [ ] `H138` UEFISCDI eligibility by competition domain, chosen by the applicant — **SLICES A+B+C DEPLOYED and LOADED in prod 2026-10-02** (`f7e854f0`; `h138_uefiscdi_domains.js` run by Adrian: 13 indicators, 6 reports, 15 division selections removed; slice D — humanities — open, on request). Built: `report-data/uefiscdi-domains-2026.json` (13 domains, reviewed by Adrian: 254 WoS
   categories bucketed with overlap, SCIE/SSCI/AHCI keys only, Multidisciplinary Sciences in every exact domain, domains
   11–12 one SSCI set) read by `UefiscdiCompetitionDomains` and reconciled into `Domain` docs (`UEFISCDI 2026 — <name>`
