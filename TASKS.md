@@ -9,6 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H138` UEFISCDI eligibility by competition domain, chosen by the applicant — **SCOPED 2026-10-02, slice A in progress.**
+  Supersedes the Fizică/Matematică follow-up of `H137`. The packages (PD/TE 2026, Anexa 1) key the standard on 13
+  competition domains chosen by the applicant for the proposal, not on the department: the domain decides the rule
+  family (1–10 counts of Q1/Q2 works; 11–12 the points formula; 13 the humanities table), the WoS categories the
+  quartile is read in ("cea mai favorabilă încadrare, ținând cont de domeniul propunerii") and who is a principal
+  author (Anexa 6: all authors in the 6(e) categories, last author too in the 6(d) bio-medical list, first or
+  corresponding elsewhere). The package maps domains to ERC panels, not to WoS categories — the category sets are
+  ours to author. **Decisions (Adrian, 2026-10-02):** I author the 13 sets, Adrian reviews before load; a category
+  may sit in several domains (overlap allowed, the chosen domain decides); Științe sociale and Științe economice
+  share one SSCI set; the page always asks for the domain first (no default from the faculty), saved per researcher
+  per report; the principal-author rule follows the domain and ships with the mechanism; UEFISCDI reports show on
+  researcher pages only (no department/faculty roll-ups) and are visible to every researcher regardless of division
+  selections. **Slices:** A — `uefiscdi-domains-2026.json` (13 domains: category sets, rule family, author rule),
+  loaded as `Domain` docs; B — domain-selectable reports: report flag + allowed domains, indicator domain (and role)
+  overridden at scoring from the choice, run records `domainId`, cached results keyed by it, "Domeniul propunerii"
+  select on the evaluation page stored in `WorkspacePreferences`, visible-to-everyone for authority UEFISCDI,
+  excluded from org-unit roll-ups; the six reports collapse to PD Director / PD Mentor / TE for the exact sciences
+  (domains 1–10, CORE route only under Informatică) and the same three for the social/economic family (11–12);
+  C — the author rule: ALL (6e), FIRST_OR_CORRESPONDING, and a new last-author-too role for 6(d) domains, applied
+  from the chosen domain; D — humanities (`H136` slice 2) on the same mechanism, on request.
+
 - [ ] `H136` UEFISCDI eligibility for the social/economic and the humanities families — **SLICE 1 DEPLOYED and LOADED in prod 2026-10-02 (with `H137`); slice 2 (humanities) open, on request.** Built as scoped: `AIS` formula variable (the PD_WOS placement records the journal's AIS
   value; bound lazily in `ScientificProductionService`), `Editura_7c` and `An_activitate` activity variables
   (`ActivityReportingService`; the 253 publishers of Anexa 7c bundled as
