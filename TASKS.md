@@ -9,7 +9,24 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H138` UEFISCDI eligibility by competition domain, chosen by the applicant — **SCOPED 2026-10-02, slice A in progress.**
+- [ ] `H138` UEFISCDI eligibility by competition domain, chosen by the applicant — **SLICES A+B+C BUILT 2026-10-02, prod
+  script ready (deploy first).** Built: `report-data/uefiscdi-domains-2026.json` (13 domains, reviewed by Adrian: 254 WoS
+  categories bucketed with overlap, SCIE/SSCI/AHCI keys only, Multidisciplinary Sciences in every exact domain, domains
+  11–12 one SSCI set) read by `UefiscdiCompetitionDomains` and reconciled into `Domain` docs (`UEFISCDI 2026 — <name>`
+  plus the empty `(fără domeniu ales)` base) at startup by `UefiscdiDomainCatalogService`; `IndividualReport.competitionFamily`
+  (EXACT / SOCIAL_ECONOMIC / HUMANITIES, admin-form input, round-trip pinned) makes a report domain-selectable; the page
+  asks for the domain before anything is scored, saves it per report in `WorkspacePreferences.competitionDomainByReportId`
+  (`POST /user/evaluation/domain`, rescored at once) and shows a "Domeniul propunerii" select (read-only on the delegated
+  view); `CompetitionDomainOverride` clones the PD_WOS indicators with the chosen domain and the domain's author rule
+  (`PrincipalAuthorRule` → `AuthorRole`, new `FIRST_CORRESPONDING_OR_LAST` for 6(d)) and zeroes indicators whose
+  `competitionDomainCodes` exclude the domain (the CORE route = [2]); the choice travels through `ScoringSubjectContext`,
+  is recorded on the run (`competitionDomainCode`) and appended to the result fingerprint (legacy fingerprints unchanged);
+  UEFISCDI reports are visible to every researcher (`ReportVisibilityService`), off the unit pages and out of the
+  division-selection catalog; the director's work count gates on `Q != NOT_FOUND` (a journal outside the chosen
+  domain's categories does not count). **Prod (Adrian), after the image with H138 is deployed:** the app reconciles the
+  domains at start; then set `H138_IMAGE_IS_DEPLOYED = true` in `h138_uefiscdi_domains.js` and
+  `./run-mongo-script.sh h138_uefiscdi_domains.js --restart` (updates 13 indicators and 6 reports, removes their
+  division selections). Rehearsed on the local db 2026-10-02. **Not built:** slice D (humanities family). —
   Supersedes the Fizică/Matematică follow-up of `H137`. The packages (PD/TE 2026, Anexa 1) key the standard on 13
   competition domains chosen by the applicant for the proposal, not on the department: the domain decides the rule
   family (1–10 counts of Q1/Q2 works; 11–12 the points formula; 13 the humanities table), the WoS categories the

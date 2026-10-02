@@ -61,13 +61,17 @@ public final class ReportingComputationSupport {
                     })
                     .collect(Collectors.toList());
         } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_OR_CORRESPONDING
+                || role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_CORRESPONDING_OR_LAST
                 || role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.NOT_FIRST_NOR_CORRESPONDING) {
             // H63: keep a publication if the researcher is its first author OR one of its corresponding authors.
             // Publications with no known corresponding author (correspondingAuthorIds empty) fall back to first-author.
             // NOT_FIRST_NOR_CORRESPONDING (Psihologie 2026 co-author) keeps exactly the rest, so the two roles
             // partition the researcher's publications and no item is counted under both.
             boolean keepPrincipal =
-                    role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_OR_CORRESPONDING;
+                    role != ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.NOT_FIRST_NOR_CORRESPONDING;
+            // H138: the UEFISCDI 6(d) bio-medical rule counts the last author as principal too
+            boolean lastAuthorToo =
+                    role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.FIRST_CORRESPONDING_OR_LAST;
             Set<String> candidateIds = authors.stream()
                     .map(ScholardexAuthorView::getId)
                     .filter(Objects::nonNull)
@@ -78,7 +82,9 @@ public final class ReportingComputationSupport {
                         boolean isFirst = firstAuthorId != null && candidateIds.contains(firstAuthorId);
                         boolean isCorresponding = p.getCorrespondingAuthorIds() != null
                                 && p.getCorrespondingAuthorIds().stream().anyMatch(candidateIds::contains);
-                        return (isFirst || isCorresponding) == keepPrincipal;
+                        boolean isLast = lastAuthorToo && p.getAuthors() != null && !p.getAuthors().isEmpty()
+                                && candidateIds.contains(p.getAuthors().getLast());
+                        return (isFirst || isCorresponding || isLast) == keepPrincipal;
                     })
                     .collect(Collectors.toList());
         } else {

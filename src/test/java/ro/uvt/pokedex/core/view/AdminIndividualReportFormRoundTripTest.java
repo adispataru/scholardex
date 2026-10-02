@@ -284,6 +284,20 @@ class AdminIndividualReportFormRoundTripTest {
     }
 
     @Test
+    void theCompetitionFamilyOfAReportSurvivesASave() throws Exception {
+        // H138: the family that makes a report domain-selectable has its input (H116: no input → wiped on save)
+        stored(() -> {
+            IndividualReport report = scriptedReport();
+            report.setCompetitionFamily(ro.uvt.pokedex.core.model.reporting.uefiscdi.CompetitionFamily.EXACT);
+            return report;
+        });
+        List<String[]> untouched = renderedForm();
+        assertTrue(untouched.stream().anyMatch(f -> f[0].equals("competitionFamily") && f[1].equals("EXACT")));
+        mockMvc.perform(buildPost(untouched)).andExpect(status().is3xxRedirection());
+        assertEquals(ro.uvt.pokedex.core.model.reporting.uefiscdi.CompetitionFamily.EXACT, saved().getCompetitionFamily());
+    }
+
+    @Test
     void thePhdLimitOfAReportSurvivesASave() throws Exception {
         // H137: the UEFISCDI PhD-age limit and its deadline have inputs, so a save keeps them (H116)
         stored(() -> {

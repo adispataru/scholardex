@@ -103,6 +103,8 @@ public sealed interface IndicatorKind
             case "PUBLICATIONS_FIRST_OR_CORRESPONDING" -> new Publications(AuthorRole.FIRST_OR_CORRESPONDING, s);
             case "PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING" ->
                     new Publications(AuthorRole.NOT_FIRST_NOR_CORRESPONDING, s);
+            case "PUBLICATIONS_FIRST_CORRESPONDING_OR_LAST" ->
+                    new Publications(AuthorRole.FIRST_CORRESPONDING_OR_LAST, s);
 
             case "CITATIONS"                 -> new Citations(SelfCitationPolicy.NONE, s);
             case "CITATIONS_EXCLUDE_SELF"    -> new Citations(SelfCitationPolicy.CANDIDATE_ONLY, s);
@@ -154,6 +156,7 @@ public sealed interface IndicatorKind
                 case CO   -> "PUBLICATIONS_COAUTHOR";
                 case FIRST_OR_CORRESPONDING -> "PUBLICATIONS_FIRST_OR_CORRESPONDING";
                 case NOT_FIRST_NOR_CORRESPONDING -> "PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING";
+                case FIRST_CORRESPONDING_OR_LAST -> "PUBLICATIONS_FIRST_CORRESPONDING_OR_LAST";
             }, p.strategy().name());
             case Citations c -> new LegacyShape(
                     switch (c.policy()) {

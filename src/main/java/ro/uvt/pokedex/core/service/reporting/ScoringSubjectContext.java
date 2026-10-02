@@ -13,6 +13,8 @@ import java.util.function.Supplier;
 public final class ScoringSubjectContext {
 
     private static final ThreadLocal<Integer> PHD_AWARD_YEAR = new ThreadLocal<>();
+    /** H138: the competition domain (1–13) the researcher chose for a domain-selectable report; null = none. */
+    private static final ThreadLocal<Integer> COMPETITION_DOMAIN = new ThreadLocal<>();
 
     private ScoringSubjectContext() {
     }
@@ -39,5 +41,29 @@ public final class ScoringSubjectContext {
     /** The PhD award year of the subject in scope, or null when unknown or outside a wrapped computation. */
     public static Integer phdAwardYear() {
         return PHD_AWARD_YEAR.get();
+    }
+
+    /** H138: runs {@code body} with the chosen competition domain in scope (null = none), restoring the previous. */
+    public static <T> T withCompetitionDomain(Integer domainCode, Supplier<T> body) {
+        Integer previous = COMPETITION_DOMAIN.get();
+        if (domainCode != null) {
+            COMPETITION_DOMAIN.set(domainCode);
+        } else {
+            COMPETITION_DOMAIN.remove();
+        }
+        try {
+            return body.get();
+        } finally {
+            if (previous != null) {
+                COMPETITION_DOMAIN.set(previous);
+            } else {
+                COMPETITION_DOMAIN.remove();
+            }
+        }
+    }
+
+    /** The chosen competition domain code in scope, or null. */
+    public static Integer competitionDomainCode() {
+        return COMPETITION_DOMAIN.get();
     }
 }

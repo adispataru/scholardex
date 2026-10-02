@@ -51,6 +51,12 @@ public class Indicator {
      */
     private String formulaHash;
 
+    /**
+     * H138: on an indicator of a domain-selectable UEFISCDI report, the competition domains (1–13) under which
+     * it applies — the CORE A/A* route counts only under Informatică (2). Null = every domain.
+     */
+    private java.util.List<Integer> competitionDomainCodes;
+
     private YearRangeSpec yearRangeSpec;
     private ScoreYearRangeSpec scoreYearRangeSpec;
     private ro.uvt.pokedex.core.model.reporting.scoring.Selector selectorSpec;

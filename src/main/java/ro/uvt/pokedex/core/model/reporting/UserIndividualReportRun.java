@@ -41,6 +41,9 @@ public class UserIndividualReportRun {
      * Defaults to the run's creation year; may later be a configurable evaluation year. Null on pre-H60 runs.
      */
     private Integer referenceYear;
+
+    /** H138: the competition domain (1–13) the run was scored under, for a domain-selectable report; else null. */
+    private Integer competitionDomainCode;
     private Status status;
     private List<String> buildErrors = new ArrayList<>();
 

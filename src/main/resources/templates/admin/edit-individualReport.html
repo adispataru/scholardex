@@ -112,6 +112,17 @@
                                         </small>
                                     </div>
                                     <div class="form-group app-form-field">
+                                        <label for="competitionFamily">Competition domain family (UEFISCDI)</label>
+                                        <select class="form-control" id="competitionFamily" th:field="*{competitionFamily}">
+                                            <option value="">— not domain-selectable —</option>
+                                            <option th:each="f : ${T(ro.uvt.pokedex.core.model.reporting.uefiscdi.CompetitionFamily).values()}"
+                                                    th:value="${f}" th:text="${f}"></option>
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            Set on a PD/TE eligibility report: the researcher chooses one of the family's competition domains (Anexa 1) and the journal indicators are scored against it.
+                                        </small>
+                                    </div>
+                                    <div class="form-group app-form-field">
                                         <label for="phdLimitYears">PhD-age limit (years before the deadline)</label>
                                         <input type="number" min="1" class="form-control" id="phdLimitYears" th:field="*{phdLimitYears}">
                                         <small class="form-text text-muted">

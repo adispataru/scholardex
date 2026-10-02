@@ -329,6 +329,13 @@
   "name": "Teatru şi artele spectacolului"
  },
  {
+  "_id": "UEFISCDI 2026 — (fără domeniu ales)",
+  "name": "UEFISCDI 2026 — (fără domeniu ales)",
+  "description": "H138: the stored base domain of a domain-selectable report's journal indicators — nothing qualifies until the researcher chooses a competition domain",
+  "wosCategories": [],
+  "_class": "ro.uvt.pokedex.core.model.reporting.Domain"
+ },
+ {
   "_id": "UEFISCDI 6(e) — ordine alfabetică",
   "name": "UEFISCDI 6(e) — ordine alfabetică",
   "description": "PN-IV PD/TE 2026, Anexa 6 litera (e): categoriile JCR în care toți autorii pot fi considerați autori principali (matematică, fizică matematică, informatică, economie, multidisciplinar), edițiile SCIE/SSCI; folosit de «Eligibilitate TE 2026»",

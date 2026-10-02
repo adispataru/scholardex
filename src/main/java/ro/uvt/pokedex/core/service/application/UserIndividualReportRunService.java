@@ -148,6 +148,8 @@ public class UserIndividualReportRunService {
         // H60: capture the evaluation anchor that relative year specs resolve against (default = creation year), so
         // replay/export of this run is stable across later ranking imports.
         run.setReferenceYear(createdAt.atZone(java.time.ZoneId.systemDefault()).getYear());
+        // H138: the competition domain this run is scored under (set by the facade's subject context during the
+        // computation below; read after it so the value is the one actually applied)
 
         List<String> indicatorResultIds = new ArrayList<>();
         List<String> errors = new ArrayList<>();
@@ -160,6 +162,7 @@ public class UserIndividualReportRunService {
             return Optional.empty();
         }
         ReportScopedIndividualReportComputation computation = computationOpt.get();
+        run.setCompetitionDomainCode(computation.competitionDomainCode());
         Map<String, Double> indicatorScoresByIndicatorId = new HashMap<>(computation.indicatorScoresByIndicatorId());
 
         for (Indicator indicator : report.getIndicators()) {
@@ -180,16 +183,20 @@ public class UserIndividualReportRunService {
                 errors.add("Missing computed indicator result for indicator " + indicator.getId());
                 continue;
             }
-            UserIndicatorResult snapshot = userIndicatorResultService.createSnapshotFromComputed(
-                    userEmail,
-                    indicator.getId(),
-                    reportDefinitionId,
-                    computedIndicatorResult,
-                    latestRefreshVersionsByIndicatorId.getOrDefault(
+            // H138: the snapshot's fingerprint carries the competition domain the run was scored under (the
+            // facade's context closed with the computation), so a later domain switch never reuses it
+            UserIndicatorResult snapshot = ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext.withCompetitionDomain(
+                    computation.competitionDomainCode(),
+                    () -> userIndicatorResultService.createSnapshotFromComputed(
+                            userEmail,
                             indicator.getId(),
-                            userIndicatorResultService.getLatestRefreshVersion(userEmail, indicator.getId())
-                    )
-            );
+                            reportDefinitionId,
+                            computedIndicatorResult,
+                            latestRefreshVersionsByIndicatorId.getOrDefault(
+                                    indicator.getId(),
+                                    userIndicatorResultService.getLatestRefreshVersion(userEmail, indicator.getId())
+                            )
+                    ));
             indicatorResultIds.add(snapshot.getId());
         }
 
@@ -310,7 +317,8 @@ public class UserIndividualReportRunService {
                 run.getCriteriaScores() == null ? Map.of() : run.getCriteriaScores(),
                 run.getCreatedAt(),
                 effectiveSource,
-                run.getTriggeredByEmail()
+                run.getTriggeredByEmail(),
+                run.getCompetitionDomainCode()
         );
     }
 }

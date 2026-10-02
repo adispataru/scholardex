@@ -25,7 +25,25 @@
             </div>
 
             <!-- ── No run state ──────────────────────────────────────────────── -->
-            <div th:if="${noRun == true and noReports != true}" class="container-fluid app-page-content">
+            <!-- H138: a domain-selectable UEFISCDI report asks for the competition domain before anything is scored -->
+            <div th:if="${domainRequired == true}" class="container-fluid app-page-content">
+                <div class="app-empty-state">
+                    <i class="fa-solid fa-sitemap fa-2x app-empty-state__icon" aria-hidden="true"></i>
+                    <p class="app-empty-state__title" th:text="#{report.view.domain.required}">Choose the domain of your proposal</p>
+                    <p class="app-empty-state__body" th:text="#{report.view.domain.required.body}">…</p>
+                    <form th:action="@{/user/evaluation/domain}" method="post" class="app-eval-domain-form">
+                        <input type="hidden" name="report" th:value="${report.id}">
+                        <label for="eval-domain-select" class="app-eval-report-switcher__label" th:text="#{report.view.domain}">Domain of the proposal</label>
+                        <select id="eval-domain-select" name="domain" class="form-control form-control-sm" required>
+                            <option value="" th:text="#{report.view.domain.choose}">— choose —</option>
+                            <option th:each="d : ${competitionDomains}" th:value="${d.code()}" th:text="${d.code()} + '. ' + ${d.name()}">1. Matematică</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary mt-2" th:text="#{report.view.domain.apply}">Score under this domain</button>
+                    </form>
+                </div>
+            </div>
+
+            <div th:if="${noRun == true and noReports != true and domainRequired != true}" class="container-fluid app-page-content">
                 <div th:if="${confirmedPublicationScoringWarning == true}"
                      class="alert alert-warning mb-3"
                      role="status">
@@ -48,7 +66,7 @@
             </div>
 
             <!-- ── Main evaluation view ──────────────────────────────────────── -->
-            <div th:if="${noReports != true and noRun != true}"
+            <div th:if="${noReports != true and noRun != true and domainRequired != true}"
                  class="container-fluid app-page-content app-dashboard individual-report-dashboard"
                  th:attr="data-researcher-position=${researcherPosition},data-initial-position=${initialPosition},data-report-id=${report.id},data-run-id=${runMetaId},data-eval-api-base=${#bools.isTrue(delegated) ? ('/reports/researcher/' + delegatedSubjectEmail) : '/user/evaluation'}">
 
@@ -93,6 +111,21 @@
                                 <button type="submit" class="btn btn-sm btn-outline-secondary app-eval-preferred__button"
                                         th:title="#{report.view.preferred.setHint}" th:text="#{report.view.preferred.set}">Set as preferred</button>
                             </form>
+                        </div>
+                        <!-- H138: the competition domain a domain-selectable UEFISCDI report is scored under; the
+                             researcher changes it here (rescored at once), a delegated viewer only sees it -->
+                        <div class="app-eval-report-switcher" th:if="${competitionDomains != null}">
+                            <label for="eval-domain-select" class="app-eval-report-switcher__label"
+                                   th:title="#{report.view.domain.hint}" th:text="#{report.view.domain}">Domain of the proposal</label>
+                            <form th:unless="${delegated}" th:action="@{/user/evaluation/domain}" method="post" class="d-inline">
+                                <input type="hidden" name="report" th:value="${report.id}">
+                                <select id="eval-domain-select" name="domain" class="form-control form-control-sm" onchange="this.form.submit()" data-eval-domain-selector>
+                                    <option th:each="d : ${competitionDomains}" th:value="${d.code()}" th:selected="${d.code() == chosenCompetitionDomain}"
+                                            th:text="${d.code()} + '. ' + ${d.name()}">1. Matematică</option>
+                                </select>
+                            </form>
+                            <span th:if="${delegated}" class="app-eval-aggregate__value app-eval-aggregate__value--sm"
+                                  th:text="${chosenCompetitionDomainName != null ? chosenCompetitionDomainName : #messages.msg('report.view.domain.none')}">Matematică</span>
                         </div>
                         <!-- Position selector: lives next to the report switcher (both pick "what am I looking at").
                              Shown on the DELEGATED view too: a supervisor arrives here from the promotion board,

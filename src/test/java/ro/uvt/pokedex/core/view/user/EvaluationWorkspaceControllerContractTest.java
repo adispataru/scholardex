@@ -74,6 +74,9 @@ class EvaluationWorkspaceControllerContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository workspacePreferencesRepository;
 
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.CompetitionDomainFacade competitionDomainFacade; // H138
+
     @org.junit.jupiter.api.BeforeEach
     void assemblerDefaults() {
         // The assembler resolves the export format through the facade; a null enum would NPE the view render.

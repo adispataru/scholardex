@@ -38,6 +38,20 @@ public class IndividualReportViewModelAssembler {
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final ReportTransferFacade reportTransferFacade;
     private final ro.uvt.pokedex.core.service.application.UiMessageBundleService uiMessageBundleService;
+    private final ro.uvt.pokedex.core.service.application.CompetitionDomainFacade competitionDomainFacade;
+
+    /**
+     * H138: the competition domains of a domain-selectable report's family, for the "Domeniul propunerii"
+     * select, and the chosen one (null = not chosen yet). Nothing is added for other reports.
+     */
+    public void addCompetitionDomains(Model model, IndividualReport report, Integer chosen) {
+        if (report == null || report.getCompetitionFamily() == null) {
+            return;
+        }
+        model.addAttribute("competitionDomains", competitionDomainFacade.choicesFor(report));
+        model.addAttribute("chosenCompetitionDomain", chosen);
+        model.addAttribute("chosenCompetitionDomainName", competitionDomainFacade.nameOf(chosen).orElse(null));
+    }
 
     public void populate(Model model,
                          User researcher,

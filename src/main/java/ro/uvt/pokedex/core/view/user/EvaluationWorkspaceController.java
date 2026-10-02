@@ -53,6 +53,7 @@ public class EvaluationWorkspaceController {
     private final ro.uvt.pokedex.core.service.application.UserPublicationFacade userPublicationFacade;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
     private final ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository workspacePreferencesRepository;
+    private final ro.uvt.pokedex.core.service.application.CompetitionDomainFacade competitionDomainFacade;
 
     // ── MVC: main evaluation page ────────────────────────────────────────────
 
@@ -100,6 +101,18 @@ public class EvaluationWorkspaceController {
                         && !userReportFacade.hasConfirmedPublicationsForScoring(currentUser.getEmail());
         model.addAttribute("confirmedPublicationScoringWarning", confirmedPublicationScoringWarning);
 
+        // H138: a domain-selectable report is not run until the researcher chose the competition domain —
+        // "always ask first" (decision 2026-10-02); the page shows the choice and nothing else
+        Integer chosenDomain = chosenCompetitionDomain(currentUser.getEmail(), report);
+        if (report.getCompetitionFamily() != null && chosenDomain == null) {
+            model.addAttribute("user", currentUser);
+            model.addAttribute("report", report);
+            model.addAttribute("allReports", reports);
+            model.addAttribute("domainRequired", true);
+            individualReportViewModelAssembler.addCompetitionDomains(model, report, null);
+            return "user/individual-report-view";
+        }
+
         Optional<IndividualReportRunDto> runOpt = userIndividualReportRunService.getOrCreateLatestRun(
                 currentUser.getEmail(), resolvedReportId);
         if (runOpt.isEmpty()) {
@@ -111,6 +124,7 @@ public class EvaluationWorkspaceController {
         IndividualReportRunDto run = runOpt.get();
 
         individualReportViewModelAssembler.populate(model, currentUser, report, run, reports);
+        individualReportViewModelAssembler.addCompetitionDomains(model, report, chosenDomain);
         model.addAttribute("importAvailable", reportTransferFacade.isImportAvailable(resolvedReportId));
         model.addAttribute("pendingReviewCount",
                 userPublicationFacade.countPendingAuthorshipReviews(currentUser.getEmail()));
@@ -124,6 +138,47 @@ public class EvaluationWorkspaceController {
                 .filter(id -> id != null && !id.isBlank()
                         && visibleReports.stream().anyMatch(r -> id.equals(r.getId())))
                 .orElse(null);
+    }
+
+    /** H138: the competition domain the researcher chose for a domain-selectable report; null when none or n/a. */
+    private Integer chosenCompetitionDomain(String userEmail, IndividualReport report) {
+        if (report.getCompetitionFamily() == null) {
+            return null;
+        }
+        return workspacePreferencesRepository.findById(userEmail)
+                .map(p -> p.getCompetitionDomainByReportId() == null ? null : p.getCompetitionDomainByReportId().get(report.getId()))
+                .orElse(null);
+    }
+
+    /**
+     * H138: remember the competition domain the researcher applies under for a domain-selectable report, then
+     * rescore it under that domain. Only a domain of the report's family is accepted.
+     */
+    @PostMapping("/domain")
+    public String setCompetitionDomain(@RequestParam("report") String reportId,
+                                       @RequestParam("domain") int domainCode,
+                                       Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        Optional<IndividualReport> report = userReportFacade.findIndividualReportById(reportId);
+        boolean valid = report.isPresent() && competitionDomainFacade.isChoiceOf(report.get(), domainCode);
+        if (valid) {
+            WorkspacePreferences prefs = workspacePreferencesRepository.findById(currentUser.getEmail())
+                    .orElseGet(() -> {
+                        WorkspacePreferences p = new WorkspacePreferences();
+                        p.setUserEmail(currentUser.getEmail());
+                        return p;
+                    });
+            if (prefs.getCompetitionDomainByReportId() == null) {
+                prefs.setCompetitionDomainByReportId(new java.util.HashMap<>());
+            }
+            prefs.getCompetitionDomainByReportId().put(reportId, domainCode);
+            prefs.setUpdatedAt(Instant.now());
+            workspacePreferencesRepository.save(prefs);
+            userIndividualReportRunService.refreshRunWithAllIndicators(currentUser.getEmail(), reportId);
+        }
+        return "redirect:/user/evaluation?report=" + reportId;
     }
 
     /** Remember the report the evaluation page should open by default, then show it. */

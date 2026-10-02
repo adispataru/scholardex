@@ -229,7 +229,13 @@ public class UserIndicatorResultService {
                 // forum reconcile, CORE import), so cached LATEST results self-invalidate on the next
                 // view after a rebuild instead of serving pre-rebuild scores until a manual refresh.
                 "data-epoch-" + reportingDataEpochService.currentEpoch()
-        );
+        )
+                // H138: the competition domain the researcher chose for a domain-selectable report — the same
+                // indicator scores against another category set and author role, so a cached result must not be
+                // served across choices. Appended only when a domain is in scope, so every legacy fingerprint
+                // stays byte-identical.
+                + (ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext.competitionDomainCode() == null
+                        ? "" : "|domain-" + ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext.competitionDomainCode());
     }
 
     private IndicatorApplyResultDto.Summary extractSummary(Map<String, Object> attrs) {

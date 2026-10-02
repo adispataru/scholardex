@@ -310,6 +310,8 @@ public class AdminViewController {
             "PUBLICATIONS_FIRST_OR_CORRESPONDING",
             // Psihologie 2026 co-author: neither first nor corresponding (the complement of the role above).
             "PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING",
+            // H138: UEFISCDI Anexa 6(d) — first, corresponding, or the last author (bio-medical domains).
+            "PUBLICATIONS_FIRST_CORRESPONDING_OR_LAST",
             // H61: EXCLUDE_SELF = candidate-only self-citations; EXCLUDE_COAUTHORS = any author of the cited paper.
             "CITATIONS", "CITATIONS_EXCLUDE_SELF", "CITATIONS_EXCLUDE_COAUTHORS",
             // H67 S4b: aggregate Hirsch indicators (pair with the HIRSCH strategy). Indicative — see the h-index plan.

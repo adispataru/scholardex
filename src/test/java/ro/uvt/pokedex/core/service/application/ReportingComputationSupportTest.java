@@ -247,6 +247,35 @@ class ReportingComputationSupportTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void firstCorrespondingOrLastCountsTheLastAuthorToo() {
+        // H138: UEFISCDI Anexa 6(d) — in the bio-medical domains the last author is a principal author as well
+        ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
+        ScholardexAuthorView a1 = new ScholardexAuthorView();
+        a1.setId("a1");
+        ScholardexPublicationView first = publication("p-first", List.of("a1", "x", "y"));
+        ScholardexPublicationView last = publication("p-last", List.of("x", "y", "a1"));
+        ScholardexPublicationView middle = publication("p-middle", List.of("x", "a1", "y"));
+        ScholardexPublicationView middleCorresponding = publication("p-middle-corr", List.of("x", "a1", "y"));
+        middleCorresponding.setCorrespondingAuthorIds(List.of("a1"));
+
+        Indicator lastToo = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(lastToo, "PUBLICATIONS_FIRST_CORRESPONDING_OR_LAST");
+        Indicator firstOrCorr = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(firstOrCorr, "PUBLICATIONS_FIRST_OR_CORRESPONDING");
+        doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
+                .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(lastToo));
+        doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
+                .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(firstOrCorr));
+
+        List<ScholardexPublicationView> pubs = List.of(first, last, middle, middleCorresponding);
+        assertEquals(3.0, ReportingComputationSupport.calculatePublicationScore(lastToo, List.of(a1), pubs, scientificProductionService),
+                "first + last + corresponding");
+        assertEquals(2.0, ReportingComputationSupport.calculatePublicationScore(firstOrCorr, List.of(a1), pubs, scientificProductionService),
+                "the last author alone is not principal elsewhere");
+    }
+
+    @Test
     void notFirstNorCorrespondingIsTheExactComplementOfFirstOrCorresponding() {
         // Psihologie 2026 (Comisia 28): a corresponding author is a PRINCIPAL author, so the co-author
         // indicators must not see that paper — which the older CO role ("not first") would count again.

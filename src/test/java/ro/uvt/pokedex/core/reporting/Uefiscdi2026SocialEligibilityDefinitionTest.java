@@ -113,10 +113,9 @@ class Uefiscdi2026SocialEligibilityDefinitionTest {
         assertEquals(70.0 * 0.6 / 2, pd.evalFormula("2015_A", Map.of("docType", "re", "Q", "Q2", "AIS", 0.6, "N", 2)), 1e-9);
         assertEquals(0.0, pd.evalFormula("Dir_A", Map.of("docType", "ar", "Q", "Q3", "AIS", 0.3, "N", 1)), "Q3 is not in the top half");
         assertEquals(0.0, pd.evalFormula("Dir_A", Map.of("docType", "cp", "Q", "Q1", "AIS", 2.0, "N", 1)), "strictly article or review");
-        Set<String> categories = pd.domainCategories("Dir_A");
-        assertTrue(categories.contains("ECONOMICS - SSCI"));
-        assertTrue(categories.contains("PSYCHOLOGY, SOCIAL - SSCI"));
-        assertTrue(categories.stream().allMatch(c -> c.endsWith(" - SSCI")), "the social sciences index only");
+        assertTrue(pd.domainCategories("Dir_A").isEmpty(), "H138: the stored base domain is empty; the chosen domain (11 or 12) applies");
+        assertEquals("SOCIAL_ECONOMIC", pd.report().get("competitionFamily").asText());
+        assertEquals("SOCIAL_ECONOMIC", te.report().get("competitionFamily").asText());
     }
 
     // ------------------------------------------------------------------ the declared books and chapters

@@ -77,6 +77,8 @@ public class UserReportFacade {
     private final ReportingLookupPort reportingLookupPort;
     private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
     private final ReportingLookupMemoization reportingLookupMemoization;
+    private final CompetitionDomainOverride competitionDomainOverride;
+    private final ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository workspacePreferencesRepository;
     private final ScholardexProjectReadPort scholardexProjectReadPort;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
@@ -397,7 +399,7 @@ public class UserReportFacade {
         // H60: ensure a referenceYear is in scope for relative year specs. The run-build path already set the run's
         // year (nested → preserved); the live apply path defaults to the current year.
         return ScoringReferenceYearContext.with(effectiveReferenceYear(),
-                () -> withSubject(userEmail, () -> computeReportScopedIndividualReportInternal(userEmail, reportId)));
+                () -> withSubject(userEmail, reportId, () -> computeReportScopedIndividualReportInternal(userEmail, reportId)));
     }
 
     /** H60: the current referenceYear in scope, or the current year when none is set (live apply/detail path). */
@@ -464,7 +466,9 @@ public class UserReportFacade {
         List<ScholardexPublicationView> publications = applyAffiliationFilter(report, context.publications());
         List<ActivityInstance> activities = context.activities();
 
-        List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
+        // H138: a domain-selectable report scores against the researcher's chosen competition domain
+        List<Indicator> indicators = competitionDomainOverride.apply(report,
+                report.getIndicators() == null ? List.of() : report.getIndicators());
         Map<Indicator, Double> indicatorScores = new HashMap<>();
         Map<String, Double> indicatorScoresByIndicatorId = new HashMap<>();
         Map<String, Map<String, Double>> indicatorScoresByPositionByIndicatorId = new HashMap<>();
@@ -563,7 +567,8 @@ public class UserReportFacade {
                 indicatorScoresByIndicatorId,
                 criterionScores,
                 reportScopedIndicatorResultsByIndicatorId,
-                indicatorScoresByPositionByIndicatorId
+                indicatorScoresByPositionByIndicatorId,
+                competitionDomainOverride.chosenDomain(report).map(d -> d.code()).orElse(null)
         );
     }
 
@@ -608,7 +613,7 @@ public class UserReportFacade {
         // times (~1.6k Postgres round-trips for a citations indicator). The run-refresh path already
         // opens an outer scope; withRefreshScope nests as a no-op there (owner-checked).
         return ScoringReferenceYearContext.with(effectiveReferenceYear(),
-                () -> withSubject(userEmail, () -> reportingLookupMemoization.withRefreshScope(
+                () -> withSubject(userEmail, reportId, () -> reportingLookupMemoization.withRefreshScope(
                         () -> buildReportScopedIndicatorDetailInternal(userEmail, reportId, indicatorId))));
     }
 
@@ -627,7 +632,8 @@ public class UserReportFacade {
         // Find the indicator in the report's indicator list
         Indicator foundIndicator = null;
         if (report.getIndicators() != null) {
-            for (Indicator ind : report.getIndicators()) {
+            // H138: the drilldown scores the indicator exactly as the report did — under the chosen domain
+            for (Indicator ind : competitionDomainOverride.apply(report, report.getIndicators())) {
                 if (ind != null && indicatorId.equals(ind.getId())) {
                     foundIndicator = ind;
                     break;
@@ -1339,11 +1345,23 @@ public class UserReportFacade {
      * the profile; a missing profile or year leaves the context empty (plain windows).
      */
     private <T> T withSubject(String userEmail, java.util.function.Supplier<T> body) {
+        return withSubject(userEmail, null, body);
+    }
+
+    /**
+     * H138: the report-aware variant also puts the researcher's chosen competition domain for {@code reportId}
+     * (from the workspace preferences) in scope, so a domain-selectable report scores against it.
+     */
+    private <T> T withSubject(String userEmail, String reportId, java.util.function.Supplier<T> body) {
         Integer phdAwardYear = findUserWithProfile(userEmail)
                 .map(User::getResearcherProfile)
                 .map(User.ResearcherProfile::getPhdAwardYear)
                 .orElse(null);
-        return ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext.withPhdAwardYear(phdAwardYear, body);
+        Integer domainCode = reportId == null ? null : workspacePreferencesRepository.findById(userEmail)
+                .map(p -> p.getCompetitionDomainByReportId() == null ? null : p.getCompetitionDomainByReportId().get(reportId))
+                .orElse(null);
+        return ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext.withPhdAwardYear(phdAwardYear,
+                () -> ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext.withCompetitionDomain(domainCode, body));
     }
 
     private Optional<User> findUserWithProfile(String userEmail) {

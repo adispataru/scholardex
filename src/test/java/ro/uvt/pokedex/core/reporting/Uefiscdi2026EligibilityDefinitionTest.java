@@ -45,6 +45,12 @@ class Uefiscdi2026EligibilityDefinitionTest {
         throw new AssertionError(criterion.get("name").asText() + " has no threshold for " + position);
     }
 
+    private static List<Integer> toList(JsonNode array) {
+        List<Integer> out = new ArrayList<>();
+        array.forEach(i -> out.add(i.asInt()));
+        return out;
+    }
+
     private static List<Integer> indices(JsonNode criterion) {
         List<Integer> out = new ArrayList<>();
         criterion.get("indicatorIndices").forEach(i -> out.add(i.asInt()));
@@ -64,7 +70,13 @@ class Uefiscdi2026EligibilityDefinitionTest {
         assertEquals(1.0, threshold(topHalf, "LECT_UNIV"));
         assertEquals("FIRST_OR_CORRESPONDING", pd.kindField("Dir_CORE_A_echiv", "role"),
                 "the CORE equivalent needs the candidate as first or corresponding author");
-        assertEquals("ALL", pd.kindField("Dir_Q1_Q2", "role"), "Anexa 6(e): all authors count in the Informatică categories");
+        assertEquals("ALL", pd.kindField("Dir_Q1_Q2", "role"), "the stored role; the chosen domain's rule replaces it at scoring (H138)");
+        assertEquals("UEFISCDI 2026 — (fără domeniu ales)", pd.indicator("Dir_Q1_Q2").get("domain").get("$id").asText(),
+                "the stored base domain qualifies nothing; the chosen competition domain replaces it");
+        assertEquals("EXACT", pd.report().get("competitionFamily").asText());
+        assertEquals("EXACT", mentor.report().get("competitionFamily").asText());
+        assertEquals(List.of(2), toList(pd.indicator("Dir_CORE_A_echiv").get("competitionDomainCodes")), "the CORE route is Informatică's only");
+        assertTrue(pd.indicator("Dir_lucrari_WoS").get("formula").asText().contains("NOT_FOUND"), "a work counts only in a journal of the chosen domain");
         assertEquals(2016, pd.indicator("Dir_Q1_Q2").get("yearRangeSpec").get("from").asInt());
     }
 
@@ -148,12 +160,9 @@ class Uefiscdi2026EligibilityDefinitionTest {
         assertEquals(2015, te.indicator("Dir_Q1Q2").get("yearRangeSpec").get("from").asInt());
         assertEquals(2026, te.indicator("Dir_Q1Q2").get("yearRangeSpec").get("to").asInt());
         assertTrue(te.indicator("Dir_Q1Q2").get("formula").asText().contains("\"cp\""), "proceedings papers count for TE");
-        Set<String> categories = te.domainCategories("Dir_Q1Q2");
-        assertEquals(17, categories.size());
-        assertTrue(categories.contains("MATHEMATICS - SCIE"));
-        assertTrue(categories.contains("ECONOMICS - SSCI"));
-        assertTrue(categories.contains("COMPUTER SCIENCE, THEORY & METHODS - SCIE"));
-        assertTrue(categories.stream().noneMatch(c -> c.endsWith("ESCI")), "ESCI never qualifies");
+        assertTrue(te.domainCategories("Dir_Q1Q2").isEmpty(), "H138: the stored base domain is empty; the chosen domain's categories apply");
+        assertEquals("EXACT", te.report().get("competitionFamily").asText());
+        assertEquals(List.of(2), toList(te.indicator("Dir_CORE_A_echiv").get("competitionDomainCodes")));
     }
 
     @Test

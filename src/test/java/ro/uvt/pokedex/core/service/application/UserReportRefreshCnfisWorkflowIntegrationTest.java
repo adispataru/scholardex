@@ -133,6 +133,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 reportingLookupPort,
                 effectiveAuthorshipReadService,
                 new ReportingLookupMemoization(),
+                new CompetitionDomainOverride(org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.reporting.UefiscdiDomainCatalogService.class)),
+                org.mockito.Mockito.mock(ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository.class),
                 org.mockito.Mockito.mock(ScholardexProjectReadPort.class)
         );
 

@@ -78,9 +78,34 @@ class ReportVisibilityServiceTest {
     @Test
     void userWithoutMembershipsSeesNoReports() {
         when(membershipRepository.findByUserIdAndValidToIsNull("u@uvt.ro")).thenReturn(List.of());
+        when(individualReportRepository.findAll()).thenReturn(List.of());
         assertTrue(service.listVisibleReportsForUser("u@uvt.ro").isEmpty());
         assertTrue(service.listVisibleReportsForUser(null).isEmpty());
         assertTrue(service.listVisibleReportsForUser("  ").isEmpty());
+    }
+
+    @Test
+    void uefiscdiReportsAreVisibleToEveryoneAndStayOffTheUnitPages() {
+        // H138: competition rules, not faculty standards — no division selection needed, none honoured on unit pages
+        IndividualReport uefiscdi = new IndividualReport();
+        uefiscdi.setId("rep-PD");
+        uefiscdi.setTitle("Eligibilitate PD 2026 — Director");
+        uefiscdi.setAuthority(ro.uvt.pokedex.core.model.reporting.ReportAuthority.UEFISCDI);
+        IndividualReport cnatdcu = new IndividualReport();
+        cnatdcu.setId("rep-A");
+        when(individualReportRepository.findAll()).thenReturn(List.of(uefiscdi, cnatdcu));
+        when(membershipRepository.findByUserIdAndValidToIsNull("u@uvt.ro")).thenReturn(List.of());
+
+        assertEquals(List.of("rep-PD"), service.listVisibleReportsForUser("u@uvt.ro").stream().map(IndividualReport::getId).toList(),
+                "no org footprint at all, still the UEFISCDI report");
+
+        when(divisionReportSelectionRepository.findByDivisionId("div-fmi"))
+                .thenReturn(List.of(selection("div-fmi", "rep-A"), selection("div-fmi", "rep-PD")));
+        org.mockito.Mockito.doReturn(List.of(cnatdcu, uefiscdi)).when(individualReportRepository).findAllById(any());
+        assertEquals(List.of("rep-A"), service.listVisibleReportsForDivision("div-fmi").stream().map(IndividualReport::getId).toList(),
+                "a stray selection does not put it on the faculty page");
+        assertEquals(List.of("rep-A"), service.buildDivisionSelectionView("div-fmi").catalog().stream().map(IndividualReport::getId).toList(),
+                "nor in the admin's selection catalog");
     }
 
     @Test

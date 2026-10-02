@@ -22,4 +22,10 @@ public class WorkspacePreferences {
      * Null = "never chose" → the first visible report, as before. Ignored when it is no longer visible to the user.
      */
     private String preferredReportId;
+
+    /**
+     * H138: the competition domain (1–13 of PN-IV PD/TE 2026, Anexa 1) the researcher chose for each
+     * domain-selectable UEFISCDI report, by report id. Absent = not chosen yet (the page asks first).
+     */
+    private java.util.Map<String, Integer> competitionDomainByReportId = new java.util.HashMap<>();
 }

@@ -99,6 +99,12 @@ class UserReportFacadeTest {
     private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
     @Mock
     private ScholardexProjectReadPort scholardexProjectReadPort;
+    @Mock
+    private ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository workspacePreferencesRepository;
+    // H138: a real override over a mocked catalog — reports without a competition family pass through untouched.
+    @org.mockito.Spy
+    private CompetitionDomainOverride competitionDomainOverride = new CompetitionDomainOverride(
+            org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.reporting.UefiscdiDomainCatalogService.class));
     // Real instance (not a mock): getOrCompute must pass through to the supplier for every test.
     @org.mockito.Spy
     private ReportingLookupMemoization reportingLookupMemoization = new ReportingLookupMemoization();

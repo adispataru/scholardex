@@ -34,6 +34,14 @@ public class IndividualReport extends AbstractReport {
      */
     private Integer phdLimitYears;
 
+    /**
+     * H138: set on a UEFISCDI eligibility report whose standard depends on the competition domain the applicant
+     * chooses (PN-IV PD/TE 2026, Anexa 1): the family selects which of the 13 domains may be chosen, and the
+     * chosen domain replaces the publication indicators' domain and author role at scoring time. Null for every
+     * other report (the CNATDCU and CNFIS ones have no such choice).
+     */
+    private ro.uvt.pokedex.core.model.reporting.uefiscdi.CompetitionFamily competitionFamily;
+
     /** H137: the submission deadline the PhD-age limit is measured at (both 2026 competitions: 2026-07-30). */
     @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
     private java.time.LocalDate competitionDeadline;

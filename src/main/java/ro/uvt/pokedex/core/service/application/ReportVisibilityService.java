@@ -70,7 +70,10 @@ public class ReportVisibilityService {
         for (DivisionReportSelection s : divisionReportSelectionRepository.findByDivisionId(divisionId)) {
             selected.add(s.getReportId());
         }
-        return new DivisionSelectionView(individualReportRepository.findAll(), selected);
+        // H138: the reports everyone sees are not a division's to select
+        List<IndividualReport> catalog = new ArrayList<>();
+        for (IndividualReport r : individualReportRepository.findAll()) if (!isVisibleToEveryone(r)) catalog.add(r);
+        return new DivisionSelectionView(catalog, selected);
     }
 
     /**
@@ -99,9 +102,9 @@ public class ReportVisibilityService {
         for (DepartmentReportHide h : departmentReportHideRepository.findByDepartmentId(departmentId)) {
             hidden.add(h.getReportId());
         }
-        if (hidden.isEmpty()) return inherited;
         List<IndividualReport> visible = new ArrayList<>();
-        for (IndividualReport r : inherited) if (!hidden.contains(r.getId())) visible.add(r);
+        // H138: the UEFISCDI reports stay off the unit pages — a per-person domain choice has no unit bar
+        for (IndividualReport r : inherited) if (!hidden.contains(r.getId()) && !isVisibleToEveryone(r)) visible.add(r);
         return visible;
     }
 
@@ -111,7 +114,9 @@ public class ReportVisibilityService {
         if (selections.isEmpty()) return List.of();
         Set<String> ids = new HashSet<>();
         for (DivisionReportSelection s : selections) ids.add(s.getReportId());
-        return individualReportRepository.findAllById(ids);
+        List<IndividualReport> out = new ArrayList<>();
+        for (IndividualReport r : individualReportRepository.findAllById(ids)) if (!isVisibleToEveryone(r)) out.add(r);
+        return out;
     }
 
     /**
@@ -131,7 +136,33 @@ public class ReportVisibilityService {
      */
     public List<IndividualReport> listVisibleReportsForUser(String userId) {
         if (userId == null || userId.isBlank()) return List.of();
+        List<IndividualReport> fromOrg = listOrgSelectedReportsForUser(userId);
+        // H138: the UEFISCDI eligibility reports are competition rules, not faculty standards — every
+        // researcher may apply, so they are visible to everyone, independent of any division selection.
+        List<IndividualReport> everyone = listReportsVisibleToEveryone();
+        if (everyone.isEmpty()) return fromOrg;
+        Set<String> seen = new HashSet<>();
+        List<IndividualReport> out = new ArrayList<>();
+        for (IndividualReport r : fromOrg) if (seen.add(r.getId())) out.add(r);
+        for (IndividualReport r : everyone) if (seen.add(r.getId())) out.add(r);
+        return out;
+    }
 
+    /** H138: reports every researcher sees regardless of the org hierarchy — those applying UEFISCDI's rules. */
+    public List<IndividualReport> listReportsVisibleToEveryone() {
+        List<IndividualReport> out = new ArrayList<>();
+        for (IndividualReport r : individualReportRepository.findAll()) {
+            if (isVisibleToEveryone(r)) out.add(r);
+        }
+        return out;
+    }
+
+    /** H138: see {@link #listReportsVisibleToEveryone()}; such reports are also kept off the unit dashboards. */
+    public static boolean isVisibleToEveryone(IndividualReport report) {
+        return report != null && report.effectiveAuthority() == ro.uvt.pokedex.core.model.reporting.ReportAuthority.UEFISCDI;
+    }
+
+    private List<IndividualReport> listOrgSelectedReportsForUser(String userId) {
         Set<String> userDeptIds = resolveUserDepartmentIds(userId);
         Set<String> headedDivisionIds = new LinkedHashSet<>();
         for (OrgDivision div : orgDivisionRepository.findByHeadUserIdsContaining(userId)) headedDivisionIds.add(div.getId());

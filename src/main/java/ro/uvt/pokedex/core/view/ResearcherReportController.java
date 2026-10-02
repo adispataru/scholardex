@@ -107,6 +107,8 @@ public class ResearcherReportController {
         }
 
         individualReportViewModelAssembler.populate(model, researcher, report, runOpt.get(), reports);
+        // H138: the domain the researcher chose is read from the run (a delegated viewer cannot change it)
+        individualReportViewModelAssembler.addCompetitionDomains(model, report, runOpt.get().competitionDomainCode());
         model.addAttribute("compatibleReport",
                 reportComparisonFacade.findCompatibleReport(email, report).orElse(null));
         return "user/individual-report-view";
