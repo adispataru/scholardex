@@ -5336,5 +5336,747 @@
    }
   ],
   "competitionFamily": "SOCIAL_ECONOMIC"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79310e2c7537f4c8c1d"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "FV Muzică 2026",
+  "description": "Standarde minimale COMISIA 35 (Artele spectacolului și muzică), domeniul Muzică (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. Trei tabele: activitatea didactică și profesională (DID), cercetarea științifică și creația artistică (CS), recunoașterea și impactul activității (RIA). O activitate se menționează într-un singur tabel sau categorie. Activitățile minimale obligatorii diferă pentru teoreticieni, compozitori și interpreți: raportul arată care dintre cele trei variante este îndeplinită. Articolele din reviste indexate în Web of Science, Scopus, ERIH PLUS sau DOAJ sunt găsite automat; restul se declară. Vizibilitatea unui concert se ia din registrul de evenimente artistice când evenimentul este listat.",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8bfa"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8bfb"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8bfc"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8bfd"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8bfe"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8bff"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c00"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c01"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c02"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c03"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c04"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c05"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c06"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c07"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c08"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c09"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c0a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c0b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c0c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c0d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c0e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c0f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c10"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c11"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c12"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c13"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c14"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c15"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c16"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c17"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c18"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c19"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c1a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c1b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abfc79210e2c7537f4c8c1c"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "Tabelul 1 — DID: activitatea didactică și profesională",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 70
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 100
+     },
+     {
+      "position": "HABIL",
+      "value": 85
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Tabelul 2 — CS: cercetare științifică și creație artistică",
+    "indicatorIndices": [
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 180
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 240
+     },
+     {
+      "position": "HABIL",
+      "value": 210
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Tabelul 3 — RIA: recunoașterea și impactul activității",
+    "indicatorIndices": [
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 100
+     },
+     {
+      "position": "HABIL",
+      "value": 75
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Punctaj total (DID + CS + RIA)",
+    "indicatorIndices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 300
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 440
+     },
+     {
+      "position": "HABIL",
+      "value": 370
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Cărți (DID 1.1) — teoreticieni",
+    "indicatorIndices": [
+     28
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Cărți (DID 1.1) — compozitori și interpreți",
+    "indicatorIndices": [
+     28
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Manuale, cursuri (DID 1.3) — teoreticieni",
+    "indicatorIndices": [
+     29
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Manuale, cursuri (DID 1.3) — compozitori și interpreți",
+    "indicatorIndices": [
+     29
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Înregistrări (DID 2.1) — compozitori și interpreți",
+    "indicatorIndices": [
+     30
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Concerte de vizibilitate internațională sau națională de vârf (CS 1.1) — compozitori și interpreți",
+    "indicatorIndices": [
+     31
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 8
+     },
+     {
+      "position": "HABIL",
+      "value": 7
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Articole indexate (CS 2.1) — teoreticieni",
+    "indicatorIndices": [
+     32,
+     33
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 8
+     },
+     {
+      "position": "HABIL",
+      "value": 6
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Articole indexate (CS 2.1) — compozitori",
+    "indicatorIndices": [
+     32,
+     33
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Articole indexate (CS 2.1) — interpreți",
+    "indicatorIndices": [
+     32,
+     33
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Comunicări (CS 2.3) — teoreticieni",
+    "indicatorIndices": [
+     34
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 8
+     },
+     {
+      "position": "HABIL",
+      "value": 6
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Comunicări (CS 2.3) — compozitori",
+    "indicatorIndices": [
+     34
+    ],
+    "thresholds": [
+     {
+      "position": "CONF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Comunicări (CS 2.3) — interpreți",
+    "indicatorIndices": [
+     34
+    ],
+    "thresholds": [
+     {
+      "position": "PROF_UNIV",
+      "value": 1
+     },
+     {
+      "position": "HABIL",
+      "value": 1
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Tabelul 1 — DID",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      }
+     ]
+    }
+   },
+   {
+    "name": "Tabelul 2 — CS",
+    "composition": {
+     "all": [
+      {
+       "criterion": 1
+      }
+     ]
+    }
+   },
+   {
+    "name": "Tabelul 3 — RIA",
+    "composition": {
+     "all": [
+      {
+       "criterion": 2
+      }
+     ]
+    }
+   },
+   {
+    "name": "Punctaj total",
+    "composition": {
+     "all": [
+      {
+       "criterion": 3
+      }
+     ]
+    }
+   },
+   {
+    "name": "Activități minimale obligatorii",
+    "composition": {
+     "any": [
+      {
+       "all": [
+        {
+         "criterion": 4
+        },
+        {
+         "criterion": 6
+        },
+        {
+         "criterion": 10
+        },
+        {
+         "criterion": 13
+        }
+       ],
+       "label": "Teoretician"
+      },
+      {
+       "all": [
+        {
+         "criterion": 5
+        },
+        {
+         "criterion": 7
+        },
+        {
+         "criterion": 8
+        },
+        {
+         "criterion": 9
+        },
+        {
+         "criterion": 11
+        },
+        {
+         "criterion": 14
+        }
+       ],
+       "label": "Compozitor"
+      },
+      {
+       "all": [
+        {
+         "criterion": 5
+        },
+        {
+         "criterion": 7
+        },
+        {
+         "criterion": 8
+        },
+        {
+         "criterion": 9
+        },
+        {
+         "criterion": 12
+        },
+        {
+         "criterion": 15
+        }
+       ],
+       "label": "Interpret"
+      }
+     ]
+    }
+   },
+   {
+    "name": "Standardul minimal este îndeplinit",
+    "composition": {
+     "all": [
+      {
+       "perspective": 0
+      },
+      {
+       "perspective": 1
+      },
+      {
+       "perspective": 2
+      },
+      {
+       "perspective": 3
+      },
+      {
+       "perspective": 4
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  }
 ]

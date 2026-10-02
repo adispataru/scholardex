@@ -54,7 +54,6 @@ public class CnfisReportingFacade {
     static final String FIELD_UNIVERSITY_AUTHORS = "N_autori_universitate";
     /** The declared activity type whose instances are the rows of Anexa 5.1. */
     static final String ARTS_ACTIVITY = "Participare eveniment artistic";
-    static final String FIELD_ARTS_KIND = "Tip";
     static final String FIELD_ARTS_PARTICIPANTS = "N_participanti_universitate";
     /** H129 Anexa 5.2: the declared sport performance; the instance's name is the "date de identificare". */
     static final String SPORT_ACTIVITY = "Performanță sportivă (CNFIS 5.2)";
@@ -696,14 +695,21 @@ public class CnfisReportingFacade {
             String event = instance.getReferenceFields() == null ? null
                     : instance.getReferenceFields().get(ro.uvt.pokedex.core.model.activities.Activity.ReferenceField.EVENT_NAME);
             Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
-            String kind = artsKind(f.get(FIELD_ARTS_KIND));
+            // H142: the kind as declared, else derived from the result, the size of the ensemble or the role
+            String kind = ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.cnfisKind(f);
             if (kind == null) {
                 leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), event, null,
-                        "the kind of the work (individual, group, collective, nomination, prize) is not declared"));
+                        "the kind of the work (individual, group, collective, nomination, prize) is not declared, "
+                                + "and neither the role nor the size of the ensemble tells it"));
                 continue;
             }
             String level = event == null ? null : artisticEventRepository.findAllByNameIgnoreCase(event.trim()).stream()
                     .findFirst().map(e -> e.getRank() == null ? null : e.getRank().name()).orElse(null);
+            if (level == null && event != null) {
+                // H142: the same event written with other diacritics, case or punctuation
+                level = ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.rankOf(event)
+                        .map(Enum::name).orElse(null);
+            }
             if (level == null) {
                 leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), event, null,
                         event == null ? "no event declared" : "the event is not in the registry of ranked events (national / international / top)"));
@@ -802,20 +808,6 @@ public class CnfisReportingFacade {
         if (d.startsWith("național") || d.startsWith("national")) return "NATIONAL";
         if (d.startsWith("european")) return "EUROPEAN";
         if (d.startsWith("mondial")) return "WORLD";
-        return null;
-    }
-
-    /** The declared kind, as the activity's allowed values name it, to the column group of the form. */
-    static String artsKind(String declared) {
-        if (declared == null) {
-            return null;
-        }
-        String d = declared.trim().toLowerCase(java.util.Locale.ROOT);
-        if (d.startsWith("proiect individual")) return "INDIVIDUAL";
-        if (d.startsWith("proiect de grup")) return "GROUP";
-        if (d.startsWith("proiect colectiv")) return "COLLECTIVE";
-        if (d.startsWith("nominalizare")) return "NOMINATION";
-        if (d.startsWith("premiu")) return "PRIZE";
         return null;
     }
 

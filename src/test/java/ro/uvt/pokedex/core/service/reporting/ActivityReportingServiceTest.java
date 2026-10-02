@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
@@ -555,6 +556,138 @@ class ActivityReportingServiceTest {
         instance.setActivity(activity);
         instance.setFields(fields);
         instance.setReferenceFields(Map.of());
+        return instance;
+    }
+
+    // ── H142: years of a function, and one artistic performance for the Music standard and CNFIS ──
+
+    @Test
+    void yearsOfAFunctionRunToTheEndYearOrToTheReferenceYearWhileItIsHeld() {
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator perYear = indicator("GENERIC_ACTIVITY", "10 * N_ani");
+
+        ActivityInstance closed = editionsActivity("f1", Map.of("Rol", "Director", "An_inceput", "2016", "An_sfarsit", "2020"));
+        ActivityInstance held = editionsActivity("f2", Map.of("Rol", "Director", "An_inceput", "2021"));
+        ActivityInstance undated = editionsActivity("f3", Map.of("Rol", "Director"));
+        ActivityInstance inverted = editionsActivity("f4", Map.of("Rol", "Director", "An_inceput", "2024", "An_sfarsit", "2020"));
+
+        assertEquals(50.0, service.calculateActivityScores(List.of(closed), perYear).get("f1").getAuthorScore(), 1e-9);
+        double heldScore = ScoringReferenceYearContext.with(2026,
+                () -> service.calculateActivityScores(List.of(held), perYear).get("f2").getAuthorScore());
+        assertEquals(60.0, heldScore, 1e-9, "2021 to 2026 while still held: six years");
+        assertEquals(10.0, service.calculateActivityScores(List.of(undated), perYear).get("f3").getAuthorScore(), 1e-9);
+        assertEquals(10.0, service.calculateActivityScores(List.of(inverted), perYear).get("f4").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void aConcertAtAListedFestivalTakesItsVisibilityFromTheRegistry() {
+        ArtisticEventRankSupport.register(List.of(event("Festivalul „George Enescu” (România)", ro.uvt.pokedex.core.model.ArtisticEvent.Rank.INTERNATIONAL_TOP),
+                event("Festivalul „Remus Georgescu” (Timișoara)", ro.uvt.pokedex.core.model.ArtisticEvent.Rank.INTERNATIONAL),
+                event("Festivalul de muzică veche (Timișoara)", ro.uvt.pokedex.core.model.ArtisticEvent.Rank.NATIONAL)));
+        try {
+            ActivityReportingService service = new ActivityReportingService(
+                    scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+            Indicator top = indicator("GENERIC_ACTIVITY",
+                    "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && Vizibilitate_varf) ? 20 : 0");
+            Indicator regional = indicator("GENERIC_ACTIVITY",
+                    "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && !Vizibilitate_varf) ? 10 : 0");
+
+            // written without the quotes and diacritics of the registry: still the same festival
+            ActivityInstance enescu = performance("p1", "Festivalul George Enescu (Romania)", Map.of("Rol", "Dirijor"));
+            ActivityInstance georgescu = performance("p2", "Festivalul Remus Georgescu (Timisoara)", Map.of());
+            // a national festival is regional/local for the standard, whatever is declared
+            ActivityInstance early = performance("p3", "Festivalul de muzică veche (Timișoara)",
+                    Map.of("Vizibilitate", "Internațională sau națională de vârf"));
+
+            Score enescuTop = service.calculateActivityScores(List.of(enescu), top).get("p1");
+            assertEquals(20.0, enescuTop.getAuthorScore(), 1e-9);
+            assertEquals("INTERNATIONAL_TOP", enescuTop.getScoringInfo().get("eventLevel"));
+            assertEquals("REGISTRY", enescuTop.getScoringInfo().get("visibilityBasis"));
+            assertEquals(20.0, service.calculateActivityScores(List.of(georgescu), top).get("p2").getAuthorScore(), 1e-9);
+            assertEquals(10.0, service.calculateActivityScores(List.of(early), regional).get("p3").getAuthorScore(), 1e-9);
+            assertNull(service.calculateActivityScores(List.of(early), top).get("p3"));
+        } finally {
+            ArtisticEventRankSupport.reset();
+        }
+    }
+
+    @Test
+    void anUnlistedEventUsesTheDeclaredVisibilityAndDefaultsToRegional() {
+        ArtisticEventRankSupport.reset();
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator top = indicator("GENERIC_ACTIVITY", "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && Vizibilitate_varf) ? 20 : 0");
+        Indicator regional = indicator("GENERIC_ACTIVITY", "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && !Vizibilitate_varf) ? 10 : 0");
+
+        ActivityInstance declaredTop = performance("u1", "Stagiunea Filarmonicii din Berlin",
+                Map.of("Vizibilitate", "Internațională sau națională de vârf", "Rol", "Solist"));
+        ActivityInstance nothingDeclared = performance("u2", "Concert în aula universității", Map.of("Rol", "Solist"));
+
+        Score declared = service.calculateActivityScores(List.of(declaredTop), top).get("u1");
+        assertEquals(20.0, declared.getAuthorScore(), 1e-9);
+        assertEquals("NOT_LISTED", declared.getScoringInfo().get("eventLevel"));
+        assertEquals("DECLARED", declared.getScoringInfo().get("visibilityBasis"));
+        assertEquals(10.0, service.calculateActivityScores(List.of(nothingDeclared), regional).get("u2").getAuthorScore(), 1e-9);
+    }
+
+    @Test
+    void aPrizeOrANominationIsNotAConcertAndALargeEnsembleMemberDoesNotCount() {
+        ArtisticEventRankSupport.reset();
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator concert = indicator("GENERIC_ACTIVITY", "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil) ? 10 : 0");
+        Indicator prize = indicator("GENERIC_ACTIVITY", "Rezultat_eveniment == 'PREMIU' ? 40 : 0");
+
+        ActivityInstance won = performance("x1", "Concursul Internațional Remember Enescu", Map.of("Rezultat", "Premiu"));
+        // a record made before H142 says "prize" through its CNFIS kind
+        ActivityInstance legacyPrize = performance("x2", "Concursul Național Eduard Caudella", Map.of("Tip", "Premiu individual"));
+        ActivityInstance nominated = performance("x3", "Gala UCMR", Map.of("Rezultat", "Nominalizare"));
+        ActivityInstance tutti = performance("x4", "Stagiunea orchestrei", Map.of("Rol", ArtisticPerformanceSupport.ROLE_LARGE_ENSEMBLE_MEMBER));
+
+        assertEquals(40.0, service.calculateActivityScores(List.of(won), prize).get("x1").getAuthorScore(), 1e-9);
+        assertEquals(40.0, service.calculateActivityScores(List.of(legacyPrize), prize).get("x2").getAuthorScore(), 1e-9);
+        assertNull(service.calculateActivityScores(List.of(won), concert).get("x1"));
+        assertNull(service.calculateActivityScores(List.of(nominated), concert).get("x3"));
+        assertNull(service.calculateActivityScores(List.of(nominated), prize).get("x3"));
+        assertNull(service.calculateActivityScores(List.of(tutti), concert).get("x4"));
+    }
+
+    @Test
+    void theEventVariablesAreBoundOnlyForTypesThatReferenceAnEvent() {
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        // a formula reading the variable on another type fails to evaluate and scores 0, as any unknown variable
+        Indicator reads = indicator("GENERIC_ACTIVITY", "Vizibilitate_varf ? 20 : 0");
+        ActivityInstance grant = editionsActivity("g1", Map.of("Rol", "Membru"));
+        assertNull(service.calculateActivityScores(List.of(grant), reads).get("g1"));
+    }
+
+    private static ro.uvt.pokedex.core.model.ArtisticEvent event(String name, ro.uvt.pokedex.core.model.ArtisticEvent.Rank rank) {
+        ro.uvt.pokedex.core.model.ArtisticEvent e = new ro.uvt.pokedex.core.model.ArtisticEvent();
+        e.setName(name);
+        e.setDomainId("Muzică");
+        e.setRank(rank);
+        return e;
+    }
+
+    private ActivityInstance performance(String id, String event, Map<String, String> fields) {
+        Activity activity = new Activity();
+        List<Activity.Field> declared = new java.util.ArrayList<>();
+        for (String name : List.of("Dovezi", "Tip", "N_participanti_universitate", "Rol", "Marime_formatie", "Rezultat", "Vizibilitate")) {
+            Activity.Field f = new Activity.Field();
+            f.setName(name);
+            f.setNumber(name.equals("N_participanti_universitate") || name.equals("Marime_formatie"));
+            declared.add(f);
+        }
+        activity.setFields(declared);
+        activity.setReferenceFields(List.of(Activity.ReferenceField.EVENT_NAME));
+        ActivityInstance instance = new ActivityInstance();
+        instance.setId(id);
+        instance.setDate("2024-05-01");
+        instance.setActivity(activity);
+        instance.setFields(fields);
+        instance.setReferenceFields(Map.of(Activity.ReferenceField.EVENT_NAME, event));
         return instance;
     }
 }

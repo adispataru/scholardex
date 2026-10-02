@@ -117,7 +117,17 @@ final class SeedReportDefinition {
                 return criterion;
             }
         }
-        throw new AssertionError("no criterion " + prefix);
+        // H142: a standard without criterion codes ("Tabelul 1 — DID …") is found by a prefix only it has
+        List<JsonNode> named = new ArrayList<>();
+        for (JsonNode criterion : report.get("criteria")) {
+            if (criterion.get("name").asText().startsWith(prefix)) {
+                named.add(criterion);
+            }
+        }
+        if (named.size() == 1) {
+            return named.getFirst();
+        }
+        throw new AssertionError(named.isEmpty() ? "no criterion " + prefix : "more than one criterion " + prefix);
     }
 
     Double threshold(String criterionPrefix, String position) {
@@ -272,6 +282,14 @@ final class SeedReportDefinition {
 
     /** Points for ONE declared activity, computed by the real activity scoring service. */
     double activity(String shortName, Map<String, String> entered) {
+        return activity(shortName, entered, null);
+    }
+
+    /**
+     * Points for ONE declared activity that names an event (H142: the artistic performance, whose visibility and
+     * result are derived from the event and the fields).
+     */
+    double activity(String shortName, Map<String, String> entered, String eventName) {
         JsonNode node = indicator(shortName);
         JsonNode definition = activitiesById.get(node.get("activity").get("$id").get("$oid").asText());
         assertNotNull(definition, prefix + shortName + " is bound to an activity missing from the seed");
@@ -297,6 +315,9 @@ final class SeedReportDefinition {
             known.add(f.getName());
         }
         activity.setFields(fields);
+        List<Activity.ReferenceField> references = new ArrayList<>();
+        definition.path("referenceFields").forEach(ref -> references.add(Activity.ReferenceField.valueOf(ref.asText())));
+        activity.setReferenceFields(references);
         for (String key : entered.keySet()) {
             assertTrue(known.contains(key), prefix + shortName + ": the activity has no field " + key);
         }
@@ -307,6 +328,9 @@ final class SeedReportDefinition {
         instance.setActivity(activity);
         instance.setFields(new HashMap<>(entered));
         instance.setReferenceFields(new HashMap<>());
+        if (eventName != null) {
+            instance.getReferenceFields().put(Activity.ReferenceField.EVENT_NAME, eventName);
+        }
 
         Map<String, Score> scores =
                 activityReportingService.calculateActivityScores(List.of(instance), asIndicator(shortName));
@@ -335,6 +359,10 @@ final class SeedReportDefinition {
                     field.get("allowedValues").forEach(option -> options.add(option.asText()));
                 }
             }
+            // values the engine derives itself (H142: the result of an artistic performance)
+            options.addAll(Set.of(ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.PARTICIPATION,
+                    ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.NOMINATION,
+                    ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.PRIZE));
             Matcher matcher = literal.matcher(entry.getValue().get("formula").asText());
             while (matcher.find()) {
                 assertTrue(options.contains(matcher.group(1)), entry.getKey() + " compares against '"

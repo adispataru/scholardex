@@ -115,6 +115,9 @@ public class ActivityReportingService {
         // conference's category differed across the period the researcher splits entries per category
         // period (user decision; true per-year expansion deferred, the year pair enables it later).
         injectEditionsVariable(variables);
+        // H142: N_ani (int >= 1) — the years of a function held "per year" (Music RIA 1.1, 3.2: 10 points a year):
+        // An_inceput to An_sfarsit, or to the reference year while the function is still held (no end year).
+        injectYearsVariable(variables);
         // H136: An_activitate (int) — the year of the declared activity (its date), so a formula can apply a
         // standard's window ("în perioada 2015–2026") without a second, typed year field. Activities are not
         // filtered by the indicator's year range the way publications are. 0 when the entry has no date.
@@ -158,6 +161,11 @@ public class ActivityReportingService {
         // activity has an Editura field; false when the list is not loaded or the name is not on it. After the
         // strategy branch, which replaces scoringInfo, so the miss note survives.
         injectAnexa7cPublisherVariable(variables, result, rawformula);
+        // H142: one declared artistic performance feeds the Music standard and CNFIS Anexa 5.1. For an activity
+        // type that references an event: Nivel_eveniment (the registry's rank or null), Vizibilitate_varf (CS 1.1
+        // vs 1.2), Rezultat_eveniment (PARTICIPARE / NOMINALIZARE / PREMIU) and Rol_eligibil (the roles the
+        // standard counts) — see ArtisticPerformanceSupport.
+        injectArtisticPerformanceVariables(activity, variables, result, rawformula);
         if (budgetEurDerivedFromInterval) {
             // Surfaced on the drilldown row: the amount was inferred from the declared interval's lower
             // bound, not taken from the (missing or interval-contradicting) numeric Buget.
@@ -282,6 +290,50 @@ public class ActivityReportingService {
         variables.put("Editura_7c", onList);
         if (!onList && formula != null && formula.contains("Editura_7c")) {
             result.getScoringInfo().put("anexa7c", "NOT_ON_LIST");
+        }
+    }
+
+    /**
+     * H142 — binds {@code N_ani} (int >= 1) when the activity has a numeric {@code An_inceput}: the years from it to
+     * {@code An_sfarsit}, or to the reference year of the run (else the current year) when no end year is given —
+     * a function still held. 1 otherwise, and for an inverted pair.
+     */
+    private void injectYearsVariable(Map<String, Object> variables) {
+        if (!(variables.get("An_inceput") instanceof Number start)) {
+            variables.put("N_ani", 1);
+            return;
+        }
+        Integer reference = ScoringReferenceYearContext.current();
+        double end = variables.get("An_sfarsit") instanceof Number e ? e.doubleValue()
+                : (reference != null ? reference : java.time.Year.now().getValue());
+        int span = (int) (end - start.doubleValue()) + 1;
+        variables.put("N_ani", Math.max(span, 1));
+    }
+
+    /**
+     * H142 — see the call site. Bound only for activity types that declare an EVENT_NAME reference; the visibility
+     * basis is noted on the row only for formulas that read {@code Vizibilitate_varf}, so the CNFIS-only uses of
+     * the type carry no stray note.
+     */
+    private void injectArtisticPerformanceVariables(ActivityInstance activity, Map<String, Object> variables,
+                                                    Score result, String formula) {
+        Activity type = activity.getActivity();
+        if (type == null || type.getReferenceFields() == null
+                || !type.getReferenceFields().contains(Activity.ReferenceField.EVENT_NAME)) {
+            return;
+        }
+        Map<String, String> fields = activity.getFields() == null ? Map.of() : activity.getFields();
+        String event = activity.getReferenceFields() == null ? null
+                : activity.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME);
+        var rank = ArtisticEventRankSupport.rankOf(event);
+        var visibility = ArtisticPerformanceSupport.visibility(rank, fields);
+        variables.put("Nivel_eveniment", rank.map(Enum::name).orElse(null));
+        variables.put("Vizibilitate_varf", visibility.top());
+        variables.put("Rezultat_eveniment", ArtisticPerformanceSupport.result(fields));
+        variables.put("Rol_eligibil", ArtisticPerformanceSupport.roleCounts(fields));
+        if (formula != null && formula.contains("Vizibilitate_varf")) {
+            result.getScoringInfo().put("eventLevel", rank.map(Enum::name).orElse("NOT_LISTED"));
+            result.getScoringInfo().put("visibilityBasis", visibility.basis().name());
         }
     }
 

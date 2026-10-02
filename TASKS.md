@@ -9,8 +9,27 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SCOPED and
-  REASSESSED 2026-10-02 (decisions taken with Adrian; four smaller ones open).** Asked by FMT (vice-dean for
+- [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
+  BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller decisions open).
+  **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
+  for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
+  from the faculty's table (75 / 751 / 73); rehearsed on a scratch database, a second run changes nothing.
+  **Slice 1:** strategy `MUSIC_INDEXED_JOURNAL` (CS 2.1: Scopus, any WoS edition, ERIH PLUS, DOAJ; proceedings in
+  Scopus or the WoS conference index); activity variables `N_ani` (years of a function, open-ended to the reference
+  year) and, for types that reference an event, `Nivel_eveniment`, `Vizibilitate_varf`, `Rezultat_eveniment`,
+  `Rol_eligibil` (`ArtisticPerformanceSupport`, `ArtisticEventRankSupport`: registry rank by normalised name, loaded
+  on first use); the CNFIS Anexa 5.1 kind is DERIVED when not declared (role, ensemble size, result) and the event
+  level falls back to the normalised name. Configuration: 20 activity types "(Comisia 35, …)", «Participare
+  eveniment artistic» gains Rol, Marime_formatie, Rezultat, Vizibilitate (merged, entries kept), 35 indicators
+  `Muz26_*` (28 scoring, 7 counts), report «FV Muzică 2026»: 16 criteria (three tables and the total, 12 counts),
+  6 perspectives (routes Teoretician / Compozitor / Interpret, and the verdict). Verified: a synthetic candidate
+  with the counts of the faculty's filled grid scores DID 400, CS 1700, RIA 770 on the local app, the page shows
+  the routes (Interpret met at conferențiar); full suite 3703 tests, 0 failures; CI guardrails pass. Prod script
+  `h142_muzica_2026.js` (guard `H142_IMAGE_IS_DEPLOYED`), rehearsed: guarded run writes nothing, first run
+  creates, second changes nothing, 0 differences against the app-built config. **Prod order:** slice 0 script any
+  time; push and deploy; flip the guard, run with `--restart`; select «FV Muzică 2026» for the FMT division.
+  Earlier status: SCOPED and
+  REASSESSED 2026-10-02 (decisions taken with Adrian; four smaller ones open). Asked by FMT (vice-dean for
   research), the first vocational faculty. Plan, the standard transcribed (the standards folder is git-ignored)
   and every measurement in `docs/tasks/active/h142-fv-muzica-2026.md`. **Principle (Adrian):** reduce manual
   work as far as possible — "if we need to do stuff manually, why do we build an app? isn't Excel the same

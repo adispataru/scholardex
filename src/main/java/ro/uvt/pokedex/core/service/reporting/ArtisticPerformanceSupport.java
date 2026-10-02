@@ -1,0 +1,136 @@
+package ro.uvt.pokedex.core.service.reporting;
+
+import ro.uvt.pokedex.core.model.ArtisticEvent;
+
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * One declared artistic performance ("Participare eveniment artistic") serves two reports: the CNATDCU
+ * Music standard (OM 3.019/2025, Comisia 35 — concerts by visibility, prizes at competitions) and the CNFIS
+ * sheet of artistic creation (Anexa 5.1 — the kind of project and the level of the event). The person picks
+ * the event, the role, the size of the ensemble and the result; everything else is derived here, so neither
+ * report asks for it twice (H142).
+ *
+ * <p>Field names and their allowed values are those of the activity type; a record made before H142 carries
+ * only the CNFIS "Tip" and keeps working.</p>
+ */
+public final class ArtisticPerformanceSupport {
+
+    public static final String FIELD_ROLE = "Rol";
+    public static final String FIELD_ENSEMBLE_SIZE = "Marime_formatie";
+    public static final String FIELD_RESULT = "Rezultat";
+    public static final String FIELD_VISIBILITY = "Vizibilitate";
+    /** The CNFIS kind as declared before H142 (Proiect individual / de grup / colectiv, Nominalizare, Premiu). */
+    public static final String FIELD_CNFIS_KIND = "Tip";
+
+    public static final String ROLE_LARGE_ENSEMBLE_MEMBER = "Membru într-un ansamblu de peste 10 persoane";
+    public static final String ROLE_OTHER = "Alt rol";
+
+    /** Formula values of {@code Rezultat_eveniment}. */
+    public static final String PARTICIPATION = "PARTICIPARE";
+    public static final String NOMINATION = "NOMINALIZARE";
+    public static final String PRIZE = "PREMIU";
+
+    private ArtisticPerformanceSupport() {
+    }
+
+    /**
+     * What the record is: a prize, a nomination, or a participation (the default). The declared result wins;
+     * a record made before H142 says it through its CNFIS kind.
+     */
+    public static String result(Map<String, String> fields) {
+        String declared = lower(fields.get(FIELD_RESULT));
+        if (declared.startsWith("premiu")) return PRIZE;
+        if (declared.startsWith("nominalizare")) return NOMINATION;
+        if (declared.startsWith("participare")) return PARTICIPATION;
+        String kind = lower(fields.get(FIELD_CNFIS_KIND));
+        if (kind.startsWith("premiu")) return PRIZE;
+        if (kind.startsWith("nominalizare")) return NOMINATION;
+        return PARTICIPATION;
+    }
+
+    /**
+     * Whether the role counts for the Music standard's concerts: composer, conductor, director, ballet master,
+     * soloist, concertmaster or member of a chamber ensemble of at most ten. A member of a larger ensemble or
+     * another role does not; a record without a role counts — listing a concert is the candidate's own
+     * declaration, and an imported grid row names no role.
+     */
+    public static boolean roleCounts(Map<String, String> fields) {
+        String role = fields.get(FIELD_ROLE);
+        if (role == null || role.isBlank()) {
+            return true;
+        }
+        String r = role.trim();
+        return !ROLE_LARGE_ENSEMBLE_MEMBER.equalsIgnoreCase(r) && !ROLE_OTHER.equalsIgnoreCase(r);
+    }
+
+    /** How the visibility of a concert was decided, for the drilldown. */
+    public enum VisibilityBasis { REGISTRY, DECLARED, DEFAULT }
+
+    public record Visibility(boolean top, VisibilityBasis basis) {
+    }
+
+    /**
+     * Top visibility ("internațională sau națională de vârf", CS 1.1) or regional/local (CS 1.2). An event the
+     * registry ranks decides by itself: a top-international or international festival is top, a national one
+     * is not. For an event the registry does not list, the declared visibility; without one, regional/local.
+     */
+    public static Visibility visibility(Optional<ArtisticEvent.Rank> rank, Map<String, String> fields) {
+        if (rank.isPresent()) {
+            return new Visibility(rank.get() != ArtisticEvent.Rank.NATIONAL, VisibilityBasis.REGISTRY);
+        }
+        String declared = lower(fields.get(FIELD_VISIBILITY));
+        if (!declared.isEmpty()) {
+            return new Visibility(declared.startsWith("interna"), VisibilityBasis.DECLARED);
+        }
+        return new Visibility(false, VisibilityBasis.DEFAULT);
+    }
+
+    /**
+     * The CNFIS kind of Anexa 5.1 — INDIVIDUAL, GROUP (2–4), COLLECTIVE (5 or more), NOMINATION or PRIZE —
+     * or {@code null} when nothing tells it. In order: the CNFIS kind as declared; the result (a nomination or
+     * a prize); the size of the ensemble; the role (a conductor, director, ballet master, concertmaster or member
+     * of a large ensemble leads or plays in a collective; a soloist or composer is an individual project).
+     * A chamber musician without the ensemble's size stays undecided: their group could be 2 or 10.
+     */
+    public static String cnfisKind(Map<String, String> fields) {
+        String declared = lower(fields.get(FIELD_CNFIS_KIND));
+        if (declared.startsWith("proiect individual")) return "INDIVIDUAL";
+        if (declared.startsWith("proiect de grup")) return "GROUP";
+        if (declared.startsWith("proiect colectiv")) return "COLLECTIVE";
+        if (declared.startsWith("nominalizare")) return "NOMINATION";
+        if (declared.startsWith("premiu")) return "PRIZE";
+        String result = result(fields);
+        if (PRIZE.equals(result)) return "PRIZE";
+        if (NOMINATION.equals(result)) return "NOMINATION";
+        Integer size = parseSize(fields.get(FIELD_ENSEMBLE_SIZE));
+        if (size != null && size >= 1) {
+            if (size == 1) return "INDIVIDUAL";
+            return size <= 4 ? "GROUP" : "COLLECTIVE";
+        }
+        String role = lower(fields.get(FIELD_ROLE));
+        if (role.startsWith("solist") || role.startsWith("compozitor")) return "INDIVIDUAL";
+        if (role.startsWith("dirijor") || role.startsWith("regizor") || role.startsWith("maestru de balet")
+                || role.startsWith("concert-maestru") || role.equals(ROLE_LARGE_ENSEMBLE_MEMBER.toLowerCase(Locale.ROOT))) {
+            return "COLLECTIVE";
+        }
+        return null;
+    }
+
+    private static Integer parseSize(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return (int) Math.round(Double.parseDouble(value.trim()));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String lower(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+}

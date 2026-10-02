@@ -349,6 +349,41 @@ class CnfisReportingFacadeTest {
     }
 
     @Test
+    void aPerformanceWithoutADeclaredKindTakesItFromTheRoleAndFindsItsEventWithoutDiacritics() {
+        // H142: the person picks the role and the size of the ensemble; the CNFIS kind follows. The event is
+        // written without the registry's quotes and diacritics and is still the same festival.
+        ro.uvt.pokedex.core.model.ArtisticEvent georgescu = new ro.uvt.pokedex.core.model.ArtisticEvent();
+        georgescu.setName("Festivalul „Remus Georgescu” (Timișoara)");
+        georgescu.setRank(ro.uvt.pokedex.core.model.ArtisticEvent.Rank.INTERNATIONAL);
+        ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.register(List.of(georgescu));
+        try {
+            when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                    new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+            when(userRepository.findAll()).thenReturn(List.of());
+            when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
+                    performance("Concert dirijat", "2024-10-23", "Festivalul Remus Georgescu (Timisoara)", Map.of("Rol", "Dirijor")),
+                    performance("Recital în duo", "2024-10-24", "Festivalul Remus Georgescu (Timisoara)",
+                            Map.of("Rol", "Membru într-o formație camerală (până la 10 persoane)", "Marime_formatie", "2")),
+                    performance("Cvartet fără mărime", "2024-10-25", "Festivalul Remus Georgescu (Timisoara)",
+                            Map.of("Rol", "Membru într-o formație camerală (până la 10 persoane)"))));
+            CnfisSheetHeader header = new CnfisSheetHeader();
+            header.setDomainCode("75");
+            when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
+
+            CnfisSheetViewModel sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+
+            assertEquals(2, sheet.arts().rows().size());
+            assertEquals("COLLECTIVE", sheet.arts().rows().get(0).kind());
+            assertEquals("INTERNATIONAL", sheet.arts().rows().get(0).level());
+            assertEquals("GROUP", sheet.arts().rows().get(1).kind());
+            assertEquals(1, sheet.arts().leftOut().size());
+            assertTrue(sheet.arts().leftOut().getFirst().reason().contains("size of the ensemble"));
+        } finally {
+            ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.reset();
+        }
+    }
+
+    @Test
     void theArtsSheetDoesNotApplyToSomebodyOutsideTheArtsWhoDeclaredNothing() {
         when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
                 new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));

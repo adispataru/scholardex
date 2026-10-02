@@ -395,7 +395,39 @@
   "name": "Participare eveniment artistic",
   "fields": [
    {
-    "name": "Dovezi",
+    "name": "Rol",
+    "allowedValues": [
+     "Compozitor",
+     "Dirijor",
+     "Regizor",
+     "Maestru de balet",
+     "Solist",
+     "Concert-maestru",
+     "Membru într-o formație camerală (până la 10 persoane)",
+     "Membru într-un ansamblu de peste 10 persoane",
+     "Alt rol"
+    ],
+    "number": false
+   },
+   {
+    "name": "Marime_formatie",
+    "number": true
+   },
+   {
+    "name": "Rezultat",
+    "allowedValues": [
+     "Participare",
+     "Nominalizare",
+     "Premiu"
+    ],
+    "number": false
+   },
+   {
+    "name": "Vizibilitate",
+    "allowedValues": [
+     "Internațională sau națională de vârf",
+     "Regională sau locală"
+    ],
     "number": false
    },
    {
@@ -412,6 +444,10 @@
    {
     "name": "N_participanti_universitate",
     "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
    }
   ],
   "referenceFields": [
@@ -1680,6 +1716,609 @@
    {
     "name": "N_participanti_universitate",
     "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8be6"
+  },
+  "name": "Tratat, studiu amplu sau volum de studii publicat (Comisia 35, DID 1.1)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "Incadrare_editura",
+    "allowedValues": [
+     "Editură CNCS categoria A",
+     "Editură CNCS categoria B",
+     "Editură străină echivalentă",
+     "Altă editură"
+    ],
+    "number": false
+   },
+   {
+    "name": "ISBN",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8be7"
+  },
+  "name": "Capitol într-un volum colectiv (Comisia 35, DID 1.2)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Volum",
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "ISBN",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8be8"
+  },
+  "name": "Manual, curs sau alt suport didactic tipărit (Comisia 35, DID 1.3)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Manual",
+     "Curs",
+     "Suport de curs",
+     "Crestomație",
+     "Colecție",
+     "Îndrumător metodic"
+    ],
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "ISBN",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8be9"
+  },
+  "name": "Traducere, ediție critică sau îngrijire redacțională (Comisia 35, DID 1.4)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Traducere",
+     "Ediție critică",
+     "Îngrijire redacțională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bea"
+  },
+  "name": "Înregistrare pe CD, DVD, vinil sau în streaming (Comisia 35, DID 2.1)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Suport",
+    "allowedValues": [
+     "CD",
+     "DVD",
+     "Disc de vinil",
+     "Streaming (înregistrare video din concert public)"
+    ],
+    "number": false
+   },
+   {
+    "name": "Casa_de_discuri",
+    "number": false
+   },
+   {
+    "name": "Cod_autentificare",
+    "number": false
+   },
+   {
+    "name": "Durata_minute",
+    "number": true
+   },
+   {
+    "name": "Link",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8beb"
+  },
+  "name": "Articol într-o revistă sau într-un volum indexat în baze de date internaționale (Comisia 35, CS 2.1)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Revista_sau_volumul",
+    "number": false
+   },
+   {
+    "name": "ISSN_sau_ISBN",
+    "number": false
+   },
+   {
+    "name": "Baza_de_date",
+    "allowedValues": [
+     "Cambridge Core",
+     "CEEOL",
+     "DOAJ",
+     "EBSCO",
+     "ERIH PLUS",
+     "JSTOR",
+     "Oxford Academic Journals",
+     "Oxford Music Online",
+     "Project MUSE",
+     "ProQuest",
+     "RILM",
+     "Sciendo",
+     "Scopus",
+     "Taylor & Francis Online",
+     "Web of Science (AHCI)",
+     "Web of Science (ESCI)",
+     "Bază de date a unui domeniu corelat"
+    ],
+    "number": false
+   },
+   {
+    "name": "DOI",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bec"
+  },
+  "name": "Articol în lexicon sau dicționar muzical, pe site-ul unui festival, rezumat RIPM, RILM, RISM, RIDIM (Comisia 35, CS 2.2)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Articol în lexicon sau dicționar muzical internațional",
+     "Articol online pe site-ul unui festival internațional de vârf",
+     "Rezumat pentru RIPM, RILM, RISM sau RIDIM"
+    ],
+    "number": false
+   },
+   {
+    "name": "Sursa",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bed"
+  },
+  "name": "Comunicare la o conferință cu comitet de selecție sau peer review (Comisia 35, CS 2.3)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Conferinta",
+    "number": false
+   },
+   {
+    "name": "Loc",
+    "allowedValues": [
+     "În țară",
+     "În străinătate"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bee"
+  },
+  "name": "Compoziție amplă, ciclu sau album de lucrări publicat la o editură de profil (Comisia 35, CS 4.1)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "ISMN_sau_ISBN",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bef"
+  },
+  "name": "Funcție de management (Comisia 35, RIA 1.1)",
+  "fields": [
+   {
+    "name": "Functia",
+    "number": false
+   },
+   {
+    "name": "Institutia",
+    "number": false
+   },
+   {
+    "name": "An_inceput",
+    "number": true
+   },
+   {
+    "name": "An_sfarsit",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf0"
+  },
+  "name": "Membru în colectivul de redacție sau recenzor al unei publicații ori edituri indexate (Comisia 35, RIA 1.3)",
+  "fields": [
+   {
+    "name": "Publicatia_sau_editura",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Membru în colectivul de redacție",
+     "Recenzor"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf1"
+  },
+  "name": "Organizator al unei manifestări științifice sau artistice (Comisia 35, RIA 1.4 și 1.5)",
+  "fields": [
+   {
+    "name": "Manifestarea",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Internațional",
+     "Național"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf2"
+  },
+  "name": "Distincție sau premiu de stat (Comisia 35, RIA 2.1)",
+  "fields": [
+   {
+    "name": "Denumire",
+    "number": false
+   },
+   {
+    "name": "Tara",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf3"
+  },
+  "name": "Distincție sau premiu acordat de o organizație profesională sau de media (Comisia 35, RIA 2.2)",
+  "fields": [
+   {
+    "name": "Denumire",
+    "number": false
+   },
+   {
+    "name": "Organizatia",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf4"
+  },
+  "name": "Membru sau funcție într-o academie, organizație ori asociație profesională (Comisia 35, RIA 3.1 și 3.2)",
+  "fields": [
+   {
+    "name": "Organizatia",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Membru",
+     "Funcție de conducere"
+    ],
+    "number": false
+   },
+   {
+    "name": "Functia",
+    "number": false
+   },
+   {
+    "name": "An_inceput",
+    "number": true
+   },
+   {
+    "name": "An_sfarsit",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf5"
+  },
+  "name": "Membru în juriul unui concurs sau pentru acordarea unor distincții (Comisia 35, RIA 3.3)",
+  "fields": [
+   {
+    "name": "Concursul",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Național",
+     "Internațional"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf6"
+  },
+  "name": "Lucrare achiziționată sau comandată (Comisia 35, RIA 3.4)",
+  "fields": [
+   {
+    "name": "Lucrarea",
+    "number": false
+   },
+   {
+    "name": "Beneficiar",
+    "allowedValues": [
+     "UCMR",
+     "Instituție de spectacole sau concerte",
+     "Festival de prestigiu",
+     "Alt organism"
+    ],
+    "number": false
+   },
+   {
+    "name": "Contract",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf7"
+  },
+  "name": "Curs, masterclass sau conferință la altă instituție (Comisia 35, RIA 3.5)",
+  "fields": [
+   {
+    "name": "Denumire",
+    "number": false
+   },
+   {
+    "name": "Institutia",
+    "number": false
+   },
+   {
+    "name": "Loc",
+    "allowedValues": [
+     "În țară",
+     "În străinătate, în limbă străină"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf8"
+  },
+  "name": "Portret sau interviu ca invitat unic în media (Comisia 35, RIA 3.6)",
+  "fields": [
+   {
+    "name": "Publicatia_sau_postul",
+    "number": false
+   },
+   {
+    "name": "Difuzare",
+    "allowedValues": [
+     "Națională",
+     "Internațională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abfc79110e2c7537f4c8bf9"
+  },
+  "name": "Keynote speaker la o manifestare științifică (Comisia 35, RIA 3.7)",
+  "fields": [
+   {
+    "name": "Manifestarea",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Național",
+     "Internațional"
+    ],
+    "number": false
    },
    {
     "name": "Dovezi",

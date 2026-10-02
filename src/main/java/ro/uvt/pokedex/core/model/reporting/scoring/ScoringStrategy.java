@@ -80,6 +80,12 @@ public enum ScoringStrategy {
      */
     CITING_IMPACT_FACTOR,
     /**
+     * Muzică 2026 (Comisia 35) CS 2.1 — a journal article or review in a venue indexed in Scopus, Web of Science,
+     * ERIH PLUS or DOAJ, or a proceedings paper in a volume indexed in Scopus or the WoS conference index: S = 1,
+     * the database as {@code category}; formula {@code 15 * S}. Other databases of the standard are declared.
+     */
+    MUSIC_INDEXED_JOURNAL,
+    /**
      * H67 S4a: the Hirsch (h-index) aggregate. Unlike the others this is NOT a per-item {@code ScoringService} —
      * h-index is non-additive, so it is handled inline at the combine step (like {@link #GENERIC_COUNT}); no
      * {@code ScoringService} bean claims it. Carried as a strategy only so {@code IndicatorKind.HIndex} round-trips.

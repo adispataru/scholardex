@@ -77,6 +77,8 @@ public class ArtisticEventsService {
             } catch (IOException e) {
                 log.error("Error reading or parsing artistic events JSON file", e);
             }
+            // H142: the activity scoring reads ranks from a static registry; reload it with what was imported
+            ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.registerLoader(artisticEventRepository::findAll);
         }
 
     }

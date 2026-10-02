@@ -1,6 +1,6 @@
 # H142 — FV Muzică 2026 (Comisia 35) and the CNFIS gaps for music
 
-Status: **SCOPED 2026-10-02; decisions taken the same day (Adrian), plan reassessed around automation.** Asked by FMT (vice-dean for research,
+Status: **Slices 0 and 1 BUILT 2026-10-02 (not pushed); slices 2–6 open.** Scoped, decided and reassessed the same day. Asked by FMT (vice-dean for research,
 email of 2026-10-02 in the thread "Intalnire platforma de raportare a cercetarii"). The faculty is the first
 vocational one on the platform.
 
@@ -404,6 +404,26 @@ After the faculty's grid arrives: the same machinery, the shared types, a second
 Slice 0 any time. Slice 1, then 2 (it needs slice 1's types). Slice 3 can run beside 2; slice 1 starts with
 exact event names and gains aliases from slice 3 without change. Slice 4 improves slice 1's CS 2.1 and DID 1.1
 when it lands. Slice 5 last, source by source.
+
+## Slices 0 and 1 as built (2026-10-02)
+
+- **Slice 0** — `h142_fmt_data.js` in the ops folder, generated from the faculty's table joined to the imported
+  staff by name (54 of 59 rows; the other five were never imported, their addresses unconfirmed). Writes only
+  missing values; a different existing value is reported, never overwritten.
+- **Slice 1, engine** — `MusicIndexedJournalScoringService` (`MUSIC_INDEXED_JOURNAL`); `ActivityReportingService`
+  binds `N_ani` always and the four performance variables for types with an `EVENT_NAME` reference (the visibility
+  basis — registry, declared, default — is noted on the row for formulas that read it);
+  `ArtisticPerformanceSupport` (result, role, visibility, CNFIS kind); `ArtisticEventRankSupport` +
+  `ArtisticEventRankRegistrar` (static registry, loaded on first use, reloaded after the events import);
+  `CnfisReportingFacade.arts()` derives the kind and matches the event by normalised name when the exact name
+  fails.
+- **Slice 1, configuration** — as specified above: the 20 types, the merged shared type, 35 indicators, the report
+  with 16 criteria and 6 perspectives; `indicator-descriptions/muzica-2026.json`; seed exported; pinned by
+  `Muzica2026ReportDefinitionTest` (thresholds, members, routes, the points of every item, the example grid's
+  totals). `SeedReportDefinition` learned to pass an event and to find a criterion without a code.
+- **Readings chosen while building:** a book needs its publisher category (no category, no points); a recording with
+  a declared duration under 45 minutes does not count, one without a duration does; an organiser or a keynote
+  without a level counts as national; a membership without a role is a membership (5 points).
 
 ## Still to decide
 
