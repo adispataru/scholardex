@@ -46,6 +46,8 @@ class CNFISReportExportServiceTest {
         stage("AC2025_Anexa6.1-Tabel_institutional_creatie_artistica-2025.xlsx");
         stage("AC2025_Anexa5.3-Performanta_stiinte_umaniste-2025.xlsx");
         stage("AC2025_Anexa6.3-Tabel_institutional_performanta_stiinte_umaniste-2025.xlsx");
+        stage("AC2025_Anexa5.2-Performanta_sportiva-2025.xlsx");
+        stage("AC2025_Anexa6.2-Tabel_institutional_performanta_sportiva-2025.xlsx");
     }
 
     private static void stage(String filename) throws Exception {
