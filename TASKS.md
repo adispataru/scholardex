@@ -30,6 +30,11 @@ Done history moved to `TASKS-done.md`.
   `h142_muzica_2026.js` (guard `H142_IMAGE_IS_DEPLOYED`), rehearsed: guarded run writes nothing, first run
   creates, second changes nothing, 0 differences against the app-built config. **Prod order:** slice 0 script any
   time; push and deploy; flip the guard, run with `--restart`; select «FV Muzică 2026» for the FMT division.
+  **Slice 1 DEPLOYED and LOADED in prod 2026-10-02:** image `688c85f2` (GitHub `deploy-prod`: STATUS deployed,
+  15:31 UTC; read from the deploy log); `h142_muzica_2026.js` run by Adrian with `--restart`: 20 types, 35
+  indicators, the report `6abfcf06128e8e8842a1debc` (35 / 16 / 6, routes as committed), the shared type merged
+  (no existing entries in prod), rollout restarted. Left: select the report for the FMT division
+  `6abb58092fb0d9482997fab3`.
   Earlier status: SCOPED and
   REASSESSED 2026-10-02 (decisions taken with Adrian; four smaller ones open). Asked by FMT (vice-dean for
   research), the first vocational faculty. Plan, the standard transcribed (the standards folder is git-ignored)
