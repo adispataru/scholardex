@@ -314,6 +314,8 @@ public class PostgresScholardexAdminReadPort {
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         Integer citedByCount = rs.getObject("cited_by_count", Integer.class);
         publication.setCitedbyCount(citedByCount == null ? 0 : citedByCount);
+        publication.setCitedByCountScopus(rs.getObject("cited_by_count_scopus", Integer.class)); // H131
+        publication.setCitedByCountOpenAlex(rs.getObject("cited_by_count_openalex", Integer.class));
         // H67: source-attributed incoming-citation counts.
         Integer graphCit = rs.getObject("graph_citation_count", Integer.class);
         Integer scopusCit = rs.getObject("scopus_citation_count", Integer.class);

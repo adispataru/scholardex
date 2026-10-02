@@ -134,7 +134,7 @@
                                     <td th:text="${publication.subtypeDescription}">0</td>
                                     <td th:text="${forumMap.get(publication.forum) != null ? forumMap.get(publication.forum).publicationName : publication.forum}">Venue</td>
                                     <td th:text="${publication.fundingId}"></td>
-                                    <td th:text="${publication.citedbyCount}">0</td>
+                                    <td><th:block th:replace="~{fragments :: citation-counts(${publication}, true, null)}"></th:block></td>
                                 </tr>
                                 </tbody>
                             </table>

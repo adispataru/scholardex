@@ -118,6 +118,7 @@ class PrincipalAuthorDeclarationReadServiceTest {
             n++;
             if (type == String.class) field.set(original, field.getName() + "-" + n);
             else if (type == int.class) field.setInt(original, 100 + n);
+            else if (type == Integer.class) field.set(original, 200 + n);
             else if (type == boolean.class) field.setBoolean(original, true);
             else if (type == Instant.class) field.set(original, Instant.parse("2026-01-01T00:00:00Z").plusSeconds(n));
             else if (type == List.class) field.set(original, new ArrayList<>(List.of(field.getName() + "-a", "me")));

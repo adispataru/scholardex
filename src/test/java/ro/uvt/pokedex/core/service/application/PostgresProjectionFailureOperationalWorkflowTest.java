@@ -100,7 +100,8 @@ class PostgresProjectionFailureOperationalWorkflowTest {
                 mock(org.springframework.beans.factory.ObjectProvider.class),
                 mock(ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService.class),
                 mock(ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService.class),
-                mock(ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService.class)
+                mock(ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService.class),
+                mock(ro.uvt.pokedex.core.service.importing.scopus.CitationCountSourceBackfillService.class)
         );
 
         PostgresOperationalStatusService.PostgresOperationalStatusSnapshot operational = controller.postgresOperationalStatusApi();

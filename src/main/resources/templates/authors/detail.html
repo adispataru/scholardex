@@ -125,7 +125,9 @@
                                th:text="${forumMap.get(publication.forum).publicationName}">Venue</a>
                             <span th:if="${forumMap.get(publication.forum) == null}" th:text="${publication.forum}">Venue</span>
                         </td>
-                        <td class="app-table__cell--numeric" th:if="${showMetrics}" th:text="${publication.citedbyCount}">0</td>
+                        <td class="app-table__cell--numeric" th:if="${showMetrics}">
+                            <th:block th:replace="~{fragments :: citation-counts(${publication}, true, null)}"></th:block>
+                        </td>
                     </tr>
                     </tbody>
                 </table>

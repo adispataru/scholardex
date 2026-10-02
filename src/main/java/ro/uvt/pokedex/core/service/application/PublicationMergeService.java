@@ -380,6 +380,9 @@ public class PublicationMergeService {
         int survivorCites = survivor.getCitedByCount() == null ? 0 : survivor.getCitedByCount();
         int duplicateCites = duplicate.getCitedByCount() == null ? 0 : duplicate.getCitedByCount();
         survivor.setCitedByCount(Math.max(survivorCites, duplicateCites));
+        // H131: per-source numbers merge the same way, each within its source
+        survivor.setCitedByCountScopus(maxOrNull(survivor.getCitedByCountScopus(), duplicate.getCitedByCountScopus()));
+        survivor.setCitedByCountOpenAlex(maxOrNull(survivor.getCitedByCountOpenAlex(), duplicate.getCitedByCountOpenAlex()));
         survivor.setUpdatedAt(Instant.now());
     }
 
@@ -487,6 +490,13 @@ public class PublicationMergeService {
         snapshot.setCoverDate(fact.getCoverDate());
         snapshot.setCitedByCount(fact.getCitedByCount());
         return side;
+    }
+
+    /** H131: the larger of two per-source counts; null only when neither source reported one. */
+    private static Integer maxOrNull(Integer a, Integer b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return Math.max(a, b);
     }
 
     private static PublicationMergeDecision.IdentityHint buildIdentityHint(ScholardexPublicationFact survivor) {

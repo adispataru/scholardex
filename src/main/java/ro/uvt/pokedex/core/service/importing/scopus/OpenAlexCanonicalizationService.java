@@ -320,6 +320,10 @@ public class OpenAlexCanonicalizationService {
             target.setCitedByCount(openAlexCount);
             changed = true;
         }
+        if (openAlexCount != null && !openAlexCount.equals(target.getCitedByCountOpenAlex())) {
+            target.setCitedByCountOpenAlex(openAlexCount); // H131: OpenAlex's own number
+            changed = true;
+        }
         if (source.getOpenAccess() != null && !source.getOpenAccess().equals(target.getOpenAccess())) {
             target.setOpenAccess(source.getOpenAccess());
             changed = true;
@@ -370,6 +374,7 @@ public class OpenAlexCanonicalizationService {
             fact.setForumId(resolvedForumId);
         }
         fact.setCitedByCount(source.getCitedByCount());
+        fact.setCitedByCountOpenAlex(source.getCitedByCount()); // H131
         fact.setOpenAccess(source.getOpenAccess());
         // H120: funding is OpenAlex's (Scopus funding is not kept) — mirrored in CanonicalGraphBuilder.
         fact.setFundingId(source.getFunding());

@@ -1066,6 +1066,9 @@ public class CanonicalGraphBuilder {
             }
         }
         fact.setCitedByCount(cited);
+        // H131: each source's own number beside the scalar (mirrored in the on-demand canonicalisation paths).
+        fact.setCitedByCountScopus(scopus == null ? null : scopus.citedByCount());
+        fact.setCitedByCountOpenAlex(openAlex == null ? null : openAlex.citedByCount());
         // Scopus-only enrichment.
         if (scopus != null) {
             fact.setEid(scopus.eid());

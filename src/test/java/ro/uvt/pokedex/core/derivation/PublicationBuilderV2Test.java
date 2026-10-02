@@ -37,6 +37,9 @@ class PublicationBuilderV2Test {
         assertThat(pub.getSource()).isEqualTo("OPENALEX");
         assertThat(pub.getEid()).isEqualTo("2-s2.0-A");
         assertThat(pub.getCitedByCount()).isEqualTo(99);
+        // H131: each source's own number travels beside the scalar, so a display can say where it comes from
+        assertThat(pub.getCitedByCountScopus()).isEqualTo(10);
+        assertThat(pub.getCitedByCountOpenAlex()).isEqualTo(99);
         // One PUBLICATION source-link per source pub, both pointing at the same canonical id.
         assertThat(result.sourceLinks()).hasSize(2);
         assertThat(result.sourceLinks()).allMatch(l -> l.canonicalEntityId().equals(pub.getId()));
@@ -67,6 +70,19 @@ class PublicationBuilderV2Test {
 
         assertThat(result.facts()).hasSize(1);
         assertThat(result.facts().getFirst().getCitedByCount()).isEqualTo(6); // monotonic max
+    }
+
+    @Test
+    void aScopusOnlyRecordCarriesNoOpenAlexCountAndViceVersa() {
+        // H131: null, not 0 — "the source never reported one" must stay distinguishable from "it reported zero"
+        CanonicalGraphBuilder.PublicationBuildResult scopusOnly = builder.buildPublications(
+                List.of(scopusPub("2-s2.0-S", "10.1/s-only", "Scopus Only", 4)), List.of(), CanonicalGraphBuilder.PubResolvers.empty());
+        assertThat(scopusOnly.facts().getFirst().getCitedByCountScopus()).isEqualTo(4);
+        assertThat(scopusOnly.facts().getFirst().getCitedByCountOpenAlex()).isNull();
+        CanonicalGraphBuilder.PublicationBuildResult openAlexOnly = builder.buildPublications(
+                List.of(), List.of(openAlexPub("W9", "10.1/oa-only", "OpenAlex Only", 0)), CanonicalGraphBuilder.PubResolvers.empty());
+        assertThat(openAlexOnly.facts().getFirst().getCitedByCountOpenAlex()).isEqualTo(0);
+        assertThat(openAlexOnly.facts().getFirst().getCitedByCountScopus()).isNull();
     }
 
     @Test

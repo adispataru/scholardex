@@ -357,6 +357,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
         // The preloaded OpenAlex pub is mutated in place: OpenAlex content preserved, Scopus fields enriched.
         assertEquals("OpenAlex title", openAlexPub.getTitle());
         assertEquals(Integer.valueOf(99), openAlexPub.getCitedByCount()); // 5 < 99 -> monotonic max keeps OpenAlex
+        assertEquals(Integer.valueOf(5), openAlexPub.getCitedByCountScopus(), "H131: Scopus's own number is kept beside the scalar");
         assertEquals("OPENALEX", openAlexPub.getSource());
         assertEquals("2-s2.0-xyz", openAlexPub.getEid());
         assertEquals("12", openAlexPub.getVolume());

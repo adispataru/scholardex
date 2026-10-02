@@ -58,6 +58,9 @@ public class ScholardexPublicationView {
     private Set<String> citingPublicationIds = new LinkedHashSet<>();
     private int citedByCount;
     // H67: incoming citations split by the indexing of the CITING paper's forum (for source-attributed h-index).
+    /** H131: each source's own cited-by count (null when that source never reported one); see the fact. */
+    private Integer citedByCountScopus;
+    private Integer citedByCountOpenAlex;
     private int graphCitationCount;   // # incoming citations in our internal graph (= citingPublicationIds.size())
     private int scopusCitationCount;  // … whose citing forum is Scopus-indexed
     private int wosCitationCount;     // … whose citing forum is WoS-indexed

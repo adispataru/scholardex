@@ -134,8 +134,11 @@ class OpenAlexCanonicalizationServiceTest {
 
         service.rebuildCanonicalFacts();
 
-        // No regression: the higher existing count stays, no save.
-        verify(scholardexPublicationFactRepository, never()).save(any());
+        // No regression of the scalar: the higher existing count stays. H131: OpenAlex's own (lower) number is
+        // still recorded beside it, which is a change worth saving.
+        org.junit.jupiter.api.Assertions.assertEquals(Integer.valueOf(99), existing.getCitedByCount());
+        org.junit.jupiter.api.Assertions.assertEquals(Integer.valueOf(10), existing.getCitedByCountOpenAlex());
+        verify(scholardexPublicationFactRepository).save(existing);
     }
 
     @Test

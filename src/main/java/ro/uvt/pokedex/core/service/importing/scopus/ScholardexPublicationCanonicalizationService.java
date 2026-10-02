@@ -753,6 +753,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             fact.setCoverDate(scopusFact.getCoverDate());
             fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
             fact.setCitedByCount(scopusFact.getCitedByCount());
+            fact.setCitedByCountScopus(scopusFact.getCitedByCount()); // H131: the source of the number
             fact.setSourceEventId(scopusFact.getSourceEventId());
             fact.setSource(scopusFact.getSource());
             fact.setSourceRecordId(scopusFact.getSourceRecordId());
@@ -766,6 +767,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             if (scopusCount != null && scopusCount > current) {
                 fact.setCitedByCount(scopusCount);
             }
+            fact.setCitedByCountScopus(scopusCount); // H131: Scopus's own number, whatever the scalar does
             // coverDate: Scopus wins even on an OpenAlex-owned pub. OpenAlex's publication_date is often
             // the first-online date (Sept-2008 online for an April-2009 issue — bit FGCS, scored a year
             // early in the wrong quartile); Scopus carries the issue date the standards score by. Mirrors

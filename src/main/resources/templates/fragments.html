@@ -961,6 +961,23 @@
       contextLine — optional secondary explanatory text
       icon        — optional Font Awesome class
 -->
+<!-- H131: a citation count always says where it comes from. withScopus=false (anonymous public pages) shows the
+     OpenAlex number only — Elsevier's policy keeps Scopus counts off external display; when neither source is
+     recorded yet (records derived before H131) the platform's scalar shows, marked as such. -->
+<span th:fragment="citation-counts(publication, withScopus, scopusCitedByUrl)" class="app-citation-counts">
+    <th:block th:with="scopus=${publication.citedByCountScopus}, openAlex=${publication.citedByCountOpenAlex}">
+        <th:block th:if="${withScopus and scopus != null}">
+            <a th:if="${scopusCitedByUrl != null}" th:href="${scopusCitedByUrl}" rel="noopener" target="_blank"
+               th:title="#{citations.source.scopus.hint}"><span th:text="#{citations.source.scopus}">Scopus</span> <span th:text="${scopus}">0</span></a>
+            <span th:if="${scopusCitedByUrl == null}" th:title="#{citations.source.scopus.hint}"><span th:text="#{citations.source.scopus}">Scopus</span> <span th:text="${scopus}">0</span></span>
+        </th:block>
+        <span th:if="${withScopus and scopus != null and openAlex != null}" aria-hidden="true"> · </span>
+        <span th:if="${openAlex != null}" th:title="#{citations.source.openalex.hint}"><span th:text="#{citations.source.openalex}">OpenAlex</span> <span th:text="${openAlex}">0</span></span>
+        <span th:if="${scopus == null and openAlex == null and withScopus}" th:title="#{citations.source.unknown.hint}" th:text="${publication.citedByCount}">0</span>
+        <span th:if="${!withScopus and openAlex == null}" th:text="#{citations.source.none}">—</span>
+    </th:block>
+</span>
+
 <div th:fragment="stat-card(label, value, accent, contextLine, icon)"
      th:with="resolvedAccent=${accent == null or #strings.isEmpty(accent)} ? 'neutral' : ${accent}"
      class="app-summary-card"

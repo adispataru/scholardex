@@ -42,13 +42,19 @@
                     accent='primary',
                     contextLine='Cover date',
                     icon='fa-solid fa-calendar')}"></th:block>
-                <th:block th:if="${showMetrics}">
-                <th:block th:replace="~{fragments :: stat-card(
-                    label='Citations',
-                    value=${#numbers.formatInteger(publication.citedByCount, 0, 'COMMA')},
-                    accent='success',
-                    contextLine='Times cited',
-                    icon='fa-solid fa-quote-right')}"></th:block>
+                <!-- H131: the count with its source — Scopus (linked to the cited-by list) for signed-in readers,
+                     the OpenAlex number for everyone; a record not yet derived with per-source counts shows nothing publicly -->
+                <th:block th:if="${showMetrics or publication.citedByCountOpenAlex != null}">
+                <div class="app-summary-card app-summary-card--success">
+                    <div class="app-summary-card__top">
+                        <p class="app-summary-card__label" th:text="#{citations.label}">Citations</p>
+                        <span class="app-summary-card__icon" aria-hidden="true"><i class="fa-solid fa-quote-right"></i></span>
+                    </div>
+                    <p class="app-summary-card__value" style="font-size: 1.05rem;">
+                        <th:block th:replace="~{fragments :: citation-counts(${publication}, ${showMetrics}, ${scopusCitedByUrl})}"></th:block>
+                    </p>
+                    <p class="app-summary-card__meta" th:text="#{citations.bySource}">by source</p>
+                </div>
                 </th:block>
                 <th:block th:replace="~{fragments :: stat-card(
                     label='Authors',

@@ -169,6 +169,8 @@ public class ScholardexPublicationMvcService {
         pub.setForum(rs.getString("forum_id"));
         Integer citedByCount = rs.getObject("cited_by_count", Integer.class);
         pub.setCitedbyCount(citedByCount == null ? 0 : citedByCount);
+        pub.setCitedByCountScopus(rs.getObject("cited_by_count_scopus", Integer.class)); // H131
+        pub.setCitedByCountOpenAlex(rs.getObject("cited_by_count_openalex", Integer.class));
         pub.setAuthors(toStringList(rs.getArray("author_ids")));
         return pub;
     }

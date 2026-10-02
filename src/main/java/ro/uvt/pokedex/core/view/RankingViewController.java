@@ -120,6 +120,7 @@ public class RankingViewController {
         // H106 S4: resolver link computed here — Thymeleaf 3.1 forbids static access in templates.
         model.addAttribute("showMetrics", onlyAuthorIds == null);
         model.addAttribute("scopusUrl", ro.uvt.pokedex.core.utils.ScopusLinks.recordUrl(detail.get().publication().getEid()));
+        model.addAttribute("scopusCitedByUrl", ro.uvt.pokedex.core.utils.ScopusLinks.citedByUrl(detail.get().publication().getEid()));
         model.addAttribute("doiUrl", ro.uvt.pokedex.core.utils.DoiLinks.resolverUrl(detail.get().publication().getDoi()));
         model.addAttribute("badges", ProvenanceBadges.forPublication(detail.get().publication()));
         model.addAttribute("breadcrumbs", List.of(

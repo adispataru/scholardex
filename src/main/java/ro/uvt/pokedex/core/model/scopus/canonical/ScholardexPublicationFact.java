@@ -57,6 +57,14 @@ public class ScholardexPublicationFact {
     private String description;
     private List<String> authKeywords = new ArrayList<>();
     private Integer citedByCount;
+    /**
+     * H131: the cited-by count each source reports, kept apart so a displayed number can say where it comes from
+     * (Elsevier's attribution rule for the Scopus one; the OpenAlex one may be shown publicly). {@link #citedByCount}
+     * stays the platform's scalar — the maximum of the two — for everything that scores or sorts on it. Null until
+     * the next derivation of records canonicalised before this field existed.
+     */
+    private Integer citedByCountScopus;
+    private Integer citedByCountOpenAlex;
     private Boolean openAccess;
     private String freetoread;
     private String freetoreadLabel;

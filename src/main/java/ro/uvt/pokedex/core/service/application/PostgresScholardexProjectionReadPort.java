@@ -380,6 +380,9 @@ public class PostgresScholardexProjectionReadPort {
         publication.setBookId(rs.getString("book_id"));
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         publication.setCitedbyCount(readIntOrDefault(rs, "cited_by_count"));
+        // H131: each source's own number, null until the record is derived again
+        publication.setCitedByCountScopus(rs.getObject("cited_by_count_scopus", Integer.class));
+        publication.setCitedByCountOpenAlex(rs.getObject("cited_by_count_openalex", Integer.class));
         // H67: source-attributed incoming-citation counts (Scopus-venue / WoS-venue / graph total).
         publication.setGraphCitationCount(readIntOrDefault(rs, "graph_citation_count"));
         publication.setScopusCitationCount(readIntOrDefault(rs, "scopus_citation_count"));

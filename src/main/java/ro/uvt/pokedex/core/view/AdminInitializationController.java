@@ -52,6 +52,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.ProvisionalAuthorResolutionService provisionalAuthorResolutionService;
     private final ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
     private final ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService crossrefPublisherBackfillService;
+    private final ro.uvt.pokedex.core.service.importing.scopus.CitationCountSourceBackfillService citationCountSourceBackfillService;
 
     /** Publisher backfill for publisher-less book rows / series forums (perspectiva-D holes) — see the service doc. */
     @PostMapping("/crossref/publishers/dryRun")
@@ -829,6 +830,19 @@ public class AdminInitializationController {
                         + ", updated=" + result.getUpdatedCount()
                         + ", skipped=" + result.getSkippedCount()
                         + ", errors=" + result.getErrorCount() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    /** H131: stamps the per-source citation counts on the existing canonical publications (no re-canonicalisation). */
+    @PostMapping("/scopus/backfillCitationSources")
+    public String runCitationSourceBackfill(RedirectAttributes redirectAttributes) {
+        var result = citationCountSourceBackfillService.run();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Citation-source backfill complete. scanned=" + result.scanned()
+                        + ", scopus=" + result.scopusSet()
+                        + ", openAlex=" + result.openAlexSet()
+                        + ", updated=" + result.updated()
+                        + ". Run the Postgres projection (runFull) to publish the counts to the read model.");
         return "redirect:/admin/initialization";
     }
 

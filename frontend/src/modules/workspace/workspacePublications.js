@@ -547,7 +547,7 @@ function _appendRow(tbody, pub) {
             `<span class="app-ws-pubs__venue" title="${_esc(venueTitle)}">${_esc(venueTitle)}</span>` +
         `</td>` +
         `<td class="app-ws-pubs__col-cites" style="text-align:right">` +
-            `<span class="app-ws-pubs__cites ${cites === 0 ? 'app-ws-pubs__cites--zero' : ''}">${cites}</span>` +
+            `<span class="app-ws-pubs__cites ${cites === 0 ? 'app-ws-pubs__cites--zero' : ''}" title="${_esc(_citationSources(pub))}">${cites}</span>` +
         `</td>` +
         `<td class="app-ws-pubs__col-actions" style="text-align:right">` +
             `<button class="app-ws-pubs__action-btn" ` +
@@ -690,6 +690,7 @@ function _buildDetailPanel(pub) {
         citationsHtml =
             `<p class="app-ws-pubs__citations-count">` +
                 `<strong>${cites}</strong> ${_esc(tPlural('workspace.pubs.citations', cites).replace(String(cites), '').trim())}` +
+                (_citationSources(pub) ? ` <span style="font-size:0.8rem;color:var(--app-color-text-muted)">(${_esc(_citationSources(pub))})</span>` : '') +
             `</p>` +
             (previewItems ? `<ul class="app-ws-pubs__citations-list">${previewItems}</ul>` : '') +
             (moreCount > 0
@@ -2539,6 +2540,17 @@ function _buildToolbar() {
         </div>`;
 }
 
+/**
+ * H131: the number a row shows is the best source count; this says which sources reported what, so the
+ * number is never without its origin ("Scopus 12 · OpenAlex 9"). Empty for records derived before H131.
+ */
+function _citationSources(pub) {
+    const parts = [];
+    if (pub.citedByCountScopus !== null && pub.citedByCountScopus !== undefined) parts.push(`Scopus ${pub.citedByCountScopus}`);
+    if (pub.citedByCountOpenAlex !== null && pub.citedByCountOpenAlex !== undefined) parts.push(`OpenAlex ${pub.citedByCountOpenAlex}`);
+    return parts.join(' · ');
+}
+
 function _buildStats() {
     const count  = _data?.publications?.length ?? 0;
     const hIndex = _data?.hIndex ?? 0;
@@ -2549,7 +2561,7 @@ function _buildStats() {
             <p class="app-ws-pubs__stat-label">${t('workspace.card.publications')}</p>
             <p class="app-ws-pubs__stat-value">${count}</p>
           </div>
-          <div class="app-ws-pubs__stat app-ws-pubs__stat--success">
+          <div class="app-ws-pubs__stat app-ws-pubs__stat--success" title="${_esc(t('workspace.pubs.citationsDefinition'))}">
             <p class="app-ws-pubs__stat-label">${t('common.citations')}</p>
             <p class="app-ws-pubs__stat-value">${cites}</p>
           </div>
