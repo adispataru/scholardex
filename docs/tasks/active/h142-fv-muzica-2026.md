@@ -1,6 +1,6 @@
 # H142 — FV Muzică 2026 (Comisia 35) and the CNFIS gaps for music
 
-Status: **SCOPED 2026-10-02, decisions pending (Adrian).** Asked by FMT (vice-dean for research,
+Status: **SCOPED 2026-10-02; decisions taken the same day (Adrian), plan reassessed around automation.** Asked by FMT (vice-dean for research,
 email of 2026-10-02 in the thread "Intalnire platforma de raportare a cercetarii"). The faculty is the first
 vocational one on the platform.
 
@@ -112,7 +112,7 @@ of a public concert.
 Recognised databases (16): Cambridge Core, CEEOL, DOAJ, EBSCO, ERIH PLUS, JSTOR, Oxford Academic Journals,
 Oxford Music Online, Project MUSE, ProQuest, RILM, Sciendo, Scopus, Taylor & Francis Online, WoS AHCI, WoS
 ESCI; for interdisciplinary work also the peer-reviewed databases of the related domains. The platform knows
-Scopus, the WoS editions, DOAJ and ERIH PLUS; the other twelve can only be declared.
+Scopus, the WoS editions, DOAJ and ERIH PLUS; for the other eleven see the plan, step 4.
 
 ## What already exists
 
@@ -127,72 +127,230 @@ Scopus, the WoS editions, DOAJ and ERIH PLUS; the other twelve can only be decla
   the years of a function; perspectives combine criteria with AND/OR trees and labelled routes (FEAA);
   thresholds exist for CONF_UNIV, PROF_UNIV and HABIL.
 
-## CNFIS coverage, measured on the faculty's own Anexa 6.1
+## Measured on the faculty's files
 
-515 rows (2021: 97, 2022: 139, 2023: 141, 2024: 138). The faculty ranked 276 as national, 203 international,
-29 top; 234 individual projects, 201 collective, 55 group, 10 prizes, 8 nominations. 12 rows carry no mark and
-5 carry two (the guide forbids more than one classification).
+**CNFIS Anexa 6.1 (artistic creation, 2021–2024): 515 rows** (2021: 97, 2022: 139, 2023: 141, 2024: 138). The
+faculty ranked 276 as national, 203 international, 29 top; 234 individual projects, 201 collective, 55 group,
+10 prizes, 8 nominations. 12 rows carry no mark and 5 carry two (the guide allows one).
 
-Matched against the registry by the event's distinctive words, **124 rows (24 %) name a listed event**, 106 of
-them at the faculty's level. The other 391 are events the registry does not list, which the faculty ranked
-anyway, mostly as national (the guide's national rule also covers events organised with UCMR, UCIMR, UNIMIR or
-funded by the Ministry of Culture or of Education, which no list can name). The CNFIS sheet matches the
-declared event name to the registry EXACTLY, and the activity form has no picker for it, so today a typed name
-ranks only when it is spelled as in the list.
+- **Registry:** 124 rows (24 %) name an event the registry lists, 106 of them at the faculty's level. The other
+  391 are events no list names, which the faculty ranked anyway (the guide's national level also covers events
+  organised with UCMR, UCIMR, UNIMIR or funded by the Ministry of Culture or of Education).
+- **Events:** 322 distinct strings in the event column, 294 after dropping dates and edition numbers; 39 rows
+  hold only a link and 90 no event. Seeding the registry needs a review step, not a blind import: the 390 usable strings cluster (word overlap)
+  into about 240 candidate events, about 60 of which match a registry entry (an alias to add) and about 170
+  are new — one review pass, with the faculty's level as the suggestion.
+- **Attribution:** 155 rows name at least one staff member (360 name nobody: ensembles, students, or no
+  performer at all); 21 of the 43 Music staff appear. The institutional table seeds events well and attributes
+  activities poorly. Per-person sheets attribute by construction.
 
-Anexa 4.1 (IC2.2, citations of artistic works in specialised publications and press reviews, the arts
-replacement of the Hirsch index) does not exist: the CNFIS sheet header holds only the three Hirsch values.
+- **The CNFIS kind cannot be read from the text:** a word rule (choir/orchestra → collective, duo/trio → group,
+  recital/soloist → individual) agrees with the faculty on 185 of 485 single-kind project rows, guesses nothing
+  for 146 and disagrees on 154. The kind needs picked inputs (role, ensemble size) or the per-person 5.1 sheet,
+  which carries it; an import review must let the person set role and ensemble size for many rows at once.
+
+**CNFIS Anexa 6 (articles):** about 45 rows, 20 with a DOI (some malformed: "DOI  10…", truncated), 22 with an
+ISSN, no author names. A DOI row can be resolved through Crossref or OpenAlex and attributed by the authors'
+ORCIDs.
+
+**The corpus barely knows the Music staff:** by ORCID, OpenAlex links works to 5 of the 42 Music staff who have
+one, 27 works in all, a few of them visibly someone else's (a chemistry journal, a 2007 concrete-structures
+conference). The faculty's own Anexa 6 lists about 45 articles for 2021–2024 alone, mostly in Romanian music
+journals whose authors deposited no ORCID. So for Music the corpus sync is a minor source: the DOIs of Anexa 6
+(authors from Crossref, matched to the faculty's staff) and the grids carry the articles.
+
+**Where Music publishes:** the journals of Anexa 6 are Romanian music journals and proceedings (Quaestiones
+Romanicae, Tehnologii informatice și de comunicație în domeniul muzical, Bulletin of the Transilvania University
+of Brașov series VIII, MUSiQ, the International Musicology Congress); OpenAlex flags none of them as DOAJ or
+Scopus, and half are not in OpenAlex at all. The faculty itself marked 12 rows ERIH PLUS and 3 Arts & Humanities.
+Journals like these are typically in CEEOL, EBSCO and RILM, so those three lists matter most for Music.
+
+**The filled grid (one lecturer):** split on bullets, dashes and line breaks, it gives 194 items, and the count
+of each grid row matches the points claimed in it exactly (12 recordings = 360, 14 top concerts = 280, 139
+regional concerts = 1390, 2 communications = 30, 12 professional distinctions = 360, 8 competition prizes =
+320, 3 juries = 30, one office over six years = 60). 189 items carry a year, 12 a link. The row gives the item
+type and, for concerts, the visibility; the role and the CNFIS kind can be guessed from words like "dirijor",
+"solist", "recital coral", "duo", and need the person's review.
+
+**Already automatic for grants:** the project workspace proposes the registry projects whose director's name
+matches the person (UEFISCDI/brainmap, CORDIS) and imports one as a "Grant Cercetare" in one click; members
+find theirs by search. Cultural grants (AFCN) are not in the registry.
+
+**Report transfer (`H50`):** a run exports to a faculty's own template and an uploaded file is verified
+against the run (read-only); it does not create records from the file.
+
+**Not there yet:** the event registry is read-only (a JSON import and a listing; no aliases, no basis, no
+editing); the declared-publication wizard takes a DOI only as a key and fetches nothing (a Crossref client
+exists); Anexa 4.1 (citations of artistic works) does not exist — the CNFIS sheet header holds only the
+three Hirsch values.
+
+## Decisions (Adrian, 2026-10-02)
+
+1. Profiles as labelled routes in a perspective, like the FEAA routes: the report says which route is met.
+2. Concerts and prizes: one activity shared by the CNATDCU report and CNFIS.
+3. Events missing from the list: added to the registry by an admin or a head — and populate the registry from
+   the faculty's own data.
+4. The other journal databases: support them if at all possible.
+5. **Reduce manual work as far as possible.** The argument Adrian made against a competitor: "if we need to do
+   stuff manually, why do we build an app? Isn't Excel the same thing?"
+6. Anexa 4.1: yes, with the CNFIS work.
+
+## Principle
+
+Every fact enters once, from the best source that holds it; people review instead of typing. Typing is left
+for what no source holds, and then with pickers and derived fields. What makes the app more than Excel after
+the import: it scores, checks the thresholds and the routes, writes the CNFIS annexes from the same records,
+lists a shared performance once in the faculty's Anexa 6.1, and lets heads see who is ready.
+
+## Where each item comes from
+
+| Item | Source, in order |
+|---|---|
+| DID 1.1 books, 1.2 chapters | grid import; ISBN lookup (Open Library) and the CNCS publisher categories classify them; ORCID works with a DOI |
+| DID 1.3 manuals, 1.4 translations, editions | grid import; declared |
+| DID 2.1 recordings | grid import; a barcode, catalogue number or link fills the rest (Discogs, MusicBrainz, YouTube, Deezer) |
+| CS 1.1 / 1.2 concerts | grid import and per-person CNFIS 5.1 import (no public source holds them); visibility derived from the event (registry) |
+| CS 2.1 indexed articles | Anexa 6 DOIs and grid import first (the corpus knows little for Music); corpus by ORCID; membership by ISSN (Scopus, WoS, DOAJ, ERIH PLUS, and the title lists below); declared by DOI (fetched from Crossref) |
+| CS 2.2 lexicon / RILM abstracts, 2.3 communications | grid import; declared |
+| CS 3.1 grant member, RIA 1.2 grant director | project registry (director proposed automatically, member by search); grid import |
+| CS 4.1 published compositions | grid import; the ISMN or publisher identifies a specialised publisher; declared |
+| RIA 1.1 management functions | current headships from the org data; grid import for the past |
+| RIA 1.3–3.7 (boards, organiser, prizes, memberships, offices, juries, commissions, masterclasses, interviews, keynotes) | grid import; competition prizes from CNFIS 5.1; UCMR lists for works bought (3.4), UCMR prizes (2.2) and members (3.1); declared |
+| CNFIS 4.1 citations of artistic works | per-person 4.1 sheet import; declared |
+
+The concert record carries three inputs, mostly picked: the event (picker over the registry), the role, and the
+size of the ensemble. Visibility (CS 1.1 or 1.2), the CNFIS level and the CNFIS kind (individual, group of 2–4,
+collective of 5+) are derived from them. A prize or a nomination is the same record with a result instead of a
+role.
 
 ## Plan
 
-### A. Data (user-run script, no release)
-1. Stamp the new ORCID where the profile has none.
-2. Stamp the Google Scholar ids of the table into `researcherProfile.scholarId` where empty (54 links).
-3. Optional: pre-set the CNFIS domain of the Music staff from "Ramura_Stiinta" (75 or 751; Teatru 73).
+1. **FV Muzică 2026 report.** 27 indicators (DID 5, CS 7, RIA 15) and count helpers; the three tables and the
+   total for CONF_UNIV, PROF_UNIV and HABIL; the minimum counts as a perspective of three labelled routes
+   (Teoretician, Compozitor, Interpret). Activity types "(Comisia 35, …)"; the concert/prize type shared with
+   CNFIS ("Participare eveniment artistic" gains role, ensemble size and result; its CNFIS kind becomes derived);
+   "Grant Cercetare" shared (member → CS 3.1, director → RIA 1.2). Delivered as H124: local build, seed,
+   one idempotent prod script with a guard, rehearsal on a scratch database. Acceptance: a synthetic candidate
+   with the example grid's counts scores DID 400, CS 1700, RIA 770; one case per route and position, just
+   above and just below.
+   **Export in the faculty's own grid** (the xlsx the candidate hands in, as the filled example), through the
+   report-transfer bindings of `H50` (Informatică xlsx; Matematică, Fizică, FEAA docx): the file becomes an
+   output of the app, listed and totalled — the answer to "why not Excel".
+2. **Grid import.** Built on the same binding as the export. The person uploads their filled grid (the faculty template); each cell becomes activities of
+   the row's type, with year, link and text kept; role and ensemble size are proposed where a word makes them
+   obvious and otherwise asked once for a whole selection ("all these are choir concerts I conducted"); they land
+   as imported records to review, and a re-import does not duplicate. An admin or head can upload a batch for a department. The same
+   importer reads a person's CNFIS 2025 sheets: Anexa 5.1 (each row has its year, kind and level) and Anexa 4.1.
+3. **Event registry.** Aliases, the basis of a level (CNFIS list; UCMR/UCIMR/UNIMIR partnership; MC/MEC funding;
+   international participation; added by a head), country and organiser; an admin/head page to add, merge and
+   rank; a candidate queue fed by imports (the faculty's 294 events first, with the level they gave as a
+   suggestion); matching by normalised name and aliases; the event picker on the activity form.
+4. **Journal databases.** Membership by ISSN, next to the existing Scopus, WoS (AHCI, ESCI…), DOAJ and ERIH PLUS
+   checks, from public title lists loaded by an admin operation (refreshed before each use, like the CPCI index).
+   Checked 2026-10-02 (each URL fetched):
 
-### B. FV Muzică 2026 (the CNATDCU report)
-- Indicators: 27 scoring (DID 5, CS 7, RIA 15) plus count helpers for books, manuals, recordings, top
-  concerts, indexed articles and communications.
-- Criteria: the three tables and the total, thresholds for CONF_UNIV, PROF_UNIV and HABIL; the counts as
-  criteria with per-position thresholds.
-- Perspectives: DID, CS, RIA, Total, and "Activități minimale obligatorii" = ANY of three labelled routes
-  (Teoretician, Compozitor, Interpret), each the ALL of its counts. The page says which route is met.
-- Activity types "(Comisia 35, …)", one per item, with the fields the formulas read: role, visibility,
-  publisher category, medium (CD/DVD/vinyl/streaming), level (national / international), place (home /
-  abroad), start and end year for the per-year items. Shared where the same fact feeds two reports: the
-  research grant (member → CS 3.1, director → RIA 1.2).
-- Concerts and competition prizes: extend the CNFIS type "Participare eveniment artistic" with Rol and
-  Vizibilitate, so one declared concert feeds CS 1.1 / 1.2 and Anexa 5.1, and a prize feeds RIA 2.3 and 5.1.
-- CS 2.1 from the corpus too: the person's articles in venues indexed in Scopus, any WoS edition, DOAJ or ERIH
-  PLUS count automatically; the other twelve databases by declaration (database named in a field).
-- Delivery as for H124: built on the local agent-dev app, exported to `seed/precious-config`, one idempotent
-  prod script with a deploy guard, rehearsed on a scratch database; indicator descriptions in
-  `indicator-descriptions/`.
-- Acceptance: a synthetic candidate with the same counts as the filled grid (no names) must score DID 400,
-  CS 1700, RIA 770; plus one case per route at each position, just above and just below.
+   | Database | List | Format, size | Coverage |
+   |---|---|---|---|
+   | Cambridge Core | KBART "Cambridge Journals: All journals" (cambridge.org/core/services/librarians/kbart) | KBART, ~900 | full |
+   | JSTOR | jstor.org/kbart/collections/all-archive-titles?contentType=journals (or the head-title list) | KBART or XLSX, ~2,900 titles | full; archive with a moving wall: check the year |
+   | Project MUSE | about.muse.jhu.edu/…/muse_journal_metadata_2026.tsv | TSV, ~870 | full |
+   | ProQuest | tls.search.proquest.com title lists, per product (Music Periodicals Database: 669 titles) | KBART or TSV | full per product |
+   | EBSCO | about.ebsco.com/title-lists, one file per database (316 databases) | XLS/HTM, ONE ISSN column | full per database |
+   | RILM Abstracts | api.rilm.org (the list behind rilm.org/resources.php; undocumented) | pipe-separated, ~3,650 music + ~16,000 other | full; core/secondary/tertiary grades |
+   | Oxford Academic | OUP KBART zips (2025 A–Z, 2026 current collection, open access) | KBART, ~600 | partial: no public 2026 A–Z |
+   | Taylor & Francis | own lists behind Cloudflare; GOKb KBART of the Jisc list (CC0), 2,443 titles | KBART | partial |
+   | CEEOL | none from CEEOL; the German national-licence list, 1,304 of ~3,100 journals | KBART | partial (~42 %); crawling forbidden by CEEOL's terms — ask CEEOL for its KBART |
+   | Sciendo | none (now reference-global.com, De Gruyter Brill) | — | ask for the KBART; fallback: a DOI resolving to the platform |
+   | Oxford Music Online | not a journal database (Grove, Oxford Companion, Oxford Dictionary of Music) | — | its entries belong to CS 2.2 (lexicon articles), declared |
 
-### C. CNFIS for music
-1. An event picker on the activity form (EVENT_NAME), like the conference and university pickers, showing
-   the registry's level.
-2. Registry maintenance: an admin (or a head) adds an event with its domain, level, the basis (listed by
-   CNFIS, organised with UCMR/UCIMR/UNIMIR, funded by MC/MEC, international participation) and alternative
-   names; matching by normalised name and aliases. Seed it from the faculty's 6.1 file.
-3. Anexa 4.1: a declared activity "Citare / cronică a unei creații artistice" (year of the work, work, the
-   publication, issue and year of the citation), its writer, the total on the CNFIS page and in the frozen
-   copy, and the column on the unit page.
+   Matching: normalise ISSNs (JSTOR's head list drops the hyphen; EBSCO gives one ISSN per row; many RILM rows
+   have none) and compare against both ISSNs of the venue; respect coverage start/end against the publication
+   year. **To decide:** which EBSCO and ProQuest databases count — the standard names only the vendor, and
+   Academic Search Ultimate (~20,000) or ProQuest Central would admit almost any journal. Proposed: the
+   music, arts, humanities and Central-European ones (Music Index, RILM Full Text, Art Full Text, Humanities
+   Source, Central & Eastern European Academic Source, Music Periodicals Database) plus Academic Search
+   Ultimate. The lists serve every domain whose standard names such databases (Sociology's three-database rule,
+   Visual arts, the humanities).
+5. **Lookups by identifier, and the music lists** (checked live 2026-10-02; searching by NAME finds little for
+   Romanian classical musicians, so the person gives an identifier and the platform fills the rest):
+   - **Publisher categories (S):** the official CNCS lists, all text-extractable PDFs — 2026 (OM 5.100/26.08.2026,
+     164 rows; Music A: MediaMusica, Editura Muzicală GRAFOART, Editura UNMB; B: Risoprint, Artes, Eikon,
+     Eurostampa, Presa Universitară Clujeană), 2020 (155 rows), 2013 (arts, B/C only) and the UEFISCDI list of
+     foreign publishers of international prestige (349, incl. Bärenreiter, Ricordi, Universal Edition, OUP, CUP).
+     They classify every book of DID 1.1 ("publicat" = CNSC A or B, or an equivalent foreign publisher) without
+     a question. Editura Universității de Vest is NOT classified for Music (B for Theatre in 2026).
+   - **ISBN (S):** Open Library, keyless (title, publisher, year, pages; Editura Muzicală 450 works, Editura UVT
+     132); Google Books needs a key.
+   - **Recordings (M):** a barcode, a catalogue number or a link fills the release from Discogs (token; release
+     data CC0; carries the UCMR-ADA licence and ORDA numbers, which fit "cod de autentificare") and MusicBrainz
+     (keyless, CC0 core, 1 request/s). Coverage: moderate for Electrecord, Casa Radio and the UCMR anthologies,
+     low for recent and self-released CDs (10 Romanian classical releases on Discogs for 2024).
+   - **Streaming (S):** a YouTube link checked through the Data API (key; 1 unit per lookup of 10,000 a day):
+     duration ≥ 45 minutes, date, channel, live-broadcast times as the proof of broadcast; store the video id
+     and the check date only (the API terms want data refreshed within 30 days). Deezer, keyless, for audio
+     albums (barcode, label, duration).
+   - **UCMR lists (S–M):** works bought by UCMR (PDF per session, 2016–) → RIA 3.4; UCMR prizes (HTML, since
+     1967) → RIA 2.2; the member list → RIA 3.1. For composers and musicologists.
+   - **ORCID works:** works on 15 of the 42 Music staff records (60 items: 39 articles, 6 chapters, 5 books, 1
+     artistic performance), most with a DOI; distinctions, memberships and fundings on at most 4 records. Import
+     the works with a DOI as declared publications; skip the rest.
+   - **Concerts:** no usable public source. Filarmonica Banatul has a keyless events API (2022–2025, performers
+     only in titles), the Opera's pages would need a scraper; together they touch about 6 % of the faculty's
+     rows — use them to seed the event registry, not the person's record. Bachtrack forbids scraping, Operabase
+     is commercial, iabilet has no performers.
+   - **Not usable:** AFCN lists (only the applicant organisation is named), press archives for Anexa 4.1
+     (Arcanum is subscription-only), WorldCat (subscription), the National Library catalogue (CAPTCHA), ORDA
+     (no public search). The UCMR-ADA repertoire search works but needs UCMR-ADA's permission.
+6. **CNFIS Anexa 4.1.** The declared activity, its writer, the total on the CNFIS page, in the frozen copy and
+   on the unit page; filled by the import of item 2.
+7. **Faculty data.** Stamp the new ORCID and the Google Scholar ids; set each Music staff member's CNFIS domain
+   from the staff table (75 performance, 751 the others; Teatru 73); resolve the Anexa 6 DOIs; start the
+   OpenAlex sync for the faculty's staff (54 people, light) instead of waiting for each one; expect little
+   for Music and some misattributed works to reject.
+8. **Theatre**, when the faculty's grid arrives.
 
-### D. Theatre (after the faculty's grid)
+## Order
 
-## Decisions for Adrian
+1. The report with the shared concert type and the export in the faculty's grid (step 1) — what the faculty sees.
+2. The grid import and the per-person CNFIS 5.1 / 4.1 import (step 2) — the largest cut in manual work; needs
+   the faculty's files.
+3. The event registry and Anexa 4.1 (steps 3 and 6).
+4. Publisher categories and ISBN, then the journal lists (steps 4 and 5) — they serve every domain.
+5. Recordings, streaming, UCMR lists and ORCID works (step 5).
+6. Theatre (step 8). The faculty data of step 7 goes first, by script, any time.
 
-1. Profile: an OR over the three routes, shown as routes (recommended), or a profile the person declares.
-2. Concerts and prizes: one shared activity for CNATDCU and CNFIS (recommended), or separate ones.
-3. Events the registry does not list: leave them out as today; let the person declare a level with a basis;
-   or have a head/admin add them to the registry (recommended, together with the picker).
-4. CS 2.1: count indexed corpus articles automatically next to the declared ones (recommended).
-5. Concert visibility (CS 1.1 vs 1.2): declared by the candidate, pre-filled from the registry when the event
-   is listed (recommended).
-6. Anexa 4.1 now, in the same batch as C (recommended), or later.
+## Still to decide
+
+1. Which EBSCO and ProQuest databases count (the standard names only the vendor). Proposed in step 4.
+2. Which CNCS publisher list applies: the 2026 one, or the one in force when the book came out; and whether the
+   Music list only, or any domain's list. Proposed: the best category the publisher had in any list from 2013
+   on, in the Music domain first and any domain second — it matters for Editura Universității de Vest.
+3. Keys: a YouTube Data API key and a Discogs token, kept like the other keys (not in the repository).
+4. Requests: CEEOL and Sciendo for their KBART files; UCMR-ADA for the repertoire (later).
+
+## What to ask the faculty
+
+- the filled grids of the Music staff, in the faculty template (they exist for promotions; one is enough per
+  person, the newest);
+- the per-person CNFIS 2025 sheets (Anexa 5.1 and 4.1) from the archive the guide asks every teacher to send
+  (Nume_Prenume_An_abreviere_facultate);
+- the Theatre grid, already announced.
+
+Ready to paste (Romanian):
+
+> Bună, Simona,
+>
+> Mulțumesc pentru documente, ne-au fost de mare folos. Ca să nu fie nevoie ca fiecare coleg să reintroducă
+> manual activitatea, platforma va putea importa fișele pe care le aveți deja completate. Ne-ar ajuta mult dacă
+> ne-ați putea trimite:
+> 1. fișele de verificare completate de colegii de la Muzică, în formatul facultății (cea mai recentă pentru
+>    fiecare);
+> 2. fișele individuale CNFIS 2025 (Anexa 5.1 și Anexa 4.1) din arhiva raportării.
+>
+> Grila pentru Teatru o așteptăm când este gata. Lista de personal a facultății este deja încărcată în platformă.
+>
+> Mulțumesc,
+> Adi
 
 ## Not in scope
 
