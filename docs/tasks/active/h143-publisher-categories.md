@@ -1,6 +1,8 @@
 # H143 — the category of a declared book's publisher comes from the lists, not from the researcher
 
-Status: **BUILT 2026-10-02 (not pushed), review round the same day.** Asked by Adrian the same day ("I want the real
+Status: **IN PROD 2026-10-02** (image 1922a5eb; the prod script run by Adrian with `--restart`, then checked
+read-only: the 7 types and 21 indicators match the committed state, the core restarted with every list loaded).
+Built and reviewed the same day. Asked by Adrian the same day ("I want the real
 fix"), after the H142 slice 2 review showed that a researcher picked their own book's publisher category, and that the
 record panel stored the top category by default. Prod checked read-only first: no record of any affected type exists,
 so no score was ever inflated. Review round (Adrian, before the push): international lists and rankings, "like we do

@@ -10,7 +10,9 @@ Done history moved to `TASKS-done.md`.
 ## Active
 
 - [ ] `H143` The category of a declared book's publisher comes from the standard's lists, not from the researcher —
-  **BUILT 2026-10-02, not pushed** (asked by Adrian after the H142 slice 2 review). Four 2026 reports (Muzică DID 1.1,
+  **IN PROD 2026-10-02** (image 1922a5eb; `h143_publisher_categories.js --restart` run by Adrian: 7 types, 14
+  indicators, 21 descriptions; verified read-only against the committed state) (asked by Adrian after the H142 slice 2
+  review). Four 2026 reports (Muzică DID 1.1,
   Sociologie books/chapters/collections, Psihologie and Științe ale educației I17) let the researcher pick their book's
   publisher category, and the forms preselected the top one; three rows ignored the publisher (Soc I.5, I.8, Edu I21).
   Prod read first: no record of these types exists, nothing was inflated. Now `Categorie_editura` is DERIVED from
@@ -34,7 +36,7 @@ Done history moved to `TASKS-done.md`.
   Sociology and one more international list for the others. Prod read: SENSE loaded (798), still no record of the affected types; 77 book publishers of the
   prod corpus newly count as international (scores only rise). Full suite and guardrails green. Prod script
   regenerated (7 types, 14 indicators, 21 descriptions), rehearsed again.
-  **Prod order:** push and deploy; flip the guard; run with `--restart`.
+  **Prod order (done):** push and deploy; flip the guard; run with `--restart`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
   IN PROD, SLICE 2 BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).
