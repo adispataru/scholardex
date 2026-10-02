@@ -128,7 +128,8 @@ Done history moved to `TASKS-done.md`.
   the cited-by list on Scopus (Elsevier's attribution rule), and the public pages may then show the OpenAlex
   count labelled as such (`H119` hides counts until this exists). One definition of "total citations" for the
   workspace. Both canon paths change together; needs a rebuild, so plan it with the next one.
-- [ ] `H140` Declared (USER_DEFINED) publications dropped by every derive rebuild — **FIXED 2026-10-02, prod pending.**
+- [ ] `H140` Declared (USER_DEFINED) publications dropped by every derive rebuild — **FIXED and LIVE 2026-10-02 (image
+  a3c3eb97); prod check: 8 declared, 8 linked, 8 canonical — nothing lost.**
   Found while documenting the initialization page: the derive rebuild wipes `scholardex.*` and the V2 engine re-derives
   Scopus + OpenAlex only, so the publications and forums researchers declared themselves came back only after a manual
   USER_DEFINED maintenance. Fix: `UserDefinedCanonicalizationService.rebuildCanonicalFacts()` chained in
