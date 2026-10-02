@@ -236,7 +236,9 @@ role.
    **Export in the faculty's own grid** (the xlsx the candidate hands in, as the filled example), through the
    report-transfer bindings of `H50` (Informatică xlsx; Matematică, Fizică, FEAA docx): the file becomes an
    output of the app, listed and totalled — the answer to "why not Excel".
-2. **Grid import.** Built on the same binding as the export. The person uploads their filled grid (the faculty template); each cell becomes activities of
+2. **Grid import.** Built on the same binding as the export. **The normal flow (Adrian, 2026-10-02): every
+   colleague imports their own fișă de verificare**; a head or an admin can upload a department's files at
+   once when the faculty has them, which only speeds things up. The person uploads their filled grid (the faculty template); each cell becomes activities of
    the row's type, with year, link and text kept; role and ensemble size are proposed where a word makes them
    obvious and otherwise asked once for a whole selection ("all these are choir concerts I conducted"); they land
    as imported records to review, and a re-import does not duplicate. An admin or head can upload a batch for a department. The same
@@ -312,8 +314,8 @@ role.
 ## Order
 
 1. The report with the shared concert type and the export in the faculty's grid (step 1) — what the faculty sees.
-2. The grid import and the per-person CNFIS 5.1 / 4.1 import (step 2) — the largest cut in manual work; needs
-   the faculty's files.
+2. The grid import, each colleague their own, and the per-person CNFIS 5.1 / 4.1 import (step 2) — the largest
+   cut in manual work; the faculty's files, if they come, only speed it up.
 3. The event registry and Anexa 4.1 (steps 3 and 6).
 4. Publisher categories and ISBN, then the journal lists (steps 4 and 5) — they serve every domain.
 5. Recordings, streaming, UCMR lists and ORCID works (step 5).
@@ -330,26 +332,27 @@ role.
 
 ## What to ask the faculty
 
-- the filled grids of the Music staff, in the faculty template (they exist for promotions; one is enough per
-  person, the newest);
-- the per-person CNFIS 2025 sheets (Anexa 5.1 and 4.1) from the archive the guide asks every teacher to send
-  (Nume_Prenume_An_abreviere_facultate);
-- the Theatre grid, already announced.
+Nothing is required: each colleague imports their own fișă de verificare. If the faculty already holds the
+filled grids of the Music staff, or the per-person CNFIS 2025 sheets (Anexa 5.1 and 4.1) from the archive the
+guide asks every teacher to send, an admin import of them speeds everything up. The Theatre grid is announced.
 
-Ready to paste (Romanian):
+The reply to the vice-dean, left as a draft in Adrian's Gmail, in her thread (2026-10-02):
 
 > Bună, Simona,
 >
-> Mulțumesc pentru documente, ne-au fost de mare folos. Ca să nu fie nevoie ca fiecare coleg să reintroducă
-> manual activitatea, platforma va putea importa fișele pe care le aveți deja completate. Ne-ar ajuta mult dacă
-> ne-ați putea trimite:
-> 1. fișele de verificare completate de colegii de la Muzică, în formatul facultății (cea mai recentă pentru
->    fiecare);
-> 2. fișele individuale CNFIS 2025 (Anexa 5.1 și Anexa 4.1) din arhiva raportării.
+> Mulțumesc pentru documente, ne sunt de mare folos. Lista de personal a facultății este deja încărcată în
+> platformă, iar acum urmează fișa de verificare pentru Muzică, după noile standarde.
 >
-> Grila pentru Teatru o așteptăm când este gata. Lista de personal a facultății este deja încărcată în platformă.
+> Ca nimeni să nu fie nevoit să reintroducă manual activitatea, fiecare coleg își va putea importa în platformă
+> fișa de verificare pe care o are deja completată, în formatul facultății, iar activitățile vor fi preluate
+> automat.
 >
-> Mulțumesc,
+> Dacă aveți deja fișele colegilor sau fișele individuale CNFIS 2025 (Anexele 5.1 și 4.1), ne-ar ajuta să le
+> primim: le putem importa pentru toată facultatea dintr-odată, iar totul s-ar accelera.
+>
+> Grila pentru Teatru o aștept când este gata.
+>
+> O zi frumoasă,
 > Adi
 
 ## Not in scope

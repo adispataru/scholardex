@@ -22,6 +22,7 @@ Done history moved to `TASKS-done.md`.
   publisher categories (2026, 2020, 2013) and the foreign-publisher list; Discogs/MusicBrainz/YouTube/Deezer by
   identifier; UCMR lists; no public source for concerts or press citations. **Steps:** the report (routes for
   teoretician / compozitor / interpret, a concert type shared with CNFIS, export in the faculty's grid); grid
+  import (normal flow: every colleague imports their own fișă; the faculty's files, if sent, only speed it up)
   and per-person CNFIS import; event registry with aliases and a picker; journal lists; lookups by identifier;
   Anexa 4.1; faculty data; Theatre after its grid.
 - [ ] `H138` UEFISCDI eligibility by competition domain, chosen by the applicant — **SLICES A+B+C DEPLOYED and LOADED in prod 2026-10-02** (`f7e854f0`; `h138_uefiscdi_domains.js` run by Adrian: 13 indicators, 6 reports, 15 division selections removed; slice D — humanities — open, on request). Built: `report-data/uefiscdi-domains-2026.json` (13 domains, reviewed by Adrian: 254 WoS
