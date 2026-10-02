@@ -128,8 +128,8 @@ Done history moved to `TASKS-done.md`.
   the cited-by list on Scopus (Elsevier's attribution rule), and the public pages may then show the OpenAlex
   count labelled as such (`H119` hides counts until this exists). One definition of "total citations" for the
   workspace. Both canon paths change together; needs a rebuild, so plan it with the next one.
-- [ ] `H141` Citation totals below a source's own number — **BUILT 2026-10-02, prod pending (635 works in prod: 574
-  Scopus, 61 OpenAlex).** Two causes: Scopus holds duplicate records of one work (a re-indexed copy under a new EID,
+- [ ] `H141` Citation totals below a source's own number — **LIVE in prod 2026-10-02 (image 85c75fc8; backfill +
+  projection run by Adrian, the 635 works — 574 Scopus, 61 OpenAlex — repaired: both divergence counts 0).** Two causes: Scopus holds duplicate records of one work (a re-indexed copy under a new EID,
   nearly uncited, while the old record keeps the history — 140 vs 32, 45 vs 2, 28 vs 0 locally) and both land on the
   same canonical pub by DOI, the last one processed setting the scalar; and OpenAlex refreshes by the researcher
   syncs that updated the source fact without lifting the scalar. Rule now in `CitationCountSupport`: a source's own
