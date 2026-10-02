@@ -127,6 +127,17 @@
                                  th:style="${criteriaTotal != null and criteriaTotal > 0 ? 'width:' + (criteriaMet * 100 / criteriaTotal) + '%' : 'width:0%'}"></div>
                         </div>
                     </div>
+                    <!-- H137: the UEFISCDI PhD-age limit (PD director 8 years, TE 12), from the profile's PhD year -->
+                    <div class="app-eval-aggregate__cell" th:if="${phdLimitYears != null}" id="eval-phd-limit-cell">
+                        <span class="app-eval-aggregate__label" th:text="#{report.view.phdLimit(${phdLimitYears})}">PhD within 12 years</span>
+                        <span class="app-eval-aggregate__value">
+                            <span th:if="${phdLimitVerdict == null}" class="app-eval-chip app-eval-chip--near" th:text="#{report.view.phdLimit.unknown}">?</span>
+                            <span th:if="${phdLimitVerdict == true}" class="app-eval-chip app-eval-chip--met" th:text="#{report.dash.verdictYes}">YES</span>
+                            <span th:if="${phdLimitVerdict == false}" class="app-eval-chip app-eval-chip--below" th:text="#{report.dash.verdictNo}">NO</span>
+                        </span>
+                        <span class="app-eval-aggregate__value app-eval-aggregate__value--sm text-muted"
+                              th:text="${phdAwardYear != null} ? #{report.view.phdLimit.year(${phdAwardYear}, ${#temporals.format(phdLimitDeadline, 'dd.MM.yyyy')})} : #{report.view.phdLimit.noYear}">PhD 2019, deadline 30.07.2026</span>
+                    </div>
                     <div class="app-eval-aggregate__cell app-eval-aggregate__cell--meta">
                         <span class="app-eval-aggregate__label" th:text="#{report.view.lastRun}">Last Run</span>
                         <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"

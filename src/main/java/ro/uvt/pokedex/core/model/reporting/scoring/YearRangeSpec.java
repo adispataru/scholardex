@@ -15,7 +15,7 @@ package ro.uvt.pokedex.core.model.reporting.scoring;
  * for the relative-window semantics.
  */
 public sealed interface YearRangeSpec
-        permits YearRangeSpec.AllYears, YearRangeSpec.Absolute, YearRangeSpec.PreviousNYears {
+        permits YearRangeSpec.AllYears, YearRangeSpec.Absolute, YearRangeSpec.PreviousNYears, YearRangeSpec.AfterPhdAward {
 
     /** All available years. The literal {@code "*"} in the legacy DSL. */
     record AllYears() implements YearRangeSpec {}
@@ -39,6 +39,25 @@ public sealed interface YearRangeSpec
     }
 
     /**
+     * H137: the inclusive range [from, to] cut at the researcher's PhD award year — "după obținerea titlului de
+     * doctor" of the UEFISCDI standards. The award year itself counts. The anchor is the subject's
+     * {@code phdAwardYear}, which {@link #includes(int, int)} cannot see: the publication filter applies it from
+     * the scoring subject context, and {@link #includes(int, int, Integer)} is the full rule. A subject without
+     * a known PhD year gets the plain range (the platform's approximation, stated in the report description).
+     */
+    record AfterPhdAward(int from, int to) implements YearRangeSpec {
+        public AfterPhdAward {
+            if (to < from) throw new IllegalArgumentException("to (" + to + ") < from (" + from + ")");
+        }
+    }
+
+    /** H137: {@link #includes(int, int)} with the subject's PhD award year applied where the spec asks for it. */
+    default boolean includes(int pubYear, int referenceYear, Integer phdAwardYear) {
+        if (!includes(pubYear, referenceYear)) return false;
+        return !(this instanceof AfterPhdAward) || phdAwardYear == null || pubYear >= phdAwardYear;
+    }
+
+    /**
      * H60: whether a publication of {@code pubYear} is included by this spec, given the run's {@code referenceYear}.
      * {@link AllYears} includes everything; {@link Absolute} is the fixed inclusive range; {@link PreviousNYears}
      * resolves to {@code [referenceYear-n .. referenceYear-1]}.
@@ -47,6 +66,7 @@ public sealed interface YearRangeSpec
         if (this instanceof AllYears) return true;
         if (this instanceof Absolute a) return pubYear >= a.from() && pubYear <= a.to();
         if (this instanceof PreviousNYears p) return pubYear >= referenceYear - p.n() && pubYear <= referenceYear - 1;
+        if (this instanceof AfterPhdAward a) return pubYear >= a.from() && pubYear <= a.to();
         throw new IllegalStateException("Unhandled YearRangeSpec: " + this);
     }
 
@@ -56,6 +76,7 @@ public sealed interface YearRangeSpec
      *   <li>{@code null} / blank → {@link AllYears} (defensive: legacy code treated this as "no constraint")</li>
      *   <li>{@code "*"} → {@link AllYears}</li>
      *   <li>{@code "from->to"} or {@code "from-to"} → {@link Absolute}</li>
+     *   <li>{@code "PHD:from->to"} → {@link AfterPhdAward} (H137)</li>
      * </ul>
      * Anything else throws {@link IllegalArgumentException}.
      */
@@ -63,6 +84,13 @@ public sealed interface YearRangeSpec
         if (raw == null || raw.isBlank()) return new AllYears();
         String trimmed = raw.trim();
         if ("*".equals(trimmed)) return new AllYears();
+        if (trimmed.toUpperCase(java.util.Locale.ROOT).startsWith("PHD:")) {
+            YearRangeSpec range = parse(trimmed.substring("PHD:".length()));
+            if (!(range instanceof Absolute a)) {
+                throw new IllegalArgumentException("PHD: needs a from->to range: " + raw);
+            }
+            return new AfterPhdAward(a.from(), a.to());
+        }
         if (trimmed.toUpperCase(java.util.Locale.ROOT).startsWith("PREV:")) {
             try {
                 return new PreviousNYears(Integer.parseInt(trimmed.substring("PREV:".length()).trim()));

@@ -1487,7 +1487,7 @@
    "$oid": "6a4e40467c184d3e2d35ea63"
   },
   "name": "PD26_Mentor_top50",
-  "description": "Mentor PD 2026, condiția 1: lucrări de tip article, review sau proceedings paper (în reviste) din 2015–2026, publicate în reviste SCIE/SSCI/AHCI din primele 50% (Q1 sau Q2) după AIS în categoriile Informatică ale Anexei 6(e); cuartila este cea a JCR-ului din anul publicării (JCR 2024 pentru 2025–2026). ESCI nu se ia în considerare. Prag: 5 lucrări.",
+  "description": "Mentor PD 2026, condiția 1: lucrări de tip article, review sau proceedings paper (în reviste) din 2015–2026, publicate în reviste SCIE/SSCI/AHCI din primele 50% (Q1 sau Q2) după AIS în categoriile Informatică ale Anexei 6(e); cuartila este cea a JCR-ului din anul publicării (JCR 2024 pentru 2025–2026). ESCI nu se ia în considerare. Prag: 5 lucrări. Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1503,7 +1503,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -1518,7 +1518,7 @@
    "$oid": "6a4e40467c184d3e2d35ea64"
   },
   "name": "PD26_Mentor_Q1",
-  "description": "Mentor PD 2026, condiția 2: dintre lucrările article/review/proceedings paper din 2015–2026 în reviste SCIE/SSCI/AHCI, cele publicate în reviste din prima cuartilă (Q1) după AIS în categoriile Informatică ale Anexei 6(e). Prag: 2 lucrări.",
+  "description": "Mentor PD 2026, condiția 2: dintre lucrările article/review/proceedings paper din 2015–2026 în reviste SCIE/SSCI/AHCI, cele publicate în reviste din prima cuartilă (Q1) după AIS în categoriile Informatică ale Anexei 6(e). Prag: 2 lucrări. Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && Q == \"Q1\" ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1534,7 +1534,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -1549,7 +1549,7 @@
    "$oid": "6a4e40467c184d3e2d35ea65"
   },
   "name": "PD26_Mentor_Q2_reviste_distincte",
-  "description": "Mentor PD 2026, condiția 3: numărul de REVISTE DISTINCTE din a doua cuartilă (Q2) după AIS în care mentorul a publicat lucrări article/review/proceedings paper în 2015–2026 (SCIE/SSCI/AHCI). Se numără revistele, nu lucrările: două articole în aceeași revistă Q2 contează o singură dată. Regula se aplică doar când 3 dintre cele 5 lucrări de referință sunt Q2; cu cel puțin 3 lucrări Q1 (criteriul următor) ea nu mai contează. Prag: 2 reviste.",
+  "description": "Mentor PD 2026, condiția 3: numărul de REVISTE DISTINCTE din a doua cuartilă (Q2) după AIS în care mentorul a publicat lucrări article/review/proceedings paper în 2015–2026 (SCIE/SSCI/AHCI). Se numără revistele, nu lucrările: două articole în aceeași revistă Q2 contează o singură dată. Regula se aplică doar când 3 dintre cele 5 lucrări de referință sunt Q2; cu cel puțin 3 lucrări Q1 (criteriul următor) ea nu mai contează. Prag: 2 reviste. Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && Q == \"Q2\" ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1565,7 +1565,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -1580,7 +1580,7 @@
    "$oid": "6a4e40467c184d3e2d35ea66"
   },
   "name": "PD26_Mentor_tip_article",
-  "description": "Mentor PD 2026, condiția 4: lucrări strict de tip article (fără review sau proceedings paper) din 2015–2026, publicate în reviste SCIE/SSCI/AHCI din primele două cuartile (Q1/Q2) după AIS în categoriile Informatică ale Anexei 6(e). Prag: 3 lucrări.",
+  "description": "Mentor PD 2026, condiția 4: lucrări strict de tip article (fără review sau proceedings paper) din 2015–2026, publicate în reviste SCIE/SSCI/AHCI din primele două cuartile (Q1/Q2) după AIS în categoriile Informatică ale Anexei 6(e). Prag: 3 lucrări. Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "docType == \"ar\" && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -1596,7 +1596,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -7005,7 +7005,7 @@
    "$oid": "6abe70c603774b352c5510ed"
   },
   "name": "TE26_Dir_reviste_distincte",
-  "description": "Director TE 2026, nota privind revistele: numărul de REVISTE DISTINCTE din Q1/Q2 (AIS) în care au apărut lucrările article/review/proceedings paper din 2015–2026. Se numără revistele, nu lucrările. Prag: 2 reviste diferite. Pe traseul cu 2 lucrări la conferințe CORE această notă se verifică manual.",
+  "description": "Director TE 2026, nota privind revistele: numărul de REVISTE DISTINCTE din Q1/Q2 (AIS) în care au apărut lucrările article/review/proceedings paper din 2015–2026. Se numără revistele, nu lucrările. Prag: 2 reviste diferite. Pe traseul cu 2 lucrări la conferințe CORE această notă se verifică manual. Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -7021,7 +7021,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -7036,7 +7036,7 @@
    "$oid": "6abe70c61a965a8877cb31d4"
   },
   "name": "TE26_Dir_Q1Q2",
-  "description": "Director TE 2026, condiția de bază: lucrări de tip article, review sau proceedings paper publicate în 2015–2026 în reviste indexate SCIE, SSCI sau AHCI (ESCI nu se ia în considerare) din primele două cuartile după scorul de influență absolut (AIS), în încadrarea cea mai favorabilă dintre categoriile Anexei 6(e) (matematică, informatică, economie, multidisciplinar); cuartila este cea a JCR-ului din anul publicării (JCR-2024 pentru 2025–2026). Toți autorii sunt considerați autori principali numai la revistele din aceste categorii, când autorii sunt în ordine alfabetică. Prag: 3 lucrări, din care cel mult 2 pot fi lucrări la conferințe CORE A/A* (indicatorul următor).",
+  "description": "Director TE 2026, condiția de bază: lucrări de tip article, review sau proceedings paper publicate în 2015–2026 în reviste indexate SCIE, SSCI sau AHCI (ESCI nu se ia în considerare) din primele două cuartile după scorul de influență absolut (AIS), în încadrarea cea mai favorabilă dintre categoriile Anexei 6(e) (matematică, informatică, economie, multidisciplinar); cuartila este cea a JCR-ului din anul publicării (JCR-2024 pentru 2025–2026). Toți autorii sunt considerați autori principali numai la revistele din aceste categorii, când autorii sunt în ordine alfabetică. Prag: 3 lucrări, din care cel mult 2 pot fi lucrări la conferințe CORE A/A* (indicatorul următor). Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "(docType == \"ar\" || docType == \"re\" || docType == \"cp\") && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -7052,7 +7052,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -7067,7 +7067,7 @@
    "$oid": "6abe70c6341a4db4b69f066e"
   },
   "name": "TE26_Dir_tip_article",
-  "description": "Director TE 2026, nota privind tipul de document: lucrări strict de tip article (fără review sau proceedings paper) din 2015–2026 în reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS. Prag: 2 lucrări. Pe traseul cu 2 lucrări la conferințe CORE această notă se verifică manual.",
+  "description": "Director TE 2026, nota privind tipul de document: lucrări strict de tip article (fără review sau proceedings paper) din 2015–2026 în reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS. Prag: 2 lucrări. Pe traseul cu 2 lucrări la conferințe CORE această notă se verifică manual. Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "docType == \"ar\" && (Q == \"Q1\" || Q == \"Q2\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -7083,7 +7083,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -7098,7 +7098,7 @@
    "$oid": "6abe70c6f1e2eb11a4ab9017"
   },
   "name": "TE26_Dir_CORE_A_echiv",
-  "description": "Director TE 2026, traseul Informatică: lucrări full paper din 2015–2026 publicate în proceedings-ul unor conferințe clasificate A* sau A în lista CORE la momentul publicării, la care candidatul este prim autor sau autor corespondent. Cel mult 2 dintre cele 3 lucrări ale standardului pot fi de acest fel; platforma le adaugă plafonat la 2 la lucrările din reviste. Posterele, lucrările scurte, rezumatele și demonstratoarele nu se iau în calcul.",
+  "description": "Director TE 2026, traseul Informatică: lucrări full paper din 2015–2026 publicate în proceedings-ul unor conferințe clasificate A* sau A în lista CORE la momentul publicării, la care candidatul este prim autor sau autor corespondent. Cel mult 2 dintre cele 3 lucrări ale standardului pot fi de acest fel; platforma le adaugă plafonat la 2 la lucrările din reviste. Posterele, lucrările scurte, rezumatele și demonstratoarele nu se iau în calcul. Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "(category == \"A*\" || category == \"A\") ? 1 : 0",
   "domain": {
    "$ref": "domains",
@@ -7114,7 +7114,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -7129,8 +7129,8 @@
    "$oid": "6abeb95c24cbf52c5ca8bce3"
   },
   "name": "UEF26SE_2015_C",
-  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), cărți (C) din 2015–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P (≥ 100 mentor PD, ≥ 50 director TE).",
-  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Editura_7c && An_activitate >= 2015 && An_activitate <= 2026) ? 60.0 / n : 0.0",
+  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), cărți (C) din 2015–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P (≥ 100 mentor PD, ≥ 50 director TE). Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Editura_7c && An_activitate >= 2015 && An_activitate <= 2026 && (An_doctorat == null || An_activitate >= An_doctorat)) ? 60.0 / n : 0.0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7145,7 +7145,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "0abe673a44cc550893faf86759ed56a1062b1b99f2a9a77513ea609538f2f5d7",
+  "formulaHash": "d6173fec3f3cd3dfa62fbb89c8daf5ffcff0149700ff3397508bc9e1dc8fdb29",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7259,7 +7259,7 @@
    "$oid": "6abeb95cb6ecaf17dd219545"
   },
   "name": "UEF26SE_2015_A",
-  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), 2015–2026 după obținerea titlului de doctor, articole (A): lucrări de tip article sau review publicate în reviste indexate SCIE, SSCI sau AHCI (ESCI nu se ia în considerare) din primele două cuartile după scorul de influență absolut (AIS), în încadrarea cea mai favorabilă dintre categoriile Social Sciences Citation Index; cuartila și valoarea AIS sunt cele ale JCR-ului din anul publicării (JCR-2024 pentru 2025–2026). Punctaj pe articol: A = 70 × AIS / N, unde N este numărul de autori; ca autor sau coautor, fără condiția de autor principal. Neverificate de platformă: numărul de accesiune WoS și subiectul strict din științele sociale și economice. Intră în P și în ΣA (≥ 50 mentor PD, ≥ 25 director TE).",
+  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), 2015–2026 după obținerea titlului de doctor, articole (A): lucrări de tip article sau review publicate în reviste indexate SCIE, SSCI sau AHCI (ESCI nu se ia în considerare) din primele două cuartile după scorul de influență absolut (AIS), în încadrarea cea mai favorabilă dintre categoriile Social Sciences Citation Index; cuartila și valoarea AIS sunt cele ale JCR-ului din anul publicării (JCR-2024 pentru 2025–2026). Punctaj pe articol: A = 70 × AIS / N, unde N este numărul de autori; ca autor sau coautor, fără condiția de autor principal. Neverificate de platformă: numărul de accesiune WoS și subiectul strict din științele sociale și economice. Intră în P și în ΣA (≥ 50 mentor PD, ≥ 25 director TE). Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
   "formula": "(docType == \"ar\" || docType == \"re\") && (Q == \"Q1\" || Q == \"Q2\") ? 70.0 * AIS / N : 0.0",
   "domain": {
    "$ref": "domains",
@@ -7275,7 +7275,7 @@
   "yearRangeSpec": {
    "from": 2015,
    "to": 2026,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AfterPhdAward"
   },
   "scoreYearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
@@ -7290,8 +7290,8 @@
    "$oid": "6abeb95cb746fad614a5361f"
   },
   "name": "UEF26SE_2015_K",
-  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), capitole (K) din 2015–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P (≥ 100 mentor PD, ≥ 50 director TE).",
-  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Editura_7c && An_activitate >= 2015 && An_activitate <= 2026) ? 30.0 / n : 0.0",
+  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), capitole (K) din 2015–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P (≥ 100 mentor PD, ≥ 50 director TE). Fereastra 2015–2026 începe de la anul primului titlu de doctor din profil (anul titlului inclus); fără an în profil se ia întreaga fereastră.",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Editura_7c && An_activitate >= 2015 && An_activitate <= 2026 && (An_doctorat == null || An_activitate >= An_doctorat)) ? 30.0 / n : 0.0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7306,7 +7306,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "fb45dd3b7f965beda9a18c81c013d01f6d5d8e7c694e0e93bc268c83dedf1363",
+  "formulaHash": "0fb51114489e34138fc2e1df986b0456132fd01f27fb72d550779170c1694c57",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },

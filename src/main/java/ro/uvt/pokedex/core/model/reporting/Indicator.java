@@ -225,6 +225,7 @@ public class Indicator {
         if (spec instanceof YearRangeSpec.AllYears) return "*";
         if (spec instanceof YearRangeSpec.Absolute a) return a.from() + "->" + a.to();
         if (spec instanceof YearRangeSpec.PreviousNYears p) return "PREV:" + p.n();  // H60
+        if (spec instanceof YearRangeSpec.AfterPhdAward a) return "PHD:" + a.from() + "->" + a.to();  // H137
         return null;
     }
 

@@ -160,6 +160,16 @@ public class IndividualReportViewModelAssembler {
         model.addAttribute("criteriaTotal", criteriaTotal);
         model.addAttribute("totalScore", anyContributesToTotal ? totalScore : null);
         model.addAttribute("researcherPosition", researcherPosition);
+        // H137: the UEFISCDI PhD-age limit, checked against the profile's phdAwardYear; absent when the report
+        // sets none. phdLimitVerdict is null when the year is unknown (the page says "cannot be checked").
+        if (report.getPhdLimitYears() != null && report.getCompetitionDeadline() != null) {
+            Integer phdAwardYear = Optional.ofNullable(researcher.getResearcherProfile())
+                    .map(User.ResearcherProfile::getPhdAwardYear).orElse(null);
+            model.addAttribute("phdLimitYears", report.getPhdLimitYears());
+            model.addAttribute("phdLimitDeadline", report.getCompetitionDeadline());
+            model.addAttribute("phdAwardYear", phdAwardYear);
+            model.addAttribute("phdLimitVerdict", report.withinPhdLimit(phdAwardYear));
+        }
         model.addAttribute("runMetaId", run.runId());
         model.addAttribute("runMetaCreatedAt", run.createdAt());
         model.addAttribute("runMetaSource", run.source());

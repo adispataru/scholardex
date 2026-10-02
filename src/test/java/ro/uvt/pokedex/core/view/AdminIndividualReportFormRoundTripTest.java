@@ -284,6 +284,24 @@ class AdminIndividualReportFormRoundTripTest {
     }
 
     @Test
+    void thePhdLimitOfAReportSurvivesASave() throws Exception {
+        // H137: the UEFISCDI PhD-age limit and its deadline have inputs, so a save keeps them (H116)
+        stored(() -> {
+            IndividualReport report = scriptedReport();
+            report.setPhdLimitYears(12);
+            report.setCompetitionDeadline(java.time.LocalDate.of(2026, 7, 30));
+            return report;
+        });
+
+        List<String[]> untouched = renderedForm();
+        assertTrue(untouched.stream().anyMatch(f -> f[0].equals("phdLimitYears") && f[1].equals("12")));
+        assertTrue(untouched.stream().anyMatch(f -> f[0].equals("competitionDeadline") && f[1].equals("2026-07-30")));
+        mockMvc.perform(buildPost(untouched)).andExpect(status().is3xxRedirection());
+        assertEquals(12, saved().getPhdLimitYears());
+        assertEquals(java.time.LocalDate.of(2026, 7, 30), saved().getCompetitionDeadline());
+    }
+
+    @Test
     void theAuthorityOfAReportSurvivesASaveAndCanBeChangedOnThePage() throws Exception {
         // H129: a field the form has no input for is wiped by a save (H116) — this one has its input
         stored(() -> {

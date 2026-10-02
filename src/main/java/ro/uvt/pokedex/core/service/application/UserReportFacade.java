@@ -105,6 +105,20 @@ public class UserReportFacade {
     }
 
     public Optional<UserIndicatorWorkbookExportViewModel> buildIndicatorWorkbookExport(String userEmail, String indicatorId) throws IOException {
+        try {
+            return withSubject(userEmail, () -> {
+                try {
+                    return buildIndicatorWorkbookExportInternal(userEmail, indicatorId);
+                } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            });
+        } catch (java.io.UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+
+    private Optional<UserIndicatorWorkbookExportViewModel> buildIndicatorWorkbookExportInternal(String userEmail, String indicatorId) throws IOException {
         Optional<User> userOpt = findUserWithProfile(userEmail);
         if (userOpt.isEmpty()) {
             return Optional.empty();
@@ -273,6 +287,10 @@ public class UserReportFacade {
     }
 
     public UserIndicatorApplyViewModel buildIndicatorApplyView(String userEmail, String indicatorId) {
+        return withSubject(userEmail, () -> buildIndicatorApplyViewInternal(userEmail, indicatorId));
+    }
+
+    private UserIndicatorApplyViewModel buildIndicatorApplyViewInternal(String userEmail, String indicatorId) {
         Optional<User> userOpt = findUserWithProfile(userEmail);
         if (userOpt.isEmpty()) {
             return new UserIndicatorApplyViewModel("user/indicators", Map.of());
@@ -379,7 +397,7 @@ public class UserReportFacade {
         // H60: ensure a referenceYear is in scope for relative year specs. The run-build path already set the run's
         // year (nested → preserved); the live apply path defaults to the current year.
         return ScoringReferenceYearContext.with(effectiveReferenceYear(),
-                () -> computeReportScopedIndividualReportInternal(userEmail, reportId));
+                () -> withSubject(userEmail, () -> computeReportScopedIndividualReportInternal(userEmail, reportId)));
     }
 
     /** H60: the current referenceYear in scope, or the current year when none is set (live apply/detail path). */
@@ -590,8 +608,8 @@ public class UserReportFacade {
         // times (~1.6k Postgres round-trips for a citations indicator). The run-refresh path already
         // opens an outer scope; withRefreshScope nests as a no-op there (owner-checked).
         return ScoringReferenceYearContext.with(effectiveReferenceYear(),
-                () -> reportingLookupMemoization.withRefreshScope(
-                        () -> buildReportScopedIndicatorDetailInternal(userEmail, reportId, indicatorId)));
+                () -> withSubject(userEmail, () -> reportingLookupMemoization.withRefreshScope(
+                        () -> buildReportScopedIndicatorDetailInternal(userEmail, reportId, indicatorId))));
     }
 
     private Optional<IndicatorApplyResultDto> buildReportScopedIndicatorDetailInternal(
@@ -1313,6 +1331,19 @@ public class UserReportFacade {
     private boolean requiresPublicationScoring(Indicator indicator) {
         return indicator != null && indicator.isPublicationOutput()
                 || indicator != null && indicator.isCitationsOutput();
+    }
+
+    /**
+     * H137: runs {@code body} with the researcher's PhD award year in the scoring subject context, so the
+     * "după obținerea titlului de doctor" windows of the UEFISCDI standards resolve. The year is read from
+     * the profile; a missing profile or year leaves the context empty (plain windows).
+     */
+    private <T> T withSubject(String userEmail, java.util.function.Supplier<T> body) {
+        Integer phdAwardYear = findUserWithProfile(userEmail)
+                .map(User::getResearcherProfile)
+                .map(User.ResearcherProfile::getPhdAwardYear)
+                .orElse(null);
+        return ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext.withPhdAwardYear(phdAwardYear, body);
     }
 
     private Optional<User> findUserWithProfile(String userEmail) {

@@ -27,6 +27,29 @@ public class IndividualReport extends AbstractReport {
         return authority != null ? authority : ReportAuthority.CNATDCU;
     }
 
+    /**
+     * H137: the competition's limit on the age of the first PhD, in years before {@link #competitionDeadline}
+     * (PD 2026 director: 8; TE 2026 director: 12; null = no limit, e.g. the mentor). Checked on the page against
+     * the researcher's {@code phdAwardYear}; parental-leave exclusions stay manual.
+     */
+    private Integer phdLimitYears;
+
+    /** H137: the submission deadline the PhD-age limit is measured at (both 2026 competitions: 2026-07-30). */
+    @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+    private java.time.LocalDate competitionDeadline;
+
+    /**
+     * H137: whether a researcher with this PhD award year is within the limit at the deadline, by whole years
+     * (award year + limit ≥ deadline year — the award date is not held, so the year is the granularity). Null
+     * when the report sets no limit or the year is unknown.
+     */
+    public Boolean withinPhdLimit(Integer phdAwardYear) {
+        if (phdLimitYears == null || competitionDeadline == null || phdAwardYear == null) {
+            return null;
+        }
+        return phdAwardYear + phdLimitYears >= competitionDeadline.getYear();
+    }
+
     /** Binds this report to a registered {@code ReportTypeImportSupport} (H50). Null = export disabled. */
     private String reportTypeKey;
 

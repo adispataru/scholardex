@@ -1503,8 +1503,8 @@
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
-  "title": "Eligibilitate PD 2026",
-  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Informatică. Director: fereastra 2016–2026 aproximează „după admiterea la doctorat” (limita reală: 8 ani de la primul titlu de doctor — verificați cazurile-limită). Mentor: 2015–2026, după obținerea titlului de doctor. Doar reviste SCIE/SSCI/AHCI (ESCI nu se punctează); cuartile AIS conform JCR-ului anului publicării (2025–2026 → JCR-2024). Mentor, regula revistelor Q2 distincte: se aplică doar când 3 dintre cele 5 lucrări de referință sunt Q2 — cu cel puțin 3 lucrări Q1 nu mai contează; verdictul «Mentor» ține cont de aceasta. Autor principal: toți autorii sunt considerați principali la revistele din categoriile Informatică ale Anexei 6(e) numai când autorii sunt în ordine alfabetică — verificați lucrările cu altă ordine. Neverificate de platformă: lucrările cu dublă încadrare «article; proceedings paper» (nu se iau în calcul la Informatică) și vizibilitatea în Web of Science la data verificării.",
+  "title": "Eligibilitate PD 2026 — Director",
+  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Informatică, directorul de proiect: minimum 3 lucrări article/review în reviste SCIE/SSCI/AHCI din categoriile Informatică ale Anexei 6(e), publicate după admiterea la doctorat (fereastra 2016–2026 este aproximarea platformei), dintre care una în Q1/Q2 după AIS (JCR-ul anului publicării; 2025–2026 → JCR-2024) sau o lucrare full paper la o conferință CORE A/A* ca prim autor sau autor corespondent. ESCI nu se punctează. Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 8 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Autor principal: toți autorii sunt considerați principali la revistele din categoriile Informatică ale Anexei 6(e) numai când autorii sunt în ordine alfabetică — verificați lucrările cu altă ordine. Neverificate de platformă: lucrările cu dublă încadrare «article; proceedings paper» și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
   "indicators": [
    {
     "$ref": "indicators",
@@ -1522,30 +1522,6 @@
     "$ref": "indicators",
     "$id": {
      "$oid": "6a4e40467c184d3e2d35ea62"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea63"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea64"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea65"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea66"
     }
    }
   ],
@@ -1608,151 +1584,6 @@
      }
     ],
     "contributesToTotal": false
-   },
-   {
-    "name": "Mentor: top 50% AIS",
-    "indicatorIndices": [
-     3
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 5
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 5
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 5
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 5
-     },
-     {
-      "position": "HABIL",
-      "value": 5
-     }
-    ],
-    "contributesToTotal": false
-   },
-   {
-    "name": "Mentor: Q1 (AIS)",
-    "indicatorIndices": [
-     4
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 2
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 2
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 2
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 2
-     },
-     {
-      "position": "HABIL",
-      "value": 2
-     }
-    ],
-    "contributesToTotal": false
-   },
-   {
-    "name": "Mentor: reviste Q2 distincte",
-    "indicatorIndices": [
-     5
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 2
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 2
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 2
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 2
-     },
-     {
-      "position": "HABIL",
-      "value": 2
-     }
-    ],
-    "contributesToTotal": false
-   },
-   {
-    "name": "Mentor: tip article",
-    "indicatorIndices": [
-     6
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 3
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 3
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 3
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 3
-     },
-     {
-      "position": "HABIL",
-      "value": 3
-     }
-    ],
-    "contributesToTotal": false
-   },
-   {
-    "name": "Mentor: Q1 (AIS) ≥ 3 — regula revistelor Q2 nu se aplică",
-    "indicatorIndices": [
-     4
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 3
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 3
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 3
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 3
-     },
-     {
-      "position": "HABIL",
-      "value": 3
-     }
-    ],
-    "contributesToTotal": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
@@ -1770,34 +1601,12 @@
       }
      ]
     }
-   },
-   {
-    "name": "Mentor — verdict",
-    "composition": {
-     "all": [
-      {
-       "criterion": 2
-      },
-      {
-       "criterion": 3
-      },
-      {
-       "criterion": 5
-      },
-      {
-       "any": [
-        {
-         "criterion": 6
-        },
-        {
-         "criterion": 4
-        }
-       ]
-      }
-     ]
-    }
    }
-  ]
+  ],
+  "phdLimitYears": 8,
+  "competitionDeadline": {
+   "$date": "2026-07-30T00:00:00Z"
+  }
  },
  {
   "_id": {
@@ -4696,7 +4505,7 @@
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "Eligibilitate TE 2026",
-  "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele naturii, științele exacte și științele inginerești. Directorul de proiect: în 2015–2026, după obținerea titlului de doctor, ca autor principal, minimum 3 lucrări article/review/proceedings paper în reviste SCIE/SSCI/AHCI din Q1 sau Q2 după AIS (clasificarea anului publicării; 2025–2026 → JCR-2024), dintre care minimum 2 din reviste diferite și minimum 2 de tip article. Pentru Informatică, cel mult 2 dintre cele 3 pot fi lucrări full paper la conferințe CORE A/A* (rangul de la momentul publicării) ca prim autor sau autor corespondent — platforma le adaugă plafonat la 2; pe acest traseu notele privind revistele distincte și tipul article se verifică manual. Neverificate de platformă: primul titlu de doctor obținut cu cel mult 12 ani în urmă (concediile de creștere a copilului se exclud), condiția „după obținerea titlului de doctor” (fereastra 2015–2026 este o aproximare) și vizibilitatea lucrărilor în Web of Science la data verificării. Autor principal: toți autorii sunt considerați principali numai la revistele din categoriile Anexei 6(e) (matematică, informatică, economie, multidisciplinar) și numai când autorii sunt în ordine alfabetică — verificați lucrările cu altă ordine; revistele din alte categorii nu sunt numărate de acest raport.",
+  "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele naturii, științele exacte și științele inginerești. Directorul de proiect: în 2015–2026, după obținerea titlului de doctor, ca autor principal, minimum 3 lucrări article/review/proceedings paper în reviste SCIE/SSCI/AHCI din Q1 sau Q2 după AIS (clasificarea anului publicării; 2025–2026 → JCR-2024), dintre care minimum 2 din reviste diferite și minimum 2 de tip article. Pentru Informatică, cel mult 2 dintre cele 3 pot fi lucrări full paper la conferințe CORE A/A* (rangul de la momentul publicării) ca prim autor sau autor corespondent — platforma le adaugă plafonat la 2; pe acest traseu notele privind revistele distincte și tipul article se verifică manual. Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 12 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Fereastra 2015–2026 începe de la anul doctoratului din profil. Neverificată de platformă: vizibilitatea lucrărilor în Web of Science la data verificării. Autor principal: toți autorii sunt considerați principali numai la revistele din categoriile Anexei 6(e) (matematică, informatică, economie, multidisciplinar) și numai când autorii sunt în ordine alfabetică — verificați lucrările cu altă ordine; revistele din alte categorii nu sunt numărate de acest raport.",
   "authority": "UEFISCDI",
   "indicators": [
    {
@@ -4893,7 +4702,11 @@
     }
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "phdLimitYears": 12,
+  "competitionDeadline": {
+   "$date": "2026-07-30T00:00:00Z"
+  }
  },
  {
   "_id": {
@@ -4903,7 +4716,7 @@
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "Eligibilitate TE 2026 — științe sociale și economice",
-  "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele sociale și științele economice. Directorul de proiect: P ≥ 50 și ΣA ≥ 25 din lucrări publicate în 2015–2026, după obținerea titlului de doctor (primul titlu de doctor cu cel mult 12 ani în urmă, concediile de creștere a copilului se exclud). Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul, limitele privind titlul de doctor și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
+  "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele sociale și științele economice, directorul de proiect: P ≥ 50 și ΣA ≥ 25 din lucrări publicate în 2015–2026, după obținerea titlului de doctor (fereastra începe de la anul doctoratului din profil). Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 12 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
   "authority": "UEFISCDI",
   "indicators": [
    {
@@ -5034,7 +4847,11 @@
     }
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "phdLimitYears": 12,
+  "competitionDeadline": {
+   "$date": "2026-07-30T00:00:00Z"
+  }
  },
  {
   "_id": {
@@ -5043,8 +4860,8 @@
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
-  "title": "Eligibilitate PD 2026 — științe sociale și economice",
-  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Științele sociale și științele economice. Director: P ≥ 30 și ΣA ≥ 15 din lucrări publicate după admiterea la doctorat (fereastra 2016–2026 este aproximarea platformei; limita reală: 8 ani de la primul titlu de doctor). Mentor: P ≥ 100 și ΣA ≥ 50 din 2015–2026, după obținerea titlului de doctor. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul, limitele privind titlul de doctor și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
+  "title": "Eligibilitate PD 2026 — științe sociale și economice — Director",
+  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Științele sociale și științele economice, directorul de proiect: P ≥ 30 și ΣA ≥ 15 din lucrări publicate după admiterea la doctorat (fereastra 2016–2026 este aproximarea platformei). Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 8 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
   "authority": "UEFISCDI",
   "indicators": [
    {
@@ -5063,24 +4880,6 @@
     "$ref": "indicators",
     "$id": {
      "$oid": "6abeb95c8f1da096d6e0af7c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95cb6ecaf17dd219545"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95c24cbf52c5ca8bce3"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95cb746fad614a5361f"
     }
    }
   ],
@@ -5176,13 +4975,276 @@
      }
     ],
     "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Director — verdict",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "phdLimitYears": 8,
+  "competitionDeadline": {
+   "$date": "2026-07-30T00:00:00Z"
+  }
+ },
+ {
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "Eligibilitate PD 2026 — Mentor",
+  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Informatică, mentorul: în 2015–2026, după obținerea titlului de doctor (fereastra începe de la anul doctoratului din profil), minimum 5 lucrări article/review/proceedings paper în reviste SCIE/SSCI/AHCI din categoriile Informatică ale Anexei 6(e) din Q1/Q2 după AIS (JCR-ul anului publicării; 2025–2026 → JCR-2024), dintre care cel puțin 2 în Q1 și cel puțin 3 de tip article; regula revistelor Q2 distincte se aplică doar când 3 dintre cele 5 lucrări de referință sunt Q2 — cu cel puțin 3 lucrări Q1 nu mai contează (verdictul ține cont). Fără limită de vârstă a doctoratului. Autor principal: toți autorii numai când sunt în ordine alfabetică — verificați lucrările cu altă ordine. Aceeași cerință pentru orice poziție.",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea63"
+    }
    },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea64"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea65"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea66"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "Mentor: top 50% AIS",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 5
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 5
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 5
+     },
+     {
+      "position": "HABIL",
+      "value": 5
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: Q1 (AIS)",
+    "indicatorIndices": [
+     1
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 2
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 2
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: reviste Q2 distincte",
+    "indicatorIndices": [
+     2
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 2
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 2
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 2
+     },
+     {
+      "position": "HABIL",
+      "value": 2
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: tip article",
+    "indicatorIndices": [
+     3
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 3
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 3
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "HABIL",
+      "value": 3
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: Q1 (AIS) ≥ 3 — regula revistelor Q2 nu se aplică",
+    "indicatorIndices": [
+     1
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 3
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 3
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 3
+     },
+     {
+      "position": "HABIL",
+      "value": 3
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "authority": "UEFISCDI",
+  "perspectives": [
+   {
+    "name": "Mentor — verdict",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      },
+      {
+       "criterion": 3
+      },
+      {
+       "any": [
+        {
+         "criterion": 4
+        },
+        {
+         "criterion": 2
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "_id": {
+   "$oid": "6abf4e2e183298f3772d4790"
+  }
+ },
+ {
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "Eligibilitate PD 2026 — științe sociale și economice — Mentor",
+  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Științele sociale și științele economice, mentorul: P ≥ 100 și ΣA ≥ 50 din lucrări publicate în 2015–2026, după obținerea titlului de doctor (fereastra începe de la anul doctoratului din profil). Fără limită de vârstă a doctoratului. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
+  "authority": "UEFISCDI",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95cb6ecaf17dd219545"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95c24cbf52c5ca8bce3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95cb746fad614a5361f"
+    }
+   }
+  ],
+  "criteria": [
    {
     "name": "Mentor: P = A + C + K",
     "indicatorIndices": [
-     3,
-     4,
-     5
+     0,
+     1,
+     2
     ],
     "thresholds": [
      {
@@ -5227,7 +5289,7 @@
    {
     "name": "Mentor: ΣA (articole)",
     "indicatorIndices": [
-     3
+     0
     ],
     "thresholds": [
      {
@@ -5272,7 +5334,7 @@
   ],
   "perspectives": [
    {
-    "name": "Director — verdict",
+    "name": "Mentor — verdict",
     "composition": {
      "all": [
       {
@@ -5283,21 +5345,11 @@
       }
      ]
     }
-   },
-   {
-    "name": "Mentor — verdict",
-    "composition": {
-     "all": [
-      {
-       "criterion": 2
-      },
-      {
-       "criterion": 3
-      }
-     ]
-    }
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "_id": {
+   "$oid": "6abf4e2eeb62c6d39ccc9e17"
+  }
  }
 ]

@@ -67,6 +67,17 @@ class ScientificProductionYearInclusionTest {
     }
 
     @Test
+    void afterPhdAwardCutsTheWindowAtTheSubjectsPhdYearAndFallsBackToThePlainRange() {
+        // H137: "după obținerea titlului de doctor" — the 2015–2026 window starts at the PhD year (included)
+        Indicator ind = genericCount(new YearRangeSpec.AfterPhdAward(2015, 2026));
+        List<ScoringPublication> around = List.of(pub("before", 2019), pub("same", 2020), pub("after", 2024), pub("old", 2014));
+        assertEquals(2.0, ScoringSubjectContext.withPhdAwardYear(2020, () -> count(ind, around, 2026)), "2020 and 2024");
+        assertEquals(3.0, count(ind, around, 2026), "no PhD year in scope: the plain 2015–2026 range");
+        assertEquals("PHD:2015->2026", ind.getYearRange(), "legacy string form");
+        assertEquals(new YearRangeSpec.AfterPhdAward(2015, 2026), YearRangeSpec.parse("PHD:2015->2026"));
+    }
+
+    @Test
     void allYearsIncludesEverything() {
         assertEquals(3.0, count(genericCount(new YearRangeSpec.AllYears()), pubs, 2026));
     }

@@ -21,11 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Uefiscdi2026EligibilityDefinitionTest {
 
     private static SeedReportDefinition pd;
+    private static SeedReportDefinition mentor;
     private static SeedReportDefinition te;
 
     @BeforeAll
     static void load() {
-        pd = new SeedReportDefinition("Eligibilitate PD 2026", "PD26_");
+        // H137: one report per role — the director's and the mentor's standards are separate pages
+        pd = new SeedReportDefinition("Eligibilitate PD 2026 — Director", "PD26_");
+        mentor = new SeedReportDefinition("Eligibilitate PD 2026 — Mentor", "PD26_");
         te = new SeedReportDefinition("Eligibilitate TE 2026", "TE26_");
     }
 
@@ -52,7 +55,7 @@ class Uefiscdi2026EligibilityDefinitionTest {
 
     @Test
     void pdDirectorNeedsThreeWosWorksAndOneQ1Q2OrCoreAEquivalent() {
-        assertEquals(7, pd.report().get("criteria").size());
+        assertEquals(2, pd.report().get("criteria").size());
         JsonNode works = criterion(pd, 0);
         JsonNode topHalf = criterion(pd, 1);
         assertEquals(List.of(0), indices(works));
@@ -69,33 +72,56 @@ class Uefiscdi2026EligibilityDefinitionTest {
     void pdMentorQ2DistinctJournalsRuleAppliesOnlyWithFewerThanThreeQ1Works() {
         // Anexa 2, mentor: "Dacă dintre articolele de referință 3 au fost publicate în reviste Q2, minimum 2
         // dintre acestea trebuie să fie din reviste diferite" — with 3 Q1 works the reference set needs no 3 Q2.
-        JsonNode q1 = criterion(pd, 3);
-        JsonNode q2Distinct = criterion(pd, 4);
-        JsonNode q1AtLeastThree = criterion(pd, 6);
+        assertEquals(5, mentor.report().get("criteria").size());
+        JsonNode top50 = criterion(mentor, 0);
+        JsonNode q1 = criterion(mentor, 1);
+        JsonNode q2Distinct = criterion(mentor, 2);
+        JsonNode articles = criterion(mentor, 3);
+        JsonNode q1AtLeastThree = criterion(mentor, 4);
+        assertEquals(5.0, threshold(top50, "PROF_UNIV"));
+        assertEquals(List.of(1), indices(q1));
         assertEquals(2.0, threshold(q1, "PROF_UNIV"));
-        assertEquals(List.of(4), indices(q1AtLeastThree), "the new criterion reads the same Q1 indicator");
+        assertEquals(List.of(1), indices(q1AtLeastThree), "the new criterion reads the same Q1 indicator");
         assertEquals(3.0, threshold(q1AtLeastThree, "PROF_UNIV"));
-        assertEquals("DistinctForums", pd.indicator("Mentor_Q2_reviste_distincte").get("selectorSpec").get("_class").asText()
+        assertEquals(3.0, threshold(articles, "PROF_UNIV"));
+        assertEquals("DistinctForums", mentor.indicator("Mentor_Q2_reviste_distincte").get("selectorSpec").get("_class").asText()
                 .substring("ro.uvt.pokedex.core.model.reporting.scoring.Selector$".length()));
         assertEquals(2.0, threshold(q2Distinct, "PROF_UNIV"));
 
-        JsonNode mentor = pd.report().get("perspectives").get(1);
-        assertEquals("Mentor — verdict", mentor.get("name").asText());
-        JsonNode all = mentor.get("composition").get("all");
+        JsonNode verdict = mentor.report().get("perspectives").get(0);
+        assertEquals("Mentor — verdict", verdict.get("name").asText());
+        JsonNode all = verdict.get("composition").get("all");
         assertEquals(4, all.size());
-        assertEquals(2, all.get(0).get("criterion").asInt());
-        assertEquals(3, all.get(1).get("criterion").asInt());
-        assertEquals(5, all.get(2).get("criterion").asInt());
+        assertEquals(0, all.get(0).get("criterion").asInt());
+        assertEquals(1, all.get(1).get("criterion").asInt());
+        assertEquals(3, all.get(2).get("criterion").asInt());
         JsonNode any = all.get(3).get("any");
-        assertEquals(6, any.get(0).get("criterion").asInt(), "Q1 ≥ 3 ...");
-        assertEquals(4, any.get(1).get("criterion").asInt(), "... or 2 distinct Q2 journals");
+        assertEquals(4, any.get(0).get("criterion").asInt(), "Q1 ≥ 3 ...");
+        assertEquals(2, any.get(1).get("criterion").asInt(), "... or 2 distinct Q2 journals");
         assertEquals(List.of(0, 1), pd.criteriaOf(0), "the director verdict is the two director criteria");
     }
 
     @Test
     void pdNothingContributesToATotalAndTheReportIsUefiscdi() {
         pd.report().get("criteria").forEach(c -> assertFalse(c.path("contributesToTotal").asBoolean(false), c.get("name").asText()));
+        mentor.report().get("criteria").forEach(c -> assertFalse(c.path("contributesToTotal").asBoolean(false), c.get("name").asText()));
         assertEquals("UEFISCDI", pd.report().get("authority").asText());
+        assertEquals("UEFISCDI", mentor.report().get("authority").asText());
+    }
+
+    @Test
+    void thePhdAgeLimitAndThePhdAnchoredWindowsFollowThePackages() {
+        // PD director: first PhD at most 8 years before the deadline; TE director 12; the mentor has no limit
+        assertEquals(8, pd.report().get("phdLimitYears").asInt());
+        assertEquals("2026-07-30T00:00:00Z", pd.report().get("competitionDeadline").get("$date").asText());
+        assertEquals(12, te.report().get("phdLimitYears").asInt());
+        assertNull(mentor.report().get("phdLimitYears"));
+        // "după obținerea titlului de doctor" = the 2015–2026 window cut at the PhD year; the director's
+        // "după admiterea la doctorat" stays the plain 2016–2026 approximation (the admission year is not held)
+        assertTrue(mentor.indicator("Mentor_top50").get("yearRangeSpec").get("_class").asText().endsWith("AfterPhdAward"));
+        assertTrue(te.indicator("Dir_Q1Q2").get("yearRangeSpec").get("_class").asText().endsWith("AfterPhdAward"));
+        assertEquals(2015, te.indicator("Dir_CORE_A_echiv").get("yearRangeSpec").get("from").asInt());
+        assertTrue(pd.indicator("Dir_Q1_Q2").get("yearRangeSpec").get("_class").asText().endsWith("Absolute"));
     }
 
     // ------------------------------------------------------------------ TE 2026
@@ -152,7 +178,7 @@ class Uefiscdi2026EligibilityDefinitionTest {
 
     @Test
     void theSupersededReportsAndIndicatorsAreNotInTheSeed() {
-        for (String title : List.of("Eligibilitate PD", "Eligibilitate Tinere Echipe")) {
+        for (String title : List.of("Eligibilitate PD", "Eligibilitate Tinere Echipe", "Eligibilitate PD 2026")) {
             assertNull(SeedReportDefinition.find(title), title + " is superseded and must not be seeded");
         }
     }

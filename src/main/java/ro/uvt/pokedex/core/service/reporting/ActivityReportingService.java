@@ -119,6 +119,9 @@ public class ActivityReportingService {
         // standard's window ("în perioada 2015–2026") without a second, typed year field. Activities are not
         // filtered by the indicator's year range the way publications are. 0 when the entry has no date.
         variables.put("An_activitate", activity.getYear());
+        // H137: An_doctorat (int or null) — the subject's first PhD year, for "după obținerea titlului de doctor"
+        // windows on declared items (null when the profile has none: the formula keeps the plain window).
+        variables.put("An_doctorat", ScoringSubjectContext.phdAwardYear());
         final String rawformula = indicator.getFormula();
         // H52 slice 11d.1: typed-strategy dispatch. GENERIC_ACTIVITY and
         // GENERIC_COUNT both short-circuit to a unit base score (1.0); only
@@ -154,7 +157,7 @@ public class ActivityReportingService {
         // only publishers whose books and chapters count for the social/economic eligibility. Bound whenever the
         // activity has an Editura field; false when the list is not loaded or the name is not on it. After the
         // strategy branch, which replaces scoringInfo, so the miss note survives.
-        injectAnexa7cPublisherVariable(variables, result);
+        injectAnexa7cPublisherVariable(variables, result, rawformula);
         if (budgetEurDerivedFromInterval) {
             // Surfaced on the drilldown row: the amount was inferred from the declared interval's lower
             // bound, not taken from the (missing or interval-contradicting) numeric Buget.
@@ -264,15 +267,20 @@ public class ActivityReportingService {
         return derivedFromInterval;
     }
 
-    /** See the call site: {@code Editura_7c} from {@link UefiscdiPublisherSupport}; the miss is noted on the row. */
-    private void injectAnexa7cPublisherVariable(Map<String, Object> variables, Score result) {
+    /**
+     * See the call site: {@code Editura_7c} from {@link UefiscdiPublisherSupport}. The variable is bound for any
+     * activity with an Editura field (harmless: formulas that do not name it never see it); the miss is noted on
+     * the row ONLY for formulas that gate on it, so the book activities of the CNATDCU standards (their own
+     * publisher lists) carry no stray note.
+     */
+    private void injectAnexa7cPublisherVariable(Map<String, Object> variables, Score result, String formula) {
         if (!variables.containsKey("Editura")) {
             return;
         }
         Object editura = variables.get("Editura");
         boolean onList = editura instanceof String name && UefiscdiPublisherSupport.isOnAnexa7c(name);
         variables.put("Editura_7c", onList);
-        if (!onList) {
+        if (!onList && formula != null && formula.contains("Editura_7c")) {
             result.getScoringInfo().put("anexa7c", "NOT_ON_LIST");
         }
     }

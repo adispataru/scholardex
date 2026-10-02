@@ -9,6 +9,28 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H137` UEFISCDI reports: one report per role, and the PhD anchors — **BUILT 2026-10-02, prod script ready (deploy
+  first).** Decided over the role-keyed-threshold model (B) after a full sweep: B would have broken the org-unit
+  dashboards (thresholds matched by the member's position), both admin report forms (a role threshold rewritten as
+  ASIST_UNIV on save), the comparison and the threshold-cap addition, and needs a semantics for non-exclusive roles;
+  the sweep is the checklist if roles are ever wanted as an axis. **Built (C):** «Eligibilitate PD 2026» RENAMED
+  «… — Director» (same id, keeps runs/selections) with the director criteria; «… — Mentor» created; the social/economic
+  PD split the same way; TE unchanged (director only). **PhD (1b):** `YearRangeSpec.AfterPhdAward(from, to)` (legacy
+  string `PHD:from->to`) = the window cut at the researcher's `phdAwardYear` (award year included; plain window when
+  unknown), anchored through `ScoringSubjectContext` (thread-scoped like the reference year, set by the per-user
+  entry points of `UserReportFacade`, empty for provisional subjects) and the `An_doctorat` activity variable; applied
+  to the 2015–2026 mentor / TE windows (9 indicators) and the declared 2015 books/chapters — the PD director's
+  "după admiterea la doctorat" stays the plain 2016–2026 window (the admission year is not held). PhD-age limit:
+  `IndividualReport.phdLimitYears` + `competitionDeadline` (admin form inputs, round-trip pinned), checked by whole
+  years against the profile's PhD year and shown as a header cell on the evaluation page (YES / NO / cannot be checked);
+  directors 8 (PD) / 12 (TE) years before 2026-07-30, mentors none; parental-leave exclusions stay manual.
+  **Prod (Adrian), after the image with H137 is deployed:** set `H137_IMAGE_IS_DEPLOYED = true` in
+  `h137_uefiscdi_2026_roles_phd.js` (supersedes the never-run `h136_uefiscdi_social_2026.js`, deleted), rehearsed on
+  the local db 2026-10-02; `./run-mongo-script.sh h137_uefiscdi_2026_roles_phd.js --restart` — an older pod cannot
+  read the AfterPhdAward range; then select the new reports (PD Mentor; the social Director / Mentor / TE) for the
+  divisions. **Researcher-side:** the PhD year lives in the workspace profile; without it the windows are plain and
+  the limit reads "cannot be checked".
+
 - [ ] `H136` UEFISCDI eligibility for the social/economic and the humanities families — **SLICE 1 BUILT 2026-10-01, prod
   script ready (deploy first).** Built as scoped: `AIS` formula variable (the PD_WOS placement records the journal's AIS
   value; bound lazily in `ScientificProductionService`), `Editura_7c` and `An_activitate` activity variables
@@ -22,8 +44,7 @@ Done history moved to `TASKS-done.md`.
   mentor P ≥ 100 ∧ ΣA ≥ 50, two verdicts) and «Eligibilitate TE 2026 — științe sociale și economice» (P ≥ 50 ∧
   ΣA ≥ 25); pinned by `Uefiscdi2026SocialEligibilityDefinitionTest` (real activity scoring) and
   `UefiscdiPublisherSupportTest`. **Prod (Adrian), after the image with H136 is deployed:** set
-  `H136_IMAGE_IS_DEPLOYED = true` in `h136_uefiscdi_social_2026.js` (rke2-overmind/feaa-2026-scripts; rehearse on the
-  local db first, where bootRun already has the code), `./run-mongo-script.sh h136_uefiscdi_social_2026.js --restart`,
+  — superseded: the data ships with `h137_uefiscdi_2026_roles_phd.js` (`H137`), one script for both —
   then select the two reports for FEAA / FSP / FSAS / FPSE. **Not built:** canonical bk/ch publications are not
   auto-counted (declared only); the "subject strictly social/economic" and accession-number conditions are stated,
   not checked. Slice 2 (humanities) as scoped below. — Original scope, 2026-10-01:

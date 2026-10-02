@@ -53,10 +53,13 @@ public class ScientificProductionService {
         // re-score paths (Absolute ignores it). The central default means every re-score path filters correctly
         // without each having to set the context; the build path overrides with the stored year for replay.
         int ref = ScoringReferenceYearContext.currentOrCurrentYear();
+        // H137: the subject's PhD award year anchors AfterPhdAward windows; null (unknown, provisional subject,
+        // ad-hoc scoring) leaves the plain range.
+        Integer phdAwardYear = ScoringSubjectContext.phdAwardYear();
         return publications.stream()
                 .filter(pub -> {
                     Optional<Integer> year = PersistenceYearSupport.extractYear(pub.getCoverDate(), pub.getId(), log);
-                    return year.isEmpty() || spec.includes(year.get(), ref);
+                    return year.isEmpty() || spec.includes(year.get(), ref, phdAwardYear);
                 })
                 .toList();
     }

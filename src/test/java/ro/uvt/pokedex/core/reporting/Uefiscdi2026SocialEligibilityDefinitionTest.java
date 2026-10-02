@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import ro.uvt.pokedex.core.service.reporting.ScoringSubjectContext;
 import ro.uvt.pokedex.core.service.reporting.UefiscdiPublisherListService;
 import ro.uvt.pokedex.core.service.reporting.UefiscdiPublisherSupport;
 
@@ -13,6 +14,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -24,11 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Uefiscdi2026SocialEligibilityDefinitionTest {
 
     private static SeedReportDefinition pd;
+    private static SeedReportDefinition mentor;
     private static SeedReportDefinition te;
 
     @BeforeAll
     static void load() {
-        pd = new SeedReportDefinition("Eligibilitate PD 2026 — științe sociale și economice", "UEF26SE_");
+        pd = new SeedReportDefinition("Eligibilitate PD 2026 — științe sociale și economice — Director", "UEF26SE_");
+        mentor = new SeedReportDefinition("Eligibilitate PD 2026 — științe sociale și economice — Mentor", "UEF26SE_");
         te = new SeedReportDefinition("Eligibilitate TE 2026 — științe sociale și economice", "UEF26SE_");
         UefiscdiPublisherSupport.register(UefiscdiPublisherListService.readFixture());
     }
@@ -60,11 +64,12 @@ class Uefiscdi2026SocialEligibilityDefinitionTest {
 
     @Test
     void pdDirectorNeeds30PointsOfWhich15FromArticlesAndTheMentor100And50() {
-        assertEquals(4, pd.report().get("criteria").size());
+        assertEquals(2, pd.report().get("criteria").size());
+        assertEquals(2, mentor.report().get("criteria").size());
         JsonNode dirP = pd.report().get("criteria").get(0);
         JsonNode dirA = pd.report().get("criteria").get(1);
-        JsonNode menP = pd.report().get("criteria").get(2);
-        JsonNode menA = pd.report().get("criteria").get(3);
+        JsonNode menP = mentor.report().get("criteria").get(0);
+        JsonNode menA = mentor.report().get("criteria").get(1);
         for (String position : List.of("ASIST_UNIV", "PROF_UNIV", "CS_III", "ASIST_C")) {
             assertEquals(30.0, threshold(dirP, position), "one bar for every position");
             assertEquals(15.0, threshold(dirA, position));
@@ -73,11 +78,15 @@ class Uefiscdi2026SocialEligibilityDefinitionTest {
         }
         assertEquals(Set.of("Dir_A", "Dir_C", "Dir_K"), members(pd, 0));
         assertEquals(Set.of("Dir_A"), members(pd, 1));
-        assertEquals(Set.of("2015_A", "2015_C", "2015_K"), members(pd, 2));
-        assertEquals(Set.of("2015_A"), members(pd, 3));
+        assertEquals(Set.of("2015_A", "2015_C", "2015_K"), members(mentor, 0));
+        assertEquals(Set.of("2015_A"), members(mentor, 1));
         assertEquals(List.of(0, 1), pd.criteriaOf(0));
-        assertEquals(List.of(2, 3), pd.criteriaOf(1));
+        assertEquals(List.of(0, 1), mentor.criteriaOf(0));
         assertEquals("UEFISCDI", pd.report().get("authority").asText());
+        assertEquals("UEFISCDI", mentor.report().get("authority").asText());
+        assertEquals(8, pd.report().get("phdLimitYears").asInt());
+        assertNull(mentor.report().get("phdLimitYears"));
+        assertEquals(12, te.report().get("phdLimitYears").asInt());
     }
 
     @Test
@@ -89,6 +98,7 @@ class Uefiscdi2026SocialEligibilityDefinitionTest {
         assertEquals(Set.of("2015_A"), members(te, 1));
         assertEquals(List.of(0, 1), te.criteriaOf(0));
         assertEquals(2015, te.indicator("2015_A").get("yearRangeSpec").get("from").asInt());
+        assertTrue(te.indicator("2015_A").get("yearRangeSpec").get("_class").asText().endsWith("AfterPhdAward"), "după obținerea titlului de doctor");
         assertEquals(2016, pd.indicator("Dir_A").get("yearRangeSpec").get("from").asInt(), "director PD approximates 'after PhD admission'");
         te.report().get("criteria").forEach(c -> assertFalse(c.path("contributesToTotal").asBoolean(false)));
     }
@@ -121,6 +131,18 @@ class Uefiscdi2026SocialEligibilityDefinitionTest {
         assertEquals(60.0, pd.activity("2015_C", SeedReportDefinition.fields(
                 "Titlu", "Singur autor", "Tip", "Carte", "Editura", "SAGE PUBLICATIONS")), 1e-9,
                 "a missing author count means one author");
+    }
+
+    @Test
+    void aMentorOrTeBookBeforeThePhdDoesNotCountWhenTheProfileHasTheYear() {
+        // the test helper dates every declared item 2024
+        Map<String, String> book = SeedReportDefinition.fields("Titlu", "Carte", "Tip", "Carte", "Editura", "Routledge", "N_autori", "1");
+        assertEquals(60.0, ScoringSubjectContext.withPhdAwardYear(2020, () -> pd.activity("2015_C", book)), 1e-9, "PhD 2020, book 2024");
+        assertEquals(60.0, ScoringSubjectContext.withPhdAwardYear(2024, () -> pd.activity("2015_C", book)), 1e-9, "the PhD year itself counts");
+        assertEquals(0.0, ScoringSubjectContext.withPhdAwardYear(2025, () -> pd.activity("2015_C", book)), 1e-9, "before the PhD");
+        assertEquals(60.0, pd.activity("2015_C", book), 1e-9, "no PhD year in the profile: the plain window");
+        assertEquals(60.0, ScoringSubjectContext.withPhdAwardYear(2025, () -> pd.activity("Dir_C", book)), 1e-9,
+                "the director's window is not PhD-anchored (admission, not award)");
     }
 
     @Test
