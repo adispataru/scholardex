@@ -309,7 +309,8 @@ public class ActivityReportingService {
         }
         Object typed = variables.get(PublisherRules.FIELD_PUBLISHER);
         PublisherCategorySupport.Outcome outcome = PublisherCategorySupport.outcome(rules.get(),
-                typed instanceof String name ? name : null, activity.getPublisherClaim(), activity.getFields());
+                typed instanceof String name ? name : null, activity.getDate(), activity.getPublisherClaim(),
+                activity.getFields());
         variables.put(PublisherRules.VARIABLE, outcome.category());
         result.getScoringInfo().put("publisherCategory", outcome.category() == null ? "NONE" : outcome.category());
         result.getScoringInfo().put("publisherBasis", outcome.basis());

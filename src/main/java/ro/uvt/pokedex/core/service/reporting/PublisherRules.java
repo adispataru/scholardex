@@ -20,8 +20,9 @@ import java.util.Optional;
  *   <li><b>Comisia 25 (Sociologie)</b>, definition [4]: the A2 list of the annex, else A1 for a house of international
  *       prestige — on the WoS Master Book List or on an international list or ranking (SENSE A and B, the UEFISCDI
  *       lists: {@link InternationalPublisherSupport}), the stand-ins for "Lista A1, în vigoare", as for corpus books;
- *       a book held by at least six WorldCat libraries counts as A2 (a claim), and so does one published before the
- *       current list at a house of the earlier list (a claim: the platform does not hold that list);</li>
+ *       a book that appeared before 1 October 2026 counts A2 at a house of the earlier list (CNATDCU's 2011 A2 list of
+ *       the Social Sciences panel, {@link Comisia25Rules#earlierPublisherList()}); a book held by at least six WorldCat
+ *       libraries counts as A2 (a claim);</li>
  *   <li><b>Comisia 28 (Psihologie, Științe ale educației)</b>: the domain's 2026 list (A2, B), else A1 for a house of
  *       international prestige, as above (indicative, as for corpus books); the per-book routes (A1 by 25 EU/OECD
  *       university libraries in WorldCat, A2 or B by the complementary route) are claims, and may raise a listed
@@ -51,14 +52,9 @@ public enum PublisherRules {
     /** The foreign-publisher category of Comisia 35. */
     public static final String FOREIGN = "STRAINA";
 
-    /**
-     * Comisia 25 also counts a book published before the current list at a house of the earlier one ("lista de edituri
-     * din Anexa 2"), a list the 2026 annex does not reproduce and the platform does not hold: a head decides it.
-     */
     private static final Map<String, String> SOCIOLOGY_OPTIONS = Map.of(
             "Editură de prestigiu internațional (Lista A1)", "A1",
-            "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)", "A2",
-            "Editură de pe lista anterioară (Anexa 2), carte apărută înaintea listei actuale", "A2");
+            "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)", "A2");
     private static final Map<String, String> COMISIA_28_OPTIONS = Map.of(
             "A1 — minimum 25 de biblioteci universitare din UE/OCDE în WorldCat", "A1",
             "A2 — cel puțin două criterii din ruta complementară", "A2",

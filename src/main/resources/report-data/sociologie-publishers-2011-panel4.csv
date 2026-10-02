@@ -1,0 +1,217 @@
+nr,name,tier
+1,Editura Academiei Fortelor Terestre 'Nicolae Balcescu',A2
+2,Editura Academiei Fortelor Terestre,A2
+3,Editura M.A.I.,A2
+4,Editura MAI,A2
+5,"Accent, Cluj",A2
+6,Accent,A2
+7,Editura Accent,A2
+8,Ars Docendi,A2
+9,Editura Ars Docendi,A2
+10,C.H. Beck,A2
+11,Editura C.H. Beck,A2
+12,Comunicare.ro,A2
+13,Editura Comunicare.ro,A2
+14,Curtea Veche,A2
+15,Curtea Veche Publishing,A2
+16,Editura Curtea Veche,A2
+17,Editura All,A2
+18,Editura Academiei Fortelor Aeriene 'Henri Coanda',A2
+19,Editura Academiei Fortelor Aeriene,A2
+20,Editura Centrului Tehnic-Teritorial al Armatei,A2
+21,Editura Didactica si Pedagogica RA Bucuresti,A2
+22,Editura Didactica si Pedagogica,A2
+23,Didactica si Pedagogica,A2
+24,Editura Prouniversitaria Bucuresti,A2
+25,Pro Universitaria,A2
+26,Editura Pro Universitaria,A2
+27,Editura Prouniversitaria,A2
+28,Editura Rao Bucuresti,A2
+29,Editura Rao,A2
+30,Rao,A2
+31,Editura Sitech Craiova,A2
+32,Editura Sitech,A2
+33,Sitech,A2
+34,Editura Sper Bucuresti,A2
+35,Editura Sper,A2
+36,Editura Tehnomedia Sibiu,A2
+37,Editura Tehnomedia,A2
+38,Tehnomedia,A2
+39,Editura Top Form Bucuresti,A2
+40,Editura Top Form,A2
+41,Top Form,A2
+42,Editura Tritonic Bucuresti,A2
+43,Editura Tritonic,A2
+44,Tritonic,A2
+45,Editura Academiei Nationale de Informatii 'Mihai Viteazul',A2
+46,Editura Academiei Nationale de Informatii,A2
+47,Editura Academiei Romane,A2
+48,Editura ASE,A2
+49,Editura de Vest,A2
+50,"Editura Economică, București",A2
+51,Editura Economica,A2
+52,Economica,A2
+53,Editura Economică,A2
+54,Editura Enciclopedică,A2
+55,Editura Fundaţiei pentru Studii Europene,A2
+56,Editura Institutului de Ştiinţe Politice şi Relaţii Internaţionale – Bucureşti,A2
+57,Editura Institutului de Stiinte Politice si Relatii Internationale,A2
+58,Editura ISPRI,A2
+59,Editura Institutului de Ştiinţe Politice şi Relaţii Internaţionale,A2
+60,Editura Militara,A2
+61,Editura Paideea,A2
+62,Editura Paideia,A2
+63,Paideia,A2
+64,Paideea,A2
+65,"Editura Polirom, Iași",A2
+66,Editura Polirom,A2
+67,Polirom,A2
+68,Editura Trei,A2
+69,"Editura Universitară, București",A2
+70,Editura Universitară,A2
+71,Editura Universitatii din Bucuresti,A2
+72,Bucharest University Press,A2
+73,Editura Universitatii 'Alexandru Ioan Cuza',A2
+74,Editura Universitatii Alexandru Ioan Cuza,A2
+75,Editura Universitatii A.I.Cuza,A2
+76,Editura Universitatii Al. I. Cuza,A2
+77,Editura Universitatii de Aparare 'Carol I',A2
+78,Editura Universitatii de Aparare Carol I,A2
+79,Editura Universitatii Nationale de Aparare Carol I,A2
+80,Eikon,A2
+81,Editura Eikon,A2
+82,Hamangiu,A2
+83,Editura Hamangiu,A2
+84,Humanitas,A2
+85,Editura Humanitas,A2
+86,Institutul European,A2
+87,Editura Institutul European,A2
+88,Limes,A2
+89,Editura Limes,A2
+90,Lumina Lex,A2
+91,Editura Lumina Lex,A2
+92,Monitorul Oficial,A2
+93,Editura Monitorul Oficial,A2
+94,Nemira,A2
+95,Editura Nemira,A2
+96,Presa Universitara Clujeana,A2
+97,Cluj University Press,A2
+98,Universul Juridic,A2
+99,Editura Universul Juridic,A2
+100,Wolters Kluwer,A2
+101,Wolters Kluwer Romania,A2
+102,World Bank,A2
+103,The World Bank,A2
+104,International Monetary Fund,A2
+105,IMF,A2
+106,International Labour Organization,A2
+107,International Labour Office,A2
+108,ILO,A2
+109,UNESCO,A2
+110,UNESCO Publishing,A2
+111,UNICEF,A2
+112,UNFPA,A2
+113,UNDP,A2
+114,United Nations,A2
+115,United Nations Publications,A2
+116,"Edituri ale Organizatiilor Internationale din Sistemul ONU: World Banck, IMF, ILO, UNESCO, UNICEF, UNFPA, UNDP",A2
+117,OECD,A2
+118,OECD Publishing,A2
+119,European Union,A2
+120,Publications Office of the European Union,A2
+121,"Edituri OECD, European Union",A2
+122,Armand Colin,A2
+123,Bruylant,A2
+124,Collins,A2
+125,"Complexe, Bruxelles",A2
+126,Editions Complexe,A2
+127,Complexe,A2
+128,Croom Helm,A2
+129,Cujas,A2
+130,Dalloz,A2
+131,Debrecen University Press (cat. B),A2
+132,Debrecen University Press,A2
+133,DJOEF,A2
+134,Éditions Actes Sud,A2
+135,Actes Sud,A2
+136,Editions Agone,A2
+137,Agone,A2
+138,Éditions De Boeck,A2
+139,De Boeck,A2
+140,Editions de la Maison des Sciences de l'Homme,A2
+141,Maison des Sciences de l'Homme,A2
+142,Éditions Fayard,A2
+143,Fayard,A2
+144,Editions Flammarion,A2
+145,Flammarion,A2
+146,Editions Gallimard,A2
+147,Gallimard,A2
+148,Editions Métailié,A2
+149,Métailié,A2
+150,Editions Octarès,A2
+151,Octarès,A2
+152,Editions Presses Universitaires du Septentrion,A2
+153,Presses Universitaires du Septentrion,A2
+154,Editions Raisons d'Agir,A2
+155,Raisons d'Agir,A2
+156,Edward Elgar,A2
+157,Edward Elgar Publishing,A2
+158,Einaudi,A2
+159,Europa Law Publishing,A2
+160,"FrancoAngeli, Milano",A2
+161,FrancoAngeli,A2
+162,Franco Angeli,A2
+163,Giapichelli,A2
+164,Giappichelli,A2
+165,G. Giappichelli Editore,A2
+166,Giuffre,A2
+167,Giuffre Editore,A2
+168,Harper Collins,A2
+169,HarperCollins,A2
+170,Hart,A2
+171,Hart Publishing,A2
+172,Intellect Publishers,A2
+173,Intellect Books,A2
+174,John Benjamins Publishing,A2
+175,John Benjamins,A2
+176,L.G.D.J.,A2
+177,LGDJ,A2
+178,La Découverte,A2
+179,"Lambert academic publishing (LAP), Saarbrucken, Germany",A2
+180,Lambert Academic Publishing,A2
+181,LAP Lambert Academic Publishing,A2
+182,Lambert academic publishing (LAP),A2
+183,Larcier,A2
+184,"Leske&Budrich, Links",A2
+185,Leske + Budrich,A2
+186,Leske und Budrich,A2
+187,Leske Budrich,A2
+188,Lexis Nexis,A2
+189,LexisNexis,A2
+190,L'Harmattan,A2
+191,Harmattan,A2
+192,Editions L'Harmattan,A2
+193,Mind Garden,A2
+194,Montchrestien,A2
+195,Nispacee press,A2
+196,NISPAcee,A2
+197,Pearson Education,A2
+198,Pearson,A2
+199,Pedone,A2
+200,Peter Lang,A2
+201,Piper,A2
+202,Piper Verlag,A2
+203,Presse Universitaires de Grenoble,A2
+204,Presses Universitaires de Grenoble,A2
+205,Presses de Sciences Po,A2
+206,"Presses universitaires de Limoges, France",A2
+207,Presses Universitaires de Limoges,A2
+208,"Quarteto, Coimbra",A2
+209,Quarteto,A2
+210,Quarteto Editora,A2
+211,RISE,A2
+212,"Shaker verlag, Aachen, Germany",A2
+213,Shaker Verlag,A2
+214,StudienVErlag,A2
+215,Vuibert,A2
+216,Wolf Legal publishers,A2

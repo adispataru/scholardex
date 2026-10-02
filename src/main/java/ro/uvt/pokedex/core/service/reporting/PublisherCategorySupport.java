@@ -25,7 +25,8 @@ public final class PublisherCategorySupport {
     }
 
     public interface Classifier {
-        Optional<Classification> classify(PublisherRules rules, String publisher);
+        /** What the lists say; {@code publishedOn} (an ISO date or a year, may be null) for a list bound to dates. */
+        Optional<Classification> classify(PublisherRules rules, String publisher, String publishedOn);
 
         /** A listed publisher named inside a free text (an imported item), or empty. */
         default Optional<String> findIn(String text) {
@@ -33,7 +34,7 @@ public final class PublisherCategorySupport {
         }
     }
 
-    private static final Classifier NONE = (rules, publisher) -> Optional.empty();
+    private static final Classifier NONE = (rules, publisher, publishedOn) -> Optional.empty();
     private static volatile Classifier classifier = NONE;
 
     private PublisherCategorySupport() {
@@ -47,12 +48,12 @@ public final class PublisherCategorySupport {
         classifier = NONE;
     }
 
-    /** What the lists say about a publisher, under a standard's rules. */
-    public static Optional<Classification> classify(PublisherRules rules, String publisher) {
+    /** What the lists say about a publisher, under a standard's rules, for a book published then (may be null). */
+    public static Optional<Classification> classify(PublisherRules rules, String publisher, String publishedOn) {
         if (rules == null || publisher == null || publisher.isBlank()) {
             return Optional.empty();
         }
-        return classifier.classify(rules, publisher.trim());
+        return classifier.classify(rules, publisher.trim(), publishedOn);
     }
 
     /**
@@ -66,9 +67,13 @@ public final class PublisherCategorySupport {
         return classifier.findIn(text);
     }
 
-    /** The category a declared book counts as: the best of the listed one and an approved request. */
-    public static Outcome outcome(PublisherRules rules, String publisher, PublisherClaim claim, Map<String, String> fields) {
-        Optional<Classification> listed = classify(rules, publisher);
+    /**
+     * The category a declared book counts as: the best of the listed one and an approved request. {@code publishedOn}
+     * is the record's date (Comisia 25 counts its earlier list for a book that appeared before the current one).
+     */
+    public static Outcome outcome(PublisherRules rules, String publisher, String publishedOn, PublisherClaim claim,
+                                  Map<String, String> fields) {
+        Optional<Classification> listed = classify(rules, publisher, publishedOn);
         String listedCategory = listed.map(Classification::category).filter(rules::counts).orElse(null);
         Optional<String> claimed = approvedClaimCategory(rules, claim, fields);
         String best = rules.best(listedCategory, claimed.orElse(null));

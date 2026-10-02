@@ -3,6 +3,8 @@ package ro.uvt.pokedex.core.service.reporting;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Set;
@@ -30,7 +32,15 @@ import java.util.Set;
 public enum Comisia25Rules {
 
     /** Sociologie, Resurse Umane, Antropologie, Asistență Socială. */
-    SOCIOLOGIE("report-data/sociologie-publishers-2026.csv");
+    SOCIOLOGIE("report-data/sociologie-publishers-2026.csv", "report-data/sociologie-publishers-2011-panel4.csv");
+
+    /**
+     * From when the annex's own A2 list applies — the first day of the academic year 2026–2027, when OM 3.019/2025
+     * applies (its art. 6), rather than the day it was published (11 February 2025): Adrian's reading, 2026-10-02.
+     * "Cărțile publicate anterior datei intrării în vigoare a prezentei liste și care se aflau pe lista de edituri din
+     * Anexa 2" count too: a book that appeared before this day counts at a house of the earlier list.
+     */
+    public static final LocalDate CURRENT_LIST_FROM = LocalDate.of(2026, 10, 1);
 
     /**
      * The recognised databases (definition [7]) the platform holds membership data for, Web of Science and
@@ -43,14 +53,51 @@ public enum Comisia25Rules {
     public static final int DATABASES_REQUIRED = 3;
 
     private final String publisherList;
+    private final String earlierPublisherList;
 
-    Comisia25Rules(String publisherList) {
+    Comisia25Rules(String publisherList, String earlierPublisherList) {
         this.publisherList = publisherList;
+        this.earlierPublisherList = earlierPublisherList;
     }
 
     /** Classpath CSV with the A2 publishers of the group. */
     public String publisherList() {
         return publisherList;
+    }
+
+    /**
+     * Classpath CSV with the earlier A2 list the annex refers to ("lista de edituri din Anexa 2"): the CNATDCU
+     * "Lista A2-Panel 4 – Edituri de prestigiu recunoscut" of the 2011 Social Sciences panel (OMECTS 4.691/2011,
+     * Anexa 2 defines it; cnatdcu.ro, A2_Panel41.xls), 45 Romanian and 55 foreign houses. It counts only for a book
+     * that appeared before {@link #CURRENT_LIST_FROM}.
+     */
+    public String earlierPublisherList() {
+        return earlierPublisherList;
+    }
+
+    /**
+     * Whether a book dated so appeared before {@link #CURRENT_LIST_FROM}: an ISO date, a year and month, or a year
+     * alone (2026 or earlier counts — the months before October are the larger part). Unknown dates do not.
+     */
+    public static boolean beforeCurrentList(String date) {
+        if (date == null) {
+            return false;
+        }
+        String d = date.trim();
+        try {
+            if (d.matches("\\d{4}-\\d{2}-\\d{2}.*")) {
+                return LocalDate.parse(d.substring(0, 10)).isBefore(CURRENT_LIST_FROM);
+            }
+            if (d.matches("\\d{4}-\\d{2}")) {
+                return YearMonth.parse(d).atDay(1).isBefore(CURRENT_LIST_FROM);
+            }
+            if (d.matches("\\d{4}")) {
+                return Integer.parseInt(d) <= CURRENT_LIST_FROM.getYear();
+            }
+        } catch (java.time.DateTimeException e) {
+            return false;
+        }
+        return false;
     }
 
     public static Optional<Comisia25Rules> of(Indicator indicator) {

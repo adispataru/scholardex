@@ -26,9 +26,11 @@ Done history moved to `TASKS-done.md`.
   further ranking = one fixture + one row), for declared AND corpus books (`PsychologyBookScoringService`), after the
   WoS Master Book List. A Romanian house (written «Editura …», or named as on CNCS/the commissions' lists) is never
   looked up there (Editura Economică ≠ French Economica). The regulations name no CNCS list year for Music: the
-  platform's reading now stands in the descriptions researchers read (21 rewritten, all four reports); Sociology's
-  "earlier list (Anexa 2)" — not reproduced in OM 3.019/2025, whose Anexa 2 is the professor standards — is a request
-  a head approves. Prod read: SENSE loaded (798), still no record of the affected types; 77 book publishers of the
+  platform's reading now stands in the descriptions researchers read (21 rewritten, all four reports). Sociology's
+  "lista de edituri din Anexa 2" traced to the 2011 Social Sciences panel (OMECTS 4.691/2011 Anexa 2 → CNATDCU
+  `A2_Panel41.xls`): the engine counts it A2 for a book that appeared before 1 October 2026 (Adrian's date),
+  declared and corpus alike (`sociologie-publishers-2011-panel4.csv`); the CNCS social-sciences A1 list
+  (UEFISCDI resource-8160) is found, not yet downloaded. Prod read: SENSE loaded (798), still no record of the affected types; 77 book publishers of the
   prod corpus newly count as international (scores only rise). Full suite and guardrails green. Prod script
   regenerated (7 types, 14 indicators, 21 descriptions), rehearsed again.
   **Prod order:** push and deploy; flip the guard; run with `--restart`.

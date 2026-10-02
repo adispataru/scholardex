@@ -47,8 +47,25 @@ class PublisherCategoryServiceTest {
                 masterBookList);
     }
 
+    /** A book dated before the current Sociology list, as most declared books are. */
+    private static final String BEFORE = "2024-01-01";
+
     private String category(PublisherRules rules, String publisher) {
-        return service.classify(rules, publisher).map(PublisherCategorySupport.Classification::category).orElse(null);
+        return category(rules, publisher, BEFORE);
+    }
+
+    private String category(PublisherRules rules, String publisher, String publishedOn) {
+        return service.classify(rules, publisher, publishedOn).map(PublisherCategorySupport.Classification::category)
+                .orElse(null);
+    }
+
+    private Optional<PublisherCategorySupport.Classification> classify(PublisherRules rules, String publisher) {
+        return service.classify(rules, publisher, BEFORE);
+    }
+
+    private static PublisherCategorySupport.Outcome outcome(PublisherRules rules, String publisher, PublisherClaim claim,
+                                                            Map<String, String> fields) {
+        return PublisherCategorySupport.outcome(rules, publisher, BEFORE, claim, fields);
     }
 
     // ── matching names ─────────────────────────────────────────────────────────
@@ -77,7 +94,7 @@ class PublisherCategoryServiceTest {
         assertEquals("B", category(PublisherRules.MUZICA_2026, "Editura Eikon, Cluj-Napoca"));
         assertEquals("C", category(PublisherRules.MUZICA_2026, "Universitaria"),
                 "rated C in Music twice: the B of 2013 for the performing arts does not count over it");
-        PublisherCategorySupport.Classification unmb = service.classify(PublisherRules.MUZICA_2026,
+        PublisherCategorySupport.Classification unmb = classify(PublisherRules.MUZICA_2026,
                 "Editura Universității Naționale de Muzică București").orElseThrow();
         assertEquals("CNCS", unmb.basis());
         assertTrue(unmb.detail().startsWith("CNCS 2026, Muzică"), unmb.detail());
@@ -85,7 +102,7 @@ class PublisherCategoryServiceTest {
 
     @Test
     void aPublisherTheMusicListsDoNotRateTakesItsBestCategoryElsewhere() {
-        PublisherCategorySupport.Classification uvt = service.classify(PublisherRules.MUZICA_2026,
+        PublisherCategorySupport.Classification uvt = classify(PublisherRules.MUZICA_2026,
                 "Editura Universității de Vest").orElseThrow();
         assertEquals("A", uvt.category(), "A in Filologie 2026");
         assertEquals("A", category(PublisherRules.MUZICA_2026, "Editura UVT"), "an alias");
@@ -96,19 +113,19 @@ class PublisherCategoryServiceTest {
         assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Bärenreiter-Verlag Kassel"));
         assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Ricordi"), "an alias of Casa Ricordi");
         assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Routledge"));
-        PublisherCategorySupport.Classification brill = service.classify(PublisherRules.MUZICA_2026, "Brill").orElseThrow();
+        PublisherCategorySupport.Classification brill = classify(PublisherRules.MUZICA_2026, "Brill").orElseThrow();
         assertEquals("STRAINA", brill.category());
         assertEquals("INTERNATIONAL_LIST", brill.basis());
         assertTrue(brill.detail().startsWith("Clasamentul SENSE"), brill.detail());
         assertNull(category(PublisherRules.MUZICA_2026, "Lambert Academic Publishing"), "UEFISCDI excludes it");
-        assertEquals(Optional.empty(), service.classify(PublisherRules.MUZICA_2026, "Editura Proprie"));
+        assertEquals(Optional.empty(), classify(PublisherRules.MUZICA_2026, "Editura Proprie"));
     }
 
     @Test
     void aRomanianHouseIsNeverAForeignOne() {
-        assertEquals(Optional.empty(), service.classify(PublisherRules.MUZICA_2026, "Excelsior Art"),
+        assertEquals(Optional.empty(), classify(PublisherRules.MUZICA_2026, "Excelsior Art"),
                 "on the WoS Master Book List, but Romanian");
-        assertEquals(Optional.empty(), service.classify(PublisherRules.MUZICA_2026, "Editura Peter Lang"),
+        assertEquals(Optional.empty(), classify(PublisherRules.MUZICA_2026, "Editura Peter Lang"),
                 "a foreign name is written without «Editura»");
         assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Peter Lang"));
     }
@@ -125,7 +142,7 @@ class PublisherCategoryServiceTest {
         assertEquals("A2", category(PublisherRules.STIINTE_EDUCATIEI_2026, "Editura Didactica si Pedagogica"));
         assertEquals("A1", category(PublisherRules.STIINTE_EDUCATIEI_2026, "Springer"));
         assertEquals("WOS_MASTER_BOOK_LIST",
-                service.classify(PublisherRules.PSIHOLOGIE_2026, "Routledge").orElseThrow().basis());
+                classify(PublisherRules.PSIHOLOGIE_2026, "Routledge").orElseThrow().basis());
         assertEquals("A1", category(PublisherRules.SOCIOLOGIE_2026, "Excelsior Art"),
                 "the Master Book List counts as for corpus books: international prestige, not a foreign house");
     }
@@ -133,7 +150,7 @@ class PublisherCategoryServiceTest {
     @Test
     void anInternationalListOrRankingMakesAHouseA1BeforeAnyHeadIsAsked() {
         PublisherCategorySupport.Classification harmattan =
-                service.classify(PublisherRules.SOCIOLOGIE_2026, "L'Harmattan, Paris").orElseThrow();
+                classify(PublisherRules.SOCIOLOGIE_2026, "L'Harmattan, Paris").orElseThrow();
         assertEquals("A1", harmattan.category());
         assertEquals("INTERNATIONAL_LIST", harmattan.basis());
         assertTrue(harmattan.detail().startsWith("UEFISCDI, edituri pentru științele sociale"), harmattan.detail());
@@ -143,6 +160,28 @@ class PublisherCategoryServiceTest {
         assertEquals("A2", category(PublisherRules.SOCIOLOGIE_2026, "Editura Economica"), "on the Sociology list");
         assertNull(category(PublisherRules.PSIHOLOGIE_2026, "Economica"),
                 "Editura Economică is not on the Psychology list, and it is not the French Economica of Anexa 7c");
+    }
+
+    @Test
+    void sociologyCountsTheEarlierListForABookThatAppearedBeforeOctober2026() {
+        PublisherCategorySupport.Classification lex = service.classify(PublisherRules.SOCIOLOGIE_2026, "Lumina Lex",
+                "2019-05-10").orElseThrow();
+        assertEquals("A2", lex.category());
+        assertEquals("LIST", lex.basis());
+        assertTrue(lex.detail().contains("Panelului 4"), lex.detail());
+        assertEquals("A2", category(PublisherRules.SOCIOLOGIE_2026, "Editura Lumina Lex", "2026-09-30"));
+        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Lumina Lex", "2026-10-01"), "the current list applies");
+        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Lumina Lex", null), "an unknown date does not count");
+        assertEquals("A2", category(PublisherRules.SOCIOLOGIE_2026, "Lumina Lex", "2026"), "a year alone: up to 2026");
+        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Lumina Lex", "2027"));
+        assertNull(category(PublisherRules.PSIHOLOGIE_2026, "Lumina Lex", "2019-05-10"), "a Sociology rule only");
+        assertEquals("A1", category(PublisherRules.SOCIOLOGIE_2026, "Peter Lang", "2019-05-10"),
+                "on the earlier A2 list too, but an international list makes it A1");
+        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Editura Universitatii din Pitesti", "2019-05-10"),
+                "«Editura Universității din București» is listed, not every «… din …»");
+        assertEquals("A2", category(PublisherRules.SOCIOLOGIE_2026, "Lambert Academic Publishing", "2015-03-01"),
+                "on the 2011 list itself, although the international lists exclude it");
+        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Lambert Academic Publishing", "2027-03-01"));
     }
 
     // ── the outcome a formula reads ────────────────────────────────────────────
@@ -160,18 +199,18 @@ class PublisherCategoryServiceTest {
         try {
             String worldCat = "A1 — minimum 25 de biblioteci universitare din UE/OCDE în WorldCat";
             Map<String, String> asks = Map.of(PublisherRules.FIELD_CLAIM, worldCat);
-            PublisherCategorySupport.Outcome approved = PublisherCategorySupport.outcome(PublisherRules.PSIHOLOGIE_2026,
+            PublisherCategorySupport.Outcome approved = outcome(PublisherRules.PSIHOLOGIE_2026,
                     "Editura Proprie", claim(PublisherClaim.Status.APPROVED, worldCat), asks);
             assertEquals("A1", approved.category());
             assertEquals("APPROVED_CLAIM", approved.basis());
 
-            assertNull(PublisherCategorySupport.outcome(PublisherRules.PSIHOLOGIE_2026, "Editura Proprie",
+            assertNull(outcome(PublisherRules.PSIHOLOGIE_2026, "Editura Proprie",
                     claim(PublisherClaim.Status.PENDING, worldCat), asks).category());
-            assertNull(PublisherCategorySupport.outcome(PublisherRules.PSIHOLOGIE_2026, "Editura Proprie",
+            assertNull(outcome(PublisherRules.PSIHOLOGIE_2026, "Editura Proprie",
                     claim(PublisherClaim.Status.APPROVED, worldCat),
                     Map.of(PublisherRules.FIELD_CLAIM, "B — un criteriu din ruta complementară")).category(),
                     "the record asks for something else now: back to a head");
-            assertNull(PublisherCategorySupport.outcome(PublisherRules.SOCIOLOGIE_2026, "Editura Proprie",
+            assertNull(outcome(PublisherRules.SOCIOLOGIE_2026, "Editura Proprie",
                     claim(PublisherClaim.Status.APPROVED, worldCat), asks).category(),
                     "an option of another standard grants nothing");
         } finally {
@@ -185,19 +224,19 @@ class PublisherCategoryServiceTest {
         try {
             String twoCriteria = "A2 — cel puțin două criterii din ruta complementară";
             Map<String, String> asks = Map.of(PublisherRules.FIELD_CLAIM, twoCriteria);
-            assertEquals("A2", PublisherCategorySupport.outcome(PublisherRules.PSIHOLOGIE_2026, "Humanitas",
+            assertEquals("A2", outcome(PublisherRules.PSIHOLOGIE_2026, "Humanitas",
                     claim(PublisherClaim.Status.APPROVED, twoCriteria), asks).category(), "B on the list, A2 by the route");
-            assertEquals("LIST", PublisherCategorySupport.outcome(PublisherRules.PSIHOLOGIE_2026, "Polirom",
+            assertEquals("LIST", outcome(PublisherRules.PSIHOLOGIE_2026, "Polirom",
                     claim(PublisherClaim.Status.APPROVED, "B — un criteriu din ruta complementară"),
                     Map.of(PublisherRules.FIELD_CLAIM, "B — un criteriu din ruta complementară")).basis());
 
-            PublisherCategorySupport.Outcome cncsC = PublisherCategorySupport.outcome(PublisherRules.MUZICA_2026,
+            PublisherCategorySupport.Outcome cncsC = outcome(PublisherRules.MUZICA_2026,
                     "Universitaria", null, Map.of());
             assertNull(cncsC.category());
             assertEquals("LISTED_NOT_COUNTED", cncsC.basis());
             assertEquals("C", cncsC.listed().category());
-            assertEquals("NO_PUBLISHER", PublisherCategorySupport.outcome(PublisherRules.MUZICA_2026, " ", null, Map.of()).basis());
-            assertEquals("NOT_LISTED", PublisherCategorySupport.outcome(PublisherRules.MUZICA_2026, "Editura Proprie", null, Map.of()).basis());
+            assertEquals("NO_PUBLISHER", outcome(PublisherRules.MUZICA_2026, " ", null, Map.of()).basis());
+            assertEquals("NOT_LISTED", outcome(PublisherRules.MUZICA_2026, "Editura Proprie", null, Map.of()).basis());
         } finally {
             PublisherCategorySupport.reset();
         }

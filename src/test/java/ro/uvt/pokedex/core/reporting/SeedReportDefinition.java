@@ -336,10 +336,22 @@ final class SeedReportDefinition {
         PublisherClaim claim = new PublisherClaim();
         claim.setStatus(status);
         claim.setRequested(entered.get(PublisherRules.FIELD_CLAIM));
-        return activity(shortName, entered, null, claim);
+        return activity(shortName, entered, null, claim, DEFAULT_DATE);
     }
 
+    /** Points for ONE declared activity dated {@code date} (the other helpers date it {@value #DEFAULT_DATE}). */
+    double activityOn(String date, String shortName, Map<String, String> entered) {
+        return activity(shortName, entered, null, null, date);
+    }
+
+    private static final String DEFAULT_DATE = "2024-01-01";
+
     private double activity(String shortName, Map<String, String> entered, String eventName, PublisherClaim claim) {
+        return activity(shortName, entered, eventName, claim, DEFAULT_DATE);
+    }
+
+    private double activity(String shortName, Map<String, String> entered, String eventName, PublisherClaim claim,
+                            String date) {
         JsonNode node = indicator(shortName);
         JsonNode definition = activitiesById.get(node.get("activity").get("$id").get("$oid").asText());
         assertNotNull(definition, prefix + shortName + " is bound to an activity missing from the seed");
@@ -374,7 +386,7 @@ final class SeedReportDefinition {
 
         ActivityInstance instance = new ActivityInstance();
         instance.setId("declared-1");
-        instance.setDate("2024-01-01");
+        instance.setDate(date);
         instance.setActivity(activity);
         instance.setFields(new HashMap<>(entered));
         instance.setPublisherClaim(claim);

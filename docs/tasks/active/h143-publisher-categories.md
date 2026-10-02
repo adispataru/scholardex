@@ -55,7 +55,10 @@ commissions' 2026 lists and the WoS Master Book List.
   words ("Polity" → Polity Press; not "Business Press" → Harvard Business School Press, nor "University of Arizona" →
   Arizona State University).
 - **Comisia 25 (Sociologie):** the annex's A2 list, else A1 for a house of international prestige — exactly as for
-  corpus books.
+  corpus books — else, for a book that appeared before **1 October 2026** (Adrian's choice), the earlier list the annex
+  refers to: CNATDCU "Lista A2-Panel 4 – Edituri de prestigiu recunoscut" (2011, 45 Romanian and 55 foreign houses,
+  `report-data/sociologie-publishers-2011-panel4.csv`, the forms researchers type added as for the 2026 list) → A2.
+  Declared books use the record's date; corpus books their cover date (a year alone: up to 2026 counts).
 - **Comisia 28 (Psihologie, Științe ale educației):** the domain's 2026 list (A2, B), else A1 for a house of
   international prestige (indicative, as for corpus books).
 - **Comisia 35 (Muzică):** "publicat" = a publisher CNCS classifies A or B, or an equivalent foreign one:
@@ -69,9 +72,8 @@ commissions' 2026 lists and the WoS Master Book List.
   the listed name inside the typed one, or a typed name of two or more words inside the listed one. A few short
   forms are aliases (`report-data/publisher-aliases.csv`: UVT, UNMB, PUC, UNATC, UNArte, Grafoart, Ricordi).
 - **Where no list decides**, the record may ask for a category its standard grants one book
-  (`Incadrare_solicitata` + `Dovada_incadrarii`): Sociology A1 (an international house on none of the lists), six
-  WorldCat libraries (as A2), or a book published before the current list at a house of the earlier list (as A2, see
-  below); Comisia 28 A1 by 25 EU/OECD university libraries in WorldCat, A2 or B by the complementary route, A1 for a
+  (`Incadrare_solicitata` + `Dovada_incadrarii`): Sociology A1 (an international house on none of the lists) or six
+  WorldCat libraries (as A2); Comisia 28 A1 by 25 EU/OECD university libraries in WorldCat, A2 or B by the complementary route, A1 for a
   collection; Music an equivalent foreign publisher on none of the lists. The request is PENDING until a
   head of the researcher's department or faculty (or an admin, never the researcher) approves or rejects it on
   `/supervisor/declarations` (now "Declarații de verificat"); changing what the record asks sends it back. A
@@ -111,21 +113,26 @@ clear, then your choice is good and must be stated in the indicator/scorer descr
   domeniului și data publicării contribuției" — a time rule Comisia 35 does not have.
 - **Comisia 25 (Sociologie):** the A2 list is the annex's own; A1 is "Lista A1, în vigoare", not reproduced (the
   international lists stand in for it, said in the descriptions); and "Cărțile publicate anterior datei intrării în
-  vigoare a prezentei liste și care se aflau pe lista de edituri din Anexa 2" count too. That Anexa 2 is not in
-  OM 3.019/2025, whose Anexa 2 is the professor standards: the sentence comes from the earlier standard (OMENCS
-  6.129/2016), whose list the platform does not hold. Reading: such a book is a request a head approves (option
-  "Editură de pe lista anterioară (Anexa 2), carte apărută înaintea listei actuale", A2), said in the descriptions.
-  Loading the 2016 list would let the engine decide it instead.
+  vigoare a prezentei liste și care se aflau pe lista de edituri din Anexa 2" count too. Traced back (2026-10-02):
+  OM 3.019/2025's own Anexa 2 is the professor standards; the 2016 standard (OMENCS 6.129/2016, Annex 25, the
+  ministry's PDF downloaded with Adrian's permission, kept in `data/standards/psihologie-sociologie-asistenta/`)
+  and the 2013 one (OM 4.204/2013) print no list, only the categories; the lists come from the 2011 Social Sciences
+  panel, whose OMECTS 4.691/2011 **Anexa 2** (definitions) sets them out: A1 = CNCS's list of up to 200 international
+  houses (UEFISCDI resource-8160, "Edituri prestigiu international stiinte sociale.pdf", 44,401 bytes, not yet
+  downloaded), A2 = the CNATDCU commissions' lists, published as `A2_Panel41.xls` (cnatdcu.ro, 2011/11) — the list
+  FEAA already uses. Reading (Adrian): the list's "entry into force" is 1 October 2026, when OM 3.019/2025 applies
+  (its art. 6), not 11 February 2025, when it was published. The earlier list includes Lambert Academic Publishing,
+  so a Lambert book of before October 2026 counts A2 for Sociology, although the international lists exclude it.
 - **Comisia 28:** one list, the 2026 annex's, no time rule. A1 has no list ("edituri de prestigiu internațional"): the
   international lists stand in for it, said in the descriptions.
-- **Sociology I.8 translations** count at an A2 publisher (or six WorldCat libraries, or the earlier list), not at an
-  A1 house, as the annex says "lista A2" — said in the description.
+- **Sociology I.8 translations** count at an A2 publisher (the current list, or the earlier one before October 2026,
+  or six WorldCat libraries), not at an A1 house, as the annex says "lista A2" — said in the description.
 
 ## Prod
 
 `rke2-overmind/feaa-2026-scripts/h143_publisher_categories.js` (guard `H143_IMAGE_IS_DEPLOYED`, run with
-`--restart`): 7 activity types (the picked category removed, the request fields added, `Editura` on Comisia 28 I17,
-Sociology's earlier-list option), 14 indicators (formulas on `Categorie_editura`, their formula hashes, the commission
+`--restart`): 7 activity types (the picked category removed, the request fields added, `Editura` on Comisia 28 I17),
+14 indicators (formulas on `Categorie_editura`, their formula hashes, the commission
 flags) and 21 descriptions (the four reports' book indicators: how the publisher is classified, which lists, what a head
 is asked). Generated from the seed before H143 and the committed descriptions; rehearsed on a scratch database with
 prod-like ids: the guarded run writes nothing, the first run updates everything, the second changes nothing, the
@@ -137,7 +144,10 @@ Corpus books change too, upward only: across the whole prod corpus (374,251 book
 publishers newly count as international — University of Toronto Press, Berghahn, Brookings, Lawrence Erlbaum, Frank
 Cass, Olms, Metzler, … — so Psychology, Educational Sciences and Sociology reports can rise on their next run. Two
 known stretches of token matching, both rare: "The Feminist Press at the City University of New York" reads as New
-York University Press, "Presses universitaires de Limoges, France" as Presses Universitaires de France.
+York University Press, "Presses universitaires de Limoges, France" as Presses Universitaires de France. The earlier
+Sociology list adds almost nothing for corpus books (its foreign houses — Edward Elgar, Peter Lang, Wolters Kluwer,
+OECD — are A1 already); it matters for declared books at Romanian houses the 2026 list dropped (Lumina Lex,
+Universul Juridic, RAO, Sitech, the academies' presses, …).
 
 ## Verified
 

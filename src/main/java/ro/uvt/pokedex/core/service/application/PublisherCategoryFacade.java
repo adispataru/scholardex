@@ -74,7 +74,7 @@ public class PublisherCategoryFacade {
         List<StandardView> standards = new ArrayList<>();
         for (PublisherRules r : rules) {
             PublisherCategorySupport.Outcome outcome = PublisherCategorySupport.outcome(r, publisher,
-                    instance.getPublisherClaim(), fields);
+                    instance.getDate(), instance.getPublisherClaim(), fields);
             standards.add(new StandardView(r.name(), r.label(), outcome.category(), outcome.basis(), outcome.detail(),
                     outcome.listed() == null ? null : outcome.listed().category()));
         }

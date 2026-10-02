@@ -69,7 +69,8 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
     }
 
     @Override
-    public Optional<PublisherCategorySupport.Classification> classify(PublisherRules rules, String publisher) {
+    public Optional<PublisherCategorySupport.Classification> classify(PublisherRules rules, String publisher,
+                                                                      String publishedOn) {
         if (rules == null || publisher == null || publisher.isBlank()) {
             return Optional.empty();
         }
@@ -77,7 +78,8 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
         return switch (rules) {
             case SOCIOLOGIE_2026 -> commissionList(
                     commissionLists.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), name),
-                    "Lista A2 a Comisiei 25 (Sociologie)", name);
+                    "Lista A2 a Comisiei 25 (Sociologie)", name)
+                    .or(() -> earlierSociologyList(name, publishedOn));
             case PSIHOLOGIE_2026 -> commissionList(commissionLists.tierFor2026(Comisia28Rules.PSIHOLOGIE, name),
                     "Lista 2026 a Comisiei 28 (Psihologie)", name);
             case STIINTE_EDUCATIEI_2026 -> commissionList(commissionLists.tierFor2026(Comisia28Rules.STIINTE_EDUCATIEI, name),
@@ -96,6 +98,19 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
         }
         return InternationalPublisherSupport.recognize(name)
                 .map(r -> new PublisherCategorySupport.Classification("A1", "INTERNATIONAL_LIST", r.detail()));
+    }
+
+    /**
+     * Comisia 25: a book that appeared before the current list ({@link Comisia25Rules#CURRENT_LIST_FROM}) counts at a
+     * house of the earlier list — A2, as that list was. Read after the international lists, so a house on both is A1.
+     */
+    private Optional<PublisherCategorySupport.Classification> earlierSociologyList(String name, String publishedOn) {
+        if (!Comisia25Rules.beforeCurrentList(publishedOn)) {
+            return Optional.empty();
+        }
+        String tier = commissionLists.tierFromList(Comisia25Rules.SOCIOLOGIE.earlierPublisherList(), name);
+        return tier == null ? Optional.empty() : Optional.of(new PublisherCategorySupport.Classification(tier, "LIST",
+                "Lista A2 a Panelului 4 CNATDCU (2011), pentru o carte apărută înainte de 1 octombrie 2026"));
     }
 
     /**

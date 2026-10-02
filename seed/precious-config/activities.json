@@ -1167,8 +1167,7 @@
     "number": false,
     "allowedValues": [
      "Editură de prestigiu internațional (Lista A1)",
-     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)",
-     "Editură de pe lista anterioară (Anexa 2), carte apărută înaintea listei actuale"
+     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)"
     ]
    },
    {
@@ -1214,8 +1213,7 @@
     "number": false,
     "allowedValues": [
      "Editură de prestigiu internațional (Lista A1)",
-     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)",
-     "Editură de pe lista anterioară (Anexa 2), carte apărută înaintea listei actuale"
+     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)"
     ]
    },
    {
@@ -1332,8 +1330,7 @@
     "name": "Incadrare_solicitata",
     "number": false,
     "allowedValues": [
-     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)",
-     "Editură de pe lista anterioară (Anexa 2), carte apărută înaintea listei actuale"
+     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)"
     ]
    },
    {

@@ -192,6 +192,24 @@ class PsychologyBookScoringServiceTest {
     }
 
     @Test
+    void comisia25CountsTheEarlierListForABookThatAppearedBeforeOctober2026() {
+        String earlier = Comisia25Rules.SOCIOLOGIE.earlierPublisherList();
+        ScoringPublicationReadModel old = pub("bk", "Lumina Lex", null);
+        when(old.getCoverDate()).thenReturn("2018-03-01");
+        when(publishers.tierFromList(earlier, "Lumina Lex")).thenReturn("A2");
+
+        Score s = service.getScore(old, indicatorComisia25());
+
+        assertEquals(1.0, s.getScore());
+        assertEquals("A2", s.getCoreRankingEquivalent());
+        assertEquals("EARLIER_LIST", s.getScoringInfo().get("tierBasis"));
+
+        ScoringPublicationReadModel recent = pub("bk", "Lumina Lex", null);
+        when(recent.getCoverDate()).thenReturn("2026-11-15");
+        assertEquals(0.0, service.getScore(recent, indicatorComisia25()).getScore(), "the current list applies");
+    }
+
+    @Test
     void comisia25DoesNotCountAPublisherOnNeitherList() {
         ScoringPublicationReadModel p = pub("bk", "Random Press", null);
         when(publishers.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), "Random Press")).thenReturn(null);

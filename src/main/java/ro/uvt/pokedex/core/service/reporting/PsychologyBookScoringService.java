@@ -69,7 +69,7 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
         String publisher = resolvePublisher(publication);
         java.util.Optional<Comisia25Rules> comisia25 = Comisia25Rules.of(indicator);
         if (comisia25.isPresent()) {
-            return scoreForComisia25(comisia25.get(), publisher);
+            return scoreForComisia25(comisia25.get(), publisher, publication.getCoverDate());
         }
         String tier;
         java.util.Optional<Comisia28Rules> rules = Comisia28Rules.of(indicator);
@@ -100,15 +100,22 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
      * result names the list ({@code tierBasis}). The listed tier wins over the stand-in. Both tiers return
      * S = 1: here the tier changes the points of a chapter only, and the formula reads it as {@code category}.
      * Holdings in at least six WorldCat libraries, which the annex treats like A2, cannot be looked up and
-     * are declared by the candidate as an activity.
+     * are declared by the candidate as an activity. A book that appeared before the current list counts A2 at a
+     * house of the earlier list ({@link Comisia25Rules#earlierPublisherList()}, {@code tierBasis=EARLIER_LIST}).
      */
-    private Score scoreForComisia25(Comisia25Rules rules, String publisher) {
+    private Score scoreForComisia25(Comisia25Rules rules, String publisher, String coverDate) {
         Score score = new Score();
         String tier = publisherService.tierFromList(rules.publisherList(), publisher);
         String international = tier == null ? internationalBasis(publisher) : null;
         if (international != null) {
             tier = "A1";
             score.getScoringInfo().put("tierBasis", international);
+        }
+        if (tier == null && Comisia25Rules.beforeCurrentList(coverDate)) {
+            tier = publisherService.tierFromList(rules.earlierPublisherList(), publisher);
+            if (tier != null) {
+                score.getScoringInfo().put("tierBasis", "EARLIER_LIST");
+            }
         }
         if (tier == null) {
             return score; // publisher on neither list → not counted
