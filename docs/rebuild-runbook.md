@@ -57,7 +57,10 @@ collection (repo-scoped, never a raw drop) → **WoS** (ingest official JSON + f
 facts → metrics/category/membership) → refresh DOAJ/ERIH reference snapshots → **Scopus** (import Source List +
 CiteScore + Book list, ingest the publication JSON → ledger → facts → **forums-first** registry: Source List
 backbone → dedup → ERIH/DOAJ onboard → WoS fold last) → canonical (DOI-primary identity) → OpenAlex/DBLP replay
-(no-op unless those source-facts exist) → Postgres projections. Runtime ≈ 28 min on the full corpus.
+(no-op unless those source-facts exist) → the declared USER_DEFINED publications and forums re-created from their
+spared source facts (H140, 2026-10-02 — before that a rebuild dropped them until a manual USER_DEFINED maintenance)
+→ author merges, publication merges, venue claims re-applied → Postgres projections. Runtime ≈ 28 min on the full
+corpus from scratch; the derive-only path (source facts present) was ≈ 1.5 h on the 2026-09 corpus locally.
 
 ### Required inputs on disk + their config keys
 
@@ -175,7 +178,8 @@ directory's README). PII: from the local `data/backups/precious-pii-<timestamp>/
   fact-building. WoS wipes and re-ingests it on a full rebuild; Scopus keeps it and rebuilds facts
   from it. Either way a full rebuild re-derives facts deterministically.
 - `user_defined.*` events come from user uploads with no external source file — their ledger payload
-  is the only copy, so it is always retained.
+  is the only copy, so it is always retained; their canonical records are re-created inside every derive
+  rebuild (`UserDefinedCanonicalizationService.rebuildCanonicalFacts`, chained in `deriveCanonicalAndProject`).
 
 ## Refreshing the DBLP dump
 

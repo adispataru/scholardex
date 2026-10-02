@@ -73,6 +73,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     @Mock private ScholardexSourceLinkService sourceLinkService;
     @Mock private ScholardexEdgeReconciliationService edgeReconciliationService;
+    @Mock private ro.uvt.pokedex.core.service.importing.scopus.UserDefinedCanonicalizationService userDefinedCanonicalizationService;
     @Mock private ScopusImportEventRepository importEventRepository;
     @Mock private ScopusPublicationFactRepository publicationFactRepository;
     @Mock private ScopusCitationFactRepository citationFactRepository;
@@ -123,7 +124,8 @@ class ScopusBigBangMigrationServiceTest {
                 jdbcTemplate,
                 mongoTemplate,
                 dblpDumpConferenceSweepService,
-                crossrefVolumeEnrichmentService
+                crossrefVolumeEnrichmentService,
+                userDefinedCanonicalizationService
         );
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
         // H106 S6: evidence sweeps run inside the rebuild; empty by default.
@@ -221,10 +223,13 @@ class ScopusBigBangMigrationServiceTest {
         // H103 extends the chain: author merges re-apply BEFORE pub merges (consolidated author lists),
         // and venue claims LAST (the human decision writes over the machine's) — the claims chain was
         // MISSING from this path entirely, the same dual-path omission the comment above records.
+        // H140: the declared (USER_DEFINED) publications are re-created after the DBLP re-link and BEFORE the
+        // merges/claims that may name them — the derive rebuild wiped them and never re-derived them before.
         org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(
-                dblpConferenceResolveService, authorReconcileService, publicationMergeService,
-                publicationVenueClaimService, scopusProjectionBuilderService);
+                dblpConferenceResolveService, userDefinedCanonicalizationService, authorReconcileService,
+                publicationMergeService, publicationVenueClaimService, scopusProjectionBuilderService);
         inOrder.verify(dblpConferenceResolveService).rebuildFromEvidence();
+        inOrder.verify(userDefinedCanonicalizationService).rebuildCanonicalFacts();
         inOrder.verify(authorReconcileService).reapplyPersistedMerges();
         inOrder.verify(publicationMergeService).reapplyApproved();
         inOrder.verify(publicationVenueClaimService).reapplyApproved();
@@ -248,10 +253,13 @@ class ScopusBigBangMigrationServiceTest {
         // H103 extends the chain: author merges re-apply BEFORE pub merges (consolidated author lists),
         // and venue claims LAST (the human decision writes over the machine's) — the claims chain was
         // MISSING from this path entirely, the same dual-path omission the comment above records.
+        // H140: the declared (USER_DEFINED) publications are re-created after the DBLP re-link and BEFORE the
+        // merges/claims that may name them — the derive rebuild wiped them and never re-derived them before.
         org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(
-                dblpConferenceResolveService, authorReconcileService, publicationMergeService,
-                publicationVenueClaimService, scopusProjectionBuilderService);
+                dblpConferenceResolveService, userDefinedCanonicalizationService, authorReconcileService,
+                publicationMergeService, publicationVenueClaimService, scopusProjectionBuilderService);
         inOrder.verify(dblpConferenceResolveService).rebuildFromEvidence();
+        inOrder.verify(userDefinedCanonicalizationService).rebuildCanonicalFacts();
         inOrder.verify(authorReconcileService).reapplyPersistedMerges();
         inOrder.verify(publicationMergeService).reapplyApproved();
         inOrder.verify(publicationVenueClaimService).reapplyApproved();

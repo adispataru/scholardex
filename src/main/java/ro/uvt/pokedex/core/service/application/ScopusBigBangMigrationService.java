@@ -109,6 +109,7 @@ public class ScopusBigBangMigrationService {
     // rebuildFromEvidence re-stamps forums from that evidence.
     private final ro.uvt.pokedex.core.service.dblp.DblpDumpConferenceSweepService dblpDumpConferenceSweepService;
     private final ro.uvt.pokedex.core.service.crossref.CrossrefVolumeEnrichmentService crossrefVolumeEnrichmentService;
+    private final ro.uvt.pokedex.core.service.importing.scopus.UserDefinedCanonicalizationService userDefinedCanonicalizationService;
 
     @org.springframework.beans.factory.annotation.Value("${core.evidence-sweeps.in-rebuild:true}")
     private boolean evidenceSweepsInRebuild = true;
@@ -458,6 +459,15 @@ public class ScopusBigBangMigrationService {
         // asked, so a steady-state rebuild costs a handful of calls). Neither may fail a rebuild.
         runEvidenceSweeps();
         ImportProcessingResult dblpConferences = dblpConferenceResolveService.rebuildFromEvidence();
+        // H140: the publications and forums researchers declared themselves (USER_DEFINED) are canonical records
+        // too, and the canonical pre-wipe took them with everything else — but the V2 engine derives from Scopus
+        // and OpenAlex facts only, so until 2026-10-02 every derive rebuild silently dropped them (back only after
+        // a manual USER_DEFINED maintenance). Their source facts (user_defined.*) survive the wipe; re-create the
+        // canonical side here, after the forum registry + the V2 pubs exist (a declaration matches an existing
+        // pub by DOI / ISBN / title and a forum by ISSN) and BEFORE the merges and claims below, which may name
+        // them. The incremental path (ScopusCanonicalMaterializationService) does not need the same: it never
+        // wipes, and a declaration is canonicalised when it is made.
+        ImportProcessingResult userDefined = userDefinedCanonicalizationService.rebuildCanonicalFacts();
         // H84: re-apply human-approved publication merges — the canon replay above re-minted both sides of every
         // merged pair from source. MUST run before rebuildViews so the projection reflects the merged state
         // (retired pubs dropped, re-keyed edges projected). This is the FULL-REBUILD path (rebuildAllDerived →
@@ -479,7 +489,7 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult buildFactsCombined = combine(facts,
                 forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
                 forumBuild.doajOnboarding(), forumBuild.wosOnboarding(), forumBuild.membershipDedup(),
-                wosPublicationLinks, dblpConferences);
+                wosPublicationLinks, dblpConferences, userDefined);
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,
