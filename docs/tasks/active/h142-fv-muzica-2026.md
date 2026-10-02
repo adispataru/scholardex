@@ -311,15 +311,99 @@ role.
    for Music and some misattributed works to reject.
 8. **Theatre**, when the faculty's grid arrives.
 
-## Order
+## Implementation (2026-10-02)
 
-1. The report with the shared concert type and the export in the faculty's grid (step 1) — what the faculty sees.
-2. The grid import, each colleague their own, and the per-person CNFIS 5.1 / 4.1 import (step 2) — the largest
-   cut in manual work; the faculty's files, if they come, only speed it up.
-3. The event registry and Anexa 4.1 (steps 3 and 6).
-4. Publisher categories and ISBN, then the journal lists (steps 4 and 5) — they serve every domain.
-5. Recordings, streaming, UCMR lists and ORCID works (step 5).
-6. Theatre (step 8). The faculty data of step 7 goes first, by script, any time.
+Six slices; each ships on its own (release by Adrian, then its prod script if it has one). Sizes are relative:
+slice 1 is about the size of the Sociology report (`H124`).
+
+### Slice 0 — faculty data (script only, no release; small)
+`h142_fmt_data.js`, idempotent, writes only where a value is missing: the new ORCID; `researcherProfile.scholarId`
+from the Google Scholar links (54); the CNFIS domain of each FMT person for the open editions, from
+"Ramura_Stiinta" (75 performance, 751 the other Music staff, 73 Theatre). Dry run on the local app first.
+
+### Slice 1 — FV Muzică 2026 (large: configuration plus two engine additions)
+- **Engine:** in `ActivityReportingService`, two derived variables beside `Interval_buget` / `N_editii`:
+  `Vizibilitate` (the event's rank in the registry when listed — top or international → CS 1.1 —, otherwise
+  the declared value, otherwise regional/local) and `Tip_CNFIS` (role + ensemble size → individual / group 2–4 /
+  collective 5+; a result of nomination or prize wins). One shared function also used by
+  `CnfisReportingFacade.arts()`, which today reads the declared "Tip"; a declared "Tip" keeps working.
+- **Strategy `MUSIC_INDEXED_JOURNAL`** (publications): article, review or proceedings paper in a venue indexed in
+  Scopus, any WoS edition, DOAJ or ERIH PLUS; slice 4 adds the title lists behind the same check.
+- **Activity types "(Comisia 35, …)":** one per item of the three tables; "Participare eveniment artistic" gains
+  Rol, Marime_formatie, Rezultat (participare / nominalizare / premiu) and Vizibilitate (declared fallback);
+  "Grant Cercetare" shared (member → CS 3.1, director → RIA 1.2); per-year items use An_inceput / An_sfarsit.
+- **Indicators:** 27 scoring, plus count helpers (formula `1`, declared and corpus) for books, manuals,
+  recordings, top-visibility concerts, indexed articles and communications.
+- **Criteria:** DID, CS, RIA and Total for CONF_UNIV / PROF_UNIV / HABIL; 12 count criteria (books and manuals
+  for theoreticians and for practitioners; recordings and top concerts for practitioners; articles and
+  communications for theoreticians, composers and performers), each with its thresholds per position.
+- **Perspectives:** the three tables, the total, and "Activități minimale obligatorii" = ANY of the labelled
+  routes Teoretician / Compozitor / Interpret, each the ALL of its counts (the FEAA "Ruta" pattern).
+- **Delivery:** built on the local agent-dev app, exported to `seed/precious-config`, descriptions in
+  `indicator-descriptions/muzica-2026.json`, one idempotent prod script `h142_muzica_2026.js` with a guard,
+  rehearsed on a scratch database.
+- **Tests:** a definition test with a synthetic candidate holding the example grid's counts (DID 400, CS 1700,
+  RIA 770); each route at each position just above and just below its counts; the formula literal-type guard;
+  unit tests of the two derived variables and of the shared kind function.
+
+### Slice 2 — the faculty's grid, out and in (large)
+- **Export:** `Muzica2026ReportTypeImportSupport` with `report-templates/muzica-2026/{template.xlsx, binding.json}`
+  — a clean template in the faculty's layout, built from the official text (no personal data). New binding
+  kind: the items of a row listed in ONE cell, with the row's points (the faculty's format); render and parse.
+- **Import into records (new; `H50` only verified):** the parser splits each cell into items (year, links,
+  text kept); each item becomes an activity of the row's type, marked as imported with its source file, and a
+  re-import of the same file does not duplicate (person + type + normalised text). Role and ensemble size are
+  proposed where a word makes them obvious.
+- **Review:** the activities page filters "imported, to check"; the person selects many rows and sets role,
+  ensemble size or visibility at once, or deletes.
+- **Who imports:** each colleague their own fișă (the normal flow); a head or admin can upload several files,
+  each matched to a person by the name in its header, or chosen.
+- **Per-person CNFIS sheets:** Anexa 5.1 rows (year, work, event, kind and level marks, participants) import as
+  "Participare eveniment artistic"; Anexa 4.1 rows as citations (slice 3).
+- **Tests:** a synthetic grid fixture shaped like the example (same separators, same row counts); idempotent
+  re-import; header name matching; a 5.1 fixture round-trip.
+
+### Slice 3 — event registry, picker, Anexa 4.1 (large)
+- **Model:** `ArtisticEvent` gains aliases, basis (CNFIS list; UCMR/UCIMR/UNIMIR partnership; MC/MEC funding;
+  international participation; head's decision), country, organiser, status (candidate / confirmed) and
+  source; the 303 existing events become confirmed, basis "CNFIS list" (startup migration, raw Mongo).
+- **Matching:** normalised name and aliases, one matcher for the CNFIS sheet and for `Vizibilitate`.
+- **Admin/head page:** the candidate queue with counts and the suggested level; merge a candidate into an event
+  as an alias, rank it, give the basis; edit confirmed events.
+- **Seeding:** an admin operation reads an institutional Anexa 6.1 file and creates candidates from its event
+  column (event names only, nothing personal); FMT's file gives about 240.
+- **Picker:** `EVENT_NAME` gets an autocomplete like the university picker, showing the level; free text stays
+  allowed and becomes a candidate.
+- **Anexa 4.1:** activity type "Citare sau cronică a unei creații artistice (CNFIS 4.1)" (year of the work, work,
+  publication, issue, year of the citation, proof); its writer from the CNFIS template (data volume; small copy
+  as a test fixture); the total on the CNFIS page, in the frozen copy and on the unit page.
+
+### Slice 4 — publishers and journal databases (medium to large; serves every domain)
+- **Publisher categories:** `report-data/cncs-publishers-{2013,2020,2026}.csv` and the UEFISCDI foreign list,
+  transcribed from the official PDFs with aliases; `PublisherCategoryService` gives a book its category (rule
+  below); DID 1.1 reads it, so "publicat" needs no question. ISBN lookup (Open Library, keyless) fills a declared
+  book.
+- **Title lists:** collection `journal_database_memberships` (database, ISSN, eISSN, title, coverage from/to,
+  policy); loaders for KBART, TSV, EBSCO XLS/HTM and RILM's pipe format; an admin operation that loads the
+  lists from their URLs or from files on the data volume, before each use; `JournalDatabaseService.indexedIn(
+  issns, year)` behind `MUSIC_INDEXED_JOURNAL` and a declared-article type that takes a DOI (filled from
+  Crossref) or an ISSN.
+- **Tests:** loader fixtures per format; ISSN normalisation; coverage years.
+
+### Slice 5 — lookups by identifier (large; optional per source)
+Recording from a barcode, catalogue number or link (Discogs with a token, MusicBrainz keyless; label, year,
+format, tracks, credits, UCMR-ADA / ORDA numbers); a YouTube link checked through the Data API (duration,
+date, live times; store the id and the check date); Deezer for albums; the UCMR lists (works bought, prizes,
+members) as suggestions to confirm; ORCID works with a DOI as declared publications to confirm. Clients behind
+deadlines, as the other external calls (`H112`).
+
+### Slice 6 — Theatre
+After the faculty's grid arrives: the same machinery, the shared types, a second report.
+
+### Order and dependencies
+Slice 0 any time. Slice 1, then 2 (it needs slice 1's types). Slice 3 can run beside 2; slice 1 starts with
+exact event names and gains aliases from slice 3 without change. Slice 4 improves slice 1's CS 2.1 and DID 1.1
+when it lands. Slice 5 last, source by source.
 
 ## Still to decide
 
