@@ -9,8 +9,7 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H138` UEFISCDI eligibility by competition domain, chosen by the applicant — **SLICES A+B+C BUILT 2026-10-02, prod
-  script ready (deploy first).** Built: `report-data/uefiscdi-domains-2026.json` (13 domains, reviewed by Adrian: 254 WoS
+- [ ] `H138` UEFISCDI eligibility by competition domain, chosen by the applicant — **SLICES A+B+C DEPLOYED and LOADED in prod 2026-10-02** (`f7e854f0`; `h138_uefiscdi_domains.js` run by Adrian: 13 indicators, 6 reports, 15 division selections removed; slice D — humanities — open, on request). Built: `report-data/uefiscdi-domains-2026.json` (13 domains, reviewed by Adrian: 254 WoS
   categories bucketed with overlap, SCIE/SSCI/AHCI keys only, Multidisciplinary Sciences in every exact domain, domains
   11–12 one SSCI set) read by `UefiscdiCompetitionDomains` and reconciled into `Domain` docs (`UEFISCDI 2026 — <name>`
   plus the empty `(fără domeniu ales)` base) at startup by `UefiscdiDomainCatalogService`; `IndividualReport.competitionFamily`
