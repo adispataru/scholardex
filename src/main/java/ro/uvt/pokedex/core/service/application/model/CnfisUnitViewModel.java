@@ -11,12 +11,21 @@ public record CnfisUnitViewModel(
         List<Member> members,
         List<Table> tables
 ) {
-    /** One member and the sheet that would represent them: their own frozen one, the head's provisional one, or none. */
+    /**
+     * One member and the sheet that would represent them: their own frozen one, the head's provisional one, or none;
+     * {@code citations} counts the sheet's Anexa 4.1 rows, whose total the institution's Anexa 1 asks per person.
+     */
     public record Member(String email, String displayName, String departmentName, String domain,
-                         String snapshotId, String frozenAt, boolean provisional, boolean locked, int rows, int patents) {
+                         String snapshotId, String frozenAt, boolean provisional, boolean locked, int rows, int patents,
+                         int citations) {
         public boolean hasSheet() {
             return snapshotId != null;
         }
+    }
+
+    /** Whether any member's sheet holds citations of artistic works (the column shows only then). */
+    public boolean anyCitations() {
+        return members != null && members.stream().anyMatch(m -> m.citations() > 0);
     }
 
     public record Table(String id, String createdAt, String createdBy, int members, int provisionalMembers,

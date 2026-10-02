@@ -58,7 +58,7 @@ public class ActivityImportWorkspaceController {
         try (InputStream in = file.getInputStream()) {
             ActivityFileImportService.ImportReport report = importService.importFile(user.get().getEmail(), name, in, null);
             return switch (report.kind()) {
-                case MUSIC_GRID, CNFIS_ARTS -> ResponseEntity.ok(report);
+                case MUSIC_GRID, CNFIS_ARTS, CNFIS_CITATIONS -> ResponseEntity.ok(report);
                 case INSTITUTIONAL_TABLE -> ResponseEntity.badRequest().body(Map.of("error", "INSTITUTIONAL_TABLE"));
                 case UNSUPPORTED -> ResponseEntity.badRequest().body(Map.of("error", "UNSUPPORTED"));
             };

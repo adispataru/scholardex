@@ -504,6 +504,12 @@
   position: relative;
 }
 
+/* the input fills its field like the others (it sits in the wrapper, not directly in the field's column) */
+.app-ws-acts__picker > .app-ws-acts__input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .app-ws-acts__picker-results {
   position: absolute;
   z-index: 20;

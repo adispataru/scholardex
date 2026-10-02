@@ -48,6 +48,7 @@ class CNFISReportExportServiceTest {
         stage("AC2025_Anexa6.3-Tabel_institutional_performanta_stiinte_umaniste-2025.xlsx");
         stage("AC2025_Anexa5.2-Performanta_sportiva-2025.xlsx");
         stage("AC2025_Anexa6.2-Tabel_institutional_performanta_sportiva-2025.xlsx");
+        stage("AC2025_Anexa4.1-Impact_creatie_artistica-2025.xlsx");
     }
 
     private static void stage(String filename) throws Exception {
@@ -417,6 +418,41 @@ class CNFISReportExportServiceTest {
         assertEquals(4, CNFISReportExportService.artsColumn("INDIVIDUAL", "NATIONAL"));
         assertEquals(18, CNFISReportExportService.artsColumn("PRIZE", "INTERNATIONAL_TOP"));
         assertEquals(-1, CNFISReportExportService.artsColumn("PRIZE", null));
+    }
+
+    @Test
+    void anexa41WritesOneCitationPerRowWorthOnePointAndTheFormSumsThem() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        byte[] bytes = service.generateAnexa41(List.of(
+                new CNFISReportExportService.CitationExportRow("2019", "Concert pentru vioară — Festivalul Enescu, București",
+                        "Revista Muzica, nr. 2, 2022"),
+                new CNFISReportExportService.CitationExportRow("2021", "Suita a II-a", "Actualitatea muzicală, nr. 5, 2023"),
+                new CNFISReportExportService.CitationExportRow("2015", "Cvartet", "Observator cultural, 2016")));
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            assertTrue(isBlankOrEmpty(sheet.getRow(9).getCell(2)), "the form's first formatted row stays the sample");
+            Row first = sheet.getRow(10);
+            assertEquals("2019", first.getCell(1).getStringCellValue());
+            assertEquals("Concert pentru vioară — Festivalul Enescu, București", first.getCell(2).getStringCellValue());
+            assertEquals("Revista Muzica, nr. 2, 2022", first.getCell(3).getStringCellValue());
+            assertEquals(1.0, first.getCell(4).getNumericCellValue());
+            assertEquals("Observator cultural, 2016", sheet.getRow(12).getCell(3).getStringCellValue());
+            assertEquals(1.0, sheet.getRow(12).getCell(4).getNumericCellValue());
+
+            Row total = null;
+            for (int r = 12; r <= sheet.getLastRowNum() && total == null; r++) {
+                Row candidate = sheet.getRow(r);
+                if (candidate != null && candidate.getCell(0) != null
+                        && candidate.getCell(0).getCellType() == org.apache.poi.ss.usermodel.CellType.STRING
+                        && candidate.getCell(0).getStringCellValue().startsWith("Total general")) {
+                    total = candidate;
+                }
+            }
+            assertNotNull(total, "the total row is kept below the citations");
+            workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            assertEquals(3.0, total.getCell(4).getNumericCellValue(), "the form's total counts every citation written");
+        }
     }
 
     private static boolean isBlankOrEmpty(org.apache.poi.ss.usermodel.Cell cell) {

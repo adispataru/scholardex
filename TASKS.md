@@ -47,7 +47,7 @@ Done history moved to `TASKS-done.md`.
   **Prod order (done):** push and deploy; flip the guard; run with `--restart`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
   IN PROD, SLICE 2 IN PROD 2026-10-02; slice 3 REDESIGNED with Adrian the same day (experts rank events into the
-  registry; the researcher's own visibility pick goes) — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
+  registry; the researcher's own visibility pick goes) and BUILT 2026-10-03, not yet deployed — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
@@ -87,6 +87,18 @@ Done history moved to `TASKS-done.md`.
   `H142_SLICE2_IMAGE_IS_DEPLOYED`, no restart), rehearsed with prod-like ids: guarded run writes nothing, first run
   sets the four export fields, second changes nothing, matches the app by indicator name. **Prod order:** push
   and deploy; flip the guard; run it.
+  **Slice 3 BUILT 2026-10-03 (committed, not pushed):** the level of an event comes only from the registry —
+  the CNFIS list plus what experts rank (rank gains national-top and local; aliases, kind, basis, note, history);
+  `Vizibilitate` leaves the record type, an imported file's level is a suggestion for the experts; an unranked event
+  counts CS 1.2 and stays out of CNFIS 5.1 until ranked. Experts = admins, the heads of the departments mapped to a
+  domain, named experts (`/admin/artistic-events/experts`); their page `/user/artistic-events/review` (queue from
+  proposals and records, bulk rank, merge as a spelling, reject with a note, edit, reopen; never one's own events).
+  The workspace picks events from the registry and shows each record's level. An admin seeds proposals from an
+  institutional Anexa 6.1 (event names only). CNFIS Anexa 4.1: a citation record type, the page section, frozen
+  copies, the downloads, per-member counts on the unit page, the import of a person's 4.1 sheet. Prod script
+  `h142_slice3_events.js` (guard `H142_SLICE3_IMAGE_IS_DEPLOYED`, no restart), rehearsed. **Prod order:** push and
+  deploy; copy the 4.1 template to the data volume; flip the guard, run the script; map the domains to FMT's
+  departments and name experts (FMT has no heads recorded). Other self-picked levels: `H144`.
   Earlier status: SCOPED and
   REASSESSED 2026-10-02 (decisions taken with Adrian; four smaller ones open). Asked by FMT (vice-dean for
   research), the first vocational faculty. Plan, the standard transcribed (the standards folder is git-ignored)

@@ -88,7 +88,7 @@ public class ArtEventScoringService extends AbstractForumScoringService {
                             case INTERNATIONAL -> {
                                 score.setScore(2.0);
                             }
-                            case NATIONAL -> {
+                            case NATIONAL_TOP, NATIONAL -> {
                                 score.setScore(1.0);
                             }
                             default -> {
@@ -111,7 +111,8 @@ public class ArtEventScoringService extends AbstractForumScoringService {
     }
 
     private List<ArtisticEvent> getCachedRankings(String name) {
-        return rankingCache.computeIfAbsent(name, artEventsRepo::findAllByNameIgnoreCase);
+        return rankingCache.computeIfAbsent(name, n -> artEventsRepo.findAllByNameIgnoreCase(n).stream()
+                .filter(e -> e.isConfirmed() && e.getRank() != null).toList()); // H142 slice 3: proposals do not rank
     }
 
     @Override

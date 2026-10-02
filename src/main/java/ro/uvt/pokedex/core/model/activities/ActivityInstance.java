@@ -38,6 +38,11 @@ public class ActivityInstance {
      * null when the record never asked.
      */
     private PublisherClaim publisherClaim;
+    /**
+     * H142 slice 3 — for an imported artistic performance, the level the file gave it (the row of the grid, the CNFIS
+     * level): shown to the experts who rank the event, never scored.
+     */
+    private String eventLevelSuggestion;
 
     public Optional<Integer> getYearOptional() {
         return PersistenceYearSupport.extractYear(date, id, log);

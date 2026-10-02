@@ -58,7 +58,6 @@ class CnfisReportingFacadeTest {
     @Mock private CnfisSheetSnapshotRepository snapshotRepository;
     @Mock private CnfisDomainCatalog domainCatalog;
     @Mock private CNFISReportExportService exportService;
-    @Mock private ro.uvt.pokedex.core.repository.ArtisticEventRepository artisticEventRepository;
     @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     @Mock private ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles citeScoreQuartiles;
 
@@ -68,7 +67,7 @@ class CnfisReportingFacadeTest {
     void setUp() {
         facade = new CnfisReportingFacade(userReportFacade, runService, userRepository, lookupService,
                 projectionReadService, activityInstanceRepository, headerRepository, snapshotRepository,
-                domainCatalog, exportService, artisticEventRepository, bookFactRepository, citeScoreQuartiles);
+                domainCatalog, exportService, bookFactRepository, citeScoreQuartiles);
         lenient().when(userReportFacade.buildIndividualReportsListView(EMAIL))
                 .thenReturn(new UserReportsListViewModel(List.of()));
         lenient().when(headerRepository.findByUserEmailAndReportingYear(any(), org.mockito.ArgumentMatchers.anyInt()))
@@ -323,8 +322,7 @@ class CnfisReportingFacadeTest {
         ro.uvt.pokedex.core.model.ArtisticEvent venice = new ro.uvt.pokedex.core.model.ArtisticEvent();
         venice.setName("Bienala de la Veneția");
         venice.setRank(ro.uvt.pokedex.core.model.ArtisticEvent.Rank.INTERNATIONAL_TOP);
-        when(artisticEventRepository.findAllByNameIgnoreCase("Bienala de la Veneția")).thenReturn(List.of(venice));
-        when(artisticEventRepository.findAllByNameIgnoreCase("Un festival oarecare")).thenReturn(List.of());
+        ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.register(List.of(venice));
         when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
                 performance("Expoziție", "2023-05-10", "Bienala de la Veneția", Map.of("Tip", "Proiect de grup (2-4)", "N_participanti_universitate", "3")),
                 performance("Fără tip", "2023-05-10", "Bienala de la Veneția", Map.of()),
@@ -335,7 +333,12 @@ class CnfisReportingFacadeTest {
         header.setDomainCode("72");
         when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
 
-        CnfisSheetViewModel sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+        CnfisSheetViewModel sheet;
+        try {
+            sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+        } finally {
+            ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.reset();
+        }
 
         assertTrue(sheet.arts().applies());
         assertEquals(1, sheet.arts().rows().size());
@@ -345,7 +348,7 @@ class CnfisReportingFacadeTest {
         assertEquals(3, row.universityParticipants());
         assertEquals(2, sheet.arts().leftOut().size());
         assertTrue(sheet.arts().leftOut().get(0).reason().contains("kind of the work"));
-        assertTrue(sheet.arts().leftOut().get(1).reason().contains("not in the registry"));
+        assertTrue(sheet.arts().leftOut().get(1).reason().contains("waits for an expert"));
     }
 
     @Test
@@ -400,6 +403,64 @@ class CnfisReportingFacadeTest {
         instance.getActivity().setName("Participare eveniment artistic");
         instance.setFields(new java.util.HashMap<>(fields));
         instance.setReferenceFields(new java.util.HashMap<>(Map.of(Activity.ReferenceField.EVENT_NAME, event)));
+        return instance;
+    }
+
+    // ── Anexa 4.1 ──────────────────────────────────────────────────────────
+
+    @Test
+    void citationsOfArtisticWorksCountForTheWholeCareerUpToTheReferenceDate() {
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+        when(userRepository.findAll()).thenReturn(List.of());
+        when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
+                citation("Concert pentru vioară", "2022-03-01", Map.of("An_creatie", "2019",
+                        "Detalii_creatie", "Festivalul Enescu, București", "Publicatie", "Revista Muzica", "Numar_publicatie", "2")),
+                citation("Cvartet", "2008-05-01", Map.of("An_creatie", "2006", "Publicatie", "Observator cultural, 2008")),
+                citation("Simfonia I", "2025-02-01", Map.of("An_creatie", "2024", "Publicatie", "Muzica")), // after 1 Jan 2025
+                citation("Suita a II-a", "2023-01-01", Map.of("Publicatie", "Actualitatea muzicală")),
+                citation("Lied", "2023-01-01", Map.of("An_creatie", "2020"))));
+        // somebody outside the arts who declared a citation still sees the form
+        CnfisSheetHeader header = new CnfisSheetHeader();
+        header.setDomainCode("2");
+        when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
+
+        CnfisSheetViewModel.Arts arts = facade.buildSheet(EMAIL, 2025).orElseThrow().arts();
+
+        assertTrue(arts.applies());
+        assertEquals(2, arts.citations().size(), "2008 counts (the whole career), 2025 does not (after the reference date)");
+        assertEquals("2006", arts.citations().get(0).workYear());
+        assertEquals("Observator cultural, 2008", arts.citations().get(0).citation(), "a year the publication's text holds is not repeated");
+        assertEquals("Concert pentru vioară — Festivalul Enescu, București", arts.citations().get(1).work());
+        assertEquals("Revista Muzica, nr. 2, 2022", arts.citations().get(1).citation());
+        assertEquals(2, arts.citationsLeftOut().size());
+        assertTrue(arts.citationsLeftOut().stream().anyMatch(l -> l.reason().contains("year of the cited work")));
+        assertTrue(arts.citationsLeftOut().stream().anyMatch(l -> l.reason().contains("publication that cites")));
+    }
+
+    @Test
+    void aFrozenCopyKeepsTheCitationsOfArtisticWorks() {
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+        when(userRepository.findAll()).thenReturn(List.of());
+        when(userRepository.findById(EMAIL)).thenReturn(Optional.of(user(EMAIL, "Ana", "a-ana", null)));
+        when(snapshotRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
+                citation("Concert pentru vioară", "2022-03-01", Map.of("An_creatie", "2019", "Publicatie", "Revista Muzica"))));
+
+        CnfisSheetSnapshot snapshot = facade.freeze(EMAIL, 2025).orElseThrow();
+
+        assertEquals(1, snapshot.getArtsCitationRows().size());
+        CnfisSheetSnapshot.CitationRow row = snapshot.getArtsCitationRows().getFirst();
+        assertEquals("2019", row.getWorkYear());
+        assertEquals("Revista Muzica, 2022", row.getCitation());
+        assertEquals("2022", row.getCitationYear());
+    }
+
+    private static ActivityInstance citation(String name, String date, Map<String, String> fields) {
+        ActivityInstance instance = other(name, date);
+        instance.getActivity().setName("Citare sau cronică a unei creații artistice (CNFIS 4.1)");
+        instance.setFields(new java.util.HashMap<>(fields));
         return instance;
     }
 

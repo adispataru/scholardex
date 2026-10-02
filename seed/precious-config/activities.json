@@ -423,14 +423,6 @@
     "number": false
    },
    {
-    "name": "Vizibilitate",
-    "allowedValues": [
-     "Internațională sau națională de vârf",
-     "Regională sau locală"
-    ],
-    "number": false
-   },
-   {
     "name": "Tip",
     "allowedValues": [
      "Proiect individual",
@@ -1764,6 +1756,35 @@
    {
     "name": "N_participanti_universitate",
     "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6ac02799242e1a4804ce7768"
+  },
+  "name": "Citare sau cronică a unei creații artistice (CNFIS 4.1)",
+  "fields": [
+   {
+    "name": "An_creatie",
+    "number": true
+   },
+   {
+    "name": "Detalii_creatie",
+    "number": false
+   },
+   {
+    "name": "Publicatie",
+    "number": false
+   },
+   {
+    "name": "Numar_publicatie",
+    "number": false
    },
    {
     "name": "Dovezi",

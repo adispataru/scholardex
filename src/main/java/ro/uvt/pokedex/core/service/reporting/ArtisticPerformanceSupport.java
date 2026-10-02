@@ -21,7 +21,6 @@ public final class ArtisticPerformanceSupport {
     public static final String FIELD_ROLE = "Rol";
     public static final String FIELD_ENSEMBLE_SIZE = "Marime_formatie";
     public static final String FIELD_RESULT = "Rezultat";
-    public static final String FIELD_VISIBILITY = "Vizibilitate";
     /** The CNFIS kind as declared before H142 (Proiect individual / de grup / colectiv, Nominalizare, Premiu). */
     public static final String FIELD_CNFIS_KIND = "Tip";
 
@@ -66,26 +65,32 @@ public final class ArtisticPerformanceSupport {
         return !ROLE_LARGE_ENSEMBLE_MEMBER.equalsIgnoreCase(r) && !ROLE_OTHER.equalsIgnoreCase(r);
     }
 
-    /** How the visibility of a concert was decided, for the drilldown. */
-    public enum VisibilityBasis { REGISTRY, DECLARED, DEFAULT }
+    /**
+     * How the visibility of a concert was decided, for the drilldown: the registry's rank; an event the experts have
+     * not ranked (unknown, proposed, or rejected as a name); no event named.
+     */
+    public enum VisibilityBasis { REGISTRY, AWAITING_RANK, NO_EVENT }
 
     public record Visibility(boolean top, VisibilityBasis basis) {
     }
 
     /**
-     * Top visibility ("internațională sau națională de vârf", CS 1.1) or regional/local (CS 1.2). An event the
-     * registry ranks decides by itself: a top-international or international festival is top, a national one
-     * is not. For an event the registry does not list, the declared visibility; without one, regional/local.
+     * Top visibility ("internațională sau națională de vârf", CS 1.1) or regional/local (CS 1.2), from the rank the
+     * registry gives the event — top for a top-international, international or national-top event (H142 slice 3). An
+     * event the experts have not ranked counts as regional/local, the floor the standard gives any eligible public
+     * performance, until they do; nobody picks the visibility of their own concert.
      */
-    public static Visibility visibility(Optional<ArtisticEvent.Rank> rank, Map<String, String> fields) {
+    public static Visibility visibility(Optional<ArtisticEvent.Rank> rank, boolean eventNamed) {
         if (rank.isPresent()) {
-            return new Visibility(rank.get() != ArtisticEvent.Rank.NATIONAL, VisibilityBasis.REGISTRY);
+            return new Visibility(isTop(rank.get()), VisibilityBasis.REGISTRY);
         }
-        String declared = lower(fields.get(FIELD_VISIBILITY));
-        if (!declared.isEmpty()) {
-            return new Visibility(declared.startsWith("interna"), VisibilityBasis.DECLARED);
-        }
-        return new Visibility(false, VisibilityBasis.DEFAULT);
+        return new Visibility(false, eventNamed ? VisibilityBasis.AWAITING_RANK : VisibilityBasis.NO_EVENT);
+    }
+
+    /** Whether the rank gives "vizibilitate internațională sau națională de vârf". */
+    public static boolean isTop(ArtisticEvent.Rank rank) {
+        return rank == ArtisticEvent.Rank.INTERNATIONAL_TOP || rank == ArtisticEvent.Rank.INTERNATIONAL
+                || rank == ArtisticEvent.Rank.NATIONAL_TOP;
     }
 
     /**

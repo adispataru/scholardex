@@ -59,6 +59,8 @@ let _importNotice  = null;   // { lines: string[], error: boolean }
 let _bulkMessage   = null;
 // H143 — per record id: the publisher typed, each standard's category and its source, the request to a head
 let _publisherInfo = {};
+// H142 slice 3: per record naming an artistic event, what the registry says (its rank, or that experts have not ranked it)
+let _eventLevels = {};
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -178,6 +180,7 @@ function _renderAll() {
     _renderImportNotice();
     _renderBulkBar();
     _loadPublisherInfo();
+    _loadEventLevels();
 
 
     // Render table
@@ -374,6 +377,7 @@ function _insertDetailRow(inst, tr) {
     _wireProjectPickers(detailTr);
     _wireConferencePickers(detailTr);
     _wireUniversityPickers(detailTr);
+    _wireEventPickers(detailTr);
 
     detailTr.querySelector('[data-save-inst]')?.addEventListener('click', () => _saveInst(inst.id, detailTr));
 
@@ -765,6 +769,129 @@ function _searchUniversities(q, results, input, note) {
         .catch(() => { results.hidden = true; });
 }
 
+// ── H142 slice 3: the event picker for EVENT_NAME ───────────────────────────────
+// The researcher names the event or the institution; the registry gives its level, and the experts of the domain rank
+// a name it does not know. Suggestions are ranked events (and their spellings) and names already waiting for them, so a
+// second person joins the same proposal. Free text stays valid.
+function _eventPickerFieldHtml(label, dataAttr, currentValue) {
+    return `<div class="app-ws-acts__field js-event-picker">
+        <label class="app-ws-acts__label">${_esc(label)}</label>
+        <div class="app-ws-acts__picker">
+          <input class="app-ws-acts__input js-event-picker-input" type="text" autocomplete="off"
+                 ${dataAttr}="EVENT_NAME" value="${_esc(currentValue)}"
+                 placeholder="${_esc(t('workspace.activities.event.search'))}"/>
+          <ul class="app-ws-acts__picker-results js-event-picker-results" hidden></ul>
+        </div>
+        <div class="app-ws-acts__picker-note">${_esc(t('workspace.activities.event.note'))}</div>
+    </div>`;
+}
+
+/** The label of a registry rank; every key written out, so the i18n check sees them all. */
+function _eventRankLabel(rank) {
+    switch (rank) {
+        case 'INTERNATIONAL_TOP': return t('workspace.activities.event.rank.INTERNATIONAL_TOP');
+        case 'INTERNATIONAL':     return t('workspace.activities.event.rank.INTERNATIONAL');
+        case 'NATIONAL_TOP':      return t('workspace.activities.event.rank.NATIONAL_TOP');
+        case 'NATIONAL':          return t('workspace.activities.event.rank.NATIONAL');
+        case 'LOCAL':             return t('workspace.activities.event.rank.LOCAL');
+        default:                  return rank || '';
+    }
+}
+
+/** Why the event has its rank: the CNFIS list or one of its rules, or the footnote of the standard the expert applied. */
+function _eventBasisLabel(basis) {
+    switch (basis) {
+        case 'CNFIS_LIST':                return t('workspace.activities.event.basis.CNFIS_LIST');
+        case 'CNFIS_CAPITAL_INSTITUTION': return t('workspace.activities.event.basis.CNFIS_CAPITAL_INSTITUTION');
+        case 'CNFIS_UNION_PARTNERSHIP':   return t('workspace.activities.event.basis.CNFIS_UNION_PARTNERSHIP');
+        case 'CNFIS_MINISTRY_FUNDING':    return t('workspace.activities.event.basis.CNFIS_MINISTRY_FUNDING');
+        case 'TOP_FESTIVAL_ABROAD':       return t('workspace.activities.event.basis.TOP_FESTIVAL_ABROAD');
+        case 'TOP_INSTITUTION_ABROAD':    return t('workspace.activities.event.basis.TOP_INSTITUTION_ABROAD');
+        case 'TOP_FESTIVAL_ROMANIA':      return t('workspace.activities.event.basis.TOP_FESTIVAL_ROMANIA');
+        case 'TOP_INSTITUTION_ROMANIA':   return t('workspace.activities.event.basis.TOP_INSTITUTION_ROMANIA');
+        case 'REGIONAL_OR_LOCAL':         return t('workspace.activities.event.basis.REGIONAL_OR_LOCAL');
+        case 'OTHER':                     return t('workspace.activities.event.basis.OTHER');
+        default:                          return basis || '';
+    }
+}
+
+function _eventSuggestionLabel(s) {
+    const level = s.rank ? _eventRankLabel(s.rank) : t('workspace.activities.event.awaiting');
+    const spells = s.spells ? ` → ${s.spells}` : '';
+    return `${s.name}${spells} (${level}${s.domain ? ', ' + s.domain : ''})`;
+}
+
+function _wireEventPickers(root) {
+    root.querySelectorAll('.js-event-picker').forEach(wrap => {
+        const input   = wrap.querySelector('.js-event-picker-input');
+        const results = wrap.querySelector('.js-event-picker-results');
+        if (!input || !results) return;
+        let timer = null;
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            clearTimeout(timer);
+            if (q.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
+            timer = setTimeout(() => _searchEvents(q, results, input), 250);
+        });
+        document.addEventListener('click', e => { if (!wrap.contains(e.target)) results.hidden = true; });
+    });
+}
+
+function _searchEvents(q, results, input) {
+    fetch(`/api/entities/artistic-events?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(items => {
+            if (!items || items.length === 0) {
+                results.innerHTML = `<li class="app-ws-acts__picker-empty">${_esc(t('workspace.activities.event.none'))}</li>`;
+                results.hidden = false;
+                return;
+            }
+            results.innerHTML = items.map((s, idx) =>
+                `<li class="app-ws-acts__picker-item" data-idx="${idx}">${_esc(_eventSuggestionLabel(s))}</li>`).join('');
+            results.hidden = false;
+            results.querySelectorAll('.app-ws-acts__picker-item').forEach(li => {
+                li.addEventListener('click', () => {
+                    input.value = items[Number(li.dataset.idx)].name;
+                    results.hidden = true;
+                });
+            });
+        })
+        .catch(() => { results.hidden = true; });
+}
+
+function _loadEventLevels() {
+    fetch('/user/workspace/activities/event-levels', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => (r.ok ? r.json() : {}))
+        .then(map => {
+            _eventLevels = map && typeof map === 'object' ? map : {};
+            if (_activeId) {
+                const host = document.querySelector(`[data-event-host="${CSS.escape(_activeId)}"]`);
+                const inst = _instances.find(i => i.id === _activeId);
+                if (host && inst) host.innerHTML = _eventBlock(inst);
+            }
+        })
+        .catch(() => { _eventLevels = {}; });
+}
+
+/** What the registry says about the record's event: its rank and why, or that the experts have not ranked it yet. */
+function _eventBlock(inst) {
+    const info = _eventLevels[inst.id];
+    if (!info) return '';
+    let text;
+    if (info.status === 'RANKED') {
+        const basis = info.basis ? ` — ${_eventBasisLabel(info.basis)}` : '';
+        text = `<strong>${_esc(_eventRankLabel(info.rank))}</strong>${_esc(basis)}`;
+    } else if (info.status === 'REJECTED') {
+        text = _esc(t('workspace.activities.event.rejected', info.note || '—'));
+    } else {
+        text = _esc(t('workspace.activities.event.waiting'));
+    }
+    return `<div class="app-ws-acts__publisher">
+        <p class="app-ws-acts__detail-section-title">${t('workspace.activities.event.title')}</p>
+        <p style="margin:0;font-size:0.85rem;">${_esc(info.event)}: ${text}</p>
+    </div>`;
+}
+
 // ── H78 slice 3: link an existing activity to a canonical project ──────────────
 // One-click affordance on project-supporting rows that aren't linked yet. Opens a focused picker; selecting a project
 // calls the link endpoint (sets PROJECT_GRANT_ID + back-fills blank display fields), then reloads.
@@ -932,6 +1059,9 @@ function _buildDetailPanel(inst) {
             if (rf === 'UNIVERSITY_NAME') {
                 return _universityPickerFieldHtml(label, 'data-ref-field', val);
             }
+            if (rf === 'EVENT_NAME') {
+                return _eventPickerFieldHtml(label, 'data-ref-field', val);
+            }
             return `<div class="app-ws-acts__field">
                 <label class="app-ws-acts__label">${_esc(label)}</label>
                 <input class="app-ws-acts__input" type="text"
@@ -967,6 +1097,7 @@ function _buildDetailPanel(inst) {
                   ? `<p class="app-ws-acts__source">${_esc(t('workspace.activities.review.source', inst.importSource))}</p>`
                   : ''}
               <div data-publisher-host="${_esc(inst.id)}">${_publisherBlock(inst)}</div>
+              <div data-event-host="${_esc(inst.id)}">${_eventBlock(inst)}</div>
             </div>
             <!-- Right: edit -->
             <div>
@@ -1014,6 +1145,7 @@ function _saveInst(id, detailTr) {
                 _refreshReviewToggle();
             }
             _loadPublisherInfo();
+            _loadEventLevels();
             if (feedback) {
                 feedback.textContent = t('workspace.activities.saved');
                 feedback.classList.remove('app-ws-acts__feedback--error');
@@ -1195,6 +1327,9 @@ function _renderCreateFields(container, activity) {
         if (rf === 'UNIVERSITY_NAME') {
             return _universityPickerFieldHtml(label, 'data-create-ref-field', '');
         }
+        if (rf === 'EVENT_NAME') {
+            return _eventPickerFieldHtml(label, 'data-create-ref-field', '');
+        }
         return `<div class="app-ws-acts__field">
             <label class="app-ws-acts__label">${_esc(label)}</label>
             <input class="app-ws-acts__input" type="text"
@@ -1210,6 +1345,7 @@ function _renderCreateFields(container, activity) {
     _wireProjectPickers(container);
     _wireConferencePickers(container);
     _wireUniversityPickers(container);
+    _wireEventPickers(container);
 }
 
 function _submitCreate(placeholder) {
@@ -1251,6 +1387,7 @@ function _submitCreate(placeholder) {
             }
             _renderPage();
             _loadPublisherInfo(); // H143: the new record's publisher category
+            _loadEventLevels(); // H142 slice 3: the new record's event level
         })
         .catch(err => {
             _showFeedback(feedback, (err && err.userMessage) || t('workspace.activities.saveFailed'), true);

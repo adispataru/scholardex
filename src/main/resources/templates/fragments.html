@@ -384,6 +384,14 @@
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
+                    th:if="${canRankArtisticEvents}"
+                    th:classappend="${activeSection == 'artistic-events-review'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/user/artistic-events/review}">
+                        <i class="fa-solid fa-fw fa-music"></i>
+                        <span th:text="#{artisticEvents.nav}">Artistic events</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
                     th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
                     th:classappend="${activeSection == 'researcher-reports'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/reports/researcher}">
@@ -447,6 +455,13 @@
                     <a class="app-shell-sidebar__link" th:href="@{/admin/domains}">
                         <i class="fa-solid fa-fw fa-umbrella"></i>
                         <span th:text="#{shell.item.domains}">Domains</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'artistic-event-experts'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/artistic-events/experts}">
+                        <i class="fa-solid fa-fw fa-music"></i>
+                        <span th:text="#{artisticEvents.experts.nav}">Artistic event experts</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
@@ -592,6 +607,14 @@
                     <a class="app-shell-sidebar__link" th:href="@{/supervisor/declarations}">
                         <i class="fa-solid fa-fw fa-file-signature"></i>
                         <span th:text="#{shell.item.declarations}">Principal author declarations</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:if="${canRankArtisticEvents}"
+                    th:classappend="${activeSection == 'artistic-events-review'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/user/artistic-events/review}">
+                        <i class="fa-solid fa-fw fa-music"></i>
+                        <span th:text="#{artisticEvents.nav}">Artistic events</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"

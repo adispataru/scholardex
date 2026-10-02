@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{artisticEvents.experts.title}">Artistic event experts</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('artistic-event-experts')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(#{artisticEvents.experts.title})}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro" th:text="#{artisticEvents.experts.intro}">
+                        Who ranks the artistic events of each domain.
+                    </p>
+                </div>
+                <div th:if="${savedDomain}" class="app-feedback app-feedback--success" role="status">
+                    <p class="app-feedback__body" th:text="#{artisticEvents.experts.saved(${savedDomain})}">Saved.</p>
+                </div>
+
+                <section th:each="domain : ${page.domains()}" class="app-summary-panel mb-4" data-event-domain>
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title" th:text="${domain.domain()}">Muzică</h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <form method="post" th:action="@{/admin/artistic-events/experts}"
+                              style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-start;">
+                            <input type="hidden" name="domain" th:value="${domain.domain()}">
+                            <div style="flex:1 1 22rem;">
+                                <label class="form-label" th:for="${'deps-' + domain.domain()}"
+                                       th:text="#{artisticEvents.experts.departments}">Departments that answer for it</label>
+                                <select th:id="${'deps-' + domain.domain()}" name="departmentIds" multiple size="6" class="form-select form-select-sm">
+                                    <option th:each="dep : ${page.departments()}" th:value="${dep.id()}"
+                                            th:selected="${domain.departmentIds().contains(dep.id())}" th:text="${dep.label()}">Departamentul de Muzică</option>
+                                </select>
+                            </div>
+                            <div style="flex:1 1 18rem;">
+                                <label class="form-label" th:for="${'experts-' + domain.domain()}"
+                                       th:text="#{artisticEvents.experts.emails}">Further experts (one e-mail per line)</label>
+                                <textarea th:id="${'experts-' + domain.domain()}" name="expertEmails" rows="6"
+                                          class="form-control form-control-sm" th:text="${domain.expertEmails()}"></textarea>
+                            </div>
+                            <div style="align-self:flex-end;">
+                                <button type="submit" class="btn btn-sm btn-primary" th:text="#{artisticEvents.experts.save}">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <section id="seed" class="app-summary-panel mb-4" data-event-seed>
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title" th:text="#{artisticEvents.experts.seed.title}">Proposals from an Anexa 6.1 table</h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p class="small text-muted" th:text="#{artisticEvents.experts.seed.intro}">
+                            The events an institutional CNFIS table names wait for the domain's experts.
+                        </p>
+                        <div th:if="${seedErrorKey}" class="app-feedback app-feedback--error" role="alert">
+                            <p class="app-feedback__body" th:text="#{${seedErrorKey}}">The table could not be read.</p>
+                        </div>
+                        <div th:if="${seedReport}" class="app-feedback app-feedback--success" role="status">
+                            <p class="app-feedback__body" th:text="#{artisticEvents.experts.seed.done(${seedReport.cells()}, ${seedReport.created()}, ${seedReport.known()}, ${seedReport.skipped()}, ${seedDomain})}">
+                                Read 427 cells.
+                            </p>
+                            <ul th:unless="${#lists.isEmpty(seedReport.createdNames())}" class="small mb-0">
+                                <li th:each="name : ${seedReport.createdNames()}" th:text="${name}">Festivalul Meridian</li>
+                            </ul>
+                        </div>
+                        <form method="post" enctype="multipart/form-data" th:action="@{/admin/artistic-events/experts/seed}"
+                              style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+                            <div style="flex:1 1 22rem;">
+                                <label class="form-label" for="seed-file" th:text="#{artisticEvents.experts.seed.file}">Anexa 6.1 (xlsx)</label>
+                                <input id="seed-file" type="file" name="file" required
+                                       accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                       class="form-control form-control-sm">
+                            </div>
+                            <div style="flex:0 1 14rem;">
+                                <label class="form-label" for="seed-domain" th:text="#{artisticEvents.experts.seed.domain}">Domain</label>
+                                <select id="seed-domain" name="domain" required class="form-select form-select-sm">
+                                    <option th:each="domain : ${page.domains()}" th:value="${domain.domain()}" th:text="${domain.domain()}">Muzică</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-sm btn-primary" th:text="#{artisticEvents.experts.seed.submit}">Propose</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

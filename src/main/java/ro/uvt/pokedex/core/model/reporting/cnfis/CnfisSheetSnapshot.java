@@ -38,6 +38,8 @@ public class CnfisSheetSnapshot {
     private List<Patent> patents = new ArrayList<>();
     /** Anexa 5.1 — the artistic performances, for a person of an artistic domain. */
     private List<ArtsRow> artsRows = new ArrayList<>();
+    /** Anexa 4.1 (H142) — the citations of artistic works, the whole career: absent on snapshots frozen before it existed. */
+    private List<CitationRow> artsCitationRows = new ArrayList<>();
     /** Anexa 5.2 (H129, sport): absent on snapshots frozen before it existed. */
     private List<SportRow> sportRows = new ArrayList<>();
     /** Anexa 5.3 — Scopus articles, books, edited volumes, chapters, critical editions, translations (humanities). */
@@ -88,6 +90,19 @@ public class CnfisSheetSnapshot {
         /** INDIVIDUAL, GROUP, COLLECTIVE, NOMINATION, PRIZE — the declared kind of the work. */
         private String kind;
         private int universityParticipants;
+    }
+
+    /** One row of Anexa 4.1, from the declared activity "Citare sau cronică a unei creații artistice (CNFIS 4.1)". */
+    @Data
+    public static class CitationRow {
+        private String activityInstanceId;
+        /** The year the cited work was made (column B). */
+        private String workYear;
+        /** The work, as the form identifies it: its name, the event, the place, the date (column C). */
+        private String work;
+        /** The publication, its issue and the year of the citation (column D). */
+        private String citation;
+        private String citationYear;
     }
 
     /** One row of Anexa 5.2, from the declared activity "Performanță sportivă (CNFIS 5.2)". */

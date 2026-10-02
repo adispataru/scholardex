@@ -39,6 +39,10 @@
                                 <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
                                 <span th:text="#{cnfis.download.anexa51}">Anexa 5.1</span>
                             </a>
+                            <a th:if="${sheet.arts().applies()}" class="btn btn-sm btn-outline-primary" th:href="@{/user/cnfis/{y}/export-citations(y=${ed.reportingYear()})}">
+                                <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
+                                <span th:text="#{cnfis.download.anexa41}">Anexa 4.1</span>
+                            </a>
                             <a th:if="${sheet.sport().applies()}" class="btn btn-sm btn-outline-primary" th:href="@{/user/cnfis/{y}/export-sport(y=${ed.reportingYear()})}">
                                 <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
                                 <span th:text="#{cnfis.download.anexa52}">Anexa 5.2</span>
@@ -243,6 +247,43 @@
                             </div>
                         </section>
 
+                        <!-- ── Anexa 4.1: citations of artistic works ─────── -->
+                        <section class="app-university-detail__section mt-3" aria-labelledby="cnfis-citations-title" th:if="${sheet.arts().applies()}" th:with="arts=${sheet.arts()}">
+                            <div class="app-university-detail__section-header">
+                                <div>
+                                    <p class="app-university-detail__eyebrow" th:text="#{cnfis.anexa.41}">Anexa 4.1</p>
+                                    <h2 id="cnfis-citations-title" class="app-university-detail__section-title" th:text="#{cnfis.citations.title(${#lists.size(arts.citations())})}">Citations of artistic works</h2>
+                                    <p class="text-muted small mb-0 mt-1" th:text="#{cnfis.citations.hint(${sheet.edition().reportingYear()})}">From the activities declared as citations.</p>
+                                </div>
+                            </div>
+                            <div th:if="${#lists.isEmpty(arts.citations())}" class="app-table-state" role="status" th:text="#{cnfis.citations.none}">No citation of an artistic work declared.</div>
+                            <div th:unless="${#lists.isEmpty(arts.citations())}" class="app-table-scroll">
+                                <table class="table table-bordered app-table" width="100%" cellspacing="0" id="cnfis-citations-rows">
+                                    <thead><tr>
+                                        <th th:text="#{cnfis.citations.workYear}">Year of the work</th><th th:text="#{cnfis.citations.work}">Work</th>
+                                        <th th:text="#{cnfis.citations.citation}">Citation</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    <tr th:each="r : ${arts.citations()}">
+                                        <td class="app-table__cell--identifier" th:text="${r.workYear()}">2019</td><td th:text="${r.work()}">Work</td>
+                                        <td class="app-table__cell--secondary" th:text="${r.citation()}">Muzica, nr. 2, 2022</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div th:unless="${#lists.isEmpty(arts.citationsLeftOut())}" class="app-table-scroll mt-2">
+                                <table class="table table-bordered app-table" width="100%" cellspacing="0" id="cnfis-citations-left-out">
+                                    <caption class="app-table-caption" th:text="#{cnfis.leftOut.hint}">left out</caption>
+                                    <thead><tr><th th:text="#{common.year}">Year</th><th th:text="#{cnfis.citations.work}">Work</th><th th:text="#{cnfis.citations.publication}">Publication</th><th th:text="#{cnfis.leftOut.reason}">Reason</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="l : ${arts.citationsLeftOut()}">
+                                        <td class="app-table__cell--identifier" th:text="${l.year()}">2023</td><td th:text="${l.title()}">Work</td><td class="app-table__cell--secondary" th:text="${l.venue()}">Publication</td><td th:text="${l.reason()}">reason</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
                         <!-- ── Anexa 5.2: sport ─────────────────────────────── -->
                         <section class="app-university-detail__section mt-3" aria-labelledby="cnfis-sport-title" th:if="${sheet.sport().applies()}" th:with="sport=${sheet.sport()}">
                             <div class="app-university-detail__section-header">
@@ -390,6 +431,7 @@
                                         <td class="text-right">
                                             <a class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export(id=${s.id()})}" th:text="#{cnfis.copies.download}">Download</a>
                                             <a th:if="${sheet.arts().applies()}" class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export-arts(id=${s.id()})}" th:text="#{cnfis.copies.download51}">Anexa 5.1</a>
+                                            <a th:if="${sheet.arts().applies()}" class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export-citations(id=${s.id()})}" th:text="#{cnfis.copies.download41}">Anexa 4.1</a>
                                             <a th:if="${sheet.sport().applies()}" class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export-sport(id=${s.id()})}" th:text="#{cnfis.copies.download52}">Anexa 5.2</a>
                                             <a th:if="${sheet.humanities().applies()}" class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export-humanities(id=${s.id()})}" th:text="#{cnfis.copies.download53}">Anexa 5.3</a>
                                             <form th:unless="${s.locked()}" th:action="@{/user/cnfis/snapshots/{id}/release(id=${s.id()})}" method="post" class="d-inline">

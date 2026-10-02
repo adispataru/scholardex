@@ -76,7 +76,11 @@ class CnfisWorkspaceControllerContractTest {
                 List.of(new CnfisSheetViewModel.Patent("act-1", "2023", "Sistem de răcire", "EP123", "EPO", "European", 3, 2)),
                 new CnfisSheetViewModel.Arts(true,
                         List.of(new CnfisSheetViewModel.ArtsRow("act-2", "2023", "Expoziție personală", "Bienala de la Veneția", "INTERNATIONAL_TOP", "INDIVIDUAL", 0)),
-                        List.of()),
+                        List.of(),
+                        List.of(new CnfisSheetViewModel.CitationRow("act-4", "2019", "Concert pentru vioară <op. 3>",
+                                "Revista Muzica, nr. 2, 2022", "2022")),
+                        List.of(new CnfisSheetViewModel.LeftOut("act-5", "2021", "Suita a II-a", null, null,
+                                "the year of the cited work is not declared"))),
                 new CnfisSheetViewModel.Sport(true,
                         List.of(new CnfisSheetViewModel.SportRow("act-3", "2023", "Campionatul Național Universitar de atletism", "CNU 2023", "UNIVERSITY", "PLACE_1", "NATIONAL", 4)),
                         List.of()),
@@ -104,6 +108,11 @@ class CnfisWorkspaceControllerContractTest {
         assertTrue(html.contains("/user/cnfis/2025/export"));
         assertTrue(html.contains("Bienala de la Veneția") && html.contains("/user/cnfis/2025/export-arts"), "Anexa 5.1 for an arts domain");
         assertTrue(html.contains("Studia Philologica") && html.contains("/user/cnfis/2025/export-humanities"), "Anexa 5.3 for a humanities domain");
+        assertTrue(html.contains("Concert pentru vioară &lt;op. 3&gt;") && html.contains("Revista Muzica, nr. 2, 2022"),
+                "Anexa 4.1: the cited work and its citation, as text");
+        assertTrue(html.contains("/user/cnfis/2025/export-citations") && html.contains("/user/cnfis/snapshots/s1/export-citations"));
+        assertTrue(html.contains("the year of the cited work is not declared"), "a citation left out says why");
+        assertTrue(html.contains("1 ianuarie 2025") || html.contains("1 January 2025"), "the whole career, up to the reference date");
         assertTrue(html.contains("/user/cnfis/2025/freeze"));
         assertTrue(html.contains("/user/cnfis/snapshots/s1/release"), "an unlocked copy can be released");
         assertTrue(!html.contains("/user/cnfis/snapshots/s0/release"), "a copy in an institutional table cannot");

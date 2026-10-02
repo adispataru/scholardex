@@ -63,14 +63,13 @@ class ActivityFileImportServiceTest {
         a.setId("type-" + types.size());
         a.setName(name);
         List<Activity.Field> fields = new ArrayList<>();
-        for (String f : List.of("Titlu", "Dovezi", "Link", "Suport", "Rol", "Marime_formatie", "Rezultat", "Vizibilitate", "Tip",
+        for (String f : List.of("Titlu", "Dovezi", "Link", "Suport", "Rol", "Marime_formatie", "Rezultat", "Tip",
                 "N_participanti_universitate", "Nume Proiect", "Functia", "Organizatia", "An_inceput", "An_sfarsit", "Nivel",
                 "Concursul", "Denumire", "DOI", "Publicatia_sau_editura", "Manifestarea", "Lucrarea", "Publicatia_sau_postul")) {
             Activity.Field field = new Activity.Field();
             field.setName(f);
             field.setNumber(List.of("Marime_formatie", "N_participanti_universitate", "An_inceput", "An_sfarsit").contains(f));
             if (f.equals("Rol") && name.equals(MusicGridLayout.GRANT_TYPE)) field.setAllowedValues(List.of("Membru", "Director (proiect național)"));
-            if (f.equals("Vizibilitate")) field.setAllowedValues(List.of("Internațională sau națională de vârf", "Regională sau locală"));
             fields.add(field);
         }
         a.setFields(fields);
@@ -130,7 +129,9 @@ class ActivityFileImportServiceTest {
 
         ActivityInstance enescu = find(saved, "Festivalul George Enescu");
         assertEquals(MusicGridLayout.EVENT_TYPE, enescu.getActivity().getName());
-        assertEquals("Internațională sau națională de vârf", enescu.getFields().get("Vizibilitate"));
+        assertEquals(ActivityFileImportService.SUGGESTED_TOP, enescu.getEventLevelSuggestion(),
+                "the grid's row is a suggestion for the experts, never a score");
+        assertFalse(enescu.getFields().containsKey("Vizibilitate"));
         assertEquals("Participare", enescu.getFields().get("Rezultat"));
         assertEquals("Dirijor", enescu.getFields().get("Rol"));
         assertEquals("Festivalul George Enescu (România)", enescu.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME));
@@ -141,7 +142,7 @@ class ActivityFileImportServiceTest {
         assertFalse(duo.getReferenceFields().containsKey(Activity.ReferenceField.EVENT_NAME));
 
         ActivityInstance gala = find(saved, "Gală corală");
-        assertEquals("Regională sau locală", gala.getFields().get("Vizibilitate"));
+        assertEquals(ActivityFileImportService.SUGGESTED_REGIONAL, gala.getEventLevelSuggestion());
         assertNull(gala.getFields().get("Rol"), "two roles named: the person chooses");
 
         ActivityInstance prize = find(saved, "Premiul I");
@@ -200,14 +201,80 @@ class ActivityFileImportServiceTest {
         List<ActivityInstance> saved = saved();
         ActivityInstance recital = find(saved, "Recital cameral");
         assertEquals("Proiect de grup (2-4)", recital.getFields().get("Tip"));
-        assertEquals("Internațională sau națională de vârf", recital.getFields().get("Vizibilitate"));
+        assertTrue(recital.getEventLevelSuggestion().startsWith("Fișa CNFIS 5.1: internațional"), recital.getEventLevelSuggestion());
+        assertFalse(recital.getFields().containsKey("Vizibilitate"));
         assertEquals("1", recital.getFields().get("N_participanti_universitate"));
         assertEquals("Festivalul muzicii românești, Iași", recital.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME));
         assertEquals("2024-01-01", recital.getDate());
         ActivityInstance prize = find(saved, "Premiu pentru acompaniament");
         assertEquals("Premiu individual", prize.getFields().get("Tip"));
         assertEquals("Premiu", prize.getFields().get("Rezultat"));
-        assertEquals("Regională sau locală", prize.getFields().get("Vizibilitate"));
+        assertEquals("Fișa CNFIS 5.1: național", prize.getEventLevelSuggestion());
+    }
+
+    @Test
+    void aCitationsSheetBecomesOneRecordPerCitationEvenOfTheSameWork() throws IOException {
+        types.put(ActivityFileImportService.CITATION_TYPE, citationType());
+        String longWork = "Concert pentru vioară și orchestră, prima audiție la Festivalul Internațional Timișoara Muzicală, "
+                + "Sala Capitol, Timișoara, 12 mai 2019, cu Orchestra Filarmonicii Banatul și dirijorul invitat al stagiunii";
+        XSSFWorkbook wb = anexa41(
+                new String[]{"2019", "Suita a II-a pentru pian", "Revista Muzica, nr. 2/2022"},
+                new String[]{"2019", "Suita a II-a pentru pian", "Actualitatea muzicală, nr. 5, 2023"},
+                new String[]{"2019", longWork, "Observator cultural, nr. 980, 2019"},
+                new String[]{"2015", "Cvartet de coarde", "Cronică în presa locală"});
+
+        ActivityFileImportService.ImportReport report = service.importFile(EMAIL, "anexa41.xlsx", stream(wb), null);
+
+        assertEquals(ActivityFileImportService.FileKind.CNFIS_CITATIONS, report.kind());
+        assertEquals(4, report.created(), "the same work cited in two publications is two citations");
+        assertEquals(1, report.withoutYear(), "a citation whose publication names no year waits for its date");
+        List<ActivityInstance> saved = saved();
+        ActivityInstance first = saved.stream().filter(i -> "Revista Muzica, nr. 2/2022".equals(i.getFields().get("Publicatie")))
+                .findFirst().orElseThrow();
+        assertEquals("Suita a II-a pentru pian", first.getName());
+        assertEquals("2019", first.getFields().get("An_creatie"));
+        assertEquals("2022-01-01", first.getDate(), "the year of the citation is the record's date");
+        assertEquals("Anexa 4.1 CNFIS: anexa41.xlsx", first.getImportSource());
+        assertEquals(Boolean.TRUE, first.getNeedsReview());
+        ActivityInstance concert = find(saved, "Concert pentru vioară");
+        assertEquals("Concert pentru vioară și orchestră", concert.getName(), "a long identification is cut at its first comma");
+        assertTrue(concert.getFields().get("Detalii_creatie").startsWith("prima audiție la Festivalul"));
+
+        when(instanceRepository.findAllByResearcherIdAndImportKeyIn(eq(EMAIL), anyCollection())).thenReturn(saved);
+        XSSFWorkbook again = anexa41(new String[]{"2019", "Suita a II-a pentru pian", "Revista Muzica, nr. 2/2022"});
+        assertEquals(0, service.importFile(EMAIL, "anexa41 (1).xlsx", stream(again), null).created());
+    }
+
+    /** The CNFIS form itself, its rows filled from the first formatted one (B: year of the work, C: work, D: citation, E: 1). */
+    private static XSSFWorkbook anexa41(String[]... rows) throws IOException {
+        try (var in = ActivityFileImportServiceTest.class
+                .getResourceAsStream("/fixtures/templates/AC2025_Anexa4.1-Impact_creatie_artistica-2025.xlsx")) {
+            XSSFWorkbook wb = new XSSFWorkbook(in);
+            var sheet = wb.getSheetAt(0);
+            for (int i = 0; i < rows.length; i++) {
+                var row = sheet.getRow(9 + i);
+                row.getCell(1).setCellValue(Double.parseDouble(rows[i][0]));
+                row.getCell(2).setCellValue(rows[i][1]);
+                row.getCell(3).setCellValue(rows[i][2]);
+                row.getCell(4).setCellValue(1);
+            }
+            return wb;
+        }
+    }
+
+    private static Activity citationType() {
+        Activity a = new Activity();
+        a.setId("type-citation");
+        a.setName(ActivityFileImportService.CITATION_TYPE);
+        List<Activity.Field> fields = new ArrayList<>();
+        for (String f : List.of("An_creatie", "Detalii_creatie", "Publicatie", "Numar_publicatie", "Dovezi")) {
+            Activity.Field field = new Activity.Field();
+            field.setName(f);
+            field.setNumber(f.equals("An_creatie"));
+            fields.add(field);
+        }
+        a.setFields(fields);
+        return a;
     }
 
     @Test

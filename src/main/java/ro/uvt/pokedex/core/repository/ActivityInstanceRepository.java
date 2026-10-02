@@ -14,4 +14,8 @@ public interface ActivityInstanceRepository extends MongoRepository<ActivityInst
     /** H143 — declared books whose request for a publisher category is in one of these states (heads decide them). */
     List<ActivityInstance> findByPublisherClaim_StatusIn(
             java.util.Collection<ro.uvt.pokedex.core.model.activities.PublisherClaim.Status> statuses);
+
+    /** H142 slice 3 — every record that names an artistic event (the experts' queue is built from them). */
+    @org.springframework.data.mongodb.repository.Query("{'referenceFields.EVENT_NAME': {$exists: true, $nin: [null, '']}}")
+    List<ActivityInstance> findAllNamingAnEvent();
 }

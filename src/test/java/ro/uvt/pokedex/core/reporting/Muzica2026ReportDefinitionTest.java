@@ -174,15 +174,21 @@ class Muzica2026ReportDefinitionTest {
     }
 
     @Test
-    void concertsTakeTheirVisibilityFromTheRegistryOrTheDeclaration() {
+    void concertsTakeTheirVisibilityFromTheRankTheExpertsGaveTheEvent() {
+        ArtisticEvent filarmonica = event("Stagiunea Filarmonicii „George Enescu” (București)", ArtisticEvent.Rank.NATIONAL_TOP);
+        filarmonica.getAliases().add("Filarmonica George Enescu");
         ArtisticEventRankSupport.register(List.of(event("Festivalul „George Enescu” (România)", ArtisticEvent.Rank.INTERNATIONAL_TOP),
-                event("Festivalul de muzică veche (Timișoara)", ArtisticEvent.Rank.NATIONAL)));
+                event("Festivalul de muzică veche (Timișoara)", ArtisticEvent.Rank.NATIONAL), filarmonica,
+                event("Serile muzicale din parc", ArtisticEvent.Rank.LOCAL)));
         assertEquals(20.0, muz.activity("CS_1_1", fields("Rol", "Solist"), "Festivalul George Enescu (România)"), 1e-9);
         assertEquals(0.0, muz.activity("CS_1_2", fields("Rol", "Solist"), "Festivalul George Enescu (România)"), 1e-9);
-        assertEquals(10.0, muz.activity("CS_1_2", fields("Rol", "Dirijor",
-                "Vizibilitate", "Internațională sau națională de vârf"), "Festivalul de muzică veche (Timișoara)"), 1e-9);
-        assertEquals(20.0, muz.activity("CS_1_1", fields("Vizibilitate", "Internațională sau națională de vârf"),
-                "Stagiunea unei filarmonici din străinătate"), 1e-9);
+        assertEquals(10.0, muz.activity("CS_1_2", fields("Rol", "Dirijor"), "Festivalul de muzică veche (Timișoara)"), 1e-9);
+        assertEquals(20.0, muz.activity("CS_1_1", fields("Rol", "Solist"), "Filarmonica George Enescu"), 1e-9,
+                "a spelling of a Romanian institution the experts ranked national-top");
+        assertEquals(10.0, muz.activity("CS_1_2", fields("Rol", "Solist"), "Serile muzicale din parc"), 1e-9);
+        // nobody has ranked it yet: regional/local until an expert of the domain does
+        assertEquals(0.0, muz.activity("CS_1_1", fields(), "Stagiunea unei filarmonici din străinătate"), 1e-9);
+        assertEquals(10.0, muz.activity("CS_1_2", fields(), "Stagiunea unei filarmonici din străinătate"), 1e-9);
         assertEquals(10.0, muz.activity("CS_1_2", fields(), "Concert în aula universității"), 1e-9);
         assertEquals(0.0, muz.activity("CS_1_2", fields("Rol", "Membru într-un ansamblu de peste 10 persoane"),
                 "Concert în aula universității"), 1e-9);
@@ -247,8 +253,9 @@ class Muzica2026ReportDefinitionTest {
         double did = muz.activity("DID_1_1", fields("Editura", "Editura Universității Naționale de Muzică București"))
                 + muz.activity("DID_1_3", fields("Tip", "Suport de curs"))
                 + 12 * muz.activity("DID_2_1", fields("Suport", "Streaming (înregistrare video din concert public)"));
-        double cs = 14 * muz.activity("CS_1_1", fields("Rol", "Dirijor", "Vizibilitate", "Internațională sau națională de vârf"),
-                "Festival din străinătate")
+        // the experts ranked the festival abroad (the grid's own CS 1.1 row is only their suggestion)
+        ArtisticEventRankSupport.register(List.of(event("Festival din străinătate", ArtisticEvent.Rank.INTERNATIONAL)));
+        double cs = 14 * muz.activity("CS_1_1", fields("Rol", "Dirijor"), "Festival din străinătate")
                 + 139 * muz.activity("CS_1_2", fields("Rol", "Dirijor"), "Concert local")
                 + 2 * muz.activity("CS_2_3", fields());
         double ria = ScoringReferenceYearContext.with(2026, () -> 12 * muz.activity("RIA_2_2", fields())

@@ -78,7 +78,7 @@ public class ActivityUnitImportFacade {
                 fileKind = ActivityFileImportService.FileKind.UNSUPPORTED;
                 heading = null;
             }
-            if (fileKind != ActivityFileImportService.FileKind.MUSIC_GRID && fileKind != ActivityFileImportService.FileKind.CNFIS_ARTS) {
+            if (!fileKind.importable()) {
                 results.add(new FileResult(file.name(), null, null, "REFUSED", null));
                 continue;
             }

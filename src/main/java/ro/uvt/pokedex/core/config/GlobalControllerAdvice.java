@@ -1,15 +1,46 @@
 package ro.uvt.pokedex.core.config;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.service.security.ArtisticEventAccessService;
 
 import java.util.Optional;
 
 @ControllerAdvice
 public class GlobalControllerAdvice {
+
+    /** Optional, so that web-slice tests need no mock for it (H142 slice 3). */
+    private final ObjectProvider<ArtisticEventAccessService> artisticEventAccess;
+
+    public GlobalControllerAdvice(ObjectProvider<ArtisticEventAccessService> artisticEventAccess) {
+        this.artisticEventAccess = artisticEventAccess;
+    }
+
+    /**
+     * H142 slice 3 — whether the sidebar offers the page of artistic events to rank: admins, named experts, heads of the
+     * departments that answer for a domain. Asked for page loads only, not for API calls or form posts.
+     */
+    @ModelAttribute("canRankArtisticEvents")
+    public boolean canRankArtisticEvents(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (!"GET".equalsIgnoreCase(request.getMethod()) || path == null || path.startsWith("/api/")) {
+            return false;
+        }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+            return false;
+        }
+        ArtisticEventAccessService access = artisticEventAccess.getIfAvailable();
+        try {
+            return access != null && access.canReviewAny(authentication);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
 
     @ModelAttribute("currentUser")
     public Optional<User> currentUser() {

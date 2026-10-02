@@ -97,27 +97,25 @@ class ArtisticPerformanceSupportTest {
     // ── visibility ──
 
     @Test
-    void theRegistryDecidesTheVisibilityOfAListedEvent() {
-        var top = ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.INTERNATIONAL_TOP), fields());
-        var international = ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.INTERNATIONAL), fields());
-        var national = ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.NATIONAL),
-                fields("Vizibilitate", "Internațională sau națională de vârf"));
-        assertTrue(top.top());
-        assertTrue(international.top());
-        assertFalse(national.top(), "a national festival is regional/local, whatever is declared");
+    void theRegistryDecidesTheVisibility() {
+        assertTrue(ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.INTERNATIONAL_TOP), true).top());
+        assertTrue(ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.INTERNATIONAL), true).top());
+        assertTrue(ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.NATIONAL_TOP), true).top(),
+                "a Romanian festival or institution with international visibility");
+        var national = ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.NATIONAL), true);
+        assertFalse(national.top());
         assertEquals(ArtisticPerformanceSupport.VisibilityBasis.REGISTRY, national.basis());
+        assertFalse(ArtisticPerformanceSupport.visibility(Optional.of(ArtisticEvent.Rank.LOCAL), true).top());
     }
 
     @Test
-    void anUnlistedEventTakesTheDeclaredVisibilityElseRegional() {
-        var declaredTop = ArtisticPerformanceSupport.visibility(Optional.empty(), fields("Vizibilitate", "Internațională sau națională de vârf"));
-        var declaredLocal = ArtisticPerformanceSupport.visibility(Optional.empty(), fields("Vizibilitate", "Regională sau locală"));
-        var nothing = ArtisticPerformanceSupport.visibility(Optional.empty(), fields());
-        assertTrue(declaredTop.top());
-        assertEquals(ArtisticPerformanceSupport.VisibilityBasis.DECLARED, declaredTop.basis());
-        assertFalse(declaredLocal.top());
-        assertFalse(nothing.top());
-        assertEquals(ArtisticPerformanceSupport.VisibilityBasis.DEFAULT, nothing.basis());
+    void anEventNobodyHasRankedIsRegionalOrLocalUntilAnExpertRanksIt() {
+        var awaiting = ArtisticPerformanceSupport.visibility(Optional.empty(), true);
+        assertFalse(awaiting.top(), "the floor the standard gives a public performance; nobody picks their own");
+        assertEquals(ArtisticPerformanceSupport.VisibilityBasis.AWAITING_RANK, awaiting.basis());
+        var none = ArtisticPerformanceSupport.visibility(Optional.empty(), false);
+        assertFalse(none.top());
+        assertEquals(ArtisticPerformanceSupport.VisibilityBasis.NO_EVENT, none.basis());
     }
 
     // ── the registry of ranks ──

@@ -25,6 +25,9 @@ import java.util.regex.Pattern;
  * <p>Matching is by the NORMALISED name: diacritics, case, punctuation and repeated spaces ignored, so
  * "Festivalul „George Enescu” (România)" and "festivalul george enescu romania" are the same event. An
  * event listed in several domains takes its best rank.</p>
+ *
+ * <p>H142 slice 3: only CONFIRMED events rank, by their name and their spellings ({@code aliases}); a name experts
+ * rejected, or one still waiting for them, has no rank ({@link #statusOf}).</p>
  */
 public final class ArtisticEventRankSupport {
 
@@ -33,6 +36,9 @@ public final class ArtisticEventRankSupport {
     private static final Pattern NON_ALNUM = Pattern.compile("[^a-z0-9]+");
 
     private static volatile Map<String, ArtisticEvent.Rank> ranks = Map.of();
+    /** Normalised names experts rejected (with their spellings), and the ones waiting for them. */
+    private static volatile java.util.Set<String> rejected = java.util.Set.of();
+    private static volatile java.util.Set<String> proposed = java.util.Set.of();
     /** {normalised name without its parenthesised place, the name as listed}, for {@link #findIn}. */
     private static volatile java.util.List<String[]> phrases = java.util.List.of();
     private static volatile Supplier<? extends Collection<ArtisticEvent>> loader;
@@ -41,29 +47,74 @@ public final class ArtisticEventRankSupport {
     private ArtisticEventRankSupport() {
     }
 
+    /** What the registry says about a name: ranked, rejected by experts, or waiting for them (unknown included). */
+    public enum EventStatus { RANKED, REJECTED, AWAITING_RANK }
+
     /** Replaces the registry with these events. */
     public static synchronized void register(Collection<ArtisticEvent> events) {
         Map<String, ArtisticEvent.Rank> index = new HashMap<>();
-        for (ArtisticEvent event : events) {
-            String key = normalize(event.getName());
-            if (key.isEmpty() || event.getRank() == null) {
-                continue;
-            }
-            index.merge(key, event.getRank(), ArtisticEventRankSupport::better);
-        }
-        ranks = Map.copyOf(index);
+        java.util.Set<String> rejectedNames = new java.util.HashSet<>();
+        java.util.Set<String> proposedNames = new java.util.HashSet<>();
         java.util.List<String[]> found = new java.util.ArrayList<>();
         for (ArtisticEvent event : events) {
-            if (event.getName() == null || event.getRank() == null) {
-                continue;
-            }
-            String core = normalize(event.getName().replaceAll("\\([^)]*\\)", " "));
-            if (core.split(" ").length >= 2) {
-                found.add(new String[]{core, event.getName()});
+            for (String name : namesOf(event)) {
+                String key = normalize(name);
+                if (key.isEmpty()) {
+                    continue;
+                }
+                if (event.isConfirmed() && event.getRank() != null) {
+                    index.merge(key, event.getRank(), ArtisticEventRankSupport::better);
+                    String core = normalize(name.replaceAll("\\([^)]*\\)", " "));
+                    if (core.split(" ").length >= 2) {
+                        found.add(new String[]{core, name});
+                    }
+                } else if (event.getStatus() == ArtisticEvent.Status.REJECTED) {
+                    rejectedNames.add(key);
+                } else if (event.getStatus() == ArtisticEvent.Status.PROPOSED) {
+                    proposedNames.add(key);
+                }
             }
         }
+        ranks = Map.copyOf(index);
+        rejectedNames.removeAll(index.keySet());
+        rejected = java.util.Set.copyOf(rejectedNames);
+        proposed = java.util.Set.copyOf(proposedNames);
         phrases = java.util.List.copyOf(found);
         loaded = true;
+    }
+
+    private static java.util.List<String> namesOf(ArtisticEvent event) {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        if (event.getName() != null) {
+            names.add(event.getName());
+        }
+        if (event.getAliases() != null) {
+            names.addAll(event.getAliases());
+        }
+        return names;
+    }
+
+    /** RANKED, REJECTED, or AWAITING_RANK — a name nobody has decided on yet, proposed or not. Empty for a blank name. */
+    public static Optional<EventStatus> statusOf(String eventName) {
+        String key = normalize(eventName);
+        if (key.isEmpty()) {
+            return Optional.empty();
+        }
+        ensureLoaded();
+        if (ranks.containsKey(key)) {
+            return Optional.of(EventStatus.RANKED);
+        }
+        return Optional.of(rejected.contains(key) ? EventStatus.REJECTED : EventStatus.AWAITING_RANK);
+    }
+
+    /** Whether the name is that of a stored proposal (an institutional table, or an earlier record). */
+    public static boolean isProposed(String eventName) {
+        String key = normalize(eventName);
+        if (key.isEmpty()) {
+            return false;
+        }
+        ensureLoaded();
+        return proposed.contains(key);
     }
 
     /**
@@ -98,6 +149,8 @@ public final class ArtisticEventRankSupport {
     /** Back to the unregistered state (tests). */
     public static synchronized void reset() {
         ranks = Map.of();
+        rejected = java.util.Set.of();
+        proposed = java.util.Set.of();
         phrases = java.util.List.of();
         loader = null;
         loaded = false;
@@ -131,10 +184,10 @@ public final class ArtisticEventRankSupport {
     }
 
     private static ArtisticEvent.Rank better(ArtisticEvent.Rank a, ArtisticEvent.Rank b) {
-        return a.ordinal() <= b.ordinal() ? a : b; // INTERNATIONAL_TOP < INTERNATIONAL < NATIONAL
+        return a.ordinal() <= b.ordinal() ? a : b; // best first: INTERNATIONAL_TOP … LOCAL
     }
 
-    static String normalize(String value) {
+    public static String normalize(String value) {
         if (value == null || value.isBlank()) {
             return "";
         }

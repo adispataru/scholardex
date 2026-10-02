@@ -303,6 +303,41 @@ public class CNFISReportExportService {
         }
     }
 
+    /** One row of Anexa 4.1, as the facade hands it over. */
+    public record CitationExportRow(String workYear, String work, String citation) {
+    }
+
+    /**
+     * Anexa 4.1 — the citations of a person's artistic works, the whole career: the year of the work (B), the work
+     * (C), the citation (D) and a "1" in the points column (E), whose total the form sums.
+     */
+    public byte[] generateAnexa41(List<CitationExportRow> rows) throws IOException {
+        try (InputStream resource = new FileInputStream("data/templates/AC2025_Anexa4.1-Impact_creatie_artistica-2025.xlsx");
+             Workbook workbook = new XSSFWorkbook(resource)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            int rowNum = 10;
+            // the first formatted row of the form stays the sample, as in the other writers
+            int sampleRowNum = 9;
+            for (CitationExportRow r : rows) {
+                int usable = findNextUsableTemplateRow(sheet, sampleRowNum, 5);
+                if (usable < 0) {
+                    throw new IllegalStateException("No suitable template row available for CNFIS export population.");
+                }
+                sampleRowNum = usable;
+                Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
+                row.getCell(1).setCellValue(cellText(r.workYear()));
+                row.getCell(2).setCellValue(cellText(r.work()));
+                row.getCell(3).setCellValue(cellText(r.citation()));
+                row.getCell(4).setCellValue(1);
+                rowNum++;
+            }
+            workbook.setForceFormulaRecalculation(true);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            return bos.toByteArray();
+        }
+    }
+
     /** One row of Anexa 5.2 / 6.2, as the facade hands it over. */
     public record SportExportRow(String year, String activity, String championship, String level, String place, String record,
                                  int universityParticipants) {

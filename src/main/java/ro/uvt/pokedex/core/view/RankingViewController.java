@@ -341,7 +341,9 @@ public class RankingViewController {
         return switch (rank) {
             case INTERNATIONAL_TOP -> "1 — International Top";
             case INTERNATIONAL -> "2 — International";
+            case NATIONAL_TOP -> "3 — National, top visibility";
             case NATIONAL -> "3 — National";
+            case LOCAL -> "4 — Local";
         };
     }
 }

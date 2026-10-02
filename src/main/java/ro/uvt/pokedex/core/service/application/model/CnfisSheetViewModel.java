@@ -37,8 +37,16 @@ public record CnfisSheetViewModel(
                          int authorCount, int universityAuthorCount) {
     }
 
-    /** Anexa 5.1: shown to a person of an artistic domain (and to anyone who declared performances). */
-    public record Arts(boolean applies, List<ArtsRow> rows, List<LeftOut> leftOut) {
+    /**
+     * Anexa 5.1 and Anexa 4.1: shown to a person of an artistic domain (and to anyone who declared performances or
+     * citations of their works).
+     */
+    public record Arts(boolean applies, List<ArtsRow> rows, List<LeftOut> leftOut, List<CitationRow> citations,
+                       List<LeftOut> citationsLeftOut) {
+    }
+
+    /** One row of Anexa 4.1: the year of the cited work, the work, the citation (publication, issue, year). */
+    public record CitationRow(String activityInstanceId, String workYear, String work, String citation, String citationYear) {
     }
 
     public record ArtsRow(String activityInstanceId, String year, String work, String event, String level, String kind,

@@ -61,6 +61,12 @@ public class CnfisReportingFacade {
     static final String FIELD_SPORT_LEVEL = "Nivel";
     static final String FIELD_SPORT_PLACE = "Loc";
     static final String FIELD_SPORT_RECORD = "Record";
+    /** H142 Anexa 4.1: a citation or review of an artistic work; the instance's name is the work, its date the citation's. */
+    static final String CITATION_ACTIVITY = "Citare sau cronică a unei creații artistice (CNFIS 4.1)";
+    static final String FIELD_CITATION_WORK_YEAR = "An_creatie";
+    static final String FIELD_CITATION_WORK_DETAILS = "Detalii_creatie";
+    static final String FIELD_CITATION_PUBLICATION = "Publicatie";
+    static final String FIELD_CITATION_ISSUE = "Numar_publicatie";
 
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
@@ -72,7 +78,6 @@ public class CnfisReportingFacade {
     private final CnfisSheetSnapshotRepository snapshotRepository;
     private final CnfisDomainCatalog domainCatalog;
     private final CNFISReportExportService exportService;
-    private final ro.uvt.pokedex.core.repository.ArtisticEventRepository artisticEventRepository;
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     private final ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles citeScoreQuartiles;
 
@@ -138,13 +143,15 @@ public class CnfisReportingFacade {
         }
         List<CnfisSheetViewModel.Patent> patents = patents(userEmail, edition);
         ArtsSheet artsSheet = arts(userEmail, edition);
+        CitationsSheet citationsSheet = citations(userEmail, edition);
         HumanitiesSheet humanitiesSheet = humanities(userEmail, edition, data);
         CnfisSheetViewModel.Humanities humanities = new CnfisSheetViewModel.Humanities(
                 ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsHumanities(header.getDomainCode()),
                 humanitiesSheet.rows(), humanitiesSheet.leftOut(), citeScoreQuartiles.availableYears());
         CnfisSheetViewModel.Arts arts = new CnfisSheetViewModel.Arts(
-                ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsArts(header.getDomainCode()) || !artsSheet.rows().isEmpty(),
-                artsSheet.rows(), artsSheet.leftOut());
+                ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsArts(header.getDomainCode()) || !artsSheet.rows().isEmpty()
+                        || !citationsSheet.rows().isEmpty(),
+                artsSheet.rows(), artsSheet.leftOut(), citationsSheet.rows(), citationsSheet.leftOut());
         SportSheet sportSheet = sport(userEmail, edition);
         CnfisSheetViewModel.Sport sport = new CnfisSheetViewModel.Sport(
                 ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsSport(header.getDomainCode()) || !sportSheet.rows().isEmpty(),
@@ -285,6 +292,15 @@ public class CnfisReportingFacade {
             row.setUniversityParticipants(r.universityParticipants());
             snapshot.getArtsRows().add(row);
         }
+        for (CnfisSheetViewModel.CitationRow r : citations(userEmail, edition).rows()) {
+            CnfisSheetSnapshot.CitationRow row = new CnfisSheetSnapshot.CitationRow();
+            row.setActivityInstanceId(r.activityInstanceId());
+            row.setWorkYear(r.workYear());
+            row.setWork(r.work());
+            row.setCitation(r.citation());
+            row.setCitationYear(r.citationYear());
+            snapshot.getArtsCitationRows().add(row);
+        }
         for (CnfisSheetViewModel.SportRow r : sport(userEmail, edition).rows()) {
             CnfisSheetSnapshot.SportRow row = new CnfisSheetSnapshot.SportRow();
             row.setActivityInstanceId(r.activityInstanceId());
@@ -356,6 +372,38 @@ public class CnfisReportingFacade {
             return Optional.empty();
         }
         return Optional.of(exportService.generateAnexa51(toExportArts(snapshotOpt.get().getArtsRows())));
+    }
+
+    /** Anexa 4.1 of the live data — the citations of the person's artistic works up to the edition's reference date. */
+    public Optional<byte[]> exportCitationsLive(String userEmail, int reportingYear) throws IOException {
+        Optional<CnfisEdition> edition = CnfisEdition.ofReportingYear(reportingYear);
+        if (edition.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(exportService.generateAnexa41(toExportCitations(citations(userEmail, edition.get()).rows())));
+    }
+
+    /** Anexa 4.1 of a frozen copy; a copy frozen before Anexa 4.1 existed gives an empty form. */
+    public Optional<byte[]> exportCitationsSnapshot(String userEmail, String snapshotId) throws IOException {
+        Optional<CnfisSheetSnapshot> snapshotOpt = snapshotRepository.findById(snapshotId).filter(s -> userEmail.equals(s.getUserEmail()));
+        if (snapshotOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        List<CnfisSheetSnapshot.CitationRow> rows = snapshotOpt.get().getArtsCitationRows() == null ? List.of()
+                : snapshotOpt.get().getArtsCitationRows();
+        return Optional.of(exportService.generateAnexa41(toExportCitations(rows)));
+    }
+
+    static List<CNFISReportExportService.CitationExportRow> toExportCitations(List<? extends Object> rows) {
+        List<CNFISReportExportService.CitationExportRow> out = new ArrayList<>();
+        for (Object o : rows) {
+            if (o instanceof CnfisSheetViewModel.CitationRow r) {
+                out.add(new CNFISReportExportService.CitationExportRow(r.workYear(), r.work(), r.citation()));
+            } else if (o instanceof CnfisSheetSnapshot.CitationRow r) {
+                out.add(new CNFISReportExportService.CitationExportRow(r.getWorkYear(), r.getWork(), r.getCitation()));
+            }
+        }
+        return out;
     }
 
     /** Anexa 5.2 of the live sheet. */
@@ -703,16 +751,24 @@ public class CnfisReportingFacade {
                                 + "and neither the role nor the size of the ensemble tells it"));
                 continue;
             }
-            String level = event == null ? null : artisticEventRepository.findAllByNameIgnoreCase(event.trim()).stream()
-                    .findFirst().map(e -> e.getRank() == null ? null : e.getRank().name()).orElse(null);
-            if (level == null && event != null) {
-                // H142: the same event written with other diacritics, case or punctuation
-                level = ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.rankOf(event)
-                        .map(Enum::name).orElse(null);
-            }
+            // H142 slice 3: the rank the experts gave the event (its name or a spelling); national-top is national for
+            // CNFIS, a local host is no CNFIS level, and an event nobody has ranked yet waits
+            var rank = event == null ? java.util.Optional.<ro.uvt.pokedex.core.model.ArtisticEvent.Rank>empty()
+                    : ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.rankOf(event);
+            String level = rank.map(r -> switch (r) {
+                case INTERNATIONAL_TOP -> "INTERNATIONAL_TOP";
+                case INTERNATIONAL -> "INTERNATIONAL";
+                case NATIONAL_TOP, NATIONAL -> "NATIONAL";
+                case LOCAL -> null;
+            }).orElse(null);
             if (level == null) {
-                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), event, null,
-                        event == null ? "no event declared" : "the event is not in the registry of ranked events (national / international / top)"));
+                String why = event == null ? "no event declared"
+                        : rank.isPresent() ? "the event is ranked local, which is no CNFIS level"
+                        : ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.statusOf(event)
+                                .filter(st -> st == ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.EventStatus.REJECTED)
+                                .isPresent() ? "the experts rejected the event's name; name the event again"
+                        : "the event waits for an expert of its domain to rank it";
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), event, null, why));
                 continue;
             }
             rows.add(new CnfisSheetViewModel.ArtsRow(instance.getId(), yearText, instance.getName(), event, level, kind,
@@ -720,6 +776,60 @@ public class CnfisReportingFacade {
         }
         rows.sort(Comparator.comparing(CnfisSheetViewModel.ArtsRow::year).thenComparing(CnfisSheetViewModel.ArtsRow::work));
         return new ArtsSheet(rows, leftOut);
+    }
+
+    record CitationsSheet(List<CnfisSheetViewModel.CitationRow> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {
+    }
+
+    /**
+     * Anexa 4.1 from the declared activity "Citare sau cronică a unei creații artistice (CNFIS 4.1)": one row per
+     * citation, for the whole career — every citation that appeared before the edition's reference date, whatever the
+     * year of the work. Column C is the work (its name, then the event, place and date as declared), column D the
+     * publication, its issue and the year of the citation. A citation without the year of the work or without the
+     * publication is left out and says so.
+     */
+    CitationsSheet citations(String userEmail, CnfisEdition edition) {
+        List<CnfisSheetViewModel.CitationRow> rows = new ArrayList<>();
+        List<CnfisSheetViewModel.LeftOut> leftOut = new ArrayList<>();
+        for (ActivityInstance instance : activityInstanceRepository.findAllByResearcherId(userEmail)) {
+            if (instance.getActivity() == null || !CITATION_ACTIVITY.equals(instance.getActivity().getName())) {
+                continue;
+            }
+            Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
+            Integer year = parseYear(instance.getDate());
+            String publication = blankToNull(f.get(FIELD_CITATION_PUBLICATION));
+            if (year != null && year >= edition.referenceDate().getYear()) {
+                continue; // after the reference date: the next edition's
+            }
+            String yearText = year == null ? "" : String.valueOf(year);
+            Integer workYear = parseYear(f.get(FIELD_CITATION_WORK_YEAR));
+            String reason = year == null ? "the year of the citation is not declared"
+                    : workYear == null ? "the year of the cited work is not declared"
+                    : publication == null ? "the publication that cites the work is not declared"
+                    : null;
+            if (reason != null) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), publication, null, reason));
+                continue;
+            }
+            String details = blankToNull(f.get(FIELD_CITATION_WORK_DETAILS));
+            String work = nz(instance.getName()) + (details == null ? "" : " — " + details);
+            rows.add(new CnfisSheetViewModel.CitationRow(instance.getId(), String.valueOf(workYear), work,
+                    citationText(publication, blankToNull(f.get(FIELD_CITATION_ISSUE)), year), yearText));
+        }
+        rows.sort(Comparator.comparing(CnfisSheetViewModel.CitationRow::workYear).thenComparing(CnfisSheetViewModel.CitationRow::work));
+        return new CitationsSheet(rows, leftOut);
+    }
+
+    /** "Publication, nr. issue, year" — the issue and the year only where the publication's text does not hold them. */
+    static String citationText(String publication, String issue, int year) {
+        StringBuilder text = new StringBuilder(publication);
+        if (issue != null && !publication.contains(issue)) {
+            text.append(", nr. ").append(issue);
+        }
+        if (!publication.contains(String.valueOf(year))) {
+            text.append(", ").append(year);
+        }
+        return text.toString();
     }
 
     record SportSheet(List<CnfisSheetViewModel.SportRow> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {

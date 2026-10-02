@@ -252,8 +252,9 @@ public class AdminCatalogFacade {
         return scholardexManualEditService.saveAffiliation(affiliation);
     }
 
+    /** The registry as everyone sees it: confirmed events only (H142 slice 3 keeps proposals with the experts). */
     public List<ArtisticEvent> listArtisticEvents() {
-        return artisticEventRepository.findAll();
+        return artisticEventRepository.findAll().stream().filter(ArtisticEvent::isConfirmed).toList();
     }
 
     public List<CoreConferenceRanking> listCoreRankings() {

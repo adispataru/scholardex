@@ -352,13 +352,14 @@ public class ActivityReportingService {
         String event = activity.getReferenceFields() == null ? null
                 : activity.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME);
         var rank = ArtisticEventRankSupport.rankOf(event);
-        var visibility = ArtisticPerformanceSupport.visibility(rank, fields);
+        var visibility = ArtisticPerformanceSupport.visibility(rank, event != null && !event.isBlank());
         variables.put("Nivel_eveniment", rank.map(Enum::name).orElse(null));
         variables.put("Vizibilitate_varf", visibility.top());
         variables.put("Rezultat_eveniment", ArtisticPerformanceSupport.result(fields));
         variables.put("Rol_eligibil", ArtisticPerformanceSupport.roleCounts(fields));
         if (formula != null && formula.contains("Vizibilitate_varf")) {
-            result.getScoringInfo().put("eventLevel", rank.map(Enum::name).orElse("NOT_LISTED"));
+            result.getScoringInfo().put("eventLevel", rank.map(Enum::name).orElse(
+                    ArtisticEventRankSupport.statusOf(event).map(Enum::name).orElse("NO_EVENT")));
             result.getScoringInfo().put("visibilityBasis", visibility.basis().name());
         }
     }

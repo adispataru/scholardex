@@ -364,7 +364,7 @@ from the Google Scholar links (54); the CNFIS domain of each FMT person for the 
 - **Tests:** a synthetic grid fixture shaped like the example (same separators, same row counts); idempotent
   re-import; header name matching; a 5.1 fixture round-trip.
 
-### Slice 3 — event registry ranked by experts, picker, Anexa 4.1 (large) — REDESIGNED 2026-10-02
+### Slice 3 — event registry ranked by experts, picker, Anexa 4.1 (large) — REDESIGNED 2026-10-02, BUILT 2026-10-03
 
 Reviewed with Adrian before building ("it may be on the wrong foot, just as the self-reported category was"). Found:
 CS 1.1 / 1.2 trust the researcher's own `Vizibilitate` for an event the registry does not list (the H143 flaw
@@ -498,6 +498,82 @@ when it lands. Slice 5 last, source by source.
   the file gave no points). The verification page no longer says "no scored rows" when only activity rows were
   compared, and its section is "Activities, by section of the sheet" (was "Perspectiva D").
 - **Known:** a re-import brings back records the person deleted (import keys are not remembered after a delete).
+
+## Slice 3 as built (2026-10-03)
+
+- **Registry.** `ArtisticEvent` gained aliases, kind (festival, competition, season, tour, other), country, organiser,
+  status (none or `CONFIRMED` = the CNFIS list; `PROPOSED`, `REJECTED`, `MERGED`), basis (the CNFIS list or one of
+  its rules, or the standard's footnote the expert applied), note, source, who proposed and decided it and when, and
+  a history of every decision (who, when, the previous rank and the new one, why). Rank gained `NATIONAL_TOP` (a
+  festival or an institution in Romania with international visibility) and `LOCAL`. No migration: the 303 CNFIS
+  events carry no status, which reads as confirmed. `ArtisticEventRankSupport` matches only confirmed, ranked events
+  (name or alias, normalised) and knows the rejected and the waiting names (`statusOf`: `RANKED`, `REJECTED`,
+  `AWAITING_RANK`).
+- **Scoring.** The researcher names the event or the institution, never its level: `Vizibilitate` left the type. CS
+  1.1 counts an event ranked top international, international or national-top; anything else, and an event nobody
+  has ranked yet, counts CS 1.2 (`ArtisticPerformanceSupport.VisibilityBasis`: `REGISTRY`, `AWAITING_RANK`,
+  `NO_EVENT`). CNFIS 5.1: national-top is national, a local event is no CNFIS level, a waiting or rejected one is left
+  out and says why. An imported grid's CS 1.1 / 1.2 row and a CNFIS 5.1 level become `eventLevelSuggestion` on the
+  record — shown to the experts, never scored. The rankings hub lists confirmed events only.
+- **Experts.** `ArtisticEventAccessService` (`@artisticEventAccess`): a platform admin; the experts an admin names
+  per domain; the heads of the departments an admin maps to the domain (directors, and the faculty's dean and
+  vice-deans through `canManageDepartment`). Admin page `/admin/artistic-events/experts` (collection
+  `scholardex.artistic_event_domain_experts`, one document per registry domain). Experts' page
+  `/user/artistic-events/review` (sidebar item for whoever can rank): the queue — stored proposals plus every name
+  records use that the registry does not know, grouped by normalised name, with counts, researchers, years, evidence
+  links and the suggestions of imported files —, bulk ranking (rank, basis, kind, country, domain, note), bulk merge
+  of the ticked names into any ranked event of one's domains as its spellings (aliases; the list holds every ranked
+  event, grouped by domain — not the table's first 50 rows, which hid the Enescu festival in the live check), reject
+  (a note is required), edit a ranked event, reopen a decision, and the decisions with their history (a name
+  proposed from a file is no decision and is not listed). Nobody decides on an event their own records name or that they proposed; a
+  domain outside one's own is refused.
+- **Workspace.** `EVENT_NAME` is a picker over confirmed events, aliases and waiting proposals
+  (`/api/entities/artistic-events?q=`), showing the rank or "waiting"; free text stays allowed and joins the queue.
+  The record panel shows the event's level, its basis and note, "waiting" (counted regional/local meanwhile) or
+  "rejected" with the experts' note (`/user/workspace/activities/event-levels`). The picker inputs (event and
+  university) now fill their field.
+- **Seeding.** `ArtisticEventSeedService`, from the admin page: reads only the event column of an institutional
+  Anexa 6.1 ("Date de identificare ale evenimentului") and cuts each cell to the event's name — a festival or a
+  contest first, then a series (season, gala, tour), then a host institution written with a capital ("Opera Română",
+  not "opera La Traviata"); the name runs to the first separator, date or edition; a genitive kind becomes nominative
+  ("în cadrul Festivalului X" → "Festivalul X"); a name of only generic words is dropped. Names the registry knows
+  (ranked, rejected or waiting) are left alone; the others become proposals of the chosen domain, source
+  "Anexa 6.1: <file>". On FMT's file: 427 cells, 98 proposals once normalised, 121 cells name no event (bare
+  concerts, venues, links); the registry's own spellings differ ("Festivalul „George Enescu” (România)" vs
+  "Festivalul Internațional George Enescu"), so experts merge such names rather than rank them.
+- **Anexa 4.1.** Activity type «Citare sau cronică a unei creații artistice (CNFIS 4.1)» (`An_creatie`,
+  `Detalii_creatie`, `Publicatie`, `Numar_publicatie`, `Dovezi`; the record's name is the work, its date the
+  citation's). The CNFIS page shows the citations of the whole career up to the edition's reference date (B: year of
+  the work, C: the work and its details, D: publication, issue, year; one point each) and those left out (no year of
+  the work, no publication, no year of the citation); frozen copies keep them (`artsCitationRows`); downloads live
+  and frozen (`generateAnexa41`, template `data/templates/AC2025_Anexa4.1-Impact_creatie_artistica-2025.xlsx`, the
+  form's own total formula grows with the rows); the unit page shows each member's count when any member has one
+  (the per-person total of the institution's Anexa 1). The file import reads a person's Anexa 4.1 (each citation a
+  record; the same work cited in two publications is two records; a long identification is cut at its first comma,
+  the rest kept as details).
+- **Verified on the local app (2026-10-03, test data removed afterwards):** the script applied to the local
+  database; the admin page saved Muzică → Departamentul de Muzică; FMT's Anexa 6.1 gave 98 proposals; three Enescu
+  spellings merged at once into the registry's festival; Filarmonica Banatul ranked national-top (season, institution
+  in Romania with international visibility); a photography festival rejected with its note; a performance record
+  picked the event from the picker (ranked and waiting spellings offered) and showed its level and basis; CNFIS
+  showed it in Anexa 5.1 as national; a citation record appeared in Anexa 4.1 and its download filled row 11 with the
+  form's total formula grown to the new row.
+- **Prod (2026-10-03, read-only check):** the performance type still has `Vizibilitate` and no record yet; no 4.1
+  type; the three Music indicators exist once; 303 events in five domains (Muzică 66, Teatru şi artele spectacolului
+  63, Arte vizuale 102, Cinematografie şi Media 55, Arhitectura 17), none ranked by an expert; no experts named; FMT
+  (`6abb58092fb0d9482997fab3`) has Departamentul de Muzică (`…fab4`) and Departamentul de Teatru (`…fab5`), with no
+  heads recorded — until heads are set or experts named, only admins can rank. The 4.1 template is not on the data
+  volume yet.
+- **Prod script** `rke2-overmind/feaa-2026-scripts/h142_slice3_events.js` (guard `H142_SLICE3_IMAGE_IS_DEPLOYED`, no
+  restart): removes `Vizibilitate` from the performance type (typed values stay on records, unread, and are counted),
+  adds the 4.1 type with the seed's id, sets the three changed Music descriptions. Rehearsed on a scratch database
+  holding the pre-slice-3 seed with the performance type re-keyed and records carrying the field: the guarded run
+  writes nothing, the first run applies all three, the second changes nothing; the result equals the committed seed,
+  records untouched. **Prod order:** push and deploy; copy the 4.1 template to the data volume
+  (`copy-to-data-pvc.sh templates data/templates/AC2025_Anexa4.1-Impact_creatie_artistica-2025.xlsx`); flip the
+  guard, run the script; on `/admin/artistic-events/experts` map Muzică → Departamentul de Muzică and Teatru şi
+  artele spectacolului → Departamentul de Teatru, name experts or record FMT's heads; optionally upload FMT's
+  Anexa 6.1 to seed the queue.
 
 ## Still to decide
 

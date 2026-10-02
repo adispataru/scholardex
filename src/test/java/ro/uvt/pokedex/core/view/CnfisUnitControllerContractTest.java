@@ -85,9 +85,9 @@ class CnfisUnitControllerContractTest {
         when(cnfisReportingFacade.edition(2025)).thenReturn(Optional.of(edition));
         CnfisUnitViewModel unit = new CnfisUnitViewModel("DEPARTMENT", DEPARTMENT, "Psihologie", edition,
                 List.of(new CnfisUnitViewModel.Member("ana@uvt.ro", "Ana Pop", "Psihologie", "Psihologie",
-                                "s1", "2026-09-30T10:00:00Z", false, true, 4, 0),
+                                "s1", "2026-09-30T10:00:00Z", false, true, 4, 0, 3),
                         new CnfisUnitViewModel.Member("ion@uvt.ro", "Ion Popescu", "Psihologie", null,
-                                null, null, false, false, 0, 0)),
+                                null, null, false, false, 0, 0, 0)),
                 List.of(new CnfisUnitViewModel.Table("t1", "2026-09-30T11:00:00Z", "director@uvt.ro", 1, 0,
                         List.of("Ion Popescu"), 4, 0)));
         when(cnfisUnitFacade.buildUnit(CnfisUnitSheet.UnitKind.DEPARTMENT, DEPARTMENT, 2025)).thenReturn(Optional.of(unit));
@@ -108,6 +108,8 @@ class CnfisUnitControllerContractTest {
         assertTrue(html.contains("/supervisor/departments/" + DEPARTMENT + "/cnfis/2025/build"));
         assertTrue(html.contains("/supervisor/departments/" + DEPARTMENT + "/cnfis/tables/t1/export"));
         assertTrue(html.contains("/supervisor/departments/" + DEPARTMENT + "/cnfis/tables/t1/delete"));
+        assertTrue(html.contains("Citări (Anexa 4.1)") || html.contains("Citations (Anexa 4.1)"),
+                "a member's sheet holds citations of artistic works, so their count shows");
     }
 
     @Test

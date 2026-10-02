@@ -596,9 +596,8 @@ class ActivityReportingServiceTest {
             // written without the quotes and diacritics of the registry: still the same festival
             ActivityInstance enescu = performance("p1", "Festivalul George Enescu (Romania)", Map.of("Rol", "Dirijor"));
             ActivityInstance georgescu = performance("p2", "Festivalul Remus Georgescu (Timisoara)", Map.of());
-            // a national festival is regional/local for the standard, whatever is declared
-            ActivityInstance early = performance("p3", "Festivalul de muzică veche (Timișoara)",
-                    Map.of("Vizibilitate", "Internațională sau națională de vârf"));
+            // a national festival is regional/local for the standard
+            ActivityInstance early = performance("p3", "Festivalul de muzică veche (Timișoara)", Map.of());
 
             Score enescuTop = service.calculateActivityScores(List.of(enescu), top).get("p1");
             assertEquals(20.0, enescuTop.getAuthorScore(), 1e-9);
@@ -613,22 +612,21 @@ class ActivityReportingServiceTest {
     }
 
     @Test
-    void anUnlistedEventUsesTheDeclaredVisibilityAndDefaultsToRegional() {
+    void anEventTheExpertsHaveNotRankedCountsAsRegionalOrLocal() {
         ArtisticEventRankSupport.reset();
         ActivityReportingService service = new ActivityReportingService(
                 scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
         Indicator top = indicator("GENERIC_ACTIVITY", "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && Vizibilitate_varf) ? 20 : 0");
         Indicator regional = indicator("GENERIC_ACTIVITY", "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && !Vizibilitate_varf) ? 10 : 0");
 
-        ActivityInstance declaredTop = performance("u1", "Stagiunea Filarmonicii din Berlin",
+        // a leftover field of a record made before H142 slice 3 changes nothing: the experts decide
+        ActivityInstance berlin = performance("u1", "Stagiunea Filarmonicii din Berlin",
                 Map.of("Vizibilitate", "Internațională sau națională de vârf", "Rol", "Solist"));
-        ActivityInstance nothingDeclared = performance("u2", "Concert în aula universității", Map.of("Rol", "Solist"));
 
-        Score declared = service.calculateActivityScores(List.of(declaredTop), top).get("u1");
-        assertEquals(20.0, declared.getAuthorScore(), 1e-9);
-        assertEquals("NOT_LISTED", declared.getScoringInfo().get("eventLevel"));
-        assertEquals("DECLARED", declared.getScoringInfo().get("visibilityBasis"));
-        assertEquals(10.0, service.calculateActivityScores(List.of(nothingDeclared), regional).get("u2").getAuthorScore(), 1e-9);
+        assertNull(service.calculateActivityScores(List.of(berlin), top).get("u1"));
+        Score awaiting = service.calculateActivityScores(List.of(berlin), regional).get("u1");
+        assertEquals(10.0, awaiting.getAuthorScore(), 1e-9);
+        assertEquals("AWAITING_RANK", awaiting.getScoringInfo().get("visibilityBasis"));
     }
 
     @Test
@@ -674,7 +672,7 @@ class ActivityReportingServiceTest {
     private ActivityInstance performance(String id, String event, Map<String, String> fields) {
         Activity activity = new Activity();
         List<Activity.Field> declared = new java.util.ArrayList<>();
-        for (String name : List.of("Dovezi", "Tip", "N_participanti_universitate", "Rol", "Marime_formatie", "Rezultat", "Vizibilitate")) {
+        for (String name : List.of("Dovezi", "Tip", "N_participanti_universitate", "Rol", "Marime_formatie", "Rezultat", "Vizibilitate")) { // Vizibilitate: a record made before H142 slice 3
             Activity.Field f = new Activity.Field();
             f.setName(name);
             f.setNumber(name.equals("N_participanti_universitate") || name.equals("Marime_formatie"));

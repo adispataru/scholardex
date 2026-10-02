@@ -82,6 +82,7 @@
                                     <th th:text="#{cnfis.unit.sheet}">Sheet</th>
                                     <th class="app-table__cell--numeric" th:text="#{cnfis.copies.rows}">Rows</th>
                                     <th class="app-table__cell--numeric" th:text="#{cnfis.patents}">Patents</th>
+                                    <th th:if="${unit.anyCitations()}" class="app-table__cell--numeric" th:title="#{cnfis.unit.citations.hint}" th:text="#{cnfis.unit.citations}">Citations (Anexa 4.1)</th>
                                     <th></th>
                                 </tr></thead>
                                 <tbody>
@@ -97,6 +98,7 @@
                                     </td>
                                     <td class="app-table__cell--numeric" th:text="${m.rows()}">0</td>
                                     <td class="app-table__cell--numeric" th:text="${m.patents()}">0</td>
+                                    <td th:if="${unit.anyCitations()}" class="app-table__cell--numeric" th:text="${m.citations()}">0</td>
                                     <td class="text-right">
                                         <form th:if="${!m.hasSheet() or m.provisional()}"
                                               th:action="@{/supervisor/{k}/{id}/cnfis/{y}/provisional(k=${kind},id=${unit.unitId()},y=${ed.reportingYear()})}" method="post" class="d-inline">

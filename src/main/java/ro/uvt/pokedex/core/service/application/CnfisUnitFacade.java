@@ -74,7 +74,8 @@ public class CnfisUnitFacade {
                     s != null && s.getHeader() != null ? s.getHeader().getDomainName() : null,
                     s == null ? null : s.getId(), s == null ? null : s.getCreatedAt().toString(),
                     s != null && s.isProvisional(), s != null && s.getLockedByUnitSheetId() != null,
-                    s == null ? 0 : s.getRows().size(), s == null ? 0 : s.getPatents().size()));
+                    s == null ? 0 : s.getRows().size(), s == null ? 0 : s.getPatents().size(),
+                    s == null || s.getArtsCitationRows() == null ? 0 : s.getArtsCitationRows().size()));
         }
         List<CnfisUnitViewModel.Table> tables = unitSheetRepository
                 .findByUnitKindAndUnitIdAndReportingYearOrderByCreatedAtDesc(kind, unitId, reportingYear).stream()

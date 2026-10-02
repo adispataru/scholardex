@@ -7509,7 +7509,7 @@
    "$oid": "6abfc79210e2c7537f4c8bff"
   },
   "name": "Muz26_CS_1_1",
-  "description": "CS 1.1: prestație în condiții de vizibilitate internațională sau națională de vârf — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; aceeași înregistrare servește și fișei CNFIS. Vizibilitatea se ia din registrul de evenimente artistice când evenimentul este listat (un festival internațional sau internațional de vârf este de vârf, unul național nu); altfel contează vizibilitatea declarată, iar fără ea concertul este de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 20 de puncte.",
+  "description": "CS 1.1: prestație în condiții de vizibilitate internațională sau națională de vârf — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; aceeași înregistrare servește și fișei CNFIS. Vizibilitatea nu se alege: rezultă din rangul pe care registrul de evenimente artistice îl dă evenimentului sau instituției — de vârf pentru un eveniment internațional de vârf, internațional sau național de vârf (un festival sau o instituție din țară cu vizibilitate internațională), regională sau locală pentru unul național sau local. Registrul cuprinde lista CNFIS și evenimentele clasificate de experții domeniului (conducerea facultății și a departamentelor, plus experții numiți); un eveniment pe care registrul nu îl cunoaște încă ajunge la ei, iar până îl clasifică, concertul contează ca prestație de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 20 de puncte.",
   "formula": "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && Vizibilitate_varf) ? 20 : 0",
   "domain": {
    "$ref": "domains",
@@ -7542,7 +7542,7 @@
    "$oid": "6abfc79210e2c7537f4c8c00"
   },
   "name": "Muz26_CS_1_2",
-  "description": "CS 1.2: prestație în condiții de vizibilitate regională sau locală — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; aceeași înregistrare servește și fișei CNFIS. Vizibilitatea se ia din registrul de evenimente artistice când evenimentul este listat (un festival internațional sau internațional de vârf este de vârf, unul național nu); altfel contează vizibilitatea declarată, iar fără ea concertul este de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 10 puncte.",
+  "description": "CS 1.2: prestație în condiții de vizibilitate regională sau locală — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; aceeași înregistrare servește și fișei CNFIS. Vizibilitatea nu se alege: rezultă din rangul pe care registrul de evenimente artistice îl dă evenimentului sau instituției — de vârf pentru un eveniment internațional de vârf, internațional sau național de vârf (un festival sau o instituție din țară cu vizibilitate internațională), regională sau locală pentru unul național sau local. Registrul cuprinde lista CNFIS și evenimentele clasificate de experții domeniului (conducerea facultății și a departamentelor, plus experții numiți); un eveniment pe care registrul nu îl cunoaște încă ajunge la ei, iar până îl clasifică, concertul contează ca prestație de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 10 puncte.",
   "formula": "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && !Vizibilitate_varf) ? 10 : 0",
   "domain": {
    "$ref": "domains",
@@ -8364,7 +8364,7 @@
    "$oid": "6abfc79210e2c7537f4c8c19"
   },
   "name": "Muz26_N_concerte_varf",
-  "description": "Numără concertele, recitalurile și spectacolele de vizibilitate internațională sau națională de vârf (CS 1.1) — compozitori și interpreți: 5 la conferențiar, 8 la profesor, 7 la abilitare.",
+  "description": "Numără concertele, recitalurile și spectacolele de vizibilitate internațională sau națională de vârf (CS 1.1, după rangul evenimentului în registru) — compozitori și interpreți: 5 la conferențiar, 8 la profesor, 7 la abilitare.",
   "formula": "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && Vizibilitate_varf) ? 1 : 0",
   "domain": {
    "$ref": "domains",
