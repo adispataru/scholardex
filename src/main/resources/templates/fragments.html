@@ -16,6 +16,8 @@
         <div class="app-shell-footer__inner">
             <p class="app-shell-footer__copy">
                 <span th:text="${@environment.getProperty('app.footer.message')}">Copyright \u00a9 ScholarDex 2024</span>
+                <span aria-hidden="true"> · </span>
+                <a href="/privacy" th:text="#{footer.privacy}">Privacy notice</a>
             </p>
         </div>
     </footer>

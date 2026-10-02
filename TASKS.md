@@ -106,8 +106,22 @@ Done history moved to `TASKS-done.md`.
   the cited-by list on Scopus (Elsevier's attribution rule), and the public pages may then show the OpenAlex
   count labelled as such (`H119` hides counts until this exists). One definition of "total citations" for the
   workspace. Both canon paths change together; needs a rebuild, so plan it with the next one.
-- [ ] `H130` Privacy notice and complete deletion of a user — **OPEN, from the compliance audit of 2026-09-29
-  (question 29).** **(a) Notice.** The platform documents no legal basis, retention period or list of processed
+- [ ] `H139` Complete deletion of a user (anonymised scores) — **OPEN, split from `H130` on 2026-10-02; later.** The
+  deletion part of `H130` as decided there: remove profile, preferences, declared activities, authorship decisions,
+  principal-author declarations, CNFIS headers/snapshots and memberships; re-key report runs and indicator results to
+  an opaque id (unit roll-ups identical before and after — pin with a test); scrub evidence rows and activity text
+  inside stored runs; say what happens to the Keycloak account (not ours to delete) and drop the person from the public
+  staff page; admin action with a dry-run listing; plus the export of one's own data the audit asked for.
+
+- [ ] `H130` Privacy notice — **(a) BUILT 2026-10-02 (test-operation wording); (b) deletion moved to `H139`.** Built:
+  public `/privacy` (allow-listed), RO + EN in one template switched by locale, linked from every footer
+  (`fragments :: app-footer` → app shell and landing page); says the platform is in test operation and marks the
+  legal basis, the retention period and the controller/DPO contact as *[de completat]* — those three come from the
+  university's data protection officer when the app goes official; lists the processed data from the models
+  (account/profile, scientific output, declared activities, evaluations, technical log), the sources (university
+  identity service, Scopus under the licence, OpenAlex, WoS, Crossref, DBLP, ORCID), the audiences (researcher, heads,
+  admins, public staff pages without abstracts/aggregates/scores) and the rights. Pinned by
+  `PrivacyViewControllerContractTest`. **Original entry:** **(a) Notice.** The platform documents no legal basis, retention period or list of processed
   fields, and has no privacy page. Build the page (public, linked from the footer, RO + EN) and draft the field
   list from the models (`User` + `ResearcherProfile`: email, names, PhD year, position, Scopus / WoS / Google
   Scholar ids, ORCID, affiliations; report runs, indicator results, authorship decisions, evaluation snapshots,

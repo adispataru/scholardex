@@ -85,6 +85,7 @@ public class WebSecurityConfig {
                             "/oauth2/**",
                             "/login/oauth2/**",
                             "/",
+                            "/privacy",
                             "/forums/**",
                             "/core/**",
                             "/universities/**",

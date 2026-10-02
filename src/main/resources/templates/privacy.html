@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{privacy.title} + ' — ScholarDex'">Notă de confidențialitate — ScholarDex</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body class="app-public-page">
+
+<th:block th:replace="~{fragments :: public-shell('privacy')}"></th:block>
+
+<main class="app-public-content" id="main-content">
+    <div class="app-page-content app-changelog">
+
+        <!-- H130 (a). The content is written in both languages here, like the changelog's entries: it is a document,
+             not interface chrome, and it must read as one text. The legal paragraphs (basis, retention, contact) are
+             the university's to supply and are marked as pending until the platform leaves test operation. -->
+
+        <!-- ═══════════════════════════ ROMÂNĂ ═══════════════════════════ -->
+        <th:block th:if="${#locale.language != 'en'}">
+        <header class="app-changelog__header">
+            <p class="app-changelog__eyebrow">Protecția datelor</p>
+            <h1 class="app-changelog__title">Notă de confidențialitate</h1>
+            <p class="app-changelog__intro">
+                ScholarDex este platforma Universității de Vest din Timișoara pentru evidența și evaluarea producției
+                științifice a personalului propriu. Această notă spune ce date personale prelucrează platforma, de unde
+                provin, cine le vede și ce poate face fiecare cercetător în privința lor.
+            </p>
+        </header>
+
+        <div class="alert alert-warning" role="status">
+            <strong>Platforma funcționează în regim de testare.</strong> Temeiul legal, perioada de păstrare și datele
+            de contact ale operatorului vor fi completate împreună cu responsabilul cu protecția datelor al
+            universității înainte de intrarea în exploatare oficială. Până atunci, paragrafele marcate
+            <em>[de completat]</em> sunt rezervate acelor informații.
+        </div>
+
+        <section>
+            <h2>1. Operatorul și contactul</h2>
+            <p>Operatorul datelor este Universitatea de Vest din Timișoara. <em>[de completat: datele de contact ale
+                operatorului și ale responsabilului cu protecția datelor]</em></p>
+        </section>
+
+        <section>
+            <h2>2. Cine este vizat</h2>
+            <p>Personalul didactic și de cercetare al universității cu cont pe platformă, candidații externi la posturi
+                ale universității cărora li s-a creat un cont pentru evaluare, și — numai prin datele bibliografice ale
+                publicațiilor — coautorii lor.</p>
+        </section>
+
+        <section>
+            <h2>3. Ce date prelucrăm</h2>
+            <p><strong>Contul și profilul.</strong> Adresa de e-mail instituțională (identificatorul contului), numele,
+                poziția didactică sau de cercetare, anul primului titlu de doctor, limba preferată, identificatorii de
+                autor (Scopus, Web of Science, ORCID, Google Scholar, identificatorul intern al platformei), afilierea la
+                departament și facultate, forma de angajare și perioada ei (declarate de conducerea departamentului
+                pentru raportările CNFIS), rolurile de conducere (director de departament, decan) și calitatea de
+                membru în grupurile de evaluare.</p>
+            <p><strong>Producția științifică.</strong> Publicațiile asociate autorului (metadate bibliografice: titlu,
+                autori, revistă sau conferință, an, DOI, identificatori în bazele de date), citările lor (ca înregistrări
+                bibliografice ale lucrărilor citante), confirmările sau respingerile de autorat făcute de cercetător,
+                declarațiile de autor principal (autor corespondent, contribuție egală) și aprobarea lor de către
+                conducere, revendicările privind locul publicării, publicațiile adăugate manual.</p>
+            <p><strong>Activitățile declarate.</strong> Granturi, brevete, manifestări artistice, cărți și capitole,
+                activități editoriale, didactice și de conducere de doctorat, cu câmpurile introduse de cercetător
+                (titlu, editură, buget, număr de autori, dovezi).</p>
+            <p><strong>Evaluările.</strong> Rulările fișelor de evaluare (CNATDCU, UEFISCDI, CNFIS) cu punctajele pe
+                indicatori și criterii, istoricul lor, instantaneele salvate, fișele CNFIS înghețate cu valorile
+                declarate (indicele Hirsch, punctajul CNATDCU, domeniul), domeniul competiției ales pentru raportările
+                UEFISCDI, raportul preferat și preferințele de afișare.</p>
+            <p><strong>Jurnalul tehnic.</strong> Sarcinile de sincronizare cu bazele de date externe (data, starea,
+                erorile), data ultimei vizite și notificările închise.</p>
+        </section>
+
+        <section>
+            <h2>4. De unde provin datele</h2>
+            <p>Numele și adresa de e-mail vin din contul universitar (autentificarea se face prin serviciul de identitate
+                al universității). Identificatorii de autor sunt introduși de cercetător sau importați din listele
+                facultății. Publicațiile, citările și afilierile sunt extrase din Scopus (în cadrul licenței
+                universității), OpenAlex, Web of Science, Crossref, DBLP și ORCID, pe baza identificatorilor de autor.
+                Clasificările revistelor și conferințelor (cuartile, categorii, liste CNCS/CNATDCU/CORE/UEFISCDI) sunt
+                date publice ale respectivelor organisme. Activitățile, declarațiile și preferințele sunt introduse de
+                cercetător sau de conducerea departamentului.</p>
+        </section>
+
+        <section>
+            <h2>5. În ce scop</h2>
+            <p>Evidența producției științifice a universității; sprijinirea cercetătorilor în verificarea îndeplinirii
+                standardelor minimale naționale (CNATDCU, UEFISCDI) și în raportările instituționale (CNFIS); rapoartele
+                agregate ale departamentelor și facultăților; prezentarea publicațiilor universității. <em>[de
+                completat: temeiul legal al prelucrării]</em></p>
+        </section>
+
+        <section>
+            <h2>6. Cine vede datele</h2>
+            <p><strong>Cercetătorul</strong> își vede toate datele proprii. <strong>Directorul de departament și
+                decanul</strong> văd fișele de evaluare, activitățile declarate și rapoartele agregate ale unității pe
+                care o conduc și aprobă declarațiile de autor principal. <strong>Administratorii platformei</strong> văd
+                toate datele în scopul administrării. <strong>Publicul</strong> vede paginile de publicații ale
+                personalului universității — numele autorilor afiliați și metadatele bibliografice ale lucrărilor,
+                fără rezumate, fără citări agregate și fără punctaje — și clasamentele agregate ale universității.
+                Niciun punctaj individual nu este public.</p>
+            <p>Datele nu sunt transmise altor organizații. Cererile către bazele de date externe poartă doar
+                identificatorii de autor sau de lucrare necesari interogării.</p>
+        </section>
+
+        <section>
+            <h2>7. Cât timp</h2>
+            <p><em>[de completat: perioada de păstrare]</em> În regim de testare, datele sunt păstrate cât timp contul
+                este activ; ștergerea unui cont elimină profilul, preferințele, activitățile declarate și declarațiile
+                de autorat; punctajele istorice ale unității pot fi păstrate în formă anonimizată.</p>
+        </section>
+
+        <section>
+            <h2>8. Drepturile dumneavoastră</h2>
+            <p>Puteți vedea și corecta datele profilului în spațiul de lucru, puteți confirma sau respinge publicațiile
+                atribuite, vă puteți retrage declarațiile și puteți cere ștergerea contului. Pentru acces, rectificare,
+                ștergere, restricționare sau opoziție vă adresați operatorului la contactul de mai sus; aveți și dreptul
+                de a vă adresa Autorității Naționale de Supraveghere a Prelucrării Datelor cu Caracter Personal.</p>
+        </section>
+
+        <p class="text-muted small">Ultima actualizare: 2 octombrie 2026 (regim de testare).</p>
+        </th:block>
+
+        <!-- ═══════════════════════════ ENGLISH ═══════════════════════════ -->
+        <th:block th:if="${#locale.language == 'en'}">
+        <header class="app-changelog__header">
+            <p class="app-changelog__eyebrow">Data protection</p>
+            <h1 class="app-changelog__title">Privacy notice</h1>
+            <p class="app-changelog__intro">
+                ScholarDex is the West University of Timișoara's platform for recording and evaluating the scientific
+                output of its staff. This notice says what personal data the platform processes, where it comes from,
+                who sees it and what every researcher can do about it.
+            </p>
+        </header>
+
+        <div class="alert alert-warning" role="status">
+            <strong>The platform is in test operation.</strong> The legal basis, the retention period and the
+            controller's contact details will be completed with the university's data protection officer before the
+            platform enters official operation. Until then the paragraphs marked <em>[to be completed]</em> are
+            reserved for that information.
+        </div>
+
+        <section>
+            <h2>1. Controller and contact</h2>
+            <p>The controller is the West University of Timișoara. <em>[to be completed: the controller's and the data
+                protection officer's contact details]</em></p>
+        </section>
+
+        <section>
+            <h2>2. Whose data</h2>
+            <p>The university's teaching and research staff with an account on the platform, external candidates to
+                university positions for whom an account was created for evaluation, and — through the bibliographic
+                data of publications only — their co-authors.</p>
+        </section>
+
+        <section>
+            <h2>3. What we process</h2>
+            <p><strong>Account and profile.</strong> The institutional e-mail address (the account identifier), name,
+                teaching or research position, year of the first PhD, preferred language, author identifiers (Scopus,
+                Web of Science, ORCID, Google Scholar, the platform's internal author id), department and faculty
+                affiliation, employment form and period (declared by the head of department for the CNFIS reports),
+                leadership roles (head of department, dean) and membership of evaluation groups.</p>
+            <p><strong>Scientific output.</strong> The publications attributed to the author (bibliographic metadata:
+                title, authors, journal or conference, year, DOI, database identifiers), their citations (as
+                bibliographic records of the citing works), the researcher's confirmations or rejections of authorship,
+                principal-author declarations (corresponding author, equal contribution) and their approval by a head,
+                venue claims, manually added publications.</p>
+            <p><strong>Declared activities.</strong> Grants, patents, artistic performances, books and chapters,
+                editorial, teaching and doctoral-supervision activities, with the fields the researcher enters (title,
+                publisher, budget, number of authors, evidence).</p>
+            <p><strong>Evaluations.</strong> The runs of the evaluation reports (CNATDCU, UEFISCDI, CNFIS) with the
+                scores per indicator and criterion, their history, saved snapshots, frozen CNFIS sheets with the declared
+                values (Hirsch index, CNATDCU score, domain), the competition domain chosen for the UEFISCDI reports,
+                the preferred report and display preferences.</p>
+            <p><strong>Technical log.</strong> Synchronisation tasks with the external databases (date, state,
+                errors), the date of the last visit and dismissed notifications.</p>
+        </section>
+
+        <section>
+            <h2>4. Where the data comes from</h2>
+            <p>Name and e-mail come from the university account (sign-in goes through the university's identity
+                service). Author identifiers are entered by the researcher or imported from the faculty's lists.
+                Publications, citations and affiliations are retrieved from Scopus (under the university's licence),
+                OpenAlex, Web of Science, Crossref, DBLP and ORCID, based on the author identifiers. Journal and
+                conference classifications (quartiles, categories, the CNCS/CNATDCU/CORE/UEFISCDI lists) are public
+                data of those bodies. Activities, declarations and preferences are entered by the researcher or by the
+                head of department.</p>
+        </section>
+
+        <section>
+            <h2>5. Why</h2>
+            <p>Keeping the record of the university's scientific output; helping researchers check the national
+                minimal standards (CNATDCU, UEFISCDI) and prepare the institutional reports (CNFIS); the aggregate
+                reports of departments and faculties; presenting the university's publications. <em>[to be completed:
+                the legal basis of the processing]</em></p>
+        </section>
+
+        <section>
+            <h2>6. Who sees the data</h2>
+            <p><strong>The researcher</strong> sees all of their own data. <strong>The head of department and the
+                dean</strong> see the evaluation reports, declared activities and aggregate reports of the unit they
+                lead, and approve principal-author declarations. <strong>Platform administrators</strong> see all data
+                for administration. <strong>The public</strong> sees the publication pages of the university's staff —
+                the names of affiliated authors and the bibliographic metadata of their works, without abstracts,
+                without aggregated citation counts and without scores — and the university's aggregate rankings. No
+                individual score is public.</p>
+            <p>Data is not passed to other organisations. Requests to the external databases carry only the author or
+                work identifiers the query needs.</p>
+        </section>
+
+        <section>
+            <h2>7. For how long</h2>
+            <p><em>[to be completed: the retention period]</em> In test operation, data is kept while the account is
+                active; deleting an account removes the profile, preferences, declared activities and authorship
+                declarations; the unit's historical scores may be kept in anonymised form.</p>
+        </section>
+
+        <section>
+            <h2>8. Your rights</h2>
+            <p>You can see and correct your profile data in the workspace, confirm or reject the publications
+                attributed to you, withdraw your declarations and ask for your account to be deleted. For access,
+                rectification, erasure, restriction or objection, write to the controller at the contact above; you also
+                have the right to lodge a complaint with the National Supervisory Authority for Personal Data Processing.</p>
+        </section>
+
+        <p class="text-muted small">Last updated: 2 October 2026 (test operation).</p>
+        </th:block>
+    </div>
+</main>
+
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>
