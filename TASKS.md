@@ -9,8 +9,7 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H137` UEFISCDI reports: one report per role, and the PhD anchors — **BUILT 2026-10-02, prod script ready (deploy
-  first).** Decided over the role-keyed-threshold model (B) after a full sweep: B would have broken the org-unit
+- [ ] `H137` UEFISCDI reports: one report per role, and the PhD anchors — **DEPLOYED and LOADED in prod 2026-10-02** (`2f5302fd`; `h137_uefiscdi_2026_roles_phd.js` run by Adrian: PD Director renamed in place, PD Mentor `6abf57ffcac63fe570e41969`, social Director / Mentor / TE `…6a` / `…6b` / `…6c`, 9 PhD-anchored windows; **still to do:** select the new reports for the divisions in the admin UI; researchers fill the PhD year in their profile). Decided over the role-keyed-threshold model (B) after a full sweep: B would have broken the org-unit
   dashboards (thresholds matched by the member's position), both admin report forms (a role threshold rewritten as
   ASIST_UNIV on save), the comparison and the threshold-cap addition, and needs a semantics for non-exclusive roles;
   the sweep is the checklist if roles are ever wanted as an axis. **Built (C):** «Eligibilitate PD 2026» RENAMED
@@ -31,8 +30,7 @@ Done history moved to `TASKS-done.md`.
   divisions. **Researcher-side:** the PhD year lives in the workspace profile; without it the windows are plain and
   the limit reads "cannot be checked".
 
-- [ ] `H136` UEFISCDI eligibility for the social/economic and the humanities families — **SLICE 1 BUILT 2026-10-01, prod
-  script ready (deploy first).** Built as scoped: `AIS` formula variable (the PD_WOS placement records the journal's AIS
+- [ ] `H136` UEFISCDI eligibility for the social/economic and the humanities families — **SLICE 1 DEPLOYED and LOADED in prod 2026-10-02 (with `H137`); slice 2 (humanities) open, on request.** Built as scoped: `AIS` formula variable (the PD_WOS placement records the journal's AIS
   value; bound lazily in `ScientificProductionService`), `Editura_7c` and `An_activitate` activity variables
   (`ActivityReportingService`; the 253 publishers of Anexa 7c bundled as
   `report-data/uefiscdi-anexa7c-publishers-2026.csv`, exact-name match with «Univ.»/«&» folded —
