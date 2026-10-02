@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.service.importing.scopus.CitationCountSupport;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
@@ -1058,17 +1059,22 @@ public class CanonicalGraphBuilder {
         fact.setFundingId(openAlex != null ? openAlex.funding() : null);
         fact.setSubtype(authoritative.subtype());
         fact.setSubtypeDescription(authoritative.subtypeDescription());
-        // Citation count: monotonic max across sources (best-available index never regresses).
-        int cited = 0;
+        // H131: each source's own number beside the scalar (mirrored in the on-demand canonicalisation paths).
+        // H141: a source may hold several records of one work (Scopus re-indexes a copy under a new EID); the
+        // source's number is the best of them, and the scalar the best of the two sources.
+        Integer scopusCount = null;
+        Integer openAlexCount = null;
         for (SourcePub sp : group) {
-            if (sp.citedByCount() != null) {
-                cited = Math.max(cited, sp.citedByCount());
+            if (sp.openAlex()) {
+                openAlexCount = CitationCountSupport.max(openAlexCount, sp.citedByCount());
+            } else {
+                scopusCount = CitationCountSupport.max(scopusCount, sp.citedByCount());
             }
         }
-        fact.setCitedByCount(cited);
-        // H131: each source's own number beside the scalar (mirrored in the on-demand canonicalisation paths).
-        fact.setCitedByCountScopus(scopus == null ? null : scopus.citedByCount());
-        fact.setCitedByCountOpenAlex(openAlex == null ? null : openAlex.citedByCount());
+        fact.setCitedByCountScopus(scopusCount);
+        fact.setCitedByCountOpenAlex(openAlexCount);
+        Integer cited = CitationCountSupport.scalar(scopusCount, openAlexCount);
+        fact.setCitedByCount(cited == null ? 0 : cited);
         // Scopus-only enrichment.
         if (scopus != null) {
             fact.setEid(scopus.eid());

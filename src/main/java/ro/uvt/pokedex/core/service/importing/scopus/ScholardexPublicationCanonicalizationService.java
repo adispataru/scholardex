@@ -697,6 +697,12 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         // without clobbering the OpenAlex fields. When NOT OpenAlex-owned (Scopus-only or user-defined pub), Scopus
         // applies the full field set exactly as before.
         boolean openAlexOwned = OpenAlexCanonicalizationService.SOURCE_OPENALEX.equals(fact.getSource());
+        // H141: Scopus carries duplicate records of one work (a re-indexed copy with its own EID, usually
+        // nearly uncited) and both land here on the same canonical pub by DOI. A refresh of the record the pub
+        // already carries states Scopus's latest number; another record of the same work never lowers it.
+        Integer scopusCount = CitationCountSupport.sourceCount(
+                fact.getEid() != null && !fact.getEid().equals(scopusFact.getEid()),
+                fact.getCitedByCountScopus(), scopusFact.getCitedByCount());
         if (fact.getCreatedAt() == null) {
             fact.setCreatedAt(now);
         }
@@ -752,22 +758,18 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             }
             fact.setCoverDate(scopusFact.getCoverDate());
             fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
-            fact.setCitedByCount(scopusFact.getCitedByCount());
-            fact.setCitedByCountScopus(scopusFact.getCitedByCount()); // H131: the source of the number
+            fact.setCitedByCountScopus(scopusCount); // H131: the source of the number
+            fact.setCitedByCount(CitationCountSupport.scalar(scopusCount, fact.getCitedByCountOpenAlex(), fact.getCitedByCount()));
             fact.setSourceEventId(scopusFact.getSourceEventId());
             fact.setSource(scopusFact.getSource());
             fact.setSourceRecordId(scopusFact.getSourceRecordId());
             fact.setSourceBatchId(scopusFact.getSourceBatchId());
             fact.setSourceCorrelationId(scopusFact.getSourceCorrelationId());
         } else {
-            // Citation count stays OpenAlex-authoritative but never regresses: bump only if Scopus is strictly
-            // higher (monotonic max), mirroring the prior OpenAlex-last behavior.
-            Integer scopusCount = scopusFact.getCitedByCount();
-            int current = fact.getCitedByCount() == null ? 0 : fact.getCitedByCount();
-            if (scopusCount != null && scopusCount > current) {
-                fact.setCitedByCount(scopusCount);
-            }
+            // Citation count: the best of the two sources' numbers (H141 — was a bump-if-higher against
+            // whatever the scalar held, which let a stale number win).
             fact.setCitedByCountScopus(scopusCount); // H131: Scopus's own number, whatever the scalar does
+            fact.setCitedByCount(CitationCountSupport.scalar(scopusCount, fact.getCitedByCountOpenAlex(), fact.getCitedByCount()));
             // coverDate: Scopus wins even on an OpenAlex-owned pub. OpenAlex's publication_date is often
             // the first-online date (Sept-2008 online for an April-2009 issue — bit FGCS, scored a year
             // early in the wrong quartile); Scopus carries the issue date the standards score by. Mirrors

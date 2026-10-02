@@ -45,8 +45,11 @@ class CitationCountSourceBackfillServiceTest {
     @Test
     void stampsEachSourceCountFromItsLinkedFactAndSkipsAlreadyStampedPublications() {
         ScholardexPublicationFact both = fact("spub_both", null, null);
+        both.setCitedByCount(12); // H141: below the best source number → lifted
         ScholardexPublicationFact scopusOnly = fact("spub_scopus", null, null);
+        scopusOnly.setCitedByCount(3); // already the best number: not lifted
         ScholardexPublicationFact unchanged = fact("spub_done", 7, 9);
+        unchanged.setCitedByCount(9);
         ScholardexPublicationFact unlinked = fact("spub_none", null, null);
         when(mongoTemplate.find(any(Query.class), eq(ScholardexPublicationFact.class)))
                 .thenReturn(List.of(both, scopusOnly, unchanged, unlinked))
@@ -67,14 +70,15 @@ class CitationCountSourceBackfillServiceTest {
 
         CitationCountSourceBackfillService.Result result = service().run();
 
-        assertThat(result).isEqualTo(new CitationCountSourceBackfillService.Result(4, 3, 2, 2));
+        assertThat(result).isEqualTo(new CitationCountSourceBackfillService.Result(4, 3, 2, 2, 1));
         ArgumentCaptor<Query> queries = ArgumentCaptor.forClass(Query.class);
         ArgumentCaptor<Update> updates = ArgumentCaptor.forClass(Update.class);
         verify(bulk, org.mockito.Mockito.times(2)).updateOne(queries.capture(), updates.capture());
         verify(bulk).execute();
         assertThat(queries.getAllValues().get(0).getQueryObject().get("_id")).isEqualTo("spub_both");
         assertThat(updates.getAllValues().get(0).getUpdateObject().toJson())
-                .contains("\"citedByCountScopus\": 12").contains("\"citedByCountOpenAlex\": 15");
+                .contains("\"citedByCountScopus\": 12").contains("\"citedByCountOpenAlex\": 15")
+                .contains("\"citedByCount\": 15");
         assertThat(queries.getAllValues().get(1).getQueryObject().get("_id")).isEqualTo("spub_scopus");
         assertThat(updates.getAllValues().get(1).getUpdateObject().toJson())
                 .contains("\"citedByCountScopus\": 3").contains("$unset").contains("citedByCountOpenAlex");
@@ -86,7 +90,7 @@ class CitationCountSourceBackfillServiceTest {
 
         CitationCountSourceBackfillService.Result result = service().run();
 
-        assertThat(result).isEqualTo(new CitationCountSourceBackfillService.Result(0, 0, 0, 0));
+        assertThat(result).isEqualTo(new CitationCountSourceBackfillService.Result(0, 0, 0, 0, 0));
         verify(mongoTemplate, never()).bulkOps(any(), eq(ScholardexPublicationFact.class));
     }
 

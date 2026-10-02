@@ -315,13 +315,14 @@ public class OpenAlexCanonicalizationService {
     private void enrichForeignPublication(ScholardexPublicationFact target, OpenAlexPublicationFact source) {
         boolean changed = false;
         Integer openAlexCount = source.getCitedByCount();
-        int current = target.getCitedByCount() == null ? 0 : target.getCitedByCount();
-        if (openAlexCount != null && openAlexCount > current) {
-            target.setCitedByCount(openAlexCount);
-            changed = true;
-        }
         if (openAlexCount != null && !openAlexCount.equals(target.getCitedByCountOpenAlex())) {
             target.setCitedByCountOpenAlex(openAlexCount); // H131: OpenAlex's own number
+            changed = true;
+        }
+        // H141: the scalar is the best of the two sources' numbers, never a bump against a stale value.
+        Integer scalar = CitationCountSupport.scalar(target.getCitedByCountScopus(), target.getCitedByCountOpenAlex(), target.getCitedByCount());
+        if (scalar != null && !scalar.equals(target.getCitedByCount())) {
+            target.setCitedByCount(scalar);
             changed = true;
         }
         if (source.getOpenAccess() != null && !source.getOpenAccess().equals(target.getOpenAccess())) {
@@ -373,8 +374,10 @@ public class OpenAlexCanonicalizationService {
         if (resolvedForumId != null && !isDblpStampedForum(fact.getForumId())) {
             fact.setForumId(resolvedForumId);
         }
-        fact.setCitedByCount(source.getCitedByCount());
-        fact.setCitedByCountOpenAlex(source.getCitedByCount()); // H131
+        // H131: OpenAlex's own number; the scalar is the best of the two sources (H141 — a refresh used to
+        // overwrite it with OpenAlex's number even where Scopus counted more).
+        fact.setCitedByCountOpenAlex(source.getCitedByCount());
+        fact.setCitedByCount(CitationCountSupport.scalar(fact.getCitedByCountScopus(), source.getCitedByCount(), fact.getCitedByCount()));
         fact.setOpenAccess(source.getOpenAccess());
         // H120: funding is OpenAlex's (Scopus funding is not kept) — mirrored in CanonicalGraphBuilder.
         fact.setFundingId(source.getFunding());

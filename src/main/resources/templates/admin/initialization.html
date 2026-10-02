@@ -335,7 +335,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Backfill citation counts per source</p>
-                                            <p class="app-ops-action-meta">Stamps the Scopus and OpenAlex citation counts on every canonical publication from the facts it is linked to, without re-canonicalising anything; under a minute, safe to rerun. Follow with <em>3. Build projections</em> so the pages show them.</p>
+                                            <p class="app-ops-action-meta">Stamps the Scopus and OpenAlex citation counts on every canonical publication from the facts it is linked to (the best of a source's records when it holds several) and lifts the total where it is below them, without re-canonicalising anything; under a minute, safe to rerun. Follow with <em>3. Build projections</em> so the pages show them.</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/scopus/backfillCitationSources}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Run backfill</button>

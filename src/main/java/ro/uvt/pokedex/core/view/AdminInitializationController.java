@@ -846,6 +846,7 @@ public class AdminInitializationController {
                         + ", scopus=" + result.scopusSet()
                         + ", openAlex=" + result.openAlexSet()
                         + ", updated=" + result.updated()
+                        + ", scalarLifted=" + result.scalarLifted()
                         + ". Publish them to the read model with Scopus → 3. Build projections.");
         return "redirect:/admin/initialization";
     }

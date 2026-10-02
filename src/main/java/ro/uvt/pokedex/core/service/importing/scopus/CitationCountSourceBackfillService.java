@@ -27,7 +27,8 @@ import java.util.Objects;
  * H131 — stamps {@link ScholardexPublicationFact#getCitedByCountScopus()} / {@code citedByCountOpenAlex} on the existing
  * canonical publications from the source facts they are linked to, without re-canonicalising anything (the OpenAlex
  * canonicalize endpoint is insert-based and fails on a live corpus; the full rebuild takes ~90 min). Only the two
- * per-source fields are written; the max scalar {@code citedByCount} is left alone. Idempotent — safe to rerun.
+ * per-source fields are written, plus the scalar {@code citedByCount} where it is below the best source number
+ * (H141: a Scopus duplicate record or a later sync left it stale). Idempotent — safe to rerun.
  */
 @Service
 public class CitationCountSourceBackfillService {
@@ -52,7 +53,7 @@ public class CitationCountSourceBackfillService {
         this.openAlexPublicationFactRepository = openAlexPublicationFactRepository;
     }
 
-    public record Result(long scanned, long scopusSet, long openAlexSet, long updated) {
+    public record Result(long scanned, long scopusSet, long openAlexSet, long updated, long scalarLifted) {
     }
 
     public Result run() {
@@ -61,6 +62,7 @@ public class CitationCountSourceBackfillService {
         long scopusSet = 0;
         long openAlexSet = 0;
         long updated = 0;
+        long scalarLifted = 0;
         String lastId = null;
         while (true) {
             Query page = new Query();
@@ -68,7 +70,7 @@ public class CitationCountSourceBackfillService {
                 page.addCriteria(Criteria.where("_id").gt(lastId));
             }
             page.with(org.springframework.data.domain.Sort.by("_id")).limit(PAGE_SIZE);
-            page.fields().include("citedByCountScopus").include("citedByCountOpenAlex");
+            page.fields().include("citedByCountScopus").include("citedByCountOpenAlex").include("citedByCount");
             List<ScholardexPublicationFact> facts = mongoTemplate.find(page, ScholardexPublicationFact.class);
             if (facts.isEmpty()) {
                 break;
@@ -91,13 +93,21 @@ public class CitationCountSourceBackfillService {
                 if (openAlex != null) {
                     openAlexSet++;
                 }
+                Integer best = CitationCountSupport.scalar(scopus, openAlex);
+                boolean liftScalar = best != null
+                        && (fact.getCitedByCount() == null || best > fact.getCitedByCount());
                 if (Objects.equals(scopus, fact.getCitedByCountScopus())
-                        && Objects.equals(openAlex, fact.getCitedByCountOpenAlex())) {
+                        && Objects.equals(openAlex, fact.getCitedByCountOpenAlex())
+                        && !liftScalar) {
                     continue;
                 }
                 Update update = new Update();
                 set(update, "citedByCountScopus", scopus);
                 set(update, "citedByCountOpenAlex", openAlex);
+                if (liftScalar) {
+                    update.set("citedByCount", best);
+                    scalarLifted++;
+                }
                 bulk.updateOne(Query.query(Criteria.where("_id").is(fact.getId())), update);
                 pending++;
             }
@@ -109,7 +119,7 @@ public class CitationCountSourceBackfillService {
                 log.info("Citation-source backfill: scanned={} updated={}", scanned, updated);
             }
         }
-        Result result = new Result(scanned, scopusSet, openAlexSet, updated);
+        Result result = new Result(scanned, scopusSet, openAlexSet, updated, scalarLifted);
         log.info("Citation-source backfill done in {} ms: {}", (System.nanoTime() - started) / 1_000_000, result);
         return result;
     }

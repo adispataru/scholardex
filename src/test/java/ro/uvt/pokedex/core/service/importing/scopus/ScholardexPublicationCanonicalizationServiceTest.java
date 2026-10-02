@@ -364,6 +364,70 @@ class ScholardexPublicationCanonicalizationServiceTest {
     }
 
     @Test
+    void aSecondScopusRecordOfTheSameWorkNeverLowersTheCount() {
+        // H141: Scopus re-indexed the work under a new EID (2 citations) while the old record keeps the
+        // history (45); both land on the same canonical pub by DOI. The newer copy must not win the count.
+        ScopusPublicationFact copy = scopusFact("2-s2.0-copy", "10.1/dup", 2);
+        ScholardexPublicationFact existing = new ScholardexPublicationFact();
+        existing.setId("spub_dup");
+        existing.setDoiNormalized("10.1/dup");
+        existing.setSource("SCOPUS");
+        existing.setEid("2-s2.0-original");
+        existing.setCitedByCount(45);
+        existing.setCitedByCountScopus(45);
+        existing.setCreatedAt(java.time.Instant.parse("2026-01-01T00:00:00Z"));
+
+        when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(copy)));
+        when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of());
+        when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of(existing));
+        when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+
+        service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
+
+        assertEquals(Integer.valueOf(45), existing.getCitedByCountScopus(), "the best of Scopus's records");
+        assertEquals(Integer.valueOf(45), existing.getCitedByCount());
+    }
+
+    @Test
+    void aRefreshOfTheSameScopusRecordStatesItsLatestCount() {
+        // H141: the record the pub already carries is refreshed with a corrected (lower) count — Scopus's
+        // latest number is taken as is; the scalar follows unless OpenAlex counts more.
+        ScopusPublicationFact refreshed = scopusFact("2-s2.0-same", "10.1/same", 30);
+        ScholardexPublicationFact existing = new ScholardexPublicationFact();
+        existing.setId("spub_same");
+        existing.setDoiNormalized("10.1/same");
+        existing.setSource("SCOPUS");
+        existing.setEid("2-s2.0-same");
+        existing.setCitedByCount(40);
+        existing.setCitedByCountScopus(40);
+        existing.setCitedByCountOpenAlex(33);
+        existing.setCreatedAt(java.time.Instant.parse("2026-01-01T00:00:00Z"));
+
+        when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(refreshed)));
+        when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of(existing));
+        when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+
+        service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
+
+        assertEquals(Integer.valueOf(30), existing.getCitedByCountScopus());
+        assertEquals(Integer.valueOf(33), existing.getCitedByCount(), "the best of the two sources");
+    }
+
+    private static ScopusPublicationFact scopusFact(String eid, String doi, int citedByCount) {
+        ScopusPublicationFact fact = new ScopusPublicationFact();
+        fact.setEid(eid);
+        fact.setDoi(doi);
+        fact.setTitle("A work");
+        fact.setCitedByCount(citedByCount);
+        fact.setSource("SCOPUS");
+        fact.setSourceRecordId(eid);
+        fact.setAuthors(List.of());
+        return fact;
+    }
+
+    @Test
     void scopusCoverDateClaimsOpenAlexOwnedPubOnEnrichment() {
         // The FGCS case: an OpenAlex-minted pub carries the first-online year (2008) while Scopus has the
         // issue date (2009) the standards score by. Scopus enrichment must overwrite coverDate even on an

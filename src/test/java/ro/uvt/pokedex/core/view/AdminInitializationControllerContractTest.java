@@ -690,13 +690,13 @@ class AdminInitializationControllerContractTest {
     @Test
     void runCitationSourceBackfillRedirectsWithTheCounts() throws Exception {
         when(citationCountSourceBackfillService.run())
-                .thenReturn(new ro.uvt.pokedex.core.service.importing.scopus.CitationCountSourceBackfillService.Result(150, 92, 113, 140));
+                .thenReturn(new ro.uvt.pokedex.core.service.importing.scopus.CitationCountSourceBackfillService.Result(150, 92, 113, 140, 7));
 
         mockMvc.perform(post("/admin/initialization/scopus/backfillCitationSources"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/initialization"))
                 .andExpect(flash().attribute("successMessage",
-                        org.hamcrest.Matchers.containsString("scanned=150, scopus=92, openAlex=113, updated=140")));
+                        org.hamcrest.Matchers.containsString("scanned=150, scopus=92, openAlex=113, updated=140, scalarLifted=7")));
 
         verify(citationCountSourceBackfillService).run();
     }
