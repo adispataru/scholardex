@@ -95,8 +95,9 @@ Done history moved to `TASKS-done.md`.
   (cncs-nrc.ro, categorii.Edituri 2020) loaded as data. Do only on request from a humanities faculty.
   **Out of scope:** PhD-date limits (8 / 12 years) and "after the PhD" windows — stated in descriptions as in `H135`.
 
-- [ ] `H131` Citation counts with a recorded source — **BUILT 2026-10-02; the per-source numbers are stamped by a
-  targeted backfill (no full rebuild).** Built: `ScholardexPublicationFact.citedByCountScopus` /
+- [ ] `H131` Citation counts with a recorded source — **LIVE in prod 2026-10-02 (image 6a4fdfb8; backfill scanned 175,162 /
+  Scopus 95,283 / OpenAlex 137,796, then Scopus → 3. Build projections, publicationViews=175,162). The H22 projection
+  wrapper is disabled in prod, so the publish step is the Scopus projection build, not runFull.** Built: `ScholardexPublicationFact.citedByCountScopus` /
   `citedByCountOpenAlex` set in every canon path (Scopus-driven canonicalisation, OpenAlex enrichment and
   foreign-link, V2 `CanonicalGraphBuilder`, merges per source); `citedByCount` stays the platform's scalar (max of the
   two) for sorting, scoring and the workspace total; read model columns `cited_by_count_scopus` /
@@ -127,6 +128,16 @@ Done history moved to `TASKS-done.md`.
   the cited-by list on Scopus (Elsevier's attribution rule), and the public pages may then show the OpenAlex
   count labelled as such (`H119` hides counts until this exists). One definition of "total citations" for the
   workspace. Both canon paths change together; needs a rebuild, so plan it with the next one.
+- [ ] `H140` Declared (USER_DEFINED) publications dropped by every derive rebuild — **FIXED 2026-10-02, prod pending.**
+  Found while documenting the initialization page: the derive rebuild wipes `scholardex.*` and the V2 engine re-derives
+  Scopus + OpenAlex only, so the publications and forums researchers declared themselves came back only after a manual
+  USER_DEFINED maintenance. Fix: `UserDefinedCanonicalizationService.rebuildCanonicalFacts()` chained in
+  `ScopusBigBangMigrationService.deriveCanonicalAndProject` after the DBLP re-link and before the merges / claims
+  (ordering pinned in both `ScopusBigBangMigrationServiceTest` chains); the incremental path needs nothing (it never
+  wipes; a declaration is canonicalised when made). Runbook and page text updated. **Prod:** check after the next
+  rebuild that the declared publications are present (`scholardex.source_links` with source `USER_DEFINED`); if a
+  past rebuild left some missing, *USER_DEFINED → Run full maintenance* restores them today.
+
 - [ ] `H139` Complete deletion of a user (anonymised scores) — **OPEN, split from `H130` on 2026-10-02; later.** The
   deletion part of `H130` as decided there: remove profile, preferences, declared activities, authorship decisions,
   principal-author declarations, CNFIS headers/snapshots and memberships; re-key report runs and indicator results to
@@ -162,7 +173,8 @@ Done history moved to `TASKS-done.md`.
   writers (a written row served as the template of the next one, so a "1" of row N reappeared on row N+1 — the main
   Anexa 5 writer samples the blank row before its data and was clean; all three now do the same, pinned by a test).
   Sport: activity type «Performanță sportivă (CNFIS 5.2)» (Campionat, Nivel, Loc, Record, N_participanti_universitate,
-  Dovezi; prod script `h129_sport_activity.js`, no restart), `CnfisReportingFacade.sport()` (level × place → the cell,
+  Dovezi; prod script `h129_sport_activity.js`, no restart — LOADED in prod 2026-10-02; image `6a4fdfb8` deployed; the
+  5.2/6.2 templates go on the data PVC with `feaa-2026-scripts/copy-to-data-pvc.sh templates …`), `CnfisReportingFacade.sport()` (level × place → the cell,
   the places the form has no cell for are left out with the reason), `generateAnexa52/62`, exports on the user page
   (live + frozen copies, shown for sport domains 76–77 or when something is declared) and on the unit page. Remaining
   user-side items as below. — Earlier status: OPEN; redesigned
