@@ -203,6 +203,21 @@
                                             <button type="submit" class="btn btn-danger btn-sm">Clear state</button>
                                         </form>
                                     </div>
+                                    <!-- H129 / H114: the WoS accession codes ("cod WOS" of the CNFIS sheets) of the university's own
+                                         publications, asked from Clarivate's OpenURL gateway only when an admin starts it. -->
+                                    <div class="app-ops-action-row">
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Search WoS accession codes for the CNFIS sheets</p>
+                                            <p class="app-ops-action-meta">The university's own publications with a DOI and no code yet, never citing papers; at most 2000 DOIs per run — run it again for the rest. Answers with a JSON summary (candidates, asked, found, linked).</p>
+                                        </div>
+                                        <form th:action="@{/admin/initialization/wos/accession/search}" method="post" class="app-ops-inline-form">
+                                            <div class="app-ops-inline-form__field">
+                                                <label for="wos-accession-limit">DOIs per run</label>
+                                                <input id="wos-accession-limit" type="number" name="limit" class="form-control" min="1" max="2000" value="400">
+                                            </div>
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">Search codes</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -253,6 +268,15 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy"><p class="app-ops-action-title">Backfill canonical citations</p></div>
                                         <form th:action="@{/admin/initialization/scopus/backfillCanonicalCitations}" method="post">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">Run backfill</button>
+                                        </form>
+                                    </div>
+                                    <div class="app-ops-action-row">
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Backfill citation counts per source</p>
+                                            <p class="app-ops-action-meta">Stamps the Scopus / OpenAlex counts on the existing canonical publications from the source facts; follow with the Postgres projection (runFull).</p>
+                                        </div>
+                                        <form th:action="@{/admin/initialization/scopus/backfillCitationSources}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Run backfill</button>
                                         </form>
                                     </div>

@@ -145,6 +145,7 @@
                                             <span th:text="#{cnfis.unit.tables.download6}">Anexa 6</span>
                                         </a>
                                         <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-arts(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download61}">Anexa 6.1</a>
+                                        <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-sport(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download62}">Anexa 6.2</a>
                                         <a class="btn btn-sm btn-outline-secondary mr-1" th:href="@{/supervisor/{k}/{id}/cnfis/tables/{t}/export-humanities(k=${kind},id=${unit.unitId()},t=${t.id()})}" th:text="#{cnfis.unit.tables.download63}">Anexa 6.3</a>
                                         <form th:action="@{/supervisor/{k}/{id}/cnfis/tables/{t}/delete(k=${kind},id=${unit.unitId()},t=${t.id()})}" method="post" class="d-inline">
                                             <input type="hidden" name="edition" th:value="${ed.reportingYear()}">

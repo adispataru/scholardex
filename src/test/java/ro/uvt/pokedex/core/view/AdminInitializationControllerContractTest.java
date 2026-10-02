@@ -54,6 +54,8 @@ class AdminInitializationControllerContractTest {
     @MockitoBean
     private ro.uvt.pokedex.core.service.crossref.CrossrefPublisherBackfillService crossrefPublisherBackfillService;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.importing.scopus.CitationCountSourceBackfillService citationCountSourceBackfillService;
+    @MockitoBean
     private ScopusBigBangMigrationService scopusBigBangMigrationService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.PipelineRebuildService pipelineRebuildService;
@@ -114,8 +116,12 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/rebuildProjections")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ensureIndexes")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/resetCanonicalState")))
+                // H129: the WoS accession-code search is an admin-started operation; the page carries its button
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/accession/search")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalState")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/backfillCanonicalCitations")))
+                // H131: per-source citation counts are backfilled from the admin page, no full rebuild
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/backfillCitationSources")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/buildCanonical")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/reconcileEdges")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalCheckpoints")))
@@ -675,6 +681,20 @@ class AdminInitializationControllerContractTest {
                 .andExpect(redirectedUrl("/admin/initialization"));
 
         verify(scopusBigBangMigrationService).runCitationIdentityBackfill();
+    }
+
+    @Test
+    void runCitationSourceBackfillRedirectsWithTheCounts() throws Exception {
+        when(citationCountSourceBackfillService.run())
+                .thenReturn(new ro.uvt.pokedex.core.service.importing.scopus.CitationCountSourceBackfillService.Result(150, 92, 113, 140));
+
+        mockMvc.perform(post("/admin/initialization/scopus/backfillCitationSources"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"))
+                .andExpect(flash().attribute("successMessage",
+                        org.hamcrest.Matchers.containsString("scanned=150, scopus=92, openAlex=113, updated=140")));
+
+        verify(citationCountSourceBackfillService).run();
     }
 
     @Test

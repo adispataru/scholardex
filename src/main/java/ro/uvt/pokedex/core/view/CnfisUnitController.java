@@ -104,6 +104,22 @@ public class CnfisUnitController {
         response.getOutputStream().write(bytes.get());
     }
 
+    @GetMapping("/tables/{tableId}/export-sport")
+    @PreAuthorize("(#kind == 'departments' and @orgUnitAccess.canManageDepartment(#unitId, authentication))"
+            + " or (#kind == 'divisions' and @orgUnitAccess.canManageDivision(#unitId, authentication))")
+    public void exportSport(@PathVariable String kind, @PathVariable String unitId, @PathVariable String tableId,
+                            HttpServletResponse response) throws IOException {
+        Optional<byte[]> bytes = cnfisUnitFacade.exportSportTable(unitKind(kind), unitId, tableId);
+        if (bytes.isEmpty()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"Anexa6.2_CNFIS.xlsx\"");
+        response.getOutputStream().write(bytes.get());
+        response.flushBuffer();
+    }
+
     @GetMapping("/tables/{tableId}/export-arts")
     @PreAuthorize("(#kind == 'departments' and @orgUnitAccess.canManageDepartment(#unitId, authentication))"
             + " or (#kind == 'divisions' and @orgUnitAccess.canManageDivision(#unitId, authentication))")

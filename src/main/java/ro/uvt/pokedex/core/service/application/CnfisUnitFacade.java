@@ -239,6 +239,22 @@ public class CnfisUnitFacade {
         return Optional.of(exportService.generateAnexa61(CnfisReportingFacade.toExportArts(new ArrayList<>(rows.values()))));
     }
 
+    /** Anexa 6.2 of a table: the sport performances of its members' sheets, each performance once. */
+    public Optional<byte[]> exportSportTable(CnfisUnitSheet.UnitKind kind, String unitId, String tableId) throws IOException {
+        Optional<CnfisUnitSheet> tableOpt = unitSheetRepository.findById(tableId)
+                .filter(t -> t.getUnitKind() == kind && unitId.equals(t.getUnitId()));
+        if (tableOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Map<String, CnfisSheetSnapshot.SportRow> rows = new LinkedHashMap<>();
+        for (CnfisUnitSheet.Member member : tableOpt.get().getMembers()) {
+            snapshotRepository.findById(member.getSnapshotId())
+                    .ifPresent(s -> (s.getSportRows() == null ? List.<CnfisSheetSnapshot.SportRow>of() : s.getSportRows())
+                            .forEach(r -> rows.putIfAbsent(r.getActivityInstanceId(), r)));
+        }
+        return Optional.of(exportService.generateAnexa62(CnfisReportingFacade.toExportSport(new ArrayList<>(rows.values()))));
+    }
+
     /** Anexa 6.3 of a table: the humanities rows of its members' sheets, each work once ("Fără dubluri"). */
     public Optional<byte[]> exportHumanitiesTable(CnfisUnitSheet.UnitKind kind, String unitId, String tableId) throws IOException {
         Optional<CnfisUnitSheet> tableOpt = unitSheetRepository.findById(tableId)

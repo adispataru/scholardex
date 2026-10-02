@@ -407,10 +407,58 @@ class CNFISReportExportServiceTest {
             assertEquals(3.0, second.getCell(19).getNumericCellValue(), "participants from the university, for a group");
             Row third = sheet.getRow(14);
             assertEquals(1.0, third.getCell(17).getNumericCellValue(), "prize × international = column R");
+            // a written row must not become the template of the next one: no "1" carries over (found 2026-10-02)
+            assertTrue(isBlankOrEmpty(second.getCell(6)), "the first row's G must not reappear on the second");
+            assertTrue(isBlankOrEmpty(third.getCell(7)) && isBlankOrEmpty(third.getCell(6)), "nor the second row's H on the third");
+            assertTrue(isBlankOrEmpty(third.getCell(19)), "nor the participants");
         }
         assertEquals(4, CNFISReportExportService.artsColumn("INDIVIDUAL", "NATIONAL"));
         assertEquals(18, CNFISReportExportService.artsColumn("PRIZE", "INTERNATIONAL_TOP"));
         assertEquals(-1, CNFISReportExportService.artsColumn("PRIZE", null));
+    }
+
+    private static boolean isBlankOrEmpty(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null || cell.getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK) {
+            return true;
+        }
+        if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+            return cell.getStringCellValue().isBlank();
+        }
+        return false; // a numeric cell is never "empty" here: a stale 1 is exactly the bug
+    }
+
+    @Test
+    void anexa52MarksTheCellOfTheLevelAndThePlaceTheRecordAndTheParticipants() throws Exception {
+        CNFISReportExportService service = new CNFISReportExportService();
+        byte[] bytes = service.generateAnexa52(List.of(
+                new CNFISReportExportService.SportExportRow("2023", "Atletism 100 m", "CNU 2023", "UNIVERSITY", "PLACE_1", "NATIONAL", 4),
+                new CNFISReportExportService.SportExportRow("2024", "Maraton", "CM 2024", "WORLD", "PLACES_7_8", null, 1),
+                new CNFISReportExportService.SportExportRow("2024", "Ștafetă", "CE 2024", "EUROPEAN", "PLACES_4_6", "EUROPEAN", 4)));
+
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Row first = sheet.getRow(13);
+            assertEquals("2023", first.getCell(1).getStringCellValue());
+            assertEquals("Atletism 100 m", first.getCell(2).getStringCellValue());
+            assertEquals("CNU 2023", first.getCell(3).getStringCellValue());
+            assertEquals(1.0, first.getCell(4).getNumericCellValue(), "university × 1st place = column E");
+            assertEquals(1.0, first.getCell(24).getNumericCellValue(), "national record = column Y");
+            assertEquals(4.0, first.getCell(27).getNumericCellValue(), "participants = column AB");
+            Row second = sheet.getRow(14);
+            assertEquals(1.0, second.getCell(23).getNumericCellValue(), "world × places 7–8 = column X");
+            assertTrue(isBlankOrEmpty(second.getCell(4)), "the first row's E does not carry over");
+            assertTrue(isBlankOrEmpty(second.getCell(24)), "nor its record");
+            Row third = sheet.getRow(15);
+            assertEquals(1.0, third.getCell(13).getNumericCellValue(), "European × places 4–6 = column N");
+            assertEquals(1.0, third.getCell(25).getNumericCellValue(), "European record = column Z");
+        }
+        byte[] table = service.generateAnexa62(List.of(
+                new CNFISReportExportService.SportExportRow("2023", "Atletism 100 m", "CNU 2023", "INTERNATIONAL_ROMANIA", "PLACE_2", null, 2)));
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(table))) {
+            Row first = workbook.getSheetAt(0).getRow(10);
+            assertEquals("Atletism 100 m", first.getCell(2).getStringCellValue());
+            assertEquals(1.0, first.getCell(15).getNumericCellValue(), "international representation × 2nd place = column P");
+        }
     }
 
     @Test

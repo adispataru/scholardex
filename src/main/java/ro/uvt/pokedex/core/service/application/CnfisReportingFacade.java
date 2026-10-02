@@ -56,6 +56,12 @@ public class CnfisReportingFacade {
     static final String ARTS_ACTIVITY = "Participare eveniment artistic";
     static final String FIELD_ARTS_KIND = "Tip";
     static final String FIELD_ARTS_PARTICIPANTS = "N_participanti_universitate";
+    /** H129 Anexa 5.2: the declared sport performance; the instance's name is the "date de identificare". */
+    static final String SPORT_ACTIVITY = "Performanță sportivă (CNFIS 5.2)";
+    static final String FIELD_SPORT_CHAMPIONSHIP = "Campionat";
+    static final String FIELD_SPORT_LEVEL = "Nivel";
+    static final String FIELD_SPORT_PLACE = "Loc";
+    static final String FIELD_SPORT_RECORD = "Record";
 
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
@@ -140,6 +146,10 @@ public class CnfisReportingFacade {
         CnfisSheetViewModel.Arts arts = new CnfisSheetViewModel.Arts(
                 ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsArts(header.getDomainCode()) || !artsSheet.rows().isEmpty(),
                 artsSheet.rows(), artsSheet.leftOut());
+        SportSheet sportSheet = sport(userEmail, edition);
+        CnfisSheetViewModel.Sport sport = new CnfisSheetViewModel.Sport(
+                ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsSport(header.getDomainCode()) || !sportSheet.rows().isEmpty(),
+                sportSheet.rows(), sportSheet.leftOut());
 
         List<CnfisSheetViewModel.ReportChoice> reports = userReportFacade.buildIndividualReportsListView(userEmail)
                 .individualReports().stream()
@@ -155,7 +165,7 @@ public class CnfisReportingFacade {
                 .toList();
 
         return Optional.of(new CnfisSheetViewModel(toViewModel(edition), header, domainCatalog.domains(), reports,
-                score, rows, leftOut, patents, arts, humanities, staff.missingRecords, snapshots, counts(data.reports(), patents)));
+                score, rows, leftOut, patents, arts, sport, humanities, staff.missingRecords, snapshots, counts(data.reports(), patents)));
     }
 
     // ── the head of the sheet ────────────────────────────────────────────────
@@ -276,6 +286,18 @@ public class CnfisReportingFacade {
             row.setUniversityParticipants(r.universityParticipants());
             snapshot.getArtsRows().add(row);
         }
+        for (CnfisSheetViewModel.SportRow r : sport(userEmail, edition).rows()) {
+            CnfisSheetSnapshot.SportRow row = new CnfisSheetSnapshot.SportRow();
+            row.setActivityInstanceId(r.activityInstanceId());
+            row.setYear(r.year());
+            row.setActivity(r.activity());
+            row.setChampionship(r.championship());
+            row.setLevel(r.level());
+            row.setPlace(r.place());
+            row.setRecord(r.record());
+            row.setUniversityParticipants(r.universityParticipants());
+            snapshot.getSportRows().add(row);
+        }
         for (CnfisSheetViewModel.HumanitiesRow r : humanities(userEmail, edition, data).rows()) {
             snapshot.getHumanitiesRows().add(toSnapshotHumanities(r));
         }
@@ -335,6 +357,37 @@ public class CnfisReportingFacade {
             return Optional.empty();
         }
         return Optional.of(exportService.generateAnexa51(toExportArts(snapshotOpt.get().getArtsRows())));
+    }
+
+    /** Anexa 5.2 of the live sheet. */
+    public Optional<byte[]> exportSportLive(String userEmail, int reportingYear) throws IOException {
+        Optional<CnfisEdition> edition = CnfisEdition.ofReportingYear(reportingYear);
+        if (edition.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(exportService.generateAnexa52(toExportSport(sport(userEmail, edition.get()).rows())));
+    }
+
+    /** Anexa 5.2 of a frozen copy. */
+    public Optional<byte[]> exportSportSnapshot(String userEmail, String snapshotId) throws IOException {
+        Optional<CnfisSheetSnapshot> snapshotOpt = snapshotRepository.findById(snapshotId).filter(s -> userEmail.equals(s.getUserEmail()));
+        if (snapshotOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        List<CnfisSheetSnapshot.SportRow> rows = snapshotOpt.get().getSportRows() == null ? List.of() : snapshotOpt.get().getSportRows();
+        return Optional.of(exportService.generateAnexa52(toExportSport(rows)));
+    }
+
+    static List<CNFISReportExportService.SportExportRow> toExportSport(List<? extends Object> rows) {
+        List<CNFISReportExportService.SportExportRow> out = new ArrayList<>();
+        for (Object o : rows) {
+            if (o instanceof CnfisSheetViewModel.SportRow r) {
+                out.add(new CNFISReportExportService.SportExportRow(r.year(), r.activity(), r.championship(), r.level(), r.place(), r.record(), r.universityParticipants()));
+            } else if (o instanceof CnfisSheetSnapshot.SportRow r) {
+                out.add(new CNFISReportExportService.SportExportRow(r.getYear(), r.getActivity(), r.getChampionship(), r.getLevel(), r.getPlace(), r.getRecord(), r.getUniversityParticipants()));
+            }
+        }
+        return out;
     }
 
     static List<CNFISReportExportService.ArtsExportRow> toExportArts(List<? extends Object> rows) {
@@ -661,6 +714,95 @@ public class CnfisReportingFacade {
         }
         rows.sort(Comparator.comparing(CnfisSheetViewModel.ArtsRow::year).thenComparing(CnfisSheetViewModel.ArtsRow::work));
         return new ArtsSheet(rows, leftOut);
+    }
+
+    record SportSheet(List<CnfisSheetViewModel.SportRow> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {
+    }
+
+    /**
+     * Anexa 5.2 from the declared activity "Performanță sportivă (CNFIS 5.2)": the level of the championship and
+     * the place obtained are the column of the form (a "1" in the cell), a record set is its own column, the
+     * participants from the university their own. A performance without a level or a place, or with a place the
+     * form has no cell for at that level, is left out and says so.
+     */
+    SportSheet sport(String userEmail, CnfisEdition edition) {
+        List<CnfisSheetViewModel.SportRow> rows = new ArrayList<>();
+        List<CnfisSheetViewModel.LeftOut> leftOut = new ArrayList<>();
+        for (ActivityInstance instance : activityInstanceRepository.findAllByResearcherId(userEmail)) {
+            if (instance.getActivity() == null || !SPORT_ACTIVITY.equals(instance.getActivity().getName())) {
+                continue;
+            }
+            Integer year = parseYear(instance.getDate());
+            if (year == null || !edition.covers(year)) {
+                continue;
+            }
+            String yearText = String.valueOf(year);
+            Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
+            String championship = f.get(FIELD_SPORT_CHAMPIONSHIP);
+            String level = sportLevel(f.get(FIELD_SPORT_LEVEL));
+            String place = sportPlace(f.get(FIELD_SPORT_PLACE));
+            String record = sportRecord(f.get(FIELD_SPORT_RECORD));
+            if (level == null || place == null) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), championship, null,
+                        "the level of the championship or the place obtained is not declared"));
+                continue;
+            }
+            if (CNFISReportExportService.sportColumn(level, place) < 0) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), yearText, instance.getName(), championship, null,
+                        "the form has no cell for this place at this level (university and national: places 1–3; European: 1–3 and 4–6; "
+                                + "international representation: 1–3; world: 1–6 and 7–8)"));
+                continue;
+            }
+            rows.add(new CnfisSheetViewModel.SportRow(instance.getId(), yearText, instance.getName(), championship, level, place,
+                    record, parseInt(f.get(FIELD_ARTS_PARTICIPANTS))));
+        }
+        rows.sort(Comparator.comparing(CnfisSheetViewModel.SportRow::year).thenComparing(CnfisSheetViewModel.SportRow::activity));
+        return new SportSheet(rows, leftOut);
+    }
+
+    /** The declared level, as the activity's allowed values name it, to the column group of the form. */
+    static String sportLevel(String declared) {
+        if (declared == null) {
+            return null;
+        }
+        String d = declared.trim().toLowerCase(java.util.Locale.ROOT);
+        if (d.startsWith("universitar")) return "UNIVERSITY";
+        if (d.startsWith("național") || d.startsWith("national")) return "NATIONAL";
+        if (d.startsWith("european")) return "EUROPEAN";
+        if (d.startsWith("competiție internațională") || d.startsWith("competitie internationala")) return "INTERNATIONAL_ROMANIA";
+        if (d.startsWith("mondial")) return "WORLD";
+        return null;
+    }
+
+    /** The declared place to the form's cell key. */
+    static String sportPlace(String declared) {
+        if (declared == null) {
+            return null;
+        }
+        String d = declared.trim().toLowerCase(java.util.Locale.ROOT).replace("locurile", "").replace("locul", "").trim();
+        return switch (d) {
+            case "1" -> "PLACE_1";
+            case "2" -> "PLACE_2";
+            case "3" -> "PLACE_3";
+            case "4" -> "PLACE_4";
+            case "5" -> "PLACE_5";
+            case "6" -> "PLACE_6";
+            case "4-6", "4–6" -> "PLACES_4_6";
+            case "7-8", "7–8" -> "PLACES_7_8";
+            default -> null;
+        };
+    }
+
+    /** The declared record to the form's column; null when none. */
+    static String sportRecord(String declared) {
+        if (declared == null) {
+            return null;
+        }
+        String d = declared.trim().toLowerCase(java.util.Locale.ROOT);
+        if (d.startsWith("național") || d.startsWith("national")) return "NATIONAL";
+        if (d.startsWith("european")) return "EUROPEAN";
+        if (d.startsWith("mondial")) return "WORLD";
+        return null;
     }
 
     /** The declared kind, as the activity's allowed values name it, to the column group of the form. */

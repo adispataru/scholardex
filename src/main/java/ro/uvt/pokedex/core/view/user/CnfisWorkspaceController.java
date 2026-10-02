@@ -134,6 +134,38 @@ public class CnfisWorkspaceController {
         write(response, bytes.get(), "Anexa5.1_CNFIS_" + reportingYear + ".xlsx");
     }
 
+    @GetMapping("/{edition}/export-sport")
+    public void exportSportLive(@PathVariable("edition") int reportingYear, Authentication authentication,
+                                HttpServletResponse response) throws IOException {
+        User currentUser = signedIn(authentication);
+        if (currentUser == null) {
+            response.sendRedirect("/login");
+            return;
+        }
+        Optional<byte[]> bytes = cnfisReportingFacade.exportSportLive(currentUser.getEmail(), reportingYear);
+        if (bytes.isEmpty()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        write(response, bytes.get(), "Anexa5.2_CNFIS_" + reportingYear + ".xlsx");
+    }
+
+    @GetMapping("/snapshots/{id}/export-sport")
+    public void exportSportSnapshot(@PathVariable("id") String snapshotId, Authentication authentication,
+                                    HttpServletResponse response) throws IOException {
+        User currentUser = signedIn(authentication);
+        if (currentUser == null) {
+            response.sendRedirect("/login");
+            return;
+        }
+        Optional<byte[]> bytes = cnfisReportingFacade.exportSportSnapshot(currentUser.getEmail(), snapshotId);
+        if (bytes.isEmpty()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        write(response, bytes.get(), "Anexa5.2_CNFIS_inghetata.xlsx");
+    }
+
     @GetMapping("/snapshots/{id}/export-arts")
     public void exportArtsSnapshot(@PathVariable("id") String snapshotId, Authentication authentication,
                                    HttpServletResponse response) throws IOException {

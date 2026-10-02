@@ -39,6 +39,10 @@
                                 <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
                                 <span th:text="#{cnfis.download.anexa51}">Anexa 5.1</span>
                             </a>
+                            <a th:if="${sheet.sport().applies()}" class="btn btn-sm btn-outline-primary" th:href="@{/user/cnfis/{y}/export-sport(y=${ed.reportingYear()})}">
+                                <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
+                                <span th:text="#{cnfis.download.anexa52}">Anexa 5.2</span>
+                            </a>
                             <a th:if="${sheet.humanities().applies()}" class="btn btn-sm btn-outline-primary" th:href="@{/user/cnfis/{y}/export-humanities(y=${ed.reportingYear()})}">
                                 <i class="fa-solid fa-download fa-sm" aria-hidden="true"></i>
                                 <span th:text="#{cnfis.download.anexa53}">Anexa 5.3</span>
@@ -239,6 +243,49 @@
                             </div>
                         </section>
 
+                        <!-- ── Anexa 5.2: sport ─────────────────────────────── -->
+                        <section class="app-university-detail__section mt-3" aria-labelledby="cnfis-sport-title" th:if="${sheet.sport().applies()}" th:with="sport=${sheet.sport()}">
+                            <div class="app-university-detail__section-header">
+                                <div>
+                                    <p class="app-university-detail__eyebrow" th:text="#{cnfis.anexa.52}">Anexa 5.2</p>
+                                    <h2 id="cnfis-sport-title" class="app-university-detail__section-title" th:text="#{cnfis.sport.title(${#lists.size(sport.rows())})}">Sport performances</h2>
+                                    <p class="text-muted small mb-0 mt-1" th:text="#{cnfis.sport.hint}">From the activities declared as "Performanță sportivă".</p>
+                                </div>
+                            </div>
+                            <div th:if="${#lists.isEmpty(sport.rows())}" class="app-table-state" role="status" th:text="#{cnfis.sport.none}">No sport performance declared in this window.</div>
+                            <div th:unless="${#lists.isEmpty(sport.rows())}" class="app-table-scroll">
+                                <table class="table table-bordered app-table" width="100%" cellspacing="0" id="cnfis-sport-rows">
+                                    <thead><tr>
+                                        <th th:text="#{common.year}">Year</th><th th:text="#{cnfis.sport.activity}">Activity</th>
+                                        <th th:text="#{cnfis.sport.championship}">Championship</th><th th:text="#{cnfis.sport.level}">Level</th>
+                                        <th th:text="#{cnfis.sport.place}">Place</th><th th:text="#{cnfis.sport.record}">Record</th>
+                                        <th class="app-table__cell--numeric" th:text="#{cnfis.sport.participants}">Participants from the university</th>
+                                    </tr></thead>
+                                    <tbody>
+                                    <tr th:each="r : ${sport.rows()}">
+                                        <td class="app-table__cell--identifier" th:text="${r.year()}">2023</td><td th:text="${r.activity()}">Activity</td>
+                                        <td class="app-table__cell--secondary" th:text="${r.championship()}">Championship</td>
+                                        <td th:text="#{'cnfis.sport.level.' + ${r.level()}}">national</td>
+                                        <td><span class="app-table-badge app-table-badge--success" th:text="#{'cnfis.sport.place.' + ${r.place()}}">1st place</span></td>
+                                        <td th:text="${r.record() != null} ? #{'cnfis.sport.record.' + ${r.record()}} : '—'">—</td>
+                                        <td class="app-table__cell--numeric" th:text="${r.universityParticipants()}">0</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div th:unless="${#lists.isEmpty(sport.leftOut())}" class="app-table-scroll mt-2">
+                                <table class="table table-bordered app-table" width="100%" cellspacing="0" id="cnfis-sport-left-out">
+                                    <caption class="app-table-caption" th:text="#{cnfis.leftOut.hint}">left out</caption>
+                                    <thead><tr><th th:text="#{common.year}">Year</th><th th:text="#{cnfis.sport.activity}">Activity</th><th th:text="#{cnfis.sport.championship}">Championship</th><th th:text="#{cnfis.leftOut.reason}">Reason</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="l : ${sport.leftOut()}">
+                                        <td class="app-table__cell--identifier" th:text="${l.year()}">2023</td><td th:text="${l.title()}">Activity</td><td class="app-table__cell--secondary" th:text="${l.venue()}">Championship</td><td th:text="${l.reason()}">reason</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
                         <!-- ── Anexa 5.3: humanities ────────────────────────── -->
                         <section class="app-university-detail__section mt-3" aria-labelledby="cnfis-hum-title" th:if="${sheet.humanities().applies()}" th:with="hum=${sheet.humanities()}">
                             <div class="app-university-detail__section-header">
@@ -343,6 +390,7 @@
                                         <td class="text-right">
                                             <a class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export(id=${s.id()})}" th:text="#{cnfis.copies.download}">Download</a>
                                             <a th:if="${sheet.arts().applies()}" class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export-arts(id=${s.id()})}" th:text="#{cnfis.copies.download51}">Anexa 5.1</a>
+                                            <a th:if="${sheet.sport().applies()}" class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export-sport(id=${s.id()})}" th:text="#{cnfis.copies.download52}">Anexa 5.2</a>
                                             <a th:if="${sheet.humanities().applies()}" class="btn btn-sm btn-outline-secondary" th:href="@{/user/cnfis/snapshots/{id}/export-humanities(id=${s.id()})}" th:text="#{cnfis.copies.download53}">Anexa 5.3</a>
                                             <form th:unless="${s.locked()}" th:action="@{/user/cnfis/snapshots/{id}/release(id=${s.id()})}" method="post" class="d-inline">
                                                 <input type="hidden" name="edition" th:value="${ed.reportingYear()}">

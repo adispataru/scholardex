@@ -204,7 +204,9 @@ public class CNFISReportExportService {
              Workbook workbook = new XSSFWorkbook(resource)) {
             Sheet sheet = workbook.getSheetAt(0);
             int rowNum = firstRow;
-            int sampleRowNum = firstRow;
+            // The sample is the blank formatted row BEFORE the first data row (as the Anexa 5 writer does): a
+            // written row must never serve as the template of the next one, or its "1" cells carry over.
+            int sampleRowNum = firstRow - 1;
             for (HumanitiesExportRow r : rows) {
                 int usable = findNextUsableTemplateRow(sheet, sampleRowNum, 22);
                 if (usable < 0) {
@@ -272,7 +274,9 @@ public class CNFISReportExportService {
              Workbook workbook = new XSSFWorkbook(resource)) {
             Sheet sheet = workbook.getSheetAt(0);
             int rowNum = firstRow;
-            int sampleRowNum = firstRow;
+            // The sample is the blank formatted row BEFORE the first data row (as the Anexa 5 writer does): a
+            // written row must never serve as the template of the next one, or its "1" cells carry over.
+            int sampleRowNum = firstRow - 1;
             for (ArtsExportRow r : rows) {
                 int usable = findNextUsableTemplateRow(sheet, sampleRowNum, 20);
                 if (usable < 0) {
@@ -297,6 +301,96 @@ public class CNFISReportExportService {
             workbook.write(bos);
             return bos.toByteArray();
         }
+    }
+
+    /** One row of Anexa 5.2 / 6.2, as the facade hands it over. */
+    public record SportExportRow(String year, String activity, String championship, String level, String place, String record,
+                                 int universityParticipants) {
+    }
+
+    /** Anexa 5.2 — the sport performances of a person: a "1" in the cell of the level × the place. */
+    public byte[] generateAnexa52(List<SportExportRow> rows) throws IOException {
+        return generateSport("data/templates/AC2025_Anexa5.2-Performanta_sportiva-2025.xlsx", 13, rows);
+    }
+
+    /** Anexa 6.2 — the institutional table of sport performances, the same columns from row 10. */
+    public byte[] generateAnexa62(List<SportExportRow> rows) throws IOException {
+        return generateSport("data/templates/AC2025_Anexa6.2-Tabel_institutional_performanta_sportiva-2025.xlsx", 10, rows);
+    }
+
+    private byte[] generateSport(String template, int firstRow, List<SportExportRow> rows) throws IOException {
+        try (InputStream resource = new FileInputStream(template);
+             Workbook workbook = new XSSFWorkbook(resource)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            int rowNum = firstRow;
+            // The sample is the blank formatted row BEFORE the first data row (as the Anexa 5 writer does): a
+            // written row must never serve as the template of the next one, or its "1" cells carry over.
+            int sampleRowNum = firstRow - 1;
+            for (SportExportRow r : rows) {
+                int usable = findNextUsableTemplateRow(sheet, sampleRowNum, 28);
+                if (usable < 0) {
+                    throw new IllegalStateException("No suitable template row available for CNFIS export population.");
+                }
+                sampleRowNum = usable;
+                Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
+                row.getCell(1).setCellValue(cellText(r.year()));
+                row.getCell(2).setCellValue(cellText(r.activity()));
+                row.getCell(3).setCellValue(cellText(r.championship()));
+                int column = sportColumn(r.level(), r.place());
+                if (column >= 0) {
+                    row.getCell(column).setCellValue(1);
+                }
+                int recordColumn = sportRecordColumn(r.record());
+                if (recordColumn >= 0) {
+                    row.getCell(recordColumn).setCellValue(1);
+                }
+                row.getCell(27).setCellValue(r.universityParticipants());
+                rowNum++;
+            }
+            workbook.setForceFormulaRecalculation(true);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            workbook.write(bos);
+            return bos.toByteArray();
+        }
+    }
+
+    /**
+     * The cell of Anexa 5.2 / 6.2, 0-based: university 1–3 (E–G), national 1–3 (H–J), European 1–3 and 4–6 (K–N),
+     * international representation 1–3 (O–Q), world 1–6 and 7–8 (R–X); -1 when the form has no such cell.
+     */
+    public static int sportColumn(String level, String place) {
+        int placeIndex = switch (place == null ? "" : place) {
+            case "PLACE_1" -> 1;
+            case "PLACE_2" -> 2;
+            case "PLACE_3" -> 3;
+            case "PLACE_4" -> 4;
+            case "PLACE_5" -> 5;
+            case "PLACE_6" -> 6;
+            case "PLACES_4_6" -> 46;
+            case "PLACES_7_8" -> 78;
+            default -> -1;
+        };
+        if (placeIndex < 0) {
+            return -1;
+        }
+        return switch (level == null ? "" : level) {
+            case "UNIVERSITY" -> placeIndex <= 3 ? 3 + placeIndex : -1;
+            case "NATIONAL" -> placeIndex <= 3 ? 6 + placeIndex : -1;
+            case "EUROPEAN" -> placeIndex <= 3 ? 9 + placeIndex : placeIndex == 46 ? 13 : -1;
+            case "INTERNATIONAL_ROMANIA" -> placeIndex <= 3 ? 13 + placeIndex : -1;
+            case "WORLD" -> placeIndex <= 6 ? 16 + placeIndex : placeIndex == 78 ? 23 : -1;
+            default -> -1;
+        };
+    }
+
+    /** The record columns of Anexa 5.2 / 6.2: national Y (24), European Z (25), world/olympic AA (26). */
+    static int sportRecordColumn(String record) {
+        return switch (record == null ? "" : record) {
+            case "NATIONAL" -> 24;
+            case "EUROPEAN" -> 25;
+            case "WORLD" -> 26;
+            default -> -1;
+        };
     }
 
     /**

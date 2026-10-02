@@ -95,7 +95,28 @@ Done history moved to `TASKS-done.md`.
   (cncs-nrc.ro, categorii.Edituri 2020) loaded as data. Do only on request from a humanities faculty.
   **Out of scope:** PhD-date limits (8 / 12 years) and "after the PhD" windows — stated in descriptions as in `H135`.
 
-- [ ] `H131` Citation counts with a recorded source — **OPEN, from the compliance audit of 2026-09-29 (question 8).**
+- [ ] `H131` Citation counts with a recorded source — **BUILT 2026-10-02; the per-source numbers are stamped by a
+  targeted backfill (no full rebuild).** Built: `ScholardexPublicationFact.citedByCountScopus` /
+  `citedByCountOpenAlex` set in every canon path (Scopus-driven canonicalisation, OpenAlex enrichment and
+  foreign-link, V2 `CanonicalGraphBuilder`, merges per source); `citedByCount` stays the platform's scalar (max of the
+  two) for sorting, scoring and the workspace total; read model columns `cited_by_count_scopus` /
+  `cited_by_count_openalex` (Flyway V26, nullable), projected and read by the three read ports; every displayed
+  number says its source through `fragments :: citation-counts` (Scopus linked to the cited-by list on Scopus —
+  Elsevier's attribution rule; OpenAlex labelled; a record not yet re-derived shows the scalar marked as such):
+  publication page (anonymous readers see the OpenAlex number only), author page, workspace table, and the
+  workspace list/detail (bundle rebuilt) with the definition of the total as a tooltip. **Definition kept:** the
+  workspace total = Σ per publication of the best source count; the citations chart counts the platform's citing
+  works by year (a different thing, labelled as such). **Rebuild tested locally (2026-10-02):** the Scopus-driven
+  canonical build stamps the Scopus side (15.5 min, 92,687 pubs) but the OpenAlex canonicalize endpoint is
+  insert-based and dies with E11000 on a live corpus, and the full derived rebuild is ~90 min — so
+  `CitationCountSourceBackfillService` (admin page, Scopus section → "Backfill citation counts per source") reads the
+  two counts through `source_links` from `scopus.publication_facts` / `openalex.publication_facts` and bulk-writes
+  only the two fields (idempotent; 32 s for 150,061 pubs: 92,687 Scopus, 113,170 OpenAlex, none without either);
+  the Postgres projection runFull then publishes them (7.5 min). The scalar is not touched (15 local pubs have a
+  source count above a stale scalar; the regular sync maintains it). **Prod:** deploy (V26 applies itself) → admin
+  initialization page: run the backfill → run the Postgres projection (runFull); until then pages show the scalar
+  unlabelled.
+  — Original entry: OPEN, from the compliance audit of 2026-09-29 (question 8).
   The canonical `citedByCount` is the maximum over Scopus and OpenAlex (`CanonicalGraphBuilder.buildPublicationFact`,
   `ScholardexPublicationCanonicalizationService`, `OpenAlexCanonicalizationService.enrichForeignPublication`,
   `PublicationMergeService`), the projection falls back to the number of edges when there is none, and nothing
@@ -136,7 +157,15 @@ Done history moved to `TASKS-done.md`.
   unit roll-ups (`OrgUnitRunRollupService`) must give the same numbers before and after. Check what inside a
   stored run still names the person (evidence rows, activity text) and drop it. Also wanted: an export of a
   person's own data on request.
-- [ ] `H129` CNFIS reporting: its own sidebar entry, editions, the sheets of Anexa 5 and 6 — **OPEN; redesigned
+- [ ] `H129` CNFIS reporting: its own sidebar entry, editions, the sheets of Anexa 5 and 6 — **2026-10-02: Anexa 5.2 / 6.2
+  (sport) BUILT and the admin button for the WoS-code search BUILT; also FOUND and FIXED a carry-over bug in the 5.1/5.3
+  writers (a written row served as the template of the next one, so a "1" of row N reappeared on row N+1 — the main
+  Anexa 5 writer samples the blank row before its data and was clean; all three now do the same, pinned by a test).
+  Sport: activity type «Performanță sportivă (CNFIS 5.2)» (Campionat, Nivel, Loc, Record, N_participanti_universitate,
+  Dovezi; prod script `h129_sport_activity.js`, no restart), `CnfisReportingFacade.sport()` (level × place → the cell,
+  the places the form has no cell for are left out with the reason), `generateAnexa52/62`, exports on the user page
+  (live + frozen copies, shown for sport domains 76–77 or when something is declared) and on the unit page. Remaining
+  user-side items as below. — Earlier status: OPEN; redesigned
   with Adrian 2026-09-30 (supersedes the first entry of 2026-09-29); SLICE 1 BUILT 2026-09-30, not pushed.**
   Slice 1 as built: `CnfisEdition` (2025, and 2027 provisional; an unknown window makes a provisional edition
   of itself); `CNFISScoringService2025.getReport(publication, domain, edition)` with rules (1)–(5); each row

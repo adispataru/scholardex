@@ -17,6 +17,7 @@ public record CnfisSheetViewModel(
         List<LeftOut> leftOut,
         List<Patent> patents,
         Arts arts,
+        Sport sport,
         Humanities humanities,
         List<String> staffRecordMissing,
         List<Snapshot> snapshots,
@@ -42,6 +43,18 @@ public record CnfisSheetViewModel(
 
     public record ArtsRow(String activityInstanceId, String year, String work, String event, String level, String kind,
                           int universityParticipants) {
+    }
+
+    /** Anexa 5.2: shown to a person of a sport domain (and to anyone who declared performances). */
+    public record Sport(boolean applies, List<SportRow> rows, List<LeftOut> leftOut) {
+    }
+
+    /**
+     * One row of Anexa 5.2: the level of the championship (UNIVERSITY, NATIONAL, EUROPEAN, INTERNATIONAL_ROMANIA,
+     * WORLD), the place (1–6, PLACES_4_6, PLACES_7_8), the record set (NATIONAL, EUROPEAN, WORLD or null).
+     */
+    public record SportRow(String activityInstanceId, String year, String activity, String championship, String level,
+                           String place, String record, int universityParticipants) {
     }
 
     /** Anexa 5.3: shown to a person of a humanities domain. */

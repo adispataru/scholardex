@@ -1631,5 +1631,61 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abf76525710d8bd868d958b"
+  },
+  "name": "Performanță sportivă (CNFIS 5.2)",
+  "fields": [
+   {
+    "name": "Campionat",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Universitar (turneu, faza finală)",
+     "Național (turneu, faza finală)",
+     "European",
+     "Competiție internațională de reprezentare a României",
+     "Mondial / olimpic"
+    ],
+    "number": false
+   },
+   {
+    "name": "Loc",
+    "allowedValues": [
+     "Locul 1",
+     "Locul 2",
+     "Locul 3",
+     "Locul 4",
+     "Locul 5",
+     "Locul 6",
+     "Locurile 4-6",
+     "Locurile 7-8"
+    ],
+    "number": false
+   },
+   {
+    "name": "Record",
+    "allowedValues": [
+     "—",
+     "Național",
+     "European",
+     "Mondial / olimpic"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_participanti_universitate",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
  }
 ]

@@ -368,6 +368,53 @@ class CnfisReportingFacadeTest {
         return instance;
     }
 
+    // ── Anexa 5.2 ──────────────────────────────────────────────────────────
+
+    @Test
+    void sportPerformancesTakeTheirCellFromTheLevelAndThePlaceAndTheFormHasNoCellForEveryPlace() {
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+        when(userRepository.findAll()).thenReturn(List.of());
+        when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
+                sport("Atletism 100 m", "2023-06-10", Map.of("Campionat", "CNU 2023", "Nivel", "Universitar (turneu, faza finală)", "Loc", "Locul 1", "Record", "Național", "N_participanti_universitate", "4")),
+                sport("Ștafetă", "2024-06-10", Map.of("Campionat", "CE 2024", "Nivel", "European", "Loc", "Locurile 4-6")),
+                sport("Maraton", "2024-09-10", Map.of("Campionat", "CM 2024", "Nivel", "Mondial / olimpic", "Loc", "Locurile 7-8", "Record", "—")),
+                sport("Fără loc", "2023-06-10", Map.of("Campionat", "CNU 2023", "Nivel", "Național (turneu, faza finală)")),
+                sport("Loc fără celulă", "2023-06-10", Map.of("Campionat", "CNU 2023", "Nivel", "Național (turneu, faza finală)", "Loc", "Locul 5")),
+                sport("Prea veche", "2019-06-10", Map.of("Campionat", "CNU 2019", "Nivel", "Universitar (turneu, faza finală)", "Loc", "Locul 1"))));
+
+        CnfisSheetViewModel sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+
+        assertTrue(sheet.sport().applies(), "declared performances show the sheet even outside a sport domain");
+        assertEquals(List.of("Atletism 100 m", "Maraton", "Ștafetă"), sheet.sport().rows().stream().map(CnfisSheetViewModel.SportRow::activity).toList(), "by year, then name");
+        CnfisSheetViewModel.SportRow first = sheet.sport().rows().getFirst();
+        assertEquals("UNIVERSITY", first.level());
+        assertEquals("PLACE_1", first.place());
+        assertEquals("NATIONAL", first.record());
+        assertEquals(4, first.universityParticipants());
+        assertEquals("PLACES_7_8", sheet.sport().rows().get(1).place());
+        assertNull(sheet.sport().rows().get(1).record(), "a dash is no record");
+        assertEquals("PLACES_4_6", sheet.sport().rows().get(2).place());
+        assertEquals(List.of("Fără loc", "Loc fără celulă"), sheet.sport().leftOut().stream().map(CnfisSheetViewModel.LeftOut::title).toList());
+
+        // the cells of the form, 0-based: E–G university, H–J national, K–N European, O–Q representation, R–X world
+        assertEquals(4, CNFISReportExportService.sportColumn("UNIVERSITY", "PLACE_1"));
+        assertEquals(9, CNFISReportExportService.sportColumn("NATIONAL", "PLACE_3"));
+        assertEquals(13, CNFISReportExportService.sportColumn("EUROPEAN", "PLACES_4_6"));
+        assertEquals(-1, CNFISReportExportService.sportColumn("EUROPEAN", "PLACE_4"));
+        assertEquals(16, CNFISReportExportService.sportColumn("INTERNATIONAL_ROMANIA", "PLACE_3"));
+        assertEquals(22, CNFISReportExportService.sportColumn("WORLD", "PLACE_6"));
+        assertEquals(23, CNFISReportExportService.sportColumn("WORLD", "PLACES_7_8"));
+        assertEquals(-1, CNFISReportExportService.sportColumn("NATIONAL", "PLACE_5"));
+    }
+
+    private static ActivityInstance sport(String name, String date, Map<String, String> fields) {
+        ActivityInstance instance = other(name, date);
+        instance.getActivity().setName("Performanță sportivă (CNFIS 5.2)");
+        instance.setFields(new java.util.HashMap<>(fields));
+        return instance;
+    }
+
     // ── Anexa 5.3 ──────────────────────────────────────────────────────────
 
     @Test

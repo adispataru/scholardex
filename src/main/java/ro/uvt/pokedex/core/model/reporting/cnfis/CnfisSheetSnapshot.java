@@ -38,6 +38,8 @@ public class CnfisSheetSnapshot {
     private List<Patent> patents = new ArrayList<>();
     /** Anexa 5.1 — the artistic performances, for a person of an artistic domain. */
     private List<ArtsRow> artsRows = new ArrayList<>();
+    /** Anexa 5.2 (H129, sport): absent on snapshots frozen before it existed. */
+    private List<SportRow> sportRows = new ArrayList<>();
     /** Anexa 5.3 — Scopus articles, books, edited volumes, chapters, critical editions, translations (humanities). */
     private List<HumanitiesRow> humanitiesRows = new ArrayList<>();
 
@@ -85,6 +87,22 @@ public class CnfisSheetSnapshot {
         private String level;
         /** INDIVIDUAL, GROUP, COLLECTIVE, NOMINATION, PRIZE — the declared kind of the work. */
         private String kind;
+        private int universityParticipants;
+    }
+
+    /** One row of Anexa 5.2, from the declared activity "Performanță sportivă (CNFIS 5.2)". */
+    @Data
+    public static class SportRow {
+        private String activityInstanceId;
+        private String year;
+        private String activity;
+        private String championship;
+        /** UNIVERSITY, NATIONAL, EUROPEAN, INTERNATIONAL_ROMANIA, WORLD — the level of the championship. */
+        private String level;
+        /** PLACE_1 … PLACE_6, PLACES_4_6, PLACES_7_8 — the place obtained. */
+        private String place;
+        /** NATIONAL, EUROPEAN, WORLD — a record set, or null. */
+        private String record;
         private int universityParticipants;
     }
 
