@@ -1,0 +1,172 @@
+{
+  "reportTypeKey": "muzica-2026",
+  "templateResource": "classpath:report-templates/muzica-2026/template.xlsx",
+  "schemaVersion": 1,
+  "roles": [
+    {
+      "roleKey": "muzica-did",
+      "kind": "ITEMS_IN_CELL",
+      "sheet": "Tabelul 1 - DID",
+      "labelColumn": "B",
+      "keyColumn": "E",
+      "scoreColumn": "F",
+      "blocks": [
+        {
+          "activityName": "DID 1.1",
+          "label": "1.1",
+          "firstDataRow": 4
+        },
+        {
+          "activityName": "DID 1.2",
+          "label": "1.2",
+          "firstDataRow": 5
+        },
+        {
+          "activityName": "DID 1.3",
+          "label": "1.3",
+          "firstDataRow": 6
+        },
+        {
+          "activityName": "DID 1.4",
+          "label": "1.4",
+          "firstDataRow": 7
+        },
+        {
+          "activityName": "DID 2.1",
+          "label": "2.1",
+          "firstDataRow": 8
+        }
+      ]
+    },
+    {
+      "roleKey": "muzica-cs",
+      "kind": "ITEMS_IN_CELL",
+      "sheet": "Tabelul 2 - CS",
+      "labelColumn": "B",
+      "keyColumn": "E",
+      "scoreColumn": "F",
+      "blocks": [
+        {
+          "activityName": "CS 1.1",
+          "label": "1.1",
+          "firstDataRow": 4
+        },
+        {
+          "activityName": "CS 1.2",
+          "label": "1.2",
+          "firstDataRow": 5
+        },
+        {
+          "activityName": "CS 2.1",
+          "label": "2.1",
+          "firstDataRow": 6
+        },
+        {
+          "activityName": "CS 2.2",
+          "label": "2.2",
+          "firstDataRow": 7
+        },
+        {
+          "activityName": "CS 2.3",
+          "label": "2.3",
+          "firstDataRow": 8
+        },
+        {
+          "activityName": "CS 3.1",
+          "label": "3.1",
+          "firstDataRow": 9
+        },
+        {
+          "activityName": "CS 4.1",
+          "label": "4.1",
+          "firstDataRow": 10
+        }
+      ]
+    },
+    {
+      "roleKey": "muzica-ria",
+      "kind": "ITEMS_IN_CELL",
+      "sheet": "Tabelul 3 - RIA",
+      "labelColumn": "B",
+      "keyColumn": "E",
+      "scoreColumn": "F",
+      "blocks": [
+        {
+          "activityName": "RIA 1.1",
+          "label": "1.1",
+          "firstDataRow": 4
+        },
+        {
+          "activityName": "RIA 1.2",
+          "label": "1.2",
+          "firstDataRow": 5
+        },
+        {
+          "activityName": "RIA 1.3",
+          "label": "1.3",
+          "firstDataRow": 6
+        },
+        {
+          "activityName": "RIA 1.4",
+          "label": "1.4",
+          "firstDataRow": 7
+        },
+        {
+          "activityName": "RIA 1.5",
+          "label": "1.5",
+          "firstDataRow": 8
+        },
+        {
+          "activityName": "RIA 2.1",
+          "label": "2.1",
+          "firstDataRow": 9
+        },
+        {
+          "activityName": "RIA 2.2",
+          "label": "2.2",
+          "firstDataRow": 10
+        },
+        {
+          "activityName": "RIA 2.3",
+          "label": "2.3",
+          "firstDataRow": 11
+        },
+        {
+          "activityName": "RIA 3.1",
+          "label": "3.1",
+          "firstDataRow": 12
+        },
+        {
+          "activityName": "RIA 3.2",
+          "label": "3.2",
+          "firstDataRow": 13
+        },
+        {
+          "activityName": "RIA 3.3",
+          "label": "3.3",
+          "firstDataRow": 14
+        },
+        {
+          "activityName": "RIA 3.4",
+          "label": "3.4",
+          "firstDataRow": 15
+        },
+        {
+          "activityName": "RIA 3.5",
+          "label": "3.5",
+          "firstDataRow": 16
+        },
+        {
+          "activityName": "RIA 3.6",
+          "label": "3.6",
+          "firstDataRow": 17
+        },
+        {
+          "activityName": "RIA 3.7",
+          "label": "3.7",
+          "firstDataRow": 18
+        }
+      ]
+    }
+  ]
+}

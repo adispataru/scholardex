@@ -32,6 +32,9 @@ public class BindingRole {
     private String categoryColumn;     // e.g. "H" (Categorie forum) — for field-level diff
     private String authorCountColumn;  // e.g. "I" (Nr. autori) — for field-level diff
 
+    // ITEMS_IN_CELL fields (H142): sheet, keyColumn (the items), scoreColumn (the points), blocks (one per row)
+    // and the column carrying each row's label.
+    private String labelColumn;
     // STACKED_BLOCKS fields
     private String activityMatch;
     private String groupingKey;

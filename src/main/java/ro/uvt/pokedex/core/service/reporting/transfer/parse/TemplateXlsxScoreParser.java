@@ -16,9 +16,11 @@ import ro.uvt.pokedex.core.model.reporting.transfer.ActivitySnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.SnapshotItem;
+import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingBlock;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingKind;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
+import ro.uvt.pokedex.core.service.importing.grid.GridItemSplitter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,6 +75,8 @@ public class TemplateXlsxScoreParser {
                     List<SnapshotItem> items = parseStackedBlocks(workbook, evaluator, role, ignored);
                     if (items.isEmpty()) detectStackedBlocksShift(workbook, role, layoutWarnings);
                     out.addAll(items);
+                } else if (role.getKind() == BindingKind.ITEMS_IN_CELL) {
+                    out.addAll(parseItemsInCell(workbook, evaluator, role));
                 }
             }
             return out;
@@ -212,6 +216,71 @@ public class TemplateXlsxScoreParser {
             }
         }
         return out;
+    }
+
+    private static final java.util.regex.Pattern ROW_LABEL = java.util.regex.Pattern.compile("^\\s*(\\d+\\.\\d+)");
+    private static final java.util.regex.Pattern LEADING_NUMBER = java.util.regex.Pattern.compile("^\\s*(\\d+(?:[.,]\\d+)?)");
+
+    /**
+     * H142 — a faculty grid row lists its items in one cell and gives only the row's points: each item becomes
+     * an activity of the block carrying an equal share of those points, so the block's total compares exactly
+     * and the items pair up by text. The row is found by its label ("1.1. Tratat…" → block label "1.1") in the
+     * label column, wherever the person moved it; without a label column, at the binding's row.
+     */
+    private List<SnapshotItem> parseItemsInCell(Workbook workbook, FormulaEvaluator evaluator, BindingRole role) {
+        Sheet sheet = workbook.getSheet(role.getSheet());
+        if (sheet == null) return List.of();
+        int itemsCol = CellReference.convertColStringToIndex(role.getKeyColumn());
+        int pointsCol = CellReference.convertColStringToIndex(role.getScoreColumn());
+        int labelCol = isBlank(role.getLabelColumn()) ? -1 : CellReference.convertColStringToIndex(role.getLabelColumn());
+        List<SnapshotItem> out = new ArrayList<>();
+        for (BindingBlock block : role.getBlocks()) {
+            Row row = gridRow(sheet, block, labelCol);
+            if (row == null) continue;
+            List<String> items = GridItemSplitter.split(stringValue(row.getCell(itemsCol))).stream()
+                    .map(GridItemSplitter.Item::text)
+                    .filter(text -> text != null && !text.isBlank())
+                    .toList();
+            double points = gridPoints(row.getCell(pointsCol), evaluator);
+            if (items.isEmpty() && points == 0.0) continue;
+            if (items.isEmpty()) items = List.of(block.getActivityName());
+            double share = points / items.size();
+            for (String text : items) {
+                ActivitySnapshotItem item = new ActivitySnapshotItem();
+                item.setRoleKey(role.getRoleKey());
+                item.setActivityName(block.getActivityName());
+                item.setItemKey(block.getActivityName() + ":" + text);
+                item.setDescription(text);
+                item.setScore(share);
+                out.add(item);
+            }
+        }
+        return out;
+    }
+
+    private Row gridRow(Sheet sheet, BindingBlock block, int labelCol) {
+        if (labelCol < 0 || isBlank(block.getLabel())) {
+            return sheet.getRow(block.getFirstDataRow() - 1);
+        }
+        for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) continue;
+            String label = stringValue(row.getCell(labelCol));
+            if (label == null) continue;
+            java.util.regex.Matcher m = ROW_LABEL.matcher(label);
+            if (m.find() && m.group(1).equals(block.getLabel())) return row;
+        }
+        return null;
+    }
+
+    /** The row's points: a number, a formula, or text as the faculties type it ("360 p", "30p"). */
+    private double gridPoints(Cell cell, FormulaEvaluator evaluator) {
+        if (cell == null) return 0.0;
+        if (cell.getCellType() == CellType.STRING) {
+            java.util.regex.Matcher m = LEADING_NUMBER.matcher(cell.getStringCellValue());
+            return m.find() ? Double.parseDouble(m.group(1).replace(',', '.')) : 0.0;
+        }
+        return numericValue(cell, evaluator);
     }
 
     private int columnFor(Map<String, ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingColumn> cols, String source) {

@@ -24,6 +24,15 @@ public class ActivityInstance {
     private Activity activity;
     private Map<String, String> fields;
     private Map<Activity.ReferenceField, String> referenceFields;
+    /**
+     * H142 — where an imported record came from (e.g. "Fișa de verificare: fisa.xlsx"); null for a record typed in.
+     * An import never overwrites what the person typed: it only adds records.
+     */
+    private String importSource;
+    /** H142 — identifies an imported item (person + type + text), so importing the same file again adds nothing. */
+    private String importKey;
+    /** H142 — true until the person has looked at an imported record ("de verificat"); null for typed records. */
+    private Boolean needsReview;
 
     public Optional<Integer> getYearOptional() {
         return PersistenceYearSupport.extractYear(date, id, log);

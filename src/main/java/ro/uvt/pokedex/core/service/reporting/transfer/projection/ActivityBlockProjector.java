@@ -57,7 +57,7 @@ public class ActivityBlockProjector {
         Map<String, List<Indicator>> indicatorsByBlock = buildIndicatorsByBlock(report);
 
         for (BindingRole role : binding.getRoles()) {
-            if (role.getKind() != BindingKind.STACKED_BLOCKS) continue;
+            if (role.getKind() != BindingKind.STACKED_BLOCKS && role.getKind() != BindingKind.ITEMS_IN_CELL) continue;
             for (BindingBlock block : role.getBlocks()) {
                 List<Indicator> indicators = indicatorsByBlock.getOrDefault(block.getActivityName(), List.of());
                 for (Indicator indicator : indicators) {

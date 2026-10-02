@@ -1,6 +1,6 @@
 # H142 — FV Muzică 2026 (Comisia 35) and the CNFIS gaps for music
 
-Status: **Slices 0 and 1 BUILT 2026-10-02 (not pushed); slices 2–6 open.** Scoped, decided and reassessed the same day. Asked by FMT (vice-dean for research,
+Status: **Slices 0 and 1 in prod 2026-10-02; slice 2 BUILT 2026-10-02 (not pushed); slices 3–6 open.** Scoped, decided and reassessed the same day. Asked by FMT (vice-dean for research,
 email of 2026-10-02 in the thread "Intalnire platforma de raportare a cercetarii"). The faculty is the first
 vocational one on the platform.
 
@@ -424,6 +424,47 @@ when it lands. Slice 5 last, source by source.
 - **Readings chosen while building:** a book needs its publisher category (no category, no points); a recording with
   a declared duration under 45 minutes does not count, one without a duration does; an organiser or a keynote
   without a level counts as national; a membership without a role is a membership (5 points).
+
+## Slice 2 as built (2026-10-02)
+
+- **Import into records.** `ActivityFileImportService` reads two kinds of file: the faculty's fișă de verificare
+  (`MusicGridParser` finds the header row by its columns and each row by its keywords, `GridItemSplitter` splits a
+  cell into items — bullets, dashes, line breaks, year headers, a link alone on its line —, `MusicGridLayout` names
+  the 27 rows and their activity types) and a person's CNFIS Anexa 5.1 (`CnfisArtsSheetParser`: year, work, event,
+  the marked column = kind and level, participants). Each item becomes a record of its row's type with its text,
+  date (full date, else the first year, else none) and links; `ActivityInstance` gained `importSource` (the file,
+  and who uploaded it when a head did), `importKey` (SHA-256 of person, type and folded text — a re-import adds
+  nothing) and `needsReview`. Fields are filled only where a word makes them obvious: one role named ("dirijor",
+  "solist"; two named → none), the ensemble from duo/trio/cvartet/cvintet, the visibility and result from the row,
+  the event when the registry names it inside the text; everything else is left to the review. The institutional
+  Anexa 6.1 is refused (it attributes rows to nobody).
+- **Who imports.** Each colleague, from the Activities tab ("Importă fișa (.xlsx)",
+  `POST /user/workspace/activities/import-file`). A head, many files at once, from the unit row of the supervisor
+  workspace ("Import fișe", `/supervisor/{departments|divisions}/{id}/activity-import`, the access rule of the unit's
+  CNFIS page): a file goes to the member whose last name and one first name its heading or its name carries; a
+  file naming nobody or two members is not imported, and a single file can be given a member.
+- **Review.** The Activities tab shows "imported" and "to check" on each record, a "To check (N)" view, and in it a
+  bar to set one field on many records (options and numbers only), mark them checked, or delete them
+  (`POST /user/workspace/activities/bulk`, the person's own records only). Saving one record marks it checked. Found
+  on the way and fixed: a select of the record panel showed its first option for an unset field, and Save stored
+  it — an imported book became "Editură CNCS categoria A"; it now shows an empty choice and empty fields are not
+  stored.
+- **Export and verification.** Binding kind `ITEMS_IN_CELL` (render: every item of a row in one cell, one per line,
+  the row's points beside it — the run's block total, which honours a cap; parse: each row found by its label, the
+  points as typed, "360 p" included, shared equally among the row's items). `Muzica2026ReportTypeImportSupport`,
+  `report-templates/muzica-2026/{template.xlsx, binding.json}`: one role per table, one block per row, named like
+  the importer's rows ("CS 1.2"). The template was built from the faculty's grid by a script that copies only the
+  official text of columns A–D and the databases list, with the faculty's styles; no candidate cell and no file
+  metadata (the source carried the author's name and path). `GridItemDescription` writes what the person wrote
+  (not the type's name, not the shortened import name) and the year. The report's export settings are in the seed
+  (`reportTypeKey` `muzica-2026`, verification on, 28 indicators on 27 rows, the 7 counters not exported).
+- **Verified on the lecturer's real grid (local only, removed afterwards):** 193 records, 4 without a date; bulk
+  set, mark and delete; a re-import after deleting two adds exactly those two. The run exported to the grid
+  reproduces the file's own totals for CS (1700) and RIA (770) row by row; DID shows 370 of 400 until the book gets
+  its publisher category. Verifying the same file against the run: 8 rows match, 2 differ (the book, and a course
+  the file gave no points). The verification page no longer says "no scored rows" when only activity rows were
+  compared, and its section is "Activities, by section of the sheet" (was "Perspectiva D").
+- **Known:** a re-import brings back records the person deleted (import keys are not remembered after a delete).
 
 ## Still to decide
 

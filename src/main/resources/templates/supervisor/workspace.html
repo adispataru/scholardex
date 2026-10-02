@@ -127,6 +127,12 @@
                                                     <i class="fa-solid fa-table-list fa-xs" aria-hidden="true"></i>
                                                     <span th:text="#{supervisor.workspace.units.cnfis}">CNFIS</span>
                                                 </a>
+                                                <a th:if="${row.unitType() == 'department' or row.unitType() == 'division'}"
+                                                   th:href="@{/supervisor/{k}/{id}/activity-import(k=${row.unitType() == 'department' ? 'departments' : 'divisions'},id=${row.unitId()})}"
+                                                   class="btn btn-sm btn-outline-secondary mr-1">
+                                                    <i class="fa-solid fa-file-import fa-xs" aria-hidden="true"></i>
+                                                    <span th:text="#{supervisor.workspace.units.activityImport}">Import fișe</span>
+                                                </a>
                                                 <a th:href="${row.dashboardHref()}" class="btn btn-sm btn-outline-primary">
                                                     <span th:text="#{supervisor.workspace.units.openDashboard}">Open dashboard</span>
                                                     <i class="fa-solid fa-arrow-right fa-xs" aria-hidden="true"></i>

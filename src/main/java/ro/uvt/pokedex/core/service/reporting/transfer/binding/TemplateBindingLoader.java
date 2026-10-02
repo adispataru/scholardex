@@ -152,6 +152,38 @@ public class TemplateBindingLoader {
                 validateStackedBlocks(role, workbook, src);
             } else if (role.getKind() == BindingKind.TILED_SHEETS) {
                 validateTiledSheets(role, workbook, src);
+            } else if (role.getKind() == BindingKind.ITEMS_IN_CELL) {
+                validateItemsInCell(role, workbook, src);
+            }
+        }
+    }
+
+    /** H142: one template row per block; the items, points and (optional) label columns are column letters. */
+    private void validateItemsInCell(BindingRole role, Workbook workbook, String src) {
+        String roleId = src + ": role '" + role.getRoleKey() + "'";
+        if (isBlank(role.getSheet()) || workbook.getSheet(role.getSheet()) == null) {
+            throw new IllegalStateException(roleId + " missing or unknown sheet '" + role.getSheet() + "'");
+        }
+        for (String column : new String[]{role.getKeyColumn(), role.getScoreColumn()}) {
+            if (isBlank(column) || !COLUMN_LETTERS.matcher(column).matches()) {
+                throw new IllegalStateException(roleId + " needs keyColumn (items) and scoreColumn (points) as column letters");
+            }
+        }
+        if (!isBlank(role.getLabelColumn()) && !COLUMN_LETTERS.matcher(role.getLabelColumn()).matches()) {
+            throw new IllegalStateException(roleId + " labelColumn '" + role.getLabelColumn() + "' is not a column letter");
+        }
+        if (role.getBlocks() == null || role.getBlocks().isEmpty()) {
+            throw new IllegalStateException(roleId + " must declare at least one block");
+        }
+        Set<String> names = new HashSet<>();
+        for (int i = 0; i < role.getBlocks().size(); i++) {
+            BindingBlock b = role.getBlocks().get(i);
+            String blockId = roleId + " block[" + i + "]";
+            if (isBlank(b.getActivityName()) || !names.add(b.getActivityName())) {
+                throw new IllegalStateException(blockId + " missing or repeated activityName");
+            }
+            if (b.getFirstDataRow() == null || b.getFirstDataRow() < 1) {
+                throw new IllegalStateException(blockId + " firstDataRow must be >= 1");
             }
         }
     }

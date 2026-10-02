@@ -33,6 +33,8 @@ public final class ArtisticEventRankSupport {
     private static final Pattern NON_ALNUM = Pattern.compile("[^a-z0-9]+");
 
     private static volatile Map<String, ArtisticEvent.Rank> ranks = Map.of();
+    /** {normalised name without its parenthesised place, the name as listed}, for {@link #findIn}. */
+    private static volatile java.util.List<String[]> phrases = java.util.List.of();
     private static volatile Supplier<? extends Collection<ArtisticEvent>> loader;
     private static volatile boolean loaded;
 
@@ -50,7 +52,41 @@ public final class ArtisticEventRankSupport {
             index.merge(key, event.getRank(), ArtisticEventRankSupport::better);
         }
         ranks = Map.copyOf(index);
+        java.util.List<String[]> found = new java.util.ArrayList<>();
+        for (ArtisticEvent event : events) {
+            if (event.getName() == null || event.getRank() == null) {
+                continue;
+            }
+            String core = normalize(event.getName().replaceAll("\\([^)]*\\)", " "));
+            if (core.split(" ").length >= 2) {
+                found.add(new String[]{core, event.getName()});
+            }
+        }
+        phrases = java.util.List.copyOf(found);
         loaded = true;
+    }
+
+    /**
+     * H142 — the listed event a free text names, word for word (its name without the parenthesised place, at least
+     * two words), the longest when several do; empty otherwise. Cautious on purpose: "Festivalul Internațional
+     * George Enescu" does not match "Festivalul George Enescu", so an item imported from a grid keeps the
+     * visibility of its row rather than borrowing a rank it may not have.
+     */
+    public static Optional<String> findIn(String text) {
+        String t = " " + normalize(text) + " ";
+        if (t.isBlank()) {
+            return Optional.empty();
+        }
+        ensureLoaded();
+        String best = null;
+        int bestLength = 0;
+        for (String[] phrase : phrases) {
+            if (phrase[0].length() > bestLength && t.contains(" " + phrase[0] + " ")) {
+                best = phrase[1];
+                bestLength = phrase[0].length();
+            }
+        }
+        return Optional.ofNullable(best);
     }
 
     /** The source the registry is (re)loaded from on first use. */
@@ -62,6 +98,7 @@ public final class ArtisticEventRankSupport {
     /** Back to the unregistered state (tests). */
     public static synchronized void reset() {
         ranks = Map.of();
+        phrases = java.util.List.of();
         loader = null;
         loaded = false;
     }

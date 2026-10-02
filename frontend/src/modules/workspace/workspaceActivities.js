@@ -18,9 +18,11 @@
  *   POST /user/workspace/activities/update
  *   POST /user/workspace/activities/delete/{id}
  *   GET  /user/activities/activity/{id}/fields   (existing, reused)
+ *   POST /user/workspace/activities/import-file   (H142 — the person's fișă de verificare / Anexa 5.1)
+ *   POST /user/workspace/activities/bulk          (H142 — review imported records many at once)
  */
 
-import { postJsonHeaders } from '../shared/fetchUtils';
+import { csrfHeaders, postJsonHeaders } from '../shared/fetchUtils';
 import { buildPaginationHtml, wirePaginationClicks } from '../shared/clientPagination';
 import { t, tPlural } from '../shared/i18n';
 
@@ -48,6 +50,12 @@ let _activeId      = null;
 let _createOpen    = false;
 let _pendingCreate = false;  // open create form as soon as the tab finishes loading
 let _searchQuery   = '';     // inline text filter
+// H142 — imported records: the "to check" view, the records selected in it, and what the last import or bulk
+// action said (kept across the reload that follows them).
+let _reviewOnly    = false;
+let _selected      = new Set();
+let _importNotice  = null;   // { lines: string[], error: boolean }
+let _bulkMessage   = null;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -113,6 +121,12 @@ function _showSkeleton() {
 // ── Top-level render ─────────────────────────────────────────────────────────
 
 function _renderAll() {
+    // H142 — a selection survives a reload only for the records still there; the "to check" view closes by
+    // itself once nothing is left to check, unless it is showing what the last bulk action did
+    const present = new Set(_instances.map(inst => inst.id));
+    _selected = new Set([..._selected].filter(id => present.has(id)));
+    if (_reviewOnly && _toCheckCount() === 0 && !_bulkMessage) _reviewOnly = false;
+
     const container = document.createElement('div');
     container.className = 'app-ws-acts';
 
@@ -128,6 +142,11 @@ function _renderAll() {
 
     // Toolbar
     container.insertAdjacentHTML('beforeend', _buildToolbar());
+
+    // H142 — the review bar of imported records (only in the "to check" view)
+    const bulkHost = document.createElement('div');
+    bulkHost.id = 'ws-acts-bulk';
+    container.appendChild(bulkHost);
 
     // Create panel placeholder (hidden initially)
     const createPlaceholder = document.createElement('div');
@@ -152,6 +171,9 @@ function _renderAll() {
     // Wire toolbar
     document.getElementById('ws-acts-add-btn')?.addEventListener('click', () => _toggleCreate());
     document.getElementById('ws-acts-participant-btn')?.addEventListener('click', () => _toggleParticipantImport());
+    _wireImportAndReview();
+    _renderImportNotice();
+    _renderBulkBar();
 
 
     // Render table
@@ -165,10 +187,8 @@ function _renderAll() {
     // Escape key
     document.addEventListener('keydown', _handleEscape);
 
-    // Retry
-    _mount.addEventListener('click', e => {
-        if (e.target.closest('[data-retry-panel]')) _init(_panel);
-    });
+    // Retry (a named listener, so the reloads after an import or a bulk action do not stack copies of it)
+    _mount.addEventListener('click', _onMountClick);
 
     if (_pendingCreate) { _pendingCreate = false; _toggleCreate(); }
 }
@@ -178,14 +198,12 @@ function _renderPage() {
     if (!wrap) return;
     wrap.innerHTML = '';
 
-    const filtered = _searchQuery
-        ? _instances.filter(inst => {
-              const q    = _searchQuery;
-              const name = (inst.name ?? inst.activity?.name ?? '').toLowerCase();
-              const type = (inst.activity?.name ?? '').toLowerCase();
-              return name.includes(q) || type.includes(q);
-          })
-        : _instances;
+    const filtered = _filtered();
+    if (_reviewOnly && filtered.length === 0) {
+        wrap.innerHTML = `<p class="app-ws-acts__review-empty">${t('workspace.activities.review.empty')}</p>`;
+        return;
+    }
+    const allSelected = _reviewOnly && filtered.every(inst => _selected.has(inst.id));
 
     const start     = (_page - 1) * PAGE_SIZE;
     const pageItems = filtered.slice(start, start + PAGE_SIZE);
@@ -197,12 +215,17 @@ function _renderPage() {
     table.setAttribute('role', 'grid');
     table.innerHTML = `
         <colgroup>
+          ${_reviewOnly ? '<col class="app-ws-acts__col-select">' : ''}
           <col class="app-ws-acts__col-name">
           <col class="app-ws-acts__col-date">
           <col class="app-ws-acts__col-type">
           <col class="app-ws-acts__col-actions">
         </colgroup>
         <thead><tr>
+          ${_reviewOnly
+              ? `<th scope="col" class="app-ws-acts__col-select"><input type="checkbox" id="ws-acts-select-all" ` +
+                `aria-label="${_esc(t('workspace.activities.review.selectAll'))}" ${allSelected ? 'checked' : ''}></th>`
+              : ''}
           <th scope="col">${t('common.name')}</th>
           <th scope="col">${t('common.date')}</th>
           <th scope="col">${t('common.type')}</th>
@@ -213,6 +236,13 @@ function _renderPage() {
     wrap.appendChild(table);
     const tbody = table.querySelector('#ws-acts-tbody');
     for (const inst of pageItems) _appendRow(tbody, inst);
+    table.querySelector('#ws-acts-select-all')?.addEventListener('change', e => {
+        for (const inst of filtered) {
+            if (e.target.checked) _selected.add(inst.id); else _selected.delete(inst.id);
+        }
+        _renderPage();
+        _renderBulkBar();
+    });
 
     if (pages > 1) {
         const paginationEl = document.createElement('div');
@@ -239,8 +269,15 @@ function _appendRow(tbody, inst) {
     if (_activeId === inst.id) tr.classList.add('app-ws-acts__row--active');
 
     tr.innerHTML =
+        (_reviewOnly
+            ? `<td class="app-ws-acts__col-select" data-select-cell>` +
+                  `<input type="checkbox" data-select-inst="${_esc(inst.id)}" ` +
+                  `aria-label="${_esc(t('workspace.activities.review.selectRow', name))}" ${_selected.has(inst.id) ? 'checked' : ''}>` +
+              `</td>`
+            : '') +
         `<td class="app-ws-acts__col-name">` +
             `<span class="app-ws-acts__name">${_esc(name)}</span>` +
+            _importBadges(inst) +
         `</td>` +
         `<td class="app-ws-acts__col-date">${_esc(date)}</td>` +
         `<td class="app-ws-acts__col-type">` +
@@ -262,8 +299,14 @@ function _appendRow(tbody, inst) {
         `</td>`;
 
     tr.addEventListener('click', e => {
-        if (e.target.closest('a, button.app-ws-acts__action-btn--danger, [data-link-inst]')) return;
+        if (e.target.closest('a, button.app-ws-acts__action-btn--danger, [data-link-inst], [data-select-cell]')) return;
         _toggleDetail(inst, tr);
+    });
+    tr.querySelector('[data-select-inst]')?.addEventListener('change', e => {
+        if (e.target.checked) _selected.add(inst.id); else _selected.delete(inst.id);
+        const all = document.getElementById('ws-acts-select-all');
+        if (all) all.checked = _filtered().every(i => _selected.has(i.id));
+        _renderBulkBar();
     });
     tr.querySelector('[data-detail-btn]').addEventListener('click', e => {
         e.stopPropagation();
@@ -318,7 +361,7 @@ function _insertDetailRow(inst, tr) {
     detailTr.id        = 'ws-acts-detail-row';
     detailTr.className = 'app-ws-acts__detail-row';
     const td = document.createElement('td');
-    td.setAttribute('colspan', '4');
+    td.setAttribute('colspan', _reviewOnly ? '5' : '4');
     td.innerHTML = _buildDetailPanel(inst);
     detailTr.appendChild(td);
     tr.insertAdjacentElement('afterend', detailTr);
@@ -741,7 +784,7 @@ function _openLinkRow(inst, tr) {
     linkTr.dataset.forInst = inst.id;
     linkTr.className = 'app-ws-acts__detail-row';
     const td = document.createElement('td');
-    td.setAttribute('colspan', '4');
+    td.setAttribute('colspan', _reviewOnly ? '5' : '4');
     td.innerHTML = `<div class="app-ws-acts__link-box">
         <div class="app-ws-acts__link-title">Link “${_esc(inst.name ?? '')}” to a canonical project</div>
         <div class="app-ws-acts__picker">
@@ -851,9 +894,15 @@ function _buildDetailPanel(inst) {
         const customInputs = actFields.map(f => {
             const val = fieldValues[f.name] ?? '';
             if (f.allowedValues?.length > 0) {
-                const opts = f.allowedValues.map(v =>
-                    `<option value="${_esc(v)}" ${v === val ? 'selected' : ''}>${_esc(v)}</option>`
-                ).join('');
+                // An unset field shows an empty choice: without it the browser shows (and Save stores) the first
+                // option, e.g. the top publisher category, for a value the person never chose. A stored value that
+                // is no longer an option stays visible and is kept.
+                const legacy = val !== '' && !f.allowedValues.includes(val)
+                    ? `<option value="${_esc(val)}" selected>${_esc(val)}</option>` : '';
+                const opts = `<option value="" ${val === '' ? 'selected' : ''}>—</option>` + legacy +
+                    f.allowedValues.map(v =>
+                        `<option value="${_esc(v)}" ${v === val ? 'selected' : ''}>${_esc(v)}</option>`
+                    ).join('');
                 return `<div class="app-ws-acts__field">
                     <label class="app-ws-acts__label">${_esc(f.name)}</label>
                     <select class="app-ws-acts__select" data-field="${_esc(f.name)}">${opts}</select>
@@ -910,6 +959,9 @@ function _buildDetailPanel(inst) {
               <p style="margin:0;font-size:0.85rem;">
                 <strong>${t('common.dateColon')}</strong> ${_esc(inst.date ?? '—')}
               </p>
+              ${inst.importSource
+                  ? `<p class="app-ws-acts__source">${_esc(t('workspace.activities.review.source', inst.importSource))}</p>`
+                  : ''}
             </div>
             <!-- Right: edit -->
             <div>
@@ -931,7 +983,8 @@ function _buildDetailPanel(inst) {
 function _saveInst(id, detailTr) {
     const fields    = {};
     const refFields = {};
-    detailTr.querySelectorAll('[data-field]').forEach(el => { fields[el.dataset.field] = el.value; });
+    // an empty field is left out rather than stored as "", so "not filled" reads the same everywhere
+    detailTr.querySelectorAll('[data-field]').forEach(el => { if (el.value !== '') fields[el.dataset.field] = el.value; });
     detailTr.querySelectorAll('[data-ref-field]').forEach(el => { refFields[el.dataset.refField] = el.value; });
 
     const feedback = detailTr.querySelector('.app-ws-acts__feedback');
@@ -949,6 +1002,12 @@ function _saveInst(id, detailTr) {
             // Update in-memory
             const inst = _instances.find(i => i.id === id);
             if (inst) { inst.fields = fields; inst.referenceFields = refFields; }
+            // H142 — the server marks an imported record checked once its owner saves it
+            if (inst && inst.needsReview === true) {
+                inst.needsReview = false;
+                document.querySelector(`[data-inst-id="${CSS.escape(id)}"] .app-ws-acts__review-badge`)?.remove();
+                _refreshReviewToggle();
+            }
             if (feedback) {
                 feedback.textContent = t('workspace.activities.saved');
                 feedback.classList.remove('app-ws-acts__feedback--error');
@@ -979,6 +1038,7 @@ function _deleteInst(id, detailTr) {
             // Remove from in-memory list
             const idx = _instances.findIndex(i => i.id === id);
             if (idx !== -1) _instances.splice(idx, 1);
+            _selected.delete(id);
             _closeDetail();
             // If page is now empty and not page 1, go back
             const maxPage = Math.max(1, Math.ceil(_instances.length / PAGE_SIZE));
@@ -1207,6 +1267,8 @@ function _updateStats() {
     if (card) {
         card.outerHTML = _buildSummaryCard();
     }
+    _refreshReviewToggle();
+    _renderBulkBar();
 }
 
 // ── Keyboard ─────────────────────────────────────────────────────────────────
@@ -1230,6 +1292,277 @@ function _handleEscape(e) {
     }
 }
 
+// ── H142: import a fișă, review the imported records ─────────────────────────
+
+function _onMountClick(e) {
+    if (e.target.closest('[data-retry-panel]')) _init(_panel);
+}
+
+/** The records listed: the "to check" view keeps imported records not yet checked; the search filters both. */
+function _filtered() {
+    let list = _instances;
+    if (_reviewOnly) list = list.filter(inst => inst.needsReview === true);
+    if (_searchQuery) {
+        const q = _searchQuery;
+        list = list.filter(inst => {
+            const name = (inst.name ?? inst.activity?.name ?? '').toLowerCase();
+            const type = (inst.activity?.name ?? '').toLowerCase();
+            return name.includes(q) || type.includes(q);
+        });
+    }
+    return list;
+}
+
+function _toCheckCount() {
+    return _instances.filter(inst => inst.needsReview === true).length;
+}
+
+function _importBadges(inst) {
+    let html = '';
+    if (inst.importSource) {
+        html += `<span class="app-ws-acts__import-badge" title="${_esc(t('workspace.activities.review.source', inst.importSource))}">` +
+                `${_esc(t('workspace.activities.review.imported'))}</span>`;
+    }
+    if (inst.needsReview === true) {
+        html += `<span class="app-ws-acts__review-badge">${_esc(t('workspace.activities.review.badge'))}</span>`;
+    }
+    return html;
+}
+
+function _reviewToggleHtml() {
+    const count = _toCheckCount();
+    if (count === 0 && !_reviewOnly) return '';
+    return `<button type="button" id="ws-acts-review-btn"
+                    class="app-ws-acts__review-toggle${_reviewOnly ? ' app-ws-acts__review-toggle--active' : ''}"
+                    aria-pressed="${_reviewOnly}">
+              <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i> ${_esc(t('workspace.activities.review.filter', count))}
+            </button>`;
+}
+
+function _refreshReviewToggle() {
+    const host = document.getElementById('ws-acts-review-toggle-host');
+    if (!host) return;
+    host.innerHTML = _reviewToggleHtml();
+    host.querySelector('#ws-acts-review-btn')?.addEventListener('click', _toggleReview);
+}
+
+function _toggleReview() {
+    _reviewOnly = !_reviewOnly;
+    _selected = new Set();
+    _bulkMessage = null;
+    _page = 1;
+    _closeDetail();
+    _refreshReviewToggle();
+    _renderBulkBar();
+    _renderPage();
+}
+
+function _wireImportAndReview() {
+    const input = document.getElementById('ws-acts-import-input');
+    document.getElementById('ws-acts-import-btn')?.addEventListener('click', () => input?.click());
+    input?.addEventListener('change', () => _uploadFile(input.files && input.files[0]));
+    document.getElementById('ws-acts-review-btn')?.addEventListener('click', _toggleReview);
+}
+
+function _uploadFile(file) {
+    const input = document.getElementById('ws-acts-import-input');
+    if (!file) return;
+    const btn = document.getElementById('ws-acts-import-btn');
+    if (btn) btn.disabled = true;
+    _importNotice = { lines: [t('workspace.activities.importFile.working', file.name)], error: false };
+    _renderImportNotice();
+    const body = new FormData();
+    body.append('file', file);
+    if (input) input.value = ''; // the same file can be chosen again
+    fetch('/user/workspace/activities/import-file', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: csrfHeaders(),
+        body,
+    })
+        .then(r => r.json().catch(() => ({})).then(json => ({ ok: r.ok, json })))
+        .then(({ ok, json }) => {
+            if (!ok) {
+                _importNotice = { lines: [_importErrorText(json && json.error)], error: true };
+                _renderImportNotice();
+                if (btn) btn.disabled = false;
+                return;
+            }
+            _importNotice = { lines: _importReportLines(file.name, json), error: false };
+            if (json.created > 0) { _reviewOnly = true; _bulkMessage = null; }
+            _init(_panel);
+        })
+        .catch(() => {
+            _importNotice = { lines: [t('workspace.activities.importFile.failed')], error: true };
+            _renderImportNotice();
+            if (btn) btn.disabled = false;
+        });
+}
+
+function _importErrorText(code) {
+    switch (code) {
+        case 'EMPTY':               return t('workspace.activities.importFile.error.EMPTY');
+        case 'TOO_LARGE':           return t('workspace.activities.importFile.error.TOO_LARGE');
+        case 'NOT_XLSX':            return t('workspace.activities.importFile.error.NOT_XLSX');
+        case 'INSTITUTIONAL_TABLE': return t('workspace.activities.importFile.error.INSTITUTIONAL_TABLE');
+        case 'UNSUPPORTED':         return t('workspace.activities.importFile.error.UNSUPPORTED');
+        case 'UNREADABLE':          return t('workspace.activities.importFile.error.UNREADABLE');
+        default:                    return t('workspace.activities.importFile.failed');
+    }
+}
+
+function _importReportLines(fileName, r) {
+    const lines = [t('workspace.activities.importFile.done', fileName, r.created ?? 0, r.alreadyImported ?? 0)];
+    if (r.withoutYear > 0) lines.push(t('workspace.activities.importFile.withoutYear', r.withoutYear));
+    if (r.eventsRecognised > 0) lines.push(t('workspace.activities.importFile.eventsRecognised', r.eventsRecognised));
+    if (Array.isArray(r.unrecognisedRows) && r.unrecognisedRows.length) {
+        lines.push(t('workspace.activities.importFile.unrecognisedRows', r.unrecognisedRows.join('; ')));
+    }
+    if (Array.isArray(r.missingTypes) && r.missingTypes.length) {
+        lines.push(t('workspace.activities.importFile.missingTypes', r.missingTypes.join('; ')));
+    }
+    if (r.unmarkedRows > 0) lines.push(t('workspace.activities.importFile.unmarkedRows', r.unmarkedRows));
+    return lines;
+}
+
+function _renderImportNotice() {
+    const host = document.getElementById('ws-acts-import-notice');
+    if (!host) return;
+    if (!_importNotice) { host.innerHTML = ''; return; }
+    host.innerHTML = `
+        <div class="app-ws-acts__import-notice${_importNotice.error ? ' app-ws-acts__import-notice--error' : ''}" role="status">
+          <button type="button" class="app-ws-acts__import-notice-close" data-dismiss-import
+                  aria-label="${_esc(t('workspace.activities.importFile.dismiss'))}">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+          ${_importNotice.lines.map(line => `<p class="app-ws-acts__import-notice-line">${_esc(line)}</p>`).join('')}
+        </div>`;
+    host.querySelector('[data-dismiss-import]')?.addEventListener('click', () => {
+        _importNotice = null;
+        _renderImportNotice();
+    });
+}
+
+/** The fields a bulk action can fill: those with options or numbers, over the types of the selected records. */
+function _bulkFields(selected) {
+    const byName = new Map();
+    for (const inst of selected) {
+        for (const f of (inst.activity?.fields ?? [])) {
+            const options = Array.isArray(f.allowedValues) ? f.allowedValues : [];
+            if (options.length === 0 && !f.number) continue;
+            const entry = byName.get(f.name) ?? { name: f.name, options: [] };
+            for (const o of options) if (!entry.options.includes(o)) entry.options.push(o);
+            byName.set(f.name, entry);
+        }
+    }
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function _renderBulkValue(host, field) {
+    if (!host) return;
+    if (!field) { host.innerHTML = ''; return; }
+    const label = _esc(t('workspace.activities.review.value'));
+    host.innerHTML = field.options.length > 0
+        ? `<select class="app-ws-acts__select" id="ws-acts-bulk-value" aria-label="${label}">` +
+              field.options.map(o => `<option value="${_esc(o)}">${_esc(o)}</option>`).join('') +
+          `</select>`
+        : `<input class="app-ws-acts__input app-ws-acts__bulk-number" type="number" min="0" step="any" ` +
+              `id="ws-acts-bulk-value" placeholder="${label}" aria-label="${label}">`;
+}
+
+function _renderBulkBar() {
+    const host = document.getElementById('ws-acts-bulk');
+    if (!host) return;
+    if (!_reviewOnly) { host.innerHTML = ''; return; }
+    const prevField = document.getElementById('ws-acts-bulk-field')?.value ?? '';
+    const prevValue = document.getElementById('ws-acts-bulk-value')?.value ?? '';
+    const selected = _instances.filter(inst => _selected.has(inst.id));
+    const fields = _bulkFields(selected);
+    const none = selected.length === 0 ? ' disabled' : '';
+    host.innerHTML = `
+        <div class="app-card app-ws-acts__bulk">
+          <p class="app-ws-acts__bulk-hint">${t('workspace.activities.review.hint')}</p>
+          <div class="app-ws-acts__bulk-row">
+            <span class="app-ws-acts__bulk-count">${t('workspace.activities.review.selected', selected.length)}</span>
+            <select class="app-ws-acts__select" id="ws-acts-bulk-field"
+                    aria-label="${_esc(t('workspace.activities.review.chooseField'))}"${none}>
+              <option value="">${_esc(t('workspace.activities.review.chooseField'))}</option>
+              ${fields.map(f => `<option value="${_esc(f.name)}">${_esc(f.name)}</option>`).join('')}
+            </select>
+            <span id="ws-acts-bulk-value-host"></span>
+            <button type="button" class="btn btn-sm btn-primary" id="ws-acts-bulk-apply" disabled>
+              ${t('workspace.activities.review.apply')}
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success" id="ws-acts-bulk-reviewed"${none}>
+              <i class="fa-solid fa-check" aria-hidden="true"></i> ${t('workspace.activities.review.markReviewed')}
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="ws-acts-bulk-delete"${none}>
+              <i class="fa-solid fa-trash" aria-hidden="true"></i> ${t('workspace.activities.review.delete')}
+            </button>
+          </div>
+          <p class="app-ws-acts__bulk-feedback" id="ws-acts-bulk-feedback" role="status" aria-live="polite"${_bulkMessage ? '' : ' hidden'}>${_esc(_bulkMessage ?? '')}</p>
+        </div>`;
+
+    const fieldSelect = host.querySelector('#ws-acts-bulk-field');
+    const apply       = host.querySelector('#ws-acts-bulk-apply');
+    const showValue = () => {
+        const field = fields.find(f => f.name === fieldSelect.value);
+        _renderBulkValue(host.querySelector('#ws-acts-bulk-value-host'), field);
+        apply.disabled = !field || selected.length === 0;
+    };
+    fieldSelect.addEventListener('change', showValue);
+    if (prevField && fields.some(f => f.name === prevField)) {
+        fieldSelect.value = prevField;
+        showValue();
+        const valueEl = host.querySelector('#ws-acts-bulk-value');
+        if (valueEl && prevValue) valueEl.value = prevValue;
+    }
+    apply.addEventListener('click', () => {
+        const value = host.querySelector('#ws-acts-bulk-value')?.value ?? '';
+        if (!fieldSelect.value || value === '') return;
+        _bulk('SET_FIELDS', { [fieldSelect.value]: value });
+    });
+    host.querySelector('#ws-acts-bulk-reviewed').addEventListener('click', () => _bulk('MARK_REVIEWED'));
+    host.querySelector('#ws-acts-bulk-delete').addEventListener('click', e => {
+        const btn = e.currentTarget;
+        if (!btn.dataset.confirmed) {
+            btn.dataset.confirmed = '1';
+            btn.textContent = t('workspace.activities.review.confirmDelete', selected.length);
+            setTimeout(() => { if (btn.isConnected && btn.dataset.confirmed) _renderBulkBar(); }, 4000);
+            return;
+        }
+        _bulk('DELETE');
+    });
+}
+
+function _bulk(action, values) {
+    const ids = [..._selected];
+    if (ids.length === 0) return;
+    document.querySelectorAll('#ws-acts-bulk button, #ws-acts-bulk select, #ws-acts-bulk input')
+        .forEach(el => { el.disabled = true; });
+    fetch('/user/workspace/activities/bulk', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postJsonHeaders(),
+        body: JSON.stringify({ ids, action, values: values ?? null }),
+    })
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(result => {
+            const parts = [t('workspace.activities.review.result', result.changed ?? 0, result.unchanged ?? 0)];
+            if (Array.isArray(result.problems) && result.problems.length) {
+                parts.push(t('workspace.activities.review.problems', result.problems.join('; ')));
+            }
+            _bulkMessage = parts.join(' ');
+            // a field set keeps the selection, so the next field (or "mark as checked") can follow
+            if (action !== 'SET_FIELDS') _selected = new Set();
+            _init(_panel);
+        })
+        .catch(() => {
+            _bulkMessage = t('workspace.activities.review.failed');
+            _renderBulkBar();
+        });
+}
+
 // ── HTML builders ─────────────────────────────────────────────────────────────
 
 // Palette used for distribution bar segments and legend dots.
@@ -1251,7 +1584,14 @@ function _buildToolbar() {
           <button type="button" class="btn btn-sm btn-outline-primary" id="ws-acts-participant-btn">
             <i class="fa-solid fa-people-group" aria-hidden="true"></i> ${t('workspace.activities.addParticipatedProject')}
           </button>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="ws-acts-import-btn"
+                  title="${_esc(t('workspace.activities.importFile.hint'))}">
+            <i class="fa-solid fa-file-import" aria-hidden="true"></i> ${t('workspace.activities.importFile.button')}
+          </button>
+          <input type="file" id="ws-acts-import-input" accept=".xlsx" hidden>
+          <span id="ws-acts-review-toggle-host">${_reviewToggleHtml()}</span>
         </div>
+        <div id="ws-acts-import-notice"></div>
         <div id="ws-acts-participant-import" hidden></div>`;
 }
 

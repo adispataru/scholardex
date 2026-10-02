@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{activity.unitImport.title(${unit.unitName()})}">Import fișe — unit</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('supervisor-workspace')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(#{activity.unitImport.title(${unit.unitName()})})}"></div>
+
+            <div class="container-fluid app-page-content">
+                <div class="app-dashboard">
+                    <div class="app-page-toolbar d-flex flex-wrap align-items-start" style="gap: 0.75rem;">
+                        <div class="app-dashboard__actions" style="width: auto; flex: 1 1 auto; justify-content: flex-start;">
+                            <a class="btn btn-sm btn-link pl-0" th:href="@{/supervisor}" th:text="#{cnfis.unit.back}">← Supervisor workspace</a>
+                        </div>
+                    </div>
+
+                    <p class="app-dashboard__intro" th:text="#{activity.unitImport.intro}">Each colleague imports their own fișă from the Activities tab of their workspace; this is the normal flow. When the faculty already has the files, you can import them here at once.</p>
+
+                    <!-- ── Upload ─────────────────────────────────────────────── -->
+                    <section class="app-university-detail__section" aria-labelledby="activity-import-upload-title">
+                        <div class="app-university-detail__section-header">
+                            <div>
+                                <h2 id="activity-import-upload-title" class="app-university-detail__section-title" th:text="#{activity.unitImport.upload.title}">Import files</h2>
+                                <p class="text-muted small mb-0 mt-1" th:text="#{activity.unitImport.upload.hint}">Accepted: the faculty's fișă de verificare and a person's CNFIS Anexa 5.1, as .xlsx. A file goes to the member its heading or its name names.</p>
+                            </div>
+                        </div>
+                        <form th:action="@{/supervisor/{k}/{id}/activity-import(k=${unit.kind()},id=${unit.unitId()})}" method="post" enctype="multipart/form-data" class="app-form-section" id="activity-import-form">
+                            <div class="form-group app-form-field">
+                                <label for="activity-import-files" th:text="#{activity.unitImport.files}">Files (.xlsx)</label>
+                                <input type="file" class="form-control-file" id="activity-import-files" name="files" accept=".xlsx" multiple required>
+                            </div>
+                            <div class="form-group app-form-field">
+                                <label for="activity-import-member" th:text="#{activity.unitImport.member}">Member</label>
+                                <select class="form-control" id="activity-import-member" name="member">
+                                    <option value="" th:text="#{activity.unitImport.member.byName}">— by the name in the file —</option>
+                                    <option th:each="m : ${unit.members()}" th:value="${m.email()}" th:text="${m.displayName()}">Name</option>
+                                </select>
+                                <small class="form-text text-muted" th:text="#{activity.unitImport.member.hint}">Only for a single file whose heading and name do not identify the member.</small>
+                            </div>
+                            <div class="app-form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-file-import fa-sm" aria-hidden="true"></i>
+                                    <span th:text="#{activity.unitImport.submit}">Import</span>
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- ── Results ────────────────────────────────────────────── -->
+                    <section th:if="${results != null}" class="app-university-detail__section mt-3" aria-labelledby="activity-import-results-title">
+                        <div class="app-university-detail__section-header">
+                            <div>
+                                <h2 id="activity-import-results-title" class="app-university-detail__section-title" th:text="#{activity.unitImport.results.title}">Result</h2>
+                                <p class="text-muted small mb-0 mt-1" th:text="#{activity.unitImport.results.hint}">The records are added to each member's activities, marked to check; importing a file again adds nothing.</p>
+                            </div>
+                        </div>
+                        <div th:if="${refusedFiles != null and !#lists.isEmpty(refusedFiles)}" class="alert alert-warning" role="status"
+                             th:text="#{activity.unitImport.refusedFiles(${#strings.listJoin(refusedFiles, ', ')})}">Not accepted: …</div>
+                        <div th:if="${#lists.isEmpty(results)}" class="app-table-state" role="status" th:text="#{activity.unitImport.results.none}">No file was imported.</div>
+                        <div th:unless="${#lists.isEmpty(results)}" class="app-table-scroll">
+                            <table class="table table-bordered app-table" width="100%" cellspacing="0" id="activity-import-results">
+                                <thead><tr>
+                                    <th th:text="#{activity.unitImport.col.file}">File</th>
+                                    <th th:text="#{supervisor.roster.col.researcher}">Researcher</th>
+                                    <th th:text="#{activity.unitImport.col.outcome}">Outcome</th>
+                                    <th class="app-table__cell--numeric" th:text="#{activity.unitImport.col.created}">Added</th>
+                                    <th class="app-table__cell--numeric" th:text="#{activity.unitImport.col.already}">Already imported</th>
+                                    <th th:text="#{activity.unitImport.col.notes}">To know</th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="r : ${results}">
+                                    <td class="app-table__cell--identifier" th:text="${r.fileName()}">fisa.xlsx</td>
+                                    <td th:text="${r.memberName() != null ? r.memberName() : '—'}">Name</td>
+                                    <td>
+                                        <span th:if="${r.outcome() == 'IMPORTED'}" class="app-table-badge app-table-badge--success" th:text="#{activity.unitImport.outcome.IMPORTED}">imported</span>
+                                        <span th:if="${r.outcome() == 'NOT_MATCHED'}" class="app-table-badge app-table-badge--warning" th:text="#{activity.unitImport.outcome.NOT_MATCHED}">names no member</span>
+                                        <span th:if="${r.outcome() == 'AMBIGUOUS'}" class="app-table-badge app-table-badge--warning" th:text="#{activity.unitImport.outcome.AMBIGUOUS}">names several members</span>
+                                        <span th:if="${r.outcome() == 'REFUSED'}" class="app-table-badge app-table-badge--danger" th:text="#{activity.unitImport.outcome.REFUSED}">not a fișă</span>
+                                    </td>
+                                    <td class="app-table__cell--numeric" th:text="${r.report() != null ? r.report().created() : '—'}">0</td>
+                                    <td class="app-table__cell--numeric" th:text="${r.report() != null ? r.report().alreadyImported() : '—'}">0</td>
+                                    <td class="app-table__cell--secondary">
+                                        <th:block th:if="${r.report() != null}">
+                                            <div th:if="${r.report().withoutYear() > 0}" th:text="#{workspace.activities.importFile.withoutYear(${r.report().withoutYear()})}">without year</div>
+                                            <div th:if="${r.report().eventsRecognised() > 0}" th:text="#{workspace.activities.importFile.eventsRecognised(${r.report().eventsRecognised()})}">events</div>
+                                            <div th:if="${!#lists.isEmpty(r.report().unrecognisedRows())}" th:text="#{workspace.activities.importFile.unrecognisedRows(${#strings.listJoin(r.report().unrecognisedRows(), '; ')})}">rows</div>
+                                            <div th:if="${!#lists.isEmpty(r.report().missingTypes())}" th:text="#{workspace.activities.importFile.missingTypes(${#strings.listJoin(r.report().missingTypes(), '; ')})}">types</div>
+                                            <div th:if="${r.report().unmarkedRows() > 0}" th:text="#{workspace.activities.importFile.unmarkedRows(${r.report().unmarkedRows()})}">unmarked</div>
+                                        </th:block>
+                                        <span th:if="${r.outcome() == 'NOT_MATCHED' or r.outcome() == 'AMBIGUOUS'}" th:text="#{activity.unitImport.chooseMember}">Upload it alone and choose the member.</span>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- ── Members ────────────────────────────────────────────── -->
+                    <section class="app-university-detail__section mt-3" aria-labelledby="activity-import-members-title">
+                        <div class="app-university-detail__section-header">
+                            <div>
+                                <h2 id="activity-import-members-title" class="app-university-detail__section-title" th:text="#{activity.unitImport.members.title(${#lists.size(unit.members())})}">Members</h2>
+                                <p class="text-muted small mb-0 mt-1" th:text="#{activity.unitImport.members.hint}">A file goes to the member whose last name and one of whose first names it carries, in its heading or its name.</p>
+                            </div>
+                        </div>
+                        <div th:if="${#lists.isEmpty(unit.members())}" class="app-table-state" role="status" th:text="#{cnfis.unit.members.none}">No member of this unit has a researcher profile.</div>
+                        <div th:unless="${#lists.isEmpty(unit.members())}" class="app-table-scroll">
+                            <table class="table table-bordered app-table" width="100%" cellspacing="0" id="activity-import-members">
+                                <thead><tr>
+                                    <th th:text="#{supervisor.roster.col.researcher}">Researcher</th>
+                                    <th th:text="#{activity.unitImport.col.email}">Email</th>
+                                </tr></thead>
+                                <tbody>
+                                <tr th:each="m : ${unit.members()}">
+                                    <td th:text="${m.displayName()}">Name</td>
+                                    <td class="app-table__cell--secondary" th:text="${m.email()}">email</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

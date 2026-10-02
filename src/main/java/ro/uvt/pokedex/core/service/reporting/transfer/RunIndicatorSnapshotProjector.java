@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.reporting.transfer.projection.CategoryLetterMapper;
+import ro.uvt.pokedex.core.service.reporting.transfer.projection.GridItemDescription;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -140,7 +141,8 @@ public class RunIndicatorSnapshotProjector {
         Map<String, List<Indicator>> indicatorsByBlock = indicatorsByBlock(report);
         List<ActivitySnapshotItem> out = new ArrayList<>();
         for (var role : binding.getRoles()) {
-            if (role.getKind() != BindingKind.STACKED_BLOCKS) continue;
+            if (role.getKind() != BindingKind.STACKED_BLOCKS && role.getKind() != BindingKind.ITEMS_IN_CELL) continue;
+            boolean gridLines = role.getKind() == BindingKind.ITEMS_IN_CELL;
             for (var block : role.getBlocks()) {
                 List<Indicator> indicators = indicatorsByBlock.getOrDefault(block.getActivityName(), List.of());
                 for (Indicator indicator : indicators) {
@@ -159,7 +161,7 @@ public class RunIndicatorSnapshotProjector {
                             out.add(item);
                         }
                     } else if ("activities".equals(String.valueOf(result.rawGraph().get("outputMode")))) {
-                        out.addAll(projectActivities(result, role.getRoleKey(), block.getActivityName(), indicator));
+                        out.addAll(projectActivities(result, role.getRoleKey(), block.getActivityName(), indicator, gridLines));
                     }
                 }
             }
@@ -190,7 +192,8 @@ public class RunIndicatorSnapshotProjector {
             IndicatorApplyResultDto result,
             String roleKey,
             String blockName,
-            Indicator indicator) {
+            Indicator indicator,
+            boolean gridLines) {
         if (!(result.rawGraph().get("scores") instanceof Map<?, ?> scores)) return List.of();
         Object activitiesObj = result.rawGraph().get("activities");
         List<ActivitySnapshotItem> out = new ArrayList<>();
@@ -203,7 +206,9 @@ public class RunIndicatorSnapshotProjector {
             item.setActivityName(blockName);
             item.setActivityId(indicator.getActivity() != null ? indicator.getActivity().getId() : null);
             item.setItemKey(blockName + ":" + key);
-            item.setDescription(firstNonBlank(details(entry.getValue()), activityLabel(activitiesObj, key), key));
+            item.setDescription(gridLines
+                    ? firstNonBlank(GridItemDescription.of(activityMap(activitiesObj, key)), activityLabel(activitiesObj, key), key)
+                    : firstNonBlank(details(entry.getValue()), activityLabel(activitiesObj, key), key));
             String category = coreRankingEquivalent(entry.getValue());
             item.setCategory("NON_RANK".equals(category) ? null : CategoryLetterMapper.toTemplateLetter(category));
             item.setScore(authorScore);
@@ -392,6 +397,21 @@ public class RunIndicatorSnapshotProjector {
 
     private String details(Object scoreObj) {
         if (scoreObj instanceof Map<?, ?> map && map.get("details") != null) return String.valueOf(map.get("details"));
+        return null;
+    }
+
+    /** The stored record of one activity in the run's graph (a list of records, or a map keyed by id). */
+    private Map<?, ?> activityMap(Object activitiesObj, String activityId) {
+        if (activitiesObj instanceof Map<?, ?> activities && activities.get(activityId) instanceof Map<?, ?> attrs) {
+            return attrs;
+        }
+        if (activitiesObj instanceof List<?> activities) {
+            for (Object activity : activities) {
+                if (activity instanceof Map<?, ?> attrs && activityId.equals(String.valueOf(attrs.get("id")))) {
+                    return attrs;
+                }
+            }
+        }
         return null;
     }
 

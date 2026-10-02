@@ -10,7 +10,8 @@ Done history moved to `TASKS-done.md`.
 ## Active
 
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
-  BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller decisions open).
+  IN PROD, SLICE 2 BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
+  decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
   from the faculty's table (75 / 751 / 73); rehearsed on a scratch database, a second run changes nothing. **RUN in
@@ -35,6 +36,19 @@ Done history moved to `TASKS-done.md`.
   indicators, the report `6abfcf06128e8e8842a1debc` (35 / 16 / 6, routes as committed), the shared type merged
   (no existing entries in prod), rollout restarted. Left: select the report for the FMT division
   `6abb58092fb0d9482997fab3`.
+  **Slice 2 BUILT 2026-10-02, not pushed:** every colleague imports their own fișă de verificare (Music grid) or
+  CNFIS Anexa 5.1 from the Activities tab; a head imports many at once (`/supervisor/{kind}/{id}/activity-import`,
+  matched by the name in the heading or the file); records land marked imported and "to check" (`importSource`,
+  `importKey`, `needsReview`; a re-import adds nothing) and are reviewed many at once (set a field, mark checked,
+  delete). The run exports to the faculty's own grid (binding kind `ITEMS_IN_CELL`,
+  `Muzica2026ReportTypeImportSupport`, template built from the official text, no personal data) and a filled grid
+  is verified against the run. Fixed on the way: the record panel stored the first option of an unset select
+  (an imported book became "Editură CNCS categoria A"). Verified on the lecturer's real grid, locally: 193 records;
+  the exported grid reproduces the file's CS 1700 and RIA 770 row by row, DID 370 of 400 until the book gets its
+  publisher category. Details in the task doc. Prod script `h142_muzica_export.js` (guard
+  `H142_SLICE2_IMAGE_IS_DEPLOYED`, no restart), rehearsed with prod-like ids: guarded run writes nothing, first run
+  sets the four export fields, second changes nothing, matches the app by indicator name. **Prod order:** push
+  and deploy; flip the guard; run it.
   Earlier status: SCOPED and
   REASSESSED 2026-10-02 (decisions taken with Adrian; four smaller ones open). Asked by FMT (vice-dean for
   research), the first vocational faculty. Plan, the standard transcribed (the standards folder is git-ignored)

@@ -107,7 +107,9 @@
   gap: 0.35rem;
   font-size: 0.78rem;
   color: var(--app-color-text-muted);
-  white-space: nowrap;
+  /* long type names (e.g. "… (Comisia 35, DID 2.1)") wrap instead of running off the card */
+  white-space: normal;
+  min-width: 0;
 }
 
 .app-ws-acts__dist-dot {
@@ -334,7 +336,7 @@
   border-radius: 0.3rem;
   font-size: 0.72rem;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
   background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
   color: var(--app-color-primary);
 }
@@ -680,4 +682,150 @@
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
   color: var(--app-color-text-muted, #667085);
+}
+
+/* H142 slice 2 — imported records: badges, the "to check" view, the bulk bar and the import notice */
+.app-ws-acts__col-select {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.app-ws-acts__table th.app-ws-acts__col-select,
+.app-ws-acts__table td.app-ws-acts__col-select {
+  padding-right: 0;
+  text-align: center;
+}
+
+.app-ws-acts__import-badge,
+.app-ws-acts__review-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.app-ws-acts__import-badge {
+  background: color-mix(in srgb, var(--app-color-text-muted) 12%, transparent);
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__review-badge {
+  background: color-mix(in srgb, var(--app-color-warning) 14%, transparent);
+  color: var(--app-color-warning);
+}
+
+.app-ws-acts__review-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--app-color-warning) 40%, var(--app-color-border));
+  border-radius: 999px;
+  background: var(--app-color-card-bg);
+  color: var(--app-color-text-strong);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-ws-acts__review-toggle:hover {
+  background: color-mix(in srgb, var(--app-color-warning) 6%, transparent);
+}
+
+.app-ws-acts__review-toggle--active {
+  background: color-mix(in srgb, var(--app-color-warning) 12%, transparent);
+  color: var(--app-color-warning);
+}
+
+.app-ws-acts__review-toggle:focus-visible,
+.app-ws-acts__import-notice-close:focus-visible {
+  outline: 2px solid var(--app-color-primary);
+  outline-offset: 2px;
+}
+
+.app-ws-acts__review-empty {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__bulk {
+  padding: 0.75rem 1rem;
+}
+
+.app-ws-acts__bulk-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__bulk-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-ws-acts__bulk-count {
+  margin-right: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong);
+}
+
+.app-ws-acts__bulk-number {
+  width: 7rem;
+}
+
+.app-ws-acts__bulk-feedback {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__import-notice {
+  position: relative;
+  padding: 0.65rem 2.5rem 0.65rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--app-color-primary) 30%, var(--app-color-border));
+  border-radius: var(--app-radius-card);
+  background: color-mix(in srgb, var(--app-color-primary) 5%, var(--app-color-card-bg));
+  font-size: 0.85rem;
+  color: var(--app-color-text-strong);
+}
+
+.app-ws-acts__import-notice--error {
+  border-color: color-mix(in srgb, var(--app-color-danger) 40%, var(--app-color-border));
+  background: color-mix(in srgb, var(--app-color-danger) 6%, var(--app-color-card-bg));
+}
+
+.app-ws-acts__import-notice-line {
+  margin: 0;
+}
+
+.app-ws-acts__import-notice-line + .app-ws-acts__import-notice-line {
+  margin-top: 0.2rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__import-notice-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--app-color-text-muted);
+  cursor: pointer;
+}
+
+.app-ws-acts__source {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted);
+  overflow-wrap: anywhere;
 }

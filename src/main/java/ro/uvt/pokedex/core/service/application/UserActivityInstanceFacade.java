@@ -128,6 +128,9 @@ public class UserActivityInstanceFacade {
             validateJournalIssns(activityInstance);
             existingInstance.setFields(activityInstance.getFields());
             existingInstance.setReferenceFields(activityInstance.getReferenceFields());
+            if (Boolean.TRUE.equals(existingInstance.getNeedsReview())) {
+                existingInstance.setNeedsReview(Boolean.FALSE); // H142 — saving an imported record is checking it
+            }
             activityInstanceRepository.save(existingInstance);
         }
     }

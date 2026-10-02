@@ -11,10 +11,17 @@
  * CSRF token header (e.g. X-CSRF-TOKEN: <token>) if present in the page.
  */
 export function postJsonHeaders() {
+    return { 'Content-Type': 'application/json', ...csrfHeaders() };
+}
+
+/**
+ * The CSRF token header alone, for a POST whose body sets its own Content-Type
+ * (a FormData upload carries the multipart boundary the browser chooses).
+ */
+export function csrfHeaders() {
     const headerMeta = document.querySelector('meta[name="_csrf_header"]');
     const tokenMeta  = document.querySelector('meta[name="_csrf"]');
-    const csrf = (headerMeta && tokenMeta)
+    return (headerMeta && tokenMeta)
         ? { [headerMeta.content]: tokenMeta.content }
         : {};
-    return { 'Content-Type': 'application/json', ...csrf };
 }

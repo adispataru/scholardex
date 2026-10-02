@@ -7,6 +7,11 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BindingBlock {
     private String activityName;
+    /**
+     * H142 (ITEMS_IN_CELL): the number that opens the row's label in the template, e.g. "1.1" for
+     * "1.1. Tratat / studiu amplu…". An uploaded file's row is found by it, wherever the person moved it.
+     */
+    private String label;
     private Integer headerRow;
     private Integer firstDataRow;
     private Integer totalRow;

@@ -123,7 +123,7 @@
                     </div>
 
                     <!-- Empty state -->
-                    <div th:if="${comparison.rows().isEmpty()}" class="app-empty-state">
+                    <div th:if="${comparison.rows().isEmpty() and (comparison.activityBlocks() == null or comparison.activityBlocks().isEmpty())}" class="app-empty-state">
                         <i class="fa-solid fa-scale-balanced fa-2x app-empty-state__icon" aria-hidden="true"></i>
                         <p class="app-empty-state__title" th:text="#{report.import.nothingToCompare}">Nothing to compare</p>
                         <p class="app-empty-state__body" th:text="#{report.import.noScoredRows}">No scored rows were found in the uploaded file.</p>

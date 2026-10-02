@@ -68,7 +68,7 @@ public class TemplateXlsxRenderer {
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             normaliseInlineStrings(workbook);
             for (BindingRole role : binding.getRoles()) {
-                renderRole(workbook, role, rowsByRole, tilesByRole);
+                renderRole(workbook, role, rowsByRole, tilesByRole, totalsByRole);
             }
             renderScalarCells(workbook, binding, totalsByRole);
             workbook.setForceFormulaRecalculation(true);
@@ -108,7 +108,8 @@ public class TemplateXlsxRenderer {
 
     private void renderRole(Workbook workbook, BindingRole role,
                             Map<String, List<Map<String, Object>>> rowsByRole,
-                            Map<String, List<TileData>> tilesByRole) {
+                            Map<String, List<TileData>> tilesByRole,
+                            Map<String, Double> totalsByRole) {
         switch (role.getKind()) {
             case FIXED_TABLE ->
                     renderFixedTable(workbook, role, rowsByRole.getOrDefault(role.getRoleKey(), List.of()));
@@ -116,7 +117,53 @@ public class TemplateXlsxRenderer {
                     renderStackedBlocks(workbook, role, rowsByRole.getOrDefault(role.getRoleKey(), List.of()));
             case TILED_SHEETS ->
                     renderTiledSheets(workbook, role, tilesByRole.getOrDefault(role.getRoleKey(), List.of()));
+            case ITEMS_IN_CELL ->
+                    renderItemsInCell(workbook, role, rowsByRole.getOrDefault(role.getRoleKey(), List.of()),
+                            totalsByRole == null ? Map.of() : totalsByRole);
         }
+    }
+
+    /**
+     * H142 — the faculties' grid: each block is one template row whose items cell lists every item of the
+     * block, one per line ("• …"), and whose points cell holds the block's points. The points are the run's
+     * total for the block (it honours the indicator's cap) or, without one, the sum of the items listed. A
+     * block with nothing scored keeps the template's empty cells.
+     */
+    private void renderItemsInCell(Workbook workbook, BindingRole role, List<Map<String, Object>> rows,
+                                   Map<String, Double> totalsByBlock) {
+        Sheet sheet = workbook.getSheet(role.getSheet());
+        if (sheet == null) {
+            LOG.warn("Role '{}': sheet '{}' not found; skipping", role.getRoleKey(), role.getSheet());
+            return;
+        }
+        String groupingKey = role.getGroupingKey() == null || role.getGroupingKey().isBlank()
+                ? "activity.activityName" : role.getGroupingKey();
+        int itemsCol = CellReference.convertColStringToIndex(role.getKeyColumn());
+        int pointsCol = CellReference.convertColStringToIndex(role.getScoreColumn());
+        for (BindingBlock block : role.getBlocks()) {
+            List<Map<String, Object>> items = rows.stream()
+                    .filter(r -> block.getActivityName().equals(r.get(groupingKey)))
+                    .toList();
+            Double total = totalsByBlock.get(block.getActivityName());
+            if (items.isEmpty() && (total == null || total == 0.0)) continue;
+            Row row = sheet.getRow(block.getFirstDataRow() - 1);
+            if (row == null) row = sheet.createRow(block.getFirstDataRow() - 1);
+            String text = items.stream()
+                    .map(r -> r.get("activity.description"))
+                    .filter(java.util.Objects::nonNull)
+                    .map(d -> "• " + d.toString().replaceAll("\\s*\\R\\s*", " ").trim())
+                    .collect(java.util.stream.Collectors.joining("\n"));
+            double sum = items.stream()
+                    .mapToDouble(r -> r.get("activity.score") instanceof Number n ? n.doubleValue() : 0.0)
+                    .sum();
+            writeCellValue(getOrCreateCell(row, itemsCol), text.isEmpty() ? null : text);
+            writeCellValue(getOrCreateCell(row, pointsCol), total != null ? total : sum);
+        }
+    }
+
+    private static Cell getOrCreateCell(Row row, int columnIndex) {
+        Cell cell = row.getCell(columnIndex);
+        return cell != null ? cell : row.createCell(columnIndex);
     }
 
     /** Where one rendered tile's aggregation cells ended up: sheet + row delta vs. the template block. */

@@ -5,8 +5,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingBlock;
+import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
+import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
 import ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport;
 import ro.uvt.pokedex.core.service.reporting.ScoringReferenceYearContext;
+import ro.uvt.pokedex.core.service.reporting.transfer.binding.TemplateBindingLoader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -252,6 +256,38 @@ class Muzica2026ReportDefinitionTest {
     @Test
     void theCommittedDescriptionsAreTheOnesTheSeedCarries() throws IOException {
         muz.assertDescribedBy("muzica-2026.json");
+    }
+
+    @Test
+    void theRunExportsToTheFacultysGridEachScoringIndicatorOnItsOwnRow() {
+        JsonNode report = muz.report();
+        assertEquals("muzica-2026", report.get("reportTypeKey").asText());
+        assertTrue(report.get("importEnabled").asBoolean(), "a filled grid can be verified against the run");
+        TemplateBinding binding = new TemplateBindingLoader(new com.fasterxml.jackson.databind.ObjectMapper())
+                .load("report-templates/muzica-2026/binding.json");
+        Map<String, String> roleOfBlock = new java.util.HashMap<>();
+        for (BindingRole role : binding.getRoles()) {
+            for (BindingBlock block : role.getBlocks()) roleOfBlock.put(block.getActivityName(), role.getRoleKey());
+        }
+        Set<String> fedBlocks = new java.util.TreeSet<>();
+        JsonNode refs = report.get("indicators");
+        for (int i = 0; i < refs.size(); i++) {
+            String id = refs.get(i).get("$id").get("$oid").asText();
+            String name = muz.reportIndicatorNames().get(i);
+            String role = report.get("indicatorRolesByIndicatorId").get(id).asText();
+            String block = report.get("blockByIndicatorId").get(id).asText();
+            if (name.startsWith("Muz26_N_")) {
+                assertEquals("__not_exported__", role, name + " only counts, it has no row");
+                assertEquals("__not_exported__", block, name + " only counts, it has no row");
+                continue;
+            }
+            String row = name.replace("Muz26_", "").replace("_decl", "");
+            String expected = row.substring(0, row.indexOf('_')) + " " + row.substring(row.indexOf('_') + 1).replace('_', '.');
+            assertEquals(expected, block, name);
+            assertEquals(roleOfBlock.get(block), role, name + " sits in the table of its row");
+            fedBlocks.add(block);
+        }
+        assertEquals(new java.util.TreeSet<>(roleOfBlock.keySet()), fedBlocks, "every row of the grid is fed by the run");
     }
 
     @Test
