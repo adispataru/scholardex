@@ -17,9 +17,10 @@ import java.util.Optional;
  * the approved category, or null when neither counts.
  *
  * <ul>
- *   <li><b>Comisia 25 (Sociologie)</b>, definition [4]: the A2 list of the annex, else A1 for a house of international
- *       prestige — on the WoS Master Book List or on an international list or ranking (SENSE A and B, the UEFISCDI
- *       lists: {@link InternationalPublisherSupport}), the stand-ins for "Lista A1, în vigoare", as for corpus books;
+ *   <li><b>Comisia 25 (Sociologie)</b>, definition [4]: "Lista A1, în vigoare" — CNCS's list for the social sciences
+ *       ({@link Comisia25Rules#A1_LIST}) — then the A2 list of the annex, else A1 for a house of international
+ *       prestige — on the WoS Master Book List or on another international list or ranking (SENSE A and B, the
+ *       UEFISCDI and CNCS lists: {@link InternationalPublisherSupport}), as for corpus books;
  *       a book that appeared before 1 October 2026 counts A2 at a house of the earlier list (CNATDCU's 2011 A2 list of
  *       the Social Sciences panel, {@link Comisia25Rules#earlierPublisherList()}); a book held by at least six WorldCat
  *       libraries counts as A2 (a claim);</li>

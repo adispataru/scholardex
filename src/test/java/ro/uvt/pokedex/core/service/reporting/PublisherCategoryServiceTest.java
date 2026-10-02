@@ -116,7 +116,9 @@ class PublisherCategoryServiceTest {
         PublisherCategorySupport.Classification brill = classify(PublisherRules.MUZICA_2026, "Brill").orElseThrow();
         assertEquals("STRAINA", brill.category());
         assertEquals("INTERNATIONAL_LIST", brill.basis());
-        assertTrue(brill.detail().startsWith("Clasamentul SENSE"), brill.detail());
+        assertTrue(brill.detail().startsWith("Lista CNCS a editurilor cu prestigiu internațional în științele sociale"),
+                brill.detail());
+        assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Curzon Press"), "SENSE B");
         assertNull(category(PublisherRules.MUZICA_2026, "Lambert Academic Publishing"), "UEFISCDI excludes it");
         assertEquals(Optional.empty(), classify(PublisherRules.MUZICA_2026, "Editura Proprie"));
     }
@@ -145,6 +147,17 @@ class PublisherCategoryServiceTest {
                 classify(PublisherRules.PSIHOLOGIE_2026, "Routledge").orElseThrow().basis());
         assertEquals("A1", category(PublisherRules.SOCIOLOGIE_2026, "Excelsior Art"),
                 "the Master Book List counts as for corpus books: international prestige, not a foreign house");
+    }
+
+    @Test
+    void sociologyReadsItsOwnA1ListFirst() {
+        PublisherCategorySupport.Classification routledge = classify(PublisherRules.SOCIOLOGIE_2026, "Routledge").orElseThrow();
+        assertEquals("A1", routledge.category());
+        assertEquals("LIST", routledge.basis(), "«Lista A1, în vigoare», not the Master Book List");
+        assertTrue(routledge.detail().startsWith("Lista CNCS a editurilor cu prestigiu internațional în științele sociale"),
+                routledge.detail());
+        assertEquals("WOS_MASTER_BOOK_LIST", classify(PublisherRules.PSIHOLOGIE_2026, "Routledge").orElseThrow().basis(),
+                "Comisia 28 names no A1 list: the stand-ins in their order");
     }
 
     @Test
@@ -248,8 +261,8 @@ class PublisherCategoryServiceTest {
                 "Studii de stilistică, București: Editura Universității Naționale de Muzică București, 2019, ISBN 978"));
         assertEquals(Optional.of("Cambridge University Press"),
                 service.findIn("A chapter, in: The Cambridge Companion, Cambridge University Press, 2021"));
-        assertEquals(Optional.of("EDWARD ELGAR"),
-                service.findIn("Handbook of Social Policy, Cheltenham: Edward Elgar, 2020"), "Anexa 7c");
+        assertEquals(Optional.of("Edward Elgar"),
+                service.findIn("Handbook of Social Policy, Cheltenham: Edward Elgar, 2020"), "an international list");
         assertEquals(Optional.empty(), service.findIn("Concert de Crăciun, Universitaria, Craiova"),
                 "a one-word name is too common in a free text");
         assertEquals(Optional.empty(), service.findIn("Recital, sala Capitol, Timișoara"));

@@ -138,10 +138,46 @@ public class InternationalPublisherListService implements InternationalPublisher
             return true;
         }
         List<String> typed = PublisherNameMatcher.words(publisher);
-        return !typed.isEmpty() && romanianNames.stream().anyMatch(name -> {
-            int match = PublisherNameMatcher.match(name, typed);
-            // inside a longer name only with a word of its own: CNCS rates a Romanian "Editura University Press"
-            return match == 3 || (match == 2 && name.stream().anyMatch(w -> !WosMasterBookListService.GENERIC.contains(w)));
+        if (typed.isEmpty()) {
+            return false;
+        }
+        if (romanianNames.stream().anyMatch(name -> PublisherNameMatcher.match(name, typed) == 3)) {
+            return true;
+        }
+        // inside a longer name only with a word of its own (CNCS rates a Romanian "Editura University Press"), and
+        // not when the whole name is one a foreign list holds ("Idea Group Publishing" is not Editura Idea)
+        boolean inside = romanianNames.stream().anyMatch(name -> PublisherNameMatcher.match(name, typed) == 2
+                && name.stream().anyMatch(w -> !WosMasterBookListService.GENERIC.contains(w)));
+        return inside && !namedOnAList(publisher);
+    }
+
+    private boolean namedOnAList(String publisher) {
+        Set<String> tokens = WosMasterBookListService.canonicalTokens(publisher);
+        return sources.stream().anyMatch(source -> entriesOf(source).stream().anyMatch(e -> e.tokens().equals(tokens)));
+    }
+
+    @Override
+    public Optional<InternationalPublisherSupport.Recognition> recognizeOn(String key, String publisher) {
+        if (publisher == null || publisher.isBlank()) {
+            return Optional.empty();
+        }
+        return recognize(publisher).filter(r -> r.key().equals(key)).or(() -> {
+            Set<String> typed = WosMasterBookListService.canonicalTokens(publisher);
+            if (typed.isEmpty() || matches(typed, EXCLUDED) || isRomanian(publisher)) {
+                return Optional.empty();
+            }
+            return sources.stream().filter(s -> s.key().equals(key)).findFirst().flatMap(source -> {
+                InternationalPublisherSupport.Recognition contained = null;
+                for (Entry entry : entriesOf(source)) {
+                    if (entry.tokens().equals(typed)) {
+                        return Optional.of(new InternationalPublisherSupport.Recognition(source.key(), source.label(), entry.name()));
+                    }
+                    if (contained == null && matches(typed, entry.tokens())) {
+                        contained = new InternationalPublisherSupport.Recognition(source.key(), source.label(), entry.name());
+                    }
+                }
+                return Optional.ofNullable(contained);
+            });
         });
     }
 

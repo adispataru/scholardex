@@ -76,9 +76,11 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
         }
         String name = aliases.getOrDefault(PublisherNameMatcher.words(publisher), publisher);
         return switch (rules) {
-            case SOCIOLOGIE_2026 -> commissionList(
-                    commissionLists.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), name),
-                    "Lista A2 a Comisiei 25 (Sociologie)", name)
+            case SOCIOLOGIE_2026 -> InternationalPublisherSupport.recognizeOn(Comisia25Rules.A1_LIST, name)
+                    .map(r -> new PublisherCategorySupport.Classification("A1", "LIST", r.detail()))
+                    .or(() -> commissionList(
+                            commissionLists.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), name),
+                            "Lista A2 a Comisiei 25 (Sociologie)", name))
                     .or(() -> earlierSociologyList(name, publishedOn));
             case PSIHOLOGIE_2026 -> commissionList(commissionLists.tierFor2026(Comisia28Rules.PSIHOLOGIE, name),
                     "Lista 2026 a Comisiei 28 (Psihologie)", name);

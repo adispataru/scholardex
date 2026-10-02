@@ -26,6 +26,9 @@ public final class InternationalPublisherSupport {
         /** The first list that holds the publisher; always empty for a Romanian house or an excluded one. */
         Optional<Recognition> recognize(String publisher);
 
+        /** The list with this key, if it holds the publisher (a standard that names one list reads it first). */
+        Optional<Recognition> recognizeOn(String key, String publisher);
+
         /** A Romanian house: written «Editura …», or named as on a Romanian list (CNCS, the commissions' lists). */
         boolean isRomanian(String publisher);
 
@@ -36,6 +39,11 @@ public final class InternationalPublisherSupport {
     private static final Lists NONE = new Lists() {
         @Override
         public Optional<Recognition> recognize(String publisher) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<Recognition> recognizeOn(String key, String publisher) {
             return Optional.empty();
         }
 
@@ -67,6 +75,13 @@ public final class InternationalPublisherSupport {
             return Optional.empty();
         }
         return lists.recognize(publisher.trim());
+    }
+
+    public static Optional<Recognition> recognizeOn(String key, String publisher) {
+        if (key == null || publisher == null || publisher.isBlank()) {
+            return Optional.empty();
+        }
+        return lists.recognizeOn(key, publisher.trim());
     }
 
     public static boolean isRomanian(String publisher) {

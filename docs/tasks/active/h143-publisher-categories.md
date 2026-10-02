@@ -36,11 +36,13 @@ commissions' 2026 lists and the WoS Master Book List.
 - **International prestige** (Comisia 25 Lista A1, Comisia 28 A1, Comisia 35's foreign equivalent): the WoS Master
   Book List, else an international list or ranking (`InternationalPublisherListService`, read through the static
   `InternationalPublisherSupport`), in the order of `report-data/international-publisher-lists.csv`:
+  - CNCS's list of the publishers of international prestige in the social sciences — Sociology's "Lista A1, în
+    vigoare" (199 houses, `cncs-social-sciences-a1-publishers.csv`, see below);
   - SENSE, ranks A and B (C to E do not count): the `senseRankings` collection the Computer Science book scorer
     reads, imported from the admin initialization page; loaded on first use, looked at again at most once a minute
     while empty or unreachable;
   - UEFISCDI, publishers for the social sciences (PD/TE 2026, Anexa 7c, 253);
-  - UEFISCDI, publishers of international prestige in the arts and humanities (349).
+  - CNCS's list of the publishers of international prestige in the arts and humanities (349, hosted by UEFISCDI).
   A further ranking is one fixture (a `name` column, and a `level` column for a ranking) and one row of the index
   (key, label, source, the levels that count). The same lists serve corpus books (`PsychologyBookScoringService`,
   `tierBasis` = the list's key), so a book gets the same category whether found or declared. Lambert Academic
@@ -54,7 +56,8 @@ commissions' 2026 lists and the WoS Master Book List.
   identifying word ("Routledge, London"); the typed name inside the listed one only when the listed name adds generic
   words ("Polity" → Polity Press; not "Business Press" → Harvard Business School Press, nor "University of Arizona" →
   Arizona State University).
-- **Comisia 25 (Sociologie):** the annex's A2 list, else A1 for a house of international prestige — exactly as for
+- **Comisia 25 (Sociologie):** its own A1 list first (CNCS, social sciences — basis LIST, so the row names the list
+  the standard means), then the annex's A2 list, else A1 for a house of international prestige — exactly as for
   corpus books — else, for a book that appeared before **1 October 2026** (Adrian's choice), the earlier list the annex
   refers to: CNATDCU "Lista A2-Panel 4 – Edituri de prestigiu recunoscut" (2011, 45 Romanian and 55 foreign houses,
   `report-data/sociologie-publishers-2011-panel4.csv`, the forms researchers type added as for the 2026 list) → A2.
@@ -118,8 +121,9 @@ clear, then your choice is good and must be stated in the indicator/scorer descr
   ministry's PDF downloaded with Adrian's permission, kept in `data/standards/psihologie-sociologie-asistenta/`)
   and the 2013 one (OM 4.204/2013) print no list, only the categories; the lists come from the 2011 Social Sciences
   panel, whose OMECTS 4.691/2011 **Anexa 2** (definitions) sets them out: A1 = CNCS's list of up to 200 international
-  houses (UEFISCDI resource-8160, "Edituri prestigiu international stiinte sociale.pdf", 44,401 bytes, not yet
-  downloaded), A2 = the CNATDCU commissions' lists, published as `A2_Panel41.xls` (cnatdcu.ro, 2011/11) — the list
+  houses (UEFISCDI resource-8160, "Edituri prestigiu international stiinte sociale.pdf", 44,401 bytes, Word file of
+  22.06.2016, 199 houses; downloaded with Adrian's permission, kept next to the 2016 PDF; parsed as printed, plus seven
+  forms researchers type — Hogrefe, De Gruyter, CQ Press, …), A2 = the CNATDCU commissions' lists, published as `A2_Panel41.xls` (cnatdcu.ro, 2011/11) — the list
   FEAA already uses. Reading (Adrian): the list's "entry into force" is 1 October 2026, when OM 3.019/2025 applies
   (its art. 6), not 11 February 2025, when it was published. The earlier list includes Lambert Academic Publishing,
   so a Lambert book of before October 2026 counts A2 for Sociology, although the international lists exclude it.
@@ -147,7 +151,10 @@ known stretches of token matching, both rare: "The Feminist Press at the City Un
 York University Press, "Presses universitaires de Limoges, France" as Presses Universitaires de France. The earlier
 Sociology list adds almost nothing for corpus books (its foreign houses — Edward Elgar, Peter Lang, Wolters Kluwer,
 OECD — are A1 already); it matters for declared books at Romanian houses the 2026 list dropped (Lumina Lex,
-Universul Juridic, RAO, Sitech, the academies' presses, …).
+Universul Juridic, RAO, Sitech, the academies' presses, …). The CNCS A1 list adds 14 corpus publishers beyond the other
+lists (Fortress Press, University of Arizona Press, CQ Press, Marcel Dekker, …; 780 book records corpus-wide). Its names
+come largely from SENSE A and B. "Idea Group Publishing" is on it although the 2026 Sociology list has a Romanian
+"Editura Idea": the Romanian guard yields when the whole name is one a foreign list holds.
 
 ## Verified
 

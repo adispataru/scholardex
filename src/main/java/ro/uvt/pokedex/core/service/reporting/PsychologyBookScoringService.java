@@ -96,8 +96,9 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
     /**
      * COMISIA 25, 2026 (definition [4]): a book or chapter counts when its publisher is on the A2 list of the
      * group, or has international prestige (A1). The annex points at "Lista A1, în vigoare" without printing
-     * it; the WoS Master Book List and the international lists stand in for it, as they do for Comisia 28, and the
-     * result names the list ({@code tierBasis}). The listed tier wins over the stand-in. Both tiers return
+     * it: CNCS's list for the social sciences ({@link Comisia25Rules#A1_LIST}), read first; the WoS Master Book List
+     * and the other international lists stand in beyond it, as they do for Comisia 28, and the result names the list
+     * ({@code tierBasis}). The listed tier wins over the stand-ins. Both tiers return
      * S = 1: here the tier changes the points of a chapter only, and the formula reads it as {@code category}.
      * Holdings in at least six WorldCat libraries, which the annex treats like A2, cannot be looked up and
      * are declared by the candidate as an activity. A book that appeared before the current list counts A2 at a
@@ -105,7 +106,13 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
      */
     private Score scoreForComisia25(Comisia25Rules rules, String publisher, String coverDate) {
         Score score = new Score();
-        String tier = publisherService.tierFromList(rules.publisherList(), publisher);
+        String tier = null;
+        if (InternationalPublisherSupport.recognizeOn(Comisia25Rules.A1_LIST, publisher).isPresent()) {
+            tier = "A1"; // "Lista A1, în vigoare": the list the standard names, before any stand-in
+            score.getScoringInfo().put("tierBasis", Comisia25Rules.A1_LIST);
+        } else {
+            tier = publisherService.tierFromList(rules.publisherList(), publisher);
+        }
         String international = tier == null ? internationalBasis(publisher) : null;
         if (international != null) {
             tier = "A1";

@@ -1,4 +1,5 @@
 key,label,source,levels
+CNCS_STIINTE_SOCIALE,"Lista CNCS a editurilor cu prestigiu internațional în științele sociale (Lista A1)",report-data/cncs-social-sciences-a1-publishers.csv,
 SENSE,"Clasamentul SENSE al editurilor (categoriile A și B)",senseRankings,A|B
 UEFISCDI_STIINTE_SOCIALE,"UEFISCDI, edituri pentru științele sociale (PD/TE 2026, Anexa 7c)",report-data/uefiscdi-anexa7c-publishers-2026.csv,
-UEFISCDI_ARTE_UMANISTE,"UEFISCDI, edituri de prestigiu internațional în arte și științe umaniste",report-data/uefiscdi-arts-humanities-international-publishers.csv,
+UEFISCDI_ARTE_UMANISTE,"Lista CNCS a editurilor cu prestigiu internațional în arte și științe umaniste",report-data/uefiscdi-arts-humanities-international-publishers.csv,

@@ -236,7 +236,12 @@ class PsychologyBookScoringServiceTest {
             when(masterBookList.isRecognized("Brill")).thenReturn(false);
             Score b = service.getScore(brill, indicatorComisia25());
             assertEquals("A1", b.getCoreRankingEquivalent());
-            assertEquals("SENSE", b.getScoringInfo().get("tierBasis"));
+            assertEquals("CNCS_STIINTE_SOCIALE", b.getScoringInfo().get("tierBasis"), "«Lista A1, în vigoare»");
+
+            ScoringPublicationReadModel curzon = pub("bk", "Curzon Press", null);
+            when(publishers.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), "Curzon Press")).thenReturn(null);
+            when(masterBookList.isRecognized("Curzon Press")).thenReturn(false);
+            assertEquals("SENSE", service.getScore(curzon, indicatorComisia25()).getScoringInfo().get("tierBasis"));
 
             ScoringPublicationReadModel economica = pub("bk", "Editura Economica", null);
             when(publishers.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Economica")).thenReturn(null);

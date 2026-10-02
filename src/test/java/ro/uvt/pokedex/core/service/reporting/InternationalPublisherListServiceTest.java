@@ -32,6 +32,7 @@ class InternationalPublisherListServiceTest {
         when(repository.findAll()).thenReturn(List.of(
                 sense("Brill", SenseBookRanking.Rank.B),
                 sense("Frank Cass", SenseBookRanking.Rank.B),
+                sense("Curzon Press", SenseBookRanking.Rank.B),
                 sense("Polity Press", SenseBookRanking.Rank.B),
                 sense("Oxford University Press", SenseBookRanking.Rank.A),
                 sense("Acco", SenseBookRanking.Rank.C),
@@ -47,19 +48,31 @@ class InternationalPublisherListServiceTest {
 
     @Test
     void senseCountsItsRanksAAndBOnly() {
-        assertEquals("SENSE", key("Brill Academic Publishers, Leiden"));
-        assertEquals("SENSE", key("Frank Cass, London"));
-        assertEquals("SENSE", key("Polity"), "a name inside the listed one, with a word of its own");
+        assertEquals("SENSE", key("Curzon Press, Richmond"));
+        assertEquals("SENSE", key("Curzon"), "a name inside the listed one, with a word of its own");
         assertEquals(Optional.empty(), lists.recognize("Acco"), "C does not count");
         assertEquals(Optional.empty(), lists.recognize("Editorial Academica Espan"), "E does not count");
-        InternationalPublisherSupport.Recognition brill = lists.recognize("Brill").orElseThrow();
-        assertEquals("Clasamentul SENSE al editurilor (categoriile A și B): Brill", brill.detail());
+        InternationalPublisherSupport.Recognition curzon = lists.recognize("Curzon Press").orElseThrow();
+        assertEquals("Clasamentul SENSE al editurilor (categoriile A și B): Curzon Press", curzon.detail());
+    }
+
+    @Test
+    void theCncsSocialSciencesListComesFirst() {
+        assertEquals("CNCS_STIINTE_SOCIALE", key("Brill Academic Publishers, Leiden"), "also on SENSE");
+        assertEquals("CNCS_STIINTE_SOCIALE", key("Polity"));
+        assertEquals("CNCS_STIINTE_SOCIALE", key("Hogrefe"), "listed as «Hogrefe &Huber»");
+        assertEquals("CNCS_STIINTE_SOCIALE", key("Idea Group Publishing"), "not the Romanian Editura Idea");
+        assertEquals("Lista CNCS a editurilor cu prestigiu internațional în științele sociale (Lista A1): Routledge",
+                lists.recognize("Routledge").orElseThrow().detail());
+        assertTrue(lists.recognizeOn("CNCS_STIINTE_SOCIALE", "Frank Cass").isPresent());
+        assertEquals(Optional.empty(), lists.recognizeOn("CNCS_STIINTE_SOCIALE", "Curzon Press"), "on SENSE only");
+        assertEquals(Optional.empty(), lists.recognizeOn("CNCS_STIINTE_SOCIALE", "Editura Peter Lang"), "Romanian");
     }
 
     @Test
     void theUefiscdiListsHoldTheSocialSciencesAndTheArtsAndHumanities() {
         assertEquals("UEFISCDI_STIINTE_SOCIALE", key("L'Harmattan, Paris"));
-        assertEquals("UEFISCDI_STIINTE_SOCIALE", key("Peter Lang"));
+        assertEquals("UEFISCDI_STIINTE_SOCIALE", key("Berghahn Books"));
         assertEquals("UEFISCDI_ARTE_UMANISTE", key("Bärenreiter-Verlag Kassel"));
         assertEquals("UEFISCDI_ARTE_UMANISTE", key("Universal Edition"));
     }
@@ -85,7 +98,8 @@ class InternationalPublisherListServiceTest {
         // CNCS rates a Romanian "Editura University Press": it must not make Cambridge or Harvard Romanian
         assertTrue(lists.isRomanian("University Press"));
         assertFalse(lists.isRomanian("Cambridge University Press"));
-        assertEquals("UEFISCDI_STIINTE_SOCIALE", key("Harvard University Press"));
+        assertEquals("CNCS_STIINTE_SOCIALE", key("Harvard University Press"));
+        assertEquals("UEFISCDI_STIINTE_SOCIALE", key("Edinburgh University Press"));
     }
 
     @Test
@@ -100,10 +114,11 @@ class InternationalPublisherListServiceTest {
     @Test
     void aShorterNameMatchesOnlyWhenTheListedOneAddsGenericWords() {
         assertEquals("UEFISCDI_STIINTE_SOCIALE", key("Harmattan"), "L'HARMATTAN");
-        assertEquals("UEFISCDI_ARTE_UMANISTE", key("Rutgers University"), "Rutgers University Press");
+        assertEquals("CNCS_STIINTE_SOCIALE", key("Rutgers University"), "Rutgers University Press");
         assertEquals(Optional.empty(), lists.recognize("Business Press Ltd."), "not Harvard Business School Press");
-        assertEquals(Optional.empty(), lists.recognize("University of Arizona"), "not Arizona State University");
-        assertEquals(Optional.empty(), lists.recognize("Collins"), "not Harper Collins");
+        assertEquals("Univ of Arizona Press", lists.recognize("University of Arizona").orElseThrow().listedName(),
+                "University of Arizona Press, not Arizona State University");
+        assertEquals(Optional.empty(), lists.recognize("Harper"), "not Harper Collins, nor Harper and Row");
     }
 
     @Test
@@ -119,9 +134,9 @@ class InternationalPublisherListServiceTest {
         when(down.findAll()).thenThrow(new DataAccessResourceFailureException("down"));
         InternationalPublisherListService withoutSense = new InternationalPublisherListService(down);
 
-        assertEquals(Optional.empty(), withoutSense.recognize("Frank Cass"), "on SENSE only");
+        assertEquals(Optional.empty(), withoutSense.recognize("Curzon Press"), "on SENSE only");
         assertEquals("UEFISCDI_STIINTE_SOCIALE",
-                withoutSense.recognize("Peter Lang").map(InternationalPublisherSupport.Recognition::key).orElse(null));
+                withoutSense.recognize("Berghahn Books").map(InternationalPublisherSupport.Recognition::key).orElse(null));
         withoutSense.recognize("Karthala");
         verify(down, times(1)).findAll(); // not once per book: again only after a while
     }
@@ -133,7 +148,7 @@ class InternationalPublisherListServiceTest {
         assertFalse(InternationalPublisherSupport.isRomanian("Editura Polirom"));
         InternationalPublisherSupport.register(lists);
         try {
-            assertEquals("SENSE", InternationalPublisherSupport.recognize(" Brill ").orElseThrow().key());
+            assertEquals("CNCS_STIINTE_SOCIALE", InternationalPublisherSupport.recognize(" Brill ").orElseThrow().key());
         } finally {
             InternationalPublisherSupport.reset();
         }

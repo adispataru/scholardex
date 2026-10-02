@@ -43,6 +43,14 @@ public enum Comisia25Rules {
     public static final LocalDate CURRENT_LIST_FROM = LocalDate.of(2026, 10, 1);
 
     /**
+     * "Lista A1, în vigoare" (definition [4]): CNCS's list of the publishers of international prestige in the social
+     * sciences, which the 2011 Social Sciences panel set up (OMECTS 4.691/2011, Anexa 2; 199 houses, UEFISCDI
+     * resource-8160) — the key of that list among the international lists ({@link InternationalPublisherSupport}).
+     * Read before the stand-ins for international prestige, so a house on it shows the list the standard names.
+     */
+    public static final String A1_LIST = "CNCS_STIINTE_SOCIALE";
+
+    /**
      * The recognised databases (definition [7]) the platform holds membership data for, Web of Science and
      * Scopus aside. The annex lists some thirty; for the others — EBSCO, ProQuest, CEEOL, Index Copernicus,
      * Google Scholar, … — there is nothing to check a journal against.
