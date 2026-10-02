@@ -364,20 +364,50 @@ from the Google Scholar links (54); the CNFIS domain of each FMT person for the 
 - **Tests:** a synthetic grid fixture shaped like the example (same separators, same row counts); idempotent
   re-import; header name matching; a 5.1 fixture round-trip.
 
-### Slice 3 — event registry, picker, Anexa 4.1 (large)
-- **Model:** `ArtisticEvent` gains aliases, basis (CNFIS list; UCMR/UCIMR/UNIMIR partnership; MC/MEC funding;
-  international participation; head's decision), country, organiser, status (candidate / confirmed) and
-  source; the 303 existing events become confirmed, basis "CNFIS list" (startup migration, raw Mongo).
-- **Matching:** normalised name and aliases, one matcher for the CNFIS sheet and for `Vizibilitate`.
-- **Admin/head page:** the candidate queue with counts and the suggested level; merge a candidate into an event
-  as an alias, rank it, give the basis; edit confirmed events.
-- **Seeding:** an admin operation reads an institutional Anexa 6.1 file and creates candidates from its event
-  column (event names only, nothing personal); FMT's file gives about 240.
-- **Picker:** `EVENT_NAME` gets an autocomplete like the university picker, showing the level; free text stays
-  allowed and becomes a candidate.
+### Slice 3 — event registry ranked by experts, picker, Anexa 4.1 (large) — REDESIGNED 2026-10-02
+
+Reviewed with Adrian before building ("it may be on the wrong foot, just as the self-reported category was"). Found:
+CS 1.1 / 1.2 trust the researcher's own `Vizibilitate` for an event the registry does not list (the H143 flaw
+again); CNFIS 5.1 is already registry-only and leaves an unranked event out; prod holds no performance record yet.
+The standard's footnotes rank HOSTS, not only festivals: top = abroad, festivals with tradition or the season/tour of
+any professional institution; in Romania, festivals of great prestige with substantial international participation, or
+institutions with international visibility; regional/local = seasons of philharmonic societies, city halls,
+associations, museums, … (abroad) and of institutions with national/local visibility, city halls, foundations, firms,
+museums, … (Romania).
+
+Decisions (Adrian, 2026-10-02):
+1. **The researcher names the event or institution, never its level.** `Vizibilitate` is removed from the record
+   type; an imported grid's CS 1.1 / 1.2 row becomes a suggestion shown to the expert, never a score.
+2. **An unknown name is a proposal to the registry**, shared by every record that names it (counts, years, evidence
+   links) — not a request attached to one record.
+3. **Experts rank events into the registry, once, for everyone:** by default the heads of the event's domain (dean,
+   vice-dean for research, department directors — FMT for Music), plus experts an admin names per domain. Rank
+   (top-international, international, national, **local** — new, so a known local host never counts as national for
+   CNFIS), type (festival, competition, institution season, tour), country, basis and a note; or merge into an
+   existing event as a spelling variant; or reject. Every record naming the event, past and future, follows; changes
+   keep a history (who, when, why, the previous rank). Whoever proposed an event cannot rank it.
+4. **While an event waits:** CS 1.2 (regional/local, 10 p) — the floor the standard gives any eligible public
+   performance; ranking only raises it. CNFIS 5.1 keeps leaving it out until ranked.
+5. **Other self-picked levels** (keynotes, juries, conference committees, associations, evaluation panels — about a
+   dozen types across standards): the same pattern, as a separate task after this slice (`H144`).
+
+Build:
+- **Model:** `ArtisticEvent` gains aliases, kind, country, organiser, domains, status (proposed / confirmed /
+  rejected), basis, decidedBy/At, note and history; rank gains `LOCAL`; the 303 CNFIS events become confirmed, basis
+  "Lista CNFIS" (startup migration, raw Mongo).
+- **Matching:** normalised name and aliases, one matcher for scoring, the CNFIS sheet, imports and the picker.
+- **Expert page:** the proposal queue per domain (counts, years, evidence, the suggestions of imported grids), bulk
+  ranking, merge, reject, edit confirmed events; access = heads of the domain + named experts (admin page to name
+  them), never one's own proposal.
+- **Seeding:** an admin operation reads an institutional Anexa 6.1 file and creates proposals from its event column
+  (event names only, nothing personal); FMT's file gives about 240.
+- **Picker:** `EVENT_NAME` autocomplete like the university picker, showing the level; free text creates or joins a
+  proposal.
 - **Anexa 4.1:** activity type "Citare sau cronică a unei creații artistice (CNFIS 4.1)" (year of the work, work,
-  publication, issue, year of the citation, proof); its writer from the CNFIS template (data volume; small copy
-  as a test fixture); the total on the CNFIS page, in the frozen copy and on the unit page.
+  publication, issue, year of the citation, proof); its writer from the CNFIS template (data volume; small copy as a
+  test fixture); the total on the CNFIS page, in the frozen copy and on the unit page.
+- **Prod:** a script removes `Vizibilitate` from the type (no record carries it yet); descriptions of CS 1.1 / 1.2
+  say how visibility is decided.
 
 ### Slice 4 — publishers and journal databases (medium to large; serves every domain)
 - **Publisher categories:** `report-data/cncs-publishers-{2013,2020,2026}.csv` and the UEFISCDI foreign list,

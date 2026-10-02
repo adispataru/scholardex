@@ -9,6 +9,14 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H144` Self-picked levels → registries ranked by experts — **OPEN (decided 2026-10-02 with Adrian, after H142
+  slice 3).** About a dozen activity types across standards take a level the researcher picks (keynote at an
+  international/national conference, jury, conference committee, professional association, evaluation panel, expert
+  group, CNFIS 5.2 sports level, …), the same flaw as H143's publisher category and H142's concert visibility. Apply
+  slice 3's pattern once it has proven itself: the researcher names the conference / association / body, a registry
+  ranked by experts (heads + named experts) decides the level, unknown names are proposals shared by every record.
+  Scope each family with the standard's own criteria (e.g. Comisia 28 defines an international conference by two of
+  three conditions).
 - [ ] `H143` The category of a declared book's publisher comes from the standard's lists, not from the researcher —
   **IN PROD 2026-10-02** (image 1922a5eb; `h143_publisher_categories.js --restart` run by Adrian: 7 types, 14
   indicators, 21 descriptions; verified read-only against the committed state) (asked by Adrian after the H142 slice 2
@@ -38,7 +46,8 @@ Done history moved to `TASKS-done.md`.
   regenerated (7 types, 14 indicators, 21 descriptions), rehearsed again.
   **Prod order (done):** push and deploy; flip the guard; run with `--restart`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
-  IN PROD, SLICE 2 IN PROD 2026-10-02** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
+  IN PROD, SLICE 2 IN PROD 2026-10-02; slice 3 REDESIGNED with Adrian the same day (experts rank events into the
+  registry; the researcher's own visibility pick goes) — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
