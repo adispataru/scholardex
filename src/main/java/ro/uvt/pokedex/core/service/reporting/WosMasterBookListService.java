@@ -69,7 +69,7 @@ public class WosMasterBookListService {
      * are these must match the full set, never a subset — otherwise a publisher literally called
      * "Press" would match half the list.
      */
-    private static final Set<String> GENERIC = Set.of(
+    static final Set<String> GENERIC = Set.of(
             "press", "publishing", "publishers", "publication", "publications", "books", "book",
             "editions", "verlag", "university", "international", "national", "house", "media",
             "imprint", "science", "sciences", "scientific", "academic", "academy", "society",

@@ -201,6 +201,35 @@ class PsychologyBookScoringServiceTest {
     }
 
     @Test
+    void anInternationalListOrRankingClassifiesA1WhereTheMasterBookListIsSilent() {
+        InternationalPublisherSupport.register(
+                new InternationalPublisherListService(InternationalPublisherListServiceTest.senseRankings()));
+        try {
+            ScoringPublicationReadModel harmattan = pub("bk", "L'Harmattan", null);
+            when(publishers.tierFor2026(Comisia28Rules.PSIHOLOGIE, "L'Harmattan")).thenReturn(null);
+            when(masterBookList.isRecognized("L'Harmattan")).thenReturn(false);
+            Score s = service.getScore(harmattan, indicator2026());
+            assertEquals(3.0, s.getScore());
+            assertEquals("A1", s.getCoreRankingEquivalent());
+            assertEquals("UEFISCDI_STIINTE_SOCIALE", s.getScoringInfo().get("tierBasis"));
+
+            ScoringPublicationReadModel brill = pub("ch", "Brill", null);
+            when(publishers.tierFromList(Comisia25Rules.SOCIOLOGIE.publisherList(), "Brill")).thenReturn(null);
+            when(masterBookList.isRecognized("Brill")).thenReturn(false);
+            Score b = service.getScore(brill, indicatorComisia25());
+            assertEquals("A1", b.getCoreRankingEquivalent());
+            assertEquals("SENSE", b.getScoringInfo().get("tierBasis"));
+
+            ScoringPublicationReadModel economica = pub("bk", "Editura Economica", null);
+            when(publishers.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Economica")).thenReturn(null);
+            assertEquals(0.0, service.getScore(economica, indicator2026()).getScore(),
+                    "a Romanian house is not the French Economica of Anexa 7c");
+        } finally {
+            InternationalPublisherSupport.reset();
+        }
+    }
+
+    @Test
     void nullPublicationScoresZeroWithoutSettingCategory() {
         Score s = service.getScore((ScoringPublicationReadModel) null, indicator);
         assertEquals(0.0, s.getScore());

@@ -3515,7 +3515,7 @@
    "$oid": "6abb7bad05b6723f97a63766"
   },
   "name": "Psiho26_I3A",
-  "description": "Indicatorul I3A (aria A1): cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 16 × m puncte pe carte (m = 3 pentru A1, m = 1 pentru A2). Pentru Psihologie punctajul nu se împarte la numărul de autori. Edituri A2: ASCR, Polirom, Trei. Categoria A1 este definită de standard pe fiecare publicație, prin prezența în cel puțin 25 de biblioteci universitare din state UE sau OCDE, conform WorldCat; platforma nu poate interoga WorldCat și consideră A1 editurile internaționale din lista Web of Science Master Book List. Încadrarea este orientativă: ruta complementară (tiraj, citări, premii ale Academiei Române) și verificarea WorldCat rămân în sarcina comisiei. Împreună cu I4A nu formează un criteriu separat pentru Psihologie, dar intră în totalul A1 (criteriul C3).",
+  "description": "Indicatorul I3A (aria A1): cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 16 × m puncte pe carte (m = 3 pentru A1, m = 1 pentru A2). Pentru Psihologie punctajul nu se împarte la numărul de autori. Edituri A2: ASCR, Polirom, Trei. Categoria A1 este definită de standard pe fiecare publicație, prin prezența în cel puțin 25 de biblioteci universitare din state UE sau OCDE, conform WorldCat; platforma nu poate interoga WorldCat și consideră A1 editurile de prestigiu internațional din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B) și de pe listele UEFISCDI de edituri de prestigiu internațional (științe sociale; arte și științe umaniste). Încadrarea este orientativă: ruta complementară (tiraj, citări, premii ale Academiei Române) și verificarea WorldCat rămân în sarcina comisiei. Împreună cu I4A nu formează un criteriu separat pentru Psihologie, dar intră în totalul A1 (criteriul C3).",
   "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 16*S : 0",
   "domain": {
    "$ref": "domains",
@@ -3575,7 +3575,7 @@
    "$oid": "6abb7bad05b6723f97a63768"
   },
   "name": "Psiho26_I4A",
-  "description": "Indicatorul I4A (aria A1): capitole în cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 4 × m puncte pe capitol (m = 3 pentru A1, m = 1 pentru A2), fără împărțire la numărul de autori. Încadrarea editurilor este cea de la I3A: A2 după lista standardului, A1 aproximat prin lista Web of Science Master Book List. Lucrările din volume de conferință apărute în serii de carte sunt tratate tot ca volume colective, conform standardului.",
+  "description": "Indicatorul I4A (aria A1): capitole în cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 4 × m puncte pe capitol (m = 3 pentru A1, m = 1 pentru A2), fără împărțire la numărul de autori. Încadrarea editurilor este cea de la I3A: A2 după lista standardului, A1 aproximat prin aceleași liste internaționale. Lucrările din volume de conferință apărute în serii de carte sunt tratate tot ca volume colective, conform standardului.",
   "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 4*S : 0",
   "domain": {
    "$ref": "domains",
@@ -3919,7 +3919,7 @@
    "$oid": "6abb7bad05b6723f97a63773"
   },
   "name": "Psiho26_I17",
-  "description": "Indicatorul I17 (aria A2): cărți coordonate la edituri clasificate A1, A2 sau B din domeniu, cu 8 × m / n puncte pe carte (m = 3 pentru A1, 1 pentru A2, 0,5 pentru B), unde n este numărul de coordonatori ai volumului. Se declară la activități («Carte coordonată»), cu categoria editurii și numărul de coordonatori; fără numărul de coordonatori se consideră n = 1.",
+  "description": "Indicatorul I17 (aria A2): cărți coordonate la edituri clasificate A1, A2 sau B din domeniu, cu 8 × m / n puncte pe carte (m = 3 pentru A1, 1 pentru A2, 0,5 pentru B), unde n este numărul de coordonatori ai volumului. Se declară la activități («Carte coordonată»), cu editura și numărul de coordonatori; fără numărul de coordonatori se consideră n = 1. Categoria nu se alege: rezultă din editură — A2 și B după lista domeniului din 2026, A1 pentru o editură de prestigiu internațional, ca la I3A; numele unei edituri străine se scrie fără «Editura». A1 prin cele 25 de biblioteci WorldCat și A2 sau B prin ruta complementară (care poate ridica și categoria unei edituri din listă) se cer, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă.",
   "formula": "m = Categorie_editura == 'A1' ? 3.0 : (Categorie_editura == 'A2' ? 1.0 : (Categorie_editura == 'B' ? 0.5 : 0.0)); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 8 * m / n",
   "domain": {
    "$ref": "domains",
@@ -4474,7 +4474,7 @@
    "$oid": "6abb957433192ec40a8e070a"
   },
   "name": "Edu26_I3A",
-  "description": "Indicatorul I3A (aria A1): cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 16 × m puncte pe carte (m = 3 pentru A1, m = 1 pentru A2). Pentru Științe ale Educației punctajul nu se împarte la numărul de autori. Edituri A2: Polirom, Trei, Editura Didactică și Pedagogică. Categoria A1 este definită de standard pe fiecare publicație, prin prezența în cel puțin 25 de biblioteci universitare din state UE sau OCDE, conform WorldCat; platforma nu poate interoga WorldCat și consideră A1 editurile internaționale din lista Web of Science Master Book List. Încadrarea este orientativă: ruta complementară (tiraj, citări, premii ale Academiei Române) și verificarea WorldCat rămân în sarcina comisiei. Praguri (criteriul C3 = I3A + I4A): 20 pentru Conferențiar, 30 pentru Profesor și pentru abilitare.",
+  "description": "Indicatorul I3A (aria A1): cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 16 × m puncte pe carte (m = 3 pentru A1, m = 1 pentru A2). Pentru Științe ale Educației punctajul nu se împarte la numărul de autori. Edituri A2: Polirom, Trei, Editura Didactică și Pedagogică. Categoria A1 este definită de standard pe fiecare publicație, prin prezența în cel puțin 25 de biblioteci universitare din state UE sau OCDE, conform WorldCat; platforma nu poate interoga WorldCat și consideră A1 editurile de prestigiu internațional din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B) și de pe listele UEFISCDI de edituri de prestigiu internațional (științe sociale; arte și științe umaniste). Încadrarea este orientativă: ruta complementară (tiraj, citări, premii ale Academiei Române) și verificarea WorldCat rămân în sarcina comisiei. Praguri (criteriul C3 = I3A + I4A): 20 pentru Conferențiar, 30 pentru Profesor și pentru abilitare.",
   "formula": "(category=='A1'||category=='A2') && docType=='bk' ? 16*S : 0",
   "kind": {
    "role": "ALL",
@@ -4534,7 +4534,7 @@
    "$oid": "6abb957433192ec40a8e070c"
   },
   "name": "Edu26_I4A",
-  "description": "Indicatorul I4A (aria A1): capitole în cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 4 × m puncte pe capitol (m = 3 pentru A1, m = 1 pentru A2), fără împărțire la numărul de autori. Încadrarea editurilor este cea de la I3A: A2 după lista standardului, A1 aproximat prin lista Web of Science Master Book List. Intră, împreună cu I3A, în criteriul C3.",
+  "description": "Indicatorul I4A (aria A1): capitole în cărți publicate ca autor sau coautor la edituri clasificate A1 sau A2, cu 4 × m puncte pe capitol (m = 3 pentru A1, m = 1 pentru A2), fără împărțire la numărul de autori. Încadrarea editurilor este cea de la I3A: A2 după lista standardului, A1 aproximat prin aceleași liste internaționale. Intră, împreună cu I3A, în criteriul C3.",
   "formula": "(category=='A1'||category=='A2') && docType=='ch' ? 4*S : 0",
   "kind": {
    "role": "ALL",
@@ -4971,7 +4971,7 @@
    "$oid": "6abb957433192ec40a8e071a"
   },
   "name": "Edu26_I17",
-  "description": "Indicatorul I17 (aria A2): cărți coordonate la edituri clasificate A1, A2 sau B din domeniu, cu 8 × m / n puncte pe carte (m = 3 pentru A1, 1 pentru A2, 0,5 pentru B), unde n este numărul de coordonatori ai volumului. Se declară la activități («Carte coordonată»), cu categoria editurii și numărul de coordonatori; fără numărul de coordonatori se consideră n = 1.",
+  "description": "Indicatorul I17 (aria A2): cărți coordonate la edituri clasificate A1, A2 sau B din domeniu, cu 8 × m / n puncte pe carte (m = 3 pentru A1, 1 pentru A2, 0,5 pentru B), unde n este numărul de coordonatori ai volumului. Se declară la activități («Carte coordonată»), cu editura și numărul de coordonatori; fără numărul de coordonatori se consideră n = 1. Categoria nu se alege: rezultă din editură — A2 și B după lista domeniului din 2026, A1 pentru o editură de prestigiu internațional, ca la I3A; numele unei edituri străine se scrie fără «Editura». A1 prin cele 25 de biblioteci WorldCat și A2 sau B prin ruta complementară (care poate ridica și categoria unei edituri din listă) se cer, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă.",
   "formula": "m = Categorie_editura == 'A1' ? 3.0 : (Categorie_editura == 'A2' ? 1.0 : (Categorie_editura == 'B' ? 0.5 : 0.0)); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 8 * m / n",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -5104,7 +5104,7 @@
    "$oid": "6abb957433192ec40a8e071e"
   },
   "name": "Edu26_I21",
-  "description": "Indicatorul I21 (aria A2): coordonator al unei colecții de carte la o editură clasificată A1, A2 sau B, cu 6 puncte pe colecție. Se declară la activități («Coordonator al unei colecții de carte»).",
+  "description": "Indicatorul I21 (aria A2): coordonator al unei colecții de carte la o editură clasificată A1, A2 sau B, cu 6 puncte pe colecție. Se declară la activități («Coordonator al unei colecții de carte»), cu editura; încadrarea rezultă din editură, ca la I17.",
   "formula": "Categorie_editura != null ? 6 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -5761,7 +5761,7 @@
    "$oid": "6abbfc460faa5f42002d72b9"
   },
   "name": "Soc26_I3",
-  "description": "Indicatorul I.3: cărți (inclusiv manuale) publicate ca autor sau coautor, cu cel mult 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 10 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
+  "description": "Indicatorul I.3: cărți (inclusiv manuale) publicate ca autor sau coautor, cu cel mult 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 10 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B) și de pe listele UEFISCDI de edituri de prestigiu internațional (științe sociale; arte și științe umaniste). Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. O carte apărută înaintea listei actuale la o editură de pe lista anterioară (Anexa 2) contează și ea, potrivit standardului; platforma nu are lista anterioară, așa că o asemenea carte se declară, cu cererea de încadrare (I.3 declarat). Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "(docType == 'bk' && N <= 3) ? 10 * Coef_m / N : 0",
   "kind": {
    "role": "ALL",
@@ -5791,7 +5791,7 @@
    "$oid": "6abbfc460faa5f42002d72ba"
   },
   "name": "Soc26_I3_decl",
-  "description": "Indicatorul I.3, cărți declarate de candidat: cărți cu cel mult 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 10 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "description": "Indicatorul I.3, cărți declarate de candidat: cărți cu cel mult 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 10 × m / n. Încadrarea editurii nu se alege: rezultă din editura scrisă la declarare — Lista A2 a comisiei (coloana Sociologie), iar pentru Lista A1, netipărită în standard, editurile de prestigiu internațional din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B) și de pe listele UEFISCDI de edituri de prestigiu internațional (științe sociale; arte și științe umaniste). Numele unei edituri străine se scrie fără «Editura». Cele 6 biblioteci WorldCat, o editură de prestigiu internațional de pe nicio listă și o carte apărută înaintea listei actuale la o editură de pe lista anterioară (Anexa 2, pe care standardul nu o reproduce și platforma nu o are) se cer ca încadrare, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
   "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura != null && n <= 3) ? 10 * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -5825,7 +5825,7 @@
    "$oid": "6abbfc460faa5f42002d72bb"
   },
   "name": "Soc26_I4",
-  "description": "Indicatorul I.4: cărți (inclusiv manuale) publicate în calitate de coautor, cu mai mult de 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 6 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
+  "description": "Indicatorul I.4: cărți (inclusiv manuale) publicate în calitate de coautor, cu mai mult de 3 autori, la edituri din Lista A1 sau A2. Fiecare aduce 6 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B) și de pe listele UEFISCDI de edituri de prestigiu internațional (științe sociale; arte și științe umaniste). Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. O carte apărută înaintea listei actuale la o editură de pe lista anterioară (Anexa 2) contează și ea, potrivit standardului; platforma nu are lista anterioară, așa că o asemenea carte se declară, cu cererea de încadrare (I.3 declarat). Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "(docType == 'bk' && N > 3) ? 6 * Coef_m / N : 0",
   "kind": {
    "role": "ALL",
@@ -5855,7 +5855,7 @@
    "$oid": "6abbfc460faa5f42002d72bc"
   },
   "name": "Soc26_I4_decl",
-  "description": "Indicatorul I.4, cărți declarate de candidat: cărți cu mai mult de 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 6 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "description": "Indicatorul I.4, cărți declarate de candidat: cărți cu mai mult de 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 6 × m / n. Încadrarea editurii: ca la I.3 declarat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
   "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura != null && n > 3) ? 6 * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -5889,7 +5889,7 @@
    "$oid": "6abbfc460faa5f42002d72bd"
   },
   "name": "Soc26_I5",
-  "description": "Indicatorul I.5: cărți coordonate (inclusiv manuale). Fiecare aduce 6 × m / n, unde n este numărul de coordonatori. Se declară de candidat, pentru că platforma nu distinge un coordonator de un autor. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
+  "description": "Indicatorul I.5: cărți coordonate (inclusiv manuale). Fiecare aduce 6 × m / n, unde n este numărul de coordonatori. Se declară de candidat, pentru că platforma nu distinge un coordonator de un autor. Contează o carte la o editură din Lista A1 sau A2 (definiția [4]); încadrarea editurii: ca la I.3 declarat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
   "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; Categorie_editura != null ? 6 * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -5923,7 +5923,7 @@
    "$oid": "6abbfc470faa5f42002d72be"
   },
   "name": "Soc26_I6",
-  "description": "Indicatorul I.6: capitole în volume colective. Capitol într-un volum apărut la o editură din Lista A1: 6 × m / n. Capitol într-un volum apărut la o editură din Lista A2: 3 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List. Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
+  "description": "Indicatorul I.6: capitole în volume colective. Capitol într-un volum apărut la o editură din Lista A1: 6 × m / n. Capitol într-un volum apărut la o editură din Lista A2: 3 × m / n. Lista A1 nu este tipărită în standard; platforma consideră de prestigiu internațional editurile din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B) și de pe listele UEFISCDI de edituri de prestigiu internațional (științe sociale; arte și științe umaniste). Editurile din Lista A2 sunt cele din coloana Sociologie a listei comisiei. O carte apărută înaintea listei actuale la o editură de pe lista anterioară (Anexa 2) contează și ea, potrivit standardului; platforma nu are lista anterioară, așa că o asemenea carte se declară, cu cererea de încadrare (I.3 declarat). Coeficientul m se stabilește din datele OpenAlex și este afișat lângă fiecare publicație: 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate; 1,5 pentru o asemenea limbă, când publicația a apărut în țară sau când locul apariției nu este cunoscut; 1 în celelalte cazuri, inclusiv atunci când limba nu este cunoscută platformei. Evaluarea colegială internațională, cerută de standard pentru m = 2, rămâne de verificat de candidat.",
   "formula": "docType == 'ch' ? (category == 'A1' ? 6 : 3) * Coef_m / N : 0",
   "kind": {
    "role": "ALL",
@@ -5953,7 +5953,7 @@
    "$oid": "6abbfc470faa5f42002d72bf"
   },
   "name": "Soc26_I6_decl",
-  "description": "Indicatorul I.6, capitole declarate de candidat: 6 × m / n pentru o editură din Lista A1; 3 × m / n pentru o editură din Lista A2 sau pentru un volum cuprins în cel puțin 6 biblioteci din worldcat.org. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
+  "description": "Indicatorul I.6, capitole declarate de candidat: 6 × m / n pentru o editură din Lista A1; 3 × m / n pentru o editură din Lista A2 sau pentru un volum cuprins în cel puțin 6 biblioteci din worldcat.org. Încadrarea editurii: ca la I.3 declarat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
   "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Categorie_editura != null) ? (Categorie_editura == 'A1' ? 6 : 3) * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -6083,7 +6083,7 @@
    "$oid": "6abbfc470faa5f42002d72c3"
   },
   "name": "Soc26_I8_trad",
-  "description": "Indicatorul I.8, traduceri: traducerea unei lucrări fundamentale din domeniul științelor sociale, la o editură din Lista A2: 2 puncte; însoțită de aparat critic: 4 puncte. Se declară de candidat.",
+  "description": "Indicatorul I.8, traduceri: traducerea unei lucrări fundamentale din domeniul științelor sociale, la o editură din Lista A2: 2 puncte; însoțită de aparat critic: 4 puncte. Se declară de candidat. Contează editurile din Lista A2 (ori o traducere cuprinsă în cel puțin 6 biblioteci din worldcat.org), nu și cele din Lista A1, cum spune standardul; încadrarea editurii: ca la I.3 declarat.",
   "formula": "Categorie_editura == 'A2' ? (Tip == 'Cu aparat critic' ? 4 : 2) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -6246,7 +6246,7 @@
    "$oid": "6abbfc470faa5f42002d72c8"
   },
   "name": "Soc26_I12",
-  "description": "Indicatorul I.12: colecții (serii de volume). Editură din Lista A1: coordonator 8 puncte, membru în comitetul științific 4 puncte. Editură din Lista A2: coordonator 4 puncte, membru 2 puncte. Punctajul se acordă pentru fiecare colecție.",
+  "description": "Indicatorul I.12: colecții (serii de volume). Editură din Lista A1: coordonator 8 puncte, membru în comitetul științific 4 puncte. Editură din Lista A2: coordonator 4 puncte, membru 2 puncte. Punctajul se acordă pentru fiecare colecție. Se declară de candidat; încadrarea rezultă din editura scrisă, după aceleași liste ca la I.3 declarat, iar pentru o editură de prestigiu internațional de pe nicio listă se cere, cu dovada.",
   "formula": "Categorie_editura == 'A1' ? (Rol == 'Coordonator' ? 8 : 4) : (Categorie_editura == 'A2' ? (Rol == 'Coordonator' ? 4 : 2) : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -6763,7 +6763,7 @@
    "$oid": "6abbfc470faa5f42002d72d8"
   },
   "name": "Soc26_C4_capitole_decl",
-  "description": "Numărul capitolelor declarate de candidat la I.6. Intră în criteriul C.4.",
+  "description": "Numărul capitolelor declarate de candidat la I.6, la o editură încadrată ca la I.3 declarat. Intră în criteriul C.4.",
   "formula": "(Tip == 'Capitol în volum colectiv' && Categorie_editura != null) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -6857,7 +6857,7 @@
    "$oid": "6abbfc470faa5f42002d72db"
   },
   "name": "Soc26_C5_A1_decl",
-  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A1. Intră în criteriul C.5.",
+  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A1 (încadrarea: ca la I.3 declarat). Intră în criteriul C.5.",
   "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura == 'A1' && n <= 3) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -6891,7 +6891,7 @@
    "$oid": "6abbfc470faa5f42002d72dc"
   },
   "name": "Soc26_C5_A2_decl",
-  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A2 sau cuprinse în cel puțin 6 biblioteci din worldcat.org. Intră în criteriul C.5.",
+  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A2 sau cuprinse în cel puțin 6 biblioteci din worldcat.org (încadrarea: ca la I.3 declarat). Intră în criteriul C.5.",
   "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura == 'A2' && n <= 3) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
@@ -7343,7 +7343,7 @@
    "$oid": "6abfc79210e2c7537f4c8bfa"
   },
   "name": "Muz26_DID_1_1",
-  "description": "DID 1.1: tratat, studiu amplu sau volum de studii teoretice ori privind compoziția, stilul sau interpretarea muzicală, publicat — adică la o editură clasificată CNCS în categoria A sau B, sau la o editură străină echivalentă: 30 de puncte. Încadrarea editurii se alege la declarare; o carte fără încadrare nu se punctează.",
+  "description": "DID 1.1: tratat, studiu amplu sau volum de studii teoretice ori privind compoziția, stilul sau interpretarea muzicală, publicat — adică la o editură clasificată CNCS în categoria A sau B, sau la o editură străină echivalentă: 30 de puncte. Încadrarea nu se alege: rezultă din editura scrisă la declarare. Standardul nu precizează care listă CNCS se folosește; platforma ia cea mai bună categorie a editurii în domeniul Muzică al listelor CNCS din 2020 și 2026, iar pentru o editură pe care acestea nu o clasifică, cea mai bună categorie din orice domeniu al listelor din 2013, 2020 și 2026. Editură străină echivalentă: o editură străină din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B) și de pe listele UEFISCDI de edituri de prestigiu internațional (științe sociale; arte și științe umaniste), în afară de Lambert Academic Publishing; numele ei se scrie fără «Editura». Pentru o editură străină de pe nicio listă se poate cere încadrarea, cu dovada; ea contează după ce conducerea departamentului sau a facultății o aprobă.",
   "formula": "Categorie_editura != null ? 30 : 0",
   "domain": {
    "$ref": "domains",
@@ -8264,7 +8264,7 @@
    "$oid": "6abfc79210e2c7537f4c8c16"
   },
   "name": "Muz26_N_carti",
-  "description": "Numără cărțile de la DID 1.1, pentru activitățile minimale obligatorii (teoreticieni: 1 la conferențiar, 2 la profesor și abilitare; compozitori și interpreți: 1).",
+  "description": "Numără cărțile de la DID 1.1 — publicate la o editură încadrată ca acolo —, pentru activitățile minimale obligatorii (teoreticieni: 1 la conferențiar, 2 la profesor și abilitare; compozitori și interpreți: 1).",
   "formula": "Categorie_editura != null ? 1 : 0",
   "domain": {
    "$ref": "domains",

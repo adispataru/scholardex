@@ -12,6 +12,8 @@ import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectReadPort;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.PsihologiePublisherService;
+import ro.uvt.pokedex.core.service.reporting.InternationalPublisherListService;
+import ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport;
 import ro.uvt.pokedex.core.service.reporting.PublisherCategoryService;
 import ro.uvt.pokedex.core.service.reporting.PublisherCategorySupport;
 import ro.uvt.pokedex.core.service.reporting.PublisherRules;
@@ -76,6 +78,9 @@ final class SeedReportDefinition {
         PublisherCategorySupport.register(new PublisherCategoryService(
                 new PsihologiePublisherService(mock(ro.uvt.pokedex.core.repository.reporting.PsihologiePublisherRepository.class)),
                 masterBookList));
+        // the committed international lists; SENSE, a database collection, stays empty here
+        InternationalPublisherSupport.register(new InternationalPublisherListService(
+                mock(ro.uvt.pokedex.core.repository.reporting.SenseRankingRepository.class)));
     }
 
     SeedReportDefinition(String title, String indicatorPrefix) {

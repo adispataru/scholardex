@@ -1,0 +1,4 @@
+key,label,source,levels
+SENSE,"Clasamentul SENSE al editurilor (categoriile A și B)",senseRankings,A|B
+UEFISCDI_STIINTE_SOCIALE,"UEFISCDI, edituri pentru științele sociale (PD/TE 2026, Anexa 7c)",report-data/uefiscdi-anexa7c-publishers-2026.csv,
+UEFISCDI_ARTE_UMANISTE,"UEFISCDI, edituri de prestigiu internațional în arte și științe umaniste",report-data/uefiscdi-arts-humanities-international-publishers.csv,

@@ -19,8 +19,18 @@ Done history moved to `TASKS-done.md`.
   UEFISCDI international list for arts and humanities (Lambert excluded). Where no list decides, a request
   (`Incadrare_solicitata` + `Dovada_incadrarii`) counts once a head approves it on `/supervisor/declarations`. No
   select is preselected anymore. Imported books get their publisher when the line names a listed one. Details,
-  sources and three readings to confirm in `docs/tasks/active/h143-publisher-categories.md`. Full suite 3797, 0
-  failures. Prod script `h143_publisher_categories.js` (guard `H143_IMAGE_IS_DEPLOYED`, `--restart`), rehearsed.
+  sources and three readings to confirm in `docs/tasks/active/h143-publisher-categories.md`.
+  **Review round (same day, Adrian):** international lists and rankings decide before any head is asked —
+  `InternationalPublisherListService` reads `report-data/international-publisher-lists.csv` (SENSE A and B from the
+  `senseRankings` collection the CS scorer uses, UEFISCDI Anexa 7c social sciences, UEFISCDI arts and humanities; a
+  further ranking = one fixture + one row), for declared AND corpus books (`PsychologyBookScoringService`), after the
+  WoS Master Book List. A Romanian house (written «Editura …», or named as on CNCS/the commissions' lists) is never
+  looked up there (Editura Economică ≠ French Economica). The regulations name no CNCS list year for Music: the
+  platform's reading now stands in the descriptions researchers read (21 rewritten, all four reports); Sociology's
+  "earlier list (Anexa 2)" — not reproduced in OM 3.019/2025, whose Anexa 2 is the professor standards — is a request
+  a head approves. Prod read: SENSE loaded (798), still no record of the affected types; 77 book publishers of the
+  prod corpus newly count as international (scores only rise). Full suite and guardrails green. Prod script
+  regenerated (7 types, 14 indicators, 21 descriptions), rehearsed again.
   **Prod order:** push and deploy; flip the guard; run with `--restart`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
   IN PROD, SLICE 2 BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller

@@ -309,8 +309,26 @@ class Sociologie2026ReportDefinitionTest {
                 "Editura", "Polirom")), 1e-9);
     }
 
+    @Test
+    void anInternationalListDecidesA1AndTheEarlierListIsAHeadsCall() {
+        // UEFISCDI's list for the social sciences (Anexa 7c): an A1 house with no head asked
+        assertEquals(6.0, soc.activity("I6_decl", fields("Tip", "Capitol în volum colectiv",
+                "Editura", "L'Harmattan, Paris")), 1e-9);
+        assertEquals(1.0, soc.activity("C5_A1_decl", fields("Tip", "Carte", "Editura", "Berghahn Books", "N_autori", "1")), 1e-9);
+        assertEquals(0.0, soc.activity("C5_A1_decl", fields("Tip", "Carte", "Editura", "Editura Berghahn Books", "N_autori", "1")),
+                1e-9, "a foreign house is written without «Editura» (Berghahn is on Anexa 7c, not on the Master Book List)");
+        // a book published before the current list at a house of the earlier one (not held): A2 once approved
+        assertEquals(10.0, soc.activityWithDecision("I3_decl", fields("Tip", "Carte", "Editura", "Editura Proprie",
+                "Incadrare_solicitata", EARLIER, "N_autori", "1"), PublisherClaim.Status.APPROVED), 1e-9);
+        assertEquals(0.0, soc.activityWithDecision("I3_decl", fields("Tip", "Carte", "Editura", "Editura Proprie",
+                "Incadrare_solicitata", EARLIER, "N_autori", "1"), PublisherClaim.Status.PENDING), 1e-9);
+        assertEquals(1.0, soc.activityWithDecision("C5_A2_decl", fields("Tip", "Carte", "Editura", "Editura Proprie",
+                "Incadrare_solicitata", EARLIER), PublisherClaim.Status.APPROVED), 1e-9);
+    }
+
     private static final String A1 = "Editură de prestigiu internațional (Lista A1)";
     private static final String WORLDCAT = "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)";
+    private static final String EARLIER = "Editură de pe lista anterioară (Anexa 2), carte apărută înaintea listei actuale";
 
     @Test
     void declaredBooksAreCountedOnce() {

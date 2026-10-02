@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.reporting;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.activities.PublisherClaim;
 import ro.uvt.pokedex.core.repository.reporting.PsihologiePublisherRepository;
@@ -19,9 +21,21 @@ import static org.mockito.Mockito.when;
 /** H143 — the category of a declared book's publisher, from the lists each standard names. */
 class PublisherCategoryServiceTest {
 
-    private static final Set<String> MASTER_BOOK_LIST = Set.of("routledge", "springer");
+    /** Stands in for the Mongo-backed WoS Master Book List; Excelsior Art is one of its four Romanian houses. */
+    private static final Set<String> MASTER_BOOK_LIST = Set.of("routledge", "springer", "excelsior art");
 
     private final PublisherCategoryService service = service();
+
+    @BeforeEach
+    void registerTheInternationalLists() {
+        InternationalPublisherSupport.register(
+                new InternationalPublisherListService(InternationalPublisherListServiceTest.senseRankings()));
+    }
+
+    @AfterEach
+    void resetTheInternationalLists() {
+        InternationalPublisherSupport.reset();
+    }
 
     private static PublisherCategoryService service() {
         WosMasterBookListService masterBookList = mock(WosMasterBookListService.class);
@@ -78,12 +92,25 @@ class PublisherCategoryServiceTest {
     }
 
     @Test
-    void anEquivalentForeignPublisherIsOnTheInternationalListOrTheMasterBookList() {
+    void anEquivalentForeignPublisherIsOnTheMasterBookListOrAnInternationalList() {
         assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Bärenreiter-Verlag Kassel"));
         assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Ricordi"), "an alias of Casa Ricordi");
         assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Routledge"));
+        PublisherCategorySupport.Classification brill = service.classify(PublisherRules.MUZICA_2026, "Brill").orElseThrow();
+        assertEquals("STRAINA", brill.category());
+        assertEquals("INTERNATIONAL_LIST", brill.basis());
+        assertTrue(brill.detail().startsWith("Clasamentul SENSE"), brill.detail());
         assertNull(category(PublisherRules.MUZICA_2026, "Lambert Academic Publishing"), "UEFISCDI excludes it");
         assertEquals(Optional.empty(), service.classify(PublisherRules.MUZICA_2026, "Editura Proprie"));
+    }
+
+    @Test
+    void aRomanianHouseIsNeverAForeignOne() {
+        assertEquals(Optional.empty(), service.classify(PublisherRules.MUZICA_2026, "Excelsior Art"),
+                "on the WoS Master Book List, but Romanian");
+        assertEquals(Optional.empty(), service.classify(PublisherRules.MUZICA_2026, "Editura Peter Lang"),
+                "a foreign name is written without «Editura»");
+        assertEquals("STRAINA", category(PublisherRules.MUZICA_2026, "Peter Lang"));
     }
 
     // ── Comisia 25 and 28 ──────────────────────────────────────────────────────
@@ -99,6 +126,23 @@ class PublisherCategoryServiceTest {
         assertEquals("A1", category(PublisherRules.STIINTE_EDUCATIEI_2026, "Springer"));
         assertEquals("WOS_MASTER_BOOK_LIST",
                 service.classify(PublisherRules.PSIHOLOGIE_2026, "Routledge").orElseThrow().basis());
+        assertEquals("A1", category(PublisherRules.SOCIOLOGIE_2026, "Excelsior Art"),
+                "the Master Book List counts as for corpus books: international prestige, not a foreign house");
+    }
+
+    @Test
+    void anInternationalListOrRankingMakesAHouseA1BeforeAnyHeadIsAsked() {
+        PublisherCategorySupport.Classification harmattan =
+                service.classify(PublisherRules.SOCIOLOGIE_2026, "L'Harmattan, Paris").orElseThrow();
+        assertEquals("A1", harmattan.category());
+        assertEquals("INTERNATIONAL_LIST", harmattan.basis());
+        assertTrue(harmattan.detail().startsWith("UEFISCDI, edituri pentru științele sociale"), harmattan.detail());
+        assertEquals("A1", category(PublisherRules.PSIHOLOGIE_2026, "Polity Press"), "SENSE B");
+        assertEquals("A1", category(PublisherRules.STIINTE_EDUCATIEI_2026, "Brill"), "SENSE B");
+        assertNull(category(PublisherRules.PSIHOLOGIE_2026, "Acco"), "SENSE C does not count");
+        assertEquals("A2", category(PublisherRules.SOCIOLOGIE_2026, "Editura Economica"), "on the Sociology list");
+        assertNull(category(PublisherRules.PSIHOLOGIE_2026, "Economica"),
+                "Editura Economică is not on the Psychology list, and it is not the French Economica of Anexa 7c");
     }
 
     // ── the outcome a formula reads ────────────────────────────────────────────
@@ -165,6 +209,8 @@ class PublisherCategoryServiceTest {
                 "Studii de stilistică, București: Editura Universității Naționale de Muzică București, 2019, ISBN 978"));
         assertEquals(Optional.of("Cambridge University Press"),
                 service.findIn("A chapter, in: The Cambridge Companion, Cambridge University Press, 2021"));
+        assertEquals(Optional.of("EDWARD ELGAR"),
+                service.findIn("Handbook of Social Policy, Cheltenham: Edward Elgar, 2020"), "Anexa 7c");
         assertEquals(Optional.empty(), service.findIn("Concert de Crăciun, Universitaria, Craiova"),
                 "a one-word name is too common in a free text");
         assertEquals(Optional.empty(), service.findIn("Recital, sala Capitol, Timișoara"));

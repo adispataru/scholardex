@@ -22,12 +22,13 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
  * criteriile minime … nu se punctează"). Journal articles/proceedings are scored by other strategies.
  *
  * <p><b>2026 rules</b> ({@link Comisia28Rules}, OM 3019/2025 Comisia 28): the A2/B tiers come from the
- * 2026 lists of the indicator's domain, and a publisher on neither list is classified <b>A1 when it is on the WoS
- * Master Book List</b>. The standard defines A1 per publication (held by at least 25 EU/OECD university
- * libraries in WorldCat), which the platform cannot query; an international house on the Master Book
- * List is the closest computable stand-in, so the result is marked {@code tierBasis=WOS_MASTER_BOOK_LIST}
- * and is indicative. The 2026 formulas use 16 (book) and 4 (chapter) as the base and never divide by the
- * number of authors for Psychology.</p>
+ * 2026 lists of the indicator's domain, and a publisher on neither list is classified <b>A1 when it is a house of
+ * international prestige</b>: on the WoS Master Book List, else on an international list or ranking
+ * ({@link InternationalPublisherSupport}: SENSE A and B, the UEFISCDI lists). The standard defines A1 per publication
+ * (held by at least 25 EU/OECD university libraries in WorldCat), which the platform cannot query; an international
+ * house on those lists is the closest computable stand-in, so the result names the list
+ * ({@code tierBasis=WOS_MASTER_BOOK_LIST}, {@code SENSE}, …) and is indicative. The 2026 formulas use 16 (book) and 4
+ * (chapter) as the base and never divide by the number of authors for Psychology.</p>
  *
  * <p><b>Comisia 25, 2026</b> ({@link Comisia25Rules}): two tiers, A1 and A2, both returning S = 1 — see
  * {@link #scoreForComisia25}.</p>
@@ -74,9 +75,10 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
         java.util.Optional<Comisia28Rules> rules = Comisia28Rules.of(indicator);
         if (rules.isPresent()) {
             tier = publisherService.tierFor2026(rules.get(), publisher);
-            if (tier == null && wosMasterBookListService.isRecognized(publisher)) {
+            String international = tier == null ? internationalBasis(publisher) : null;
+            if (international != null) {
                 tier = "A1";
-                score.getScoringInfo().put("tierBasis", "WOS_MASTER_BOOK_LIST");
+                score.getScoringInfo().put("tierBasis", international);
             }
         } else {
             tier = publisherService.tierFor(publisher);
@@ -94,8 +96,8 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
     /**
      * COMISIA 25, 2026 (definition [4]): a book or chapter counts when its publisher is on the A2 list of the
      * group, or has international prestige (A1). The annex points at "Lista A1, în vigoare" without printing
-     * it; the WoS Master Book List stands in for it, as it does for Comisia 28, and the result says so
-     * ({@code tierBasis=WOS_MASTER_BOOK_LIST}). The listed tier wins over the stand-in. Both tiers return
+     * it; the WoS Master Book List and the international lists stand in for it, as they do for Comisia 28, and the
+     * result names the list ({@code tierBasis}). The listed tier wins over the stand-in. Both tiers return
      * S = 1: here the tier changes the points of a chapter only, and the formula reads it as {@code category}.
      * Holdings in at least six WorldCat libraries, which the annex treats like A2, cannot be looked up and
      * are declared by the candidate as an activity.
@@ -103,9 +105,10 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
     private Score scoreForComisia25(Comisia25Rules rules, String publisher) {
         Score score = new Score();
         String tier = publisherService.tierFromList(rules.publisherList(), publisher);
-        if (tier == null && wosMasterBookListService.isRecognized(publisher)) {
+        String international = tier == null ? internationalBasis(publisher) : null;
+        if (international != null) {
             tier = "A1";
-            score.getScoringInfo().put("tierBasis", "WOS_MASTER_BOOK_LIST");
+            score.getScoringInfo().put("tierBasis", international);
         }
         if (tier == null) {
             return score; // publisher on neither list → not counted
@@ -114,6 +117,18 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
         score.setCoreRankingEquivalent(tier);
         score.setScoringSource(strategy().name());
         return score;
+    }
+
+    /**
+     * The list that makes a house one of international prestige — the WoS Master Book List, else an international list
+     * or ranking — or null. A declared book's publisher is classified the same way ({@link PublisherCategoryService}).
+     */
+    private String internationalBasis(String publisher) {
+        if (wosMasterBookListService.isRecognized(publisher)) {
+            return "WOS_MASTER_BOOK_LIST";
+        }
+        return InternationalPublisherSupport.recognize(publisher).map(InternationalPublisherSupport.Recognition::key)
+                .orElse(null);
     }
 
     @Override

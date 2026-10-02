@@ -21,10 +21,11 @@ import java.util.Set;
 
 /**
  * H143 — classifies the publisher of a declared book from the lists each standard names ({@link PublisherRules}):
- * the commissions' own 2026 lists (through {@link PsihologiePublisherService}, as for corpus books), the WoS Master
- * Book List, the CNCS classifications of publishers in the humanities and arts (2013, 2020, 2026) and the UEFISCDI
- * list of publishers of international prestige in the arts and humanities. The lists ship as fixtures under
- * {@code report-data/}; a handful of common short names ({@code UVT}, {@code UNMB}, …) are aliases.
+ * the commissions' own 2026 lists (through {@link PsihologiePublisherService}, as for corpus books), the CNCS
+ * classifications of publishers in the humanities and arts (2013, 2020, 2026), and for a house of international
+ * prestige the WoS Master Book List and the international lists and rankings of {@link InternationalPublisherSupport}
+ * (SENSE A and B, the UEFISCDI lists). The lists ship as fixtures under {@code report-data/}, SENSE in the database; a
+ * handful of common short names ({@code UVT}, {@code UNMB}, …) are aliases.
  */
 @Service
 public class PublisherCategoryService implements PublisherCategorySupport.Classifier {
@@ -32,15 +33,12 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
     private static final Logger log = LoggerFactory.getLogger(PublisherCategoryService.class);
 
     static final String CNCS_FIXTURE = "report-data/cncs-publishers.csv";
-    static final String INTERNATIONAL_FIXTURE = "report-data/uefiscdi-arts-humanities-international-publishers.csv";
     static final String ALIASES_FIXTURE = "report-data/publisher-aliases.csv";
     /**
      * The Music domain of the CNCS lists ("Muzică" in 2020 and 2026). The 2013 list rated the performing arts as a whole
      * ("Artele spectacolului"); it counts like any other domain, for a publisher the Music lists do not rate.
      */
     private static final Set<String> MUSIC_DOMAINS = Set.of("MUZICA");
-    /** UEFISCDI excludes it from its own list of publishers of international prestige. */
-    private static final List<String> EXCLUDED_INTERNATIONAL = PublisherNameMatcher.words("Lambert Academic Publishing");
     private static final Map<String, String> DOMAIN_LABELS = Map.ofEntries(
             Map.entry("ARHITECTURA", "Arhitectură și urbanism"), Map.entry("ARTE_VIZUALE", "Arte vizuale"),
             Map.entry("CINEMATOGRAFIE", "Cinematografie și media"), Map.entry("FILOLOGIE", "Filologie"),
@@ -52,29 +50,22 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
     record CncsRow(int year, String domain, String category, String name, List<String> words) {
     }
 
-    /** A publisher of the international list, as written there and as words. */
-    record Listed(String name, List<String> words) {
-    }
-
     private final PsihologiePublisherService commissionLists;
     private final WosMasterBookListService masterBookList;
     private final List<CncsRow> cncs;
-    private final List<Listed> international;
     private final Map<List<String>, String> aliases;
 
     public PublisherCategoryService(PsihologiePublisherService commissionLists, WosMasterBookListService masterBookList) {
         this.commissionLists = commissionLists;
         this.masterBookList = masterBookList;
         this.cncs = loadCncs();
-        this.international = loadInternational();
         this.aliases = loadAliases();
     }
 
     @PostConstruct
     void register() {
         PublisherCategorySupport.register(this);
-        log.info("Publisher categories: {} CNCS classifications, {} international publishers, {} aliases",
-                cncs.size(), international.size(), aliases.size());
+        log.info("Publisher categories: {} CNCS classifications, {} aliases", cncs.size(), aliases.size());
     }
 
     @Override
@@ -95,6 +86,7 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
         };
     }
 
+    /** The commission's list, else A1 for a house of international prestige: as for corpus books. */
     private Optional<PublisherCategorySupport.Classification> commissionList(String tier, String detail, String name) {
         if (tier != null) {
             return Optional.of(new PublisherCategorySupport.Classification(tier, "LIST", detail));
@@ -102,23 +94,29 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
         if (masterBookList.isRecognized(name)) {
             return Optional.of(new PublisherCategorySupport.Classification("A1", "WOS_MASTER_BOOK_LIST", "WoS Master Book List"));
         }
-        return Optional.empty();
+        return InternationalPublisherSupport.recognize(name)
+                .map(r -> new PublisherCategorySupport.Classification("A1", "INTERNATIONAL_LIST", r.detail()));
     }
 
+    /**
+     * CNCS A or B, else an equivalent foreign house — on the WoS Master Book List or on an international list, and not a
+     * Romanian one (the Master Book List holds four Romanian houses) — else what CNCS says (a C: listed, not counted).
+     */
     private Optional<PublisherCategorySupport.Classification> music(String name) {
         Optional<CncsRow> romanian = bestCncs(name, MUSIC_DOMAINS);
         if (romanian.isPresent() && !"C".equals(romanian.get().category())) {
             return romanian.map(PublisherCategoryService::cncsClassification);
         }
-        if (onInternationalList(name)) {
-            return Optional.of(new PublisherCategorySupport.Classification(PublisherRules.FOREIGN, "INTERNATIONAL_LIST",
-                    "UEFISCDI — edituri de prestigiu internațional, arte și științe umaniste"));
-        }
-        if (masterBookList.isRecognized(name)) {
+        if (!InternationalPublisherSupport.isRomanian(name) && masterBookList.isRecognized(name)) {
             return Optional.of(new PublisherCategorySupport.Classification(PublisherRules.FOREIGN, "WOS_MASTER_BOOK_LIST",
                     "WoS Master Book List"));
         }
-        return romanian.map(PublisherCategoryService::cncsClassification); // a C: listed, but it does not count
+        Optional<InternationalPublisherSupport.Recognition> foreign = InternationalPublisherSupport.recognize(name);
+        if (foreign.isPresent()) {
+            return Optional.of(new PublisherCategorySupport.Classification(PublisherRules.FOREIGN, "INTERNATIONAL_LIST",
+                    foreign.get().detail()));
+        }
+        return romanian.map(PublisherCategoryService::cncsClassification);
     }
 
     private static PublisherCategorySupport.Classification cncsClassification(CncsRow row) {
@@ -143,7 +141,7 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
     }
 
     /**
-     * The longest publisher name of the CNCS lists or of the international list whose words stand together in the
+     * The longest publisher name of the CNCS lists or of the international lists whose words stand together in the
      * text; names of one word are too common in a free text to be trusted and are skipped.
      */
     @Override
@@ -157,23 +155,14 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
                 bestLength = row.words().size();
             }
         }
-        for (Listed listed : international) {
-            if (listed.words().size() >= 2 && listed.words().size() > bestLength
-                    && PublisherNameMatcher.match(listed.words(), words) >= 2
-                    && PublisherNameMatcher.match(EXCLUDED_INTERNATIONAL, listed.words()) == 0) {
-                best = listed.name();
-                bestLength = listed.words().size();
+        for (String name : InternationalPublisherSupport.names()) {
+            List<String> listed = PublisherNameMatcher.words(name);
+            if (listed.size() >= 2 && listed.size() > bestLength && PublisherNameMatcher.match(listed, words) >= 2) {
+                best = name;
+                bestLength = listed.size();
             }
         }
         return Optional.ofNullable(best);
-    }
-
-    boolean onInternationalList(String name) {
-        List<String> typed = PublisherNameMatcher.words(name);
-        if (typed.isEmpty() || PublisherNameMatcher.match(EXCLUDED_INTERNATIONAL, typed) > 0) {
-            return false;
-        }
-        return international.stream().anyMatch(listed -> PublisherNameMatcher.match(listed.words(), typed) > 0);
     }
 
     // ── fixtures ───────────────────────────────────────────────────────────────
@@ -186,16 +175,6 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
                     r.get(3).trim(), PublisherNameMatcher.words(r.get(3))));
         }
         return List.copyOf(rows);
-    }
-
-    private static List<Listed> loadInternational() {
-        List<Listed> names = new ArrayList<>();
-        for (List<String> r : readCsv(INTERNATIONAL_FIXTURE)) {
-            if (r.size() < 2) continue;
-            List<String> words = PublisherNameMatcher.words(r.get(1));
-            if (!words.isEmpty()) names.add(new Listed(r.get(1).trim(), words));
-        }
-        return List.copyOf(names);
     }
 
     private static Map<List<String>, String> loadAliases() {
