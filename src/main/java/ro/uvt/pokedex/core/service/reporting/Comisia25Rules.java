@@ -77,7 +77,8 @@ public enum Comisia25Rules {
      * Classpath CSV with the earlier A2 list the annex refers to ("lista de edituri din Anexa 2"): the CNATDCU
      * "Lista A2-Panel 4 – Edituri de prestigiu recunoscut" of the 2011 Social Sciences panel (OMECTS 4.691/2011,
      * Anexa 2 defines it; cnatdcu.ro, A2_Panel41.xls), 45 Romanian and 55 foreign houses. It counts only for a book
-     * that appeared before {@link #CURRENT_LIST_FROM}.
+     * that appeared before {@link #CURRENT_LIST_FROM}, and never for Lambert Academic Publishing, which it names
+     * ({@link ExcludedPublishers}).
      */
     public String earlierPublisherList() {
         return earlierPublisherList;

@@ -118,7 +118,7 @@ public class PsychologyBookScoringService extends AbstractForumScoringService {
             tier = "A1";
             score.getScoringInfo().put("tierBasis", international);
         }
-        if (tier == null && Comisia25Rules.beforeCurrentList(coverDate)) {
+        if (tier == null && Comisia25Rules.beforeCurrentList(coverDate) && !ExcludedPublishers.isExcluded(publisher)) {
             tier = publisherService.tierFromList(rules.earlierPublisherList(), publisher);
             if (tier != null) {
                 score.getScoringInfo().put("tierBasis", "EARLIER_LIST");

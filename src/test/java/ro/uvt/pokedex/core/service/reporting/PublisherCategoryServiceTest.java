@@ -192,9 +192,9 @@ class PublisherCategoryServiceTest {
                 "on the earlier A2 list too, but an international list makes it A1");
         assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Editura Universitatii din Pitesti", "2019-05-10"),
                 "«Editura Universității din București» is listed, not every «… din …»");
-        assertEquals("A2", category(PublisherRules.SOCIOLOGIE_2026, "Lambert Academic Publishing", "2015-03-01"),
-                "on the 2011 list itself, although the international lists exclude it");
-        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Lambert Academic Publishing", "2027-03-01"));
+        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "Lambert Academic Publishing", "2015-03-01"),
+                "on the 2011 list itself, but excluded there too, as on the international lists");
+        assertNull(category(PublisherRules.SOCIOLOGIE_2026, "LAP Lambert Academic Publishing, Saarbrücken", "2015-03-01"));
     }
 
     // ── the outcome a formula reads ────────────────────────────────────────────

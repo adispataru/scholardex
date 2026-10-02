@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  * School Press", nor "University of Arizona" for "Arizona State University"). A Romanian house is never looked up here
  * — written «Editura …», or named as on a Romanian list (CNCS, the commissions' 2026 lists, the Romanian houses of the
  * Master Book List) — so «Editura Economică» does not become the French Economica of Anexa 7c, nor Paideia an Italian
- * house. Lambert Academic Publishing never counts: UEFISCDI excludes it.</p>
+ * house. Lambert Academic Publishing never counts ({@link ExcludedPublishers}).</p>
  */
 @Service
 public class InternationalPublisherListService implements InternationalPublisherSupport.Lists {
@@ -52,7 +52,6 @@ public class InternationalPublisherListService implements InternationalPublisher
             "report-data/psihologie-publishers-2026.csv", "report-data/stiinte-educatiei-publishers-2026.csv",
             "report-data/psihologie-publishers.csv");
     private static final String MASTER_BOOK_LIST = "report-data/wos-master-book-list-publishers.csv";
-    private static final Set<String> EXCLUDED = WosMasterBookListService.canonicalTokens("Lambert Academic Publishing");
 
     /** One list of the index. */
     record Source(String key, String label, String location, Set<String> levels) {
@@ -112,7 +111,7 @@ public class InternationalPublisherListService implements InternationalPublisher
 
     private Optional<InternationalPublisherSupport.Recognition> recognizeUncached(String publisher) {
         Set<String> typed = WosMasterBookListService.canonicalTokens(publisher);
-        if (typed.isEmpty() || matches(typed, EXCLUDED) || isRomanian(publisher)) {
+        if (typed.isEmpty() || ExcludedPublishers.isExcluded(publisher) || isRomanian(publisher)) {
             return Optional.empty();
         }
         InternationalPublisherSupport.Recognition contained = null;
@@ -163,7 +162,7 @@ public class InternationalPublisherListService implements InternationalPublisher
         }
         return recognize(publisher).filter(r -> r.key().equals(key)).or(() -> {
             Set<String> typed = WosMasterBookListService.canonicalTokens(publisher);
-            if (typed.isEmpty() || matches(typed, EXCLUDED) || isRomanian(publisher)) {
+            if (typed.isEmpty() || ExcludedPublishers.isExcluded(publisher) || isRomanian(publisher)) {
                 return Optional.empty();
             }
             return sources.stream().filter(s -> s.key().equals(key)).findFirst().flatMap(source -> {
@@ -186,7 +185,7 @@ public class InternationalPublisherListService implements InternationalPublisher
         List<String> names = new ArrayList<>();
         for (Source source : sources) {
             for (Entry entry : entriesOf(source)) {
-                if (!matches(entry.tokens(), EXCLUDED)) {
+                if (!ExcludedPublishers.isExcluded(entry.name())) {
                     names.add(entry.name());
                 }
             }

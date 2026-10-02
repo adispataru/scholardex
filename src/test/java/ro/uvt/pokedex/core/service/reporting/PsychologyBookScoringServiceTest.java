@@ -207,6 +207,12 @@ class PsychologyBookScoringServiceTest {
         ScoringPublicationReadModel recent = pub("bk", "Lumina Lex", null);
         when(recent.getCoverDate()).thenReturn("2026-11-15");
         assertEquals(0.0, service.getScore(recent, indicatorComisia25()).getScore(), "the current list applies");
+
+        ScoringPublicationReadModel lambert = pub("bk", "LAP Lambert Academic Publishing", null);
+        when(lambert.getCoverDate()).thenReturn("2015-06-01");
+        when(publishers.tierFromList(earlier, "LAP Lambert Academic Publishing")).thenReturn("A2");
+        assertEquals(0.0, service.getScore(lambert, indicatorComisia25()).getScore(),
+                "named by the 2011 list, but Lambert never counts");
     }
 
     @Test

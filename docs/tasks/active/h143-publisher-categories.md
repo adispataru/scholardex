@@ -125,8 +125,9 @@ clear, then your choice is good and must be stated in the indicator/scorer descr
   22.06.2016, 199 houses; downloaded with Adrian's permission, kept next to the 2016 PDF; parsed as printed, plus seven
   forms researchers type — Hogrefe, De Gruyter, CQ Press, …), A2 = the CNATDCU commissions' lists, published as `A2_Panel41.xls` (cnatdcu.ro, 2011/11) — the list
   FEAA already uses. Reading (Adrian): the list's "entry into force" is 1 October 2026, when OM 3.019/2025 applies
-  (its art. 6), not 11 February 2025, when it was published. The earlier list includes Lambert Academic Publishing,
-  so a Lambert book of before October 2026 counts A2 for Sociology, although the international lists exclude it.
+  (its art. 6), not 11 February 2025, when it was published. The earlier list includes Lambert Academic Publishing;
+  Adrian excluded it there too (2026-10-02), as on the international lists: one rule, `ExcludedPublishers`, while the
+  list fixtures keep the house as published.
 - **Comisia 28:** one list, the 2026 annex's, no time rule. A1 has no list ("edituri de prestigiu internațional"): the
   international lists stand in for it, said in the descriptions.
 - **Sociology I.8 translations** count at an A2 publisher (the current list, or the earlier one before October 2026,

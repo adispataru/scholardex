@@ -107,8 +107,8 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
      * house of the earlier list — A2, as that list was. Read after the international lists, so a house on both is A1.
      */
     private Optional<PublisherCategorySupport.Classification> earlierSociologyList(String name, String publishedOn) {
-        if (!Comisia25Rules.beforeCurrentList(publishedOn)) {
-            return Optional.empty();
+        if (!Comisia25Rules.beforeCurrentList(publishedOn) || ExcludedPublishers.isExcluded(name)) {
+            return Optional.empty(); // the 2011 list names Lambert Academic Publishing, which never counts
         }
         String tier = commissionLists.tierFromList(Comisia25Rules.SOCIOLOGIE.earlierPublisherList(), name);
         return tier == null ? Optional.empty() : Optional.of(new PublisherCategorySupport.Classification(tier, "LIST",
