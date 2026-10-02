@@ -78,6 +78,10 @@ public class AdminInitializationController {
 
     @GetMapping
     public String showInitializationPage(Model model) {
+        // The H22 projection wrapper exists only where core.h22.projection.enabled=true (not in prod); the page
+        // says so instead of offering buttons that answer "disabled".
+        model.addAttribute("projectionWrapperAvailable",
+                postgresReportingProjectionServiceProvider.getIfAvailable() != null);
         return "admin/initialization";
     }
 
@@ -842,7 +846,7 @@ public class AdminInitializationController {
                         + ", scopus=" + result.scopusSet()
                         + ", openAlex=" + result.openAlexSet()
                         + ", updated=" + result.updated()
-                        + ". Run the Postgres projection (runFull) to publish the counts to the read model.");
+                        + ". Publish them to the read model with Scopus → 3. Build projections.");
         return "redirect:/admin/initialization";
     }
 

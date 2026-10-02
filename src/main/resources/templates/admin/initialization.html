@@ -15,7 +15,7 @@
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
                     <div class="app-page-toolbar app-dashboard">
-                        <p class="app-dashboard__intro">Run initialization and operational maintenance steps from one shared admin workspace. WoS, Scopus, USER_DEFINED, and reporting maintenance remain deterministic and admin-triggered.</p>
+                        <p class="app-dashboard__intro">The data pipeline, operated by hand. Source files on the data volume (<code>/app/data</code>) become an event ledger, the ledger becomes source facts, the facts become the canonical layer (publications, authors, forums, edges) and the canonical layer is projected into the Postgres read model the reports run on. Every button here is synchronous — the page waits for the result and the app keeps serving — and idempotent unless marked <strong>destructive</strong>. Durations are from the full corpus (≈175k publications). The researchers' own syncs (Scopus, OpenAlex) run from the workspace and the scheduler, not from here.</p>
                         <div class="app-dashboard__actions">
                             <a th:href="@{/admin/incremental-updates}" class="btn btn-outline-primary btn-sm">Open Incremental Uploads</a>
                         </div>
@@ -35,10 +35,13 @@
                                 <h6 class="app-summary-panel__title">General Initialization</h6>
                             </div>
                             <div class="app-summary-panel__body">
-                                <p class="app-ops-section-note">General bootstrap operations using configured default sources.</p>
+                                <p class="app-ops-section-note">Bootstrap and the reference lists that classify venues: each import reads its file under <code>data/</code> (URAP, ARWU, QS, CNCSIS, CORE, SENSE, artistic events) and replaces the list it owns. Safe to rerun when a file changes.</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Run all general initialization steps</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Run the bootstrap steps and the ranking imports</p>
+                                            <p class="app-ops-action-meta">Admin user, special domain, artistic events, URAP, CNCSIS, CORE and SENSE — in that order, each reported separately. ARWU, QS and the DBLP sweep are not included; run them below.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/runAll}" method="post">
                                             <button type="submit" class="btn btn-primary btn-sm">Run all</button>
                                         </form>
@@ -46,9 +49,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Full derived-data rebuild (WoS + Scopus)</p>
-                                            <p class="app-ops-action-meta">Wipes all derived collections and re-derives the canonical layer + projections from source facts.
-                                                Skip-smart: with source facts present this is derive-only (~5 min); tick re-ingest only when a source file changed (~35 min).
-                                                Synchronous — do not deploy/restart during the run.</p>
+                                            <p class="app-ops-action-meta"><strong>Destructive, long.</strong> Wipes every derived collection and re-derives the canonical layer and the projections from the source facts (WoS, Scopus, OpenAlex, USER_DEFINED, merges, claims, DBLP evidence): about 1.5 h on the full corpus, not resumable, and the reports are unavailable until it ends. Tick re-ingest only when a source file changed. Do not deploy or restart during the run. Prefer the targeted steps below for anything smaller; see <code>docs/rebuild-runbook.md</code>.</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/rebuildAllDerived}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--medium">
@@ -63,55 +64,82 @@
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Bootstrap default admin user</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Bootstrap default admin user</p>
+                                            <p class="app-ops-action-meta">Creates the default admin account when none exists; a no-op afterwards.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/adminUser}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Bootstrap special domain (<code>all</code>)</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Bootstrap special domain (<code>all</code>)</p>
+                                            <p class="app-ops-action-meta">Creates the <code>all</code> domain the domain-independent indicators count on; a no-op afterwards.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/domain}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Import artistic events</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import artistic events</p>
+                                            <p class="app-ops-action-meta">Replaces the registry of artistic events and their ranks (<code>data/arts/event_rankings.json</code>) used by the arts standards and the CNFIS Anexa 5.1.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/artisticEvents}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Import URAP rankings</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import URAP rankings</p>
+                                            <p class="app-ops-action-meta">Replaces the URAP university ranking from <code>data/urap-univ</code> (affiliation ranks for the mobility indicators).</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/urap}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Import ARWU (Shanghai) rankings</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import ARWU (Shanghai) rankings</p>
+                                            <p class="app-ops-action-meta">Replaces the ARWU university ranking from <code>data/arwu</code>.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/arwu}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Import QS World University rankings</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import QS World University rankings</p>
+                                            <p class="app-ops-action-meta">Replaces the QS university ranking from <code>data/qs</code>.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/qs}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Import CNCSIS publishers</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import CNCSIS publishers</p>
+                                            <p class="app-ops-action-meta">Replaces the CNCS publisher list (<code>data/cncsis/publisher_list.xlsx</code>) that classifies books and chapters.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/cncsis}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Import CORE conference rankings</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import CORE conference rankings</p>
+                                            <p class="app-ops-action-meta">Replaces the CORE conference ranks from <code>data/core-conf</code> (A*, A, B, C for the conference indicators).</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/coreConference}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Import SENSE book rankings</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import SENSE book rankings</p>
+                                            <p class="app-ops-action-meta">Replaces the SENSE publisher ranks (<code>data/sense/SENSE-rankings.xlsx</code>).</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/general/sense}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
@@ -119,7 +147,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Enrich LN* book chapters from DBLP snapshot</p>
-                                            <p class="app-ops-action-meta">Streams the configured <code>dblp.xml.gz</code> snapshot and stores compact DBLP evidence for targeted Lecture Notes chapter records.</p>
+                                            <p class="app-ops-action-meta">Streams the configured DBLP dump (<code>DBLP_DUMP_FILE</code>, ~1 GB) and stores the conference evidence for the still-unresolved Lecture Notes chapters and proceedings papers; a few minutes, only new candidates are matched, so it is cheap to rerun after a dump refresh. Categories change on the next report run.</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/general/dblpLnChapterEnrichment}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
@@ -134,10 +162,13 @@
                                 <h6 class="app-summary-panel__title">WoS Initialization</h6>
                             </div>
                             <div class="app-summary-panel__body">
-                                <p class="app-ops-section-note">Recommended order: ingest, build facts, enrich category rankings, build projections/views, ensure indexes.</p>
+                                <p class="app-ops-section-note">The journal-metrics side: the JCR / category extracts under <code>data/wos-json-1997-2019</code> (plus the later years added since) become WoS forum, category and metric facts, then the WoS tables of the read model that the quartile, AIS and impact-factor rules query. Needed only when the extracts change (a new JCR year); run the steps in order. The citation counts and accession codes of the researchers' own papers come from the sweeps, not from these steps.</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">1. Ingest events</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">1. Ingest events</p>
+                                            <p class="app-ops-action-meta">Reads the extract files into the WoS event ledger; files already ingested are skipped, so a rerun only adds new ones.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/wos/ingest}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--wide">
                                                 <label for="wos-init-source-version">Optional sourceVersion</label>
@@ -147,7 +178,10 @@
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">2. Build facts from events</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">2. Build facts from events</p>
+                                            <p class="app-ops-action-meta">Turns the ledger into forum / category / metric facts, resumable from its checkpoint (reset it below to start over).</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/wos/buildFacts}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--wide">
                                                 <label for="wos-build-source-version">Optional sourceVersion</label>
@@ -161,7 +195,10 @@
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">3. Enrich category rankings</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">3. Enrich category rankings</p>
+                                            <p class="app-ops-action-meta">Computes each journal&#39;s rank inside its category per metric and year (the extract&#39;s own "rank" is by total cites and is never used); only missing ranks are filled — reset and rebuild to recompute.</p>
+                                        </div>
                                         <div class="app-dashboard__actions">
                                             <form th:action="@{/admin/initialization/wos/enrichCategoryRankings}" method="post">
                                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
@@ -170,13 +207,19 @@
                                         </div>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">4. Build projections</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">4. Build projections</p>
+                                            <p class="app-ops-action-meta">Rewrites the WoS tables of the Postgres read model (<code>wos_*</code>) from the facts; a few minutes.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/wos/rebuildProjections}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">5. Ensure indexes</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">5. Ensure indexes</p>
+                                            <p class="app-ops-action-meta">Creates the Mongo indexes the WoS collections need; a no-op when present.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/wos/ensureIndexes}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
@@ -185,7 +228,10 @@
                                 <p class="app-summary-panel__section-title">Maintenance</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Reset fact-build checkpoint</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Reset fact-build checkpoint</p>
+                                            <p class="app-ops-action-meta">Forgets where step 2 stopped so the next run starts from the first batch. Not destructive by itself.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/wos/resetFactCheckpoint}" method="post">
                                             <button type="submit" class="btn btn-outline-danger btn-sm">Reset checkpoint</button>
                                         </form>
@@ -193,7 +239,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Clear canonical WoS state</p>
-                                            <p class="app-ops-action-meta">Events, facts, and reporting tables are cleared only after explicit confirmation.</p>
+                                            <p class="app-ops-action-meta"><strong>Destructive.</strong> Drops the WoS ledger, facts, coverage facts and the WoS tables of the read model; the quartile and AIS rules return nothing until steps 1–4 are run again. Only for a from-scratch WoS rebuild (identity re-keying).</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/wos/resetCanonicalState}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--medium">
@@ -227,16 +273,22 @@
                                 <h6 class="app-summary-panel__title">Scopus Initialization</h6>
                             </div>
                             <div class="app-summary-panel__body">
-                                <p class="app-ops-section-note">Uses configured <code>scopus.data.file</code>. Steps are synchronous and deterministic.</p>
+                                <p class="app-ops-section-note">The historical Scopus corpus: the university&#39;s Scopus dump (<code>data/scopus/…json</code>) becomes a ledger and source facts, the canonical layer is derived from them together with the OpenAlex and USER_DEFINED facts, and <em>3. Build projections</em> rewrites the whole Scholardex read model. Steps 1–2 are needed only when the dump changes; the canonical build and step 3 are the general "re-derive and publish" tools for every source.</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">1. Ingest events</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">1. Ingest events</p>
+                                            <p class="app-ops-action-meta">Reads the Scopus dump into the event ledger (batches already ingested are skipped).</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/ingest}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">2. Build facts</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">2. Build facts</p>
+                                            <p class="app-ops-action-meta">Turns the ledger into Scopus publication / author / affiliation / citation facts, resumable from its checkpoint (start batch and chunk size override it).</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/buildFacts}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--narrow">
                                                 <label for="scopus-build-start">Start batch</label>
@@ -251,13 +303,19 @@
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">3. Build projections</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">3. Build projections</p>
+                                            <p class="app-ops-action-meta">Rebuilds every Scholardex table of the Postgres read model (publications, authors, forums, memberships, metrics, citations, the citation-context view) from the canonical facts and bumps the reporting epoch so cached reports refresh. ~8 min. This is the step that publishes any canonical change to the reports — in this deployment it is what the Postgres projection wrapper below would call.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/buildProjections}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">4. Ensure canonical indexes</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">4. Ensure canonical indexes</p>
+                                            <p class="app-ops-action-meta">Creates the non-unique performance indexes of the canonical collections (<code>scholardex.*</code>); a no-op when present. Run after a reset and whenever an author or forum lookup became slow.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/ensureIndexes}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
@@ -266,7 +324,10 @@
                                 <p class="app-summary-panel__section-title">Maintenance</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Backfill canonical citations</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Backfill canonical citations</p>
+                                            <p class="app-ops-action-meta">Same as the canonical build with entity <code>citation</code>: re-derives the canonical citation edges from the Scopus citation facts. Kept for the old runbooks.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/backfillCanonicalCitations}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Run backfill</button>
                                         </form>
@@ -274,7 +335,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Backfill citation counts per source</p>
-                                            <p class="app-ops-action-meta">Stamps the Scopus / OpenAlex counts on the existing canonical publications from the source facts; follow with the Postgres projection (runFull).</p>
+                                            <p class="app-ops-action-meta">Stamps the Scopus and OpenAlex citation counts on every canonical publication from the facts it is linked to, without re-canonicalising anything; under a minute, safe to rerun. Follow with <em>3. Build projections</em> so the pages show them.</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/scopus/backfillCitationSources}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Run backfill</button>
@@ -283,7 +344,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Run canonical build</p>
-                                            <p class="app-ops-action-meta">Available entities: <code>all</code>, <code>publication</code>, <code>author</code>, <code>affiliation</code>, or <code>citation</code>.</p>
+                                            <p class="app-ops-action-meta">Re-derives the canonical layer from the Scopus facts — entity <code>all</code>, <code>publication</code> (~15 min), <code>author</code>, <code>affiliation</code> or <code>citation</code> — merging into the existing records (OpenAlex-owned fields are kept). Resumable from its checkpoint unless a start batch is given. Tick the reconciles to repair the source-link ledger and the edges at the end. Follow with <em>3. Build projections</em>.</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/scopus/buildCanonical}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--medium">
@@ -316,19 +377,28 @@
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Reconcile canonical edges</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Reconcile canonical edges</p>
+                                            <p class="app-ops-action-meta">Walks every canonical publication and repairs its authorship and publication→author→affiliation edges to match its author list (missing ones added, stale provenance fixed). Cheap; run after a canonical build that was interrupted.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/reconcileEdges}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Run reconcile</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Reconcile source-link ledger</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Reconcile source-link ledger</p>
+                                            <p class="app-ops-action-meta">Normalises the source-link ledger (one link per source record, consistent state and ids); cheap. Run when a canonical build reports link conflicts.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/reconcileSourceLinks}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Run reconcile</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Reset canonical build checkpoints</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Reset canonical build checkpoints</p>
+                                            <p class="app-ops-action-meta">Forgets where the canonical builds stopped so the next run starts from the first batch. Not destructive by itself.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/scopus/resetCanonicalCheckpoints}" method="post">
                                             <button type="submit" class="btn btn-outline-warning btn-sm">Reset checkpoints</button>
                                         </form>
@@ -336,7 +406,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Clear canonical Scopus state</p>
-                                            <p class="app-ops-action-meta">Events, facts, reporting tables, and checkpoints are cleared only after explicit confirmation.</p>
+                                            <p class="app-ops-action-meta"><strong>Destructive.</strong> Drops the Scopus ledger, facts, the canonical layer, the Scholardex tables of the read model and the checkpoints — every report scores 0 until the full rebuild has run. Only for a from-scratch rebuild.</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/scopus/resetCanonicalState}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--medium">
@@ -355,16 +425,22 @@
                                 <h6 class="app-summary-panel__title">USER_DEFINED Initialization</h6>
                             </div>
                             <div class="app-summary-panel__body">
-                                <p class="app-ops-section-note">Maintenance for wizard-driven USER_DEFINED onboarding lineage and canonicalization.</p>
+                                <p class="app-ops-section-note">The publications researchers declare themselves (wizard, DOI-less books and chapters). The declaration is the source; these steps rebuild its facts and canonical records when the declaration code changed. The full derived-data rebuild re-creates them itself (chained since 2026-10-02 — earlier rebuilds dropped them until this maintenance was run by hand).</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">1. Build USER_DEFINED source facts</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">1. Build USER_DEFINED source facts</p>
+                                            <p class="app-ops-action-meta">Rebuilds the USER_DEFINED source facts from the declarations; safe to rerun.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/user-defined/buildFacts}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">2. Canonicalize USER_DEFINED facts</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">2. Canonicalize USER_DEFINED facts</p>
+                                            <p class="app-ops-action-meta">Creates or updates the canonical publications and forums of the declarations (matching existing records by DOI / ISBN / title); with <em>rebuild projections</em> ticked it also runs the Scholardex projection build (~8 min).</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/user-defined/canonicalize}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field">
                                                 <span class="app-ops-inline-form__checkboxes-label">Options</span>
@@ -387,7 +463,10 @@
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Run full USER_DEFINED maintenance</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Run full USER_DEFINED maintenance</p>
+                                            <p class="app-ops-action-meta">Steps 1 and 2 in one go, with the same options.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/user-defined/runAll}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field">
                                                 <span class="app-ops-inline-form__checkboxes-label">Options</span>
@@ -413,27 +492,36 @@
                             </div>
                         </section>
 
-                        <section class="app-summary-panel">
+                        <section class="app-summary-panel" th:if="${projectionWrapperAvailable}">
                             <div class="app-summary-panel__header">
-                                <h6 class="app-summary-panel__title">Postgres Reporting Projection</h6>
+                                <h6 class="app-summary-panel__title">Postgres Reporting Projection (wrapper)</h6>
                             </div>
                             <div class="app-summary-panel__body">
-                                <p class="app-ops-section-note">Project canonical data into <code>reporting_read</code> PostgreSQL schema through either a full rebuild or a fingerprint-gated incremental sync.</p>
+                                <p class="app-ops-section-note">A tracked wrapper around WoS → 4 and Scopus → 3 (the same builders, plus run history and per-slice checkpoints). Present because <code>core.h22.projection.enabled</code> is true in this deployment; production runs the two builders directly.</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Run full rebuild (WoS + Scopus slices)</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Run full rebuild (WoS + Scopus slices)</p>
+                                            <p class="app-ops-action-meta">WoS → 4 and Scopus → 3 back to back, recorded as one run; ~10 min.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/projection/runFull}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run full rebuild</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Run incremental sync (fingerprint-gated slices)</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Run incremental sync (fingerprint-gated slices)</p>
+                                            <p class="app-ops-action-meta">Runs only the slices whose source fingerprint changed since the last recorded run.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/projection/runIncremental}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run incremental</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Show latest projection status</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Show latest projection status</p>
+                                            <p class="app-ops-action-meta">The last run and the per-slice checkpoints, as JSON.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/projection/showStatus}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
                                         </form>
@@ -441,7 +529,7 @@
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Reset projection checkpoints</p>
-                                            <p class="app-ops-action-meta">This maintenance action resets projection state only after explicit confirmation.</p>
+                                            <p class="app-ops-action-meta">Clears the run checkpoints so the next incremental sync projects everything; the tables are not touched.</p>
                                         </div>
                                         <form th:action="@{/admin/initialization/postgres/projection/resetState}" method="post" class="app-ops-inline-form">
                                             <div class="app-ops-inline-form__field app-ops-inline-form__field--medium">
@@ -455,35 +543,56 @@
                             </div>
                         </section>
 
+                        <section class="app-summary-panel" th:unless="${projectionWrapperAvailable}">
+                            <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">Postgres Reporting Projection (wrapper)</h6>
+                            </div>
+                            <div class="app-summary-panel__body">
+                                <p class="app-ops-section-note">Not available in this deployment (<code>core.h22.projection.enabled</code> is off). Publish the read model with WoS → 4 and Scopus → 3 above — they are the same builders.</p>
+                            </div>
+                        </section>
+
                         <section class="app-summary-panel">
                             <div class="app-summary-panel__header">
                                 <h6 class="app-summary-panel__title">Postgres Materialized Views</h6>
                             </div>
                             <div class="app-summary-panel__body">
-                                <p class="app-ops-section-note">Refresh heavy-read materialized views after projection runs or large canonical updates.</p>
+                                <p class="app-ops-section-note">The precomputed views the heavy rules read (<code>mv_wos_top_rankings_q1_ais</code> / <code>…_q1_if</code> for the "top of the category" rules, <code>mv_scholardex_citation_context</code> for the citing-forum rules). Scopus → 3 swaps the Scholardex one itself; refresh the WoS ones after WoS → 4 or a category-ranking enrichment, or refresh all when unsure. A minute or two.</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Refresh all materialized views</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Refresh all materialized views</p>
+                                            <p class="app-ops-action-meta">Refreshes the WoS and the Scholardex views.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/materialized/refreshAll}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Refresh all</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Refresh WoS materialized views</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Refresh WoS materialized views</p>
+                                            <p class="app-ops-action-meta">The two top-ranking views (AIS and impact factor) — after WoS → 4 or WoS → 3.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/materialized/refreshSlice}" method="post">
                                             <input type="hidden" name="slice" value="wos">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Refresh WoS</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Refresh Scopus materialized views</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Refresh Scopus materialized views</p>
+                                            <p class="app-ops-action-meta">The citation-context view — normally already done by Scopus → 3.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/materialized/refreshSlice}" method="post">
                                             <input type="hidden" name="slice" value="scopus">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Refresh Scopus</button>
                                         </form>
                                     </div>
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Show latest materialized-view refresh status</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Show latest materialized-view refresh status</p>
+                                            <p class="app-ops-action-meta">When each view was last refreshed and whether it succeeded, as JSON.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/materialized/showStatus}" method="post">
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
                                         </form>
@@ -524,10 +633,13 @@
                                 <h6 class="app-summary-panel__title">Postgres Operational Status</h6>
                             </div>
                             <div class="app-summary-panel__body">
-                                <p class="app-ops-section-note">Consolidated health over projection and materialized-view refresh components in the Postgres-first runtime.</p>
+                                <p class="app-ops-section-note">One JSON answer: an overall RED / AMBER / GREEN over the projection wrapper (unavailable where it is disabled) and the materialized-view refresh, with their last runs.</p>
                                 <div class="app-ops-action-list">
                                     <div class="app-ops-action-row">
-                                        <div class="app-ops-action-copy"><p class="app-ops-action-title">Show consolidated operational status</p></div>
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Show consolidated operational status</p>
+                                            <p class="app-ops-action-meta">Read-only.</p>
+                                        </div>
                                         <form th:action="@{/admin/initialization/postgres/operational/showStatus}" method="post">
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Show status</button>
                                         </form>
@@ -535,6 +647,22 @@
                                 </div>
                                 <p class="app-dashboard-copy">JSON status endpoint: <code>/admin/initialization/postgres/operational/status</code></p>
                                 <p class="app-dashboard-copy">Runbook: <code>docs/operational-playbook.md</code></p>
+                            </div>
+                        </section>
+
+                        <section class="app-summary-panel">
+                            <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">Operations without a button</h6>
+                            </div>
+                            <div class="app-summary-panel__body">
+                                <p class="app-ops-section-note">Started with <code>curl -X POST</code> against <code>/admin/initialization/…</code> (they answer JSON and most take a <code>limit</code>); the dry-run forms write nothing. Listed so nobody looks for them here.</p>
+                                <ul class="app-dashboard-copy">
+                                    <li><strong>Reference lists for venues:</strong> <code>scopus/importSourceList</code> (Scopus source list → serial forums; run before Scopus → 2), <code>scopus/importBookList</code>, <code>scopus/importCiteScore</code>, <code>wos/importMjl</code> (Master Journal List), <code>forum/importDoaj</code>, <code>forum/importErih</code>, <code>openalex/importSourceApc</code> (fee journals from the OpenAlex dumps).</li>
+                                    <li><strong>Forum identity:</strong> <code>forum/onboardErih</code>, <code>forum/onboardDoaj</code> (tag by ISSN), <code>forum/dedup</code> (shared ISSN / ERIH id clusters), <code>forum/reconcile</code> (the full forum rebuild: dedup → canonical → claims), <code>wos/cpci/dryRun</code> + <code>apply</code> (conference-proceedings coverage from the CPCI export).</li>
+                                    <li><strong>Authors:</strong> <code>author/reconcile</code>, <code>author/reconcile/fuzzy</code>, <code>author/reconcile/affiliation</code> (the automatic merge passes), <code>author/merge</code> (an explicit merge of two ids), <code>author/merges/reapply</code> (replays the durable merges; also part of every rebuild), <code>provisional/resolveDepartment</code> (dry-run of a staff roster against the canonical authors).</li>
+                                    <li><strong>OpenAlex:</strong> <code>openalex/bulkImport</code> (file-driven works + citers → source facts). <code>openalex/canonicalize</code> is insert-based and fails on a live corpus — use the full derived-data rebuild instead.</li>
+                                    <li><strong>Sweeps and repairs:</strong> <code>crossref/volumes/dryRun</code> + <code>apply</code> (volume titles for the conference resolution), <code>crossref/publishers/dryRun</code> + <code>apply</code> (publishers of publisher-less books), <code>wos/enrichment/run</code>, <code>scopus/replayBatch</code> (replays one ingested batch through the incremental pipeline).</li>
+                                </ul>
                             </div>
                         </section>
                     </div>

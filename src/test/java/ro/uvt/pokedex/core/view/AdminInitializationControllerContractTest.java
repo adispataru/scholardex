@@ -128,7 +128,11 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/user-defined/buildFacts")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/user-defined/canonicalize")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/user-defined/runAll")))
+                // the H22 wrapper section renders only where its bean exists (this context mocks it); the
+                // "not available" note is the other branch
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/runFull")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Not available in this deployment"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Operations without a button")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/runIncremental")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/showStatus")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/resetState")))
