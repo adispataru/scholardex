@@ -1,5 +1,5 @@
 [
-{
+ {
   "_id": "h79-info2026-sel",
   "divisionId": "6a35b09424405fbe1e01d8af",
   "reportId": "6a47f44686ec3f1107f927bb",
@@ -7,7 +7,7 @@
   "selectedAt": "2026-07-03T00:00:00.000Z",
   "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
  },
-{
+ {
   "_id": {
    "$oid": "6a1afd10dc9cebb4272ab84e"
   },
@@ -19,7 +19,7 @@
   },
   "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
  },
-{
+ {
   "_id": {
    "$oid": "6a2142c28576022a391ccdcb"
   },
@@ -31,15 +31,231 @@
   },
   "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
  },
-{
+ {
   "_id": {
-   "$oid": "6a5d0858c4aec775c522da09"
+   "$oid": "6a4ea09cd15989759431780b"
   },
   "divisionId": "6a35b09424405fbe1e01d8af",
-  "reportId": "6a5d075cc4aec775c522d9eb",
-  "selectedBy": "agent@dev.local",
+  "reportId": "6a4e40627c184d3e2d35ea67",
+  "selectedBy": "florin.spataru@e-uvt.ro",
   "selectedAt": {
-   "$date": "2026-07-19T17:24:40.926Z"
+   "$date": "2026-07-08T19:10:20.622Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6a5e4cdd00be4a6185b3c2ac"
+  },
+  "divisionId": "6a5e4cc600be4a6185b3c2ab",
+  "reportId": "6a5d075cc4aec775c522d9eb",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-07-20T16:29:17.866Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6a6f6de329c34a4f2aae70f0"
+  },
+  "divisionId": "6a35b09424405fbe1e01d8af",
+  "reportId": "6a6f6d8fe4f3ce0eb0d30712",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-08-02T16:18:43.514Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6ab505f0e0e4317e1adc1a6a"
+  },
+  "divisionId": "6a35b09324405fbe1e01d8ad",
+  "reportId": "6a6f6d8fe4f3ce0eb0d30712",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-09-24T11:13:52.019Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6ab505f2e0e4317e1adc1a6b"
+  },
+  "divisionId": "6a35b09324405fbe1e01d8ad",
+  "reportId": "6a6f9f3f5eddb84fbc28ffb9",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-09-24T11:13:54.430Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abb7c3a574f42d89e880e7f"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "reportId": "6abb7bad05b6723f97a6377f",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-09-29T08:52:10.581Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abb9655d0454a60647799c1"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "reportId": "6abb957433192ec40a8e072f",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-09-29T10:43:33.955Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abcb54fd4545c27d5f9afd3"
+  },
+  "divisionId": "6abcb4e1d4545c27d5f9afce",
+  "reportId": "6a69bba272ea3b404509cde0",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-09-30T07:07:59.595Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59370626a974ee0b085b"
+  },
+  "divisionId": "6a35b09424405fbe1e01d8af",
+  "reportId": "6abea3c87314b64bf9e53f95",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:11:51.308Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59410626a974ee0b085c"
+  },
+  "divisionId": "6a35b09424405fbe1e01d8af",
+  "reportId": "6abf57ffcac63fe570e41969",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:12:01.101Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59710626a974ee0b085d"
+  },
+  "divisionId": "6abcb4e1d4545c27d5f9afce",
+  "reportId": "6abf57ffcac63fe570e4196a",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:12:49.470Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59750626a974ee0b085e"
+  },
+  "divisionId": "6abcb4e1d4545c27d5f9afce",
+  "reportId": "6abf57ffcac63fe570e4196b",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:12:53.174Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59780626a974ee0b085f"
+  },
+  "divisionId": "6abcb4e1d4545c27d5f9afce",
+  "reportId": "6abf57ffcac63fe570e4196c",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:12:56.028Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59880626a974ee0b0860"
+  },
+  "divisionId": "6a35b09324405fbe1e01d8ad",
+  "reportId": "6abea3c87314b64bf9e53f95",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:13:12.865Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf598c0626a974ee0b0861"
+  },
+  "divisionId": "6a35b09324405fbe1e01d8ad",
+  "reportId": "6abf57ffcac63fe570e41969",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:13:16.463Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59970626a974ee0b0862"
+  },
+  "divisionId": "6a35b09324405fbe1e01d8ad",
+  "reportId": "6a4e40627c184d3e2d35ea67",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:13:27.632Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59b10626a974ee0b0863"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "reportId": "6abf57ffcac63fe570e4196a",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:13:53.543Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59b40626a974ee0b0864"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "reportId": "6abf57ffcac63fe570e4196b",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:13:56.122Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
+ },
+ {
+  "_id": {
+   "$oid": "6abf59b60626a974ee0b0865"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "reportId": "6abf57ffcac63fe570e4196c",
+  "selectedBy": "florin.spataru@e-uvt.ro",
+  "selectedAt": {
+   "$date": "2026-10-02T07:13:58.813Z"
   },
   "_class": "ro.uvt.pokedex.core.model.org.DivisionReportSelection"
  }

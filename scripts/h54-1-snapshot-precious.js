@@ -85,11 +85,14 @@ for (const coll of CONFIG_GIT) {
 }
 
 // ---- PII: timestamped, git-ignored ----
-const piiDir = "data/backups/precious-pii-" + ts();
-ensureDir(piiDir);
+// SNAPSHOT_CONFIG_ONLY=1 skips this part entirely: the config snapshot of PRODUCTION must not pull the personal
+// data onto a development machine (H122 — real data stays out of the dev directory).
+const configOnly = typeof process !== "undefined" && process.env && process.env.SNAPSHOT_CONFIG_ONLY === "1";
+const piiDir = configOnly ? null : "data/backups/precious-pii-" + ts();
+if (!configOnly) ensureDir(piiDir);
 let piiTotal = 0;
 const piiSummary = [];
-for (const coll of PII_LOCAL) {
+for (const coll of configOnly ? [] : PII_LOCAL) {
   const exists = db.getCollectionInfos({ name: coll }).length > 0;
   const path = piiDir + "/" + coll + ".jsonl";
   if (!exists) {
@@ -111,8 +114,12 @@ print("Database: " + db.getName());
 print("\n-- CONFIG (git-tracked) -> " + configDir + " --");
 configSummary.forEach(s => print("  " + s));
 print("  config docs total: " + configTotal);
-print("\n-- PERSONAL/PII (git-ignored) -> " + piiDir + " --");
-piiSummary.forEach(s => print("  " + s));
-print("  pii docs total: " + piiTotal);
+if (configOnly) {
+  print("\n-- PERSONAL/PII: skipped (SNAPSHOT_CONFIG_ONLY=1) --");
+} else {
+  print("\n-- PERSONAL/PII (git-ignored) -> " + piiDir + " --");
+  piiSummary.forEach(s => print("  " + s));
+  print("  pii docs total: " + piiTotal);
+}
 print("\nDone. Review `git status seed/` for the committable config snapshot.");
 print("===================================================");

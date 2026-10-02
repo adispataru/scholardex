@@ -3,26 +3,9 @@
   "_id": {
    "$oid": "68234d659ab8db33ac93b78c"
   },
-  "reportTypeKey": "matematica-2016",
-  "importEnabled": false,
-  "indicatorRolesByIndicatorId": {
-   "682342d67123387ec34394b0": "indicatori-suplimentari-uvt",
-   "68234a6c7e443769580e906d": "indicatori-suplimentari-uvt",
-   "68220d212a04a41f93fc7dba": "journal-publications-recent",
-   "68230b164652ac0103a9eebd": "indicatori-suplimentari-uvt",
-   "680f69396f664731f88f814a": "citations-per-publication",
-   "682340fe7123387ec34394ae": "indicatori-suplimentari-uvt",
-   "680fa64de3d12644e3045404": "journal-publications"
-  },
-  "blockByIndicatorId": {
-   "682342d67123387ec34394b0": "C3_UVT",
-   "68234a6c7e443769580e906d": "C4_UVT",
-   "68220d212a04a41f93fc7dba": "__not_exported__",
-   "68230b164652ac0103a9eebd": "C1_UVT",
-   "680f69396f664731f88f814a": "__not_exported__",
-   "682340fe7123387ec34394ae": "C2_UVT",
-   "680fa64de3d12644e3045404": "__not_exported__",
-   "6a6f60f1fa0cd41bfd91ca11": "__not_exported__"
+  "individualAffiliation": {
+   "$ref": "institutions",
+   "$id": "ANY"
   },
   "title": "FV Matematică",
   "description": "Bazat pe https://cariere.uvt.ro/wp-content/uploads/2025/03/Standarde-minimale-FMI.pdf",
@@ -72,13 +55,12 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f60f1fa0cd41bfd91ca11"
+     "$oid": "6a6f673caee87b4154668a9f"
     }
    }
   ],
   "criteria": [
    {
-    "name": "S — punctaj articole",
     "indicatorIndices": [
      0
     ],
@@ -100,10 +82,9 @@
       "value": 5
      }
     ],
-    "contributesToTotal": false
+    "name": "S — punctaj articole"
    },
    {
-    "name": "S_recent — articole din ultimii 7 ani",
     "indicatorIndices": [
      1
     ],
@@ -117,10 +98,9 @@
       "value": 2.5
      }
     ],
-    "contributesToTotal": false
+    "name": "S_recent — articole din ultimii 7 ani"
    },
    {
-    "name": "C — citări",
     "indicatorIndices": [
      2
     ],
@@ -134,10 +114,9 @@
       "value": 12
      }
     ],
-    "contributesToTotal": false
+    "name": "C — citări"
    },
    {
-    "name": "C1 — cărți de specialitate",
     "indicatorIndices": [
      3
     ],
@@ -151,10 +130,9 @@
       "value": 2
      }
     ],
-    "contributesToTotal": false
+    "name": "C1 — cărți de specialitate"
    },
    {
-    "name": "C2 — cursuri publicate",
     "indicatorIndices": [
      4
     ],
@@ -168,10 +146,9 @@
       "value": 1
      }
     ],
-    "contributesToTotal": false
+    "name": "C2 — cursuri publicate"
    },
    {
-    "name": "C3 — granturi de cercetare",
     "indicatorIndices": [
      5
     ],
@@ -185,10 +162,9 @@
       "value": 4
      }
     ],
-    "contributesToTotal": false
+    "name": "C3 — granturi de cercetare"
    },
    {
-    "name": "C4 — lucrări în Q1–Q3, fără taxă",
     "indicatorIndices": [
      6
     ],
@@ -202,7 +178,7 @@
       "value": 5
      }
     ],
-    "contributesToTotal": false
+    "name": "C4 — lucrări în Q1–Q3, fără taxă"
    },
    {
     "name": "C4 — din care în Q1 sau Q2",
@@ -262,7 +238,10 @@
      ]
     }
    }
-  ]
+  ],
+  "blockByIndicatorId": {
+   "6a6f673caee87b4154668a9f": "__not_exported__"
+  }
  },
  {
   "_id": {
@@ -274,6 +253,12 @@
   },
   "title": "FEAA 2016",
   "description": "top",
+  "reportTypeKey": "feaa-2024",
+  "indicatorRolesByIndicatorId": {
+   "683624c863193d59c7eb2b31": "citations-per-publication",
+   "683618f381a0fe77d6a1c04c": "journal-publications",
+   "6a30667f5ae41a6b1b60c6ce": "book-publications"
+  },
   "indicators": [
    {
     "$ref": "indicators",
@@ -537,13 +522,7 @@
     "contributesToTotal": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
-  "indicatorRolesByIndicatorId": {
-   "683618f381a0fe77d6a1c04c": "journal-publications",
-   "683624c863193d59c7eb2b31": "citations-per-publication",
-   "6a30667f5ae41a6b1b60c6ce": "book-publications"
-  },
-  "reportTypeKey": "feaa-2024"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  },
  {
   "_id": {
@@ -579,26 +558,26 @@
    "665a40689073a275ec9abba1": "Carti/Capitole",
    "6820ffde04e38843635e0cb5": "Carti/Capitole",
    "6820fe4104e38843635e0cb2": "Carti/Capitole",
-   "6a049c242e64c65c14f9e01a": "__not_exported__",
+   "6a049c242e64c65c14f9e01a": "",
    "6820d3a18a61794835d91b24": "Editor proceedings",
    "68191a2f526ce829aca68b34": "Keynote/invited speaker",
    "6820cafbfe404029dad193d1": "Curs in format electronic",
    "6820e4952654f8388e8d3649": "Organizare evenimente",
-   "6654dce7068d032b7e119593": "__not_exported__",
+   "6654dce7068d032b7e119593": "",
    "6816987607ff6c4e2956d5c4": "Director/editor revista",
    "6820fbd904e38843635e0cae": "Comisii doctorat",
    "66564362f349c0670bb68b25": "__not_exported__",
    "6820d9bcd7ca817372b6d6f3": "Granturi",
    "6823535fbb926870c1f86fbd": "Keynote/invited speaker",
    "665ce9102dbfdf2e0b3caa33": "__not_exported__",
-   "6a049c682e64c65c14f9e01b": "__not_exported__",
+   "6a049c682e64c65c14f9e01b": "",
    "6820eff604e38843635e0cab": "Comisii doctorat",
    "6820e0f6b20a79244588e87d": "Membru comitet stiintific",
    "6820eec804e38843635e0ca8": "Consolidarea de echipe",
    "682100ba04e38843635e0cb8": "Pozitii de conducere",
    "6820e5552654f8388e8d364c": "Keynote/invited speaker",
    "6656440ef349c0670bb68b26": "__not_exported__",
-   "6a69c858d7843ac4374b56ed": "__not_exported__"
+   "6a69ca89615673b883b08410": "__not_exported__"
   },
   "title": "FV Info 2016",
   "description": "FV Info",
@@ -738,7 +717,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a69c858d7843ac4374b56ed"
+     "$oid": "6a69ca89615673b883b08410"
     }
    }
   ],
@@ -1047,7 +1026,7 @@
    "6a63b59843226fd40f87b943": "Editor proceedings",
    "6a63b59843226fd40f87b944": "Membru comitet stiintific",
    "6a63b59843226fd40f87b945": "Keynote/invited speaker",
-   "6a69c858d7843ac4374b56ee": "__not_exported__"
+   "6a69ca89615673b883b08411": "__not_exported__"
   },
   "title": "FV Info 2026",
   "description": "FV Info",
@@ -1199,7 +1178,7 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a69c858d7843ac4374b56ee"
+     "$oid": "6a69ca89615673b883b08411"
     }
    }
   ],
@@ -1603,10 +1582,10 @@
     }
    }
   ],
-  "phdLimitYears": 8,
   "competitionDeadline": {
    "$date": "2026-07-30T00:00:00Z"
-  }
+  },
+  "phdLimitYears": 8
  },
  {
   "_id": {
@@ -1885,7 +1864,7 @@
  },
  {
   "_id": {
-   "$oid": "6a67b4a35dc7f48abc80a702"
+   "$oid": "6a69bba272ea3b404509cde0"
   },
   "title": "FEAA 2026",
   "description": "COMISIA 27 (2026): S = P + C din max 10 articole WoS cu AIS nenul (max 1/revistă/an, exceptând Core/Infoeconomics) și max 10 citări (fără autocitări și semi-autocitări). Cărțile/capitolele substituie articole, plafonat la 25% din P minim.",
@@ -1897,49 +1876,49 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a67b4a35dc7f48abc80a700"
+     "$oid": "6a69bba272ea3b404509cdde"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a67b4a35dc7f48abc80a6ff"
+     "$oid": "6a69bba272ea3b404509cddd"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a67b4a35dc7f48abc80a701"
+     "$oid": "6a69bba272ea3b404509cddf"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a68feca2d8c50428a37cf34"
+     "$oid": "6a69bba320fa9af9e4028f82"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a68feca2d8c50428a37cf35"
+     "$oid": "6a69bba320fa9af9e4028f83"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a68feca2d8c50428a37cf36"
+     "$oid": "6a69bba320fa9af9e4028f84"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a68feca2d8c50428a37cf37"
+     "$oid": "6a69bba320fa9af9e4028f85"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a68feca2d8c50428a37cf38"
+     "$oid": "6a69bba320fa9af9e4028f86"
     }
    },
    {
@@ -1957,13 +1936,13 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6922769d2957ece117b4b9"
+     "$oid": "6a69bba5a3dc0838da14f923"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6922769d2957ece117b4ba"
+     "$oid": "6a69bba5a3dc0838da14f924"
     }
    }
   ],
@@ -2237,10 +2216,11 @@
     "composition": {
      "any": [
       {
-       "criterion": 4,
-       "label": "Ruta a"
+       "label": "Ruta a",
+       "criterion": 4
       },
       {
+       "label": "Ruta b",
        "all": [
         {
          "criterion": 7
@@ -2248,10 +2228,10 @@
         {
          "criterion": 8
         }
-       ],
-       "label": "Ruta b"
+       ]
       },
       {
+       "label": "Ruta c",
        "all": [
         {
          "criterion": 5
@@ -2259,10 +2239,10 @@
         {
          "criterion": 9
         }
-       ],
-       "label": "Ruta c"
+       ]
       },
       {
+       "label": "Ruta d",
        "all": [
         {
          "criterion": 6
@@ -2270,8 +2250,7 @@
         {
          "criterion": 8
         }
-       ],
-       "label": "Ruta d"
+       ]
       }
      ]
     }
@@ -2302,7 +2281,7 @@
  },
  {
   "_id": {
-   "$oid": "6a6f6b99327b63b313829bf9"
+   "$oid": "6a6f6d8fe4f3ce0eb0d30712"
   },
   "title": "FV Matematică 2026",
   "description": "Standarde minimale COMISIA 1 Matematică (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare.",
@@ -2310,43 +2289,43 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f6b99327b63b313829bf2"
+     "$oid": "6a6f6d8fe4f3ce0eb0d3070b"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f6b99327b63b313829bf3"
+     "$oid": "6a6f6d8fe4f3ce0eb0d3070c"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f6b99327b63b313829bf4"
+     "$oid": "6a6f6d8fe4f3ce0eb0d3070d"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f6b99327b63b313829bf5"
+     "$oid": "6a6f6d8fe4f3ce0eb0d3070e"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f6b99327b63b313829bf6"
+     "$oid": "6a6f6d8fe4f3ce0eb0d3070f"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f6b99327b63b313829bf7"
+     "$oid": "6a6f6d8fe4f3ce0eb0d30710"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f6b99327b63b313829bf8"
+     "$oid": "6a6f6d8fe4f3ce0eb0d30711"
     }
    }
   ],
@@ -2520,7 +2499,7 @@
  },
  {
   "_id": {
-   "$oid": "6a6f9ae165d7f2a001bec0a2"
+   "$oid": "6a6f9f3f5eddb84fbc28ffb9"
   },
   "title": "FV Fizică 2026",
   "description": "Standarde minimale COMISIA 3 Fizică (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. Activitatea profesională (A) este deocamdată parțială: rândurile A1–A8 (cărți, capitole, proceedings ISI, brevete) urmează după decizia comisiei privind lista editurilor recunoscute Web of Science.",
@@ -2528,79 +2507,79 @@
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f9ae165d7f2a001bec0a0"
+     "$oid": "6a6f9f3f5eddb84fbc28ffb7"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f9ae165d7f2a001bec0a1"
+     "$oid": "6a6f9f3f5eddb84fbc28ffb8"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f9ae165d7f2a001bec09c"
+     "$oid": "6a6f9f3f5eddb84fbc28ffb3"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f9ae165d7f2a001bec09d"
+     "$oid": "6a6f9f3f5eddb84fbc28ffb4"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f9ae165d7f2a001bec09e"
+     "$oid": "6a6f9f3f5eddb84fbc28ffb5"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6f9ae165d7f2a001bec09f"
+     "$oid": "6a6f9f3f5eddb84fbc28ffb6"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6fa3f00245d4399f218bb1"
+     "$oid": "6a6fac5df3abf9a934e5936d"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6fa3f00245d4399f218bb2"
+     "$oid": "6a6fac5df3abf9a934e5936e"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6fa3f00245d4399f218bb3"
+     "$oid": "6a6fac5df3abf9a934e5936f"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6fa3f00245d4399f218bb4"
+     "$oid": "6a6fac5df3abf9a934e59370"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6fa3f00245d4399f218bb5"
+     "$oid": "6a6fac5df3abf9a934e59371"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6fb025720e6c72aaf89453"
+     "$oid": "6a95cf7d9fd399a649ace604"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6a6fb025720e6c72aaf89454"
+     "$oid": "6a95cf7d9fd399a649ace605"
     }
    }
   ],
@@ -2800,195 +2779,13 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d98b866c60b6bfff122"
+   "$oid": "6abb7bad05b6723f97a6377f"
   },
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "FV Psihologie 2026",
   "description": "Standarde minimale COMISIA 28, domeniul Psihologie (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. Trei arii: realizări științifice (A1), vizibilitate și impact (A2), competitivitate și coordonare (A3). Valorile WoS (citări I11, indice Hirsch I13) sunt orientative, calculate din graful de citări al platformei; valorile Google Scholar, bonusul de preînregistrare și activitățile se declară de către candidat. Compensarea criteriului C7 cu trei articole Q1 (AIS) ca autor principal nu se calculează automat.",
-  "indicators": [
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff104"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff105"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff106"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff107"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff108"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff109"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff10a"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff10b"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff10c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff10d"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff10e"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff10f"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff110"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff111"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff112"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff113"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff114"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff115"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff116"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff117"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff118"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff119"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff11a"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff11b"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff11c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff11d"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff11e"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff11f"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff120"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb5d97b866c60b6bfff121"
-    }
-   }
-  ],
   "criteria": [
    {
     "name": "C1: I1A (autor principal, reviste fără taxă)",
@@ -3289,271 +3086,199 @@
     }
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63761"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63762"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63763"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63764"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63765"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63766"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63767"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63768"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63769"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6376a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6376b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6376c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6376d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6376e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6376f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63770"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63771"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63772"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63773"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63774"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63775"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63776"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63777"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63778"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a63779"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6377a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6377b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6377c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6377d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb7bad05b6723f97a6377e"
+    }
+   }
+  ]
  },
  {
   "_id": {
-   "$oid": "6abb8564ab83be698e2f4046"
+   "$oid": "6abb957433192ec40a8e072f"
   },
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "FV Științe ale Educației 2026",
   "description": "Standarde minimale COMISIA 28, domeniul Științe ale Educației (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. Trei arii: realizări științifice (A1), vizibilitate și impact (A2), competitivitate și coordonare (A3). Valorile WoS (citări I11, indice Hirsch I13) sunt orientative, calculate din graful de citări al platformei; valorile Google Scholar — inclusiv indicele Hirsch de la criteriul C6 —, bonusul de preînregistrare și activitățile se declară de către candidat. Compensarea criteriului C8 cu puncte din articole Q1/Q2 nu se calculează automat.",
-  "indicators": [
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f401c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f401d"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f401e"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f401f"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4020"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4021"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4022"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4023"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4024"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4025"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4026"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4027"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4028"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4029"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f402a"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f402b"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f402c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f402d"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f402e"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f402f"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4030"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4031"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4032"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4033"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4034"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4035"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4036"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4037"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4038"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4039"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f403a"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f403b"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f403c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f403d"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f403e"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f403f"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4040"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4041"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4042"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4043"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4044"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abb8564ab83be698e2f4045"
-    }
-   }
-  ],
   "criteria": [
    {
     "name": "C1: I1A (autor principal, reviste fără taxă)",
@@ -3904,271 +3629,271 @@
     }
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0705"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0706"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0707"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0708"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0709"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e070a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e070b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e070c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e070d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e070e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e070f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0710"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0711"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0712"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0713"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0714"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0715"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0716"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0717"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0718"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0719"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e071a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e071b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e071c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e071d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e071e"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e071f"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0720"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0721"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0722"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0723"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0724"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0725"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0726"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0727"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0728"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e0729"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e072a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e072b"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e072c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e072d"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abb957433192ec40a8e072e"
+    }
+   }
+  ]
  },
  {
   "_id": {
-   "$oid": "6abbb4fdfe1896ef0369d33a"
+   "$oid": "6abbfc470faa5f42002d72e0"
   },
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "FV Sociologie și Asistență Socială 2026",
   "description": "Standarde minimale COMISIA 25, grupul Sociologie — specializările Sociologie, Resurse Umane, Antropologie și domeniul Asistență Socială (OM 3.019/2025) — conferențiar, profesor și atestat de abilitare. O publicație se punctează la un singur indicator; un articol dintr-o revistă cu factor de impact este pus la I.1. Coeficientul m al publicațiilor găsite automat se stabilește din limba și locul apariției, așa cum le dă OpenAlex; unde acestea lipsesc, m este 1. Citările sunt orientative, calculate din datele platformei. Cărțile, capitolele și articolele pe care platforma nu le găsește sau nu le poate verifica, precum și activitățile, se declară de către candidat.",
-  "indicators": [
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d310"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d311"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d312"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d313"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d314"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d315"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d316"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d317"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d318"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d319"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d31a"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d31b"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d31c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d31d"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d31e"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d31f"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d320"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d321"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d322"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d323"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d324"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d325"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d326"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d327"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fcfe1896ef0369d328"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d329"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d32a"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d32b"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d32c"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d32d"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d32e"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d32f"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d330"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d331"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d332"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d333"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d334"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d335"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d336"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d337"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d338"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abbb4fdfe1896ef0369d339"
-    }
-   }
-  ],
   "criteria": [
    {
     "name": "C.1: punctaj I.1 (articole în reviste cu factor de impact)",
@@ -4495,11 +4220,265 @@
     }
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72b6"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72b7"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72b8"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72b9"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72ba"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72bb"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72bc"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc460faa5f42002d72bd"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72be"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72bf"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c0"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c1"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c2"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c4"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c5"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c6"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c7"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c8"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72c9"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72ca"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72cb"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72cc"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72cd"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72ce"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72cf"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d0"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d1"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d2"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d4"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d5"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d6"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d7"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d8"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72d9"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72da"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72db"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72dc"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72dd"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72de"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abbfc470faa5f42002d72df"
+    }
+   }
+  ]
  },
  {
   "_id": {
-   "$oid": "6abe70c6496ff8b4f0444bb3"
+   "$oid": "6abea3c87314b64bf9e53f95"
   },
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
@@ -4507,32 +4486,6 @@
   "title": "Eligibilitate TE 2026",
   "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele naturii, științele exacte și științele inginerești. Directorul de proiect: în 2015–2026, după obținerea titlului de doctor, ca autor principal, minimum 3 lucrări article/review/proceedings paper în reviste SCIE/SSCI/AHCI din Q1 sau Q2 după AIS (clasificarea anului publicării; 2025–2026 → JCR-2024), dintre care minimum 2 din reviste diferite și minimum 2 de tip article. Pentru Informatică, cel mult 2 dintre cele 3 pot fi lucrări full paper la conferințe CORE A/A* (rangul de la momentul publicării) ca prim autor sau autor corespondent — platforma le adaugă plafonat la 2; pe acest traseu notele privind revistele distincte și tipul article se verifică manual. Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 12 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Fereastra 2015–2026 începe de la anul doctoratului din profil. Neverificată de platformă: vizibilitatea lucrărilor în Web of Science la data verificării. Autor principal: toți autorii sunt considerați principali numai la revistele din categoriile Anexei 6(e) (matematică, informatică, economie, multidisciplinar) și numai când autorii sunt în ordine alfabetică — verificați lucrările cu altă ordine; revistele din alte categorii nu sunt numărate de acest raport.",
   "authority": "UEFISCDI",
-  "indicators": [
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abe70c61a965a8877cb31d4"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abe70c6f1e2eb11a4ab9017"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abe70c603774b352c5510ed"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abe70c6341a4db4b69f066e"
-    }
-   }
-  ],
   "criteria": [
    {
     "name": "Director: lucrări Q1/Q2 (AIS), cel mult 2 conferințe CORE A/A*",
@@ -4703,333 +4656,46 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
-  "phdLimitYears": 12,
-  "competitionDeadline": {
-   "$date": "2026-07-30T00:00:00Z"
-  }
- },
- {
-  "_id": {
-   "$oid": "6abeb95c14c3cb9c9ac7198d"
-  },
-  "importEnabled": false,
-  "indicatorRolesByIndicatorId": {},
-  "blockByIndicatorId": {},
-  "title": "Eligibilitate TE 2026 — științe sociale și economice",
-  "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele sociale și științele economice, directorul de proiect: P ≥ 50 și ΣA ≥ 25 din lucrări publicate în 2015–2026, după obținerea titlului de doctor (fereastra începe de la anul doctoratului din profil). Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 12 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
-  "authority": "UEFISCDI",
   "indicators": [
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6abeb95cb6ecaf17dd219545"
+     "$oid": "6abea3c87314b64bf9e53f91"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6abeb95c24cbf52c5ca8bce3"
+     "$oid": "6abea3c87314b64bf9e53f92"
     }
    },
    {
     "$ref": "indicators",
     "$id": {
-     "$oid": "6abeb95cb746fad614a5361f"
+     "$oid": "6abea3c87314b64bf9e53f93"
     }
-   }
-  ],
-  "criteria": [
-   {
-    "name": "Director: P = A + C + K",
-    "indicatorIndices": [
-     0,
-     1,
-     2
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 50
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 50
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 50
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 50
-     },
-     {
-      "position": "HABIL",
-      "value": 50
-     },
-     {
-      "position": "CS_I",
-      "value": 50
-     },
-     {
-      "position": "CS_II",
-      "value": 50
-     },
-     {
-      "position": "CS_III",
-      "value": 50
-     },
-     {
-      "position": "ASIST_C",
-      "value": 50
-     }
-    ],
-    "contributesToTotal": false
    },
    {
-    "name": "Director: ΣA (articole)",
-    "indicatorIndices": [
-     0
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 25
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 25
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 25
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 25
-     },
-     {
-      "position": "HABIL",
-      "value": 25
-     },
-     {
-      "position": "CS_I",
-      "value": 25
-     },
-     {
-      "position": "CS_II",
-      "value": 25
-     },
-     {
-      "position": "CS_III",
-      "value": 25
-     },
-     {
-      "position": "ASIST_C",
-      "value": 25
-     }
-    ],
-    "contributesToTotal": false
-   }
-  ],
-  "perspectives": [
-   {
-    "name": "Director — verdict",
-    "composition": {
-     "all": [
-      {
-       "criterion": 0
-      },
-      {
-       "criterion": 1
-      }
-     ]
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abea3c87314b64bf9e53f94"
     }
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
-  "phdLimitYears": 12,
   "competitionDeadline": {
    "$date": "2026-07-30T00:00:00Z"
-  }
+  },
+  "phdLimitYears": 12
  },
  {
   "_id": {
-   "$oid": "6abeb95cdb42309bf139ba01"
+   "$oid": "6abf57ffcac63fe570e41969"
   },
-  "importEnabled": false,
-  "indicatorRolesByIndicatorId": {},
-  "blockByIndicatorId": {},
-  "title": "Eligibilitate PD 2026 — științe sociale și economice — Director",
-  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Științele sociale și științele economice, directorul de proiect: P ≥ 30 și ΣA ≥ 15 din lucrări publicate după admiterea la doctorat (fereastra 2016–2026 este aproximarea platformei). Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 8 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
-  "authority": "UEFISCDI",
-  "indicators": [
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95c2879165b7406b271"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95c6e446aa6ef2e016a"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95c8f1da096d6e0af7c"
-    }
-   }
-  ],
-  "criteria": [
-   {
-    "name": "Director: P = A + C + K",
-    "indicatorIndices": [
-     0,
-     1,
-     2
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 30
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 30
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 30
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 30
-     },
-     {
-      "position": "HABIL",
-      "value": 30
-     },
-     {
-      "position": "CS_I",
-      "value": 30
-     },
-     {
-      "position": "CS_II",
-      "value": 30
-     },
-     {
-      "position": "CS_III",
-      "value": 30
-     },
-     {
-      "position": "ASIST_C",
-      "value": 30
-     }
-    ],
-    "contributesToTotal": false
-   },
-   {
-    "name": "Director: ΣA (articole)",
-    "indicatorIndices": [
-     0
-    ],
-    "thresholds": [
-     {
-      "position": "ASIST_UNIV",
-      "value": 15
-     },
-     {
-      "position": "LECT_UNIV",
-      "value": 15
-     },
-     {
-      "position": "CONF_UNIV",
-      "value": 15
-     },
-     {
-      "position": "PROF_UNIV",
-      "value": 15
-     },
-     {
-      "position": "HABIL",
-      "value": 15
-     },
-     {
-      "position": "CS_I",
-      "value": 15
-     },
-     {
-      "position": "CS_II",
-      "value": 15
-     },
-     {
-      "position": "CS_III",
-      "value": 15
-     },
-     {
-      "position": "ASIST_C",
-      "value": 15
-     }
-    ],
-    "contributesToTotal": false
-   }
-  ],
-  "perspectives": [
-   {
-    "name": "Director — verdict",
-    "composition": {
-     "all": [
-      {
-       "criterion": 0
-      },
-      {
-       "criterion": 1
-      }
-     ]
-    }
-   }
-  ],
-  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
-  "phdLimitYears": 8,
-  "competitionDeadline": {
-   "$date": "2026-07-30T00:00:00Z"
-  }
- },
- {
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "Eligibilitate PD 2026 — Mentor",
   "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Informatică, mentorul: în 2015–2026, după obținerea titlului de doctor (fereastra începe de la anul doctoratului din profil), minimum 5 lucrări article/review/proceedings paper în reviste SCIE/SSCI/AHCI din categoriile Informatică ale Anexei 6(e) din Q1/Q2 după AIS (JCR-ul anului publicării; 2025–2026 → JCR-2024), dintre care cel puțin 2 în Q1 și cel puțin 3 de tip article; regula revistelor Q2 distincte se aplică doar când 3 dintre cele 5 lucrări de referință sunt Q2 — cu cel puțin 3 lucrări Q1 nu mai contează (verdictul ține cont). Fără limită de vârstă a doctoratului. Autor principal: toți autorii numai când sunt în ordine alfabetică — verificați lucrările cu altă ordine. Aceeași cerință pentru orice poziție.",
-  "indicators": [
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea63"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea64"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea65"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6a4e40467c184d3e2d35ea66"
-    }
-   }
-  ],
   "criteria": [
    {
     "name": "Mentor: top 50% AIS",
@@ -5207,37 +4873,188 @@
     }
    }
   ],
-  "_id": {
-   "$oid": "6abf4e2e183298f3772d4790"
-  }
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea63"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea64"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea65"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6a4e40467c184d3e2d35ea66"
+    }
+   }
+  ]
  },
  {
+  "_id": {
+   "$oid": "6abf57ffcac63fe570e4196a"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "Eligibilitate PD 2026 — științe sociale și economice — Director",
+  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Științele sociale și științele economice, directorul de proiect: P ≥ 30 și ΣA ≥ 15 din lucrări publicate după admiterea la doctorat (fereastra 2016–2026 este aproximarea platformei). Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 8 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
+  "authority": "UEFISCDI",
+  "criteria": [
+   {
+    "name": "Director: P = A + C + K",
+    "indicatorIndices": [
+     0,
+     1,
+     2
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 30
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 30
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 30
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 30
+     },
+     {
+      "position": "HABIL",
+      "value": 30
+     },
+     {
+      "position": "CS_I",
+      "value": 30
+     },
+     {
+      "position": "CS_II",
+      "value": 30
+     },
+     {
+      "position": "CS_III",
+      "value": 30
+     },
+     {
+      "position": "ASIST_C",
+      "value": 30
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Director: ΣA (articole)",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 15
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 15
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 15
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 15
+     },
+     {
+      "position": "HABIL",
+      "value": 15
+     },
+     {
+      "position": "CS_I",
+      "value": 15
+     },
+     {
+      "position": "CS_II",
+      "value": 15
+     },
+     {
+      "position": "CS_III",
+      "value": 15
+     },
+     {
+      "position": "ASIST_C",
+      "value": 15
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Director — verdict",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "phdLimitYears": 8,
+  "competitionDeadline": {
+   "$date": "2026-07-30T00:00:00Z"
+  },
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41963"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41964"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41965"
+    }
+   }
+  ]
+ },
+ {
+  "_id": {
+   "$oid": "6abf57ffcac63fe570e4196b"
+  },
   "importEnabled": false,
   "indicatorRolesByIndicatorId": {},
   "blockByIndicatorId": {},
   "title": "Eligibilitate PD 2026 — științe sociale și economice — Mentor",
   "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Științele sociale și științele economice, mentorul: P ≥ 100 și ΣA ≥ 50 din lucrări publicate în 2015–2026, după obținerea titlului de doctor (fereastra începe de la anul doctoratului din profil). Fără limită de vârstă a doctoratului. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
   "authority": "UEFISCDI",
-  "indicators": [
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95cb6ecaf17dd219545"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95c24cbf52c5ca8bce3"
-    }
-   },
-   {
-    "$ref": "indicators",
-    "$id": {
-     "$oid": "6abeb95cb746fad614a5361f"
-    }
-   }
-  ],
   "criteria": [
    {
     "name": "Mentor: P = A + C + K",
@@ -5348,8 +5165,170 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41966"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41967"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41968"
+    }
+   }
+  ]
+ },
+ {
   "_id": {
-   "$oid": "6abf4e2eeb62c6d39ccc9e17"
-  }
+   "$oid": "6abf57ffcac63fe570e4196c"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "Eligibilitate TE 2026 — științe sociale și economice",
+  "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele sociale și științele economice, directorul de proiect: P ≥ 50 și ΣA ≥ 25 din lucrări publicate în 2015–2026, după obținerea titlului de doctor (fereastra începe de la anul doctoratului din profil). Limita de vârstă a doctoratului: primul titlu de doctor cu cel mult 12 ani înaintea termenului de depunere (30 iulie 2026), verificată din anul doctoratului din profil; concediile de creștere a copilului se exclud manual. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
+  "authority": "UEFISCDI",
+  "criteria": [
+   {
+    "name": "Director: P = A + C + K",
+    "indicatorIndices": [
+     0,
+     1,
+     2
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 50
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 50
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "HABIL",
+      "value": 50
+     },
+     {
+      "position": "CS_I",
+      "value": 50
+     },
+     {
+      "position": "CS_II",
+      "value": 50
+     },
+     {
+      "position": "CS_III",
+      "value": 50
+     },
+     {
+      "position": "ASIST_C",
+      "value": 50
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Director: ΣA (articole)",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 25
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 25
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 25
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 25
+     },
+     {
+      "position": "HABIL",
+      "value": 25
+     },
+     {
+      "position": "CS_I",
+      "value": 25
+     },
+     {
+      "position": "CS_II",
+      "value": 25
+     },
+     {
+      "position": "CS_III",
+      "value": 25
+     },
+     {
+      "position": "ASIST_C",
+      "value": 25
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Director — verdict",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport",
+  "phdLimitYears": 12,
+  "competitionDeadline": {
+   "$date": "2026-07-30T00:00:00Z"
+  },
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41966"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41967"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abf57ffcac63fe570e41968"
+    }
+   }
+  ]
  }
 ]

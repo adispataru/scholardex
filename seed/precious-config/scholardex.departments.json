@@ -1,6 +1,235 @@
 [
-  {"_id":"dept-cs","divisionId":"div-fmi","institutionId":"inst-uvt","name":"Computer Science","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"},
-  {"_id":"dept-env","divisionId":"div-iaer","institutionId":"inst-uvt","name":"Environmental Data Science","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"},
-  {"_id":"dept-infra","divisionId":"div-ccs","institutionId":"inst-uvt","name":"Research Infrastructure","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"},
-  {"_id":"dept-math","divisionId":"div-fmi","institutionId":"inst-uvt","name":"Mathematics","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"}
+ {
+  "_id": {
+   "$oid": "6a35b09324405fbe1e01d8ae"
+  },
+  "divisionId": "6a35b09324405fbe1e01d8ad",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Matematică",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-06-19T21:11:47.769Z"
+  },
+  "updatedAt": {
+   "$date": "2026-06-19T21:11:47.769Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6a35b09424405fbe1e01d8b0"
+  },
+  "divisionId": "6a35b09424405fbe1e01d8af",
+  "institutionId": "inst-uvt",
+  "name": "Stiinte Computationale și Inteligenta Artificiala",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-06-19T21:11:48.765Z"
+  },
+  "updatedAt": {
+   "$date": "2026-06-19T21:11:48.765Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6a35b09424405fbe1e01d8b1"
+  },
+  "divisionId": "6a35b09424405fbe1e01d8af",
+  "institutionId": "inst-uvt",
+  "name": "Tehnologii Digitale si Inginerie Software",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-06-19T21:11:48.831Z"
+  },
+  "updatedAt": {
+   "$date": "2026-06-19T21:11:48.831Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6a5e4d2d00be4a6185b3c2ad"
+  },
+  "divisionId": "6a5e4cc600be4a6185b3c2ab",
+  "institutionId": "inst-uvt",
+  "name": "Om-mediu",
+  "headUserIds": [
+   "florin.spataru@e-uvt.ro"
+  ],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-07-20T17:42:22.888Z"
+  },
+  "updatedAt": {
+   "$date": "2026-07-20T17:42:22.888Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6ab5057be0e4317e1adc1a50"
+  },
+  "divisionId": "6a35b09324405fbe1e01d8ad",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Fizică",
+  "headUserIds": [
+   "marius.stef@e-uvt.ro",
+   "daniel.vizman@e-uvt.ro",
+   "madalin.bunoiu@e-uvt.ro"
+  ],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-26T04:24:52.280Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-26T04:24:52.280Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abb57a52fb0d9482997fa67"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Psihologie",
+  "headUserIds": [
+   "andrei.rusu@e-uvt.ro"
+  ],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T11:18:24.608Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T11:18:24.608Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abb57a92fb0d9482997fa68"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Științe ale Educației",
+  "headUserIds": [
+   "claudia.borca@e-uvt.ro"
+  ],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T11:18:54.669Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T11:18:54.669Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abb57aa2fb0d9482997fa69"
+  },
+  "divisionId": "6abb57a52fb0d9482997fa66",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul pentru Pregătirea Personalului Didactic",
+  "headUserIds": [
+   "marian.ilie@e-uvt.ro"
+  ],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T11:19:13.130Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T11:19:13.130Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abb58092fb0d9482997fab4"
+  },
+  "divisionId": "6abb58092fb0d9482997fab3",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Muzică",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T06:17:45.140Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T06:17:45.140Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abb58092fb0d9482997fab5"
+  },
+  "divisionId": "6abb58092fb0d9482997fab3",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Teatru",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T06:17:45.457Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T06:17:45.457Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abb581c2fb0d9482997faed"
+  },
+  "divisionId": "6abb581c2fb0d9482997faec",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Asistență Socială",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T06:18:04.149Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T06:18:04.149Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abb58252fb0d9482997faef"
+  },
+  "divisionId": "6abb581c2fb0d9482997faec",
+  "institutionId": "inst-uvt",
+  "name": "Departamentul de Sociologie",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T06:18:13.219Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T06:18:13.219Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ },
+ {
+  "_id": {
+   "$oid": "6abcb4e1d4545c27d5f9afcf"
+  },
+  "divisionId": "6abcb4e1d4545c27d5f9afce",
+  "institutionId": "inst-uvt",
+  "name": "Finanțe, Sisteme Informaționale și Modelare pentru Afaceri",
+  "headUserIds": [],
+  "domainIds": [],
+  "createdAt": {
+   "$date": "2026-09-30T07:06:09.656Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-30T07:06:09.656Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.Department"
+ }
 ]

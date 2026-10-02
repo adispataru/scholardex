@@ -441,7 +441,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0f8"
+   "$oid": "6abb7bad05b6723f97a63755"
   },
   "name": "Articol preînregistrat, cu date deschise (Comisia 28, bonus I1A/I1B)",
   "fields": [
@@ -466,7 +466,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0f9"
+   "$oid": "6abb7bad05b6723f97a63756"
   },
   "name": "Material curricular, test sau soft înregistrat (Comisia 28, I7)",
   "fields": [
@@ -487,7 +487,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0fa"
+   "$oid": "6abb7bad05b6723f97a63757"
   },
   "name": "Profil Google Scholar (Comisia 28, I12 și I14)",
   "fields": [
@@ -512,7 +512,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0fb"
+   "$oid": "6abb7bad05b6723f97a63758"
   },
   "name": "Membru în comitetul editorial al unei reviste (Comisia 28, I15)",
   "fields": [
@@ -554,7 +554,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0fc"
+   "$oid": "6abb7bad05b6723f97a63759"
   },
   "name": "Keynote speaker, comunicare în plen (Comisia 28, I16)",
   "fields": [
@@ -579,7 +579,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0fd"
+   "$oid": "6abb7bad05b6723f97a6375a"
   },
   "name": "Carte coordonată (Comisia 28, I17)",
   "fields": [
@@ -609,7 +609,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0fe"
+   "$oid": "6abb7bad05b6723f97a6375b"
   },
   "name": "Grant instituțional, de cercetare aplicativă, fellowship sau chair (Comisia 28, I25 și I26.2)",
   "fields": [
@@ -649,7 +649,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff0ff"
+   "$oid": "6abb7bad05b6723f97a6375c"
   },
   "name": "Program de studii inițiat sau coordonat (Comisia 28, I27.1)",
   "fields": [
@@ -666,7 +666,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff100"
+   "$oid": "6abb7bad05b6723f97a6375d"
   },
   "name": "Disciplină nouă introdusă în planul de învățământ (Comisia 28, I27.3)",
   "fields": [
@@ -683,7 +683,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff101"
+   "$oid": "6abb7bad05b6723f97a6375e"
   },
   "name": "Conducere de doctorat, comisie de îndrumare sau de evaluare a tezei (Comisia 28, I27.4)",
   "fields": [
@@ -709,7 +709,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff102"
+   "$oid": "6abb7bad05b6723f97a6375f"
   },
   "name": "Popularizarea științei în comunitate (Comisia 28, I27.5)",
   "fields": [
@@ -726,7 +726,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb5d97b866c60b6bfff103"
+   "$oid": "6abb7bad05b6723f97a63760"
   },
   "name": "Atestat de liberă practică, psiholog principal (Comisia 28, I27.6)",
   "fields": [
@@ -743,7 +743,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4011"
+   "$oid": "6abb957433192ec40a8e06fa"
   },
   "name": "Raport de analiză de politici sau strategii educaționale (Comisia 28, I10)",
   "fields": [
@@ -772,7 +772,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4012"
+   "$oid": "6abb957433192ec40a8e06fb"
   },
   "name": "Comitet științific, de organizare sau de evaluare la o conferință (Comisia 28, I18)",
   "fields": [
@@ -807,7 +807,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4013"
+   "$oid": "6abb957433192ec40a8e06fc"
   },
   "name": "Asociație profesională (Comisia 28, I19)",
   "fields": [
@@ -840,7 +840,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4014"
+   "$oid": "6abb957433192ec40a8e06fd"
   },
   "name": "Premiu sau distincție (Comisia 28, I20)",
   "fields": [
@@ -867,7 +867,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4015"
+   "$oid": "6abb957433192ec40a8e06fe"
   },
   "name": "Coordonator al unei colecții de carte (Comisia 28, I21)",
   "fields": [
@@ -888,7 +888,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4016"
+   "$oid": "6abb957433192ec40a8e06ff"
   },
   "name": "Referent științific ad hoc pentru reviste (Comisia 28, I22)",
   "fields": [
@@ -917,7 +917,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4017"
+   "$oid": "6abb957433192ec40a8e0700"
   },
   "name": "Profesor asociat, visiting scholar sau prelegere invitată (Comisia 28, I23)",
   "fields": [
@@ -944,7 +944,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4018"
+   "$oid": "6abb957433192ec40a8e0701"
   },
   "name": "Coordonarea unui centru sau laborator de cercetare (Comisia 28, I28)",
   "fields": [
@@ -961,7 +961,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f4019"
+   "$oid": "6abb957433192ec40a8e0702"
   },
   "name": "Evaluator de proiecte sau membru în panel (Comisia 28, I29)",
   "fields": [
@@ -986,7 +986,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f401a"
+   "$oid": "6abb957433192ec40a8e0703"
   },
   "name": "Membru în grup de experți, comisie sau consiliu științific (Comisia 28, I30)",
   "fields": [
@@ -1011,7 +1011,7 @@
  },
  {
   "_id": {
-   "$oid": "6abb8563ab83be698e2f401b"
+   "$oid": "6abb957433192ec40a8e0704"
   },
   "name": "Curs sau program de formare pentru beneficiari externi (Comisia 28, I31)",
   "fields": [
@@ -1028,7 +1028,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d2fe"
+   "$oid": "6abbfc460faa5f42002d72a4"
   },
   "name": "Articol într-o revistă indexată în cel puțin 3 baze de date (Comisia 25, I.2)",
   "fields": [
@@ -1070,7 +1070,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d2ff"
+   "$oid": "6abbfc460faa5f42002d72a5"
   },
   "name": "Carte sau capitol declarat de candidat (Comisia 25, I.3, I.4 și I.6)",
   "fields": [
@@ -1121,7 +1121,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d300"
+   "$oid": "6abbfc460faa5f42002d72a6"
   },
   "name": "Carte coordonată (Comisia 25, I.5)",
   "fields": [
@@ -1155,7 +1155,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d301"
+   "$oid": "6abbfc460faa5f42002d72a7"
   },
   "name": "Recenzie sau termen în enciclopedie ori dicționar (Comisia 25, I.7)",
   "fields": [
@@ -1194,7 +1194,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d302"
+   "$oid": "6abbfc460faa5f42002d72a8"
   },
   "name": "Lucrare în volumul unei conferințe, declarată de candidat (Comisia 25, I.8)",
   "fields": [
@@ -1232,7 +1232,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d303"
+   "$oid": "6abbfc460faa5f42002d72a9"
   },
   "name": "Traducere a unei lucrări fundamentale din științele sociale (Comisia 25, I.8)",
   "fields": [
@@ -1261,7 +1261,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d304"
+   "$oid": "6abbfc460faa5f42002d72aa"
   },
   "name": "Citare sau recenzie la o carte, declarată de candidat (Comisia 25, I.9)",
   "fields": [
@@ -1290,7 +1290,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d305"
+   "$oid": "6abbfc460faa5f42002d72ab"
   },
   "name": "Editor sau membru în comitetul unei reviste (Comisia 25, I.10 și I.11)",
   "fields": [
@@ -1340,7 +1340,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d306"
+   "$oid": "6abbfc460faa5f42002d72ac"
   },
   "name": "Colecție de carte: coordonator sau membru în comitetul științific (Comisia 25, I.12)",
   "fields": [
@@ -1377,7 +1377,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d307"
+   "$oid": "6abbfc460faa5f42002d72ad"
   },
   "name": "Profesor visiting, cercetător invitat sau stagiu Erasmus (Comisia 25, I.14)",
   "fields": [
@@ -1403,7 +1403,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d308"
+   "$oid": "6abbfc460faa5f42002d72ae"
   },
   "name": "Lucrare prezentată la o conferință științifică (Comisia 25, I.15 și I.16)",
   "fields": [
@@ -1432,7 +1432,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d309"
+   "$oid": "6abbfc460faa5f42002d72af"
   },
   "name": "Studiu de evaluare și fundamentare de politici publice (Comisia 25, I.17)",
   "fields": [
@@ -1462,7 +1462,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d30a"
+   "$oid": "6abbfc460faa5f42002d72b0"
   },
   "name": "Participare în colectivul de implementare a unui grant, contract sau proiect (Comisia 25, I.18)",
   "fields": [
@@ -1483,7 +1483,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d30b"
+   "$oid": "6abbfc460faa5f42002d72b1"
   },
   "name": "Participare la BIP sau la o școală de vară (Comisia 25, I.19)",
   "fields": [
@@ -1508,7 +1508,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d30c"
+   "$oid": "6abbfc460faa5f42002d72b2"
   },
   "name": "Suport de curs sau de seminar (Comisia 25, I.19)",
   "fields": [
@@ -1546,7 +1546,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d30d"
+   "$oid": "6abbfc460faa5f42002d72b3"
   },
   "name": "Stagiu postdoctoral de cel puțin 6 luni (Comisia 25, I.19)",
   "fields": [
@@ -1563,7 +1563,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d30e"
+   "$oid": "6abbfc460faa5f42002d72b4"
   },
   "name": "Program de studii universitare inițiat sau coordonat (Comisia 25, I.19)",
   "fields": [
@@ -1580,7 +1580,7 @@
  },
  {
   "_id": {
-   "$oid": "6abbb4fbfe1896ef0369d30f"
+   "$oid": "6abbfc460faa5f42002d72b5"
   },
   "name": "Condiție îndeplinită după obținerea abilitării (Comisia 25, C.10)",
   "fields": [
@@ -1601,7 +1601,7 @@
  },
  {
   "_id": {
-   "$oid": "6abeb95c1312a8dacbf05ebc"
+   "$oid": "6abf57ffcac63fe570e41962"
   },
   "name": "Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)",
   "fields": [

@@ -1,5 +1,134 @@
 [
-  {"_id":"div-ccs","institutionId":"inst-uvt","type":"SERVICE","name":"Centrul de Calcul Service","shortName":"CCS","headUserIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.OrgDivision"},
-  {"_id":"div-fmi","institutionId":"inst-uvt","type":"FACULTY","name":"Faculty of Mathematics and Computer Science","shortName":"FMI","headUserIds":["florin.spataru@e-uvt.ro"],"createdAt":{"$date":"2026-06-04T09:11:08.804Z"},"updatedAt":{"$date":"2026-06-04T09:11:08.804Z"},"_class":"ro.uvt.pokedex.core.model.org.OrgDivision"},
-  {"_id":"div-iaer","institutionId":"inst-uvt","type":"INSTITUTE","name":"Institute for Advanced Environmental Research","shortName":"IAER","headUserIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.OrgDivision"}
+ {
+  "_id": {
+   "$oid": "6a35b09324405fbe1e01d8ad"
+  },
+  "institutionId": "inst-uvt",
+  "type": "FACULTY",
+  "name": "Facultatea de Fizică și Matematică",
+  "headUserIds": [],
+  "createdAt": {
+   "$date": "2026-06-19T21:11:47.758Z"
+  },
+  "updatedAt": {
+   "$date": "2026-06-19T21:11:47.758Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.OrgDivision"
+ },
+ {
+  "_id": {
+   "$oid": "6a35b09424405fbe1e01d8af"
+  },
+  "institutionId": "inst-uvt",
+  "type": "FACULTY",
+  "name": "Facultatea de Informatica",
+  "shortName": "",
+  "headUserIds": [
+   "florin.spataru@e-uvt.ro"
+  ],
+  "createdAt": {
+   "$date": "2026-06-20T07:22:20.653Z"
+  },
+  "updatedAt": {
+   "$date": "2026-06-20T07:22:20.653Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.OrgDivision"
+ },
+ {
+  "_id": {
+   "$oid": "6a5e4cc600be4a6185b3c2ab"
+  },
+  "institutionId": "inst-uvt",
+  "type": "INSTITUTE",
+  "name": "Institutul de Cerecetări Avansate de Mediu",
+  "shortName": "ICAM",
+  "headUserIds": [
+   "dana.petcu@e-uvt.ro"
+  ],
+  "createdAt": {
+   "$date": "2026-07-20T16:28:54.361Z"
+  },
+  "updatedAt": {
+   "$date": "2026-07-20T16:28:54.361Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.OrgDivision"
+ },
+ {
+  "_id": {
+   "$oid": "6abb57a52fb0d9482997fa66"
+  },
+  "institutionId": "inst-uvt",
+  "type": "FACULTY",
+  "name": "Facultatea de Psihologie și Științe ale Educației",
+  "shortName": "FPSE",
+  "headUserIds": [
+   "irina.macsinga@e-uvt.ro",
+   "delia.virga@e-uvt.ro",
+   "norberth.okros@e-uvt.ro",
+   "mihai.predescu@e-uvt.ro"
+  ],
+  "createdAt": {
+   "$date": "2026-09-29T11:19:43.330Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T11:19:43.330Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.OrgDivision"
+ },
+ {
+  "_id": {
+   "$oid": "6abb58092fb0d9482997fab3"
+  },
+  "institutionId": "inst-uvt",
+  "type": "FACULTY",
+  "name": "Facultatea de Muzică și Teatru",
+  "headUserIds": [],
+  "createdAt": {
+   "$date": "2026-09-29T06:17:45.138Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T06:17:45.138Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.OrgDivision"
+ },
+ {
+  "_id": {
+   "$oid": "6abb581c2fb0d9482997faec"
+  },
+  "institutionId": "inst-uvt",
+  "type": "FACULTY",
+  "name": "Facultatea de Sociologie și Asistență Socială",
+  "shortName": "",
+  "headUserIds": [
+   "melinda.dinca@e-uvt.ro"
+  ],
+  "createdAt": {
+   "$date": "2026-09-29T06:18:28.859Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-29T06:18:28.859Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.OrgDivision"
+ },
+ {
+  "_id": {
+   "$oid": "6abcb4e1d4545c27d5f9afce"
+  },
+  "institutionId": "inst-uvt",
+  "type": "FACULTY",
+  "name": "Facultatea de Economie și de Administrare a Afacerilor",
+  "shortName": "",
+  "headUserIds": [
+   "marilen.pirtea@e-uvt.ro",
+   "flavia.barna@e-uvt.ro",
+   "cosmin.enache@e-uvt.ro"
+  ],
+  "createdAt": {
+   "$date": "2026-09-30T07:09:32.692Z"
+  },
+  "updatedAt": {
+   "$date": "2026-09-30T07:09:32.692Z"
+  },
+  "_class": "ro.uvt.pokedex.core.model.org.OrgDivision"
+ }
 ]
