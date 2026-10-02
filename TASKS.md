@@ -38,7 +38,7 @@ Done history moved to `TASKS-done.md`.
   regenerated (7 types, 14 indicators, 21 descriptions), rehearsed again.
   **Prod order (done):** push and deploy; flip the guard; run with `--restart`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
-  IN PROD, SLICE 2 BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
+  IN PROD, SLICE 2 IN PROD 2026-10-02** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
@@ -64,7 +64,8 @@ Done history moved to `TASKS-done.md`.
   indicators, the report `6abfcf06128e8e8842a1debc` (35 / 16 / 6, routes as committed), the shared type merged
   (no existing entries in prod), rollout restarted. Left: select the report for the FMT division
   `6abb58092fb0d9482997fab3`.
-  **Slice 2 BUILT 2026-10-02, not pushed:** every colleague imports their own fișă de verificare (Music grid) or
+  **Slice 2 IN PROD 2026-10-02** (image 1922a5eb; `h142_muzica_export.js` run by Adrian: the report exports to the
+  faculty's grid, 28 indicators on 27 rows, import on; verified read-only; the report is selected for the FMT division): every colleague imports their own fișă de verificare (Music grid) or
   CNFIS Anexa 5.1 from the Activities tab; a head imports many at once (`/supervisor/{kind}/{id}/activity-import`,
   matched by the name in the heading or the file); records land marked imported and "to check" (`importSource`,
   `importKey`, `needsReview`; a re-import adds nothing) and are reviewed many at once (set a field, mark checked,
