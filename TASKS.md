@@ -13,7 +13,9 @@ Done history moved to `TASKS-done.md`.
   BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
-  from the faculty's table (75 / 751 / 73); rehearsed on a scratch database, a second run changes nothing.
+  from the faculty's table (75 / 751 / 73); rehearsed on a scratch database, a second run changes nothing. **RUN in
+  prod 2026-10-02 (Adrian):** 54 people, ORCID stamped 1, Scholar id stamped 49, CNFIS headers created 108
+  (54 × 2 editions), none differing, none missing.
   **Slice 1:** strategy `MUSIC_INDEXED_JOURNAL` (CS 2.1: Scopus, any WoS edition, ERIH PLUS, DOAJ; proceedings in
   Scopus or the WoS conference index); activity variables `N_ani` (years of a function, open-ended to the reference
   year) and, for types that reference an event, `Nivel_eveniment`, `Vizibilitate_varf`, `Rezultat_eveniment`,
