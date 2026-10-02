@@ -199,6 +199,9 @@ public class ActivityFileImportService {
         Map<Activity.ReferenceField, String> references = new LinkedHashMap<>();
         boolean eventRecognised = false;
         fields.put(row.textField(), text);
+        // H143: a book's publisher, when the line names one the lists know — its category follows without typing
+        ro.uvt.pokedex.core.service.reporting.PublisherCategorySupport.findIn(text)
+                .ifPresent(publisher -> fields.put(ro.uvt.pokedex.core.service.reporting.PublisherRules.FIELD_PUBLISHER, publisher));
         String firstLink = item.links().isEmpty() ? null : item.links().getFirst();
         switch (row) {
             case DID_2_1 -> {

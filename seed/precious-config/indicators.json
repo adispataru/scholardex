@@ -3920,7 +3920,7 @@
   },
   "name": "Psiho26_I17",
   "description": "Indicatorul I17 (aria A2): cărți coordonate la edituri clasificate A1, A2 sau B din domeniu, cu 8 × m / n puncte pe carte (m = 3 pentru A1, 1 pentru A2, 0,5 pentru B), unde n este numărul de coordonatori ai volumului. Se declară la activități («Carte coordonată»), cu categoria editurii și numărul de coordonatori; fără numărul de coordonatori se consideră n = 1.",
-  "formula": "m = Categorie_editura == 'A1' ? 3 : (Categorie_editura == 'A2' ? 1 : 0.5); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 8 * m / n",
+  "formula": "m = Categorie_editura == 'A1' ? 3.0 : (Categorie_editura == 'A2' ? 1.0 : (Categorie_editura == 'B' ? 0.5 : 0.0)); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 8 * m / n",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3929,7 +3929,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "f24e5a1cc267d0092b90011b8d1faa0872a01186473b38872acb8c7dbfb8495d",
+  "formulaHash": "258a774f3a7c7c0c3396879faba88a8df68eefad3cbd22d5ba518ac0773b6d75",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3945,7 +3945,8 @@
    "$id": {
     "$oid": "6abb7bad05b6723f97a6375a"
    }
-  }
+  },
+  "psihologie2026": true
  },
  {
   "_id": {
@@ -4971,11 +4972,11 @@
   },
   "name": "Edu26_I17",
   "description": "Indicatorul I17 (aria A2): cărți coordonate la edituri clasificate A1, A2 sau B din domeniu, cu 8 × m / n puncte pe carte (m = 3 pentru A1, 1 pentru A2, 0,5 pentru B), unde n este numărul de coordonatori ai volumului. Se declară la activități («Carte coordonată»), cu categoria editurii și numărul de coordonatori; fără numărul de coordonatori se consideră n = 1.",
-  "formula": "m = Categorie_editura == 'A1' ? 3 : (Categorie_editura == 'A2' ? 1 : 0.5); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 8 * m / n",
+  "formula": "m = Categorie_editura == 'A1' ? 3.0 : (Categorie_editura == 'A2' ? 1.0 : (Categorie_editura == 'B' ? 0.5 : 0.0)); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 8 * m / n",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "f24e5a1cc267d0092b90011b8d1faa0872a01186473b38872acb8c7dbfb8495d",
+  "formulaHash": "258a774f3a7c7c0c3396879faba88a8df68eefad3cbd22d5ba518ac0773b6d75",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4996,7 +4997,8 @@
     "$oid": "6abb7bad05b6723f97a6375a"
    }
   },
-  "version": 0
+  "version": 0,
+  "stiinteEducatiei2026": true
  },
  {
   "_id": {
@@ -5103,11 +5105,11 @@
   },
   "name": "Edu26_I21",
   "description": "Indicatorul I21 (aria A2): coordonator al unei colecții de carte la o editură clasificată A1, A2 sau B, cu 6 puncte pe colecție. Se declară la activități («Coordonator al unei colecții de carte»).",
-  "formula": "6",
+  "formula": "Categorie_editura != null ? 6 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e7f6c011776e8db7cd330b54174fd76f7d0216b612387a5ffcfb81e6f0919683",
+  "formulaHash": "f28e3279b729a9d52d82ac8fd9d4ccbb87a4a9e12e778639d650446f71e05835",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5128,7 +5130,8 @@
     "$oid": "6abb957433192ec40a8e06fe"
    }
   },
-  "version": 0
+  "version": 0,
+  "stiinteEducatiei2026": true
  },
  {
   "_id": {
@@ -5789,11 +5792,11 @@
   },
   "name": "Soc26_I3_decl",
   "description": "Indicatorul I.3, cărți declarate de candidat: cărți cu cel mult 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 10 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura != null && n <= 3) ? 10 * m / n : 0",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura != null && n <= 3) ? 10 * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a69c45e86a30dad24b9914e1922f9fb566e70c1b9d092227c2b0e9c6c0f7abc8",
+  "formulaHash": "6092542f34726f21edfd694898dcc44875b68b3674f6e28e09e4fd63b8f74e8f",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5814,7 +5817,8 @@
     "$oid": "6abbfc460faa5f42002d72a5"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -5852,11 +5856,11 @@
   },
   "name": "Soc26_I4_decl",
   "description": "Indicatorul I.4, cărți declarate de candidat: cărți cu mai mult de 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 6 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura != null && n > 3) ? 6 * m / n : 0",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura != null && n > 3) ? 6 * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a503be7929d5542f8dae362b9a3f8c70a34648f655f5d74b4ed456d6bf755d07",
+  "formulaHash": "a7936e0fb9827eccd95687eae210417e28b5d29c10d6b4bb9604c9a3b28d0556",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5877,7 +5881,8 @@
     "$oid": "6abbfc460faa5f42002d72a5"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -5885,11 +5890,11 @@
   },
   "name": "Soc26_I5",
   "description": "Indicatorul I.5: cărți coordonate (inclusiv manuale). Fiecare aduce 6 × m / n, unde n este numărul de coordonatori. Se declară de candidat, pentru că platforma nu distinge un coordonator de un autor. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; 6 * m / n",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; Categorie_editura != null ? 6 * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "345714ad2a4ffdd449b5b8ea18d90f197d69a2d332dff2767bd662ca8b0a408e",
+  "formulaHash": "a8bc15dfbdd097a1adcd250cbb359447f69f1a3c802263a0dc8f594f38e9e767",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5910,7 +5915,8 @@
     "$oid": "6abbfc460faa5f42002d72a6"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -5948,11 +5954,11 @@
   },
   "name": "Soc26_I6_decl",
   "description": "Indicatorul I.6, capitole declarate de candidat: 6 × m / n pentru o editură din Lista A1; 3 × m / n pentru o editură din Lista A2 sau pentru un volum cuprins în cel puțin 6 biblioteci din worldcat.org. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Incadrare_editura != null) ? (Incadrare_editura == 'Lista A1' ? 6 : 3) * m / n : 0",
+  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Categorie_editura != null) ? (Categorie_editura == 'A1' ? 6 : 3) * m / n : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "70bb1ec799436263c36f522be9622e02366ac77ec01b9ae26deea44ea10ad956",
+  "formulaHash": "03a293e11deaf383b1055cea45bbdace1415845f6da80a204badb9e5b8b3ff43",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5973,7 +5979,8 @@
     "$oid": "6abbfc460faa5f42002d72a5"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -6077,11 +6084,11 @@
   },
   "name": "Soc26_I8_trad",
   "description": "Indicatorul I.8, traduceri: traducerea unei lucrări fundamentale din domeniul științelor sociale, la o editură din Lista A2: 2 puncte; însoțită de aparat critic: 4 puncte. Se declară de candidat.",
-  "formula": "Tip == 'Cu aparat critic' ? 4 : 2",
+  "formula": "Categorie_editura == 'A2' ? (Tip == 'Cu aparat critic' ? 4 : 2) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "98b5d2c8a930f0ea1c54f7524970aa6543cafe41721a8e4877ca4c25de51540d",
+  "formulaHash": "a169a735df88f71081b3f6d9e08f3c9104cf78cbc26d502e9cb95b849f69d814",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6102,7 +6109,8 @@
     "$oid": "6abbfc460faa5f42002d72a9"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -6239,11 +6247,11 @@
   },
   "name": "Soc26_I12",
   "description": "Indicatorul I.12: colecții (serii de volume). Editură din Lista A1: coordonator 8 puncte, membru în comitetul științific 4 puncte. Editură din Lista A2: coordonator 4 puncte, membru 2 puncte. Punctajul se acordă pentru fiecare colecție.",
-  "formula": "Lista == 'Lista A1' ? (Rol == 'Coordonator' ? 8 : 4) : (Rol == 'Coordonator' ? 4 : 2)",
+  "formula": "Categorie_editura == 'A1' ? (Rol == 'Coordonator' ? 8 : 4) : (Categorie_editura == 'A2' ? (Rol == 'Coordonator' ? 4 : 2) : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "1484ed8944bf323d8289b0d46fbf530814e11545c311daa09ea4313b81d9ace3",
+  "formulaHash": "08435129663bbdb29ead9712458fa73cd0ef674bf835d99095730caf7aca4b94",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6264,7 +6272,8 @@
     "$oid": "6abbfc460faa5f42002d72ac"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -6755,11 +6764,11 @@
   },
   "name": "Soc26_C4_capitole_decl",
   "description": "Numărul capitolelor declarate de candidat la I.6. Intră în criteriul C.4.",
-  "formula": "(Tip == 'Capitol în volum colectiv' && Incadrare_editura != null) ? 1 : 0",
+  "formula": "(Tip == 'Capitol în volum colectiv' && Categorie_editura != null) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "d09d3cbfc05263b9dfc371d99a5610916332b67bce284155e927a67769ed8a25",
+  "formulaHash": "36a10339e0b4ce3a36f74f1d1ada62233288e997bcaa8dbcb7698449df54b295",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6780,7 +6789,8 @@
     "$oid": "6abbfc460faa5f42002d72a5"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -6848,11 +6858,11 @@
   },
   "name": "Soc26_C5_A1_decl",
   "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A1. Intră în criteriul C.5.",
-  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura == 'Lista A1' && n <= 3) ? 1 : 0",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura == 'A1' && n <= 3) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "7c156b1aed7aa54759fb563e14b54fbdb975b2c443a2958c0f99d1a7f4d4da07",
+  "formulaHash": "35acace97190f33452cc6557f488bb6d76750d90dfb0c86f61249590ec45f0e6",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6873,7 +6883,8 @@
     "$oid": "6abbfc460faa5f42002d72a5"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -6881,11 +6892,11 @@
   },
   "name": "Soc26_C5_A2_decl",
   "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A2 sau cuprinse în cel puțin 6 biblioteci din worldcat.org. Intră în criteriul C.5.",
-  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Incadrare_editura != null && !(Incadrare_editura == 'Lista A1') && n <= 3) ? 1 : 0",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura == 'A2' && n <= 3) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6472b8fd994f0aeb61f87cddd0cbf1028d38340849ee0223ff776f0287c86f06",
+  "formulaHash": "4b84c7232c244848b6644ace34f93aac3811a34647be59c60b029a3942cf143d",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6906,7 +6917,8 @@
     "$oid": "6abbfc460faa5f42002d72a5"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -7332,7 +7344,7 @@
   },
   "name": "Muz26_DID_1_1",
   "description": "DID 1.1: tratat, studiu amplu sau volum de studii teoretice ori privind compoziția, stilul sau interpretarea muzicală, publicat — adică la o editură clasificată CNCS în categoria A sau B, sau la o editură străină echivalentă: 30 de puncte. Încadrarea editurii se alege la declarare; o carte fără încadrare nu se punctează.",
-  "formula": "(Incadrare_editura != null && Incadrare_editura != 'Altă editură') ? 30 : 0",
+  "formula": "Categorie_editura != null ? 30 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7347,7 +7359,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "0e111f85fc5c7b13215de18361351e3440ba3971911177fb10d7d96a19f70525",
+  "formulaHash": "4f43f597440dbeec44e9a03aba6c8f32558f63ad6e979b3e2912a7791f663387",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7357,7 +7369,8 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "muzica2026": true
  },
  {
   "_id": {
@@ -8252,7 +8265,7 @@
   },
   "name": "Muz26_N_carti",
   "description": "Numără cărțile de la DID 1.1, pentru activitățile minimale obligatorii (teoreticieni: 1 la conferențiar, 2 la profesor și abilitare; compozitori și interpreți: 1).",
-  "formula": "(Incadrare_editura != null && Incadrare_editura != 'Altă editură') ? 1 : 0",
+  "formula": "Categorie_editura != null ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -8267,7 +8280,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "1c5a84575dcb35ce6c08eeef1dac05101dae7523854fec02dce5d0149a7e85b3",
+  "formulaHash": "821da893f9ee69c98b65d8248e66bf327766d0751e4ca07a73a55db80a60e57d",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -8277,7 +8290,8 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "muzica2026": true
  },
  {
   "_id": {

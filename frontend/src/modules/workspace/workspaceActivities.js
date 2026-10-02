@@ -20,6 +20,7 @@
  *   GET  /user/activities/activity/{id}/fields   (existing, reused)
  *   POST /user/workspace/activities/import-file   (H142 — the person's fișă de verificare / Anexa 5.1)
  *   POST /user/workspace/activities/bulk          (H142 — review imported records many at once)
+ *   GET  /user/workspace/activities/publisher-categories (H143 — the publisher category of declared books)
  */
 
 import { csrfHeaders, postJsonHeaders } from '../shared/fetchUtils';
@@ -56,6 +57,8 @@ let _reviewOnly    = false;
 let _selected      = new Set();
 let _importNotice  = null;   // { lines: string[], error: boolean }
 let _bulkMessage   = null;
+// H143 — per record id: the publisher typed, each standard's category and its source, the request to a head
+let _publisherInfo = {};
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -174,6 +177,7 @@ function _renderAll() {
     _wireImportAndReview();
     _renderImportNotice();
     _renderBulkBar();
+    _loadPublisherInfo();
 
 
     // Render table
@@ -962,6 +966,7 @@ function _buildDetailPanel(inst) {
               ${inst.importSource
                   ? `<p class="app-ws-acts__source">${_esc(t('workspace.activities.review.source', inst.importSource))}</p>`
                   : ''}
+              <div data-publisher-host="${_esc(inst.id)}">${_publisherBlock(inst)}</div>
             </div>
             <!-- Right: edit -->
             <div>
@@ -1008,6 +1013,7 @@ function _saveInst(id, detailTr) {
                 document.querySelector(`[data-inst-id="${CSS.escape(id)}"] .app-ws-acts__review-badge`)?.remove();
                 _refreshReviewToggle();
             }
+            _loadPublisherInfo();
             if (feedback) {
                 feedback.textContent = t('workspace.activities.saved');
                 feedback.classList.remove('app-ws-acts__feedback--error');
@@ -1162,7 +1168,10 @@ function _renderCreateFields(container, activity) {
 
     const customHtml = fields.map(f => {
         if (f.allowedValues?.length > 0) {
-            const opts = f.allowedValues.map(v => `<option value="${_esc(v)}">${_esc(v)}</option>`).join('');
+            // No option is chosen for the person (H143): the first one used to be stored silently, e.g. the top
+            // publisher category of a standard.
+            const opts = `<option value="">—</option>` +
+                f.allowedValues.map(v => `<option value="${_esc(v)}">${_esc(v)}</option>`).join('');
             return `<div class="app-ws-acts__field">
                 <label class="app-ws-acts__label">${_esc(f.name)}</label>
                 <select class="app-ws-acts__select" data-create-field="${_esc(f.name)}">${opts}</select>
@@ -1215,7 +1224,7 @@ function _submitCreate(placeholder) {
 
     const fields    = {};
     const refFields = {};
-    placeholder.querySelectorAll('[data-create-field]').forEach(el => { fields[el.dataset.createField] = el.value; });
+    placeholder.querySelectorAll('[data-create-field]').forEach(el => { if (el.value !== '') fields[el.dataset.createField] = el.value; });
     placeholder.querySelectorAll('[data-create-ref-field]').forEach(el => { refFields[el.dataset.createRefField] = el.value; });
 
     if (saveBtn) saveBtn.disabled = true;
@@ -1241,6 +1250,7 @@ function _submitCreate(placeholder) {
                 empty.replaceWith(tableWrap);
             }
             _renderPage();
+            _loadPublisherInfo(); // H143: the new record's publisher category
         })
         .catch(err => {
             _showFeedback(feedback, (err && err.userMessage) || t('workspace.activities.saveFailed'), true);
@@ -1561,6 +1571,76 @@ function _bulk(action, values) {
             _bulkMessage = t('workspace.activities.review.failed');
             _renderBulkBar();
         });
+}
+
+// ── H143: the publisher category of a declared book ───────────────────────────
+
+function _loadPublisherInfo() {
+    fetch('/user/workspace/activities/publisher-categories', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => (r.ok ? r.json() : {}))
+        .then(map => {
+            _publisherInfo = map && typeof map === 'object' ? map : {};
+            if (_activeId) {
+                const host = document.querySelector(`[data-publisher-host="${CSS.escape(_activeId)}"]`);
+                const inst = _instances.find(i => i.id === _activeId);
+                if (host && inst) host.innerHTML = _publisherBlock(inst);
+            }
+        })
+        .catch(() => { _publisherInfo = {}; });
+}
+
+/** What the standards make of the record's publisher, and the state of the request where no list decides. */
+function _publisherBlock(inst) {
+    const info = _publisherInfo[inst.id];
+    if (!info || !Array.isArray(info.standards) || info.standards.length === 0) return '';
+    const lines = info.standards.map(s => {
+        let text;
+        if (s.category) {
+            const category = s.category === 'STRAINA' ? t('workspace.activities.publisher.foreign') : s.category;
+            text = `${_esc(category)} — ${_esc(_publisherBasisLabel(s.basis))}`;
+        } else if (s.basis === 'NO_PUBLISHER') {
+            text = _esc(t('workspace.activities.publisher.noPublisher'));
+        } else if (s.basis === 'LISTED_NOT_COUNTED') {
+            text = `${_esc(s.listedCategory)} — ${_esc(t('workspace.activities.publisher.notCounted'))}`;
+        } else {
+            text = _esc(t('workspace.activities.publisher.none'));
+        }
+        const detail = s.detail ? `<span class="app-ws-acts__publisher-detail">${_esc(s.detail)}</span>` : '';
+        return `<li><strong>${_esc(s.label)}</strong>: ${text}${detail}</li>`;
+    }).join('');
+    const claim = info.claim;
+    const claimLine = claim
+        ? `<p class="app-ws-acts__publisher-claim">${_esc(_publisherClaimText(claim.status))}` +
+          `${claim.note ? ' ' + _esc(t('workspace.activities.publisher.claim.note', claim.note)) : ''}</p>`
+        : '';
+    const unlisted = info.standards.some(s => !s.category && s.basis !== 'NO_PUBLISHER');
+    const hint = unlisted && !claim
+        ? `<p class="app-ws-acts__publisher-hint">${_esc(t('workspace.activities.publisher.hint'))}</p>`
+        : '';
+    return `<div class="app-ws-acts__publisher">
+        <p class="app-ws-acts__detail-section-title">${t('workspace.activities.publisher.title')}</p>
+        <ul class="app-ws-acts__publisher-list">${lines}</ul>${claimLine}${hint}
+    </div>`;
+}
+
+function _publisherBasisLabel(basis) {
+    switch (basis) {
+        case 'LIST':                 return t('workspace.activities.publisher.basis.LIST');
+        case 'WOS_MASTER_BOOK_LIST': return t('workspace.activities.publisher.basis.WOS_MASTER_BOOK_LIST');
+        case 'CNCS':                 return t('workspace.activities.publisher.basis.CNCS');
+        case 'INTERNATIONAL_LIST':   return t('workspace.activities.publisher.basis.INTERNATIONAL_LIST');
+        case 'APPROVED_CLAIM':       return t('workspace.activities.publisher.basis.APPROVED_CLAIM');
+        default:                     return basis || '';
+    }
+}
+
+function _publisherClaimText(status) {
+    switch (status) {
+        case 'PENDING':  return t('workspace.activities.publisher.claim.PENDING');
+        case 'APPROVED': return t('workspace.activities.publisher.claim.APPROVED');
+        case 'REJECTED': return t('workspace.activities.publisher.claim.REJECTED');
+        default:         return status || '';
+    }
 }
 
 // ── HTML builders ─────────────────────────────────────────────────────────────

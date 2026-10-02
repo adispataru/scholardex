@@ -106,7 +106,8 @@ class Psihologie2026ReportDefinitionTest {
     void theRulesThatChangedIn2026AreSwitchedOnExactlyWhereTheyApply() {
         // Every indicator that reads journals, publishers or Web of Science venues. The strict journal
         // indicators are in: without the flag they would skip the ESCI edition of the domain's categories.
-        assertEquals(Set.of("I1A", "I1B", "I5", "I2", "I6", "I3A", "I3B", "I4A", "I4B", "I13"),
+        // H143: the coordinated book too — its publisher's category comes from the domain's lists
+        assertEquals(Set.of("I1A", "I1B", "I5", "I2", "I6", "I3A", "I3B", "I4A", "I4B", "I13", "I17"),
                 psy.flagged("psihologie2026"));
         assertTrue(psy.flagged("stiinteEducatiei2026").isEmpty());
         assertEquals("PSYCH_BDI_JOURNAL", psy.kindField("I2", "strategy"));
@@ -231,9 +232,12 @@ class Psihologie2026ReportDefinitionTest {
     void keynotesAndCoordinatedBooks() {
         assertEquals(6.0, psy.activity("I16", fields("Nivel", "Internațională")), 1e-9);
         assertEquals(2.0, psy.activity("I16", fields("Nivel", "Națională")), 1e-9);
-        assertEquals(12.0, psy.activity("I17", fields("Categorie_editura", "A1", "N_coordonatori", "2")), 1e-9);
-        assertEquals(8.0, psy.activity("I17", fields("Categorie_editura", "A2")), 1e-9);
-        assertEquals(1.0, psy.activity("I17", fields("Categorie_editura", "B", "N_coordonatori", "4")), 1e-9);
+        // H143: the category comes from the publisher typed — the Master Book List (A1), the 2026 list (A2, B)
+        assertEquals(12.0, psy.activity("I17", fields("Editura", "Routledge", "N_coordonatori", "2")), 1e-9);
+        assertEquals(8.0, psy.activity("I17", fields("Editura", "Polirom")), 1e-9);
+        assertEquals(1.0, psy.activity("I17", fields("Editura", "Humanitas", "N_coordonatori", "4")), 1e-9);
+        assertEquals(0.0, psy.activity("I17", fields("Editura", "Editura Proprie")), 1e-9,
+                "a publisher on no list and without an approved route scores nothing");
     }
 
     @Test

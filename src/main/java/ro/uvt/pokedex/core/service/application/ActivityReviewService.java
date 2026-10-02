@@ -67,6 +67,7 @@ public class ActivityReviewService {
             }
             if (touched) {
                 instance.setFields(fields);
+                PublisherClaimSupport.reconcile(instance, researcherEmail); // H143: a request set many at once
                 toSave.add(instance);
                 changed++;
             } else {

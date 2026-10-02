@@ -33,6 +33,11 @@ public class ActivityInstance {
     private String importKey;
     /** H142 — true until the person has looked at an imported record ("de verificat"); null for typed records. */
     private Boolean needsReview;
+    /**
+     * H143 — the request to classify this book's publisher where no list decides, and the head's decision on it;
+     * null when the record never asked.
+     */
+    private PublisherClaim publisherClaim;
 
     public Optional<Integer> getYearOptional() {
         return PersistenceYearSupport.extractYear(date, id, log);

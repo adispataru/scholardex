@@ -140,6 +140,133 @@
                            th:text="#{supervisor.declarations.effect}">A decision changes the scores when the report is refreshed.</p>
                     </div>
                 </section>
+
+                <!-- ── H143: the publisher of a declared book, where no list decides ───────────── -->
+                <section class="app-summary-panel mt-4 mb-4" id="publisher-claims">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title">
+                            <span th:text="#{supervisor.claims.pending.title}">Publisher categories waiting for a decision</span>
+                            (<span th:text="${claimsPending.size()}">0</span>)
+                        </h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p class="text-muted" style="font-size:0.85rem;" th:text="#{supervisor.claims.intro}">
+                            The category of a declared book's publisher comes from the lists of the standard.
+                        </p>
+                        <p th:if="${claimsPending.isEmpty()}" class="text-muted mb-0"
+                           th:text="#{supervisor.claims.pending.empty}">Nothing is waiting.</p>
+
+                        <div th:each="claim : ${claimsPending}" data-publisher-claim
+                             style="border-top:1px solid var(--bs-border-color, #dee2e6); padding:0.9rem 0;">
+                            <p class="mb-1">
+                                <strong th:text="${names.getOrDefault(claim.researcherEmail(), claim.researcherEmail())}">Researcher</strong>
+                                ·
+                                <span th:text="${claim.typeName()}">activity type</span>
+                            </p>
+                            <p class="mb-1">
+                                <span th:text="${claim.title()}">Book title</span>
+                                ·
+                                <span class="text-muted" th:text="#{supervisor.claims.publisher}">Publisher</span>:
+                                <strong th:text="${claim.record() != null and claim.record().publisher() != null ? claim.record().publisher() : '—'}">Publisher</strong>
+                            </p>
+                            <p class="mb-1" th:if="${claim.record() != null}">
+                                <span class="text-muted" th:text="#{supervisor.claims.lists}">What the lists say</span>:
+                                <th:block th:each="standard, iter : ${claim.record().standards()}">
+                                    <span th:text="${standard.label()}">Psihologie</span>:
+                                    <span th:if="${standard.listedCategory() != null}"
+                                          th:text="${standard.listedCategory() + ' (' + standard.detail() + ')'}">A2 (list)</span>
+                                    <span th:if="${standard.listedCategory() == null}" th:text="#{supervisor.claims.notListed}">not on the lists</span><span th:unless="${iter.last}">; </span>
+                                </th:block>
+                            </p>
+                            <p class="mb-1" th:if="${claim.record() != null and claim.record().claim() != null}">
+                                <span class="text-muted" th:text="#{supervisor.claims.requested}">Asks for</span>:
+                                <strong th:text="${claim.record().claim().requested()}">A1 — WorldCat</strong>
+                            </p>
+                            <p class="mb-2" th:if="${claim.record() != null and claim.record().claim() != null}">
+                                <span class="text-muted" th:text="#{supervisor.claims.evidence}">Evidence</span>:
+                                <span th:text="${claim.record().claim().evidence() != null ? claim.record().claim().evidence() : '—'}">evidence</span>
+                                <a th:if="${claim.record().claim().evidence() != null and #strings.startsWith(claim.record().claim().evidence(), 'http')}"
+                                   target="_blank" rel="noopener" th:href="${claim.record().claim().evidence()}"
+                                   th:text="#{supervisor.declarations.evidenceLink}">link</a>
+                            </p>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <form method="post" th:action="@{/supervisor/declarations/publisher-claims/{id}/approve(id=${claim.activityId()})}"
+                                      style="display:flex; gap:0.4rem;">
+                                    <input type="text" name="note" class="form-control form-control-sm" maxlength="1000"
+                                           th:placeholder="#{supervisor.declarations.note.optional}"
+                                           th:attr="aria-label=#{supervisor.declarations.note.optional}">
+                                    <button type="submit" class="btn btn-sm btn-success"
+                                            th:text="#{supervisor.declarations.approve}">Approve</button>
+                                </form>
+                                <form method="post" th:action="@{/supervisor/declarations/publisher-claims/{id}/reject(id=${claim.activityId()})}"
+                                      style="display:flex; gap:0.4rem;">
+                                    <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
+                                           th:placeholder="#{supervisor.declarations.note.required}"
+                                           th:attr="aria-label=#{supervisor.declarations.note.required}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            th:text="#{supervisor.declarations.reject}">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="app-summary-panel">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title" th:text="#{supervisor.claims.decided.title}">Publisher categories decided</h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p th:if="${claimsDecided.isEmpty()}" class="text-muted mb-0"
+                           th:text="#{supervisor.declarations.decided.empty}">Nothing was decided yet.</p>
+                        <div th:unless="${claimsDecided.isEmpty()}" class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                <tr>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.researcher}">Researcher</th>
+                                    <th scope="col" th:text="#{supervisor.claims.col.book}">Book</th>
+                                    <th scope="col" th:text="#{supervisor.claims.requested}">Asks for</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.decision}">Decision</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.by}">By</th>
+                                    <th scope="col"></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="claim : ${claimsDecided}">
+                                    <td th:text="${names.getOrDefault(claim.researcherEmail(), claim.researcherEmail())}">Researcher</td>
+                                    <td>
+                                        <span th:text="${claim.title()}">Title</span>
+                                        <div class="text-muted" style="font-size:0.8rem;"
+                                             th:text="${claim.record() != null and claim.record().publisher() != null ? claim.record().publisher() : ''}">publisher</div>
+                                    </td>
+                                    <td th:text="${claim.record() != null and claim.record().claim() != null ? claim.record().claim().requested() : ''}">A1</td>
+                                    <td>
+                                        <span th:if="${claim.record() != null and claim.record().claim() != null}"
+                                              th:text="#{${'supervisor.declarations.status.' + claim.record().claim().status()}}">status</span>
+                                        <div th:if="${claim.record() != null and claim.record().claim() != null and claim.record().claim().note() != null}"
+                                             class="text-muted" style="font-size:0.8rem;" th:text="${claim.record().claim().note()}">note</div>
+                                    </td>
+                                    <td>
+                                        <span th:if="${claim.record() != null and claim.record().claim() != null}"
+                                              th:text="${names.getOrDefault(claim.record().claim().decidedBy(), claim.record().claim().decidedBy())}">head</span>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:text="${decidedOn.get(claim.activityId())}">date</div>
+                                    </td>
+                                    <td>
+                                        <form th:if="${claim.record() != null and claim.record().claim() != null and claim.record().claim().status() == 'APPROVED'}"
+                                              method="post" th:action="@{/supervisor/declarations/publisher-claims/{id}/revoke(id=${claim.activityId()})}"
+                                              style="display:flex; gap:0.4rem;">
+                                            <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
+                                                   th:placeholder="#{supervisor.declarations.note.required}"
+                                                   th:attr="aria-label=#{supervisor.declarations.note.required}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                    th:text="#{supervisor.declarations.revoke}">Revoke</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
         </div>

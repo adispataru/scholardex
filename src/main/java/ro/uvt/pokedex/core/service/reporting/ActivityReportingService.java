@@ -166,6 +166,9 @@ public class ActivityReportingService {
         // vs 1.2), Rezultat_eveniment (PARTICIPARE / NOMINALIZARE / PREMIU) and Rol_eligibil (the roles the
         // standard counts) — see ArtisticPerformanceSupport.
         injectArtisticPerformanceVariables(activity, variables, result, rawformula);
+        // H143: Categorie_editura — the category of a declared book's publisher under the indicator's standard, from
+        // the lists that standard names, or from a request a head approved (PublisherRules); null when nothing counts.
+        injectPublisherCategoryVariable(activity, indicator, variables, result, rawformula);
         if (budgetEurDerivedFromInterval) {
             // Surfaced on the drilldown row: the amount was inferred from the declared interval's lower
             // bound, not taken from the (missing or interval-contradicting) numeric Buget.
@@ -290,6 +293,28 @@ public class ActivityReportingService {
         variables.put("Editura_7c", onList);
         if (!onList && formula != null && formula.contains("Editura_7c")) {
             result.getScoringInfo().put("anexa7c", "NOT_ON_LIST");
+        }
+    }
+
+    /**
+     * See the call site. Bound for an activity whose type has a typed {@code Editura} and whose indicator follows a
+     * standard with publisher rules (its 2026 flag); the row notes the category and where it comes from, and a formula
+     * that gates on the category explains its zero.
+     */
+    private void injectPublisherCategoryVariable(ActivityInstance activity, Indicator indicator,
+                                                 Map<String, Object> variables, Score result, String formula) {
+        java.util.Optional<PublisherRules> rules = PublisherRules.of(indicator);
+        if (rules.isEmpty() || !variables.containsKey(PublisherRules.FIELD_PUBLISHER)) {
+            return;
+        }
+        Object typed = variables.get(PublisherRules.FIELD_PUBLISHER);
+        PublisherCategorySupport.Outcome outcome = PublisherCategorySupport.outcome(rules.get(),
+                typed instanceof String name ? name : null, activity.getPublisherClaim(), activity.getFields());
+        variables.put(PublisherRules.VARIABLE, outcome.category());
+        result.getScoringInfo().put("publisherCategory", outcome.category() == null ? "NONE" : outcome.category());
+        result.getScoringInfo().put("publisherBasis", outcome.basis());
+        if (outcome.category() == null && formula != null && formula.contains(PublisherRules.VARIABLE)) {
+            result.getScoringInfo().put("zeroReason", "PUBLISHER_NOT_CLASSIFIED");
         }
     }
 

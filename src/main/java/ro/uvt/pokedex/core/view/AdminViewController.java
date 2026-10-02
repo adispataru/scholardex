@@ -473,6 +473,8 @@ public class AdminViewController {
         private Boolean stiinteEducatiei2026;
         /** Sociologie 2026 — Comisia 25 rules flag; hidden-input round-trip like the others. */
         private Boolean sociologie2026;
+        /** Muzică 2026 — Comisia 35 rules flag; hidden-input round-trip like the others. */
+        private Boolean muzica2026;
 
         static IndicatorForm fromIndicator(Indicator indicator) {
             IndicatorForm form = new IndicatorForm();
@@ -498,6 +500,7 @@ public class AdminViewController {
             form.psihologie2026 = indicator.getPsihologie2026();
             form.stiinteEducatiei2026 = indicator.getStiinteEducatiei2026();
             form.sociologie2026 = indicator.getSociologie2026();
+            form.muzica2026 = indicator.getMuzica2026();
             return form;
         }
 
@@ -522,6 +525,7 @@ public class AdminViewController {
             indicator.setPsihologie2026(psihologie2026);
             indicator.setStiinteEducatiei2026(stiinteEducatiei2026);
             indicator.setSociologie2026(sociologie2026);
+            indicator.setMuzica2026(muzica2026);
             return indicator;
         }
     }

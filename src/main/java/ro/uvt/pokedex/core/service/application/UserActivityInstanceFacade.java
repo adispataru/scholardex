@@ -61,6 +61,7 @@ public class UserActivityInstanceFacade {
 
     public ActivityInstance saveActivityInstance(ActivityInstance activityInstance) {
         validateJournalIssns(activityInstance);
+        PublisherClaimSupport.reconcile(activityInstance, activityInstance.getResearcherId()); // H143
         return activityInstanceRepository.save(activityInstance);
     }
 
@@ -131,6 +132,7 @@ public class UserActivityInstanceFacade {
             if (Boolean.TRUE.equals(existingInstance.getNeedsReview())) {
                 existingInstance.setNeedsReview(Boolean.FALSE); // H142 — saving an imported record is checking it
             }
+            PublisherClaimSupport.reconcile(existingInstance, existingInstance.getResearcherId()); // H143
             activityInstanceRepository.save(existingInstance);
         }
     }

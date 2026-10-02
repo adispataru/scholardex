@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.reporting;
 
+import ro.uvt.pokedex.core.model.activities.PublisherClaim;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaVariableContract;
@@ -108,7 +109,8 @@ class StiinteEducatiei2026ReportDefinitionTest {
 
     @Test
     void theEducationalSciencesRulesAreSwitchedOnExactlyWhereTheyApply() {
-        assertEquals(Set.of("I1A", "I1B", "I5", "I2", "I6", "I3A", "I3B", "I4A", "I4B", "I13"),
+        // H143: the coordinated book and the collection too — their publisher's category comes from the lists
+        assertEquals(Set.of("I1A", "I1B", "I5", "I2", "I6", "I3A", "I3B", "I4A", "I4B", "I13", "I17", "I21"),
                 edu.flagged("stiinteEducatiei2026"));
         assertTrue(edu.flagged("psihologie2026").isEmpty(), "an indicator would read Psychology's values");
     }
@@ -215,7 +217,7 @@ class StiinteEducatiei2026ReportDefinitionTest {
         assertEquals(2.5, edu.activity("I7", fields("N_autori", "2")), 1e-9);
         assertEquals(0.05 * 300, edu.activity("I12", fields("Citari_GS", "420", "Citari_WoS", "120")), 1e-9);
         assertEquals(6.0, edu.activity("I16", fields("Nivel", "Internațională")), 1e-9);
-        assertEquals(12.0, edu.activity("I17", fields("Categorie_editura", "A1", "N_coordonatori", "2")), 1e-9);
+        assertEquals(12.0, edu.activity("I17", fields("Editura", "Routledge", "N_coordonatori", "2")), 1e-9);
         assertEquals(1.0, edu.activity("I1A_bonus", fields("Tip_revista", "Fără taxă de publicare")), 1e-9);
         assertEquals(1.0, edu.activity("I1B_bonus", fields("Tip_revista", "Cu taxă de publicare")), 1e-9);
         String budget = "50.000 – 99.999 EUR";
@@ -245,10 +247,23 @@ class StiinteEducatiei2026ReportDefinitionTest {
     void aCoordinatedBookScoresInEveryPublisherTier() {
         // Every tier, the decimal one included: see SeedFormulaLiteralTypesTest for why that is worth pinning.
         for (SeedReportDefinition report : List.of(edu, psy)) {
-            assertEquals(12.0, report.activity("I17", fields("Categorie_editura", "A1", "N_coordonatori", "2")), 1e-9);
-            assertEquals(4.0, report.activity("I17", fields("Categorie_editura", "A2", "N_coordonatori", "2")), 1e-9);
-            assertEquals(2.0, report.activity("I17", fields("Categorie_editura", "B", "N_coordonatori", "2")), 1e-9);
-            assertEquals(4.0, report.activity("I17", fields("Categorie_editura", "B")), 1e-9);
+            assertEquals(12.0, report.activity("I17", fields("Editura", "Routledge", "N_coordonatori", "2")), 1e-9);
+            assertEquals(4.0, report.activity("I17", fields("Editura", "Polirom", "N_coordonatori", "2")), 1e-9);
+            assertEquals(2.0, report.activity("I17", fields("Editura", "Humanitas", "N_coordonatori", "2")), 1e-9);
+            assertEquals(4.0, report.activity("I17", fields("Editura", "Humanitas")), 1e-9);
+            // H143: the routes of the standard for one book, once a head approves them, and only then
+            String worldCat = "A1 — minimum 25 de biblioteci universitare din UE/OCDE în WorldCat";
+            String twoCriteria = "A2 — cel puțin două criterii din ruta complementară";
+            assertEquals(24.0, report.activityWithDecision("I17", fields("Editura", "Editura Proprie",
+                    "Incadrare_solicitata", worldCat), PublisherClaim.Status.APPROVED), 1e-9);
+            assertEquals(0.0, report.activityWithDecision("I17", fields("Editura", "Editura Proprie",
+                    "Incadrare_solicitata", worldCat), PublisherClaim.Status.PENDING), 1e-9);
+            assertEquals(8.0, report.activityWithDecision("I17", fields("Editura", "Humanitas",
+                    "Incadrare_solicitata", twoCriteria), PublisherClaim.Status.APPROVED), 1e-9,
+                    "the complementary route raises a listed B book to A2");
+            assertEquals(8.0, report.activityWithDecision("I17", fields("Editura", "Polirom",
+                    "Incadrare_solicitata", "B — un criteriu din ruta complementară"), PublisherClaim.Status.APPROVED), 1e-9,
+                    "a request never lowers what the list gives (A2)");
         }
     }
 
@@ -288,7 +303,8 @@ class StiinteEducatiei2026ReportDefinitionTest {
 
     @Test
     void collectionsReviewingAndVisitingPositions() {
-        assertEquals(6.0, edu.activity("I21", fields()), 1e-9);
+        assertEquals(6.0, edu.activity("I21", fields("Editura", "Polirom")), 1e-9);
+        assertEquals(0.0, edu.activity("I21", fields()), 1e-9, "a collection counts at a classified publisher");
 
         assertEquals(0.3, edu.activity("I22", fields("Indexare", "Web of Science")), 1e-9);
         assertEquals(1.5, edu.activity("I22", fields("Indexare", "Web of Science", "N_articole", "5")), 1e-9);

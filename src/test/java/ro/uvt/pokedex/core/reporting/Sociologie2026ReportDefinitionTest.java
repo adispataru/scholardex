@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.reporting;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import ro.uvt.pokedex.core.model.activities.PublisherClaim;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaVariableContract;
 
 import java.util.HashSet;
@@ -128,7 +129,11 @@ class Sociologie2026ReportDefinitionTest {
     @Test
     void theRulesOfTheCommissionAreSwitchedOnExactlyWhereTheyApply() {
         assertEquals(Set.of("I1", "I1_N", "I1_NC", "I2", "I3", "I4", "I6", "I8", "I9", "C4_articole", "C4_capitole",
-                "C5_A1", "C5_A2", "C8"), soc.flagged("sociologie2026"));
+                "C5_A1", "C5_A2", "C8",
+                // H143: the declared books, chapters, coordinated books, translations and collections take their
+                // publisher's category from the lists of the commission
+                "I3_decl", "I4_decl", "I5", "I6_decl", "I8_trad", "I12", "C4_capitole_decl", "C5_A1_decl",
+                "C5_A2_decl"), soc.flagged("sociologie2026"));
         assertTrue(soc.flagged("psihologie2026").isEmpty());
         assertTrue(soc.flagged("stiinteEducatiei2026").isEmpty());
     }
@@ -275,46 +280,60 @@ class Sociologie2026ReportDefinitionTest {
         assertEquals(2.0, soc.activity("I2_decl", fields()), 1e-9);
         assertEquals(1.0, soc.activity("C4_articole_decl", fields()), 1e-9);
 
-        assertEquals(15.0, soc.activity("I3_decl", fields("Tip", "Carte", "Incadrare_editura", "Lista A2",
+        // H143: the publisher's category comes from the lists — the annex's A2 list (Polirom), the WoS Master Book List
+        // for A1 (Routledge) — and the holdings in six WorldCat libraries count once a head approves the request.
+        assertEquals(15.0, soc.activity("I3_decl", fields("Tip", "Carte", "Editura", "Polirom",
                 "N_autori", "1", "Coeficient_m", "m = 1.5")), 1e-9);
-        assertEquals(0.0, soc.activity("I3_decl", fields("Tip", "Carte", "Incadrare_editura", "Lista A2",
+        assertEquals(0.0, soc.activity("I3_decl", fields("Tip", "Carte", "Editura", "Polirom",
                 "N_autori", "4")), 1e-9);
-        assertEquals(6.0 / 4, soc.activity("I4_decl", fields("Tip", "Carte", "Incadrare_editura",
-                "Minimum 6 biblioteci WorldCat", "N_autori", "4")), 1e-9);
-        assertEquals(0.0, soc.activity("I4_decl", fields("Tip", "Carte", "Incadrare_editura", "Lista A1",
+        assertEquals(6.0 / 4, soc.activityWithDecision("I4_decl", fields("Tip", "Carte", "Editura", "Editura Proprie",
+                "Incadrare_solicitata", WORLDCAT, "N_autori", "4"), PublisherClaim.Status.APPROVED), 1e-9);
+        assertEquals(0.0, soc.activityWithDecision("I4_decl", fields("Tip", "Carte", "Editura", "Editura Proprie",
+                "Incadrare_solicitata", WORLDCAT, "N_autori", "4"), PublisherClaim.Status.PENDING), 1e-9,
+                "a request counts only once a head approves it");
+        assertEquals(0.0, soc.activity("I4_decl", fields("Tip", "Carte", "Editura", "Routledge",
                 "N_autori", "2")), 1e-9);
         // A book whose publisher is on no list and in no six libraries is not counted.
+        assertEquals(0.0, soc.activity("I3_decl", fields("Tip", "Carte", "Editura", "Editura Proprie", "N_autori", "1")), 1e-9);
         assertEquals(0.0, soc.activity("I3_decl", fields("Tip", "Carte", "N_autori", "1")), 1e-9);
 
         assertEquals(6.0, soc.activity("I6_decl", fields("Tip", "Capitol în volum colectiv",
-                "Incadrare_editura", "Lista A1")), 1e-9);
-        assertEquals(3.0, soc.activity("I6_decl", fields("Tip", "Capitol în volum colectiv",
-                "Incadrare_editura", "Minimum 6 biblioteci WorldCat")), 1e-9);
-        assertEquals(0.0, soc.activity("I6_decl", fields("Tip", "Carte", "Incadrare_editura", "Lista A1")), 1e-9);
+                "Editura", "Routledge")), 1e-9);
+        assertEquals(3.0, soc.activityWithDecision("I6_decl", fields("Tip", "Capitol în volum colectiv",
+                "Editura", "Editura Proprie", "Incadrare_solicitata", WORLDCAT), PublisherClaim.Status.APPROVED), 1e-9);
+        assertEquals(6.0, soc.activityWithDecision("I6_decl", fields("Tip", "Capitol în volum colectiv",
+                "Editura", "Editura Proprie", "Incadrare_solicitata", A1), PublisherClaim.Status.APPROVED), 1e-9,
+                "an international house off the Master Book List, approved as A1");
+        assertEquals(0.0, soc.activity("I6_decl", fields("Tip", "Carte", "Editura", "Routledge")), 1e-9);
         assertEquals(1.0, soc.activity("C4_capitole_decl", fields("Tip", "Capitol în volum colectiv",
-                "Incadrare_editura", "Lista A2")), 1e-9);
+                "Editura", "Polirom")), 1e-9);
     }
+
+    private static final String A1 = "Editură de prestigiu internațional (Lista A1)";
+    private static final String WORLDCAT = "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)";
 
     @Test
     void declaredBooksAreCountedOnce() {
-        var international = fields("Tip", "Carte", "Incadrare_editura", "Lista A1", "N_autori", "2");
-        var listed = fields("Tip", "Carte", "Incadrare_editura", "Lista A2", "N_autori", "3");
-        var libraries = fields("Tip", "Carte", "Incadrare_editura", "Minimum 6 biblioteci WorldCat");
+        var international = fields("Tip", "Carte", "Editura", "Routledge", "N_autori", "2");
+        var listed = fields("Tip", "Carte", "Editura", "Editura Polirom, Iași", "N_autori", "3");
+        var libraries = fields("Tip", "Carte", "Editura", "Editura Proprie", "Incadrare_solicitata", WORLDCAT);
         assertEquals(1.0, soc.activity("C5_A1_decl", international), 1e-9);
         assertEquals(0.0, soc.activity("C5_A2_decl", international), 1e-9);
         assertEquals(0.0, soc.activity("C5_A1_decl", listed), 1e-9);
         assertEquals(1.0, soc.activity("C5_A2_decl", listed), 1e-9);
-        assertEquals(1.0, soc.activity("C5_A2_decl", libraries), 1e-9);
+        assertEquals(1.0, soc.activityWithDecision("C5_A2_decl", libraries, PublisherClaim.Status.APPROVED), 1e-9);
+        assertEquals(0.0, soc.activityWithDecision("C5_A2_decl", libraries, PublisherClaim.Status.REJECTED), 1e-9);
         assertEquals(0.0, soc.activity("C5_A2_decl",
-                fields("Tip", "Carte", "Incadrare_editura", "Lista A2", "N_autori", "4")), 1e-9);
+                fields("Tip", "Carte", "Editura", "Polirom", "N_autori", "4")), 1e-9);
         assertEquals(0.0, soc.activity("C5_A2_decl",
-                fields("Tip", "Capitol în volum colectiv", "Incadrare_editura", "Lista A2")), 1e-9);
+                fields("Tip", "Capitol în volum colectiv", "Editura", "Polirom")), 1e-9);
     }
 
     @Test
     void coordinatedBooksReviewsProceedingsAndTranslations() {
-        assertEquals(6.0, soc.activity("I5", fields("N_coordonatori", "2", "Coeficient_m", "m = 2")), 1e-9);
-        assertEquals(6.0, soc.activity("I5", fields()), 1e-9);
+        assertEquals(6.0, soc.activity("I5", fields("Editura", "Humanitas", "N_coordonatori", "2", "Coeficient_m", "m = 2")), 1e-9);
+        assertEquals(6.0, soc.activity("I5", fields("Editura", "Polirom")), 1e-9);
+        assertEquals(0.0, soc.activity("I5", fields()), 1e-9, "definition [4]: only books at a listed publisher count");
 
         assertEquals(3.0, soc.activity("I7", fields("Tip", "Recenzie în revistă ISI/WoS")), 1e-9);
         assertEquals(1.0, soc.activity("I7",
@@ -325,8 +344,10 @@ class Sociologie2026ReportDefinitionTest {
 
         assertEquals(1.0, soc.activity("I8_decl", fields()), 1e-9);
         assertEquals(0.5, soc.activity("I8_decl", fields("N_autori", "4", "Coeficient_m", "m = 2")), 1e-9);
-        assertEquals(2.0, soc.activity("I8_trad", fields("Tip", "Fără aparat critic")), 1e-9);
-        assertEquals(4.0, soc.activity("I8_trad", fields("Tip", "Cu aparat critic")), 1e-9);
+        assertEquals(2.0, soc.activity("I8_trad", fields("Tip", "Fără aparat critic", "Editura", "Polirom")), 1e-9);
+        assertEquals(4.0, soc.activity("I8_trad", fields("Tip", "Cu aparat critic", "Editura", "Polirom")), 1e-9);
+        assertEquals(0.0, soc.activity("I8_trad", fields("Tip", "Cu aparat critic", "Editura", "Editura Proprie")), 1e-9,
+                "a translation counts at a publisher of the A2 list");
     }
 
     @Test
@@ -368,12 +389,13 @@ class Sociologie2026ReportDefinitionTest {
 
     @Test
     void bookCollections() {
-        assertEquals(8.0, soc.activity("I12", fields("Lista", "Lista A1", "Rol", "Coordonator")), 1e-9);
+        assertEquals(8.0, soc.activity("I12", fields("Editura", "Routledge", "Rol", "Coordonator")), 1e-9);
         assertEquals(4.0, soc.activity("I12",
-                fields("Lista", "Lista A1", "Rol", "Membru în comitetul științific")), 1e-9);
-        assertEquals(4.0, soc.activity("I12", fields("Lista", "Lista A2", "Rol", "Coordonator")), 1e-9);
+                fields("Editura", "Routledge", "Rol", "Membru în comitetul științific")), 1e-9);
+        assertEquals(4.0, soc.activity("I12", fields("Editura", "Polirom", "Rol", "Coordonator")), 1e-9);
         assertEquals(2.0, soc.activity("I12",
-                fields("Lista", "Lista A2", "Rol", "Membru în comitetul științific")), 1e-9);
+                fields("Editura", "Polirom", "Rol", "Membru în comitetul științific")), 1e-9);
+        assertEquals(0.0, soc.activity("I12", fields("Editura", "Editura Proprie", "Rol", "Coordonator")), 1e-9);
     }
 
     @Test

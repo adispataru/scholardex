@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.activities.PublisherClaim;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingBlock;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
@@ -146,10 +147,23 @@ class Muzica2026ReportDefinitionTest {
 
     @Test
     void didItems() {
-        assertEquals(30.0, muz.activity("DID_1_1", fields("Incadrare_editura", "Editură CNCS categoria A")), 1e-9);
-        assertEquals(30.0, muz.activity("DID_1_1", fields("Incadrare_editura", "Editură străină echivalentă")), 1e-9);
-        assertEquals(0.0, muz.activity("DID_1_1", fields("Incadrare_editura", "Altă editură")), 1e-9);
-        assertEquals(0.0, muz.activity("DID_1_1", fields()), 1e-9, "a book needs its publisher category");
+        // H143: "publicat" = a publisher CNCS classifies A or B (Music first, else any domain), or an equivalent
+        // foreign one; the category comes from the lists, matched on the publisher the researcher types
+        assertEquals(30.0, muz.activity("DID_1_1", fields("Editura", "Editura Universității Naționale de Muzică București")), 1e-9);
+        assertEquals(30.0, muz.activity("DID_1_1", fields("Editura", "Eurostampa")), 1e-9);
+        assertEquals(30.0, muz.activity("DID_1_1", fields("Editura", "Editura Universității de Vest")), 1e-9,
+                "classified B and A in other domains, not in Music");
+        assertEquals(30.0, muz.activity("DID_1_1", fields("Editura", "Bärenreiter")), 1e-9);
+        assertEquals(0.0, muz.activity("DID_1_1", fields("Editura", "Universitaria")), 1e-9,
+                "rated C in Music by both lists, whatever it is elsewhere");
+        assertEquals(0.0, muz.activity("DID_1_1", fields("Editura", "Lambert Academic Publishing")), 1e-9);
+        assertEquals(0.0, muz.activity("DID_1_1", fields("Editura", "Editura Proprie")), 1e-9);
+        assertEquals(0.0, muz.activity("DID_1_1", fields()), 1e-9, "a book needs its publisher");
+        String foreign = "Editură străină echivalentă (categoria A sau B)";
+        assertEquals(30.0, muz.activityWithDecision("DID_1_1", fields("Editura", "Schott Music",
+                "Incadrare_solicitata", foreign), PublisherClaim.Status.APPROVED), 1e-9);
+        assertEquals(0.0, muz.activityWithDecision("DID_1_1", fields("Editura", "Schott Music",
+                "Incadrare_solicitata", foreign), PublisherClaim.Status.PENDING), 1e-9);
         assertEquals(15.0, muz.activity("DID_1_2", fields()), 1e-9);
         assertEquals(10.0, muz.activity("DID_1_3", fields("Tip", "Suport de curs")), 1e-9);
         assertEquals(20.0, muz.activity("DID_1_4", fields("Tip", "Ediție critică")), 1e-9);
@@ -230,7 +244,7 @@ class Muzica2026ReportDefinitionTest {
     @Test
     void aFilledGridOfTheFacultyScoresTheTotalsItClaims() {
         // The counts of a grid the faculty sent (a lecturer, conferențiar thresholds): DID 400, CS 1700, RIA 770.
-        double did = muz.activity("DID_1_1", fields("Incadrare_editura", "Editură CNCS categoria A"))
+        double did = muz.activity("DID_1_1", fields("Editura", "Editura Universității Naționale de Muzică București"))
                 + muz.activity("DID_1_3", fields("Tip", "Suport de curs"))
                 + 12 * muz.activity("DID_2_1", fields("Suport", "Streaming (înregistrare video din concert public)"));
         double cs = 14 * muz.activity("CS_1_1", fields("Rol", "Dirijor", "Vizibilitate", "Internațională sau națională de vârf"),

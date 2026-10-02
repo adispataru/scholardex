@@ -421,7 +421,9 @@ when it lands. Slice 5 last, source by source.
   with 16 criteria and 6 perspectives; `indicator-descriptions/muzica-2026.json`; seed exported; pinned by
   `Muzica2026ReportDefinitionTest` (thresholds, members, routes, the points of every item, the example grid's
   totals). `SeedReportDefinition` learned to pass an event and to find a criterion without a code.
-- **Readings chosen while building:** a book needs its publisher category (no category, no points); a recording with
+- **Readings chosen while building:** a book needs its publisher category (no category, no points; since H143
+  the category is derived from the CNCS lists and the international list, not picked — see
+  `h143-publisher-categories.md`); a recording with
   a declared duration under 45 minutes does not count, one without a duration does; an organiser or a keynote
   without a level counts as national; a membership without a role is a membership (5 points).
 
@@ -470,7 +472,7 @@ when it lands. Slice 5 last, source by source.
 
 1. Which EBSCO and ProQuest databases count (the standard names only the vendor). Proposed in step 4.
 2. Which CNCS publisher list applies: the 2026 one, or the one in force when the book came out; and whether the
-   Music list only, or any domain's list. Proposed: the best category the publisher had in any list from 2013
+   Music list only, or any domain's list. **H143 implements the proposal below as a reading to confirm.** Proposed: the best category the publisher had in any list from 2013
    on, in the Music domain first and any domain second — it matters for Editura Universității de Vest.
 3. Keys: a YouTube Data API key and a Discogs token, kept like the other keys (not in the repository).
 4. Requests: CEEOL and Sciendo for their KBART files; UCMR-ADA for the repertoire (later).

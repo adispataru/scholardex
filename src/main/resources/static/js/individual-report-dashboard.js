@@ -603,7 +603,8 @@
     'SCORE_BELOW_FORMULA_THRESHOLD': 'belowFormulaThreshold',
     'MULTIPLE_GATES':       'multipleGates',
     'ISSN_NOT_FOUND':       'issnNotFound',
-    'ISSN_INVALID':         'issnInvalid'
+    'ISSN_INVALID':         'issnInvalid',
+    'PUBLISHER_NOT_CLASSIFIED': 'publisherNotClassified'
   };
 
   /** Full explanatory sentence for a zeroReason; falls back to the raw marker for an unknown code. */

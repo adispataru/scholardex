@@ -624,12 +624,7 @@
     "number": false
    },
    {
-    "name": "Categorie_editura",
-    "allowedValues": [
-     "A1",
-     "A2",
-     "B"
-    ],
+    "name": "Editura",
     "number": false
    },
    {
@@ -638,6 +633,19 @@
    },
    {
     "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "number": false,
+    "allowedValues": [
+     "A1 — minimum 25 de biblioteci universitare din UE/OCDE în WorldCat",
+     "A2 — cel puțin două criterii din ruta complementară",
+     "B — un criteriu din ruta complementară"
+    ]
+   },
+   {
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
@@ -918,6 +926,17 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "number": false,
+    "allowedValues": [
+     "Editură de prestigiu internațional (A1)"
+    ]
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity"
@@ -1127,15 +1146,6 @@
     "number": false
    },
    {
-    "name": "Incadrare_editura",
-    "allowedValues": [
-     "Lista A1",
-     "Lista A2",
-     "Minimum 6 biblioteci WorldCat"
-    ],
-    "number": false
-   },
-   {
     "name": "N_autori",
     "number": true
    },
@@ -1150,6 +1160,18 @@
    },
    {
     "name": "Dovezi (ISBN, link WorldCat)",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "number": false,
+    "allowedValues": [
+     "Editură de prestigiu internațional (Lista A1)",
+     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)"
+    ]
+   },
+   {
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
@@ -1184,6 +1206,18 @@
    },
    {
     "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "number": false,
+    "allowedValues": [
+     "Editură de prestigiu internațional (Lista A1)",
+     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)"
+    ]
+   },
+   {
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
@@ -1291,6 +1325,17 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "number": false,
+    "allowedValues": [
+     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)"
+    ]
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity"
@@ -1389,14 +1434,6 @@
     "number": false
    },
    {
-    "name": "Lista",
-    "allowedValues": [
-     "Lista A1",
-     "Lista A2"
-    ],
-    "number": false
-   },
-   {
     "name": "Rol",
     "allowedValues": [
      "Coordonator",
@@ -1406,6 +1443,17 @@
    },
    {
     "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "number": false,
+    "allowedValues": [
+     "Editură de prestigiu internațional (Lista A1)"
+    ]
+   },
+   {
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
@@ -1739,21 +1787,22 @@
     "number": false
    },
    {
-    "name": "Incadrare_editura",
-    "allowedValues": [
-     "Editură CNCS categoria A",
-     "Editură CNCS categoria B",
-     "Editură străină echivalentă",
-     "Altă editură"
-    ],
-    "number": false
-   },
-   {
     "name": "ISBN",
     "number": false
    },
    {
     "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "number": false,
+    "allowedValues": [
+     "Editură străină echivalentă (categoria A sau B)"
+    ]
+   },
+   {
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],

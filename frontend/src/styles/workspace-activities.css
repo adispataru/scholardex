@@ -829,3 +829,31 @@
   color: var(--app-color-text-muted);
   overflow-wrap: anywhere;
 }
+
+/* H143 — the publisher category of a declared book */
+.app-ws-acts__publisher {
+  margin-top: 0.75rem;
+}
+
+.app-ws-acts__publisher-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.app-ws-acts__publisher-detail {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__publisher-claim,
+.app-ws-acts__publisher-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__publisher-claim {
+  color: var(--app-color-text-strong);
+}

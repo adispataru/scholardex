@@ -9,6 +9,19 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H143` The category of a declared book's publisher comes from the standard's lists, not from the researcher —
+  **BUILT 2026-10-02, not pushed** (asked by Adrian after the H142 slice 2 review). Four 2026 reports (Muzică DID 1.1,
+  Sociologie books/chapters/collections, Psihologie and Științe ale educației I17) let the researcher pick their book's
+  publisher category, and the forms preselected the top one; three rows ignored the publisher (Soc I.5, I.8, Edu I21).
+  Prod read first: no record of these types exists, nothing was inflated. Now `Categorie_editura` is DERIVED from
+  the typed `Editura` (`PublisherRules`, `PublisherCategoryService`): the commissions' 2026 lists and the WoS Master
+  Book List (as for corpus books); for Music the CNCS classifications 2013/2020/2026 (Music domain first) and the
+  UEFISCDI international list for arts and humanities (Lambert excluded). Where no list decides, a request
+  (`Incadrare_solicitata` + `Dovada_incadrarii`) counts once a head approves it on `/supervisor/declarations`. No
+  select is preselected anymore. Imported books get their publisher when the line names a listed one. Details,
+  sources and three readings to confirm in `docs/tasks/active/h143-publisher-categories.md`. Full suite 3797, 0
+  failures. Prod script `h143_publisher_categories.js` (guard `H143_IMAGE_IS_DEPLOYED`, `--restart`), rehearsed.
+  **Prod order:** push and deploy; flip the guard; run with `--restart`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
   IN PROD, SLICE 2 BUILT 2026-10-02, not pushed** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).

@@ -75,6 +75,8 @@ class PrincipalAuthorDeclarationPagesContractTest {
     private PrincipalAuthorDeclarationService declarations;
     @MockitoBean
     private UserService userService;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PublisherClaimReviewService publisherClaims;
 
     @BeforeEach
     void names() {
@@ -141,6 +143,78 @@ class PrincipalAuthorDeclarationPagesContractTest {
         assertTrue(html.contains("Checked in the PDF."));
         assertTrue(html.contains("name=\"_csrf\""));
         assertFalse(html.contains("??"), "a message key did not resolve");
+    }
+
+    // ------------------------------------------------------------------ H143: publisher categories on the same page
+
+    private static ro.uvt.pokedex.core.service.application.PublisherClaimReviewService.ClaimItem claimItem(
+            String activityId, String status) {
+        var standards = List.of(new ro.uvt.pokedex.core.service.application.PublisherCategoryFacade.StandardView(
+                "PSIHOLOGIE_2026", "Psihologie", null, "NOT_LISTED", null, null));
+        var request = new ro.uvt.pokedex.core.service.application.PublisherCategoryFacade.ClaimView(status,
+                "A1 — minimum 25 de biblioteci universitare din UE/OCDE în WorldCat", "https://worldcat.org/<29>",
+                Instant.parse("2026-10-01T08:00:00Z"), "PENDING".equals(status) ? null : "dean@uvt.ro",
+                "PENDING".equals(status) ? null : Instant.parse("2026-10-02T08:00:00Z"),
+                "PENDING".equals(status) ? null : "29 libraries, checked.");
+        var record = new ro.uvt.pokedex.core.service.application.PublisherCategoryFacade.RecordView(
+                activityId, "Editura <Proprie>", standards, request);
+        return new ro.uvt.pokedex.core.service.application.PublisherClaimReviewService.ClaimItem(activityId,
+                "researcher@uvt.ro", "Carte coordonată (Comisia 28, I17)", "Coordinated <book>", record);
+    }
+
+    @Test
+    void aHeadSeesThePublisherCategoriesAskedForBesideTheDeclarations() throws Exception {
+        when(declarations.pendingFor(any())).thenReturn(List.of());
+        when(declarations.decidedFor(any(), anyInt())).thenReturn(List.of());
+        when(publisherClaims.pendingFor(any())).thenReturn(List.of(claimItem("a1", "PENDING")));
+        when(publisherClaims.decidedFor(any(), anyInt())).thenReturn(List.of(claimItem("a2", "APPROVED")));
+
+        String html = mockMvc.perform(get(REVIEW).with(head())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(html.contains("data-publisher-claim"));
+        assertTrue(html.contains("Ana Pop"));
+        assertTrue(html.contains("Coordinated &lt;book&gt;") && html.contains("Editura &lt;Proprie&gt;"), "text, never markup");
+        assertTrue(html.contains("A1 — minimum 25 de biblioteci universitare din UE/OCDE în WorldCat"));
+        assertTrue(html.contains("/supervisor/declarations/publisher-claims/a1/approve"));
+        assertTrue(html.contains("/supervisor/declarations/publisher-claims/a1/reject"));
+        assertTrue(html.contains("/supervisor/declarations/publisher-claims/a2/revoke"), "an approval can be taken back");
+        assertTrue(html.contains("29 libraries, checked."));
+        assertTrue(html.contains("02.10.2026 11:00"));
+        assertFalse(html.contains("??"), "a message key did not resolve");
+    }
+
+    @Test
+    void aDecisionOnAPublisherCategoryComesBackToItsSection() throws Exception {
+        mockMvc.perform(post(REVIEW + "/publisher-claims/a1/approve").param("note", "ok").with(head()).with(csrf()))
+                .andExpect(redirectedUrl(REVIEW + "#publisher-claims"))
+                .andExpect(flash().attribute("doneKey", "supervisor.declarations.done.claimApproved"));
+        verify(publisherClaims).approve(eq("a1"), any(), eq("ok"));
+
+        when(publisherClaims.reject(eq("a1"), any(), any())).thenThrow(
+                new ro.uvt.pokedex.core.service.application.PublisherClaimReviewService.ClaimRefused(
+                        ro.uvt.pokedex.core.service.application.PublisherClaimReviewService.Refusal.NOTE_REQUIRED));
+        mockMvc.perform(post(REVIEW + "/publisher-claims/a1/reject").with(head()).with(csrf()))
+                .andExpect(flash().attribute("refusedKey", "supervisor.claims.refused.NOTE_REQUIRED"));
+
+        mockMvc.perform(post(REVIEW + "/publisher-claims/a1/approve").with(researcher()).with(csrf()))
+                .andExpect(redirectedUrl(DENIED));
+    }
+
+    @Test
+    void everyPublisherCategoryOutcomeHasASentence() throws Exception {
+        when(declarations.pendingFor(any())).thenReturn(List.of());
+        when(declarations.decidedFor(any(), anyInt())).thenReturn(List.of());
+        for (String done : List.of("claimApproved", "claimRejected")) {
+            String html = mockMvc.perform(get(REVIEW).with(head()).flashAttr("doneKey", "supervisor.declarations.done." + done))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertFalse(html.contains("??"), done);
+        }
+        for (var refusal : ro.uvt.pokedex.core.service.application.PublisherClaimReviewService.Refusal.values()) {
+            String html = mockMvc.perform(get(REVIEW).with(head()).flashAttr("refusedKey", "supervisor.claims.refused." + refusal.name()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertFalse(html.contains("??"), refusal.name());
+        }
     }
 
     @Test

@@ -4,12 +4,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
+import ro.uvt.pokedex.core.model.activities.PublisherClaim;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole;
 import ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectReadPort;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
+import ro.uvt.pokedex.core.service.reporting.PsihologiePublisherService;
+import ro.uvt.pokedex.core.service.reporting.PublisherCategoryService;
+import ro.uvt.pokedex.core.service.reporting.PublisherCategorySupport;
+import ro.uvt.pokedex.core.service.reporting.PublisherRules;
+import ro.uvt.pokedex.core.service.reporting.WosMasterBookListService;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScoringFactoryService;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaContext;
@@ -31,7 +37,9 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * A report definition as committed in {@code seed/precious-config}, read for the tests that pin it to its
@@ -52,6 +60,23 @@ final class SeedReportDefinition {
     private final List<String> reportIndicatorNames = new ArrayList<>();
     private final ActivityReportingService activityReportingService = new ActivityReportingService(
             mock(ScoringFactoryService.class), EVALUATOR, mock(ScholardexProjectReadPort.class));
+
+    /**
+     * H143 — the international houses the tests use, standing in for the WoS Master Book List (a Mongo-backed list):
+     * the category of a declared book comes from the real committed lists otherwise.
+     */
+    static final Set<String> MASTER_BOOK_LIST = Set.of("routledge", "springer", "palgrave macmillan", "sage");
+
+    static {
+        WosMasterBookListService masterBookList = mock(WosMasterBookListService.class);
+        when(masterBookList.isRecognized(any())).thenAnswer(call -> {
+            String name = call.getArgument(0);
+            return name != null && MASTER_BOOK_LIST.contains(name.trim().toLowerCase(java.util.Locale.ROOT));
+        });
+        PublisherCategorySupport.register(new PublisherCategoryService(
+                new PsihologiePublisherService(mock(ro.uvt.pokedex.core.repository.reporting.PsihologiePublisherRepository.class)),
+                masterBookList));
+    }
 
     SeedReportDefinition(String title, String indicatorPrefix) {
         this.prefix = indicatorPrefix;
@@ -247,6 +272,11 @@ final class SeedReportDefinition {
         if (node.hasNonNull("maxPoints")) {
             indicator.setMaxPoints(node.get("maxPoints").asInt());
         }
+        // the 2026 rule flags, as committed (H143: they also pick the publisher lists of a declared book)
+        indicator.setPsihologie2026(node.path("psihologie2026").asBoolean(false) ? Boolean.TRUE : null);
+        indicator.setStiinteEducatiei2026(node.path("stiinteEducatiei2026").asBoolean(false) ? Boolean.TRUE : null);
+        indicator.setSociologie2026(node.path("sociologie2026").asBoolean(false) ? Boolean.TRUE : null);
+        indicator.setMuzica2026(node.path("muzica2026").asBoolean(false) ? Boolean.TRUE : null);
         return indicator;
     }
 
@@ -290,6 +320,21 @@ final class SeedReportDefinition {
      * result are derived from the event and the fields).
      */
     double activity(String shortName, Map<String, String> entered, String eventName) {
+        return activity(shortName, entered, eventName, null);
+    }
+
+    /**
+     * Points for ONE declared book whose request for a publisher category a head decided (H143): the record asks for
+     * {@code Incadrare_solicitata} and the decision is {@code status}.
+     */
+    double activityWithDecision(String shortName, Map<String, String> entered, PublisherClaim.Status status) {
+        PublisherClaim claim = new PublisherClaim();
+        claim.setStatus(status);
+        claim.setRequested(entered.get(PublisherRules.FIELD_CLAIM));
+        return activity(shortName, entered, null, claim);
+    }
+
+    private double activity(String shortName, Map<String, String> entered, String eventName, PublisherClaim claim) {
         JsonNode node = indicator(shortName);
         JsonNode definition = activitiesById.get(node.get("activity").get("$id").get("$oid").asText());
         assertNotNull(definition, prefix + shortName + " is bound to an activity missing from the seed");
@@ -327,6 +372,7 @@ final class SeedReportDefinition {
         instance.setDate("2024-01-01");
         instance.setActivity(activity);
         instance.setFields(new HashMap<>(entered));
+        instance.setPublisherClaim(claim);
         instance.setReferenceFields(new HashMap<>());
         if (eventName != null) {
             instance.getReferenceFields().put(Activity.ReferenceField.EVENT_NAME, eventName);
@@ -359,10 +405,14 @@ final class SeedReportDefinition {
                     field.get("allowedValues").forEach(option -> options.add(option.asText()));
                 }
             }
-            // values the engine derives itself (H142: the result of an artistic performance)
+            // values the engine derives itself (H142: the result of an artistic performance; H143: the category of
+            // a declared book's publisher)
             options.addAll(Set.of(ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.PARTICIPATION,
                     ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.NOMINATION,
                     ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.PRIZE));
+            for (PublisherRules rules : PublisherRules.values()) {
+                options.addAll(rules.categories());
+            }
             Matcher matcher = literal.matcher(entry.getValue().get("formula").asText());
             while (matcher.find()) {
                 assertTrue(options.contains(matcher.group(1)), entry.getKey() + " compares against '"
