@@ -524,6 +524,13 @@ public class ScientificProductionService {
             // de învățământ și cercetare din România"). Bound lazily — the affiliation lookup (one indexed
             // query per item) runs only for formulas that reference N_ro. Missing affiliation data keeps the
             // author counted, so N_ro falls back toward N, never below it minus the provably-foreign authors.
+            // H136: AIS (double) — the journal's Article Influence Score of the resolved JCR year, as the PD_WOS
+            // strategy records it (0 when the strategy did not resolve one: AHCI journals, other strategies). The
+            // social/economic PD/TE standard scores an article 70 × AIS / N.
+            if (formulaReferences(indicator.getFormula(), "AIS")) {
+                Object ais = result.getScoringInfo() == null ? null : result.getScoringInfo().get("ais");
+                builder.put("AIS", ais instanceof Number n ? n.doubleValue() : 0.0);
+            }
             if (formulaReferences(indicator.getFormula(), "N_ro")) {
                 builder.put("N_ro",
                         publicationCountryAuthorCountService.authorCountForCountry(cited, "Romania"));

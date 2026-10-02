@@ -175,6 +175,12 @@ public class PdWosEligibilityScoringService extends AbstractWoSForumScoringServi
         scoringInfo.put("quarter", aisQuarter.toString());
         scoringInfo.put("quartileMetric", "AIS");
         scoringInfo.put("wosCategory", category);
+        // H136: the AIS value itself (a journal metric, the same under every category), for the social/economic
+        // standard's points formula A_i = 70 × AIS / N; bound as the AIS formula variable.
+        if (ranking.getScore() != null && ranking.getScore().getAis() != null
+                && ranking.getScore().getAis().get(year) != null) {
+            scoringInfo.put("ais", ranking.getScore().getAis().get(year));
+        }
         scoringInfo.put("sourcesConsulted", List.of("WOS"));
         setProvenance(score, "WOS", scoringInfo);
         return Optional.of(score);

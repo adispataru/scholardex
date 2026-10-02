@@ -258,6 +258,13 @@ final class SeedReportDefinition {
                 .put("Coef_m", coefficient).build());
     }
 
+    /** A publication formula evaluated with exactly the variables given (for standards with their own surface). */
+    double evalFormula(String shortName, Map<String, Object> variables) {
+        FormulaContext.Builder builder = FormulaContext.builder();
+        variables.forEach(builder::put);
+        return EVALUATOR.eval(indicator(shortName).get("formula").asText(), builder.build());
+    }
+
     double onScore(String shortName, double s) {
         return EVALUATOR.eval(indicator(shortName).get("formula").asText(),
                 FormulaContext.builder().put("S", s).build());

@@ -7123,5 +7123,199 @@
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95c24cbf52c5ca8bce3"
+  },
+  "name": "UEF26SE_2015_C",
+  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), cărți (C) din 2015–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P (≥ 100 mentor PD, ≥ 50 director TE).",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Editura_7c && An_activitate >= 2015 && An_activitate <= 2026) ? 60.0 / n : 0.0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abeb95c1312a8dacbf05ebc"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "0abe673a44cc550893faf86759ed56a1062b1b99f2a9a77513ea609538f2f5d7",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95c2879165b7406b271"
+  },
+  "name": "UEF26SE_Dir_A",
+  "description": "Director PD 2026 (științe sociale și economice), articole (A): lucrări de tip article sau review publicate în reviste indexate SCIE, SSCI sau AHCI (ESCI nu se ia în considerare) din primele două cuartile după scorul de influență absolut (AIS), în încadrarea cea mai favorabilă dintre categoriile Social Sciences Citation Index; cuartila și valoarea AIS sunt cele ale JCR-ului din anul publicării (JCR-2024 pentru 2025–2026). Punctaj pe articol: A = 70 × AIS / N, unde N este numărul de autori; ca autor sau coautor, fără condiția de autor principal. Neverificate de platformă: numărul de accesiune WoS și subiectul strict din științele sociale și economice. Fereastra 2016–2026 aproximează „după admiterea la doctorat”. Intră în P și în ΣA ≥ 15.",
+  "formula": "(docType == \"ar\" || docType == \"re\") && (Q == \"Q1\" || Q == \"Q2\") ? 70.0 * AIS / N : 0.0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "UEFISCDI științe sociale și economice"
+  },
+  "version": 0,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PD_WOS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "e98437e7d43e15b89477d3f152748a0e8a3969f6c0a781613536afa0b8d697ed",
+  "yearRangeSpec": {
+   "from": 2016,
+   "to": 2026,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95c6e446aa6ef2e016a"
+  },
+  "name": "UEF26SE_Dir_C",
+  "description": "Director PD 2026 (științe sociale și economice), cărți (C) din 2016–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P ≥ 30.",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Editura_7c && An_activitate >= 2016 && An_activitate <= 2026) ? 60.0 / n : 0.0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abeb95c1312a8dacbf05ebc"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "b8d14481cd13dc911f2220fcf8885b3c42b0ce84a042d562d81d4ab867fd673c",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95c8f1da096d6e0af7c"
+  },
+  "name": "UEF26SE_Dir_K",
+  "description": "Director PD 2026 (științe sociale și economice), capitole (K) din 2016–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P ≥ 30.",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Editura_7c && An_activitate >= 2016 && An_activitate <= 2026) ? 30.0 / n : 0.0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abeb95c1312a8dacbf05ebc"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "7122e0ba99334d8a3400462a6019c32a734ad4fce67c50900f7fb7d514c1c540",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95cb6ecaf17dd219545"
+  },
+  "name": "UEF26SE_2015_A",
+  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), 2015–2026 după obținerea titlului de doctor, articole (A): lucrări de tip article sau review publicate în reviste indexate SCIE, SSCI sau AHCI (ESCI nu se ia în considerare) din primele două cuartile după scorul de influență absolut (AIS), în încadrarea cea mai favorabilă dintre categoriile Social Sciences Citation Index; cuartila și valoarea AIS sunt cele ale JCR-ului din anul publicării (JCR-2024 pentru 2025–2026). Punctaj pe articol: A = 70 × AIS / N, unde N este numărul de autori; ca autor sau coautor, fără condiția de autor principal. Neverificate de platformă: numărul de accesiune WoS și subiectul strict din științele sociale și economice. Intră în P și în ΣA (≥ 50 mentor PD, ≥ 25 director TE).",
+  "formula": "(docType == \"ar\" || docType == \"re\") && (Q == \"Q1\" || Q == \"Q2\") ? 70.0 * AIS / N : 0.0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "UEFISCDI științe sociale și economice"
+  },
+  "version": 0,
+  "kind": {
+   "role": "ALL",
+   "strategy": "PD_WOS",
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
+  },
+  "formulaHash": "e98437e7d43e15b89477d3f152748a0e8a3969f6c0a781613536afa0b8d697ed",
+  "yearRangeSpec": {
+   "from": 2015,
+   "to": 2026,
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$Absolute"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95cb746fad614a5361f"
+  },
+  "name": "UEF26SE_2015_K",
+  "description": "Mentor PD 2026 și director TE 2026 (științe sociale și economice), capitole (K) din 2015–2026, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c»: o carte (C) aduce 60 / N puncte și un capitol într-un volum colectiv (K) 30 / N, N fiind numărul de autori declarat, numai când editura tipărită este pe lista Anexei 7c a pachetului (253 de edituri; numele se potrivește exact, cu „Univ.” și „&” echivalate) și anul activității este în fereastră; cărțile și capitolele de la alte edituri rămân la 0 cu mențiunea „nu este pe listă”. ISBN-ul se declară și nu se verifică. Intră în P (≥ 100 mentor PD, ≥ 50 director TE).",
+  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Editura_7c && An_activitate >= 2015 && An_activitate <= 2026) ? 30.0 / n : 0.0",
+  "domain": {
+   "$ref": "domains",
+   "$id": "ALL"
+  },
+  "activity": {
+   "$ref": "activities",
+   "$id": {
+    "$oid": "6abeb95c1312a8dacbf05ebc"
+   }
+  },
+  "version": 0,
+  "kind": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
+  },
+  "formulaHash": "fb45dd3b7f965beda9a18c81c013d01f6d5d8e7c694e0e93bc268c83dedf1363",
+  "yearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
+  },
+  "scoreYearRangeSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec$ItemYear"
+  },
+  "selectorSpec": {
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
+  },
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
  }
 ]

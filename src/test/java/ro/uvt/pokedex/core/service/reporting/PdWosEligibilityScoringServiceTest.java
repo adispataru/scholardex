@@ -200,4 +200,24 @@ class PdWosEligibilityScoringServiceTest {
         ranking.setWebOfScienceCategoryIndex(Map.of(categoryKey, rank));
         return ranking;
     }
+
+    @Test
+    void theAisValueTravelsWithTheScoreForThePointsFormulaOfTheSocialSciences() {
+        // H136: A_i = 70 × AIS / N needs the journal's AIS itself, not only its quartile.
+        ScholardexForumView forum = journalForum();
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        when(lookupPort.isForumInScie("forum-1", 2023)).thenReturn(false);
+        when(lookupPort.isForumInSsci("forum-1", 2023)).thenReturn(true);
+        when(lookupPort.isForumInAhci("forum-1", 2023)).thenReturn(false);
+        WoSRanking ranking = rankingWithAis("ECONOMICS - SSCI", 2023, WoSRanking.Quarter.Q1);
+        WoSRanking.Score metrics = new WoSRanking.Score();
+        metrics.getAis().put(2023, 1.84);
+        ranking.setScore(metrics);
+        when(lookupPort.getForumRankings(eq(forum), eq(List.of(2023)), any())).thenReturn(List.of(ranking));
+
+        Score score = service.getScore(publication("ar", "2023-05-01"), indicator());
+
+        assertEquals("Q1", score.getQuarter());
+        assertEquals(1.84, (Double) score.getScoringInfo().get("ais"), 1e-9);
+    }
 }

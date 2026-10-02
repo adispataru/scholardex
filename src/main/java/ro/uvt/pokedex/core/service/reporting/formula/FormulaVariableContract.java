@@ -143,6 +143,9 @@ public final class FormulaVariableContract {
         // A/A* equivalence gate. Both bound on every publication/citation score; ignored by existing formulas.
         allowed.add("docType");
         allowed.add("category");
+        // H136: AIS (double) — the journal's Article Influence Score of the resolved year, recorded by the PD_WOS
+        // strategy; 0 elsewhere. Bound lazily for formulas that reference it (the social/economic 70 × AIS / N).
+        allowed.add("AIS");
         // S2 position-aware scoring: Poz (string) — the target position under evaluation ("CONF_UNIV"/…),
         // "" on the canonical pass. Publications kinds only: the per-position TOTAL aggregation lives in
         // calculateScientificProductionScoreDetailed's selector pass, which the citations paths do not

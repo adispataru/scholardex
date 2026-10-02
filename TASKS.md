@@ -9,7 +9,24 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H136` UEFISCDI eligibility for the social/economic and the humanities families — **OPEN, scoped 2026-10-01.**
+- [ ] `H136` UEFISCDI eligibility for the social/economic and the humanities families — **SLICE 1 BUILT 2026-10-01, prod
+  script ready (deploy first).** Built as scoped: `AIS` formula variable (the PD_WOS placement records the journal's AIS
+  value; bound lazily in `ScientificProductionService`), `Editura_7c` and `An_activitate` activity variables
+  (`ActivityReportingService`; the 253 publishers of Anexa 7c bundled as
+  `report-data/uefiscdi-anexa7c-publishers-2026.csv`, exact-name match with «Univ.»/«&» folded —
+  `UefiscdiPublisherSupport`), activity type «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)», domain
+  «UEFISCDI științe sociale și economice» (the 70 SSCI categories), 6 indicators `UEF26SE_*` (articles 70 × AIS / N
+  on Q1/Q2 article/review, 2016–2026 director PD and 2015–2026 mentor PD / director TE; declared books 60 / N and
+  chapters 30 / N, windowed by the activity's year in the formula since activities are not filtered by the
+  indicator's year range), reports «Eligibilitate PD 2026 — științe sociale și economice» (director P ≥ 30 ∧ ΣA ≥ 15,
+  mentor P ≥ 100 ∧ ΣA ≥ 50, two verdicts) and «Eligibilitate TE 2026 — științe sociale și economice» (P ≥ 50 ∧
+  ΣA ≥ 25); pinned by `Uefiscdi2026SocialEligibilityDefinitionTest` (real activity scoring) and
+  `UefiscdiPublisherSupportTest`. **Prod (Adrian), after the image with H136 is deployed:** set
+  `H136_IMAGE_IS_DEPLOYED = true` in `h136_uefiscdi_social_2026.js` (rke2-overmind/feaa-2026-scripts; rehearse on the
+  local db first, where bootRun already has the code), `./run-mongo-script.sh h136_uefiscdi_social_2026.js --restart`,
+  then select the two reports for FEAA / FSP / FSAS / FPSE. **Not built:** canonical bk/ch publications are not
+  auto-counted (declared only); the "subject strictly social/economic" and accession-number conditions are stated,
+  not checked. Slice 2 (humanities) as scoped below. — Original scope, 2026-10-01:
   Both 2026 packages (PD: PN-IV-RU-SC-PD-2026-1, TE: PN-IV-RU-SC-TE-2026-2, Anexa 2) have three families keyed to the
   13 competition domains of Anexa 1; `H135` built only «Științele naturii, exacte și inginerești» (domains 1–10).
   Not covered: **Științe sociale și economice** (domains 11–12) and **Științe umaniste** (13).

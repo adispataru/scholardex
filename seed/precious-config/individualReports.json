@@ -4894,5 +4894,410 @@
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95c14c3cb9c9ac7198d"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "Eligibilitate TE 2026 — științe sociale și economice",
+  "description": "Standarde minimale de eligibilitate PN-IV TE 2026 (PN-IV-RU-SC-TE-2026-2, Anexa 2) — Științele sociale și științele economice. Directorul de proiect: P ≥ 50 și ΣA ≥ 25 din lucrări publicate în 2015–2026, după obținerea titlului de doctor (primul titlu de doctor cu cel mult 12 ani în urmă, concediile de creștere a copilului se exclud). Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul, limitele privind titlul de doctor și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
+  "authority": "UEFISCDI",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95cb6ecaf17dd219545"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95c24cbf52c5ca8bce3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95cb746fad614a5361f"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "Director: P = A + C + K",
+    "indicatorIndices": [
+     0,
+     1,
+     2
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 50
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 50
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "HABIL",
+      "value": 50
+     },
+     {
+      "position": "CS_I",
+      "value": 50
+     },
+     {
+      "position": "CS_II",
+      "value": 50
+     },
+     {
+      "position": "CS_III",
+      "value": 50
+     },
+     {
+      "position": "ASIST_C",
+      "value": 50
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Director: ΣA (articole)",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 25
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 25
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 25
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 25
+     },
+     {
+      "position": "HABIL",
+      "value": 25
+     },
+     {
+      "position": "CS_I",
+      "value": 25
+     },
+     {
+      "position": "CS_II",
+      "value": 25
+     },
+     {
+      "position": "CS_III",
+      "value": 25
+     },
+     {
+      "position": "ASIST_C",
+      "value": 25
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Director — verdict",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95cdb42309bf139ba01"
+  },
+  "importEnabled": false,
+  "indicatorRolesByIndicatorId": {},
+  "blockByIndicatorId": {},
+  "title": "Eligibilitate PD 2026 — științe sociale și economice",
+  "description": "Standarde minimale de eligibilitate PN-IV PD 2026 (PN-IV-RU-SC-PD-2026-1, Anexa 2) — Științele sociale și științele economice. Director: P ≥ 30 și ΣA ≥ 15 din lucrări publicate după admiterea la doctorat (fereastra 2016–2026 este aproximarea platformei; limita reală: 8 ani de la primul titlu de doctor). Mentor: P ≥ 100 și ΣA ≥ 50 din 2015–2026, după obținerea titlului de doctor. Formula pachetului: P = ΣA + ΣC + ΣK cu A = 70 × AIS / N, C = 60 / N, K = 30 / N (N = numărul de autori); articolele sunt cele din reviste SCIE/SSCI/AHCI din Q1/Q2 după AIS (JCR-ul anului publicării, 2025–2026 → JCR-2024), ca autor sau coautor; cărțile și capitolele numai la editurile din Anexa 7c, declarate în activitatea «Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)». Neverificate de platformă: subiectul strict din științele sociale și economice, numărul de accesiune WoS, ISBN-ul, limitele privind titlul de doctor și vizibilitatea în Web of Science la data verificării. Aceeași cerință pentru orice poziție.",
+  "authority": "UEFISCDI",
+  "indicators": [
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95c2879165b7406b271"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95c6e446aa6ef2e016a"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95c8f1da096d6e0af7c"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95cb6ecaf17dd219545"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95c24cbf52c5ca8bce3"
+    }
+   },
+   {
+    "$ref": "indicators",
+    "$id": {
+     "$oid": "6abeb95cb746fad614a5361f"
+    }
+   }
+  ],
+  "criteria": [
+   {
+    "name": "Director: P = A + C + K",
+    "indicatorIndices": [
+     0,
+     1,
+     2
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 30
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 30
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 30
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 30
+     },
+     {
+      "position": "HABIL",
+      "value": 30
+     },
+     {
+      "position": "CS_I",
+      "value": 30
+     },
+     {
+      "position": "CS_II",
+      "value": 30
+     },
+     {
+      "position": "CS_III",
+      "value": 30
+     },
+     {
+      "position": "ASIST_C",
+      "value": 30
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Director: ΣA (articole)",
+    "indicatorIndices": [
+     0
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 15
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 15
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 15
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 15
+     },
+     {
+      "position": "HABIL",
+      "value": 15
+     },
+     {
+      "position": "CS_I",
+      "value": 15
+     },
+     {
+      "position": "CS_II",
+      "value": 15
+     },
+     {
+      "position": "CS_III",
+      "value": 15
+     },
+     {
+      "position": "ASIST_C",
+      "value": 15
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: P = A + C + K",
+    "indicatorIndices": [
+     3,
+     4,
+     5
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 100
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 100
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 100
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 100
+     },
+     {
+      "position": "HABIL",
+      "value": 100
+     },
+     {
+      "position": "CS_I",
+      "value": 100
+     },
+     {
+      "position": "CS_II",
+      "value": 100
+     },
+     {
+      "position": "CS_III",
+      "value": 100
+     },
+     {
+      "position": "ASIST_C",
+      "value": 100
+     }
+    ],
+    "contributesToTotal": false
+   },
+   {
+    "name": "Mentor: ΣA (articole)",
+    "indicatorIndices": [
+     3
+    ],
+    "thresholds": [
+     {
+      "position": "ASIST_UNIV",
+      "value": 50
+     },
+     {
+      "position": "LECT_UNIV",
+      "value": 50
+     },
+     {
+      "position": "CONF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "PROF_UNIV",
+      "value": 50
+     },
+     {
+      "position": "HABIL",
+      "value": 50
+     },
+     {
+      "position": "CS_I",
+      "value": 50
+     },
+     {
+      "position": "CS_II",
+      "value": 50
+     },
+     {
+      "position": "CS_III",
+      "value": 50
+     },
+     {
+      "position": "ASIST_C",
+      "value": 50
+     }
+    ],
+    "contributesToTotal": false
+   }
+  ],
+  "perspectives": [
+   {
+    "name": "Director — verdict",
+    "composition": {
+     "all": [
+      {
+       "criterion": 0
+      },
+      {
+       "criterion": 1
+      }
+     ]
+    }
+   },
+   {
+    "name": "Mentor — verdict",
+    "composition": {
+     "all": [
+      {
+       "criterion": 2
+      },
+      {
+       "criterion": 3
+      }
+     ]
+    }
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.reporting.IndividualReport"
  }
 ]

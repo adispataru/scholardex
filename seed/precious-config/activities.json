@@ -1,61 +1,1635 @@
 [
-  {"_id":{"$oid":"66d09cd3c325b4405b312d23"},"name":"Grant Cercetare","fields":[{"name":"Rol","allowedValues":["Director (proiect internațional)","Coordonator local (proiect internațional)","Director (proiect național)","Coordonator local (proiect național)","Membru"],"number":false},{"name":"Buget","number":true},{"name":"Nume Proiect","number":false},{"name":"Interval_buget","allowedValues":["sub 50.000 EUR","50.000 – 99.999 EUR","100.000 – 199.999 EUR","200.000 – 499.999 EUR","500.000 EUR sau peste"],"number":false}],"referenceFields":["PROJECT_GRANT_ID"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"66d0b20102ad3f7d329358ab"},"name":"Proiect educational","fields":[{"name":"Rol","allowedValues":["Director","Membru"],"number":false},{"name":"Nume","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"681674c0e50b262637be9a86"},"name":"Editor Proceedings (Info_D_ii)","fields":[{"name":"N_editori","number":false},{"name":"Dovezi (website)","number":false},{"name":"An_inceput","number":true},{"name":"An_sfarsit","number":true}],"referenceFields":["FORUM_NAME","FORUM_ISBN"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6816983307ff6c4e2956d5c3"},"name":"Editor Revista","fields":[{"name":"Nume","number":false},{"name":"Rol","allowedValues":["Director","Editor","Membru","Editor invitat"],"number":false}],"referenceFields":["FORUM_ISSN","FORUM_EISSN"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820ca61fe404029dad193d0"},"name":"Publicarea unui curs universitar în format electronic","fields":[{"name":"Nume","number":false},{"name":"Dovezi (link, ISBN)","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820e32a2654f8388e8d3646"},"name":"Membru Comitet Conferință (Info_D_vi)","fields":[{"name":"Dovezi (website)","number":false},{"name":"An_inceput","number":true},{"name":"An_sfarsit","number":true}],"referenceFields":["FORUM_NAME"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820e43f2654f8388e8d3648"},"name":"Organizare evenimente (școli de vară)","fields":[{"name":"Rol","allowedValues":["Membru","Coordonator"],"number":false},{"name":"An_inceput","number":true},{"name":"An_sfarsit","number":true}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820e5472654f8388e8d364b"},"name":"Invited Speaker Conferință","fields":[{"name":"Dovezi (website)","number":false}],"referenceFields":["FORUM_NAME"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820e8bde8421f7500250ab7"},"name":"Invited Professor","referenceFields":["UNIVERSITY_NAME"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820ec4904e38843635e0ca5"},"name":"Visiting Staff","fields":[{"name":"N_luni","number":false},{"name":"Rol","allowedValues":["Visiting Professor","Visiting Researcher","Associate Professor","Associate Researcher"],"number":false}],"referenceFields":["UNIVERSITY_NAME"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820ee0804e38843635e0ca7"},"name":"Consolidare echipe de cercetare","fields":[{"name":"N_ani","number":true},{"name":"Nivel","allowedValues":["International","National","Institutional"],"number":false},{"name":"Dovezi","number":false},{"name":"Rol","allowedValues":["Lider","Membru"],"number":false},{"name":"N_membri","number":true}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820efe104e38843635e0caa"},"name":"Membru comisie evaluare teze de doctorat","fields":[{"name":"Dovezi","number":false}],"referenceFields":["UNIVERSITY_NAME"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820fbb704e38843635e0cad"},"name":"Membru în comisii de îndrumare a doctoranzilor","fields":[{"name":"Dovezi","number":false},{"name":"Rol","allowedValues":["Conducător","Membru"],"number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820fe0d04e38843635e0cb1"},"name":"Brevet","fields":[{"name":"N_autori","number":true},{"name":"Tip","allowedValues":["Triadic","European","International","National"],"number":false},{"name":"Dovezi","number":false},{"name":"Cod brevet","number":false},{"name":"Oficiu","number":false},{"name":"N_autori_universitate","number":true}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6820ff8004e38843635e0cb4"},"name":"Dezvoltarea de pachete şi instrumente software","fields":[{"name":"N_autori","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6821007204e38843635e0cb7"},"name":"Poziţii de conducere în organizaţii profesionale","fields":[{"name":"Tip","allowedValues":["National","International"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"68231895cf66a42617d2b6c4"},"name":"Participare eveniment artistic","fields":[{"name":"Dovezi","number":false},{"name":"Tip","allowedValues":["Proiect individual","Proiect de grup (2-4)","Proiect colectiv (5+)","Nominalizare individuală","Premiu individual"],"number":false},{"name":"N_participanti_universitate","number":true}],"referenceFields":["EVENT_NAME"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"68233847cf66a42617d2b6c7"},"name":"Publicarea unui curs universitar","fields":[{"name":"Nume","number":false},{"name":"Dovezi (link, ISBN)","number":false}],"referenceFields":["FORUM_PUBLISHER"],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0f8"},"name":"Articol preînregistrat, cu date deschise (Comisia 28, bonus I1A/I1B)","fields":[{"name":"Titlu_articol","number":false},{"name":"Tip_revista","allowedValues":["Fără taxă de publicare","Cu taxă de publicare"],"number":false},{"name":"Dovezi (linkuri preînregistrare și date)","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0f9"},"name":"Material curricular, test sau soft înregistrat (Comisia 28, I7)","fields":[{"name":"Nume","number":false},{"name":"N_autori","number":true},{"name":"Dovezi (brevet, ORDA/OSIM, aviz CPR)","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0fa"},"name":"Profil Google Scholar (Comisia 28, I12 și I14)","fields":[{"name":"Citari_GS","number":true},{"name":"Citari_WoS","number":true},{"name":"h_GS","number":true},{"name":"Link profil","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0fb"},"name":"Membru în comitetul editorial al unei reviste (Comisia 28, I15)","fields":[{"name":"Revista","number":false},{"name":"ISSN","number":false},{"name":"Rol","allowedValues":["Redactor-șef","Editor asociat","Membru"],"number":false},{"name":"Indexare","allowedValues":["Web of Science","Altă BDI recunoscută"],"number":false},{"name":"IF_revista","number":true},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0fc"},"name":"Keynote speaker, comunicare în plen (Comisia 28, I16)","fields":[{"name":"Conferinta","number":false},{"name":"Nivel","allowedValues":["Internațională","Națională"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0fd"},"name":"Carte coordonată (Comisia 28, I17)","fields":[{"name":"Titlu","number":false},{"name":"Categorie_editura","allowedValues":["A1","A2","B"],"number":false},{"name":"N_coordonatori","number":true},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0fe"},"name":"Grant instituțional, de cercetare aplicativă, fellowship sau chair (Comisia 28, I25 și I26.2)","fields":[{"name":"Nume","number":false},{"name":"Tip","allowedValues":["Dezvoltare instituțională","Cercetare aplicativă","Fellowship","Chair"],"number":false},{"name":"Rol","allowedValues":["Director","Coordonator partener","Membru"],"number":false},{"name":"Buget","number":true},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff0ff"},"name":"Program de studii inițiat sau coordonat (Comisia 28, I27.1)","fields":[{"name":"Nume","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff100"},"name":"Disciplină nouă introdusă în planul de învățământ (Comisia 28, I27.3)","fields":[{"name":"Nume","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff101"},"name":"Conducere de doctorat, comisie de îndrumare sau de evaluare a tezei (Comisia 28, I27.4)","fields":[{"name":"Doctorand","number":false},{"name":"Rol","allowedValues":["Conducător științific","Membru comisie de îndrumare","Membru comisie de evaluare"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff102"},"name":"Popularizarea științei în comunitate (Comisia 28, I27.5)","fields":[{"name":"Descriere","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb5d97b866c60b6bfff103"},"name":"Atestat de liberă practică, psiholog principal (Comisia 28, I27.6)","fields":[{"name":"Specialitate","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4011"},"name":"Raport de analiză de politici sau strategii educaționale (Comisia 28, I10)","fields":[{"name":"Titlu","number":false},{"name":"Nivel","allowedValues":["Internațional","Național"],"number":false},{"name":"N_autori","number":true},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4012"},"name":"Comitet științific, de organizare sau de evaluare la o conferință (Comisia 28, I18)","fields":[{"name":"Conferinta","number":false},{"name":"Calitate","allowedValues":["Membru în comitetul științific","Referent științific","Membru în comitetul de organizare","Coordonator de simpozion"],"number":false},{"name":"Nivel","allowedValues":["Internațională","Națională"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4013"},"name":"Asociație profesională (Comisia 28, I19)","fields":[{"name":"Asociatie","number":false},{"name":"Rol","allowedValues":["Președinte sau membru în comitetul executiv","Membru"],"number":false},{"name":"Nivel","allowedValues":["Internațională","Națională"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4014"},"name":"Premiu sau distincție (Comisia 28, I20)","fields":[{"name":"Denumire","number":false},{"name":"Tip","allowedValues":["Științific internațional","Științific național","Didactic","Promovarea țării"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4015"},"name":"Coordonator al unei colecții de carte (Comisia 28, I21)","fields":[{"name":"Colectie","number":false},{"name":"Editura","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4016"},"name":"Referent științific ad hoc pentru reviste (Comisia 28, I22)","fields":[{"name":"Revista","number":false},{"name":"Indexare","allowedValues":["Web of Science","Altă BDI recunoscută"],"number":false},{"name":"N_articole","number":true},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4017"},"name":"Profesor asociat, visiting scholar sau prelegere invitată (Comisia 28, I23)","fields":[{"name":"Institutie","number":false},{"name":"Tip","allowedValues":["Universitate din TOP 500 URAP","Altă universitate, invitație nominală","Asociație profesională internațională","Asociație profesională națională"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4018"},"name":"Coordonarea unui centru sau laborator de cercetare (Comisia 28, I28)","fields":[{"name":"Denumire","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f4019"},"name":"Evaluator de proiecte sau membru în panel (Comisia 28, I29)","fields":[{"name":"Competitie","number":false},{"name":"Nivel","allowedValues":["Internațională","Națională"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f401a"},"name":"Membru în grup de experți, comisie sau consiliu științific (Comisia 28, I30)","fields":[{"name":"Organism","number":false},{"name":"Nivel","allowedValues":["Internațional","Național"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abb8563ab83be698e2f401b"},"name":"Curs sau program de formare pentru beneficiari externi (Comisia 28, I31)","fields":[{"name":"Denumire","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d2fe"},"name":"Articol într-o revistă indexată în cel puțin 3 baze de date (Comisia 25, I.2)","fields":[{"name":"Titlu","number":false},{"name":"Revista","number":false},{"name":"ISSN","number":false},{"name":"Baze_de_date","number":false},{"name":"N_autori","number":true},{"name":"Coeficient_m","allowedValues":["m = 2","m = 1.5","m = 1"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d2ff"},"name":"Carte sau capitol declarat de candidat (Comisia 25, I.3, I.4 și I.6)","fields":[{"name":"Titlu","number":false},{"name":"Tip","allowedValues":["Carte","Capitol în volum colectiv"],"number":false},{"name":"Editura","number":false},{"name":"Incadrare_editura","allowedValues":["Lista A1","Lista A2","Minimum 6 biblioteci WorldCat"],"number":false},{"name":"N_autori","number":true},{"name":"Coeficient_m","allowedValues":["m = 2","m = 1.5","m = 1"],"number":false},{"name":"Dovezi (ISBN, link WorldCat)","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d300"},"name":"Carte coordonată (Comisia 25, I.5)","fields":[{"name":"Titlu","number":false},{"name":"Editura","number":false},{"name":"N_coordonatori","number":true},{"name":"Coeficient_m","allowedValues":["m = 2","m = 1.5","m = 1"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d301"},"name":"Recenzie sau termen în enciclopedie ori dicționar (Comisia 25, I.7)","fields":[{"name":"Titlu","number":false},{"name":"Tip","allowedValues":["Recenzie în revistă ISI/WoS","Recenzie în revistă indexată în cel puțin 3 baze de date","Termen de minimum o pagină în enciclopedie sau dicționar"],"number":false},{"name":"N_autori","number":true},{"name":"Coeficient_m","allowedValues":["m = 2","m = 1.5","m = 1"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d302"},"name":"Lucrare în volumul unei conferințe, declarată de candidat (Comisia 25, I.8)","fields":[{"name":"Titlu","number":false},{"name":"Volum","number":false},{"name":"ISSN_ISBN","number":false},{"name":"N_autori","number":true},{"name":"Coeficient_m","allowedValues":["m = 2","m = 1.5","m = 1"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d303"},"name":"Traducere a unei lucrări fundamentale din științele sociale (Comisia 25, I.8)","fields":[{"name":"Titlu","number":false},{"name":"Editura","number":false},{"name":"Tip","allowedValues":["Cu aparat critic","Fără aparat critic"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d304"},"name":"Citare sau recenzie la o carte, declarată de candidat (Comisia 25, I.9)","fields":[{"name":"Lucrare_citata","number":false},{"name":"Sursa_care_citeaza","number":false},{"name":"IF_sursa","number":true},{"name":"N_autori","number":true},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d305"},"name":"Editor sau membru în comitetul unei reviste (Comisia 25, I.10 și I.11)","fields":[{"name":"Revista","number":false},{"name":"ISSN","number":false},{"name":"Indexare","allowedValues":["ISI/WoS sau SCOPUS","Trei baze de date recunoscute, altele decât ISI/WoS și SCOPUS"],"number":false},{"name":"Rol","allowedValues":["Editor, redactor-șef sau redactor delegat","Membru în comitetul de redacție sau științific","Editor invitat al unui număr special"],"number":false},{"name":"An_inceput","number":true},{"name":"An_sfarsit","number":true},{"name":"N_numere_speciale","number":true},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d306"},"name":"Colecție de carte: coordonator sau membru în comitetul științific (Comisia 25, I.12)","fields":[{"name":"Colectie","number":false},{"name":"Editura","number":false},{"name":"Lista","allowedValues":["Lista A1","Lista A2"],"number":false},{"name":"Rol","allowedValues":["Coordonator","Membru în comitetul științific"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d307"},"name":"Profesor visiting, cercetător invitat sau stagiu Erasmus (Comisia 25, I.14)","fields":[{"name":"Institutie","number":false},{"name":"Tip","allowedValues":["Profesor visiting, universitate din primele 1000","Cercetător invitat cel puțin o lună, universitate din primele 1000","Stagiu Erasmus"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d308"},"name":"Lucrare prezentată la o conferință științifică (Comisia 25, I.15 și I.16)","fields":[{"name":"Conferinta","number":false},{"name":"Titlu","number":false},{"name":"Loc","allowedValues":["În străinătate","În țară"],"number":false},{"name":"Dovezi (link la program)","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d309"},"name":"Studiu de evaluare și fundamentare de politici publice (Comisia 25, I.17)","fields":[{"name":"Titlu","number":false},{"name":"Beneficiar","number":false},{"name":"Coeficient_m","allowedValues":["m = 2","m = 1.5","m = 1"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d30a"},"name":"Participare în colectivul de implementare a unui grant, contract sau proiect (Comisia 25, I.18)","fields":[{"name":"Proiect","number":false},{"name":"Finantator","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d30b"},"name":"Participare la BIP sau la o școală de vară (Comisia 25, I.19)","fields":[{"name":"Denumire","number":false},{"name":"Tip","allowedValues":["BIP (Blended Intensive Program)","Școală de vară"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d30c"},"name":"Suport de curs sau de seminar (Comisia 25, I.19)","fields":[{"name":"Titlu","number":false},{"name":"Tip","allowedValues":["Suport de curs sau de seminar, minimum 20 de pagini","Capitol în suport de curs sau de seminar"],"number":false},{"name":"N_autori","number":true},{"name":"Coeficient_m","allowedValues":["m = 2","m = 1.5","m = 1"],"number":false},{"name":"Dovezi (ISBN sau link)","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d30d"},"name":"Stagiu postdoctoral de cel puțin 6 luni (Comisia 25, I.19)","fields":[{"name":"Institutie","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d30e"},"name":"Program de studii universitare inițiat sau coordonat (Comisia 25, I.19)","fields":[{"name":"Program","number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"},
-  {"_id":{"$oid":"6abbb4fbfe1896ef0369d30f"},"name":"Condiție îndeplinită după obținerea abilitării (Comisia 25, C.10)","fields":[{"name":"Tip","allowedValues":["Coordonarea a cel puțin unui doctorand, cu afiliere la o școală doctorală","Articol ISI/WoS din nucleul disciplinei sau din domeniile conexe"],"number":false},{"name":"Dovezi","number":false}],"_class":"ro.uvt.pokedex.core.model.activities.Activity"}
+ {
+  "_id": {
+   "$oid": "66d09cd3c325b4405b312d23"
+  },
+  "name": "Grant Cercetare",
+  "fields": [
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Director (proiect internațional)",
+     "Coordonator local (proiect internațional)",
+     "Director (proiect național)",
+     "Coordonator local (proiect național)",
+     "Membru"
+    ],
+    "number": false
+   },
+   {
+    "name": "Buget",
+    "number": true
+   },
+   {
+    "name": "Nume Proiect",
+    "number": false
+   },
+   {
+    "name": "Interval_buget",
+    "allowedValues": [
+     "sub 50.000 EUR",
+     "50.000 – 99.999 EUR",
+     "100.000 – 199.999 EUR",
+     "200.000 – 499.999 EUR",
+     "500.000 EUR sau peste"
+    ],
+    "number": false
+   }
+  ],
+  "referenceFields": [
+   "PROJECT_GRANT_ID"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "66d0b20102ad3f7d329358ab"
+  },
+  "name": "Proiect educational",
+  "fields": [
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Director",
+     "Membru"
+    ],
+    "number": false
+   },
+   {
+    "name": "Nume",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "681674c0e50b262637be9a86"
+  },
+  "name": "Editor Proceedings (Info_D_ii)",
+  "fields": [
+   {
+    "name": "N_editori",
+    "number": false
+   },
+   {
+    "name": "Dovezi (website)",
+    "number": false
+   },
+   {
+    "name": "An_inceput",
+    "number": true
+   },
+   {
+    "name": "An_sfarsit",
+    "number": true
+   }
+  ],
+  "referenceFields": [
+   "FORUM_NAME",
+   "FORUM_ISBN"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6816983307ff6c4e2956d5c3"
+  },
+  "name": "Editor Revista",
+  "fields": [
+   {
+    "name": "Nume",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Director",
+     "Editor",
+     "Membru",
+     "Editor invitat"
+    ],
+    "number": false
+   }
+  ],
+  "referenceFields": [
+   "FORUM_ISSN",
+   "FORUM_EISSN"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820ca61fe404029dad193d0"
+  },
+  "name": "Publicarea unui curs universitar în format electronic",
+  "fields": [
+   {
+    "name": "Nume",
+    "number": false
+   },
+   {
+    "name": "Dovezi (link, ISBN)",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820e32a2654f8388e8d3646"
+  },
+  "name": "Membru Comitet Conferință (Info_D_vi)",
+  "fields": [
+   {
+    "name": "Dovezi (website)",
+    "number": false
+   },
+   {
+    "name": "An_inceput",
+    "number": true
+   },
+   {
+    "name": "An_sfarsit",
+    "number": true
+   }
+  ],
+  "referenceFields": [
+   "FORUM_NAME"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820e43f2654f8388e8d3648"
+  },
+  "name": "Organizare evenimente (școli de vară)",
+  "fields": [
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Membru",
+     "Coordonator"
+    ],
+    "number": false
+   },
+   {
+    "name": "An_inceput",
+    "number": true
+   },
+   {
+    "name": "An_sfarsit",
+    "number": true
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820e5472654f8388e8d364b"
+  },
+  "name": "Invited Speaker Conferință",
+  "fields": [
+   {
+    "name": "Dovezi (website)",
+    "number": false
+   }
+  ],
+  "referenceFields": [
+   "FORUM_NAME"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820e8bde8421f7500250ab7"
+  },
+  "name": "Invited Professor",
+  "referenceFields": [
+   "UNIVERSITY_NAME"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820ec4904e38843635e0ca5"
+  },
+  "name": "Visiting Staff",
+  "fields": [
+   {
+    "name": "N_luni",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Visiting Professor",
+     "Visiting Researcher",
+     "Associate Professor",
+     "Associate Researcher"
+    ],
+    "number": false
+   }
+  ],
+  "referenceFields": [
+   "UNIVERSITY_NAME"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820ee0804e38843635e0ca7"
+  },
+  "name": "Consolidare echipe de cercetare",
+  "fields": [
+   {
+    "name": "N_ani",
+    "number": true
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "International",
+     "National",
+     "Institutional"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Lider",
+     "Membru"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_membri",
+    "number": true
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820efe104e38843635e0caa"
+  },
+  "name": "Membru comisie evaluare teze de doctorat",
+  "fields": [
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "referenceFields": [
+   "UNIVERSITY_NAME"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820fbb704e38843635e0cad"
+  },
+  "name": "Membru în comisii de îndrumare a doctoranzilor",
+  "fields": [
+   {
+    "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Conducător",
+     "Membru"
+    ],
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820fe0d04e38843635e0cb1"
+  },
+  "name": "Brevet",
+  "fields": [
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Triadic",
+     "European",
+     "International",
+     "National"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Cod brevet",
+    "number": false
+   },
+   {
+    "name": "Oficiu",
+    "number": false
+   },
+   {
+    "name": "N_autori_universitate",
+    "number": true
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6820ff8004e38843635e0cb4"
+  },
+  "name": "Dezvoltarea de pachete şi instrumente software",
+  "fields": [
+   {
+    "name": "N_autori",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6821007204e38843635e0cb7"
+  },
+  "name": "Poziţii de conducere în organizaţii profesionale",
+  "fields": [
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "National",
+     "International"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "68231895cf66a42617d2b6c4"
+  },
+  "name": "Participare eveniment artistic",
+  "fields": [
+   {
+    "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Proiect individual",
+     "Proiect de grup (2-4)",
+     "Proiect colectiv (5+)",
+     "Nominalizare individuală",
+     "Premiu individual"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_participanti_universitate",
+    "number": true
+   }
+  ],
+  "referenceFields": [
+   "EVENT_NAME"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "68233847cf66a42617d2b6c7"
+  },
+  "name": "Publicarea unui curs universitar",
+  "fields": [
+   {
+    "name": "Nume",
+    "number": false
+   },
+   {
+    "name": "Dovezi (link, ISBN)",
+    "number": false
+   }
+  ],
+  "referenceFields": [
+   "FORUM_PUBLISHER"
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0f8"
+  },
+  "name": "Articol preînregistrat, cu date deschise (Comisia 28, bonus I1A/I1B)",
+  "fields": [
+   {
+    "name": "Titlu_articol",
+    "number": false
+   },
+   {
+    "name": "Tip_revista",
+    "allowedValues": [
+     "Fără taxă de publicare",
+     "Cu taxă de publicare"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi (linkuri preînregistrare și date)",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0f9"
+  },
+  "name": "Material curricular, test sau soft înregistrat (Comisia 28, I7)",
+  "fields": [
+   {
+    "name": "Nume",
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Dovezi (brevet, ORDA/OSIM, aviz CPR)",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0fa"
+  },
+  "name": "Profil Google Scholar (Comisia 28, I12 și I14)",
+  "fields": [
+   {
+    "name": "Citari_GS",
+    "number": true
+   },
+   {
+    "name": "Citari_WoS",
+    "number": true
+   },
+   {
+    "name": "h_GS",
+    "number": true
+   },
+   {
+    "name": "Link profil",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0fb"
+  },
+  "name": "Membru în comitetul editorial al unei reviste (Comisia 28, I15)",
+  "fields": [
+   {
+    "name": "Revista",
+    "number": false
+   },
+   {
+    "name": "ISSN",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Redactor-șef",
+     "Editor asociat",
+     "Membru"
+    ],
+    "number": false
+   },
+   {
+    "name": "Indexare",
+    "allowedValues": [
+     "Web of Science",
+     "Altă BDI recunoscută"
+    ],
+    "number": false
+   },
+   {
+    "name": "IF_revista",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0fc"
+  },
+  "name": "Keynote speaker, comunicare în plen (Comisia 28, I16)",
+  "fields": [
+   {
+    "name": "Conferinta",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Internațională",
+     "Națională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0fd"
+  },
+  "name": "Carte coordonată (Comisia 28, I17)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Categorie_editura",
+    "allowedValues": [
+     "A1",
+     "A2",
+     "B"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_coordonatori",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0fe"
+  },
+  "name": "Grant instituțional, de cercetare aplicativă, fellowship sau chair (Comisia 28, I25 și I26.2)",
+  "fields": [
+   {
+    "name": "Nume",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Dezvoltare instituțională",
+     "Cercetare aplicativă",
+     "Fellowship",
+     "Chair"
+    ],
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Director",
+     "Coordonator partener",
+     "Membru"
+    ],
+    "number": false
+   },
+   {
+    "name": "Buget",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff0ff"
+  },
+  "name": "Program de studii inițiat sau coordonat (Comisia 28, I27.1)",
+  "fields": [
+   {
+    "name": "Nume",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff100"
+  },
+  "name": "Disciplină nouă introdusă în planul de învățământ (Comisia 28, I27.3)",
+  "fields": [
+   {
+    "name": "Nume",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff101"
+  },
+  "name": "Conducere de doctorat, comisie de îndrumare sau de evaluare a tezei (Comisia 28, I27.4)",
+  "fields": [
+   {
+    "name": "Doctorand",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Conducător științific",
+     "Membru comisie de îndrumare",
+     "Membru comisie de evaluare"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff102"
+  },
+  "name": "Popularizarea științei în comunitate (Comisia 28, I27.5)",
+  "fields": [
+   {
+    "name": "Descriere",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb5d97b866c60b6bfff103"
+  },
+  "name": "Atestat de liberă practică, psiholog principal (Comisia 28, I27.6)",
+  "fields": [
+   {
+    "name": "Specialitate",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4011"
+  },
+  "name": "Raport de analiză de politici sau strategii educaționale (Comisia 28, I10)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Internațional",
+     "Național"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4012"
+  },
+  "name": "Comitet științific, de organizare sau de evaluare la o conferință (Comisia 28, I18)",
+  "fields": [
+   {
+    "name": "Conferinta",
+    "number": false
+   },
+   {
+    "name": "Calitate",
+    "allowedValues": [
+     "Membru în comitetul științific",
+     "Referent științific",
+     "Membru în comitetul de organizare",
+     "Coordonator de simpozion"
+    ],
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Internațională",
+     "Națională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4013"
+  },
+  "name": "Asociație profesională (Comisia 28, I19)",
+  "fields": [
+   {
+    "name": "Asociatie",
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Președinte sau membru în comitetul executiv",
+     "Membru"
+    ],
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Internațională",
+     "Națională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4014"
+  },
+  "name": "Premiu sau distincție (Comisia 28, I20)",
+  "fields": [
+   {
+    "name": "Denumire",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Științific internațional",
+     "Științific național",
+     "Didactic",
+     "Promovarea țării"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4015"
+  },
+  "name": "Coordonator al unei colecții de carte (Comisia 28, I21)",
+  "fields": [
+   {
+    "name": "Colectie",
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4016"
+  },
+  "name": "Referent științific ad hoc pentru reviste (Comisia 28, I22)",
+  "fields": [
+   {
+    "name": "Revista",
+    "number": false
+   },
+   {
+    "name": "Indexare",
+    "allowedValues": [
+     "Web of Science",
+     "Altă BDI recunoscută"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_articole",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4017"
+  },
+  "name": "Profesor asociat, visiting scholar sau prelegere invitată (Comisia 28, I23)",
+  "fields": [
+   {
+    "name": "Institutie",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Universitate din TOP 500 URAP",
+     "Altă universitate, invitație nominală",
+     "Asociație profesională internațională",
+     "Asociație profesională națională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4018"
+  },
+  "name": "Coordonarea unui centru sau laborator de cercetare (Comisia 28, I28)",
+  "fields": [
+   {
+    "name": "Denumire",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f4019"
+  },
+  "name": "Evaluator de proiecte sau membru în panel (Comisia 28, I29)",
+  "fields": [
+   {
+    "name": "Competitie",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Internațională",
+     "Națională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f401a"
+  },
+  "name": "Membru în grup de experți, comisie sau consiliu științific (Comisia 28, I30)",
+  "fields": [
+   {
+    "name": "Organism",
+    "number": false
+   },
+   {
+    "name": "Nivel",
+    "allowedValues": [
+     "Internațional",
+     "Național"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abb8563ab83be698e2f401b"
+  },
+  "name": "Curs sau program de formare pentru beneficiari externi (Comisia 28, I31)",
+  "fields": [
+   {
+    "name": "Denumire",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d2fe"
+  },
+  "name": "Articol într-o revistă indexată în cel puțin 3 baze de date (Comisia 25, I.2)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Revista",
+    "number": false
+   },
+   {
+    "name": "ISSN",
+    "number": false
+   },
+   {
+    "name": "Baze_de_date",
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Coeficient_m",
+    "allowedValues": [
+     "m = 2",
+     "m = 1.5",
+     "m = 1"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d2ff"
+  },
+  "name": "Carte sau capitol declarat de candidat (Comisia 25, I.3, I.4 și I.6)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Carte",
+     "Capitol în volum colectiv"
+    ],
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "Incadrare_editura",
+    "allowedValues": [
+     "Lista A1",
+     "Lista A2",
+     "Minimum 6 biblioteci WorldCat"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Coeficient_m",
+    "allowedValues": [
+     "m = 2",
+     "m = 1.5",
+     "m = 1"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi (ISBN, link WorldCat)",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d300"
+  },
+  "name": "Carte coordonată (Comisia 25, I.5)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "N_coordonatori",
+    "number": true
+   },
+   {
+    "name": "Coeficient_m",
+    "allowedValues": [
+     "m = 2",
+     "m = 1.5",
+     "m = 1"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d301"
+  },
+  "name": "Recenzie sau termen în enciclopedie ori dicționar (Comisia 25, I.7)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Recenzie în revistă ISI/WoS",
+     "Recenzie în revistă indexată în cel puțin 3 baze de date",
+     "Termen de minimum o pagină în enciclopedie sau dicționar"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Coeficient_m",
+    "allowedValues": [
+     "m = 2",
+     "m = 1.5",
+     "m = 1"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d302"
+  },
+  "name": "Lucrare în volumul unei conferințe, declarată de candidat (Comisia 25, I.8)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Volum",
+    "number": false
+   },
+   {
+    "name": "ISSN_ISBN",
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Coeficient_m",
+    "allowedValues": [
+     "m = 2",
+     "m = 1.5",
+     "m = 1"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d303"
+  },
+  "name": "Traducere a unei lucrări fundamentale din științele sociale (Comisia 25, I.8)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Cu aparat critic",
+     "Fără aparat critic"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d304"
+  },
+  "name": "Citare sau recenzie la o carte, declarată de candidat (Comisia 25, I.9)",
+  "fields": [
+   {
+    "name": "Lucrare_citata",
+    "number": false
+   },
+   {
+    "name": "Sursa_care_citeaza",
+    "number": false
+   },
+   {
+    "name": "IF_sursa",
+    "number": true
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d305"
+  },
+  "name": "Editor sau membru în comitetul unei reviste (Comisia 25, I.10 și I.11)",
+  "fields": [
+   {
+    "name": "Revista",
+    "number": false
+   },
+   {
+    "name": "ISSN",
+    "number": false
+   },
+   {
+    "name": "Indexare",
+    "allowedValues": [
+     "ISI/WoS sau SCOPUS",
+     "Trei baze de date recunoscute, altele decât ISI/WoS și SCOPUS"
+    ],
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Editor, redactor-șef sau redactor delegat",
+     "Membru în comitetul de redacție sau științific",
+     "Editor invitat al unui număr special"
+    ],
+    "number": false
+   },
+   {
+    "name": "An_inceput",
+    "number": true
+   },
+   {
+    "name": "An_sfarsit",
+    "number": true
+   },
+   {
+    "name": "N_numere_speciale",
+    "number": true
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d306"
+  },
+  "name": "Colecție de carte: coordonator sau membru în comitetul științific (Comisia 25, I.12)",
+  "fields": [
+   {
+    "name": "Colectie",
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "Lista",
+    "allowedValues": [
+     "Lista A1",
+     "Lista A2"
+    ],
+    "number": false
+   },
+   {
+    "name": "Rol",
+    "allowedValues": [
+     "Coordonator",
+     "Membru în comitetul științific"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d307"
+  },
+  "name": "Profesor visiting, cercetător invitat sau stagiu Erasmus (Comisia 25, I.14)",
+  "fields": [
+   {
+    "name": "Institutie",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Profesor visiting, universitate din primele 1000",
+     "Cercetător invitat cel puțin o lună, universitate din primele 1000",
+     "Stagiu Erasmus"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d308"
+  },
+  "name": "Lucrare prezentată la o conferință științifică (Comisia 25, I.15 și I.16)",
+  "fields": [
+   {
+    "name": "Conferinta",
+    "number": false
+   },
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Loc",
+    "allowedValues": [
+     "În străinătate",
+     "În țară"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi (link la program)",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d309"
+  },
+  "name": "Studiu de evaluare și fundamentare de politici publice (Comisia 25, I.17)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Beneficiar",
+    "number": false
+   },
+   {
+    "name": "Coeficient_m",
+    "allowedValues": [
+     "m = 2",
+     "m = 1.5",
+     "m = 1"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d30a"
+  },
+  "name": "Participare în colectivul de implementare a unui grant, contract sau proiect (Comisia 25, I.18)",
+  "fields": [
+   {
+    "name": "Proiect",
+    "number": false
+   },
+   {
+    "name": "Finantator",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d30b"
+  },
+  "name": "Participare la BIP sau la o școală de vară (Comisia 25, I.19)",
+  "fields": [
+   {
+    "name": "Denumire",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "BIP (Blended Intensive Program)",
+     "Școală de vară"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d30c"
+  },
+  "name": "Suport de curs sau de seminar (Comisia 25, I.19)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Suport de curs sau de seminar, minimum 20 de pagini",
+     "Capitol în suport de curs sau de seminar"
+    ],
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   },
+   {
+    "name": "Coeficient_m",
+    "allowedValues": [
+     "m = 2",
+     "m = 1.5",
+     "m = 1"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi (ISBN sau link)",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d30d"
+  },
+  "name": "Stagiu postdoctoral de cel puțin 6 luni (Comisia 25, I.19)",
+  "fields": [
+   {
+    "name": "Institutie",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d30e"
+  },
+  "name": "Program de studii universitare inițiat sau coordonat (Comisia 25, I.19)",
+  "fields": [
+   {
+    "name": "Program",
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abbb4fbfe1896ef0369d30f"
+  },
+  "name": "Condiție îndeplinită după obținerea abilitării (Comisia 25, C.10)",
+  "fields": [
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Coordonarea a cel puțin unui doctorand, cu afiliere la o școală doctorală",
+     "Articol ISI/WoS din nucleul disciplinei sau din domeniile conexe"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovezi",
+    "number": false
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ },
+ {
+  "_id": {
+   "$oid": "6abeb95c1312a8dacbf05ebc"
+  },
+  "name": "Carte sau capitol la o editură din Anexa 7c (UEFISCDI PD/TE)",
+  "fields": [
+   {
+    "name": "Titlu",
+    "number": false
+   },
+   {
+    "name": "Tip",
+    "allowedValues": [
+     "Carte",
+     "Capitol în volum colectiv"
+    ],
+    "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "ISBN",
+    "number": false
+   },
+   {
+    "name": "N_autori",
+    "number": true
+   }
+  ],
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+ }
 ]

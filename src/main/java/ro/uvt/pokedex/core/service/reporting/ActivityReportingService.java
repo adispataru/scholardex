@@ -115,6 +115,10 @@ public class ActivityReportingService {
         // conference's category differed across the period the researcher splits entries per category
         // period (user decision; true per-year expansion deferred, the year pair enables it later).
         injectEditionsVariable(variables);
+        // H136: An_activitate (int) — the year of the declared activity (its date), so a formula can apply a
+        // standard's window ("în perioada 2015–2026") without a second, typed year field. Activities are not
+        // filtered by the indicator's year range the way publications are. 0 when the entry has no date.
+        variables.put("An_activitate", activity.getYear());
         final String rawformula = indicator.getFormula();
         // H52 slice 11d.1: typed-strategy dispatch. GENERIC_ACTIVITY and
         // GENERIC_COUNT both short-circuit to a unit base score (1.0); only
@@ -146,6 +150,11 @@ public class ActivityReportingService {
                 variables.put("M", score.getMultiplier());
             }
         }
+        // H136: Editura_7c (boolean) — the typed publisher is on Anexa 7c of the PN-IV PD/TE 2026 packages, the
+        // only publishers whose books and chapters count for the social/economic eligibility. Bound whenever the
+        // activity has an Editura field; false when the list is not loaded or the name is not on it. After the
+        // strategy branch, which replaces scoringInfo, so the miss note survives.
+        injectAnexa7cPublisherVariable(variables, result);
         if (budgetEurDerivedFromInterval) {
             // Surfaced on the drilldown row: the amount was inferred from the declared interval's lower
             // bound, not taken from the (missing or interval-contradicting) numeric Buget.
@@ -253,6 +262,19 @@ public class ActivityReportingService {
         }
         variables.put("Buget_eur", eur);
         return derivedFromInterval;
+    }
+
+    /** See the call site: {@code Editura_7c} from {@link UefiscdiPublisherSupport}; the miss is noted on the row. */
+    private void injectAnexa7cPublisherVariable(Map<String, Object> variables, Score result) {
+        if (!variables.containsKey("Editura")) {
+            return;
+        }
+        Object editura = variables.get("Editura");
+        boolean onList = editura instanceof String name && UefiscdiPublisherSupport.isOnAnexa7c(name);
+        variables.put("Editura_7c", onList);
+        if (!onList) {
+            result.getScoringInfo().put("anexa7c", "NOT_ON_LIST");
+        }
     }
 
     /**
