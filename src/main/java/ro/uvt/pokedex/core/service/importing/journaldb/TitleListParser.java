@@ -71,7 +71,7 @@ public final class TitleListParser {
     private static final List<String> TITLE = List.of("publication_title", "title", "journal title", "publication title",
             "publication name", "journal", "journal name", "source title", "full title");
     private static final List<String> PRINT_ISSN = List.of("print_identifier", "issn", "print issn", "pissn", "p-issn",
-            "issn (print)", "issn print", "issn-print");
+            "issn (print)", "issn print", "issn-print", "issn / isbn", "issn/isbn");
     private static final List<String> ONLINE_ISSN = List.of("online_identifier", "eissn", "e-issn", "online issn",
             "issn (online)", "issn online", "electronic issn", "issn-online", "eissn/isbn");
     private static final List<String> FROM = List.of("date_first_issue_online", "indexing and abstracting start",

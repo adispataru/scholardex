@@ -146,6 +146,17 @@ class TitleListParserTest {
     }
 
     @Test
+    void ebscosIssnOrIsbnColumnKeepsTheJournalsAndDropsTheBooks() throws IOException {
+        // EBSCO's coverage lists (aft, hus, hsi, e5h, mft) name the column "ISSN / ISBN"
+        TitleListParser.Parsed parsed = parse("Coverage Policy\tSource Type\tISSN / ISBN\tPublication Name\n"
+                + "Core\tAcademic Journal\t1326-9631\tArt Monthly\n"
+                + "Core\tBook\t978-0-19-000000-1\tA Book\n");
+
+        assertEquals(List.of("Art Monthly"), parsed.rows().stream().map(TitleListParser.TitleRow::title).toList());
+        assertEquals(1, parsed.skipped());
+    }
+
+    @Test
     void onlySerialsCountAsJournals() {
         assertEquals(false, TitleListParser.notSerial("serial"));
         assertEquals(false, TitleListParser.notSerial("Scholarly Journals"));
