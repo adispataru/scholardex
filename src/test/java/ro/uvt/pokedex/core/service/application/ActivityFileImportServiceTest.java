@@ -212,12 +212,27 @@ class ActivityFileImportServiceTest {
         // H142 slice 7: the event's own name, cut from the cell, as the experts and the ranking read it
         assertEquals("Festivalul muzicii românești", recital.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME));
         assertEquals(List.of(new ActivityFileImportService.ReportedLevel("Festivalul muzicii românești", "INTERNATIONAL"),
-                new ActivityFileImportService.ReportedLevel("Concursul Eduard Caudella", "NATIONAL")), report.reportedLevels());
+                new ActivityFileImportService.ReportedLevel("Concursul Eduard Caudella", "NATIONAL", true)), report.reportedLevels(),
+                "a prize is reported: its event is a competition");
         assertEquals("2024-01-01", recital.getDate());
         ActivityInstance prize = find(saved, "Premiu pentru acompaniament");
         assertFalse(prize.getFields().containsKey("Tip"));
         assertEquals("Premiu", prize.getFields().get("Rezultat"));
         assertEquals("Fișa CNFIS 5.1: național", prize.getEventLevelSuggestion());
+    }
+
+    @Test
+    void aPrizeAtAListedEventIsReportedWithoutALevelSoItOnlyMakesTheEventACompetition() throws IOException {
+        ArtisticEventRankSupport.register(List.of(event("Concursul Național Eduard Caudella", ArtisticEvent.Rank.NATIONAL)));
+        XSSFWorkbook wb = ro.uvt.pokedex.core.service.importing.grid.GridWorkbooks.cnfisArts(
+                "Anexa 5.1. Fişa individuală", List.of(
+                        new ro.uvt.pokedex.core.service.importing.grid.GridWorkbooks.ArtsLine(2023, "Premiul I", "Concursul Național Eduard Caudella", 13, null),
+                        new ro.uvt.pokedex.core.service.importing.grid.GridWorkbooks.ArtsLine(2023, "Recital", "Concursul Național Eduard Caudella", 1, null)));
+
+        ActivityFileImportService.ImportReport report = service.importFile(EMAIL, "anexa51.xlsx", stream(wb), null);
+
+        assertEquals(List.of(new ActivityFileImportService.ReportedLevel("Concursul Național Eduard Caudella", null, true)),
+                report.reportedLevels(), "the registry's rank stands; the prize still marks the event a competition");
     }
 
     @Test

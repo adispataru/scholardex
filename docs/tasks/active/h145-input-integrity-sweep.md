@@ -174,6 +174,8 @@ filed as translations, no publisher gate, Music DID 1.1/1.2 not reported.
   the approved Google Scholar record. Music's three tables count toward its total, so its score comes from the run.
 - C5: a blank role scores nothing; director-only items check the role; the project import makes a researcher director
   only when the project registry names them director. Grants by funder and programme stay with H144 slice 2.
+  Exception (Adrian, 2026-10-03, H142 slice 7): for the Music concerts a blank role counts when the ensemble's size
+  answers for it — alone or a group of 2–4 — since a faculty's CNFIS 5.1 sheet marks only that; 5+ needs the role.
 - C6/C8: every "the type is the claim" item reads a named entity (ISSN, conference, organisation, award, event) or a
   request a head approves; RIA 2.3 needs a ranked competition; `Rezultat` no longer falls back to `Tip`; imports write
   the ensemble's size, not a kind.

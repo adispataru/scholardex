@@ -931,6 +931,28 @@ Left for the experts (13):
 Some events the faculty spelled two ways became two entries, each ranked at the level reported, so scores do not
 change: «Festivalul Internațional BRAVE NEW MUSIC» and «Festivalul BRAVE NEW MUSIC», for example.
 
+**Scores after the upload (2026-10-03).** After the merges and rejections and a full refresh, 40 of FMT's 54
+people scored 0 in FV Muzică 2026. A read of prod gave the reasons:
+- **Performances (415).** A performance counted only when its record states the person's role (H145, C5), and the
+  CNFIS 5.1 sheets carry none. They mark only alone, a group of 2–4 or a collective of 5+: 147, 47 and 206 records
+  (the import keeps that as the ensemble's size, 1, 2 or 5).
+  - **Decision (Adrian): the size decides for a blank role.** One person or a group of up to four counts (soloist or
+    creator, chamber member). A larger ensemble still needs the role, which the person sets on their records.
+  - This holds for typed records too. 194 performances count now.
+- **Prizes (10).** A prize counts (RIA 2.3) only at an event the registry calls a competition. The upload ranked
+  the events without a kind.
+  - **Decision (Adrian): a prize the faculty reported makes its event a competition.** The upload does this from
+    now on, but only for a ranked event without a kind: an expert's kind stays, and a waiting name gets its kind
+    from the expert who ranks it.
+  - `h142_slice7_scoring.js` (ops scripts) marks the 8 existing events: Caudella, Crizantema de Aur, Rapsodii de
+    Toamnă, Te aștept pe același drum, Te Deum Laudamus, Orăștie, Golden Plaque and Elite Musicians. It also
+    updates the descriptions of CS 1.1, CS 1.2 and RIA 2.3.
+- **Citations (1,182).** They feed CNFIS Anexa 4.1 only; the Music standard has no citation item.
+- **Not performances (86).** These «collective» rows have no event: workshops, Erasmus and teaching courses,
+  certificates. They stay at 0.
+- **No records (15 people).** Eleven in Theatre (no Theatre report yet, slice 6) and four in Music: Cinc's sheets
+  were empty, and three have no file in the submission.
+
 **Waiting for the faculty (Adrian asks Simona):** five teachers sent files but have no account in prod: Fănel Ignat,
 Vlad Popescu and Manuela Mihăilescu (Music), Otilia Huzum and Florin Vidam (Theatre). Their files are in
 `_fara_cont/`. Once they are added with the staff import, one more upload with the same option brings them in;

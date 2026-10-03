@@ -90,8 +90,16 @@ class ArtisticPerformanceSupportTest {
                 "Membru într-o formație camerală (până la 10 persoane)")) {
             assertTrue(ArtisticPerformanceSupport.roleCounts(fields("Rol", role)), role);
         }
-        // H145: a record that names no role tells nothing about the person's part
+        // H145: a record that names no role tells nothing about the person's part ...
         assertFalse(ArtisticPerformanceSupport.roleCounts(fields()));
+        // ... unless the ensemble's size answers for it: alone, or a group of two to four (a faculty's CNFIS 5.1 sheet
+        // marks only that); a larger ensemble needs the role
+        for (String size : List.of("1", "2", "4")) {
+            assertTrue(ArtisticPerformanceSupport.roleCounts(fields("Marime_formatie", size)), size);
+        }
+        for (String size : List.of("5", "12", "0", "mare")) {
+            assertFalse(ArtisticPerformanceSupport.roleCounts(fields("Marime_formatie", size)), size);
+        }
         assertFalse(ArtisticPerformanceSupport.roleCounts(fields("Rol", "Membru într-o formație camerală (până la 10 persoane)",
                 "Marime_formatie", "14")), "a chamber ensemble has at most ten players");
         assertFalse(ArtisticPerformanceSupport.roleCounts(fields("Rol", ArtisticPerformanceSupport.ROLE_LARGE_ENSEMBLE_MEMBER)));

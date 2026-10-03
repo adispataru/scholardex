@@ -73,8 +73,14 @@ public class ActivityFileImportService {
         public static final ImportOptions PERSONAL = new ImportOptions(false, null);
     }
 
-    /** An event a CNFIS Anexa 5.1 row names that the registry does not list, with the level the file gave it. */
-    public record ReportedLevel(String eventName, String level) {
+    /**
+     * An event a CNFIS Anexa 5.1 row names: the level the file gave it when the registry does not list the event (null
+     * when it does), and whether the row reports a prize there.
+     */
+    public record ReportedLevel(String eventName, String level, boolean prize) {
+        public ReportedLevel(String eventName, String level) {
+            this(eventName, level, false);
+        }
     }
 
     /**
@@ -210,8 +216,10 @@ public class ActivityFileImportService {
                 Draft draft = artsDraft(row);
                 drafts.add(draft);
                 String event = draft.references().get(Activity.ReferenceField.EVENT_NAME);
-                if (!draft.eventRecognised() && event != null && row.level() != null) {
-                    reportedLevels.add(new ReportedLevel(event, row.level()));
+                boolean prize = "PRIZE".equals(row.kind());
+                // the level ranks an event the registry does not list; a prize also makes a listed one a competition
+                if (event != null && row.level() != null && (!draft.eventRecognised() || prize)) {
+                    reportedLevels.add(new ReportedLevel(event, draft.eventRecognised() ? null : row.level(), prize));
                 }
             }
         }

@@ -169,6 +169,46 @@ class ArtisticEventFacultyRankingTest {
     }
 
     @Test
+    void aPrizeTheFacultyReportedMakesARankedEventWithoutAKindACompetition() {
+        List<ArtisticEvent> store = new java.util.ArrayList<>();
+        ArtisticEvent listed = event("Concursul Eduard Caudella", null, ArtisticEvent.Rank.NATIONAL); // the CNFIS list, no kind
+        ArtisticEvent festival = event("Festivalul Ales", RegistryStatus.CONFIRMED, ArtisticEvent.Rank.INTERNATIONAL);
+        festival.setCategory("FESTIVAL"); // an expert's kind
+        ArtisticEvent merged = event("Te Deum Laudamus Timisoara", RegistryStatus.MERGED, null);
+        merged.setMergedInto("id-Festivalul Te Deum Laudamus");
+        ArtisticEvent target = event("Festivalul Te Deum Laudamus", RegistryStatus.CONFIRMED, ArtisticEvent.Rank.NATIONAL);
+        ArtisticEvent waiting = event("Festivalul Disputat", RegistryStatus.PROPOSED, null);
+        store.addAll(List.of(listed, festival, merged, target, waiting));
+        when(repository.findAll()).thenAnswer(inv -> new java.util.ArrayList<>(store));
+        when(repository.save(org.mockito.ArgumentMatchers.any(ArtisticEvent.class))).thenAnswer(inv -> {
+            ArtisticEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId("new-" + store.size());
+            store.removeIf(x -> x.getId().equals(e.getId()));
+            store.add(e);
+            return e;
+        });
+
+        ranking.rank(List.of(new ActivityFileImportService.ReportedLevel("Gala Nouă", "NATIONAL", true),
+                new ActivityFileImportService.ReportedLevel("Concursul Eduard Caudella", null, true),
+                new ActivityFileImportService.ReportedLevel("Festivalul Ales", null, true),
+                new ActivityFileImportService.ReportedLevel("Te Deum Laudamus Timisoara", null, true),
+                new ActivityFileImportService.ReportedLevel("Festivalul Disputat", null, true),
+                new ActivityFileImportService.ReportedLevel("Recital Nou", "NATIONAL", false)), "Muzică", "admin@uvt.ro", "Raportare CNFIS 2025 (FMT)");
+
+        Map<String, ArtisticEvent> byName = store.stream().collect(Collectors.toMap(ArtisticEvent::getName, Function.identity()));
+        assertEquals("COMPETITION", byName.get("Gala Nouă").getCategory(), "ranked from the file, a prize there");
+        assertEquals(ArtisticEvent.Rank.NATIONAL, byName.get("Gala Nouă").getRank());
+        assertEquals("COMPETITION", byName.get("Concursul Eduard Caudella").getCategory(), "a listed event without a kind");
+        assertEquals(ArtisticEvent.Rank.NATIONAL, byName.get("Concursul Eduard Caudella").getRank(), "its rank stands");
+        assertEquals("EDITED", byName.get("Concursul Eduard Caudella").getHistory().getLast().getAction());
+        assertEquals("FESTIVAL", byName.get("Festivalul Ales").getCategory(), "an expert's kind stays");
+        assertEquals("COMPETITION", byName.get("Festivalul Te Deum Laudamus").getCategory(), "a merged name marks its entry");
+        assertEquals(null, byName.get("Festivalul Disputat").getCategory(), "a waiting name gets its kind from the expert");
+        assertEquals(null, byName.get("Recital Nou").getCategory(), "no prize, no kind");
+        verify(registrar, atLeastOnce()).refresh();
+    }
+
+    @Test
     void nothingReportedChangesNothing() {
         assertEquals(ArtisticEventFacultyRanking.Outcome.NONE, ranking.rank(List.of(reported("  ", "NATIONAL"),
                 reported("Festivalul Z", "LOCAL")), "Muzică", "admin@uvt.ro", "x"));

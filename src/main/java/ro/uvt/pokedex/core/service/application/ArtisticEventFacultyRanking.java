@@ -53,7 +53,12 @@ public class ArtisticEventFacultyRanking {
             nameByKey.putIfAbsent(key, r.eventName().trim());
             levelsByKey.computeIfAbsent(key, k -> new TreeMap<>()).merge(r.level(), 1, Integer::sum);
         }
-        if (levelsByKey.isEmpty()) {
+        Set<String> prizeKeys = new java.util.LinkedHashSet<>();
+        for (ActivityFileImportService.ReportedLevel r : reported == null ? List.<ActivityFileImportService.ReportedLevel>of() : reported) {
+            String key = ArtisticEventRankSupport.normalize(r.eventName());
+            if (r.prize() && !key.isEmpty()) prizeKeys.add(key);
+        }
+        if (levelsByKey.isEmpty() && prizeKeys.isEmpty()) {
             return Outcome.NONE;
         }
         Map<String, ArtisticEvent> byKey = new HashMap<>();
@@ -149,10 +154,46 @@ public class ArtisticEventFacultyRanking {
             }
             eventRepository.save(event);
         }
+        int competitions = markCompetitions(prizeKeys, now, actor, source);
         registrar.refresh();
-        log.info("Faculty ranking from {} ({}): {} events ranked, {} reported at different levels, {} already ranked, {} left alone",
-                source, domain, ranked, conflicting, already, leftAlone);
+        log.info("Faculty ranking from {} ({}): {} events ranked, {} reported at different levels, {} already ranked, {} left alone, "
+                        + "{} marked competitions", source, domain, ranked, conflicting, already, leftAlone, competitions);
         return new Outcome(ranked, conflicting, already, leftAlone, List.copyOf(conflicts));
+    }
+
+    /**
+     * A prize the faculty reported makes its event a competition (Adrian, 2026-10-03): RIA 2.3 counts a prize only at a
+     * competition, and the faculty's report is the evidence. Only a ranked event without a kind; an expert's kind stays,
+     * and a name still waiting gets its kind from the expert who ranks it. A merged name marks the entry it joined.
+     */
+    private int markCompetitions(Set<String> prizeKeys, Instant now, String actor, String source) {
+        if (prizeKeys.isEmpty()) return 0;
+        List<ArtisticEvent> all = eventRepository.findAll();
+        Map<String, ArtisticEvent> byKey = new HashMap<>();
+        Map<String, ArtisticEvent> byId = new HashMap<>();
+        for (ArtisticEvent e : all) {
+            if (e.getId() != null) byId.put(e.getId(), e);
+            for (String k : RegistryReviewService.keysOf(e)) byKey.putIfAbsent(k, e);
+        }
+        int marked = 0;
+        Set<String> done = new java.util.HashSet<>();
+        for (String key : prizeKeys) {
+            ArtisticEvent event = byKey.get(key);
+            if (event != null && event.getStatus() == RegistryStatus.MERGED && event.getMergedInto() != null) {
+                event = byId.get(event.getMergedInto());
+            }
+            if (event == null || !event.isConfirmed() || event.getRank() == null || event.getCategory() != null
+                    || !done.add(String.valueOf(event.getId()))) {
+                continue;
+            }
+            event.setCategory(ArtisticEvent.Kind.COMPETITION.name());
+            if (event.getHistory() == null) event.setHistory(new ArrayList<>());
+            event.getHistory().add(RegistryReviewService.change(now, actor, "EDITED", event.getLevel(), event.getLevel(),
+                    source + ": concurs — fișa raportează un premiu la acest eveniment"));
+            eventRepository.save(event);
+            marked++;
+        }
+        return marked;
     }
 
     record Distinctive(String name, Set<String> words) {

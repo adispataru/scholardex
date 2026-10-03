@@ -50,13 +50,15 @@ public final class ArtisticPerformanceSupport {
     /**
      * Whether the role counts for the Music standard's concerts: composer, conductor, director, ballet master,
      * soloist, concertmaster or member of a chamber ensemble of at most ten. A member of a larger ensemble or
-     * another role does not; a record without a role counts — listing a concert is the candidate's own
-     * declaration, and an imported grid row names no role.
+     * another role does not. A record that states no role counts only when the ensemble's size answers for it: one
+     * person (the soloist or the creator) or a group of two to four (a chamber ensemble) — all a faculty's CNFIS 5.1
+     * sheet marks (Adrian, 2026-10-03); a larger ensemble needs the role (H145).
      */
     public static boolean roleCounts(Map<String, String> fields) {
         String role = fields.get(FIELD_ROLE);
         if (role == null || role.isBlank()) {
-            return false; // H145: a role the record does not state does not count
+            Integer size = parseSize(fields.get(FIELD_ENSEMBLE_SIZE));
+            return size != null && size >= 1 && size <= SMALL_GROUP_MAX;
         }
         String r = role.trim();
         if (r.toLowerCase(Locale.ROOT).startsWith("membru într-o formație camerală")) {
@@ -70,6 +72,9 @@ public final class ArtisticPerformanceSupport {
 
     /** The most members a chamber ensemble has (the Music standard, CS 1). */
     static final int CHAMBER_MAX = 10;
+
+    /** The largest group whose members need not state a role: CNFIS 5.1's group of two to four. */
+    static final int SMALL_GROUP_MAX = 4;
 
     /**
      * How the visibility of a concert was decided, for the drilldown: the registry's rank; an event the experts have
