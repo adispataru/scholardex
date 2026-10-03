@@ -579,14 +579,126 @@ see `docs/tasks/active/h144-self-picked-levels.md`): the classes, paths and coll
   artele spectacolului → Departamentul de Teatru, name experts or record FMT's heads; optionally upload FMT's
   Anexa 6.1 to seed the queue.
 
+## Slice 4 as built (2026-10-03) — journal databases from their title lists
+
+Built 2026-10-03, not yet committed at the time of writing. **Decisions (Adrian, 2026-10-03):**
+- **EBSCO and ProQuest:** their subject databases count (Music Index, RILM Full Text, Art Full Text, Humanities
+  Source, Central & Eastern European Academic Source, Music Periodicals Database), and so do the general ones
+  (Academic Search Ultimate, ProQuest Central).
+- **How the lists go in:** like the DOAJ, ERIH, WoS and Scopus data. The files are downloaded by a person, placed on
+  the data volume and imported by an admin step; the server fetches nothing.
+- **Why nothing is fetched automatically:** the terms of EBSCO, OUP, Taylor & Francis and CEEOL forbid robots, and
+  JSTOR, OUP and T&F answer scripts with a challenge.
+
+The publisher half of the planned slice was done by H143.
+
+**Files.** Each database has its own folder under `data/journal-databases/<DATABASE>/`: `CAMBRIDGE_CORE`, `CEEOL`,
+`EBSCO`, `JSTOR`, `OXFORD_ACADEMIC`, `PROJECT_MUSE`, `PROQUEST`, `RILM`, `SCIENDO`, `TAYLOR_FRANCIS`. A folder may
+hold any number of lists, as the vendors publish them:
+- KBART;
+- tab, pipe, semicolon or comma text with a header row (notes above the header are fine);
+- an HTML table;
+- `.xls`, or `.xlsx` (read as a stream);
+- a ZIP of any of these.
+
+`TitleListParser` skips rows without an ISSN, and rows that are not serials (books, newspapers, reports, theses,
+recordings, websites).
+
+**Import.** On `/admin/initialization`, «Import journal databases' title lists» (`POST /general/journalDatabases`,
+`JournalDatabaseDataService`) writes `journaldb.journal_facts`:
+- one fact per journal and database, keyed `DATABASE:ISSN`;
+- rows that share an ISSN are one journal;
+- coverage years are kept for reference only.
+
+What happens to each database:
+- **All its files read:** its facts are replaced.
+- **A file does not read:** its previous facts stay, and the message names the file.
+- **No folder:** it is left untouched.
+
+The collection is reference data, like `doaj.journal_facts`: it is outside the rebuild's wipe lists. The same step
+then onboards the journals (`JournalDatabaseOnboardingService`), create-or-match through `ForumMergeEngine`, the
+DOAJ path; it also runs inside `ScholardexForumBuilder`, after DOAJ and before WoS, so a rebuild keeps it. An ISSN
+match tags the forum's `journalDatabaseIds`. A journal only the lists know becomes a forum, so a researcher who
+names it by ISSN finds it.
+
+**Publish.** Scopus → 3 (build projections) writes `scholardex_forum_membership_view` rows (`database` = the
+database, `source` = `TITLE_LIST`), matched by ISSN like DOAJ.
+
+**Scoring.** Scoring reads the memberships through `getForumIndexingDatabases`, like DOAJ's. Membership is the
+lists' present state, as for DOAJ and Scopus; coverage years do not count.
+- Music, CS 2.1, found automatically (`MUSIC_INDEXED_JOURNAL`): an article in a journal of any of the ten databases
+  counts; the category is the database's name.
+- Music, CS 2.1 declared and its count: the `muzica2026` flag makes `N_baze_date` count the ten.
+- Sociology, I.2 found automatically (`SOC_INDEXED_JOURNAL`): EBSCO, ProQuest, CEEOL, JSTOR, Project MUSE and
+  Taylor & Francis count towards the three databases (Informa and Tandfonline are one database).
+- Sociology, declared I.2, the C.4 count and I.11's years: the `sociologie2026` flag does the same.
+- Other standards are unchanged, since each filters to its own list: CNFIS reads ERIH only; Psychology and
+  Educational Sciences use the Comisia 28 lists; the general rule counts WoS, Scopus, ERIH and DOAJ.
+
+**Tests.**
+- `TitleListParserTest`: KBART, pipe, CSV, `.xlsx`, ZIP, HTML, a header after notes, non-serials.
+- `JournalDatabaseDataServiceTest`: merging, a database that keeps its previous facts, no folder.
+- `JournalDatabaseOnboardingServiceTest`: tagging and creating a forum.
+- `ScholardexProjectionBuilderServiceTest`: the membership rows.
+- `ScholardexForumBuilderTest`: the order of steps, and the dedup a tag triggers.
+- `GeneralInitializationServiceTest` and the initialization controller and security contract tests: the step.
+- The Music and Sociology scorer tests and both report-definition tests.
+
+**Prod script.** `h142_slice4_journal_databases.js` (guard `H142_SLICE4_IMAGE_IS_DEPLOYED`, no restart) sets five
+flags (`muzica2026` on `Muz26_CS_2_1_decl` and `Muz26_N_articole_decl`; `sociologie2026` on `Soc26_I2_decl`,
+`Soc26_C4_articole_decl` and `Soc26_I11`) and five descriptions (`Muz26_CS_2_1`, `Muz26_CS_2_1_decl`, `Soc26_I2`,
+`Soc26_I2_decl`, `Soc26_I11`).
+- **Rehearsed on HEAD's seed:** the guarded run writes nothing; the first run sets the 5 flags and the 5
+  descriptions; the second changes nothing; the result equals the committed seed.
+- **Precheck, read-only against prod (2026-10-03):** 5 of 5 flags and 5 of 5 descriptions to change; prod equals
+  the committed base.
+
+**Sources (checked 2026-10-03; HTML pages only, no list fetched).**
+
+| Folder | List(s) | Format | Terms of the list |
+|---|---|---|---|
+| `CAMBRIDGE_CORE` | cambridge.org/core/services/librarians/kbart, "Cambridge Journals: All journals" | KBART | metadata CC0 |
+| `JSTOR` | jstor.org/kbart/collections/all-archive-titles?contentType=journals (Complete Title History) | KBART or XLSX | "for reference use only"; site behind a JS challenge |
+| `PROJECT_MUSE` | about.muse.jhu.edu/static/org/local/holdings/muse_journal_metadata_2026.tsv | TSV, CSV, XLSX | site licence: not to be incorporated into a retrieval system unless stated |
+| `PROQUEST` | tls.search.proquest.com/titlelist/ListForward?…&format=tab: Music Periodicals Database (1007570) and ProQuest Central (its component ids, from the product page's form) | tab text | none stated; use the tab output with citation/abstract dates (KBART is full-text holdings) |
+| `EBSCO` | about.ebsco.com/m/ee/Marketing/titleLists/: `mah-coverage.xls` (Music Index), `mft-coverage.xls`, `aft-coverage.xls`, `hus-coverage.xls`, `hsi-coverage.xls`, `e5h-coverage.xls`, `asn-journals.xls` | XLS (an HTM twin) | site terms forbid systematic or automated collection without EBSCO's written consent |
+| `RILM` | api.rilm.org/ibis/200/marketing/products?product=ram&type=music (and `type=nonmusic`, `product=rft`) | pipe lines; check for a header line, add one if missing | none found |
+| `OXFORD_ACADEMIC` | fdslive.oup.com/www.oup.com/academic/content/librarian/: `OxfordUniversityPress_Global_2026JournalsCurrentCollection.zip`, `OUP_2025_JournalsAllTitles.zip` | ZIP of KBART | site notice forbids robots |
+| `TAYLOR_FRANCIS` | GOKb, Jisc list: gokb.org/gokb/packages/kbart/06f8a279-01f5-48b2-b695-3ca85b061a7a?exportType=title (2,443 titles); T&F's own KBART is behind Cloudflare | KBART | GOKb: CC0 |
+| `CEEOL` | GOKb, German consortium package: gokb.org/gokb/packages/kbart/35c3a7d9-d507-44f3-8339-952baa6edf13?exportType=title (1,304 of ~3,100 journals); CEEOL publishes none | KBART | GOKb: CC0 |
+| `SCIENDO` | none public (KBART behind a librarian login at reference-global.com) | — | ask the library to request it |
+
+**Rollout order.**
+1. Push and deploy.
+2. Flip the guard and run `h142_slice4_journal_databases.js`.
+3. Download the lists (in a browser) and copy each folder to the data volume, for example
+   `./copy-to-data-pvc.sh journal-databases/EBSCO mah-coverage.xls asn-journals.xls`.
+4. On `/admin/initialization`, run «Import journal databases' title lists».
+5. Run Scopus → 3.
+6. Refresh the FMT Music and FSAS Sociology reports («Reîmprospătează tot»).
+
+**Open.**
+- **Terms of use.** Is this use of the lists covered? KBART lists exist to be loaded into library systems, and
+  the platform uses them the same way (matching ISSNs for an internal evaluation). But EBSCO's, MUSE's, T&F's and
+  CEEOL's site terms are restrictive. A question for the library (which of these UVT subscribes to) and for
+  Adrian.
+- **Educational Sciences.** Its list of databases names JSTOR and CEEOL too; `Comisia28Rules` still counts
+  SCOPUS, ERIH and DOAJ only. A decision for the faculty.
+- **More of Sociology's definition [7].** It also names De Gruyter (Sciendo's owner), ScienceDirect, SpringerLink,
+  Cairn.info, EconLit, PubMed, RePEc, Persée and HeinOnline. Several publish lists; none are loaded yet.
+- **Sciendo.** It has no public list; its journals count through DOAJ (most are open access) or a request a head
+  approves.
+
 ## Still to decide
 
-1. Which EBSCO and ProQuest databases count (the standard names only the vendor). Proposed in step 4.
+1. ~~Which EBSCO and ProQuest databases count~~ — decided 2026-10-03: the subject databases and the general ones
+   (slice 4 as built).
 2. Which CNCS publisher list applies: the 2026 one, or the one in force when the book came out; and whether the
    Music list only, or any domain's list. **H143 implements the proposal below as a reading to confirm.** Proposed: the best category the publisher had in any list from 2013
    on, in the Music domain first and any domain second — it matters for Editura Universității de Vest.
 3. Keys: a YouTube Data API key and a Discogs token, kept like the other keys (not in the repository).
-4. Requests: CEEOL and Sciendo for their KBART files; UCMR-ADA for the repertoire (later).
+4. Requests: Sciendo for its KBART file (CEEOL is covered in part by a GOKb list, slice 4); UCMR-ADA for the
+   repertoire (later).
 
 ## What to ask the faculty
 

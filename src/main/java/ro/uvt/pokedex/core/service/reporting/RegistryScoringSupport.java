@@ -339,8 +339,16 @@ public final class RegistryScoringSupport {
         if (c28.isPresent()) {
             return (int) databases.stream().filter(c28.get().recognisedDatabases()::contains).count();
         }
-        return (int) databases.stream().filter(RECOGNISED_DATABASES::contains).count()
+        int general = (int) databases.stream().filter(RECOGNISED_DATABASES::contains).count()
                 + (databases.stream().anyMatch(WOS_EDITIONS::contains) ? 1 : 0);
+        // H142 slice 4: the databases a standard names that the platform knows from their title lists
+        if (indicator != null && indicator.usesMuzica2026()) {
+            return general + (int) databases.stream().filter(JournalDatabases.MUSIC::contains).count();
+        }
+        if (indicator != null && indicator.usesSociologie2026()) {
+            return general + (int) databases.stream().filter(JournalDatabases.SOCIOLOGY::contains).count();
+        }
+        return general;
     }
 
     /** The databases the general rule counts, as the workspace names them (Web of Science once). */
@@ -353,6 +361,7 @@ public final class RegistryScoringSupport {
             names.add("Web of Science");
         }
         databases.stream().filter(RECOGNISED_DATABASES::contains).sorted().forEach(names::add);
+        databases.stream().filter(JournalDatabases.ALL::contains).sorted().map(JournalDatabases::label).forEach(names::add);
         return names;
     }
 

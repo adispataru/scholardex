@@ -146,6 +146,15 @@
                                     </div>
                                     <div class="app-ops-action-row">
                                         <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Import journal databases' title lists</p>
+                                            <p class="app-ops-action-meta">Replaces the title lists of the journal databases the standards name (Music's list of 16, Sociology's definition [7]) from <code>data/journal-databases/&lt;DATABASE&gt;/</code> — one folder per database (<code>CAMBRIDGE_CORE</code>, <code>CEEOL</code>, <code>EBSCO</code>, <code>JSTOR</code>, <code>OXFORD_ACADEMIC</code>, <code>PROJECT_MUSE</code>, <code>PROQUEST</code>, <code>RILM</code>, <code>SCIENDO</code>, <code>TAYLOR_FRANCIS</code>), the files as the vendors publish them (KBART, tab or comma text, Excel, HTML, ZIP) — then tags or creates the forums by ISSN, like DOAJ. A database with an unreadable file keeps its previous list. Run Scopus → 3 afterwards to publish the memberships.</p>
+                                        </div>
+                                        <form th:action="@{/admin/initialization/general/journalDatabases}" method="post">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                                        </form>
+                                    </div>
+                                    <div class="app-ops-action-row">
+                                        <div class="app-ops-action-copy">
                                             <p class="app-ops-action-title">Enrich LN* book chapters from DBLP snapshot</p>
                                             <p class="app-ops-action-meta">Streams the configured DBLP dump (<code>DBLP_DUMP_FILE</code>, ~1 GB) and stores the conference evidence for the still-unresolved Lecture Notes chapters and proceedings papers; a few minutes, only new candidates are matched, so it is cheap to rerun after a dump refresh. Categories change on the next report run.</p>
                                         </div>
@@ -657,7 +666,7 @@
                             <div class="app-summary-panel__body">
                                 <p class="app-ops-section-note">Started with <code>curl -X POST</code> against <code>/admin/initialization/…</code> (they answer JSON and most take a <code>limit</code>); the dry-run forms write nothing. Listed so nobody looks for them here.</p>
                                 <ul class="app-dashboard-copy">
-                                    <li><strong>Reference lists for venues:</strong> <code>scopus/importSourceList</code> (Scopus source list → serial forums; run before Scopus → 2), <code>scopus/importBookList</code>, <code>scopus/importCiteScore</code>, <code>wos/importMjl</code> (Master Journal List), <code>forum/importDoaj</code>, <code>forum/importErih</code>, <code>openalex/importSourceApc</code> (fee journals from the OpenAlex dumps).</li>
+                                    <li><strong>Reference lists for venues:</strong> <code>scopus/importSourceList</code> (Scopus source list → serial forums; run before Scopus → 2), <code>scopus/importBookList</code>, <code>scopus/importCiteScore</code>, <code>wos/importMjl</code> (Master Journal List), <code>forum/importDoaj</code>, <code>forum/importErih</code>, <code>openalex/importSourceApc</code> (fee journals from the OpenAlex dumps), <code>general/journalDatabases</code> (the journal databases' title lists).</li>
                                     <li><strong>Forum identity:</strong> <code>forum/onboardErih</code>, <code>forum/onboardDoaj</code> (tag by ISSN), <code>forum/dedup</code> (shared ISSN / ERIH id clusters), <code>forum/reconcile</code> (the full forum rebuild: dedup → canonical → claims), <code>wos/cpci/dryRun</code> + <code>apply</code> (conference-proceedings coverage from the CPCI export).</li>
                                     <li><strong>Authors:</strong> <code>author/reconcile</code>, <code>author/reconcile/fuzzy</code>, <code>author/reconcile/affiliation</code> (the automatic merge passes), <code>author/merge</code> (an explicit merge of two ids), <code>author/merges/reapply</code> (replays the durable merges; also part of every rebuild), <code>provisional/resolveDepartment</code> (dry-run of a staff roster against the canonical authors).</li>
                                     <li><strong>OpenAlex:</strong> <code>openalex/bulkImport</code> (file-driven works + citers → source facts). <code>openalex/canonicalize</code> is insert-based and fails on a live corpus — use the full derived-data rebuild instead.</li>

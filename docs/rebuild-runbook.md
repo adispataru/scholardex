@@ -77,6 +77,11 @@ All read from `application.properties` (override via env). A blank/missing path 
 | DOAJ (open access) | `h66.doaj.file` | `data/doaj/doaj_journalcsv_…csv` |
 | ERIH PLUS | `h66.erih.file` | `data/erih/erihplus.jsonl` |
 
+> **Journal databases' title lists (H142 slice 4)** are not a rebuild feed: `journaldb.journal_facts` is reference
+> data outside the wipe lists, and the forum build onboards it after DOAJ, so a rebuild keeps it. To refresh it,
+> put the vendors' files under `data/journal-databases/<DATABASE>/` (one folder per database) and run
+> `POST /general/journalDatabases`, then Scopus → 3.
+
 > **Pitfall (the one that bit a from-scratch run):** the Source List — not CiteScore — is the forum identity
 > backbone. Omitting it yields a thin forum registry (~33k forums instead of ~70k). The self-contained rebuild
 > imports it automatically via `h66.scopus.source-list-file`; just make sure that key is set.

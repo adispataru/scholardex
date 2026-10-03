@@ -269,6 +269,11 @@ class Muzica2026ReportDefinitionTest {
         assertEquals(0.0, muz.activityNaming("CS_2_1_decl", fields(), dblp), 1e-9, "DBLP is not a database of the list");
         assertEquals(0.0, muz.activity("CS_2_1_decl", fields("Incadrare_solicitata", "CEEOL")), 1e-9, "asked, not approved");
         assertEquals(15.0, muz.approved("CS_2_1_decl", fields("Incadrare_solicitata", "CEEOL")), 1e-9);
+        // H142 slice 4: a journal the corpus does not know but a title list of the list of 16 holds
+        SeedReportDefinition.journal("3333-3333", false, null, "RILM");
+        var rilm = named(Activity.ReferenceField.FORUM_ISSN, "3333-3333");
+        assertEquals(15.0, muz.activityNaming("CS_2_1_decl", fields(), rilm), 1e-9);
+        assertEquals(1.0, muz.activityNaming("N_articole_decl", fields(), rilm), 1e-9);
         String lexicon = "Articol în lexicon sau dicționar muzical internațional";
         assertEquals(0.0, muz.activity("CS_2_2", fields("Tip", lexicon)), 1e-9, "the lexicon's reach is not the researcher's to say");
         assertEquals(10.0, muz.approved("CS_2_2", fields("Tip", lexicon,

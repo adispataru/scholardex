@@ -229,6 +229,11 @@ public class AdminInitializationController {
         return redirectAfterGeneralStep(generalInitializationService.runSenseImport(), redirectAttributes);
     }
 
+    @PostMapping("/general/journalDatabases")
+    public String runGeneralJournalDatabases(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runJournalDatabasesImport(), redirectAttributes);
+    }
+
     @PostMapping("/general/dblpLnChapterEnrichment")
     public String runGeneralDblpLnChapterEnrichment(RedirectAttributes redirectAttributes) {
         return redirectAfterGeneralStep(generalInitializationService.runDblpLnChapterEnrichment(), redirectAttributes);

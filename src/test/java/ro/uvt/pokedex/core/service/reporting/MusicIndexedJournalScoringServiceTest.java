@@ -90,11 +90,30 @@ class MusicIndexedJournalScoringServiceTest {
     }
 
     @Test
-    void aJournalTheFourKnownDatabasesDoNotListIsLeftToTheDeclaredType() {
+    void aJournalNoListCoversIsNotIndexed() {
         when(lookupPort.getForumIndexingDatabases("ceeol-only")).thenReturn(Set.of("CNCS"));
         Score score = service.getScore(publication("ar", "ceeol-only"), indicator());
         assertEquals(0.0, score.getScore());
         assertEquals("NOT_INDEXED", score.getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
+    void aJournalOnTheTitleListOfADatabaseOfTheListCounts() {
+        // H142 slice 4: JSTOR, RILM, EBSCO… are memberships of the forum, loaded from their title lists like DOAJ
+        when(lookupPort.getForumIndexingDatabases("muzica"))
+                .thenReturn(Set.of(JournalDatabases.RILM, JournalDatabases.JSTOR, "CNCS"));
+
+        Score score = service.getScore(publication("ar", "muzica"), indicator());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals("JSTOR", score.getCoreRankingEquivalent(), "the first of the list's databases, by name");
+    }
+
+    @Test
+    void aTitleListDoesNotMakeAProceedingsVolumeIndexed() {
+        when(lookupPort.getForumIndexingDatabases("volume")).thenReturn(Set.of(JournalDatabases.EBSCO));
+
+        assertEquals(0.0, service.getScore(publication("cp", "volume"), indicator()).getScore());
     }
 
     @Test

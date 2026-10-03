@@ -35,6 +35,8 @@ public class GeneralInitializationService {
     private final CoreConferenceRankingService coreConferenceRankingService;
     private final SenseRankingService senseRankingService;
     private final ro.uvt.pokedex.core.service.dblp.DblpDumpConferenceSweepService dblpDumpConferenceSweepService;
+    private final ro.uvt.pokedex.core.service.importing.journaldb.JournalDatabaseDataService journalDatabaseDataService;
+    private final JournalDatabaseOnboardingService journalDatabaseOnboardingService;
     private final DomainRepository domainRepository;
     private final MeterRegistry meterRegistry;
     private final StartupReadinessTracker startupReadinessTracker;
@@ -56,6 +58,9 @@ public class GeneralInitializationService {
 
     @Value("${general.init.sense.file:data/sense/SENSE-rankings.xlsx}")
     private String senseFilePath;
+
+    @Value("${general.init.journal-databases.folder:data/journal-databases}")
+    private String journalDatabasesFolderPath;
 
     public GeneralInitializationRunSummary runAll() {
         List<GeneralInitializationStepResult> steps = new ArrayList<>();
@@ -129,6 +134,24 @@ public class GeneralInitializationService {
         return runStep("sense-import", false, "sense", () -> {
             senseRankingService.importBookRankingsFromExcelSync(senseFilePath);
             return "sense import completed from " + senseFilePath;
+        });
+    }
+
+    /**
+     * H142 slice 4: the journal databases' title lists from {@code data/journal-databases/<DATABASE>/}, then their
+     * journals onboarded into forums by ISSN (create-or-match, like DOAJ). The memberships reach the reports with the
+     * next Scopus projection build.
+     */
+    public GeneralInitializationStepResult runJournalDatabasesImport() {
+        return runStep("journal-databases-import", false, "journal-databases", () -> {
+            var summary = journalDatabaseDataService.importFromFolder(journalDatabasesFolderPath,
+                    "journal-databases-" + Instant.now().toEpochMilli());
+            var onboarding = journalDatabaseOnboardingService.onboardJournalDatabases();
+            return "journal databases imported from " + journalDatabasesFolderPath + ": " + summary.message()
+                    + (summary.result().getErrorCount() > 0 ? " (errors: " + String.join(" | ",
+                    summary.result().getErrorsSample()) + ")" : "")
+                    + "; forums tagged " + onboarding.getUpdatedCount() + ", created " + onboarding.getImportedCount()
+                    + ". Run Scopus → 3 (build projections) to publish the memberships to the reports.";
         });
     }
 

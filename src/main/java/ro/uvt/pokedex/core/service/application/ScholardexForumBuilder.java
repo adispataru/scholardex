@@ -27,6 +27,7 @@ public class ScholardexForumBuilder {
     private final WosScholardexOnboardingService wosScholardexOnboardingService;
     private final ErihOnboardingService erihOnboardingService;
     private final DoajOnboardingService doajOnboardingService;
+    private final JournalDatabaseOnboardingService journalDatabaseOnboardingService;
 
     /**
      * H66B Phase 2 (two-tier resolve): the result of an incremental forum {@link #resolve}. {@code minted} are
@@ -63,6 +64,7 @@ public class ScholardexForumBuilder {
             ImportProcessingResult canonicalization,
             ImportProcessingResult erihOnboarding,
             ImportProcessingResult doajOnboarding,
+            ImportProcessingResult journalDatabaseOnboarding,
             ImportProcessingResult wosOnboarding,
             ImportProcessingResult membershipDedup,
             ImportProcessingResult wosRelink
@@ -74,7 +76,8 @@ public class ScholardexForumBuilder {
      * <ol>
      *   <li>dedup pre-existing canonical forums (ISSN + erihId clusters, safe-merge),</li>
      *   <li>canonicalize the stage-2 Scopus forum facts (Source List / CiteScore / observed venues),</li>
-     *   <li>ERIH then DOAJ as create-or-match identity sources (tag matches / mint source-only venues),</li>
+     *   <li>ERIH, DOAJ, then the journal databases' title lists (H142 slice 4) as create-or-match identity sources
+     *       (tag matches / mint source-only venues),</li>
      *   <li><b>WoS create-or-match LAST</b> — identity-of-last-resort, so the curated lists win identity and
      *       WoS folds in (the M4-A display-name rule still makes the WoS title win the display name),</li>
      *   <li>a conditional dedup to merge the shared-id split-journals the create-or-match sources surfaced,</li>
@@ -89,10 +92,12 @@ public class ScholardexForumBuilder {
                 wosScholardexOnboardingService.runScopusForumCanonicalization(batchId, correlationId);
         ImportProcessingResult erihOnboarding = erihOnboardingService.onboardErih();
         ImportProcessingResult doajOnboarding = doajOnboardingService.onboardDoaj();
+        ImportProcessingResult journalDatabaseOnboarding = journalDatabaseOnboardingService.onboardJournalDatabases();
         ImportProcessingResult wosOnboarding =
                 wosScholardexOnboardingService.runWosForumOnboarding(batchId, correlationId);
         // Re-dedup when any create-or-match source touched the registry (shared-id clusters worth merging).
         boolean registryChanged = erihOnboarding.getUpdatedCount() > 0 || doajOnboarding.getUpdatedCount() > 0
+                || journalDatabaseOnboarding.getUpdatedCount() > 0
                 || wosOnboarding.getUpdatedCount() > 0 || wosOnboarding.getImportedCount() > 0;
         ImportProcessingResult membershipDedup = registryChanged
                 ? deduplicationService.deduplicateForums(batchId, correlationId + "-membership")
@@ -104,12 +109,15 @@ public class ScholardexForumBuilder {
                 ? wosScholardexOnboardingService.relinkAmbiguousWosForums(batchId, correlationId + "-relink")
                 : new ImportProcessingResult(0);
         log.info("Forum build complete (correlationId={}): dedupMerged={} canonProcessed={} "
-                        + "erihForumsUpdated={} doajForumsUpdated={} wosForumsImported={} wosForumsUpdated={} "
+                        + "erihForumsUpdated={} doajForumsUpdated={} journalDatabaseForumsUpdated={} "
+                        + "journalDatabaseForumsCreated={} wosForumsImported={} wosForumsUpdated={} "
                         + "membershipDedupMerged={} wosRelinked={}",
                 correlationId, dedup.getUpdatedCount(), canonicalization.getProcessedCount(),
                 erihOnboarding.getUpdatedCount(), doajOnboarding.getUpdatedCount(),
+                journalDatabaseOnboarding.getUpdatedCount(), journalDatabaseOnboarding.getImportedCount(),
                 wosOnboarding.getImportedCount(), wosOnboarding.getUpdatedCount(), membershipDedup.getUpdatedCount(),
                 wosRelink.getUpdatedCount() + wosRelink.getImportedCount());
-        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, doajOnboarding, wosOnboarding, membershipDedup, wosRelink);
+        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, doajOnboarding,
+                journalDatabaseOnboarding, wosOnboarding, membershipDedup, wosRelink);
     }
 }

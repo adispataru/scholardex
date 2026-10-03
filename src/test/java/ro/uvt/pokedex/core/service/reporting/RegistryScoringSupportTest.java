@@ -199,6 +199,19 @@ class RegistryScoringSupportTest {
     }
 
     @Test
+    void theTitleListsCountOnlyWhereTheStandardNamesTheDatabase() {
+        Set<String> dbs = Set.of("SCOPUS", JournalDatabases.EBSCO, JournalDatabases.JSTOR, JournalDatabases.RILM);
+        assertEquals(1, RegistryScoringSupport.recognisedDatabases(dbs, null), "the general rule knows no title list");
+        ro.uvt.pokedex.core.model.reporting.Indicator music = new ro.uvt.pokedex.core.model.reporting.Indicator();
+        music.setMuzica2026(true);
+        assertEquals(4, RegistryScoringSupport.recognisedDatabases(dbs, music), "Music's list of 16 names all three");
+        ro.uvt.pokedex.core.model.reporting.Indicator sociology = new ro.uvt.pokedex.core.model.reporting.Indicator();
+        sociology.setSociologie2026(true);
+        assertEquals(3, RegistryScoringSupport.recognisedDatabases(dbs, sociology), "definition [7] names EBSCO and JSTOR, not RILM");
+        assertEquals(List.of("SCOPUS", "EBSCO", "JSTOR", "RILM"), RegistryScoringSupport.recognisedDatabaseNames(dbs));
+    }
+
+    @Test
     void aPatentsKindFollowsItsCodesAndOffices() {
         assertEquals("NATIONAL", RegistryScoringSupport.patentType("RO 123456 B1", null));
         assertEquals("NATIONAL", RegistryScoringSupport.patentType("123456", "OSIM"));

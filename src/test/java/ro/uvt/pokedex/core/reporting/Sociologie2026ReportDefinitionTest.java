@@ -139,7 +139,9 @@ class Sociologie2026ReportDefinitionTest {
                 "I3_decl", "I4_decl", "I5", "I6_decl", "I8_trad", "I12", "C4_capitole_decl", "C5_A1_decl",
                 "C5_A2_decl",
                 // H145: a dictionary term counts at a publisher of the lists
-                "I7"), soc.flagged("sociologie2026"));
+                "I7",
+                // H142 slice 4: a declared journal's databases count by definition [7], title lists included
+                "I2_decl", "C4_articole_decl", "I11"), soc.flagged("sociologie2026"));
         assertTrue(soc.flagged("psihologie2026").isEmpty());
         assertTrue(soc.flagged("stiinteEducatiei2026").isEmpty());
     }
@@ -298,6 +300,13 @@ class Sociologie2026ReportDefinitionTest {
                 "Revistă indexată în cel puțin 3 baze de date")), 1e-9, "a head approved three databases the lists do not know");
         assertEquals(1.0, soc.activityNaming("C4_articole_decl", fields("N_autori", "3"), issn("7777-7777")), 1e-9);
         assertEquals(0.0, soc.activity("C4_articole_decl", fields("N_autori", "3")), 1e-9);
+        // H142 slice 4: the title lists of definition [7]'s databases count towards the three; RILM is Music's only
+        SeedReportDefinition.journal("6666-6666", false, null, "DOAJ", "EBSCO", "JSTOR");
+        SeedReportDefinition.journal("6767-6767", false, null, "DOAJ", "EBSCO", "RILM");
+        assertEquals(2.0, soc.activityNaming("I2_decl", fields("Limba", "Română", "N_autori", "1"), issn("6666-6666")), 1e-9);
+        assertEquals(1.0, soc.activityNaming("C4_articole_decl", fields("N_autori", "1"), issn("6666-6666")), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I2_decl", fields("Limba", "Română", "N_autori", "1"), issn("6767-6767")), 1e-9,
+                "RILM is not a database of definition [7]");
 
         // H143: the publisher's category comes from the lists — the annex's A2 list (Polirom), the WoS Master Book List
         // for A1 (Routledge) — and the holdings in six WorldCat libraries count once a head approves the request.
@@ -459,6 +468,10 @@ class Sociologie2026ReportDefinitionTest {
         assertEquals(4.0, soc.activityNaming("I11", fields("Rol", member, "An_inceput", "2020", "An_sfarsit", "2023"), other), 1e-9);
         assertEquals(3.0, soc.activityNaming("I11", fields("Rol", guest, "N_numere_speciale", "3"), other), 1e-9);
         assertEquals(0.0, soc.activityNaming("I11", fields("Rol", editor), wos), 1e-9);
+        // H142 slice 4: DOAJ plus two databases of definition [7] known from their title lists
+        SeedReportDefinition.journal("5656-5656", false, null, "DOAJ", "PROJECT_MUSE", "PROQUEST");
+        assertEquals(8.0, soc.activityNaming("I11", fields("Rol", editor, "An_inceput", "2020", "An_sfarsit", "2023"),
+                issn("5656-5656")), 1e-9);
         // One declared entry feeds both indicators; it scores in exactly one of them.
         assertEquals(soc.activityName("I10"), soc.activityName("I11"));
     }

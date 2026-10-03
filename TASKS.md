@@ -75,7 +75,8 @@ Done history moved to `TASKS-done.md`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
   IN PROD, SLICE 2 IN PROD 2026-10-02; slice 3 REDESIGNED with Adrian the same day (experts rank events into the
   registry; the researcher's own visibility pick goes) and BUILT 2026-10-03, IN PROD 2026-10-03 (image fd205487; 4.1
-  template on the data volume, `h142_slice3_events.js` run by Adrian) — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
+  template on the data volume, `h142_slice3_events.js` run by Adrian); slice 4 (journal databases from their title
+  lists) BUILT 2026-10-03, not pushed — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
@@ -127,6 +128,17 @@ Done history moved to `TASKS-done.md`.
   `h142_slice3_events.js` (guard `H142_SLICE3_IMAGE_IS_DEPLOYED`, no restart), rehearsed. **Prod order:** push and
   deploy; copy the 4.1 template to the data volume; flip the guard, run the script; map the domains to FMT's
   departments and name experts (FMT has no heads recorded). Other self-picked levels: `H144`.
+  **Slice 4 BUILT 2026-10-03 (not pushed):** the title lists of the journal databases Music's list of 16 and
+  Sociology's definition [7] name are loaded the way DOAJ is. The vendors' files go under
+  `data/journal-databases/<DATABASE>/` (KBART, text, HTML, Excel, ZIP), and the `/general/journalDatabases` step
+  turns them into `journaldb.journal_facts`. The journals are then matched to forums by ISSN (create-or-match after
+  DOAJ, which also runs in every forum build), and Scopus → 3 publishes them as memberships
+  (`source = TITLE_LIST`). Music CS 2.1 (found and declared) and Sociology I.2 / C.4 / I.11 count them; other
+  standards are unchanged. EBSCO and ProQuest count with their subject and general databases (Adrian). The server
+  fetches nothing (vendor terms forbid robots); the sources and the rollout are in the doc. Prod script
+  `h142_slice4_journal_databases.js` (guard `H142_SLICE4_IMAGE_IS_DEPLOYED`, 5 flags and 5 descriptions) is
+  rehearsed and prechecked read-only against prod. Open: whether the vendors' terms cover this use (library),
+  Educational Sciences' JSTOR/CEEOL, the rest of definition [7].
   Earlier status: SCOPED and
   REASSESSED 2026-10-02 (decisions taken with Adrian; four smaller ones open). Asked by FMT (vice-dean for
   research), the first vocational faculty. Plan, the standard transcribed (the standards folder is git-ignored)

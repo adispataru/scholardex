@@ -23,9 +23,12 @@ import java.util.Set;
  * platform puts an article at I.1 whenever its journal has an impact factor, because criteria C.1–C.3 are
  * asked of I.1. Such an article returns 0 here with zeroReason {@code SCORED_BY_STRICTER}.</p>
  *
- * <p><b>What cannot be checked.</b> Of the recognised databases the platform knows Web of Science, Scopus,
- * DOAJ and ERIH Plus. A journal outside Scopus reaches three only through Web of Science + DOAJ + ERIH Plus;
- * one that reaches three through EBSCO, CEEOL, ProQuest and the like is not seen, and scores nothing here.</p>
+ * <p><b>What is checked.</b> Of the recognised databases of definition [7] the platform knows Web of Science (once,
+ * whatever its editions), Scopus, DOAJ and ERIH Plus from its own sources, and — H142 slice 4 — EBSCO, ProQuest,
+ * CEEOL, JSTOR, Project MUSE and Informa / Tandfonline (Taylor &amp; Francis, once) from their title lists, loaded
+ * as memberships of the forum like DOAJ's ({@link JournalDatabases#SOCIOLOGY}). The others of the definition
+ * (Cabells, CSA, EconLit, GESIS, HeinOnline, IBSS, Index Copernicus, OVID, SSRN, De Gruyter, Cairn.info, Google
+ * Scholar, Persée, PsycLIT, PubMed, RePEc, Revues.org, ScienceDirect, SpringerLink, Ulrich) are not loaded.</p>
  */
 @Service
 public class SociologyIndexedJournalScoringService extends AbstractWoSForumScoringService {
@@ -69,8 +72,9 @@ public class SociologyIndexedJournalScoringService extends AbstractWoSForumScori
         if (databases.contains("SCOPUS")) {
             return points(SCOPUS_POINTS, "SCOPUS", year);
         }
+        long listed = databases.stream().filter(JournalDatabases.SOCIOLOGY::contains).count();
         long recognised = databases.stream().filter(Comisia25Rules.OTHER_RECOGNISED_DATABASES::contains).count()
-                + (databases.stream().anyMatch(WOS_EDITIONS::contains) ? 1 : 0);
+                + (databases.stream().anyMatch(WOS_EDITIONS::contains) ? 1 : 0) + listed;
         if (recognised >= Comisia25Rules.DATABASES_REQUIRED) {
             return points(DATABASES_POINTS, "BDI3", year);
         }

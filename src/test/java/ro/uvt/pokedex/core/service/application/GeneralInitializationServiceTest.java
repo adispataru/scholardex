@@ -50,6 +50,10 @@ class GeneralInitializationServiceTest {
     @Mock
     private ro.uvt.pokedex.core.service.dblp.DblpDumpConferenceSweepService dblpDumpConferenceSweepService;
     @Mock
+    private ro.uvt.pokedex.core.service.importing.journaldb.JournalDatabaseDataService journalDatabaseDataService;
+    @Mock
+    private JournalDatabaseOnboardingService journalDatabaseOnboardingService;
+    @Mock
     private DomainRepository domainRepository;
     @Mock
     private MeterRegistry meterRegistry;
@@ -71,6 +75,8 @@ class GeneralInitializationServiceTest {
                 coreConferenceRankingService,
                 senseRankingService,
                 dblpDumpConferenceSweepService,
+                journalDatabaseDataService,
+                journalDatabaseOnboardingService,
                 domainRepository,
                 meterRegistry,
                 startupReadinessTracker
@@ -81,6 +87,31 @@ class GeneralInitializationServiceTest {
         setField("cncsisFilePath", "data/cncsis/publisher_list.xlsx");
         setField("coreConferenceFolderPath", "data/core-conf");
         setField("senseFilePath", "data/sense/SENSE-rankings.xlsx");
+        setField("journalDatabasesFolderPath", "data/journal-databases");
+    }
+
+    @Test
+    void journalDatabasesAreImportedFromTheirFolderThenOnboardedIntoForums() {
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult imported =
+                new ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult(20);
+        when(journalDatabaseDataService.importFromFolder(eq("data/journal-databases"), anyString()))
+                .thenReturn(new ro.uvt.pokedex.core.service.importing.journaldb.JournalDatabaseDataService.ImportSummary(
+                        imported, java.util.List.of("RILM: 2400 journals from 1 list(s), as of 2026-10-03")));
+        ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult onboarded =
+                new ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult(20);
+        onboarded.markUpdated();
+        onboarded.markImported();
+        onboarded.markImported();
+        when(journalDatabaseOnboardingService.onboardJournalDatabases()).thenReturn(onboarded);
+
+        GeneralInitializationService.GeneralInitializationStepResult step = service.runJournalDatabasesImport();
+
+        assertThat(step.success()).isTrue();
+        assertThat(step.message()).contains("RILM: 2400 journals").contains("forums tagged 1, created 2")
+                .contains("Scopus → 3");
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(journalDatabaseDataService, journalDatabaseOnboardingService);
+        order.verify(journalDatabaseDataService).importFromFolder(eq("data/journal-databases"), anyString());
+        order.verify(journalDatabaseOnboardingService).onboardJournalDatabases();
     }
 
     @Test

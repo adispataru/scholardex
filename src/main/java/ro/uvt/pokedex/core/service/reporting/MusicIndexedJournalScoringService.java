@@ -18,9 +18,11 @@ import java.util.Set;
  * the other editions count as databases "of the related domains", which the list admits for interdisciplinary
  * work), DOAJ and ERIH PLUS. A journal article or review in a venue indexed in one of them, and a proceedings
  * paper in a volume indexed in Scopus or in the WoS conference index, returns S = 1 with the database as
- * {@code category}; the formula gives the points ({@code 15 * S}). Anything else returns 0 with zeroReason
- * {@code NOT_INDEXED}: articles in journals of the other twelve databases (CEEOL, EBSCO, JSTOR, RILM …) are
- * declared, until the title lists of H142 slice 4 are loaded.</p>
+ * {@code category}; the formula gives the points ({@code 15 * S}). H142 slice 4: a journal article or review
+ * outside those four counts when the journal is on the title list of another database of the list — Cambridge
+ * Core, CEEOL, EBSCO, JSTOR, Oxford Academic, Project MUSE, ProQuest, RILM, Sciendo, Taylor &amp; Francis
+ * ({@link JournalDatabases#MUSIC}), memberships of the forum like DOAJ's. Anything else returns 0 with zeroReason
+ * {@code NOT_INDEXED}.</p>
  */
 @Service
 public class MusicIndexedJournalScoringService extends AbstractWoSForumScoringService {
@@ -62,6 +64,10 @@ public class MusicIndexedJournalScoringService extends AbstractWoSForumScoringSe
         } else if (article && databases.contains("DOAJ")) {
             database = "DOAJ";
         }
+        if (database == null && article) {
+            database = databases.stream().filter(JournalDatabases.MUSIC::contains).sorted()
+                    .map(JournalDatabases::label).findFirst().orElse(null);
+        }
         if (database == null) {
             score.getScoringInfo().put("zeroReason", "NOT_INDEXED");
             return score;
@@ -82,7 +88,9 @@ public class MusicIndexedJournalScoringService extends AbstractWoSForumScoringSe
     @Override
     public String getDescription() {
         return "Comisia 35 (2026, Music) CS 2.1: a journal article or review in a venue indexed in Scopus, Web of "
-                + "Science, ERIH PLUS or DOAJ, or a proceedings paper in a volume indexed in Scopus or the WoS "
-                + "conference index: S = 1, the database as category; the formula gives 15 points.\n";
+                + "Science, ERIH PLUS or DOAJ, or covered by the title list of another database of the list (Cambridge "
+                + "Core, CEEOL, EBSCO, JSTOR, Oxford Academic, Project MUSE, ProQuest, RILM, Sciendo, Taylor & Francis), "
+                + "or a proceedings paper in a volume indexed in Scopus or the WoS conference index: S = 1, "
+                + "the database as category; the formula gives 15 points.\n";
     }
 }

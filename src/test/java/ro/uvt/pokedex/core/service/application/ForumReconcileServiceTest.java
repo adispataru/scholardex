@@ -34,7 +34,7 @@ class ForumReconcileServiceTest {
     private ScholardexForumBuilder.ScopusForumBuildResult forumBuild() {
         return new ScholardexForumBuilder.ScopusForumBuildResult(
                 res(0, 0, 0, 0, 0), res(0, 0, 0, 0, 0), res(0, 0, 0, 0, 0),
-                res(0, 0, 0, 0, 0), res(0, 0, 0, 0, 0), res(0, 0, 2, 0, 0), res(0, 0, 3, 0, 0));
+                res(0, 0, 0, 0, 0), res(0, 0, 0, 0, 0), res(0, 0, 0, 0, 0), res(0, 0, 2, 0, 0), res(0, 0, 3, 0, 0));
     }
 
     @Test

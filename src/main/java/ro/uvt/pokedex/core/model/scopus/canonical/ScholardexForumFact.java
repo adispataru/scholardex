@@ -36,6 +36,8 @@ public class ScholardexForumFact {
     private List<String> openAlexIds = new ArrayList<>();
     /** H66B Phase 4b: DBLP conference-series stream keys (conf/X) — the CS conference identity source (no ISSN). */
     private List<String> dblpIds = new ArrayList<>();
+    /** H142 slice 4: journal-database title-list facts (e.g. {@code EBSCO:02625245}) — create-or-match, like DOAJ. */
+    private List<String> journalDatabaseIds = new ArrayList<>();
 
     /**
      * H76: this forum is WoS-indexed via the Conference Proceedings Citation Index (CPCI-S/CPCI-SSH), established from

@@ -1621,6 +1621,46 @@ class ScholardexProjectionBuilderServiceTest {
     }
 
     @Test
+    void buildJournalDatabaseMembershipRowsGivesEachForumItsDatabasesByIssn() {
+        ScholardexProjectionBuilderService service = newService();
+
+        ScholardexForumFact americanMusic = new ScholardexForumFact();
+        americanMusic.setId("sforum_am");
+        americanMusic.setIssn("0734-4392");
+        ScholardexForumFact muzica = new ScholardexForumFact(); // created by the onboarding from the lists alone
+        muzica.setId("sforum_mu");
+        muzica.setEIssn("2344-5165");
+
+        ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact ebsco = journalDatabaseFact("EBSCO", "07344392", null);
+        ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact jstor = journalDatabaseFact("JSTOR", "07344392", "19452349");
+        ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact rilm = journalDatabaseFact("RILM", "12219649", null);
+        rilm.setAliasIssns(List.of("23445165")); // matches muzica by an ISSN the list gives besides the first two
+        ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact elsewhere = journalDatabaseFact("RILM", "00000000", null);
+        when(mongoTemplate.findAll(ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact.class))
+                .thenReturn(List.of(ebsco, jstor, rilm, elsewhere));
+
+        List<ScholardexProjectionBuilderService.ForumMembershipRow> rows =
+                service.buildJournalDatabaseMembershipRows(List.of(americanMusic, muzica));
+
+        assertEquals(Set.of("sforum_am|EBSCO", "sforum_am|JSTOR", "sforum_mu|RILM"), rows.stream()
+                .map(r -> r.forumId() + "|" + r.database()).collect(java.util.stream.Collectors.toSet()));
+        assertTrue(rows.stream().allMatch(r -> "TITLE_LIST".equals(r.source()) && "2026-10-01".equals(r.asOf())
+                && r.apc() == null));
+    }
+
+    private static ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact journalDatabaseFact(
+            String database, String issn, String eIssn) {
+        ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact fact =
+                new ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact();
+        fact.setId(database + ":" + issn);
+        fact.setDatabase(database);
+        fact.setIssn(issn);
+        fact.setEIssn(eIssn);
+        fact.setAsOf("2026-10-01");
+        return fact;
+    }
+
+    @Test
     void buildOpenAlexApcMembershipRowsMatchesFeeJournalsByIssnAndExcludesHybrid() {
         ScholardexProjectionBuilderService service = newService();
 

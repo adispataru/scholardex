@@ -282,6 +282,7 @@ public class ScholardexProjectionBuilderService {
             forumMembershipRows.addAll(buildErihMembershipRows(canonicalForumsForProjection));
             forumMembershipRows.addAll(buildScopusMembershipRows(canonicalForumsForProjection));
             forumMembershipRows.addAll(buildDblpMembershipRows(canonicalForumsForProjection));
+            forumMembershipRows.addAll(buildJournalDatabaseMembershipRows(canonicalForumsForProjection));
 
             // --- write all tables to PostgreSQL atomically ---
             long writePgNs = System.nanoTime();
@@ -1488,6 +1489,54 @@ public class ScholardexProjectionBuilderService {
             }
             String key = forum.getId() + "|DBLP|DBLP";
             rows.putIfAbsent(key, new ForumMembershipRow(key, forum.getId(), "DBLP", null, "DBLP", null));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
+    /**
+     * H142 slice 4: the journal databases' title lists ({@code journaldb.journal_facts}) — one row per forum and
+     * database ({@code database} = EBSCO, JSTOR, RILM, …; {@code source='TITLE_LIST'}), matched to forums by normalized
+     * ISSN token like DOAJ (the onboarding has already created a forum for a journal only the lists know).
+     */
+    List<ForumMembershipRow> buildJournalDatabaseMembershipRows(List<ScholardexForumFact> forums) {
+        Map<String, String> forumIdByIssnToken = new HashMap<>();
+        for (ScholardexForumFact forum : forums) {
+            if (forum.getId() == null) {
+                continue;
+            }
+            for (String token : forumIssnTokens(forum)) {
+                forumIdByIssnToken.merge(token, forum.getId(),
+                        (a, b) -> a.compareTo(b) <= 0 ? a : b);
+            }
+        }
+        List<ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact> facts = new ArrayList<>(
+                mongoTemplate.findAll(ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact.class));
+        facts.sort(Comparator.comparing(ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact::getId,
+                Comparator.nullsLast(String::compareTo)));
+        Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        for (ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact fact : facts) {
+            if (fact.getDatabase() == null) {
+                continue;
+            }
+            List<String> issns = new ArrayList<>();
+            issns.add(fact.getIssn());
+            issns.add(fact.getEIssn());
+            if (fact.getAliasIssns() != null) {
+                issns.addAll(fact.getAliasIssns());
+            }
+            String forumId = null;
+            for (String issn : issns) {
+                String token = normalizeIssnToken(issn);
+                if (token != null && forumIdByIssnToken.containsKey(token)) {
+                    forumId = forumIdByIssnToken.get(token);
+                    break;
+                }
+            }
+            if (forumId == null) {
+                continue;
+            }
+            String key = forumId + "|" + fact.getDatabase() + "|TITLE_LIST";
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, fact.getDatabase(), fact.getAsOf(), "TITLE_LIST", null));
         }
         return new ArrayList<>(rows.values());
     }

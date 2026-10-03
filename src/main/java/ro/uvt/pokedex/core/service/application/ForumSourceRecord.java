@@ -37,7 +37,9 @@ public record ForumSourceRecord(
         WOS("WOS", "wos-journal-missing-id", "wos-forum-onboarding", "wos-forum-ambiguous-candidates"),
         ERIH("ERIH", "erih-missing-id", "erih-forum-onboarding", "erih-forum-ambiguous-candidates"),
         DOAJ("DOAJ", "doaj-missing-id", "doaj-forum-onboarding", "doaj-forum-ambiguous-candidates"),
-        OPENALEX("OPENALEX", "openalex-forum-missing-id", "openalex-forum-onboarding", "openalex-forum-ambiguous-candidates");
+        OPENALEX("OPENALEX", "openalex-forum-missing-id", "openalex-forum-onboarding", "openalex-forum-ambiguous-candidates"),
+        JOURNAL_DATABASE("TITLE_LIST", "journal-database-missing-id", "journal-database-forum-onboarding",
+                "journal-database-forum-ambiguous-candidates");
 
         private final String source;
         private final String missingIdReason;
@@ -143,6 +145,27 @@ public record ForumSourceRecord(
                 doaj.getEIssn(),
                 List.of(),
                 "Journal", // DOAJ lists open-access journals
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    /**
+     * H142 slice 4 — a journal on the title list of a journal database (EBSCO, JSTOR, RILM, …). Like DOAJ, a
+     * create-or-match identity source: matches existing forums by ISSN (tagging the {@code journalDatabaseIds} FK)
+     * or mints one for a journal only the lists know (most music journals).
+     */
+    public static ForumSourceRecord ofJournalDatabase(ro.uvt.pokedex.core.model.journaldb.JournalDatabaseJournalFact fact) {
+        return new ForumSourceRecord(
+                ForumIdType.JOURNAL_DATABASE,
+                fact.getId(),
+                fact.getTitle(),
+                fact.getIssn(),
+                fact.getEIssn(),
+                fact.getAliasIssns() == null ? List.of() : fact.getAliasIssns(),
+                "Journal", // the lists are of serials (books and newspapers are skipped when read)
                 null,
                 null,
                 null,

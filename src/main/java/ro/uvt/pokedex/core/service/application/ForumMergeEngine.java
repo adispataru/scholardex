@@ -639,6 +639,12 @@ public class ForumMergeEngine {
                 }
                 yield forum.getOpenAlexIds();
             }
+            case JOURNAL_DATABASE -> {
+                if (forum.getJournalDatabaseIds() == null) {
+                    forum.setJournalDatabaseIds(new ArrayList<>());
+                }
+                yield forum.getJournalDatabaseIds();
+            }
             default -> throw new IllegalArgumentException("create-or-tag id list undefined for idType=" + idType);
         };
         if (ids.contains(externalId)) {

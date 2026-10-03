@@ -22,6 +22,7 @@ class ScholardexForumBuilderTest {
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private ErihOnboardingService erihOnboardingService;
     @Mock private DoajOnboardingService doajOnboardingService;
+    @Mock private JournalDatabaseOnboardingService journalDatabaseOnboardingService;
 
     private ImportProcessingResult result(int processed, int imported, int updated, int skipped, int errors) {
         ImportProcessingResult r = new ImportProcessingResult(10);
@@ -35,7 +36,8 @@ class ScholardexForumBuilderTest {
 
     private ScholardexForumBuilder builder() {
         return new ScholardexForumBuilder(
-                deduplicationService, wosScholardexOnboardingService, erihOnboardingService, doajOnboardingService);
+                deduplicationService, wosScholardexOnboardingService, erihOnboardingService, doajOnboardingService,
+                journalDatabaseOnboardingService);
     }
 
     @Test
@@ -44,17 +46,20 @@ class ScholardexForumBuilderTest {
         when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(5, 5, 0, 0, 0));
         when(erihOnboardingService.onboardErih()).thenReturn(result(10, 0, 3, 0, 0)); // tagged forums -> dedup again
         when(doajOnboardingService.onboardDoaj()).thenReturn(result(8, 1, 0, 0, 0));
+        when(journalDatabaseOnboardingService.onboardJournalDatabases()).thenReturn(result(40, 12, 7, 0, 0));
         when(wosScholardexOnboardingService.runWosForumOnboarding("batch", "run")).thenReturn(result(30, 20, 5, 0, 0));
         when(wosScholardexOnboardingService.relinkAmbiguousWosForums("batch", "run-relink")).thenReturn(result(2, 0, 2, 0, 0));
 
         ScholardexForumBuilder.ScopusForumBuildResult out = builder().buildScopusForums("batch", "run");
 
-        // identity-first order: dedup -> Scopus canon -> ERIH -> DOAJ -> WoS (last) -> membership dedup -> relink
-        InOrder order = inOrder(deduplicationService, wosScholardexOnboardingService, erihOnboardingService, doajOnboardingService);
+        // identity-first order: dedup -> Scopus canon -> ERIH -> DOAJ -> title lists -> WoS (last) -> membership dedup -> relink
+        InOrder order = inOrder(deduplicationService, wosScholardexOnboardingService, erihOnboardingService,
+                doajOnboardingService, journalDatabaseOnboardingService);
         order.verify(deduplicationService).deduplicateForums("batch", "run");
         order.verify(wosScholardexOnboardingService).runScopusForumCanonicalization("batch", "run");
         order.verify(erihOnboardingService).onboardErih();
         order.verify(doajOnboardingService).onboardDoaj();
+        order.verify(journalDatabaseOnboardingService).onboardJournalDatabases();
         order.verify(wosScholardexOnboardingService).runWosForumOnboarding("batch", "run");
         order.verify(deduplicationService).deduplicateForums("batch", "run-membership");
         order.verify(wosScholardexOnboardingService).relinkAmbiguousWosForums("batch", "run-relink");
@@ -62,6 +67,8 @@ class ScholardexForumBuilderTest {
         assertEquals(2, out.wosRelink().getUpdatedCount());
         assertEquals(3, out.erihOnboarding().getUpdatedCount());
         assertEquals(1, out.doajOnboarding().getImportedCount());
+        assertEquals(12, out.journalDatabaseOnboarding().getImportedCount());
+        assertEquals(7, out.journalDatabaseOnboarding().getUpdatedCount());
         assertEquals(20, out.wosOnboarding().getImportedCount());
         assertEquals(5, out.canonicalization().getProcessedCount());
     }
@@ -83,6 +90,7 @@ class ScholardexForumBuilderTest {
         verify(deduplicationService, never()).deduplicateForums(any(), any());
         verify(erihOnboardingService, never()).onboardErih();
         verify(doajOnboardingService, never()).onboardDoaj();
+        verify(journalDatabaseOnboardingService, never()).onboardJournalDatabases();
         verify(wosScholardexOnboardingService, never()).runWosForumOnboarding(any(), any());
     }
 
@@ -92,6 +100,7 @@ class ScholardexForumBuilderTest {
         when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));
         when(erihOnboardingService.onboardErih()).thenReturn(result(0, 0, 0, 0, 0)); // no tags
         when(doajOnboardingService.onboardDoaj()).thenReturn(result(2, 1, 0, 0, 0)); // only a create, no tag
+        when(journalDatabaseOnboardingService.onboardJournalDatabases()).thenReturn(result(3, 3, 0, 0, 0)); // creates only
         when(wosScholardexOnboardingService.runWosForumOnboarding("batch", "run")).thenReturn(result(0, 0, 0, 0, 0)); // no change
 
         builder().buildScopusForums("batch", "run");
@@ -101,5 +110,19 @@ class ScholardexForumBuilderTest {
         verify(deduplicationService, never()).deduplicateForums("batch", "run-membership");
         // no membership dedup -> no forums removed -> nothing to re-link
         verify(wosScholardexOnboardingService, never()).relinkAmbiguousWosForums(any(), any());
+    }
+
+    @Test
+    void aTitleListThatTaggedForumsRunsTheMembershipDedup() {
+        when(deduplicationService.deduplicateForums(eq("batch"), any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));
+        when(erihOnboardingService.onboardErih()).thenReturn(result(0, 0, 0, 0, 0));
+        when(doajOnboardingService.onboardDoaj()).thenReturn(result(0, 0, 0, 0, 0));
+        when(journalDatabaseOnboardingService.onboardJournalDatabases()).thenReturn(result(5, 0, 2, 0, 0)); // tagged
+        when(wosScholardexOnboardingService.runWosForumOnboarding("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));
+
+        builder().buildScopusForums("batch", "run");
+
+        verify(deduplicationService).deduplicateForums("batch", "run-membership");
     }
 }

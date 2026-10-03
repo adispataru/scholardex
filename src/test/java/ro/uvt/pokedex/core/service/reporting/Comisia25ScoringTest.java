@@ -205,6 +205,20 @@ class Comisia25ScoringTest {
     }
 
     @Test
+    void theTitleListsOfDefinitionSevensDatabasesCountToo() {
+        // H142 slice 4: EBSCO, ProQuest, CEEOL, JSTOR, Project MUSE, Informa (T&F) known from their title lists
+        when(lookupPort.getForum("forum-1")).thenReturn(forum());
+        when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
+        when(lookupPort.getForumIndexingDatabases("forum-1"))
+                .thenReturn(Set.of("DOAJ", JournalDatabases.EBSCO, JournalDatabases.CEEOL, JournalDatabases.RILM));
+
+        Score score = indexedJournal.getScore(publication("ar", "2020"), everyJournal());
+
+        assertEquals(2.0, score.getScore(), "DOAJ + EBSCO + CEEOL; RILM is not on Sociology's list");
+        assertEquals("BDI3", score.getCoreRankingEquivalent());
+    }
+
+    @Test
     void aProceedingsPaperIsNotCountedAsAJournalArticle() {
         Score score = indexedJournal.getScore(publication("cp", "2020"), everyJournal());
 
