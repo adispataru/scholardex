@@ -58,6 +58,11 @@ public class ResearcherProjectService {
         return projectReadPort.findByDirectorSignature(signature);
     }
 
+    /** H145: whether the project registry names this researcher as the project's director (by name signature). */
+    public boolean directs(User.ResearcherProfile profile, String projectId) {
+        return projectId != null && myProjects(profile).stream().anyMatch(p -> projectId.equals(p.id()));
+    }
+
     /** Outcome of an import/link. {@code status} ∈ CREATED / EXISTS / LINKED / PROJECT_NOT_FOUND /
      *  INSTANCE_NOT_FOUND / ACTIVITY_NOT_CONFIGURED. */
     public record ImportResult(String status, String instanceId, String projectTitle) {

@@ -62,6 +62,15 @@ public class UserPublicationFacade {
     }
 
     /**
+     * H145 — the researcher's h-indices over the publications the platform counts as theirs (the same set as their
+     * publications page), without the page's author and venue maps: the CNFIS sheet shows them instead of typed values.
+     */
+    public HIndexCalculator.HIndexBreakdown hIndices(String userEmail) {
+        return HIndexCalculator.breakdown(dedupeAndSortPublications(
+                effectiveAuthorshipReadService.findEffectivePublicationsForUser(userEmail)));
+    }
+
+    /**
      * How many of the researcher's workspace publications still await an authorship decision.
      * Same PENDING semantics as {@code pendingReviewCount} on the workspace publications view,
      * without paying for the full view model (no author/forum maps, no suspicious-triage pass).

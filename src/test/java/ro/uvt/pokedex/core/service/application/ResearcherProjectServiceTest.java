@@ -90,6 +90,18 @@ class ResearcherProjectServiceTest {
         verify(readPort, never()).findByDirectorSignature(any());
     }
 
+    @Test
+    void onlyTheDirectorTheRegistryNamesDirectsAProject() {
+        // H145: the workspace imports a project as director only for the researcher the registry names as its director
+        when(readPort.findByDirectorSignature(ProjectCanonicalizationService.signature("Marius Paulescu")))
+                .thenReturn(List.of(project("sproj_a", "Photovoltaic toolkit", "UEFISCDI", null, 2017)));
+
+        assertThat(service.directs(profile("Marius", "Paulescu"), "sproj_a")).isTrue();
+        assertThat(service.directs(profile("Marius", "Paulescu"), "sproj_other")).isFalse();
+        assertThat(service.directs(profile("Marius", "Paulescu"), null)).isFalse();
+        assertThat(service.directs(null, "sproj_a")).isFalse();
+    }
+
     // ── importProject (slice 2) ───────────────────────────────────────────────
 
     @Test

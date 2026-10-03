@@ -75,6 +75,42 @@ public class WosMasterBookListService {
             "imprint", "science", "sciences", "scientific", "academic", "academy", "society",
             "association", "college", "institute", "school", "studies");
 
+    /** H145 — Romanian generic words of an imprint ("Editura Universității", "Casa Cărții de Știință"): no identity. */
+    static final Set<String> GENERIC_RO = Set.of("editura", "editurii", "edituri", "presa", "presele", "casa", "cartii",
+            "carte", "universitatii", "universitara", "universitar", "academiei", "academica", "stiinta", "stiintifica",
+            "de", "din", "si", "la", "al", "ale", "lui",
+            // legal forms as Romanian imprints write them: R.A., S.A., S.R.L., S.C.
+            "r", "l", "ra", "sc", "srl");
+
+    /** H145 — places an imprint is written with ("Polirom, Iași", "L'Harmattan, Paris"): an address, not a house. */
+    static final Set<String> PLACES = Set.of("bucuresti", "iasi", "cluj", "napoca", "timisoara", "craiova", "constanta",
+            "brasov", "sibiu", "oradea", "arad", "galati", "bacau", "ploiesti", "pitesti", "suceava", "targu", "mures",
+            "alba", "iulia", "baia", "mare", "chisinau", "romania", "paris", "london", "berlin", "new", "york", "wien",
+            "vienna", "munchen", "munich", "leiden", "boston", "amsterdam", "frankfurt", "main", "basel", "geneve",
+            "geneva", "roma", "milano", "madrid", "barcelona", "lisboa", "warszawa", "budapest", "praha", "usa", "uk",
+            "kassel", "richmond", "stuttgart", "leipzig", "hamburg", "koln", "cologne", "zurich", "bern", "mainz",
+            "heidelberg", "dordrecht", "abingdon", "milton", "park", "thousand", "oaks", "hoboken", "westport",
+            "newcastle", "tyne", "upon", "lanham", "bristol", "manchester", "edinburgh", "dublin", "torino", "firenze",
+            "bologna", "napoli", "venezia", "padova", "lyon", "bruxelles", "brussels", "leuven", "antwerpen", "bratislava",
+            "sofia", "beograd", "zagreb", "ljubljana", "kiev", "kyiv", "moscow", "moskva", "istanbul", "ankara", "athens",
+            "athina", "tel", "aviv", "jerusalem", "tokyo", "beijing", "shanghai", "singapore", "sydney", "melbourne",
+            "toronto", "montreal", "ottawa", "vancouver", "mexico", "buenos", "aires", "sao", "paulo", "rio", "janeiro",
+            "santiago", "bogota", "lima", "caracas", "havana", "cairo", "johannesburg", "cape", "town", "nairobi", "delhi",
+            "mumbai", "kolkata", "chennai", "bangalore", "seoul", "hong", "kong", "taipei", "bangkok", "manila", "jakarta");
+
+    /**
+     * H145 — whether the words a typed name adds to a listed one are only an imprint's dress (generic words, legal forms,
+     * a place, a year): "Editura Polirom, Iași, 2019" is Polirom, "Editura Mirton, distribuită de Polirom" is not.
+     */
+    static boolean onlyAddress(Set<String> extras) {
+        for (String t : extras) {
+            if (!(GENERIC.contains(t) || GENERIC_RO.contains(t) || PLACES.contains(t) || NOISE.contains(t) || t.matches("\\d+"))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private final WosMasterBookListPublisherRepository repository;
     private final AtomicReference<List<Set<String>>> tokenSets = new AtomicReference<>(List.of());
     private final AtomicBoolean loaded = new AtomicBoolean(false);
@@ -115,6 +151,14 @@ public class WosMasterBookListService {
         Set<String> larger = smaller == candidate ? listed : candidate;
         if (!larger.containsAll(smaller)) {
             return false;
+        }
+        if (larger == candidate) {
+            // H145: the typed name holds the listed one — only an imprint's dress may come with it
+            Set<String> extras = new java.util.HashSet<>(candidate);
+            extras.removeAll(listed);
+            if (!onlyAddress(extras)) {
+                return false;
+            }
         }
         return smaller.stream().anyMatch(t -> !GENERIC.contains(t));
     }

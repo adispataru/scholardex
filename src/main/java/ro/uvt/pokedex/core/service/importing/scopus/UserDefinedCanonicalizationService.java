@@ -104,6 +104,14 @@ public class UserDefinedCanonicalizationService {
 
             ScholardexForumFact target = candidates.isEmpty() ? new ScholardexForumFact() : candidates.getFirst();
             boolean created = target.getId() == null;
+            if (!created && forumHeldByOtherSources(target)) {
+                // H145: a wizard entry naming a journal another source holds links to it and never rewrites it (its
+                // name, ISSNs, type and publisher used to be overwritten for every researcher)
+                linkOnly(target, sourceForum);
+                canonicalBySourceRecordId.put(sourceForum.getSourceRecordId(), target.getId());
+                result.markUpdated();
+                continue;
+            }
             Instant now = Instant.now();
             if (target.getCreatedAt() == null) {
                 target.setCreatedAt(now);
@@ -178,6 +186,17 @@ public class UserDefinedCanonicalizationService {
             String doiNormalized = normalizeDoi(sourcePublication.getDoi());
             ScholardexPublicationFact target = loadExistingCanonicalPublication(sourcePublication, doiNormalized, result);
             if (target == null) {
+                continue;
+            }
+            if (target.getId() != null && publicationHeldByOtherSources(target)) {
+                // H145: a wizard entry whose DOI another source holds links to that publication and never rewrites
+                // it — its authors, author count, venue, type, date, citations and EID used to be overwritten for
+                // every researcher (new submissions with such a DOI are refused by the wizard)
+                sourceLinkService.link(ScholardexEntityType.PUBLICATION, SOURCE_USER_DEFINED,
+                        sourcePublication.getSourceRecordId(), target.getId(), REASON_USER_DEFINED_LINK_ONLY,
+                        sourcePublication.getSourceEventId(), sourcePublication.getSourceBatchId(),
+                        sourcePublication.getSourceCorrelationId(), false);
+                result.markUpdated();
                 continue;
             }
 
@@ -313,6 +332,42 @@ public class UserDefinedCanonicalizationService {
             }
         }
         return new ScholardexPublicationFact();
+    }
+
+    static final String REASON_USER_DEFINED_LINK_ONLY = "USER_DEFINED_LINKED_TO_EXISTING";
+
+    /** H145: a journal Scopus, WoS, OpenAlex or DBLP holds — the wizard links to it and never rewrites it. */
+    static boolean forumHeldByOtherSources(ScholardexForumFact forum) {
+        return notEmpty(forum.getScopusForumIds()) || notEmpty(forum.getWosForumIds())
+                || notEmpty(forum.getOpenAlexIds()) || notEmpty(forum.getDblpIds());
+    }
+
+    private static boolean notEmpty(List<String> values) {
+        return values != null && !values.isEmpty();
+    }
+
+    /** H145: a publication another source holds (a link from Scopus, OpenAlex, WoS…, a Scopus EID or a WoS id). */
+    private boolean publicationHeldByOtherSources(ScholardexPublicationFact publication) {
+        if (!isBlank(publication.getWosId())
+                || (!isBlank(publication.getEid()) && !publication.getEid().startsWith(SOURCE_USER_DEFINED + ":"))) {
+            return true;
+        }
+        return sourceLinkService.findByCanonical(ScholardexEntityType.PUBLICATION, publication.getId()).stream()
+                .anyMatch(link -> !SOURCE_USER_DEFINED.equals(link.getSource())
+                        && ScholardexSourceLinkService.STATE_LINKED.equals(link.getLinkState()));
+    }
+
+    /** Records that the wizard entry names this journal, touching nothing the other sources wrote. */
+    private void linkOnly(ScholardexForumFact target, UserDefinedForumFact sourceForum) {
+        List<String> userSourceForumIds = new ArrayList<>(safeList(target.getUserSourceForumIds()));
+        if (!userSourceForumIds.contains(sourceForum.getSourceRecordId())) {
+            userSourceForumIds.add(sourceForum.getSourceRecordId());
+            target.setUserSourceForumIds(userSourceForumIds);
+            scholardexForumFactRepository.save(target);
+        }
+        sourceLinkService.link(ScholardexEntityType.FORUM, SOURCE_USER_DEFINED, sourceForum.getSourceRecordId(),
+                target.getId(), REASON_USER_DEFINED_LINK_ONLY, sourceForum.getSourceEventId(),
+                sourceForum.getSourceBatchId(), sourceForum.getSourceCorrelationId(), false);
     }
 
     /** True when the pub's current forum is a DBLP conf/X stream forum (dblpIds non-empty) — never replaced. */

@@ -44,7 +44,7 @@ public class PublisherClaimReviewService {
 
     /** A request as a head sees it: the record, what the lists say under each standard, the request. */
     public record ClaimItem(String activityId, String researcherEmail, String typeName, String title,
-                            PublisherCategoryFacade.RecordView record) {
+                            PublisherCategoryFacade.RecordView record, List<String> facts) {
     }
 
     private final ActivityInstanceRepository activityInstanceRepository;
@@ -101,6 +101,7 @@ public class PublisherClaimReviewService {
             throw new ClaimRefused(Refusal.NOTE_TOO_LONG);
         }
         claim.setStatus(status);
+        claim.setFacts(PublisherClaim.factsOf(instance)); // H145: the decision is about the record as the head saw it
         claim.setDecidedBy(authentication.getName());
         claim.setDecidedAt(Instant.now());
         claim.setDecisionNote(cleanNote);
@@ -116,8 +117,36 @@ public class PublisherClaimReviewService {
                 .sorted(order)
                 .limit(Math.max(0, limit))
                 .map(i -> new ClaimItem(i.getId(), i.getResearcherId(),
-                        i.getActivity() == null ? null : i.getActivity().getName(), title(i), categories.view(i, rulesByType)))
+                        i.getActivity() == null ? null : i.getActivity().getName(), title(i), categories.view(i, rulesByType),
+                        facts(i)))
                 .toList();
+    }
+
+    /**
+     * H145 — what the record states, as the head approves it: every field but the request's own, then its references
+     * (the journal's ISSN, the named conference, …). A change of any of them sends the request back.
+     */
+    static List<String> facts(ActivityInstance instance) {
+        List<String> facts = new java.util.ArrayList<>();
+        if (instance.getDate() != null && !instance.getDate().isBlank()) {
+            facts.add("Data: " + instance.getDate());
+        }
+        if (instance.getFields() != null) {
+            new java.util.TreeMap<>(instance.getFields()).forEach((k, v) -> {
+                if (!PublisherClaim.REQUEST_FIELD.equals(k) && !PublisherClaim.EVIDENCE_FIELD.equals(k)
+                        && v != null && !v.isBlank()) {
+                    facts.add(k + ": " + v.trim());
+                }
+            });
+        }
+        if (instance.getReferenceFields() != null) {
+            instance.getReferenceFields().forEach((k, v) -> {
+                if (k != null && v != null && !v.isBlank()) {
+                    facts.add(k.name() + ": " + v.trim());
+                }
+            });
+        }
+        return facts;
     }
 
     private static Instant requestedAt(ActivityInstance instance) {

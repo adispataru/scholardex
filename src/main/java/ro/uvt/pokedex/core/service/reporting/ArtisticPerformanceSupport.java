@@ -36,17 +36,14 @@ public final class ArtisticPerformanceSupport {
     }
 
     /**
-     * What the record is: a prize, a nomination, or a participation (the default). The declared result wins;
-     * a record made before H142 says it through its CNFIS kind.
+     * What the record is: a prize, a nomination, or a participation (the default), as its result states. H145: the
+     * CNFIS kind a record may still carry is never read — it was a pick that turned an orchestra concert into an
+     * individual prize.
      */
     public static String result(Map<String, String> fields) {
         String declared = lower(fields.get(FIELD_RESULT));
         if (declared.startsWith("premiu")) return PRIZE;
         if (declared.startsWith("nominalizare")) return NOMINATION;
-        if (declared.startsWith("participare")) return PARTICIPATION;
-        String kind = lower(fields.get(FIELD_CNFIS_KIND));
-        if (kind.startsWith("premiu")) return PRIZE;
-        if (kind.startsWith("nominalizare")) return NOMINATION;
         return PARTICIPATION;
     }
 
@@ -59,11 +56,20 @@ public final class ArtisticPerformanceSupport {
     public static boolean roleCounts(Map<String, String> fields) {
         String role = fields.get(FIELD_ROLE);
         if (role == null || role.isBlank()) {
-            return true;
+            return false; // H145: a role the record does not state does not count
         }
         String r = role.trim();
+        if (r.toLowerCase(Locale.ROOT).startsWith("membru într-o formație camerală")) {
+            Integer size = parseSize(fields.get(FIELD_ENSEMBLE_SIZE));
+            if (size != null && size > CHAMBER_MAX) {
+                return false; // H145: a chamber ensemble has at most ten members — a larger one is not one
+            }
+        }
         return !ROLE_LARGE_ENSEMBLE_MEMBER.equalsIgnoreCase(r) && !ROLE_OTHER.equalsIgnoreCase(r);
     }
+
+    /** The most members a chamber ensemble has (the Music standard, CS 1). */
+    static final int CHAMBER_MAX = 10;
 
     /**
      * How the visibility of a concert was decided, for the drilldown: the registry's rank; an event the experts have
@@ -95,18 +101,12 @@ public final class ArtisticPerformanceSupport {
 
     /**
      * The CNFIS kind of Anexa 5.1 — INDIVIDUAL, GROUP (2–4), COLLECTIVE (5 or more), NOMINATION or PRIZE —
-     * or {@code null} when nothing tells it. In order: the CNFIS kind as declared; the result (a nomination or
-     * a prize); the size of the ensemble; the role (a conductor, director, ballet master, concertmaster or member
+     * or {@code null} when nothing tells it. In order: the result (a nomination or a prize); the size of the ensemble; the role (a conductor, director, ballet master, concertmaster or member
      * of a large ensemble leads or plays in a collective; a soloist or composer is an individual project).
      * A chamber musician without the ensemble's size stays undecided: their group could be 2 or 10.
      */
     public static String cnfisKind(Map<String, String> fields) {
-        String declared = lower(fields.get(FIELD_CNFIS_KIND));
-        if (declared.startsWith("proiect individual")) return "INDIVIDUAL";
-        if (declared.startsWith("proiect de grup")) return "GROUP";
-        if (declared.startsWith("proiect colectiv")) return "COLLECTIVE";
-        if (declared.startsWith("nominalizare")) return "NOMINATION";
-        if (declared.startsWith("premiu")) return "PRIZE";
+        // H145: derived from the facts only — the result, the ensemble's size, the role; never a kind the record picks
         String result = result(fields);
         if (PRIZE.equals(result)) return "PRIZE";
         if (NOMINATION.equals(result)) return "NOMINATION";

@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public class RegistryWorkspaceController {
 
     private static final Map<String, String> CRITERION_LETTERS = Map.of(
-            "INTERNATIONAL_ORGANISER", "(a)", "PROCEEDINGS_LANGUAGE", "(b)", "SESSIONS_LANGUAGE", "(c)");
+            "INTERNATIONAL_ORGANISER", "(a)", "PROCEEDINGS_LANGUAGE", "(b)", "SESSIONS_LANGUAGE", "(c)", "PEER_REVIEW", "(d)");
 
     private final RegistryLookupFacade lookup;
     private final MessageSource messages;
@@ -65,8 +65,9 @@ public class RegistryWorkspaceController {
                 if (f.journal().webOfScience()) parts.add(msg("registry.workspace.journal.wos", "WoS", locale));
                 else if (f.journal().webOfScienceCore()) parts.add(msg("registry.workspace.journal.esci", "ESCI", locale));
                 if (f.journal().scopus()) parts.add(msg("registry.workspace.journal.scopus", "Scopus", locale));
-                parts.add(messages.getMessage("registry.workspace.journal.databases", new Object[]{f.journal().databases()},
-                        String.valueOf(f.journal().databases()), locale));
+                List<String> databases = f.databaseNames();
+                String named = databases.isEmpty() ? "—" : String.join(", ", databases);
+                parts.add(messages.getMessage("registry.workspace.journal.databases", new Object[]{named}, named, locale));
                 if (f.journal().impactFactor() != null) {
                     parts.add(messages.getMessage("registry.workspace.journal.if",
                             new Object[]{String.format(locale, "%.3f", f.journal().impactFactor())}, "IF", locale));

@@ -314,6 +314,43 @@ class ReportingComputationSupportTest {
     }
 
     @Test
+    void anEditionsPrincipalPapersTakeItsSlotsBeforeTheCoAuthoredOnes() {
+        // H145, Comisia 28 I8 + I9: "se pot puncta cumulat cel mult două contribuţii / ediţie conferinţă"
+        ScholardexAuthorView a1 = new ScholardexAuthorView();
+        a1.setId("a1");
+        ScholardexPublicationView f1 = paper("f-1", "F", "2023-06-01", List.of("a1", "x"), 2);
+        ScholardexPublicationView f2 = paper("f-2", "F", "2023-06-01", List.of("a1", "y"), 2);
+        ScholardexPublicationView fCo = paper("f-co", "F", "2023-06-01", List.of("x", "a1", "y", "z"), 4);
+        ScholardexPublicationView g1 = paper("g-1", "G", "2023-06-01", List.of("a1"), 1);
+        ScholardexPublicationView gCo3 = paper("g-co3", "G", "2023-06-01", List.of("x", "a1", "y"), 3);
+        ScholardexPublicationView gCo2 = paper("g-co2", "G", "2023-06-01", List.of("x", "a1"), 2);
+        // the same series a year later is another edition, with its own two slots
+        ScholardexPublicationView fNext = paper("f-next", "F", "2024-06-01", List.of("x", "a1"), 2);
+        List<ScholardexPublicationView> pubs = List.of(f1, f2, fCo, g1, gCo3, gCo2, fNext);
+
+        Indicator coauthor = new Indicator();
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(coauthor, "PUBLICATIONS_NOT_FIRST_NOR_CORRESPONDING");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(coauthor, "PER_EDITION_CAP_2_AFTER_PRINCIPAL");
+
+        List<String> kept = ReportingComputationSupport.filterByAuthorRole(coauthor, List.of(a1), pubs)
+                .stream().map(ScholardexPublicationView::getId).toList();
+
+        assertEquals(List.of("g-co2", "f-next"), kept,
+                "F 2023 is full with two principal papers; G 2023 has one slot left, for the paper with fewer authors");
+        assertTrue(coauthor.isPerForumCapSelector());
+        assertEquals(2, coauthor.perForumCapLimit());
+    }
+
+    private static ScholardexPublicationView paper(String id, String forumId, String coverDate, List<String> authorIds, int authorCount) {
+        ScholardexPublicationView view = publication(id, authorIds);
+        view.setForumId(forumId);
+        view.setCoverDate(coverDate);
+        view.setSubtype("cp");
+        view.setAuthorCount(authorCount);
+        return view;
+    }
+
+    @Test
     void calculatePublicationScoreDoesNotTreatMissingFirstAuthorAsEmptyStringMatch() {
         ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
         ScholardexAuthorView blankAuthor = new ScholardexAuthorView();

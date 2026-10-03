@@ -324,7 +324,9 @@ public class AdminViewController {
     private static final List<String> LEGACY_STRATEGIES = java.util.Arrays.stream(
                     ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.values())
             .map(Enum::name).toList();
-    private static final List<String> LEGACY_SELECTORS = List.of("ALL", "TOP_10", "DISTINCT_FORUMS");
+    // H145: every selector the indicators use — a missing option made the form save ALL over a cap
+    private static final List<String> LEGACY_SELECTORS = List.of("ALL", "TOP_10", "DISTINCT_FORUMS", "PER_FORUM_CAP_2",
+            "PER_EDITION_CAP_2_AFTER_PRINCIPAL", "TOP_10_PER_FORUM_YEAR_1_EXEMPT_M8");
 
     @GetMapping("/indicators")
     public String getCriterion(Model model) {

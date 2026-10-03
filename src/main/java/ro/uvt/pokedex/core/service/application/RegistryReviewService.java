@@ -402,7 +402,8 @@ public class RegistryReviewService {
             return Optional.of("registry.refused.rank");
         }
         if (kind == RegistryKind.SCIENTIFIC_EVENT && "COMISIA_28_CRITERIA".equals(form.basis())
-                && ("INTERNATIONAL".equals(form.level()) != (new HashSet<>(criteria).size() >= RegistryKind.COMISIA_28_CRITERIA_NEEDED))) {
+                && ("INTERNATIONAL".equals(form.level()) != (criteria.stream().filter(RegistryKind.COMISIA_28_CRITERIA::contains)
+                .distinct().count() >= RegistryKind.COMISIA_28_CRITERIA_NEEDED))) {
             return Optional.of("registry.refused.criteria");
         }
         String note = trim(form.note());

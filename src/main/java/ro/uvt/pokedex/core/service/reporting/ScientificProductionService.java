@@ -78,6 +78,11 @@ public class ScientificProductionService {
     private static final Map<String, Boolean> FORMULA_REFERENCES =
             new java.util.concurrent.ConcurrentHashMap<>();
 
+    /** The year part of a conference edition key; "" when the date says none. */
+    static String editionYear(String coverDate) {
+        return coverDate != null && coverDate.length() >= 4 ? coverDate.substring(0, 4) : "";
+    }
+
     private static boolean formulaReferences(String formula, String identifier) {
         if (formula == null || formula.isBlank()) {
             return false;
@@ -183,8 +188,9 @@ public class ScientificProductionService {
             }
             totalScore = distinctForums.size();
         } else if (indicator.isPerForumCapSelector()) {
-            // FSP I9/I10: keep at most n positive items per forum (each conference edition = its
-            // proceedings forum), taking the highest-scoring; the total sums only the kept items.
+            // FSP I9/I10: keep at most n positive items per conference edition (H145: the proceedings forum
+            // and the year — a series with an ISSN is one forum across its editions), taking the highest-scoring;
+            // the total sums only the kept items.
             int cap = indicator.perForumCapLimit();
             totalScore = 0.0;
             Map<String, Integer> keptPerForum = new HashMap<>();
@@ -203,7 +209,7 @@ public class ScientificProductionService {
                 Score score = interResult.get(publication.getTitle());
                 // A missing forumId can't be grouped into an edition — treat each as its own bucket.
                 String forumKey = publication.getForumId() != null
-                        ? publication.getForumId()
+                        ? publication.getForumId() + "@" + editionYear(publication.getCoverDate())
                         : "__no_forum__" + publication.getTitle();
                 int kept = keptPerForum.getOrDefault(forumKey, 0);
                 if (kept < cap) {
@@ -560,12 +566,28 @@ public class ScientificProductionService {
                 builder.put("wosBookPublisher", wosMasterBookListService.isRecognized(
                         PublicationPublisherSupport.resolvePublisher(cited, reportingLookupPort)));
             }
+            // H145 physics precizare 5: a paper in a conference proceedings volume is no book chapter (A2, A5)
+            if (formulaReferences(indicator.getFormula(), "proceedings")) {
+                builder.put("proceedings", ProceedingsVolumeSupport.isProceedingsPaper(cited, reportingLookupPort));
+            }
             if (formulaReferences(indicator.getFormula(), "scieIndexed")) {
                 builder.put("scieIndexed", citing != null && citing.getForumId() != null
                         && ro.uvt.pokedex.core.service.application.PersistenceYearSupport
                                 .extractYear(citing.getCoverDate(), citing.getId(), log)
                                 .map(year -> reportingLookupPort.isForumInScie(citing.getForumId(), year))
                                 .orElse(false));
+            }
+            // H145 Math 2026 C1/C2: the CITED article must be in list A — the candidate's articles in L (SCIE journals
+            // that charge no fee, in the article's own year); the citing side is gated by scieIndexed/feeJournal above
+            if (formulaReferences(indicator.getFormula(), "citedScieIndexed")) {
+                builder.put("citedScieIndexed", cited != null && cited.getForumId() != null
+                        && ro.uvt.pokedex.core.service.application.PersistenceYearSupport
+                                .extractYear(cited.getCoverDate(), cited.getId(), log)
+                                .map(year -> reportingLookupPort.isForumInScie(cited.getForumId(), year))
+                                .orElse(false));
+            }
+            if (formulaReferences(indicator.getFormula(), "citedFeeJournal")) {
+                builder.put("citedFeeJournal", cited != null && reportingLookupPort.isFeeJournal(cited.getForumId()));
             }
             if (result.getMultiplier() != null) {
                 builder.put("M", result.getMultiplier());

@@ -29,6 +29,8 @@ public class EffectiveAuthorshipReadService {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final PublicationAuthorshipDecisionRepository publicationAuthorshipDecisionRepository;
     private final PrincipalAuthorDeclarationReadService principalAuthorDeclarationReadService;
+    /** H145 — wizard entries count once Crossref or a head verified them. */
+    private final WizardPublicationReviewService wizardPublicationReviewService;
 
     /** The canonical author ids the researcher is known by; empty without a researcher profile. */
     public List<String> findCanonicalAuthorIdsForUser(String userEmail) {
@@ -124,6 +126,9 @@ public class EffectiveAuthorshipReadService {
 
         List<ScholardexPublicationView> confirmed = new ArrayList<>(confirmedById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(confirmed);
+        if (wizardPublicationReviewService != null) {
+            confirmed = wizardPublicationReviewService.countable(confirmed);
+        }
         return withApprovedPrincipalAuthorship(userEmail, confirmed);
     }
 

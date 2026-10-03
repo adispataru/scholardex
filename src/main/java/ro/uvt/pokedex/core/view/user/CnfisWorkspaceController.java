@@ -58,18 +58,13 @@ public class CnfisWorkspaceController {
     public String saveHeader(@PathVariable("edition") int reportingYear,
                              @RequestParam(required = false) String domainCode,
                              @RequestParam(required = false) String scoreReportId,
-                             @RequestParam(required = false) Double scoreTyped,
-                             @RequestParam(required = false) String unmetCriterion,
-                             @RequestParam(required = false) Integer hirschGoogleScholar,
-                             @RequestParam(required = false) Integer hirschWebOfScience,
-                             @RequestParam(required = false) Integer hirschScopus,
                              Authentication authentication, RedirectAttributes redirect) {
         User currentUser = signedIn(authentication);
         if (currentUser == null) {
             return "redirect:/login";
         }
-        cnfisReportingFacade.saveHeader(currentUser.getEmail(), reportingYear, new CnfisReportingFacade.HeaderForm(
-                        domainCode, scoreReportId, scoreTyped, unmetCriterion, hirschGoogleScholar, hirschWebOfScience, hirschScopus))
+        cnfisReportingFacade.saveHeader(currentUser.getEmail(), reportingYear,
+                        new CnfisReportingFacade.HeaderForm(domainCode, scoreReportId))
                 .ifPresent(saved -> redirect.addFlashAttribute("successMessage", "cnfis.header.saved"));
         return "redirect:/user/cnfis?edition=" + reportingYear;
     }

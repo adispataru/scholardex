@@ -77,6 +77,8 @@ class PrincipalAuthorDeclarationPagesContractTest {
     private UserService userService;
     @MockitoBean
     private ro.uvt.pokedex.core.service.application.PublisherClaimReviewService publisherClaims;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.WizardPublicationReviewService wizardPublications;
 
     @BeforeEach
     void names() {
@@ -159,7 +161,8 @@ class PrincipalAuthorDeclarationPagesContractTest {
         var record = new ro.uvt.pokedex.core.service.application.PublisherCategoryFacade.RecordView(
                 activityId, "Editura <Proprie>", standards, request);
         return new ro.uvt.pokedex.core.service.application.PublisherClaimReviewService.ClaimItem(activityId,
-                "researcher@uvt.ro", "Carte coordonată (Comisia 28, I17)", "Coordinated <book>", record);
+                "researcher@uvt.ro", "Carte coordonată (Comisia 28, I17)", "Coordinated <book>", record,
+                List.of("Editura: Editura <Proprie>", "N_coordonatori: 2"));
     }
 
     @Test
@@ -180,6 +183,7 @@ class PrincipalAuthorDeclarationPagesContractTest {
         assertTrue(html.contains("/supervisor/declarations/publisher-claims/a1/reject"));
         assertTrue(html.contains("/supervisor/declarations/publisher-claims/a2/revoke"), "an approval can be taken back");
         assertTrue(html.contains("29 libraries, checked."));
+        assertTrue(html.contains("data-claim-facts") && html.contains("N_coordonatori: 2"), "H145: the head sees what the record states");
         assertTrue(html.contains("02.10.2026 11:00"));
         assertFalse(html.contains("??"), "a message key did not resolve");
     }
@@ -214,6 +218,72 @@ class PrincipalAuthorDeclarationPagesContractTest {
             String html = mockMvc.perform(get(REVIEW).with(head()).flashAttr("refusedKey", "supervisor.claims.refused." + refusal.name()))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertFalse(html.contains("??"), refusal.name());
+        }
+    }
+
+    private static ro.uvt.pokedex.core.service.application.WizardPublicationReviewService.ReviewItem wizardItem(String id, String status) {
+        return new ro.uvt.pokedex.core.service.application.WizardPublicationReviewService.ReviewItem(id, "spub_w",
+                "researcher@uvt.ro", "A <typed> book", "Book", "2001", "Editura Mirton", "ISBN 973-578-000-0", "Mirton",
+                null, List.of("Ana Pop", "Ion Ionescu"), status,
+                "PENDING".equals(status) ? null : null, "PENDING".equals(status) ? null : "dean@uvt.ro",
+                "PENDING".equals(status) ? null : Instant.parse("2026-10-02T09:00:00Z"), null, "facts-" + id);
+    }
+
+    @Test
+    void aHeadSeesThePublicationsAddedByHandAndDecidesThemAsShown() throws Exception {
+        when(declarations.pendingFor(any())).thenReturn(List.of());
+        when(declarations.decidedFor(any(), anyInt())).thenReturn(List.of());
+        when(wizardPublications.pendingFor(any())).thenReturn(List.of(wizardItem("USER_DEFINED:PUBLICATION:w1", "PENDING")));
+        when(wizardPublications.decidedFor(any(), anyInt())).thenReturn(List.of(wizardItem("USER_DEFINED:PUBLICATION:w2", "APPROVED")));
+
+        String html = mockMvc.perform(get(REVIEW).with(head())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(html.contains("data-wizard-publication"));
+        assertTrue(html.contains("A &lt;typed&gt; book") && html.contains("Editura Mirton") && html.contains("ISBN 973-578-000-0"));
+        assertTrue(html.contains("Ana Pop; Ion Ionescu"), "the authors in their order");
+        assertTrue(html.contains("value=\"facts-USER_DEFINED:PUBLICATION:w1\""), "the decision names the facts the head saw");
+        assertTrue(html.contains("/supervisor/declarations/wizard-publications/approve")
+                && html.contains("/supervisor/declarations/wizard-publications/reject")
+                && html.contains("/supervisor/declarations/wizard-publications/revoke"));
+        assertFalse(html.contains("??"), "a message key did not resolve");
+
+        mockMvc.perform(post(REVIEW + "/wizard-publications/approve").param("id", "USER_DEFINED:PUBLICATION:w1")
+                        .param("facts", "facts-USER_DEFINED:PUBLICATION:w1").with(head()).with(csrf()))
+                .andExpect(redirectedUrl(REVIEW + "#wizard-publications"))
+                .andExpect(flash().attribute("doneKey", "supervisor.wizard.done.approved"));
+        verify(wizardPublications).approve(eq("USER_DEFINED:PUBLICATION:w1"), any(), eq(null), eq("facts-USER_DEFINED:PUBLICATION:w1"));
+
+        when(wizardPublications.reject(any(), any(), any(), any())).thenThrow(
+                new ro.uvt.pokedex.core.service.application.WizardPublicationReviewService.ReviewRefused(
+                        ro.uvt.pokedex.core.service.application.WizardPublicationReviewService.Refusal.CHANGED));
+        mockMvc.perform(post(REVIEW + "/wizard-publications/reject").param("id", "USER_DEFINED:PUBLICATION:w1")
+                        .param("note", "no").with(head()).with(csrf()))
+                .andExpect(flash().attribute("refusedKey", "supervisor.wizard.refused.CHANGED"));
+
+        mockMvc.perform(post(REVIEW + "/wizard-publications/approve").param("id", "x").with(researcher()).with(csrf()))
+                .andExpect(redirectedUrl(DENIED));
+    }
+
+    @Test
+    void everyWizardPublicationOutcomeHasASentence() throws Exception {
+        when(declarations.pendingFor(any())).thenReturn(List.of());
+        when(declarations.decidedFor(any(), anyInt())).thenReturn(List.of());
+        for (String done : List.of("approved", "rejected", "revoked")) {
+            String html = mockMvc.perform(get(REVIEW).with(head()).flashAttr("doneKey", "supervisor.wizard.done." + done))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertFalse(html.contains("??"), done);
+        }
+        for (var refusal : ro.uvt.pokedex.core.service.application.WizardPublicationReviewService.Refusal.values()) {
+            String html = mockMvc.perform(get(REVIEW).with(head()).flashAttr("refusedKey", "supervisor.wizard.refused." + refusal.name()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertFalse(html.contains("??"), refusal.name());
+        }
+        for (String status : List.of("APPROVED", "VERIFIED", "REJECTED")) {
+            when(wizardPublications.decidedFor(any(), anyInt())).thenReturn(List.of(wizardItem("w-" + status, status)));
+            String html = mockMvc.perform(get(REVIEW).with(head())).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertFalse(html.contains("??"), status);
         }
     }
 

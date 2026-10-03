@@ -9,9 +9,8 @@ import java.time.Instant;
 
 /**
  * H129 — what a person fills in at the head of their Anexa 5 for one edition: the CNATDCU domain they report
- * in (it decides which sheets apply), where the CNATDCU score comes from, the unmet criterion, and the three
- * Hirsch values (from signed print screens of Google Scholar, Web of Science and Scopus — typed in, the
- * platform's own values are for orientation).
+ * in (it decides which sheets apply) and the CNATDCU report whose run gives the score. H145: the score, the unmet
+ * criteria and the Hirsch values are derived, never typed (documents saved before keep their typed values, unread).
  */
 @Data
 @Document(collection = "cnfisSheets")
@@ -26,14 +25,8 @@ public class CnfisSheetHeader {
     private String domainCode;
     private String domainName;
 
-    /** The CNATDCU report whose latest run supplies the score; null = the score is typed in. */
+    /** The CNATDCU report whose latest run supplies the score and the unmet criteria; null = no score. */
     private String scoreReportId;
-    private Double scoreTyped;
-    private String unmetCriterion;
-
-    private Integer hirschGoogleScholar;
-    private Integer hirschWebOfScience;
-    private Integer hirschScopus;
 
     private Instant updatedAt;
 }

@@ -148,13 +148,50 @@ public class PublisherCategoryService implements PublisherCategorySupport.Classi
      */
     Optional<CncsRow> bestCncs(String name, Set<String> preferredDomains) {
         List<String> typed = PublisherNameMatcher.words(name);
-        List<CncsRow> hits = cncs.stream().filter(row -> PublisherNameMatcher.match(row.words(), typed) > 0).toList();
+        List<CncsRow> hits = cncs.stream().filter(row -> sameHouse(row.words(), typed)).toList();
         if (hits.isEmpty()) {
             return Optional.empty();
         }
         List<CncsRow> preferred = hits.stream().filter(r -> preferredDomains.contains(r.domain())).toList();
         List<CncsRow> pool = preferred.isEmpty() ? hits : preferred;
         return pool.stream().min(Comparator.comparing(CncsRow::category).thenComparing(CncsRow::year, Comparator.reverseOrder()));
+    }
+
+    /**
+     * H145 — CNFIS Anexa 5.3: the category CNCS gives the publisher in one domain on the latest list published by the
+     * given year (the guide counts only the latest classification); empty when that list does not rate it there.
+     */
+    public Optional<String> cncsCategoryInDomain(String publisher, String domain, int byYear) {
+        if (publisher == null || publisher.isBlank() || domain == null) {
+            return Optional.empty();
+        }
+        java.util.OptionalInt latest = cncs.stream().filter(r -> domain.equals(r.domain()) && r.year() <= byYear)
+                .mapToInt(CncsRow::year).max();
+        if (latest.isEmpty()) {
+            return Optional.empty();
+        }
+        List<String> typed = PublisherNameMatcher.words(publisher);
+        return cncs.stream()
+                .filter(r -> r.year() == latest.getAsInt() && domain.equals(r.domain()) && sameHouse(r.words(), typed))
+                .map(CncsRow::category).min(Comparator.naturalOrder());
+    }
+
+    /**
+     * H145 (E6): the typed name is the listed house — the same words, a shorter form of them, or the listed name with
+     * nothing else but an address (city, legal form); never a listed name inside a longer one ("Editura Mirton,
+     * distribuită de Polirom" is not Polirom).
+     */
+    static boolean sameHouse(List<String> listed, List<String> typed) {
+        int match = PublisherNameMatcher.match(listed, typed);
+        if (match == 3 || match == 1) {
+            return true;
+        }
+        if (match != 2) {
+            return false;
+        }
+        java.util.Set<String> extras = new java.util.HashSet<>(typed);
+        extras.removeAll(listed);
+        return WosMasterBookListService.onlyAddress(extras);
     }
 
     /**

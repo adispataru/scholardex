@@ -35,6 +35,9 @@ class EffectiveAuthorshipReadServiceTest {
     @Mock
     private ro.uvt.pokedex.core.repository.scopus.canonical.PrincipalAuthorDeclarationRepository declarationRepository;
 
+    @Mock
+    private WizardPublicationReviewService wizardPublicationReviewService;
+
     private EffectiveAuthorshipReadService service;
 
     @BeforeEach
@@ -44,8 +47,11 @@ class EffectiveAuthorshipReadServiceTest {
                 researcherAuthorLookupService,
                 scholardexProjectionReadService,
                 publicationAuthorshipDecisionRepository,
-                new PrincipalAuthorDeclarationReadService(declarationRepository)
+                new PrincipalAuthorDeclarationReadService(declarationRepository),
+                wizardPublicationReviewService
         );
+        org.mockito.Mockito.lenient().when(wizardPublicationReviewService.countable(org.mockito.ArgumentMatchers.anyList()))
+                .thenAnswer(inv -> inv.getArgument(0));
     }
 
     // ------------------------------------------------------------------ approved principal-authorship declarations
@@ -259,6 +265,23 @@ class EffectiveAuthorshipReadServiceTest {
         List<ScholardexPublicationView> result = service.findConfirmedPublicationsForScoring("user@uvt.ro");
 
         assertThat(result).extracting(ScholardexPublicationView::getId).containsExactly("p2");
+    }
+
+    @Test
+    void scoringLeavesOutTheWizardEntriesNobodyVerified() {
+        ScholardexPublicationView imported = publication("p1", "Paper 1");
+        ScholardexPublicationView typedIn = publication("p2", "Paper 2");
+        when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
+                .thenReturn(List.of(decision("p1", PublicationAuthorshipDecision.Status.CONFIRMED),
+                        decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED)));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(anyCollection())).thenReturn(List.of(imported, typedIn));
+        when(wizardPublicationReviewService.countable(org.mockito.ArgumentMatchers.anyList())).thenAnswer(inv -> {
+            List<ScholardexPublicationView> in = inv.getArgument(0);
+            return in.stream().filter(p -> !"p2".equals(p.getId())).toList();
+        });
+
+        assertThat(service.findConfirmedPublicationsForScoring("user@uvt.ro"))
+                .extracting(ScholardexPublicationView::getId).containsExactly("p1");
     }
 
     private User user(String email) {

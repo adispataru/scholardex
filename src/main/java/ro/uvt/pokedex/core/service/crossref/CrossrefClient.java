@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -111,6 +113,58 @@ public class CrossrefClient {
         }
         String publisher = message.path("publisher").asText(null);
         return (publisher == null || publisher.isBlank()) ? Optional.empty() : Optional.of(publisher.trim());
+    }
+
+    /**
+     * H145 — what Crossref says a DOI is, to check a publication a researcher added by hand: its title, the years it
+     * carries (issued, print, online), the family names of its authors and editors, its container (journal, series or
+     * book) with ISSNs and ISBNs, its type. Empty when Crossref has no record or does not answer.
+     */
+    public record Work(String title, List<Integer> years, List<String> familyNames, List<String> containerTitles,
+                       List<String> issns, List<String> isbns, String type) {
+    }
+
+    public synchronized Optional<Work> work(String doi) {
+        JsonNode message = fetch(doi);
+        if (message == null || message.isMissingNode() || !message.isObject()) {
+            return Optional.empty();
+        }
+        List<String> titles = texts(message.path("title"));
+        List<Integer> years = new ArrayList<>();
+        for (String field : List.of("issued", "published-print", "published-online", "published")) {
+            JsonNode part = message.path(field).path("date-parts").path(0).path(0);
+            if (part.canConvertToInt() && part.asInt() > 0 && !years.contains(part.asInt())) {
+                years.add(part.asInt());
+            }
+        }
+        List<String> families = new ArrayList<>();
+        for (String role : List.of("author", "editor")) {
+            for (JsonNode person : message.path(role)) {
+                String family = blankToNull(person.path("family").asText(null));
+                if (family == null) {
+                    family = blankToNull(person.path("name").asText(null));
+                }
+                if (family != null) {
+                    families.add(family);
+                }
+            }
+        }
+        return Optional.of(new Work(titles.isEmpty() ? null : titles.getFirst(), years, families,
+                texts(message.path("container-title")), texts(message.path("ISSN")), texts(message.path("ISBN")),
+                blankToNull(message.path("type").asText(null))));
+    }
+
+    private static List<String> texts(JsonNode array) {
+        List<String> out = new ArrayList<>();
+        if (array != null && array.isArray()) {
+            for (JsonNode item : array) {
+                String text = blankToNull(item.asText(null));
+                if (text != null) {
+                    out.add(text);
+                }
+            }
+        }
+        return out;
     }
 
     /** The raw {@code message} node, or null on any failure — callers treat absence as "no evidence". */

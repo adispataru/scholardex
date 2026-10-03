@@ -209,8 +209,11 @@ public class ResearcherWorkspaceController {
             @PathVariable String projectId,
             @RequestParam(name = "role", defaultValue = "director") String role,
             Authentication authentication) {
-        boolean asParticipant = "participant".equalsIgnoreCase(role);
+        boolean asked = "participant".equalsIgnoreCase(role);
         return currentUser(authentication).map(u -> {
+            // H145: a director's role only for a project the registry says the researcher directs; any other comes in
+            // as a member
+            boolean asParticipant = asked || !researcherProjectService.directs(u.getResearcherProfile(), projectId);
             var result = researcherProjectService.importProject(u.getEmail(), projectId, asParticipant);
             return switch (result.status()) {
                 case "CREATED", "EXISTS" -> ResponseEntity.ok(result);
@@ -343,7 +346,22 @@ public class ResearcherWorkspaceController {
             return ResponseEntity.ok(userActivityInstanceFacade.saveActivityInstance(instance));
         } catch (ro.uvt.pokedex.core.service.issn.InvalidIssnException e) {
             return invalidIssn(e);
+        } catch (ro.uvt.pokedex.core.service.application.ActivityValidationException e) {
+            return refusedValues(e);
+        } catch (ro.uvt.pokedex.core.service.application.ActivitySingleRecordException e) {
+            String message = messageSource.getMessage("workspace.activities.single", new Object[]{e.getTypeName()},
+                    org.springframework.context.i18n.LocaleContextHolder.getLocale());
+            return ResponseEntity.unprocessableEntity().body(Map.of("message", message));
         }
+    }
+
+    /** H145 — 422 naming the values the record's type does not accept; nothing was stored. */
+    private ResponseEntity<Map<String, String>> refusedValues(
+            ro.uvt.pokedex.core.service.application.ActivityValidationException e) {
+        String message = messageSource.getMessage("workspace.activities.refused",
+                new Object[]{String.join("; ", e.getProblems())},
+                org.springframework.context.i18n.LocaleContextHolder.getLocale());
+        return ResponseEntity.unprocessableEntity().body(Map.of("message", message));
     }
 
     /** 422 with the localized sentence the activity form shows next to its Save button. */
@@ -359,7 +377,8 @@ public class ResearcherWorkspaceController {
     public ResponseEntity<?> updateActivityInstance(
             @RequestBody ActivityInstanceUpdateRequest request,
             Authentication authentication) {
-        if (currentUser(authentication).isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         ActivityInstance patch = new ActivityInstance();
         patch.setId(request.id());
         patch.setFields(request.fields());
@@ -372,9 +391,13 @@ public class ResearcherWorkspaceController {
             patch.setReferenceFields(refMap);
         }
         try {
-            userActivityInstanceFacade.updateActivityInstance(patch);
+            if (!userActivityInstanceFacade.updateActivityInstance(patch, userOpt.get().getEmail())) {
+                return ResponseEntity.notFound().build(); // H145: not a record of theirs
+            }
         } catch (ro.uvt.pokedex.core.service.issn.InvalidIssnException e) {
             return invalidIssn(e);
+        } catch (ro.uvt.pokedex.core.service.application.ActivityValidationException e) {
+            return refusedValues(e);
         }
         return ResponseEntity.ok().build();
     }
@@ -385,8 +408,11 @@ public class ResearcherWorkspaceController {
     public ResponseEntity<Void> deleteActivityInstance(
             @PathVariable String id,
             Authentication authentication) {
-        if (currentUser(authentication).isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        userActivityInstanceFacade.deleteActivityInstance(id);
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (!userActivityInstanceFacade.deleteActivityInstance(id, userOpt.get().getEmail())) {
+            return ResponseEntity.notFound().build(); // H145: not a record of theirs
+        }
         return ResponseEntity.ok().build();
     }
 
@@ -830,6 +856,10 @@ public class ResearcherWorkspaceController {
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (ro.uvt.pokedex.core.service.application.WizardDoiExistsException e) {
+            String message = messageSource.getMessage("workspace.pubs.wizard.doiExists",
+                    new Object[]{e.getExistingTitle()}, org.springframework.context.i18n.LocaleContextHolder.getLocale());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", message));
         }
     }
 

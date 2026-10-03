@@ -337,13 +337,14 @@ public class ActivityFileImportService {
     static Draft artsDraft(CnfisArtsSheetParser.ArtsRow row) {
         String text = row.work().isEmpty() ? row.event() : row.work();
         Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("Tip", switch (row.kind()) {
-            case "INDIVIDUAL" -> "Proiect individual";
-            case "GROUP" -> "Proiect de grup (2-4)";
-            case "COLLECTIVE" -> "Proiect colectiv (5+)";
-            case "NOMINATION" -> "Nominalizare individuală";
-            default -> "Premiu individual";
-        });
+        // H145: the kind the sheet marked is the ensemble's size, a fact — kept as the size it stands for (one, two to
+        // four, five or more), from which the CNFIS kind is derived; a prize or a nomination is the result
+        switch (row.kind()) {
+            case "INDIVIDUAL" -> fields.put("Marime_formatie", "1");
+            case "GROUP" -> fields.put("Marime_formatie", "2");
+            case "COLLECTIVE" -> fields.put("Marime_formatie", "5");
+            default -> { }
+        }
         fields.put("Rezultat", switch (row.kind()) {
             case "NOMINATION" -> "Nominalizare";
             case "PRIZE" -> "Premiu";

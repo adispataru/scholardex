@@ -58,6 +58,17 @@
    {
     "name": "Nume",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Proiect obținut prin competiție, verificat"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity"
@@ -408,17 +419,6 @@
     "number": false
    },
    {
-    "name": "Tip",
-    "allowedValues": [
-     "Proiect individual",
-     "Proiect de grup (2-4)",
-     "Proiect colectiv (5+)",
-     "Nominalizare individuală",
-     "Premiu individual"
-    ],
-    "number": false
-   },
-   {
     "name": "N_participanti_universitate",
     "number": true
    },
@@ -465,6 +465,17 @@
    {
     "name": "Dovezi (linkuri preînregistrare și date)",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Articol punctat la I1A sau I1B, preînregistrat, cu date deschise"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity",
@@ -488,6 +499,17 @@
    },
    {
     "name": "Dovezi (brevet, ORDA/OSIM, aviz CPR)",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Avizat, acreditat sau înregistrat (CPR, MEN, OSIM, ORDA)"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
@@ -514,9 +536,21 @@
    {
     "name": "Link profil",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Valorile din profilul Google Scholar, verificate"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "singlePerResearcher": true
  },
  {
   "_id": {
@@ -610,7 +644,8 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -650,7 +685,10 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -1005,32 +1043,43 @@
     "number": false
    },
    {
-    "name": "ISSN",
-    "number": false
-   },
-   {
-    "name": "Baze_de_date",
-    "number": false
-   },
-   {
     "name": "N_autori",
     "number": true
    },
    {
-    "name": "Coeficient_m",
+    "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Limba",
     "allowedValues": [
-     "m = 2",
-     "m = 1.5",
-     "m = 1"
+     "Română",
+     "Engleză",
+     "Franceză",
+     "Germană",
+     "Italiană",
+     "Spaniolă",
+     "Altă limbă"
     ],
     "number": false
    },
    {
-    "name": "Dovezi",
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Revistă indexată în cel puțin 3 baze de date"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ],
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1059,15 +1108,6 @@
     "number": true
    },
    {
-    "name": "Coeficient_m",
-    "allowedValues": [
-     "m = 2",
-     "m = 1.5",
-     "m = 1"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi (ISBN, link WorldCat)",
     "number": false
    },
@@ -1082,9 +1122,23 @@
    {
     "name": "Dovada_incadrarii",
     "number": false
+   },
+   {
+    "name": "Limba",
+    "allowedValues": [
+     "Română",
+     "Engleză",
+     "Franceză",
+     "Germană",
+     "Italiană",
+     "Spaniolă",
+     "Altă limbă"
+    ],
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1105,15 +1159,6 @@
     "number": true
    },
    {
-    "name": "Coeficient_m",
-    "allowedValues": [
-     "m = 2",
-     "m = 1.5",
-     "m = 1"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    },
@@ -1128,9 +1173,23 @@
    {
     "name": "Dovada_incadrarii",
     "number": false
+   },
+   {
+    "name": "Limba",
+    "allowedValues": [
+     "Română",
+     "Engleză",
+     "Franceză",
+     "Germană",
+     "Italiană",
+     "Spaniolă",
+     "Altă limbă"
+    ],
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1155,15 +1214,6 @@
     "number": true
    },
    {
-    "name": "Coeficient_m",
-    "allowedValues": [
-     "m = 2",
-     "m = 1.5",
-     "m = 1"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    },
@@ -1176,6 +1226,23 @@
    },
    {
     "name": "Dovada_incadrarii",
+    "number": false
+   },
+   {
+    "name": "Limba",
+    "allowedValues": [
+     "Română",
+     "Engleză",
+     "Franceză",
+     "Germană",
+     "Italiană",
+     "Spaniolă",
+     "Altă limbă"
+    ],
+    "number": false
+   },
+   {
+    "name": "Editura",
     "number": false
    }
   ],
@@ -1207,20 +1274,25 @@
     "number": true
    },
    {
-    "name": "Coeficient_m",
-    "allowedValues": [
-     "m = 2",
-     "m = 1.5",
-     "m = 1"
-    ],
+    "name": "Dovezi",
     "number": false
    },
    {
-    "name": "Dovezi",
+    "name": "Limba",
+    "allowedValues": [
+     "Română",
+     "Engleză",
+     "Franceză",
+     "Germană",
+     "Italiană",
+     "Spaniolă",
+     "Altă limbă"
+    ],
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1252,7 +1324,8 @@
     "name": "Incadrare_solicitata",
     "number": false,
     "allowedValues": [
-     "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)"
+     "Lucrare fundamentală, la o editură din Lista A2",
+     "Lucrare fundamentală, în cel puțin 6 biblioteci din WorldCat"
     ]
    },
    {
@@ -1277,10 +1350,6 @@
     "number": false
    },
    {
-    "name": "IF_sursa",
-    "number": true
-   },
-   {
     "name": "N_autori",
     "number": true
    },
@@ -1289,7 +1358,10 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ]
  },
  {
   "_id": {
@@ -1454,16 +1526,20 @@
     "number": false
    },
    {
-    "name": "Coeficient_m",
-    "allowedValues": [
-     "m = 2",
-     "m = 1.5",
-     "m = 1"
-    ],
+    "name": "Dovezi",
     "number": false
    },
    {
-    "name": "Dovezi",
+    "name": "Limba",
+    "allowedValues": [
+     "Română",
+     "Engleză",
+     "Franceză",
+     "Germană",
+     "Italiană",
+     "Spaniolă",
+     "Altă limbă"
+    ],
     "number": false
    }
   ],
@@ -1538,16 +1614,20 @@
     "number": true
    },
    {
-    "name": "Coeficient_m",
-    "allowedValues": [
-     "m = 2",
-     "m = 1.5",
-     "m = 1"
-    ],
+    "name": "Dovezi (ISBN sau link)",
     "number": false
    },
    {
-    "name": "Dovezi (ISBN sau link)",
+    "name": "Limba",
+    "allowedValues": [
+     "Română",
+     "Engleză",
+     "Franceză",
+     "Germană",
+     "Italiană",
+     "Spaniolă",
+     "Altă limbă"
+    ],
     "number": false
    }
   ],
@@ -1604,6 +1684,17 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Condiție îndeplinită după abilitare, verificată"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity"
@@ -1639,7 +1730,8 @@
     "number": true
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1760,7 +1852,8 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1789,7 +1882,8 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1879,10 +1973,6 @@
     "number": false
    },
    {
-    "name": "Casa_de_discuri",
-    "number": false
-   },
-   {
     "name": "Cod_autentificare",
     "number": false
    },
@@ -1899,7 +1989,10 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -1916,17 +2009,19 @@
     "number": false
    },
    {
-    "name": "ISSN_sau_ISBN",
+    "name": "DOI",
     "number": false
    },
    {
-    "name": "Baza_de_date",
+    "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
     "allowedValues": [
      "Cambridge Core",
      "CEEOL",
-     "DOAJ",
      "EBSCO",
-     "ERIH PLUS",
      "JSTOR",
      "Oxford Academic Journals",
      "Oxford Music Online",
@@ -1934,24 +2029,22 @@
      "ProQuest",
      "RILM",
      "Sciendo",
-     "Scopus",
      "Taylor & Francis Online",
-     "Web of Science (AHCI)",
-     "Web of Science (ESCI)",
-     "Bază de date a unui domeniu corelat"
+     "Bază de date a unui domeniu corelat",
+     "Volum de conferință indexat"
     ],
     "number": false
    },
    {
-    "name": "DOI",
-    "number": false
-   },
-   {
-    "name": "Dovezi",
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ],
+  "publicationRecord": true
  },
  {
   "_id": {
@@ -1979,6 +2072,18 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Lexicon sau dicționar muzical internațional",
+     "Rezumat publicat în RILM, RIPM, RISM sau RIDIM"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity",
@@ -1997,23 +2102,14 @@
     "number": false
    },
    {
-    "name": "Conferinta",
-    "number": false
-   },
-   {
-    "name": "Loc",
-    "allowedValues": [
-     "În țară",
-     "În străinătate"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "CONFERENCE_NAME"
+  ]
  },
  {
   "_id": {
@@ -2065,6 +2161,17 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Funcție de management, verificată"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
   "_class": "ro.uvt.pokedex.core.model.activities.Activity"
@@ -2076,10 +2183,6 @@
   "name": "Membru în colectivul de redacție sau recenzor al unei publicații ori edituri indexate (Comisia 35, RIA 1.3)",
   "fields": [
    {
-    "name": "Publicatia_sau_editura",
-    "number": false
-   },
-   {
     "name": "Rol",
     "allowedValues": [
      "Membru în colectivul de redacție",
@@ -2090,9 +2193,27 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Editura",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Publicație sau editură indexată într-o bază de date internațională"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ]
  },
  {
   "_id": {
@@ -2118,19 +2239,14 @@
   "name": "Distincție sau premiu de stat (Comisia 35, RIA 2.1)",
   "fields": [
    {
-    "name": "Denumire",
-    "number": false
-   },
-   {
-    "name": "Tara",
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "AWARD_NAME"
+  ]
  },
  {
   "_id": {
@@ -2139,19 +2255,14 @@
   "name": "Distincție sau premiu acordat de o organizație profesională sau de media (Comisia 35, RIA 2.2)",
   "fields": [
    {
-    "name": "Denumire",
-    "number": false
-   },
-   {
-    "name": "Organizatia",
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "AWARD_NAME"
+  ]
  },
  {
   "_id": {

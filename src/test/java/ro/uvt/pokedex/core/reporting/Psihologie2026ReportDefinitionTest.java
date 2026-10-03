@@ -194,6 +194,10 @@ class Psihologie2026ReportDefinitionTest {
         SeedReportDefinition.resetRegistries();
     }
 
+    private static Map<Activity.ReferenceField, String> named(Activity.ReferenceField field, String name) {
+        return Map.of(field, name);
+    }
+
     private static Map<Activity.ReferenceField, String> issn(String issn) {
         return Map.of(Activity.ReferenceField.FORUM_ISSN, issn);
     }
@@ -201,42 +205,55 @@ class Psihologie2026ReportDefinitionTest {
     @Test
     void preregistrationBonusFollowsTheJournalsFeeAsDoajKnowsIt() {
         // H144: the fee is the journal's (DOAJ), never the researcher's pick
-        SeedReportDefinition.journal("1111-1111", false, true, true, true, 3, 2.1);
-        SeedReportDefinition.journal("2222-2222", true, false, true, true, 2, null);
-        assertEquals(1.0, psy.activityNaming("I1A_bonus", fields(), issn("1111-1111")), 1e-9);
-        assertEquals(0.0, psy.activityNaming("I1B_bonus", fields(), issn("1111-1111")), 1e-9);
-        assertEquals(1.0, psy.activityNaming("I1B_bonus", fields(), issn("22222222")), 1e-9, "an ISSN typed without its hyphen");
-        assertEquals(0.0, psy.activityNaming("I1A_bonus", fields(), issn("2222-2222")), 1e-9);
-        assertEquals(0.0, psy.activityNaming("I1A_bonus", fields(), issn("9999-9999")), 1e-9, "a journal the lists do not know");
-        assertEquals(0.0, psy.activityNaming("I1B_bonus", fields(), issn("9999-9999")), 1e-9);
+        SeedReportDefinition.journal("1111-1111", false, 2.1, "SSCI", "SCOPUS", "ERIH");
+        SeedReportDefinition.journal("2222-2222", true, null, "ESCI", "SCOPUS");
+        // H145: the three conditions (preregistration, open data, links) and the scored article are checked by a head
+        var asked = fields("Incadrare_solicitata", "Articol punctat la I1A sau I1B, preînregistrat, cu date deschise");
+        assertEquals(0.0, psy.activityNaming("I1A_bonus", fields(), issn("1111-1111")), 1e-9, "nothing approved");
+        assertEquals(1.0, psy.approvedNaming("I1A_bonus", asked, issn("1111-1111")), 1e-9);
+        assertEquals(0.0, psy.approvedNaming("I1B_bonus", asked, issn("1111-1111")), 1e-9);
+        assertEquals(1.0, psy.approvedNaming("I1B_bonus", asked, issn("22222222")), 1e-9, "an ISSN typed without its hyphen");
+        assertEquals(0.0, psy.approvedNaming("I1A_bonus", asked, issn("2222-2222")), 1e-9);
+        assertEquals(0.0, psy.approvedNaming("I1A_bonus", asked, issn("9999-9999")), 1e-9, "a journal the lists do not know");
+        assertEquals(0.0, psy.approvedNaming("I1B_bonus", asked, issn("9999-9999")), 1e-9);
     }
 
     @Test
     void registeredMaterialsDivideFiveByTheAuthors() {
-        assertEquals(2.5, psy.activity("I7", fields("N_autori", "2")), 1e-9);
-        assertEquals(5.0, psy.activity("I7", fields()), 1e-9);
+        // H145: the approval, accreditation or registration is checked by a head; a missing author count scores nothing
+        String registered = "Avizat, acreditat sau înregistrat (CPR, MEN, OSIM, ORDA)";
+        assertEquals(0.0, psy.activity("I7", fields("N_autori", "2")), 1e-9);
+        assertEquals(0.0, psy.activity("I7", fields("N_autori", "2", "Incadrare_solicitata", registered)), 1e-9, "asked, not approved");
+        assertEquals(2.5, psy.approved("I7", fields("N_autori", "2", "Incadrare_solicitata", registered)), 1e-9);
+        assertEquals(0.0, psy.approved("I7", fields("Incadrare_solicitata", registered)), 1e-9);
     }
 
     @Test
     void googleScholarCountsOnlyWhatWebOfScienceDoesNot() {
+        // H145: the platform cannot read Google Scholar — the values count once a head approved them (profile, capture)
+        String verified = "Valorile din profilul Google Scholar, verificate";
         // 0.05 × (GS − WoS)
-        assertEquals(0.05 * 300, psy.activity("I12", fields("Citari_GS", "420", "Citari_WoS", "120")), 1e-9);
-        assertEquals(0.05 * 420, psy.activity("I12", fields("Citari_GS", "420")), 1e-9);
-        assertEquals(0.0, psy.activity("I12", fields("Citari_GS", "50", "Citari_WoS", "80")), 1e-9);
+        assertEquals(0.0, psy.activity("I12", fields("Citari_GS", "420", "Citari_WoS", "120")), 1e-9, "typed, not approved");
+        assertEquals(0.05 * 300, psy.approved("I12", fields("Citari_GS", "420", "Citari_WoS", "120",
+                "Incadrare_solicitata", verified)), 1e-9);
+        assertEquals(0.0, psy.approved("I12", fields("Citari_GS", "420", "Incadrare_solicitata", verified)), 1e-9,
+                "without the WoS count the difference cannot be taken");
+        assertEquals(0.0, psy.approved("I12", fields("Citari_GS", "50", "Citari_WoS", "80", "Incadrare_solicitata", verified)), 1e-9);
         assertEquals(0.0, psy.activity("I12", fields()), 1e-9);
         // (hGS × hGS) × 0.25
-        assertEquals(25.0, psy.activity("I14", fields("h_GS", "10")), 1e-9);
+        assertEquals(0.0, psy.activity("I14", fields("h_GS", "10")), 1e-9, "typed, not approved");
+        assertEquals(25.0, psy.approved("I14", fields("h_GS", "10", "Incadrare_solicitata", verified)), 1e-9);
         assertEquals(0.0, psy.activity("I14", fields()), 1e-9);
     }
 
     @Test
     void editorialRolesMultiplyRoleAndJournalWeight() {
         // m = 3 only for a Web of Science journal whose impact factor reaches p = 1,00 — both from the lists (H144)
-        SeedReportDefinition.journal("1111-1111", false, true, true, true, 3, 2.4);
-        SeedReportDefinition.journal("3333-3333", false, false, true, false, 1, 1.0); // ESCI with an impact factor
-        SeedReportDefinition.journal("4444-4444", false, true, true, true, 3, 0.6);
-        SeedReportDefinition.journal("5555-5555", false, false, false, false, 2, null); // other databases only
-        SeedReportDefinition.journal("6666-6666", false, false, false, false, 0, null); // indexed nowhere we know
+        SeedReportDefinition.journal("1111-1111", false, 2.4, "SSCI", "SCOPUS", "ERIH");
+        SeedReportDefinition.journal("3333-3333", false, 1.0, "ESCI"); // ESCI with an impact factor
+        SeedReportDefinition.journal("4444-4444", false, 0.6, "SSCI", "SCOPUS", "ERIH");
+        SeedReportDefinition.journal("5555-5555", false, null, "ERIH", "DOAJ"); // other databases only
+        SeedReportDefinition.journal("6666-6666", false, null); // indexed nowhere we know
         assertEquals(36.0, psy.activityNaming("I15", fields("Rol", "Redactor-șef"), issn("1111-1111")), 1e-9);
         assertEquals(24.0, psy.activityNaming("I15", fields("Rol", "Editor asociat"), issn("3333-3333")), 1e-9,
                 "the Core Collection, ESCI included");
@@ -305,25 +322,40 @@ class Psihologie2026ReportDefinitionTest {
 
     @Test
     void institutionalGrantsFellowshipsAndChairs() {
-        assertEquals(4.5, psy.activity("I25",
-                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000")), 1e-9);
-        assertEquals(4.5, psy.activity("I25",
-                fields("Tip", "Cercetare aplicativă", "Rol", "Coordonator partener", "Buget", "20000")), 1e-9);
-        assertEquals(0.0, psy.activity("I25",
-                fields("Tip", "Cercetare aplicativă", "Rol", "Coordonator partener", "Buget", "15000")), 1e-9);
-        assertEquals(0.0, psy.activity("I25", fields("Tip", "Dezvoltare instituțională", "Rol", "Director")), 1e-9);
-        assertEquals(0.0, psy.activity("I25",
-                fields("Tip", "Cercetare aplicativă", "Rol", "Membru", "Buget", "60000")), 1e-9);
-        // Fellowships and chairs are not grants: no floor.
-        assertEquals(4.5, psy.activity("I25", fields("Tip", "Fellowship")), 1e-9);
-        assertEquals(9.0, psy.activity("I25", fields("Tip", "Chair")), 1e-9);
-        assertEquals(1.5, psy.activity("I26_2",
-                fields("Tip", "Dezvoltare instituțională", "Rol", "Membru", "Buget", "60000")), 1e-9);
-        assertEquals(0.0, psy.activity("I26_2",
-                fields("Tip", "Dezvoltare instituțională", "Rol", "Membru", "Buget", "5000")), 1e-9);
-        assertEquals(0.0, psy.activity("I26_2",
-                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000")), 1e-9);
-        assertEquals(0.0, psy.activity("I26_2", fields("Tip", "Fellowship", "Rol", "Membru")), 1e-9);
+        // H145: the funder or the awarding body is named and ranked by the experts — a grant counts once they recognise
+        // the funder (an internal grant does not), a fellowship or a chair once they rank it international
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "Fondul Social European", "INTERNATIONAL", "FUNDER", null);
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "UEFISCDI", "NATIONAL", "FUNDER", "România");
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "Programul intern al universității", "LOCAL", "FUNDER", "România");
+        var fse = named(Activity.ReferenceField.ORGANIZATION_NAME, "Fondul Social European");
+        var uefiscdi = named(Activity.ReferenceField.ORGANIZATION_NAME, "UEFISCDI");
+        assertEquals(4.5, psy.activityNaming("I25",
+                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000"), fse), 1e-9);
+        assertEquals(4.5, psy.activityNaming("I25",
+                fields("Tip", "Cercetare aplicativă", "Rol", "Coordonator partener", "Buget", "20000"), uefiscdi), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I25",
+                fields("Tip", "Cercetare aplicativă", "Rol", "Coordonator partener", "Buget", "15000"), uefiscdi), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I25", fields("Tip", "Dezvoltare instituțională", "Rol", "Director"), fse), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I25",
+                fields("Tip", "Cercetare aplicativă", "Rol", "Membru", "Buget", "60000"), uefiscdi), 1e-9);
+        assertEquals(0.0, psy.activity("I25", fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000")), 1e-9,
+                "no funder named");
+        assertEquals(0.0, psy.activityNaming("I25", fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000"),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Programul intern al universității")), 1e-9, "an internal grant");
+        assertEquals(0.0, psy.activityNaming("I25", fields("Tip", "Dezvoltare instituțională", "Buget", "60000"), fse), 1e-9,
+                "a role nobody states is no director's");
+        // fellowships and chairs are not grants: no floor, but won in an international competition
+        assertEquals(4.5, psy.activityNaming("I25", fields("Tip", "Fellowship"), fse), 1e-9);
+        assertEquals(9.0, psy.activityNaming("I25", fields("Tip", "Chair"), fse), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I25", fields("Tip", "Chair"), uefiscdi), 1e-9, "a national competition");
+        assertEquals(0.0, psy.activity("I25", fields("Tip", "Chair")), 1e-9, "nothing named");
+        assertEquals(1.5, psy.activityNaming("I26_2",
+                fields("Tip", "Dezvoltare instituțională", "Rol", "Membru", "Buget", "60000"), fse), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I26_2",
+                fields("Tip", "Dezvoltare instituțională", "Rol", "Membru", "Buget", "5000"), fse), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I26_2",
+                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000"), fse), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I26_2", fields("Tip", "Fellowship", "Rol", "Membru"), fse), 1e-9);
     }
 
     @Test

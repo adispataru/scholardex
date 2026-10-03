@@ -36,6 +36,8 @@ public final class ArtisticEventRankSupport {
     private static final Pattern NON_ALNUM = Pattern.compile("[^a-z0-9]+");
 
     private static volatile Map<String, ArtisticEvent.Rank> ranks = Map.of();
+    /** H145 — {kind, country} of the event that gives a name its rank (a prize item asks for a competition). */
+    private static volatile Map<String, String[]> details = Map.of();
     /** Normalised names experts rejected (with their spellings), and the ones waiting for them. */
     private static volatile java.util.Set<String> rejected = java.util.Set.of();
     private static volatile java.util.Set<String> proposed = java.util.Set.of();
@@ -53,6 +55,7 @@ public final class ArtisticEventRankSupport {
     /** Replaces the registry with these events. */
     public static synchronized void register(Collection<ArtisticEvent> events) {
         Map<String, ArtisticEvent.Rank> index = new HashMap<>();
+        Map<String, String[]> detailIndex = new HashMap<>();
         java.util.Set<String> rejectedNames = new java.util.HashSet<>();
         java.util.Set<String> proposedNames = new java.util.HashSet<>();
         java.util.List<String[]> found = new java.util.ArrayList<>();
@@ -63,7 +66,12 @@ public final class ArtisticEventRankSupport {
                     continue;
                 }
                 if (event.isConfirmed() && event.getRank() != null) {
+                    ArtisticEvent.Rank before = index.get(key);
                     index.merge(key, event.getRank(), ArtisticEventRankSupport::better);
+                    if (before == null || better(before, event.getRank()) == event.getRank() && before != event.getRank()) {
+                        detailIndex.put(key, new String[]{event.getKind() == null ? null : event.getKind().name(),
+                                event.getCountry()});
+                    }
                     String core = normalize(name.replaceAll("\\([^)]*\\)", " "));
                     if (core.split(" ").length >= 2) {
                         found.add(new String[]{core, name});
@@ -76,6 +84,7 @@ public final class ArtisticEventRankSupport {
             }
         }
         ranks = Map.copyOf(index);
+        details = Map.copyOf(detailIndex);
         rejectedNames.removeAll(index.keySet());
         rejected = java.util.Set.copyOf(rejectedNames);
         proposed = java.util.Set.copyOf(proposedNames);
@@ -149,6 +158,7 @@ public final class ArtisticEventRankSupport {
     /** Back to the unregistered state (tests). */
     public static synchronized void reset() {
         ranks = Map.of();
+        details = Map.of();
         rejected = java.util.Set.of();
         proposed = java.util.Set.of();
         phrases = java.util.List.of();
@@ -164,6 +174,16 @@ public final class ArtisticEventRankSupport {
         }
         ensureLoaded();
         return Optional.ofNullable(ranks.get(key));
+    }
+
+    /** H145 — the kind (FESTIVAL, COMPETITION, …) and the country of the event that ranks this name; empty when unranked. */
+    public static Optional<String[]> detailsOf(String eventName) {
+        String key = normalize(eventName);
+        if (key.isEmpty()) {
+            return Optional.empty();
+        }
+        ensureLoaded();
+        return Optional.ofNullable(details.get(key));
     }
 
     private static void ensureLoaded() {

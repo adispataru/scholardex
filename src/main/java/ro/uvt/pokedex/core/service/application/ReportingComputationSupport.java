@@ -87,10 +87,63 @@ public final class ReportingComputationSupport {
                         return (isFirst || isCorresponding || isLast) == keepPrincipal;
                     })
                     .collect(Collectors.toList());
+            if (!keepPrincipal && indicator.getEffectiveSelector()
+                    instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerEditionCapAfterPrincipal shared) {
+                filtered = afterPrincipalPapers(filtered, publications, candidateIds, shared.n());
+            }
         } else {
             filtered = publications;
         }
         return filtered;
+    }
+
+    /**
+     * H145 — the cap a standard sets on an edition's papers together (Comisia 28 I8 + I9: at most two per conference
+     * edition): the candidate's principal-author conference papers of an edition take its slots first, and of the
+     * co-author papers only as many as are left stay, the fewest authors first (each is worth 1/n). An edition is the
+     * proceedings forum and the year.
+     */
+    static List<ScholardexPublicationView> afterPrincipalPapers(List<ScholardexPublicationView> coAuthored,
+                                                                 List<ScholardexPublicationView> all,
+                                                                 Set<String> candidateIds, int cap) {
+        java.util.Map<String, Integer> taken = new java.util.HashMap<>();
+        Set<String> coAuthoredIds = coAuthored.stream().map(ScholardexPublicationView::getId).collect(Collectors.toSet());
+        for (ScholardexPublicationView p : all) {
+            if (p == null || coAuthoredIds.contains(p.getId()) || p.getForumId() == null || !isConferencePaper(p)) {
+                continue;
+            }
+            String first = firstAuthorId(p);
+            boolean principal = (first != null && candidateIds.contains(first))
+                    || (p.getCorrespondingAuthorIds() != null && p.getCorrespondingAuthorIds().stream().anyMatch(candidateIds::contains));
+            if (principal) {
+                taken.merge(editionKey(p), 1, Integer::sum);
+            }
+        }
+        List<ScholardexPublicationView> sorted = new java.util.ArrayList<>(coAuthored);
+        sorted.sort(Comparator.comparingInt(p -> p.getAuthorCount() <= 0 ? Integer.MAX_VALUE : p.getAuthorCount()));
+        Set<String> kept = new java.util.HashSet<>();
+        for (ScholardexPublicationView p : sorted) {
+            if (p.getForumId() == null || !isConferencePaper(p)) {
+                kept.add(p.getId()); // not an edition's paper: the cap does not concern it
+                continue;
+            }
+            String key = editionKey(p);
+            int used = taken.getOrDefault(key, 0);
+            if (used < cap) {
+                kept.add(p.getId());
+                taken.put(key, used + 1);
+            }
+        }
+        return coAuthored.stream().filter(p -> kept.contains(p.getId())).collect(Collectors.toList());
+    }
+
+    private static boolean isConferencePaper(ScholardexPublicationView p) {
+        return "cp".equals(ro.uvt.pokedex.core.service.reporting.PublicationSubtypeSupport.resolveSubtype(p.toScoringPublication()));
+    }
+
+    private static String editionKey(ScholardexPublicationView p) {
+        String date = p.getCoverDate();
+        return p.getForumId() + "@" + (date != null && date.length() >= 4 ? date.substring(0, 4) : "");
     }
 
     /**

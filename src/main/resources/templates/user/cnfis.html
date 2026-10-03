@@ -101,38 +101,40 @@
                                     <small class="form-text text-muted" th:text="#{cnfis.header.domain.hint}">The post you hold, or the habilitation domain if later.</small>
                                 </div>
                                 <div class="app-form-field">
-                                    <label for="cnfis-score-report" th:text="#{cnfis.header.score}">CNATDCU score</label>
-                                    <div class="d-flex">
-                                        <select id="cnfis-score-report" name="scoreReportId" class="form-control form-control-sm mr-2">
-                                            <option value="" th:text="#{cnfis.header.score.typed}">typed in</option>
-                                            <option th:each="r : ${sheet.cnatdcuReports()}" th:value="${r.id()}" th:text="${r.title()}"
-                                                    th:selected="${r.id() == header.scoreReportId}"></option>
-                                        </select>
-                                        <input type="number" step="0.01" name="scoreTyped" class="form-control form-control-sm" style="max-width: 9rem;"
-                                               th:value="${header.scoreTyped}" th:placeholder="#{cnfis.header.score.typed}" th:attr="aria-label=#{cnfis.header.score.typed}">
-                                    </div>
-                                    <small class="form-text text-muted">
-                                        <span th:text="#{cnfis.header.score.current}">Value on the sheet:</span>
-                                        <strong th:text="${sheet.cnatdcuScore() != null ? #numbers.formatDecimal(sheet.cnatdcuScore(), 1, 2) : '—'}">—</strong>
-                                        <span th:if="${header.scoreReportId != null}" th:text="#{cnfis.header.score.fromReport}">at your staff position</span>
-                                    </small>
-                                </div>
-                                <div class="app-form-field">
-                                    <label for="cnfis-unmet" th:text="#{cnfis.header.unmet}">Unmet CNATDCU criterion</label>
-                                    <input id="cnfis-unmet" type="text" name="unmetCriterion" class="form-control form-control-sm" th:value="${header.unmetCriterion}">
-                                </div>
-                                <div class="app-form-field">
-                                    <label th:text="#{cnfis.header.hirsch}">Hirsch index</label>
-                                    <div class="d-flex">
-                                        <input type="number" min="0" name="hirschGoogleScholar" class="form-control form-control-sm mr-2" placeholder="Google Scholar" th:value="${header.hirschGoogleScholar}" aria-label="Google Scholar">
-                                        <input type="number" min="0" name="hirschWebOfScience" class="form-control form-control-sm mr-2" placeholder="Web of Science" th:value="${header.hirschWebOfScience}" aria-label="Web of Science">
-                                        <input type="number" min="0" name="hirschScopus" class="form-control form-control-sm" placeholder="Scopus" th:value="${header.hirschScopus}" aria-label="Scopus">
-                                    </div>
+                                    <label for="cnfis-score-report" th:text="#{cnfis.header.score.report}">Report that gives the CNATDCU score</label>
+                                    <select id="cnfis-score-report" name="scoreReportId" class="form-control form-control-sm">
+                                        <option value="" th:text="#{cnfis.header.score.none}">— choose the report —</option>
+                                        <option th:each="r : ${sheet.cnatdcuReports()}" th:value="${r.id()}" th:text="${r.title()}"
+                                                th:selected="${r.id() == header.scoreReportId}"></option>
+                                    </select>
+                                    <small class="form-text text-muted" th:text="#{cnfis.header.score.fromReport}">The total of the chosen report's latest run, at your staff position.</small>
                                 </div>
                                 <div class="app-form-grid--full">
                                     <button type="submit" class="btn btn-sm btn-primary" th:text="#{common.save}">Save</button>
                                 </div>
                             </form>
+                            <dl class="app-university-detail__definition-grid mt-3" id="cnfis-header-derived">
+                                <div>
+                                    <dt th:text="#{cnfis.header.score}">CNATDCU score</dt>
+                                    <dd id="cnfis-score" th:text="${sheet.cnatdcuScore() != null ? #numbers.formatDecimal(sheet.cnatdcuScore(), 1, 2) : '—'}">—</dd>
+                                </div>
+                                <div>
+                                    <dt th:text="#{cnfis.header.unmet}">Unmet CNATDCU criteria</dt>
+                                    <dd id="cnfis-unmet" th:text="${sheet.unmetCriteria() == null ? '—' : (#lists.isEmpty(sheet.unmetCriteria()) ? #messages.msg('cnfis.header.unmet.none') : #strings.listJoin(sheet.unmetCriteria(), '; '))}">—</dd>
+                                </div>
+                                <div>
+                                    <dt th:text="#{cnfis.header.hirsch.gs}">Hirsch — Google Scholar</dt>
+                                    <dd id="cnfis-hirsch-gs" th:text="${sheet.hirsch().googleScholar() != null ? sheet.hirsch().googleScholar() : #messages.msg('cnfis.header.hirsch.gsNone')}">—</dd>
+                                </div>
+                                <div>
+                                    <dt th:text="#{cnfis.header.hirsch.wos}">Hirsch — Web of Science</dt>
+                                    <dd id="cnfis-hirsch-wos" th:text="${sheet.hirsch().webOfScience()}">0</dd>
+                                </div>
+                                <div>
+                                    <dt th:text="#{cnfis.header.hirsch.scopus}">Hirsch — Scopus</dt>
+                                    <dd id="cnfis-hirsch-scopus" th:text="${sheet.hirsch().scopus()}">0</dd>
+                                </div>
+                            </dl>
                         </section>
 
                         <!-- ── Rows ────────────────────────────────────────── -->
@@ -200,6 +202,17 @@
                                         <td class="app-table__cell--identifier" th:text="${p.code()}">code</td><td th:text="${p.office()}">office</td>
                                         <td th:text="${p.type()}">National</td>
                                         <td class="app-table__cell--numeric" th:text="${p.authorCount()} + ' / ' + ${p.universityAuthorCount()}">2 / 2</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div th:unless="${#lists.isEmpty(sheet.patentsLeftOut())}" class="app-table-scroll mt-2">
+                                <table class="table table-bordered app-table" width="100%" cellspacing="0" id="cnfis-patents-left-out">
+                                    <caption class="app-table-caption" th:text="#{cnfis.leftOut.hint}">left out</caption>
+                                    <thead><tr><th th:text="#{common.year}">Year</th><th th:text="#{common.title}">Title</th><th th:text="#{cnfis.patents.code}">Code</th><th th:text="#{cnfis.leftOut.reason}">Reason</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="l : ${sheet.patentsLeftOut()}">
+                                        <td class="app-table__cell--identifier" th:text="${l.year()}">2023</td><td th:text="${l.title()}">Title</td><td class="app-table__cell--secondary" th:text="${l.venue()}">code</td><td th:text="${l.reason()}">reason</td>
                                     </tr>
                                     </tbody>
                                 </table>

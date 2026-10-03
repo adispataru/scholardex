@@ -316,7 +316,7 @@ class ScientificProductionServiceTest {
         // edition is unaffected. The dropped item leaves the scores map and carries OVER_PER_FORUM_CAP.
         Indicator indicator = indicator("PUBLICATIONS", "S");
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "PER_FORUM_CAP_2");
-        ScoringPublication sameEditionLow = publication("p1", "f-edition", "2020-01-01", "cp", "cp",
+        ScoringPublication sameEditionLow = publication("p1", "f-edition", "2021-01-01", "cp", "cp",
                 "Edition Paper Low", List.of("a1"));
         ScoringPublication sameEditionHigh = publication("p2", "f-edition", "2021-01-01", "cp", "cp",
                 "Edition Paper High", List.of("a1"));
@@ -324,28 +324,33 @@ class ScientificProductionServiceTest {
                 "Edition Paper Mid", List.of("a1"));
         ScoringPublication otherEdition = publication("p4", "f-other", "2022-01-01", "cp", "cp",
                 "Other Edition Paper", List.of("a1"));
+        // H145: the same proceedings series a year later is another edition (a series with an ISSN is one forum)
+        ScoringPublication nextYear = publication("p5", "f-edition", "2022-01-01", "cp", "cp",
+                "Next Edition Paper", List.of("a1"));
         when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         when(scoringService.getScore(sameEditionLow, indicator)).thenReturn(score(1.0));
         when(scoringService.getScore(sameEditionHigh, indicator)).thenReturn(score(3.0));
         when(scoringService.getScore(sameEditionMid, indicator)).thenReturn(score(2.0));
         when(scoringService.getScore(otherEdition, indicator)).thenReturn(score(4.0));
+        when(scoringService.getScore(nextYear, indicator)).thenReturn(score(1.5));
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
-                List.of(sameEditionLow, sameEditionHigh, sameEditionMid, otherEdition), indicator);
+                List.of(sameEditionLow, sameEditionHigh, sameEditionMid, otherEdition, nextYear), indicator);
 
-        // Same edition keeps the two highest (3 + 2); the lowest (1) is dropped. Other edition adds 4.
+        // Same edition keeps the two highest (3 + 2); the lowest (1) is dropped. Other editions add 4 and 1.5.
         assertEquals(3.0, result.get("Edition Paper High").getAuthorScore(), 1e-9);
         assertEquals(2.0, result.get("Edition Paper Mid").getAuthorScore(), 1e-9);
         assertEquals(4.0, result.get("Other Edition Paper").getAuthorScore(), 1e-9);
+        assertEquals(1.5, result.get("Next Edition Paper").getAuthorScore(), 1e-9);
         assertNull(result.get("Edition Paper Low"));
-        assertEquals(3.0 + 2.0 + 4.0, result.get("total").getAuthorScore(), 1e-9);
+        assertEquals(3.0 + 2.0 + 4.0 + 1.5, result.get("total").getAuthorScore(), 1e-9);
     }
 
     @Test
     void perForumCapSelectorReportsDroppedItemWithReasonInDetailedResult() {
         Indicator indicator = indicator("PUBLICATIONS", "S");
         ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "PER_FORUM_CAP_2");
-        ScoringPublication a = publication("p1", "f-edition", "2020-01-01", "cp", "cp", "A", List.of("a1"));
+        ScoringPublication a = publication("p1", "f-edition", "2021-01-01", "cp", "cp", "A", List.of("a1"));
         ScoringPublication b = publication("p2", "f-edition", "2021-01-01", "cp", "cp", "B", List.of("a1"));
         ScoringPublication c = publication("p3", "f-edition", "2021-01-01", "cp", "cp", "C", List.of("a1"));
         when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
@@ -1556,6 +1561,35 @@ class ScientificProductionServiceTest {
         assertEquals(0.0, result.get("SSCI Paper").getAuthorScore(), 0.0001);
         assertEquals(0.0, result.get("SCIE APC Paper").getAuthorScore(), 0.0001);
         assertEquals(1.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void aCitationCountsOnlyWhenTheCitedArticleIsInListA() {
+        // H145 Math 2026 C1/C2: citations from M1/M2 journals "care citează articole științifice din lista A" — the
+        // candidate's article must be in L too (SCIE, no fee), not only the citing one
+        Indicator indicator = indicator("CITATIONS", "(citedScieIndexed && !citedFeeJournal && scieIndexed && !feeJournal) ? 1 : 0");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "AIS");
+        ScoringPublication citing = publication("c1", "f-citing", "2023-01-01", "ar", "ar", "Citing", List.of("b1"));
+        when(scoringFactoryService.getScoringService("AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(citing, indicator)).thenReturn(score(1.0));
+        when(reportingLookupPort.isForumInScie("f-citing", 2023)).thenReturn(true);
+        when(reportingLookupPort.isFeeJournal("f-citing")).thenReturn(false);
+        when(reportingLookupPort.isForumInScie("f-scie", 2020)).thenReturn(true);
+        when(reportingLookupPort.isForumInScie("f-ssci", 2020)).thenReturn(false);
+        when(reportingLookupPort.isForumInScie("f-apc", 2020)).thenReturn(true);
+        when(reportingLookupPort.isFeeJournal("f-apc")).thenReturn(true);
+        org.mockito.Mockito.lenient().when(reportingLookupPort.isFeeJournal("f-scie")).thenReturn(false);
+        org.mockito.Mockito.lenient().when(reportingLookupPort.isFeeJournal("f-ssci")).thenReturn(false);
+
+        assertEquals(1.0, scientificProductionService.calculateScientificImpactScore(
+                publication("a", "f-scie", "2020-01-01", "ar", "ar", "In A", List.of("a1")), List.of(citing), indicator)
+                .get("total").getAuthorScore(), 0.0001);
+        assertEquals(0.0, scientificProductionService.calculateScientificImpactScore(
+                publication("b", "f-ssci", "2020-01-01", "ar", "ar", "SSCI only", List.of("a1")), List.of(citing), indicator)
+                .get("total").getAuthorScore(), 0.0001);
+        assertEquals(0.0, scientificProductionService.calculateScientificImpactScore(
+                publication("c", "f-apc", "2020-01-01", "ar", "ar", "Fee journal", List.of("a1")), List.of(citing), indicator)
+                .get("total").getAuthorScore(), 0.0001);
     }
 
     @Test

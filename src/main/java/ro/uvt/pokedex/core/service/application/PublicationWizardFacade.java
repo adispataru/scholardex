@@ -38,6 +38,8 @@ public class PublicationWizardFacade {
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
+    /** H145 — an entry counts once Crossref or a head verified it. */
+    private final WizardPublicationReviewService wizardPublicationReviewService;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PublicationWizardFacade.class);
 
@@ -134,6 +136,7 @@ public class PublicationWizardFacade {
 
     public SubmissionResult submitPublication(WizardPublicationCommand command, User submitter) {
         validateCommand(command);
+        refuseDoiOnThePlatform(command, submitter);
 
         List<String> authorIds = parseCsvList(command.getAuthorIdsCsv());
         if (!authorIds.isEmpty()) {
@@ -171,7 +174,30 @@ public class PublicationWizardFacade {
 
         canonicalMaterializationService.rebuildFactsAndViews("wizard-publication-submit", batchId);
         confirmSubmitterAuthorship(submitter, eid);
+        openReview(sourceRecordId, submitter);
         return new SubmissionResult(outcome.imported(), sourceRecordId, eid, forumSourceId);
+    }
+
+    /**
+     * H145: a DOI the platform already holds (from Scopus, OpenAlex, WoS — anything but this researcher's own wizard
+     * entries) is refused: the researcher confirms that publication instead. An added copy used to overwrite the
+     * shared record for everyone.
+     */
+    private void refuseDoiOnThePlatform(WizardPublicationCommand command, User submitter) {
+        String doi = ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService
+                .normalizeDoi(command.getDoi());
+        if (isBlank(doi)) {
+            return;
+        }
+        String me = submitter == null ? null : submitter.getEmail();
+        scholardexPublicationFactRepository.findAllByDoiNormalized(doi).stream()
+                .filter(p -> me == null || !me.equalsIgnoreCase(p.getWizardSubmitterEmail())
+                        || !isBlank(p.getWosId()) || (p.getEid() != null
+                        && !p.getEid().startsWith(UserDefinedWizardOnboardingContract.SOURCE + ":")))
+                .findFirst()
+                .ifPresent(p -> {
+                    throw new WizardDoiExistsException(p.getTitle());
+                });
     }
 
     /**
@@ -193,6 +219,18 @@ public class PublicationWizardFacade {
                     () -> log.warn("Wizard submit: canonical publication not found by eid {} — authorship not auto-confirmed", eid));
         } catch (Exception e) {
             log.warn("Wizard submit: authorship auto-confirm failed for eid {}: {}", eid, e.getMessage());
+        }
+    }
+
+    /**
+     * H145: the entry waits for verification (Crossref asked at once when it gives a DOI). Best-effort like the
+     * authorship decision: an entry without a review simply does not count until the startup pass opens one.
+     */
+    private void openReview(String sourceRecordId, User submitter) {
+        try {
+            wizardPublicationReviewService.afterSubmit(sourceRecordId, submitter == null ? null : submitter.getEmail());
+        } catch (Exception e) {
+            log.warn("Wizard submit: review not opened for {}: {}", sourceRecordId, e.getMessage());
         }
     }
 

@@ -105,11 +105,14 @@ public class PsihologiePublisherService {
         if (exact != null) {
             return exact;
         }
-        // Containment fallback: longest listed name that is a whole-token substring of the actual name.
+        // Containment fallback: longest listed name that is a whole-token substring of the actual name — H145: when what
+        // the typed name adds is only an imprint's dress ("Editura Polirom, Iași"), never another house's name
+        // ("Editura Mirton, distribuită de Polirom")
         String bestMatch = null;
         for (Map.Entry<String, String> e : tiers.entrySet()) {
             String listed = e.getKey();
             if (containsWholeTokens(normalized, listed)
+                    && WosMasterBookListService.onlyAddress(extraTokens(normalized, listed))
                     && (bestMatch == null || listed.length() > bestMatch.length())) {
                 bestMatch = listed;
             }
@@ -139,6 +142,14 @@ public class PsihologiePublisherService {
             log.error("Failed to load the 2026 publisher list from {}", fixture, e);
         }
         return Map.copyOf(tiers);
+    }
+
+    /** The words of the typed name outside the listed one. */
+    private static java.util.Set<String> extraTokens(String typed, String listed) {
+        java.util.Set<String> extras = new java.util.LinkedHashSet<>(java.util.List.of(typed.split(" ")));
+        extras.removeAll(java.util.List.of(listed.split(" ")));
+        extras.remove("");
+        return extras;
     }
 
     private static boolean containsWholeTokens(String haystack, String needle) {

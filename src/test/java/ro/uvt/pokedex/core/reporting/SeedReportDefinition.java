@@ -339,6 +339,19 @@ final class SeedReportDefinition {
         return activity(shortName, entered, (String) null, claim, DEFAULT_DATE);
     }
 
+    /** H145 — points for ONE declared activity whose request a head APPROVED (the record asks for Incadrare_solicitata). */
+    double approved(String shortName, Map<String, String> entered) {
+        return activityWithDecision(shortName, entered, PublisherClaim.Status.APPROVED);
+    }
+
+    /** H145 — points for ONE declared activity that names entities and whose request a head APPROVED. */
+    double approvedNaming(String shortName, Map<String, String> entered, Map<Activity.ReferenceField, String> named) {
+        PublisherClaim claim = new PublisherClaim();
+        claim.setStatus(PublisherClaim.Status.APPROVED);
+        claim.setRequested(entered.get(PublisherRules.FIELD_CLAIM));
+        return activity(shortName, entered, named, claim, DEFAULT_DATE);
+    }
+
     /** Points for ONE declared activity dated {@code date} (the other helpers date it {@value #DEFAULT_DATE}). */
     double activityOn(String date, String shortName, Map<String, String> entered) {
         return activity(shortName, entered, (String) null, null, date);
@@ -425,7 +438,14 @@ final class SeedReportDefinition {
     /** An entry the experts ranked; every name not ranked this way waits for them. */
     static void rank(ro.uvt.pokedex.core.model.registry.RegistryKind kind, String name, String level, String category,
                      String country) {
+        rank(kind, name, level, category, country, List.of());
+    }
+
+    /** An entry the experts ranked, ticking criteria (Comisia 28's for a conference; H145: a selection committee). */
+    static void rank(ro.uvt.pokedex.core.model.registry.RegistryKind kind, String name, String level, String category,
+                     String country, List<String> criteria) {
         ro.uvt.pokedex.core.model.registry.RegistryEntry entry = ro.uvt.pokedex.core.model.registry.RegistryEntry.of(kind);
+        entry.setCriteria(new ArrayList<>(criteria));
         entry.setName(name);
         entry.setStatus(ro.uvt.pokedex.core.model.registry.RegistryStatus.CONFIRMED);
         entry.setLevel(level);
@@ -435,10 +455,15 @@ final class SeedReportDefinition {
         ro.uvt.pokedex.core.service.reporting.RegistrySupport.register(RANKED);
     }
 
-    /** What the app's lists know of a journal (by its canonical ISSN). */
-    static void journal(String issn, boolean fee, boolean wos, boolean wosCore, boolean scopus, int databases, Double impactFactor) {
+    /**
+     * What the app's lists know of a journal (by its canonical ISSN): the databases indexing it, as the membership data
+     * names them (SCIE, SSCI, AHCI, ESCI, SCOPUS, DOAJ, ERIH, DBLP, …) — Web of Science and Scopus follow from them.
+     */
+    static void journal(String issn, boolean fee, Double impactFactor, String... databases) {
+        java.util.Set<String> names = java.util.Set.of(databases);
+        boolean wos = names.contains("SCIE") || names.contains("SSCI") || names.contains("AHCI");
         JOURNALS.put(issn, new ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.JournalFacts(
-                fee, wos, wosCore, scopus, databases, impactFactor));
+                fee, wos, wos || names.contains("ESCI"), names.contains("SCOPUS"), names, impactFactor));
         registerLookups();
     }
 

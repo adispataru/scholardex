@@ -43,18 +43,16 @@ class ActivityInstanceControllerContractTest {
     }
 
     @Test
-    void canonicalActivitiesMutationsRedirectToCanonicalListRoute() throws Exception {
-        mockMvc.perform(post("/user/activities/create"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/user/activities"));
-
-        mockMvc.perform(post("/user/activities/update"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/user/activities"));
-
-        mockMvc.perform(post("/user/activities/delete/{id}", "a1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/user/activities"));
+    void theOldWriteRoutesAreGone() throws Exception {
+        // H145: they bound the whole record from the request — owner, id, a head's approval of a request
+        mockMvc.perform(post("/user/activities/create").with(authenticatedUser("u@uvt.ro"))
+                        .param("researcherId", "someone.else@uvt.ro").param("publisherClaim.status", "APPROVED"))
+                .andExpect(status().is4xxClientError());
+        mockMvc.perform(post("/user/activities/update").with(authenticatedUser("u@uvt.ro")).param("id", "a1"))
+                .andExpect(status().is4xxClientError());
+        mockMvc.perform(post("/user/activities/delete/{id}", "a1").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().is4xxClientError());
+        org.mockito.Mockito.verifyNoInteractions(userActivityInstanceFacade);
     }
 
     @Test

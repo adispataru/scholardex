@@ -13,9 +13,12 @@ public record CnfisSheetViewModel(
         List<CnfisDomain> domains,
         List<ReportChoice> cnatdcuReports,
         Double cnatdcuScore,
+        List<String> unmetCriteria,
+        Hirsch hirsch,
         List<Row> rows,
         List<LeftOut> leftOut,
         List<Patent> patents,
+        List<LeftOut> patentsLeftOut,
         Arts arts,
         Sport sport,
         Humanities humanities,
@@ -24,6 +27,13 @@ public record CnfisSheetViewModel(
         Counts counts
 ) {
     public record ReportChoice(String id, String title) {
+    }
+
+    /**
+     * H145 — the Hirsch values of the head of the sheet, derived: Web of Science and Scopus from the platform's
+     * publications, Google Scholar from the approved Google Scholar record (null without one).
+     */
+    public record Hirsch(Integer googleScholar, int webOfScience, int scopus) {
     }
 
     public record Row(String publicationId, String year, String title, String venue, String doi, String wosCode,

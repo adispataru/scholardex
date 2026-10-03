@@ -45,6 +45,24 @@ class ActivityManagementFacadeTest {
     }
 
     @Test
+    void anAdminEditKeepsTheScoringFlagsTheFormDoesNotCarry() {
+        Activity stored = new Activity();
+        stored.setId("a1");
+        stored.setSinglePerResearcher(true);
+        stored.setPublicationRecord(true);
+        when(activityRepository.findById("a1")).thenReturn(Optional.of(stored));
+        Activity posted = new Activity();
+        posted.setId("a1");
+        posted.setName("Renamed");
+
+        facade.saveActivity(posted);
+
+        assertTrue(posted.isSingle());
+        assertTrue(posted.isPublication());
+        verify(activityRepository).save(posted);
+    }
+
+    @Test
     void saveAndDeleteActivityDelegateToRepository() {
         Activity activity = new Activity();
         facade.saveActivity(activity);

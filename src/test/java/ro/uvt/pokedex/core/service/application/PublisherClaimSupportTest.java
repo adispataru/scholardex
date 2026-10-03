@@ -63,4 +63,47 @@ class PublisherClaimSupportTest {
         assertFalse(PublisherClaimSupport.reconcile(plain, "ion@e-uvt.ro"));
         assertNull(plain.getPublisherClaim());
     }
+
+    // ── H145: a decision is about the facts it saw ─────────────────────────────────────────────────────
+
+    @Test
+    void anApprovalGoesBackToTheHeadWhenTheBookItWasAboutChanges() {
+        ActivityInstance book = record(Map.of("Incadrare_solicitata", ASK, "Dovada_incadrarii", "8 libraries",
+                "Editura", "Mirton", "Tip", "Capitol în volum colectiv", "N_autori", "3"));
+        PublisherClaimSupport.reconcile(book, "ion@e-uvt.ro");
+        book.getPublisherClaim().setStatus(PublisherClaim.Status.APPROVED);
+        book.getPublisherClaim().setDecidedBy("director@e-uvt.ro");
+        assertEquals(book.getPublisherClaim(), PublisherClaim.inForce(book));
+
+        // the same request, the same evidence — but now a single-author book at another publisher
+        book.getFields().put("Tip", "Carte");
+        book.getFields().remove("N_autori");
+        assertNull(PublisherClaim.inForce(book), "scoring ignores it at once");
+        assertTrue(PublisherClaimSupport.reconcile(book, "ion@e-uvt.ro"));
+        assertEquals(PublisherClaim.Status.PENDING, book.getPublisherClaim().getStatus());
+        assertNull(book.getPublisherClaim().getDecidedBy());
+
+        book.setReferenceFields(new java.util.EnumMap<>(Map.of(
+                ro.uvt.pokedex.core.model.activities.Activity.ReferenceField.FORUM_ISSN, "1234-5679")));
+        assertNull(PublisherClaim.inForce(book) == null ? null : "unchanged", "a reference is a fact too");
+    }
+
+    @Test
+    void aRequestMadeBeforeH145IsGivenItsFactsAndKeepsItsDecision() {
+        ActivityInstance book = record(Map.of("Incadrare_solicitata", ASK, "Dovada_incadrarii", "8 libraries", "Editura", "Mirton"));
+        PublisherClaimSupport.reconcile(book, "ion@e-uvt.ro");
+        book.getPublisherClaim().setStatus(PublisherClaim.Status.APPROVED);
+        book.getPublisherClaim().setFacts(null);
+        assertEquals(book.getPublisherClaim(), PublisherClaim.inForce(book), "no facts yet: counts");
+
+        assertTrue(PublisherClaimSupport.reconcile(book, "ion@e-uvt.ro"), "stamped");
+        assertEquals(PublisherClaim.Status.APPROVED, book.getPublisherClaim().getStatus());
+        assertEquals(PublisherClaim.factsOf(book), book.getPublisherClaim().getFacts());
+    }
+
+    @Test
+    void theRequestsOwnFieldsAreNamedAlikeEverywhere() {
+        assertEquals(ro.uvt.pokedex.core.service.reporting.PublisherRules.FIELD_CLAIM, PublisherClaim.REQUEST_FIELD);
+        assertEquals(ro.uvt.pokedex.core.service.reporting.PublisherRules.FIELD_CLAIM_EVIDENCE, PublisherClaim.EVIDENCE_FIELD);
+    }
 }

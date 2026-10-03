@@ -137,7 +137,9 @@ class Sociologie2026ReportDefinitionTest {
                 // H143: the declared books, chapters, coordinated books, translations and collections take their
                 // publisher's category from the lists of the commission
                 "I3_decl", "I4_decl", "I5", "I6_decl", "I8_trad", "I12", "C4_capitole_decl", "C5_A1_decl",
-                "C5_A2_decl"), soc.flagged("sociologie2026"));
+                "C5_A2_decl",
+                // H145: a dictionary term counts at a publisher of the lists
+                "I7"), soc.flagged("sociologie2026"));
         assertTrue(soc.flagged("psihologie2026").isEmpty());
         assertTrue(soc.flagged("stiinteEducatiei2026").isEmpty());
     }
@@ -280,14 +282,31 @@ class Sociologie2026ReportDefinitionTest {
 
     @Test
     void declaredArticlesBooksAndChapters() {
-        assertEquals(2.0, soc.activity("I2_decl", fields("Coeficient_m", "m = 2", "N_autori", "2")), 1e-9);
-        assertEquals(2.0, soc.activity("I2_decl", fields()), 1e-9);
-        assertEquals(1.0, soc.activity("C4_articole_decl", fields()), 1e-9);
+        // H145: a declared article names its journal by ISSN — SCOPUS 4, three recognised databases 2, an impact factor
+        // belongs to I.1 — and states its language; m follows from the language and the place, never picked
+        SeedReportDefinition.journal("7777-7777", false, null, "SCOPUS");
+        SeedReportDefinition.journal("8888-8888", false, null, "ESCI", "ERIH", "DOAJ");
+        SeedReportDefinition.journal("9999-9999", false, 1.4, "SSCI", "SCOPUS");
+        assertEquals(4 * 1.5 / 2, soc.activityNaming("I2_decl", fields("Limba", "Engleză", "N_autori", "2"), issn("7777-7777")), 1e-9,
+                "an international language, the place unknown: m = 1.5");
+        assertEquals(2.0, soc.activityNaming("I2_decl", fields("Limba", "Română", "N_autori", "1"), issn("8888-8888")), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I2_decl", fields("Limba", "Română", "N_autori", "1"), issn("9999-9999")), 1e-9,
+                "an impact factor: I.1, added as a publication");
+        assertEquals(0.0, soc.activityNaming("I2_decl", fields("Limba", "Română"), issn("7777-7777")), 1e-9, "no author count");
+        assertEquals(0.0, soc.activity("I2_decl", fields("N_autori", "1")), 1e-9, "no journal named");
+        assertEquals(2.0, soc.approved("I2_decl", fields("N_autori", "1", "Incadrare_solicitata",
+                "Revistă indexată în cel puțin 3 baze de date")), 1e-9, "a head approved three databases the lists do not know");
+        assertEquals(1.0, soc.activityNaming("C4_articole_decl", fields("N_autori", "3"), issn("7777-7777")), 1e-9);
+        assertEquals(0.0, soc.activity("C4_articole_decl", fields("N_autori", "3")), 1e-9);
 
         // H143: the publisher's category comes from the lists — the annex's A2 list (Polirom), the WoS Master Book List
         // for A1 (Routledge) — and the holdings in six WorldCat libraries count once a head approves the request.
         assertEquals(15.0, soc.activity("I3_decl", fields("Tip", "Carte", "Editura", "Polirom",
-                "N_autori", "1", "Coeficient_m", "m = 1.5")), 1e-9);
+                "N_autori", "1", "Limba", "Engleză")), 1e-9, "a Romanian house: m = 1.5 for an English book");
+        assertEquals(20.0, soc.activity("I3_decl", fields("Tip", "Carte", "Editura", "Routledge",
+                "N_autori", "1", "Limba", "Engleză")), 1e-9, "a house of the international lists: published abroad, m = 2");
+        assertEquals(10.0, soc.activity("I3_decl", fields("Tip", "Carte", "Editura", "Routledge",
+                "N_autori", "1", "Limba", "Română")), 1e-9);
         assertEquals(0.0, soc.activity("I3_decl", fields("Tip", "Carte", "Editura", "Polirom",
                 "N_autori", "4")), 1e-9);
         assertEquals(6.0 / 4, soc.activityWithDecision("I4_decl", fields("Tip", "Carte", "Editura", "Editura Proprie",
@@ -302,13 +321,15 @@ class Sociologie2026ReportDefinitionTest {
         assertEquals(0.0, soc.activity("I3_decl", fields("Tip", "Carte", "N_autori", "1")), 1e-9);
 
         assertEquals(6.0, soc.activity("I6_decl", fields("Tip", "Capitol în volum colectiv",
-                "Editura", "Routledge")), 1e-9);
+                "Editura", "Routledge", "N_autori", "1")), 1e-9);
+        assertEquals(0.0, soc.activity("I6_decl", fields("Tip", "Capitol în volum colectiv",
+                "Editura", "Routledge")), 1e-9, "H145: no author count, no points");
         assertEquals(3.0, soc.activityWithDecision("I6_decl", fields("Tip", "Capitol în volum colectiv",
-                "Editura", "Editura Proprie", "Incadrare_solicitata", WORLDCAT), PublisherClaim.Status.APPROVED), 1e-9);
+                "Editura", "Editura Proprie", "N_autori", "1", "Incadrare_solicitata", WORLDCAT), PublisherClaim.Status.APPROVED), 1e-9);
         assertEquals(6.0, soc.activityWithDecision("I6_decl", fields("Tip", "Capitol în volum colectiv",
-                "Editura", "Editura Proprie", "Incadrare_solicitata", A1), PublisherClaim.Status.APPROVED), 1e-9,
+                "Editura", "Editura Proprie", "N_autori", "1", "Incadrare_solicitata", A1), PublisherClaim.Status.APPROVED), 1e-9,
                 "an international house off the Master Book List, approved as A1");
-        assertEquals(0.0, soc.activity("I6_decl", fields("Tip", "Carte", "Editura", "Routledge")), 1e-9);
+        assertEquals(0.0, soc.activity("I6_decl", fields("Tip", "Carte", "Editura", "Routledge", "N_autori", "1")), 1e-9);
         assertEquals(1.0, soc.activity("C4_capitole_decl", fields("Tip", "Capitol în volum colectiv",
                 "Editura", "Polirom")), 1e-9);
     }
@@ -317,7 +338,7 @@ class Sociologie2026ReportDefinitionTest {
     void anInternationalListDecidesA1AndTheEarlierListCountsBeforeOctober2026() {
         // UEFISCDI's list for the social sciences (Anexa 7c): an A1 house with no head asked
         assertEquals(6.0, soc.activity("I6_decl", fields("Tip", "Capitol în volum colectiv",
-                "Editura", "L'Harmattan, Paris")), 1e-9);
+                "Editura", "L'Harmattan, Paris", "N_autori", "1")), 1e-9);
         assertEquals(1.0, soc.activity("C5_A1_decl", fields("Tip", "Carte", "Editura", "Berghahn Books", "N_autori", "1")), 1e-9);
         assertEquals(0.0, soc.activity("C5_A1_decl", fields("Tip", "Carte", "Editura", "Editura Berghahn Books", "N_autori", "1")),
                 1e-9, "a foreign house is written without «Editura» (Berghahn is on Anexa 7c, not on the Master Book List)");
@@ -327,7 +348,7 @@ class Sociologie2026ReportDefinitionTest {
         assertEquals(1.0, soc.activityOn("2019-04-01", "C5_A2_decl", luminaLex), 1e-9);
         assertEquals(0.0, soc.activityOn("2026-10-01", "I3_decl", luminaLex), 1e-9, "the current list applies");
         assertEquals(3.0, soc.activityOn("2018-06-01", "I6_decl", fields("Tip", "Capitol în volum colectiv",
-                "Editura", "Universul Juridic")), 1e-9);
+                "Editura", "Universul Juridic", "N_autori", "1")), 1e-9);
     }
 
     private static final String A1 = "Editură de prestigiu internațional (Lista A1)";
@@ -337,7 +358,7 @@ class Sociologie2026ReportDefinitionTest {
     void declaredBooksAreCountedOnce() {
         var international = fields("Tip", "Carte", "Editura", "Routledge", "N_autori", "2");
         var listed = fields("Tip", "Carte", "Editura", "Editura Polirom, Iași", "N_autori", "3");
-        var libraries = fields("Tip", "Carte", "Editura", "Editura Proprie", "Incadrare_solicitata", WORLDCAT);
+        var libraries = fields("Tip", "Carte", "Editura", "Editura Proprie", "N_autori", "1", "Incadrare_solicitata", WORLDCAT);
         assertEquals(1.0, soc.activity("C5_A1_decl", international), 1e-9);
         assertEquals(0.0, soc.activity("C5_A2_decl", international), 1e-9);
         assertEquals(0.0, soc.activity("C5_A1_decl", listed), 1e-9);
@@ -361,44 +382,66 @@ class Sociologie2026ReportDefinitionTest {
 
     @Test
     void coordinatedBooksReviewsProceedingsAndTranslations() {
-        assertEquals(6.0, soc.activity("I5", fields("Editura", "Humanitas", "N_coordonatori", "2", "Coeficient_m", "m = 2")), 1e-9);
-        assertEquals(6.0, soc.activity("I5", fields("Editura", "Polirom")), 1e-9);
-        assertEquals(0.0, soc.activity("I5", fields()), 1e-9, "definition [4]: only books at a listed publisher count");
+        assertEquals(6 * 1.5 / 2, soc.activity("I5", fields("Editura", "Humanitas", "N_coordonatori", "2", "Limba", "Engleză")), 1e-9,
+                "H145: m from the language and the place — a Romanian house, an English book: 1.5");
+        assertEquals(6.0, soc.activity("I5", fields("Editura", "Polirom", "N_coordonatori", "1")), 1e-9);
+        assertEquals(0.0, soc.activity("I5", fields("Editura", "Polirom")), 1e-9, "H145: no coordinator count, no points");
+        assertEquals(0.0, soc.activity("I5", fields("N_coordonatori", "1")), 1e-9,
+                "definition [4]: only books at a listed publisher count");
 
         // H144: the review's journal is named by ISSN; the lists say where it is indexed
-        SeedReportDefinition.journal("1111-1111", false, true, true, true, 4, 1.4);   // SSCI
-        SeedReportDefinition.journal("2222-2222", false, false, true, true, 3, null);  // ESCI: not ISI, three databases
-        SeedReportDefinition.journal("3333-3333", false, false, false, false, 2, null);
-        assertEquals(3.0, soc.activityNaming("I7", fields("Tip", "Recenzie"), issn("1111-1111")), 1e-9);
-        assertEquals(1.0, soc.activityNaming("I7", fields("Tip", "Recenzie"), issn("2222-2222")), 1e-9);
-        assertEquals(0.0, soc.activityNaming("I7", fields("Tip", "Recenzie"), issn("3333-3333")), 1e-9,
+        SeedReportDefinition.journal("1111-1111", false, 1.4, "SSCI", "SCOPUS", "ERIH", "DOAJ");   // SSCI
+        SeedReportDefinition.journal("2222-2222", false, null, "ESCI", "SCOPUS", "DOAJ");  // ESCI: not ISI, three databases
+        SeedReportDefinition.journal("3333-3333", false, null, "ERIH", "DOAJ");
+        assertEquals(3.0, soc.activityNaming("I7", fields("Tip", "Recenzie", "N_autori", "1"), issn("1111-1111")), 1e-9);
+        assertEquals(1.0, soc.activityNaming("I7", fields("Tip", "Recenzie", "N_autori", "1"), issn("2222-2222")), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I7", fields("Tip", "Recenzie", "N_autori", "1"), issn("3333-3333")), 1e-9,
                 "two databases the lists know: a request, or nothing");
-        assertEquals(1.0, soc.activityWithDecision("I7", fields("Tip", "Recenzie",
+        assertEquals(1.0, soc.activityWithDecision("I7", fields("Tip", "Recenzie", "N_autori", "1",
                         "Incadrare_solicitata", "Revistă indexată în cel puțin 3 baze de date"),
                 ro.uvt.pokedex.core.model.activities.PublisherClaim.Status.APPROVED), 1e-9, "a head approved the third database");
+        // H145: a dictionary term counts at a publisher of the lists (definition [4]); a record with no kind counts nothing
         assertEquals(0.75, soc.activity("I7", fields("Tip", "Termen în enciclopedie sau dicționar", "N_autori", "2",
-                "Coeficient_m", "m = 1.5")), 1e-9);
+                "Limba", "Engleză", "Editura", "Polirom")), 1e-9);
+        assertEquals(0.0, soc.activity("I7", fields("Tip", "Termen în enciclopedie sau dicționar", "N_autori", "2",
+                "Editura", "Editura Proprie")), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I7", fields("N_autori", "1"), issn("1111-1111")), 1e-9, "no kind stated");
 
-        assertEquals(1.0, soc.activity("I8_decl", fields()), 1e-9);
-        assertEquals(0.5, soc.activity("I8_decl", fields("N_autori", "4", "Coeficient_m", "m = 2")), 1e-9);
-        assertEquals(2.0, soc.activity("I8_trad", fields("Tip", "Fără aparat critic", "Editura", "Polirom")), 1e-9);
-        assertEquals(4.0, soc.activity("I8_trad", fields("Tip", "Cu aparat critic", "Editura", "Polirom")), 1e-9);
-        assertEquals(0.0, soc.activity("I8_trad", fields("Tip", "Cu aparat critic", "Editura", "Editura Proprie")), 1e-9,
-                "a translation counts at a publisher of the A2 list");
+        // H145: a proceedings volume with an ISSN or ISBN that exists (its check digit is right)
+        assertEquals(1.0, soc.activity("I8_decl", fields("ISSN_ISBN", "ISBN 978-0-306-40615-7", "N_autori", "1")), 1e-9);
+        assertEquals(1.5 / 4, soc.activity("I8_decl", fields("ISSN_ISBN", "978-0-306-40615-7", "N_autori", "4",
+                "Limba", "Engleză")), 1e-9);
+        assertEquals(0.0, soc.activity("I8_decl", fields("ISSN_ISBN", "978-0-306-40615-8", "N_autori", "1")), 1e-9,
+                "a wrong check digit");
+        assertEquals(0.0, soc.activity("I8_decl", fields("N_autori", "1")), 1e-9, "no ISSN or ISBN");
+        // H145: a head confirms the work is a fundamental one (and the WorldCat holdings when the house is on no list)
+        String fundamental = "Lucrare fundamentală, la o editură din Lista A2";
+        assertEquals(0.0, soc.activity("I8_trad", fields("Tip", "Fără aparat critic", "Editura", "Polirom")), 1e-9);
+        assertEquals(2.0, soc.approved("I8_trad", fields("Tip", "Fără aparat critic", "Editura", "Polirom",
+                "Incadrare_solicitata", fundamental)), 1e-9);
+        assertEquals(4.0, soc.approved("I8_trad", fields("Tip", "Cu aparat critic", "Editura", "Polirom",
+                "Incadrare_solicitata", fundamental)), 1e-9);
+        assertEquals(0.0, soc.approved("I8_trad", fields("Tip", "Cu aparat critic", "Editura", "Editura Proprie",
+                "Incadrare_solicitata", fundamental)), 1e-9, "a translation counts at a publisher of the A2 list");
+        assertEquals(4.0, soc.approved("I8_trad", fields("Tip", "Cu aparat critic", "Editura", "Editura Proprie",
+                "Incadrare_solicitata", "Lucrare fundamentală, în cel puțin 6 biblioteci din WorldCat")), 1e-9,
+                "or is held by six WorldCat libraries");
     }
 
     @Test
     void declaredCitations() {
-        assertEquals((0.2 + 4 * 1.0) * 2 / 2,
-                soc.activity("I9_decl", fields("IF_sursa", "1.0", "N_autori", "2")), 1e-9);
-        assertEquals(0.4, soc.activity("I9_decl", fields()), 1e-9);
-        assertEquals(1.0, soc.activity("C8_decl", fields("IF_sursa", "3")), 1e-9);
+        // H145: the citing source's impact factor comes from its ISSN, never typed (a typed 10000 once gave 80,000 points)
+        SeedReportDefinition.journal("6666-6666", false, 1.0, "SSCI");
+        assertEquals((0.2 + 4 * 1.0) * 2 / 2, soc.activityNaming("I9_decl", fields("N_autori", "2"), issn("6666-6666")), 1e-9);
+        assertEquals(0.4, soc.activity("I9_decl", fields("N_autori", "1")), 1e-9, "a citing source with no impact factor");
+        assertEquals(0.0, soc.activity("I9_decl", fields()), 1e-9, "no author count, no points");
+        assertEquals(1.0, soc.activity("C8_decl", fields()), 1e-9);
     }
 
     @Test
     void editorialRolesAreCountedPerYearAndGuestIssuesPerIssue() {
-        SeedReportDefinition.journal("4444-4444", false, false, true, true, 2, null);   // Scopus (and ESCI)
-        SeedReportDefinition.journal("5555-5555", false, false, false, false, 3, null); // three other databases
+        SeedReportDefinition.journal("4444-4444", false, null, "ESCI", "SCOPUS");   // Scopus (and ESCI)
+        SeedReportDefinition.journal("5555-5555", false, null, "ESCI", "DOAJ", "ERIH"); // ESCI, DOAJ, ERIH: three recognised databases
         var wos = issn("4444-4444");
         var other = issn("5555-5555");
         String editor = "Editor, redactor-șef sau redactor delegat";
@@ -459,7 +502,7 @@ class Sociologie2026ReportDefinitionTest {
     void aGrantWithoutAStatedBudgetIsScoredAtTheFirstTier() {
         assertEquals(5.0, soc.activity("I13", fields("Rol", "Director (proiect național)")), 1e-9);
         assertEquals(2.0, soc.activity("I13", fields("Rol", "Membru")), 1e-9);
-        assertEquals(2.0, soc.activity("I13", fields()), 1e-9, "no role stated: counted as a member");
+        assertEquals(0.0, soc.activity("I13", fields()), 1e-9, "H145: a role nobody states counts nothing");
         // The declared interval is the platform's bracket scale; its lower bound is what is known for sure.
         assertEquals(5.0, soc.activity("I13",
                 fields("Rol", "Director (proiect național)", "Interval_buget", "sub 50.000 EUR")), 1e-9);
@@ -497,7 +540,8 @@ class Sociologie2026ReportDefinitionTest {
         assertEquals(soc.activityName("I15"), soc.activityName("I16"));
 
         assertEquals(2.0, soc.activity("I17", fields()), 1e-9);
-        assertEquals(4.0, soc.activity("I17", fields("Coeficient_m", "m = 2")), 1e-9);
+        assertEquals(3.0, soc.activity("I17", fields("Limba", "Engleză")), 1e-9,
+                "H145: an international language, the place unknown: m = 1.5");
         assertEquals(1.0, soc.activity("I18", fields()), 1e-9);
     }
 
@@ -506,19 +550,22 @@ class Sociologie2026ReportDefinitionTest {
         assertEquals(1.0, soc.activity("I19_1", fields("Tip", "BIP (Blended Intensive Program)")), 1e-9);
         assertEquals(1.0, soc.activity("I19_1", fields("Tip", "Școală de vară")), 1e-9);
         assertEquals(4.0, soc.activity("I19_2",
-                fields("Tip", "Suport de curs sau de seminar, minimum 20 de pagini")), 1e-9);
+                fields("Tip", "Suport de curs sau de seminar, minimum 20 de pagini", "N_autori", "1")), 1e-9);
         assertEquals(3.0, soc.activity("I19_2", fields("Tip",
-                "Suport de curs sau de seminar, minimum 20 de pagini", "N_autori", "2",
-                "Coeficient_m", "m = 1.5")), 1e-9);
-        assertEquals(1.0, soc.activity("I19_2", fields("Tip", "Capitol în suport de curs sau de seminar")), 1e-9);
+                "Suport de curs sau de seminar, minimum 20 de pagini", "N_autori", "2", "Limba", "Engleză")), 1e-9);
+        assertEquals(1.0, soc.activity("I19_2", fields("Tip", "Capitol în suport de curs sau de seminar", "N_autori", "1")), 1e-9);
+        assertEquals(0.0, soc.activity("I19_2", fields("Tip", "Capitol în suport de curs sau de seminar")), 1e-9,
+                "H145: no author count, no points");
         assertEquals(2.0, soc.activity("I19_3", fields()), 1e-9);
         assertEquals(2.0, soc.activity("I19_4", fields()), 1e-9);
     }
 
     @Test
     void theConditionAfterHabilitationIsMetOnce() {
-        assertEquals(1.0, soc.activity("C10", fields("Tip",
-                "Coordonarea a cel puțin unui doctorand, cu afiliere la o școală doctorală")), 1e-9);
+        var doctoral = fields("Tip", "Coordonarea a cel puțin unui doctorand, cu afiliere la o școală doctorală",
+                "Incadrare_solicitata", "Condiție îndeplinită după abilitare, verificată");
+        assertEquals(0.0, soc.activity("C10", doctoral), 1e-9, "H145: an empty record once passed — a head checks the condition");
+        assertEquals(1.0, soc.approved("C10", doctoral), 1e-9);
         assertEquals(1, soc.indicator("C10").get("maxPoints").asInt());
     }
 

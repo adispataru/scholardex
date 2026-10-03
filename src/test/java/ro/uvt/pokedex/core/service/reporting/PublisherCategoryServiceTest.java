@@ -101,6 +101,14 @@ class PublisherCategoryServiceTest {
     }
 
     @Test
+    void aListedHouseNamedInsideAnotherNameDoesNotLendItsCategory() {
+        // H145 (E6): the address may follow the name; another house's name may not
+        assertEquals("B", category(PublisherRules.MUZICA_2026, "Editura Eikon, Cluj-Napoca"));
+        assertTrue(classify(PublisherRules.MUZICA_2026, "Editura Fantoma, distribuită de MediaMusica").isEmpty(),
+                "a fantasy house does not take MediaMusica's A by naming it");
+    }
+
+    @Test
     void aPublisherTheMusicListsDoNotRateTakesItsBestCategoryElsewhere() {
         PublisherCategorySupport.Classification uvt = classify(PublisherRules.MUZICA_2026,
                 "Editura Universității de Vest").orElseThrow();

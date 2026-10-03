@@ -11,7 +11,7 @@ package ro.uvt.pokedex.core.model.reporting.scoring;
  * "TOP_20" methodology change is a data update, not a code change.
  */
 public sealed interface Selector permits Selector.All, Selector.TopN, Selector.DistinctForums, Selector.PerForumCap,
-        Selector.TopNPerForumYear {
+        Selector.TopNPerForumYear, Selector.PerEditionCapAfterPrincipal {
 
     record All() implements Selector {}
 
@@ -24,9 +24,10 @@ public sealed interface Selector permits Selector.All, Selector.TopN, Selector.D
 
     /**
      * FSP I9/I10 ("se pot puncta cumulat cel mult două contribuţii/ediţie conferinţă"): keep at most
-     * {@code n} positively-scored items <em>per forum</em> (each conference edition = its proceedings
-     * forum), taking the highest-scoring ones; the total sums only the kept items. Unlike {@link TopN}
-     * (a single global cap) this caps within each {@code forumId} group.
+     * {@code n} positively-scored items <em>per conference edition</em>, taking the highest-scoring ones; the total
+     * sums only the kept items. Unlike {@link TopN} (a single global cap) this caps within each edition — H145: the
+     * proceedings forum AND the year, because a proceedings series with an ISSN (EDULEARN, INTED, …) is one forum
+     * across all its editions.
      */
     record PerForumCap(int n) implements Selector {
         public PerForumCap {
@@ -45,6 +46,18 @@ public sealed interface Selector permits Selector.All, Selector.TopN, Selector.D
         public TopNPerForumYear {
             if (topN < 1) throw new IllegalArgumentException("topN must be >= 1; got " + topN);
             if (perForumYearCap < 1) throw new IllegalArgumentException("perForumYearCap must be >= 1; got " + perForumYearCap);
+        }
+    }
+
+    /**
+     * H145 — the co-author half of a cap the standard sets on principal and co-author papers TOGETHER ("se pot puncta
+     * cumulat cel mult două contribuţii/ediţie conferinţă", Comisia 28 I8 + I9): the candidate's principal-author
+     * papers of an edition take its slots first (they are worth more), and the co-author indicator keeps at most what
+     * is left, the papers with the fewest authors first. Otherwise as {@link PerForumCap}.
+     */
+    record PerEditionCapAfterPrincipal(int n) implements Selector {
+        public PerEditionCapAfterPrincipal {
+            if (n < 1) throw new IllegalArgumentException("PerEditionCapAfterPrincipal.n must be >= 1; got " + n);
         }
     }
 
@@ -68,6 +81,7 @@ public sealed interface Selector permits Selector.All, Selector.TopN, Selector.D
             case "TOP_10"          -> new TopN(10);
             case "DISTINCT_FORUMS" -> new DistinctForums();
             case "PER_FORUM_CAP_2" -> new PerForumCap(2);
+            case "PER_EDITION_CAP_2_AFTER_PRINCIPAL" -> new PerEditionCapAfterPrincipal(2);
             // FEAA 2026: top 10 articles, max 1 per journal-year, Core/Info (M>=8) exempt from the cap.
             case "TOP_10_PER_FORUM_YEAR_1_EXEMPT_M8" -> new TopNPerForumYear(10, 1, 8);
             default -> throw new IllegalArgumentException("Unknown selector name: " + legacyName);
@@ -91,6 +105,10 @@ public sealed interface Selector permits Selector.All, Selector.TopN, Selector.D
             case PerForumCap cap -> {
                 if (cap.n() == 2) yield "PER_FORUM_CAP_2";
                 throw new IllegalStateException("PerForumCap.n=" + cap.n() + " has no legacy representation");
+            }
+            case PerEditionCapAfterPrincipal cap -> {
+                if (cap.n() == 2) yield "PER_EDITION_CAP_2_AFTER_PRINCIPAL";
+                throw new IllegalStateException("PerEditionCapAfterPrincipal.n=" + cap.n() + " has no legacy representation");
             }
             case TopNPerForumYear f -> {
                 if (f.topN() == 10 && f.perForumYearCap() == 1 && f.exemptMultiplierMin() == 8) {

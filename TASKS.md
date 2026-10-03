@@ -9,6 +9,21 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H145` Input integrity: users enter data, the platform and the experts rank and score — **BUILT 2026-10-03
+  (committed, not pushed; ships in ONE push with H144 and H142 slice 3) — see
+  `docs/tasks/active/h145-input-integrity-sweep.md`.** Adrian, 2026-10-03: "Users just input data, not ranking and
+  scoring data." Four adversarial reviewers swept every FV except Informatică; three more checked the formulas against
+  OM 3019/2025 and the CNFIS guide. Built: one server-side validator for every activity write (422), owner checks on
+  update/delete, the legacy write routes gone, a finite guard on activity scores; wizard DOIs the platform holds refused,
+  wizard entries link to shared records instead of rewriting them, and a wizard publication counts only once Crossref
+  matches its DOI or a head approves it (`/supervisor/declarations`); no typed IF, m, Google Scholar metric, CNFIS score,
+  h-index, unmet criterion, kind or patent type — derived from lists, registries and runs, or approved by a head, with
+  approvals tied to the facts they approved; bounded years and counts, blank values scoring 0, one record where the
+  standard says one; a declared copy of a listed publication counted once; institutional CNFIS tables deduplicated by
+  facts; Physics A ≥ 2, reviews out of I/P, proceedings out of A2/A5; Mathematics C1/C2 on list A; Education's
+  per-edition cap shared by I8/I9; CNFIS 5.3 publisher rules. Prod script `h144_h145_release.js` (guard
+  `RELEASE_IMAGE_IS_DEPLOYED`, `--restart`), rehearsed on prod's own chain and prechecked read-only. Open: identity
+  (B1, B2), Comisia 28 principal-author N, the CNFIS domain/report choice, legacy Matematică 2016 items.
 - [ ] `H144` Self-picked levels → registries ranked by experts — **SLICE 1 BUILT 2026-10-03 (committed, not pushed;
   ships with H142 slice 3 in one push) — see `docs/tasks/active/h144-self-picked-levels.md`.** One engine with kinds
   (artistic events, conferences, organisations and bodies, awards): one experts' page `/user/registry/review` with a
@@ -17,9 +32,9 @@ Done history moved to `TASKS-done.md`.
   derived variables (`International`, `Recunoscut`, `Top500_URAP`, `Top1000_mondial`, `Tip_brevet`, `Revista_WoS`,
   `N_baze_date`, …): 25 types, 35 formulas and descriptions across Comisia 28, 25, 35, Info, Fizică and CNFIS
   patents; a waiting conference counts national, Music's gated items count only once ranked; 16 shared bodies seed
-  the organisations registry. Prod script `h144_slice1_registries.js` (guard `H144_IMAGE_IS_DEPLOYED`,
-  `--restart`), rehearsed; prod checked read-only (no records to migrate). **Prod order:** push and deploy; H142
-  slice 3's steps; flip and run the H144 script; map the domains to departments and name experts. Next: grants
+  the organisations registry. Prod script: the combined `h144_h145_release.js` (H145; the slice-1 script is
+  withdrawn). **Prod order:** push and deploy; H142 slice 3's steps; flip and run the release script; map the domains
+  to departments and name experts. Next: grants
   (slice 2), sport (slice 3). Opened 2026-10-02 with Adrian, after H142 slice 3. About a dozen activity types across standards take a level the researcher picks (keynote at an
   international/national conference, jury, conference committee, professional association, evaluation panel, expert
   group, CNFIS 5.2 sports level, …), the same flaw as H143's publisher category and H142's concert visibility. Apply

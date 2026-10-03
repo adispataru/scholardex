@@ -46,6 +46,8 @@ class PublicationWizardFacadeTest {
     @Mock
     private PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
 
+    @Mock
+    private WizardPublicationReviewService wizardPublicationReviewService;
     @InjectMocks
     private PublicationWizardFacade facade;
 
@@ -508,6 +510,8 @@ class PublicationWizardFacadeTest {
                 eq("user@example.com"), eq("spub_wizard_1"),
                 eq(ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED),
                 eq("wizard-self-submission"));
+        // H145: the confirmation alone no longer makes it count — the entry waits for Crossref or a head
+        verify(wizardPublicationReviewService).afterSubmit(any(), eq("user@example.com"));
     }
 
     @Test
@@ -522,6 +526,47 @@ class PublicationWizardFacadeTest {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> facade.submitPublication(command, new User()));
         assertTrue(ex.getMessage().contains("book"));
+    }
+
+    @Test
+    void aDoiThePlatformAlreadyHoldsIsRefusedSoTheSharedRecordIsNeverRewritten() {
+        WizardPublicationCommand command = buildCommand();
+        command.setDoi("https://doi.org/10.1000/HELD");
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact held =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact();
+        held.setTitle("The original");
+        held.setEid("2-s2.0-1");
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/held")).thenReturn(List.of(held));
+        User submitter = new User();
+        submitter.setEmail("user@example.com");
+
+        WizardDoiExistsException e = assertThrows(WizardDoiExistsException.class,
+                () -> facade.submitPublication(command, submitter));
+
+        assertEquals("The original", e.getExistingTitle());
+        org.mockito.Mockito.verifyNoInteractions(importEventIngestionService, canonicalMaterializationService);
+    }
+
+    @Test
+    void theResearchersOwnEarlierEntryWithThatDoiIsNotInTheWay() {
+        WizardPublicationCommand command = buildCommand();
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact mine =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact();
+        mine.setTitle("A Test Publication");
+        mine.setEid("USER_DEFINED:EID:abc");
+        mine.setWizardSubmitterEmail("user@example.com");
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/xyz")).thenReturn(List.of(mine));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(importEventIngestionService.ingest(eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE), any(), any(), any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.skipped());
+        User submitter = new User();
+        submitter.setEmail("USER@example.com");
+
+        facade.submitPublication(command, submitter);
+
+        verify(canonicalMaterializationService).rebuildFactsAndViews(eq("wizard-publication-submit"), any());
     }
 
     private WizardPublicationCommand buildCommand() {

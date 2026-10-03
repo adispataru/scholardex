@@ -6,11 +6,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import ro.uvt.pokedex.core.model.activities.Activity;
-import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade;
 
 import java.util.Optional;
 
+/**
+ * The old activity pages, now redirects to the workspace. H145: their write routes are gone — they bound the whole
+ * record from the request (owner, id, a head's approval); records are written only through the workspace's endpoints.
+ */
 @Controller
 @RequestMapping("/user/activities")
 @RequiredArgsConstructor
@@ -23,28 +26,9 @@ public class ActivityInstanceController {
         return "redirect:/user/workspace#activities";
     }
 
-    @PostMapping("/create")
-    public String createActivityInstance(@ModelAttribute ActivityInstance activityInstance) {
-
-        userActivityInstanceFacade.saveActivityInstance(activityInstance);
-        return "redirect:/user/activities";
-    }
-
-    @PostMapping("/update")
-    public String updateActivityInstance(@ModelAttribute ActivityInstance activityInstance) {
-        userActivityInstanceFacade.updateActivityInstance(activityInstance);
-        return "redirect:/user/activities";
-    }
-
     @GetMapping("/edit/{id}")
     public String editActivityInstance() {
         return "redirect:/user/workspace#activities";
-    }
-
-    @PostMapping("/delete/{id}")
-    public String deleteActivityInstance(@PathVariable String id) {
-        userActivityInstanceFacade.deleteActivityInstance(id);
-        return "redirect:/user/activities";
     }
 
     @GetMapping("/activity/{id}/fields")

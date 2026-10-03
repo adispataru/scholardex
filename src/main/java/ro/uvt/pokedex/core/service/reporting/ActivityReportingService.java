@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.reporting;
 
+import ro.uvt.pokedex.core.service.application.ActivityRecordValidator;
+
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,16 @@ public class ActivityReportingService {
         return calculateActivityScoresDetailed(activities, indicator).scores();
     }
 
+    /** H145: {@code inPublicationList} — records that declare a publication of the researcher's list; they do not count. */
+    public Map<String, Score> calculateActivityScores(List<ActivityInstance> activities, Indicator indicator,
+                                                      java.util.Set<String> inPublicationList) {
+        return calculateActivityScoresDetailed(activities, indicator, inPublicationList).scores();
+    }
+
+    public ScoredActivityResult calculateActivityScoresDetailed(List<ActivityInstance> activities, Indicator indicator) {
+        return calculateActivityScoresDetailed(activities, indicator, java.util.Set.of());
+    }
+
     /**
      * H99 item 4: scores plus the zero-scored instances the totals exclude. A declared activity whose
      * formula yields 0 (GoveIN: a bracket-1 grant under D_v's {@code Interval_buget >= 2} gate) used to
@@ -38,7 +50,8 @@ public class ActivityReportingService {
      * publications side; the {@code scores} map (and every total/export consumer of
      * {@link #calculateActivityScores}) is unchanged.
      */
-    public ScoredActivityResult calculateActivityScoresDetailed(List<ActivityInstance> activities, Indicator indicator) {
+    public ScoredActivityResult calculateActivityScoresDetailed(List<ActivityInstance> activities, Indicator indicator,
+                                                                java.util.Set<String> inPublicationList) {
 
         Map<String, Score> result = new HashMap<>();
         Map<String, Score> excluded = new HashMap<>();
@@ -47,6 +60,12 @@ public class ActivityReportingService {
         for (ActivityInstance act : activities) {
 
             Score score = calculateActivityScore(act, indicator);
+            if (inPublicationList != null && inPublicationList.contains(act.getId())) {
+                // H145: the publication is in the researcher's list and counts from there (DeclaredPublicationCopies)
+                score.getScoringInfo().put("zeroReason", "IN_PUBLICATION_LIST");
+                excluded.put(act.getId(), score);
+                continue;
+            }
             // H52 slice 11d.1: typed-strategy check via the Indicator helper.
             // GENERIC_ACTIVITY contributes when its formula yields a positive
             // author score; every other kind needs a positive base score too.
@@ -61,6 +80,20 @@ public class ActivityReportingService {
             }
         }
 
+        if (result.size() > 1 && activities.stream().anyMatch(a -> a.getActivity() != null && a.getActivity().isSingle())) {
+            // H145: a type held once per researcher (a Google Scholar profile) counts only its best record
+            String best = result.entrySet().stream()
+                    .max(java.util.Comparator.comparingDouble(e -> e.getValue().getAuthorScore()))
+                    .map(Map.Entry::getKey).orElseThrow();
+            for (String id : new java.util.ArrayList<>(result.keySet())) {
+                if (!id.equals(best)) {
+                    Score other = result.remove(id);
+                    other.getScoringInfo().put("zeroReason", "ONE_PER_RESEARCHER");
+                    excluded.put(id, other);
+                }
+            }
+            totalScore = result.get(best).getAuthorScore();
+        }
         Score total = new Score();
         total.setAuthorScore(totalScore);
 
@@ -169,7 +202,7 @@ public class ActivityReportingService {
         // H144: what the record NAMES decides, never a level the researcher picked — the registries experts rank
         // (International, Recunoscut, Premiu_stiintific, In_strainatate, …) and the app's lists (Top500_URAP,
         // Tip_brevet, Revista_cu_taxa, Revista_WoS, N_baze_date); see RegistryScoringSupport.
-        RegistryScoringSupport.bind(activity, variables);
+        RegistryScoringSupport.bind(activity, variables, indicator);
         // H143: Categorie_editura — the category of a declared book's publisher under the indicator's standard, from
         // the lists that standard names, or from a request a head approved (PublisherRules); null when nothing counts.
         injectPublisherCategoryVariable(activity, indicator, variables, result, rawformula);
@@ -186,7 +219,15 @@ public class ActivityReportingService {
             FormulaContext ctx = FormulaContext.builder().putAll(variables).build();
             OptionalDouble finalScore = formulaEvaluator.tryEval(rawformula, ctx);
             if (finalScore.isPresent()) {
-                result.setAuthorScore(finalScore.getAsDouble());
+                double value = finalScore.getAsDouble();
+                if (!Double.isFinite(value)) {
+                    // H145: an infinite or undefined score counts nothing — it used to pass every threshold and reach
+                    // the unit roll-ups (publications have had this guard since H77)
+                    log.warn("Non-finite score {} for indicator {} and activity {}: counted as 0",
+                            value, indicator.getId(), activity.getId());
+                    value = 0.0;
+                }
+                result.setAuthorScore(value);
             } else {
                 // Preserves pre-v1 behavior: PropertyAccessException → 0.0. The evaluator
                 // already logged the formula + error; add the indicator/activity context
@@ -313,8 +354,8 @@ public class ActivityReportingService {
         }
         Object typed = variables.get(PublisherRules.FIELD_PUBLISHER);
         PublisherCategorySupport.Outcome outcome = PublisherCategorySupport.outcome(rules.get(),
-                typed instanceof String name ? name : null, activity.getDate(), activity.getPublisherClaim(),
-                activity.getFields());
+                typed instanceof String name ? name : null, activity.getDate(),
+                ro.uvt.pokedex.core.model.activities.PublisherClaim.inForce(activity), activity.getFields());
         variables.put(PublisherRules.VARIABLE, outcome.category());
         result.getScoringInfo().put("publisherCategory", outcome.category() == null ? "NONE" : outcome.category());
         result.getScoringInfo().put("publisherBasis", outcome.basis());
@@ -324,21 +365,34 @@ public class ActivityReportingService {
     }
 
     /**
-     * H142 — binds {@code N_ani} (int >= 1) when the activity has a numeric {@code An_inceput}: the years from it to
+     * H142 — binds {@code N_ani} when the activity has a numeric {@code An_inceput}: the years from it to
      * {@code An_sfarsit}, or to the reference year of the run (else the current year) when no end year is given —
-     * a function still held. 1 otherwise, and for an inverted pair.
+     * a function still held. H145: an end year counts no further than the reference year, and a start before
+     * {@link ActivityRecordValidator#FIRST_YEAR} or after the reference year, or an end before the start, counts
+     * nothing (0) — one record once paid 20,260 points for "since year 1". Without a start year: the number of years a
+     * type states itself (Info D_x), at most {@link #MAX_YEARS}, else 1.
      */
     private void injectYearsVariable(Map<String, Object> variables) {
+        Integer reference = ScoringReferenceYearContext.current();
+        int last = reference != null ? reference : java.time.Year.now().getValue();
         if (!(variables.get("An_inceput") instanceof Number start)) {
-            variables.put("N_ani", 1);
+            Object typed = variables.get("N_ani");
+            variables.put("N_ani", typed instanceof Number n && Double.isFinite(n.doubleValue())
+                    ? (int) Math.max(1, Math.min(n.doubleValue(), MAX_YEARS)) : 1);
             return;
         }
-        Integer reference = ScoringReferenceYearContext.current();
-        double end = variables.get("An_sfarsit") instanceof Number e ? e.doubleValue()
-                : (reference != null ? reference : java.time.Year.now().getValue());
-        int span = (int) (end - start.doubleValue()) + 1;
-        variables.put("N_ani", Math.max(span, 1));
+        double from = start.doubleValue();
+        double to = variables.get("An_sfarsit") instanceof Number e && Double.isFinite(e.doubleValue())
+                ? Math.min(e.doubleValue(), last) : last;
+        if (!Double.isFinite(from) || from < ActivityRecordValidator.FIRST_YEAR || from > last || to < from) {
+            variables.put("N_ani", 0);
+            return;
+        }
+        variables.put("N_ani", (int) (to - from) + 1);
     }
+
+    /** H145 — the most years a type that states them itself can count (Info D_x). */
+    static final int MAX_YEARS = 60;
 
     /**
      * H142 — see the call site. Bound only for activity types that declare an EVENT_NAME reference; the visibility
@@ -378,9 +432,13 @@ public class ActivityReportingService {
         Object end = variables.get("An_sfarsit");
         int editions = 1;
         if (start instanceof Number s && end instanceof Number e) {
-            int span = (int) (e.doubleValue() - s.doubleValue()) + 1;
-            if (span >= 1) {
-                editions = span;
+            // H145: no edition before FIRST_YEAR or after the run's reference year counts
+            Integer reference = ScoringReferenceYearContext.current();
+            int last = reference != null ? reference : java.time.Year.now().getValue();
+            double from = s.doubleValue();
+            double to = Math.min(e.doubleValue(), last);
+            if (Double.isFinite(from) && Double.isFinite(to) && from >= ActivityRecordValidator.FIRST_YEAR && to >= from) {
+                editions = (int) (to - from) + 1;
             }
         }
         variables.put("N_editii", editions);

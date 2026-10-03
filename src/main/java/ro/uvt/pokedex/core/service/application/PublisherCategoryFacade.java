@@ -78,7 +78,7 @@ public class PublisherCategoryFacade {
         List<StandardView> standards = new ArrayList<>();
         for (PublisherRules r : rules) {
             PublisherCategorySupport.Outcome outcome = PublisherCategorySupport.outcome(r, publisher,
-                    instance.getDate(), instance.getPublisherClaim(), fields);
+                    instance.getDate(), ro.uvt.pokedex.core.model.activities.PublisherClaim.inForce(instance), fields);
             standards.add(new StandardView(r.name(), r.label(), outcome.category(), outcome.basis(), outcome.detail(),
                     outcome.listed() == null ? null : outcome.listed().category()));
         }

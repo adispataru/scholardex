@@ -59,10 +59,53 @@ public class UserActivityInstanceFacade {
         );
     }
 
+    /**
+     * Stores a new record. H145: only the values its type accepts ({@link ActivityRecordValidator}) — anything refused
+     * stops the save; a head's decision on a request is never taken from the caller (a request is made through the
+     * fields, decided only on the head's page).
+     *
+     * @throws ActivityValidationException when a value is refused
+     */
     public ActivityInstance saveActivityInstance(ActivityInstance activityInstance) {
+        refuseSecondRecord(activityInstance);
+        applyChecked(activityInstance, activityInstance.getActivity(), activityInstance.getFields(),
+                activityInstance.getReferenceFields());
+        activityInstance.setPublisherClaim(null);
         validateJournalIssns(activityInstance);
         PublisherClaimSupport.reconcile(activityInstance, activityInstance.getResearcherId()); // H143
         return activityInstanceRepository.save(activityInstance);
+    }
+
+    /** H145: a type a researcher holds once (a Google Scholar profile) takes no second record. */
+    private void refuseSecondRecord(ActivityInstance instance) {
+        Activity type = instance.getActivity();
+        if (type == null || !type.isSingle() || instance.getResearcherId() == null) {
+            return;
+        }
+        boolean held = activityInstanceRepository.findAllByResearcherId(instance.getResearcherId()).stream()
+                .anyMatch(r -> r.getActivity() != null && type.getId() != null && type.getId().equals(r.getActivity().getId()));
+        if (held) {
+            throw new ActivitySingleRecordException(type.getName());
+        }
+    }
+
+    /** Puts the accepted values on the record, or refuses them all. */
+    private static void applyChecked(ActivityInstance target, Activity type, Map<String, String> fields,
+                                     Map<Activity.ReferenceField, String> references) {
+        ActivityRecordValidator.Result checked = ActivityRecordValidator.validate(type, fields, references);
+        if (!checked.valid()) {
+            throw new ActivityValidationException(checked.problems());
+        }
+        target.setFields(new java.util.HashMap<>(checked.fields()));
+        Map<Activity.ReferenceField, String> refs = new java.util.EnumMap<>(Activity.ReferenceField.class);
+        refs.putAll(checked.references());
+        target.setReferenceFields(refs);
+    }
+
+    /** H145: a record is changed or removed by the researcher it belongs to, nobody else. */
+    private static boolean owns(ActivityInstance instance, String actorEmail) {
+        return actorEmail != null && instance.getResearcherId() != null
+                && actorEmail.trim().equalsIgnoreCase(instance.getResearcherId().trim());
     }
 
     /**
@@ -122,27 +165,42 @@ public class UserActivityInstanceFacade {
         }
     }
 
-    public void updateActivityInstance(ActivityInstance activityInstance) {
-        Optional<ActivityInstance> byId = activityInstanceRepository.findById(activityInstance.getId());
-        if (byId.isPresent()) {
-            ActivityInstance existingInstance = byId.get();
-            validateJournalIssns(activityInstance);
-            existingInstance.setFields(activityInstance.getFields());
-            existingInstance.setReferenceFields(activityInstance.getReferenceFields());
-            if (Boolean.TRUE.equals(existingInstance.getNeedsReview())) {
-                existingInstance.setNeedsReview(Boolean.FALSE); // H142 — saving an imported record is checking it
-            }
-            PublisherClaimSupport.reconcile(existingInstance, existingInstance.getResearcherId()); // H143
-            activityInstanceRepository.save(existingInstance);
+    /**
+     * Replaces a record's fields and references. H145: only the researcher the record belongs to; only values its type
+     * accepts. False when there is no such record of theirs (nothing changed).
+     *
+     * @throws ActivityValidationException when a value is refused
+     */
+    public boolean updateActivityInstance(ActivityInstance activityInstance, String actorEmail) {
+        Optional<ActivityInstance> byId = activityInstance.getId() == null
+                ? Optional.empty() : activityInstanceRepository.findById(activityInstance.getId());
+        if (byId.isEmpty() || !owns(byId.get(), actorEmail)) {
+            return false;
         }
+        ActivityInstance existingInstance = byId.get();
+        applyChecked(existingInstance, existingInstance.getActivity(), activityInstance.getFields(),
+                activityInstance.getReferenceFields());
+        validateJournalIssns(existingInstance);
+        if (Boolean.TRUE.equals(existingInstance.getNeedsReview())) {
+            existingInstance.setNeedsReview(Boolean.FALSE); // H142 — saving an imported record is checking it
+        }
+        PublisherClaimSupport.reconcile(existingInstance, existingInstance.getResearcherId()); // H143
+        activityInstanceRepository.save(existingInstance);
+        return true;
     }
 
     public Optional<ActivityInstance> findActivityInstance(String id) {
         return activityInstanceRepository.findById(id);
     }
 
-    public void deleteActivityInstance(String id) {
+    /** Removes a record of the researcher's own (H145); false when there is no such record of theirs. */
+    public boolean deleteActivityInstance(String id, String actorEmail) {
+        Optional<ActivityInstance> byId = id == null ? Optional.empty() : activityInstanceRepository.findById(id);
+        if (byId.isEmpty() || !owns(byId.get(), actorEmail)) {
+            return false;
+        }
         activityInstanceRepository.deleteById(id);
+        return true;
     }
 
     public Optional<Activity> findActivity(String id) {

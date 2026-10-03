@@ -38,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -60,6 +61,8 @@ class CnfisReportingFacadeTest {
     @Mock private CNFISReportExportService exportService;
     @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     @Mock private ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles citeScoreQuartiles;
+    @Mock private UserPublicationFacade userPublicationFacade;
+    @Mock private ro.uvt.pokedex.core.service.reporting.PublisherCategoryService publisherCategories;
 
     private CnfisReportingFacade facade;
 
@@ -67,7 +70,7 @@ class CnfisReportingFacadeTest {
     void setUp() {
         facade = new CnfisReportingFacade(userReportFacade, runService, userRepository, lookupService,
                 projectionReadService, activityInstanceRepository, headerRepository, snapshotRepository,
-                domainCatalog, exportService, bookFactRepository, citeScoreQuartiles);
+                domainCatalog, exportService, bookFactRepository, citeScoreQuartiles, userPublicationFacade, publisherCategories);
         lenient().when(userReportFacade.buildIndividualReportsListView(EMAIL))
                 .thenReturn(new UserReportsListViewModel(List.of()));
         lenient().when(headerRepository.findByUserEmailAndReportingYear(any(), org.mockito.ArgumentMatchers.anyInt()))
@@ -77,6 +80,7 @@ class CnfisReportingFacadeTest {
         lenient().when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of());
         lenient().when(domainCatalog.domains()).thenReturn(List.of());
         lenient().when(citeScoreQuartiles.availableYears()).thenReturn(List.of(2023));
+        lenient().when(userPublicationFacade.hIndices(any())).thenReturn(new HIndexCalculator.HIndexBreakdown(0, 0, 0, 0));
     }
 
     // ── the sheet ──────────────────────────────────────────────────────────
@@ -144,9 +148,10 @@ class CnfisReportingFacadeTest {
                 new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
         when(userRepository.findAll()).thenReturn(List.of());
         when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
-                patent("Sistem de răcire", "2023-05-10", Map.of("Tip", "European", "N_autori", "3",
+                patent("Sistem de răcire", "2023-05-10", Map.of("N_autori", "3",
                         "N_autori_universitate", "2", "Cod brevet", "EP123", "Oficiu", "EPO")),
                 patent("Prea vechi", "2019-01-01", Map.of("Tip", "National", "N_autori", "1")),
+                patent("Doar declarat", "2023-06-01", Map.of("Tip", "Triadic", "N_autori", "1")),
                 other("Conferință", "2023-05-10")));
 
         CnfisSheetViewModel sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
@@ -159,6 +164,9 @@ class CnfisReportingFacadeTest {
         assertEquals(3, p.authorCount());
         assertEquals(2, p.universityAuthorCount());
         assertEquals(1, sheet.counts().patents());
+        assertEquals(1, sheet.patentsLeftOut().size(), "H145: a declared kind with no code or office gets no row");
+        assertEquals("Doar declarat", sheet.patentsLeftOut().getFirst().title());
+        assertEquals("", CnfisReportingFacade.patentType(Map.of("Tip", "Triadic")));
     }
 
     // ── the head of the sheet ──────────────────────────────────────────────
@@ -167,17 +175,59 @@ class CnfisReportingFacadeTest {
     void theHeaderKeepsTheDomainFromTheCatalogueAndOneScoreSource() {
         when(domainCatalog.byCode("2")).thenReturn(Optional.of(new CnfisDomainCatalog.CnfisDomain("2", "Informatică", "Matematică")));
         when(headerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ro.uvt.pokedex.core.model.reporting.IndividualReport fv = new ro.uvt.pokedex.core.model.reporting.IndividualReport();
+        fv.setId("rep-fv");
+        fv.setTitle("FV Info 2026");
+        when(userReportFacade.buildIndividualReportsListView(EMAIL)).thenReturn(new UserReportsListViewModel(List.of(fv)));
 
-        CnfisSheetHeader saved = facade.saveHeader(EMAIL, 2025, new CnfisReportingFacade.HeaderForm(
-                "2", "rep-fv", 123.0, " ", 12, 9, 10)).orElseThrow();
+        CnfisSheetHeader saved = facade.saveHeader(EMAIL, 2025, new CnfisReportingFacade.HeaderForm("2", "rep-fv")).orElseThrow();
 
         assertEquals("2", saved.getDomainCode());
         assertEquals("Informatică", saved.getDomainName());
         assertEquals("rep-fv", saved.getScoreReportId());
-        assertNull(saved.getScoreTyped(), "a report supplies the score; the typed value is dropped");
-        assertNull(saved.getUnmetCriterion());
-        assertEquals(12, saved.getHirschGoogleScholar());
         assertEquals(2025, saved.getReportingYear());
+
+        CnfisSheetHeader foreign = facade.saveHeader(EMAIL, 2025, new CnfisReportingFacade.HeaderForm("2", "rep-other-faculty")).orElseThrow();
+        assertNull(foreign.getScoreReportId(), "H145: only a CNATDCU report the person sees gives the score");
+    }
+
+    @Test
+    void theHirschValuesAreDerivedAndGoogleScholarNeedsAnApprovedRecord() {
+        when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
+                new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
+        when(userRepository.findAll()).thenReturn(List.of());
+        when(userPublicationFacade.hIndices(EMAIL)).thenReturn(new HIndexCalculator.HIndexBreakdown(14, 15, 11, 9));
+        ActivityInstance asked = googleScholar("12", null);
+        when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(asked));
+
+        CnfisSheetViewModel.Hirsch pending = facade.buildSheet(EMAIL, 2025).orElseThrow().hirsch();
+        assertEquals(9, pending.webOfScience());
+        assertEquals(11, pending.scopus());
+        assertNull(pending.googleScholar(), "a value no head approved does not show");
+
+        ActivityInstance approved = googleScholar("12", ro.uvt.pokedex.core.model.activities.PublisherClaim.Status.APPROVED);
+        when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(approved));
+        assertEquals(12, facade.buildSheet(EMAIL, 2025).orElseThrow().hirsch().googleScholar());
+
+        approved.getFields().put("h_GS", "40"); // changed after the approval
+        assertNull(facade.buildSheet(EMAIL, 2025).orElseThrow().hirsch().googleScholar(),
+                "an approval holds only for the facts it approved");
+    }
+
+    private static ActivityInstance googleScholar(String h, ro.uvt.pokedex.core.model.activities.PublisherClaim.Status status) {
+        ActivityInstance instance = other("Profil", "2025-01-10");
+        instance.getActivity().setId("act-gs");
+        instance.getActivity().setName("Profil Google Scholar (Comisia 28, I12 și I14)");
+        instance.setFields(new java.util.HashMap<>(Map.of("h_GS", h, "Citari_GS", "500",
+                "Incadrare_solicitata", "Valorile din profilul Google Scholar, verificate")));
+        if (status != null) {
+            ro.uvt.pokedex.core.model.activities.PublisherClaim claim = new ro.uvt.pokedex.core.model.activities.PublisherClaim();
+            claim.setStatus(status);
+            claim.setRequested("Valorile din profilul Google Scholar, verificate");
+            claim.setFacts(ro.uvt.pokedex.core.model.activities.PublisherClaim.factsOf(instance));
+            instance.setPublisherClaim(claim);
+        }
+        return instance;
     }
 
     @Test
@@ -197,6 +247,10 @@ class CnfisReportingFacadeTest {
         ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion aside = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
         aside.setName("Not in the total");
         aside.setContributesToTotal(false);
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold asideConf = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        asideConf.setPosition(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
+        asideConf.setValue(10.0);
+        aside.setThresholds(List.of(asideConf));
         ro.uvt.pokedex.core.model.reporting.IndividualReport report = new ro.uvt.pokedex.core.model.reporting.IndividualReport();
         report.setId("rep-fv");
         report.setIndicators(List.of(indicator));
@@ -217,13 +271,20 @@ class CnfisReportingFacadeTest {
         User ana = user(EMAIL, "Ana", "a-ana", null);
         ana.getResearcherProfile().setPosition(ro.uvt.pokedex.core.model.reporting.Position.CONF_UNIV);
         when(userRepository.findById(EMAIL)).thenReturn(Optional.of(ana));
-        assertEquals(80.0, facade.buildSheet(EMAIL, 2025).orElseThrow().cnatdcuScore(),
+        CnfisSheetViewModel atPosition = facade.buildSheet(EMAIL, 2025).orElseThrow();
+        assertEquals(80.0, atPosition.cnatdcuScore(),
                 "a conferențiar gets the position-effective total, as on the evaluation page");
+        assertEquals(List.of("Not in the total"), atPosition.unmetCriteria(),
+                "H145: the unmet criteria come from the run at the position (7 < 10), never typed");
 
         User noPosition = user(EMAIL, "Ana", "a-ana", null);
         when(userRepository.findById(EMAIL)).thenReturn(Optional.of(noPosition));
-        assertEquals(100.0, facade.buildSheet(EMAIL, 2025).orElseThrow().cnatdcuScore(),
-                "without a staff position the canonical sum stands");
+        CnfisSheetViewModel unknown = facade.buildSheet(EMAIL, 2025).orElseThrow();
+        assertEquals(100.0, unknown.cnatdcuScore(), "without a staff position the canonical sum stands");
+        assertNull(unknown.unmetCriteria(), "without a position nothing says which criteria are unmet");
+
+        header.setScoreReportId(null);
+        assertNull(facade.buildSheet(EMAIL, 2025).orElseThrow().cnatdcuScore(), "no report chosen, no score");
     }
 
     // ── frozen copies ──────────────────────────────────────────────────────
@@ -315,7 +376,7 @@ class CnfisReportingFacadeTest {
     // ── Anexa 5.1 ──────────────────────────────────────────────────────────
 
     @Test
-    void artisticPerformancesTakeTheirLevelFromTheRegistryAndTheirKindFromTheDeclaration() {
+    void artisticPerformancesTakeTheirLevelFromTheRegistryAndTheirKindFromTheFacts() {
         when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
                 new UserReportFacade.CnfisSheetData(List.of(), List.of(), Map.of(), List.of())));
         when(userRepository.findAll()).thenReturn(List.of());
@@ -324,10 +385,11 @@ class CnfisReportingFacadeTest {
         venice.setRank(ro.uvt.pokedex.core.model.ArtisticEvent.Rank.INTERNATIONAL_TOP);
         ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport.register(List.of(venice));
         when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
-                performance("Expoziție", "2023-05-10", "Bienala de la Veneția", Map.of("Tip", "Proiect de grup (2-4)", "N_participanti_universitate", "3")),
-                performance("Fără tip", "2023-05-10", "Bienala de la Veneția", Map.of()),
-                performance("Festival necunoscut", "2022-05-10", "Un festival oarecare", Map.of("Tip", "Proiect individual")),
-                performance("Prea veche", "2019-05-10", "Bienala de la Veneția", Map.of("Tip", "Proiect individual"))));
+                performance("Expoziție", "2023-05-10", "Bienala de la Veneția", Map.of("Marime_formatie", "3", "N_participanti_universitate", "3")),
+                // H145: a picked kind alone tells nothing
+                performance("Fără tip", "2023-05-10", "Bienala de la Veneția", Map.of("Tip", "Proiect individual")),
+                performance("Festival necunoscut", "2022-05-10", "Un festival oarecare", Map.of("Marime_formatie", "1")),
+                performance("Prea veche", "2019-05-10", "Bienala de la Veneția", Map.of("Marime_formatie", "1"))));
         // a person of an artistic domain
         CnfisSheetHeader header = new CnfisSheetHeader();
         header.setDomainCode("72");
@@ -514,52 +576,87 @@ class CnfisReportingFacadeTest {
     // ── Anexa 5.3 ──────────────────────────────────────────────────────────
 
     @Test
-    void theHumanitiesSheetTakesScopusArticlesBooksChaptersAndDeclaredVolumes() {
+    void theHumanitiesSheetTakesScopusArticlesAndWorksAtThePublishersTheGuideNames() {
         ScoringPublication article = new ScoringPublication("p-art", null, "f-scopus", "2024-02-01", "ar", "ar", List.of("a-ana"), 2, "10.1/art", null, "An article", 0, Set.of());
         ScoringPublication nonScopus = new ScoringPublication("p-non", null, "f-plain", "2023-02-01", "ar", "ar", List.of("a-ana"), 1, "10.1/non", null, "Elsewhere", 0, Set.of());
         ScoringPublication chapter = new ScoringPublication("p-ch", null, "f-book", "2022-02-01", "ch", "ch", List.of("a-ana"), 3, "10.1/ch", null, "A chapter", 0, Set.of());
+        ScoringPublication romanianChapter = new ScoringPublication("p-ro", null, "f-ro", "2022-03-01", "ch", "ch", List.of("a-ana"), 1, "10.1/ro", null, "Un capitol", 0, Set.of());
         CNFISReport2025 r1 = new CNFISReport2025(); r1.setNumarAutori(2);
         CNFISReport2025 r2 = new CNFISReport2025(); r2.setNumarAutori(1);
         CNFISReport2025 r3 = new CNFISReport2025(); r3.setNumarAutori(3);
+        CNFISReport2025 r4 = new CNFISReport2025(); r4.setNumarAutori(1);
         ScholardexForumView scopus = new ScholardexForumView();
         scopus.setId("f-scopus"); scopus.setPublicationName("Studia"); scopus.setScopusId("21100"); scopus.setEIssn("1234-5678");
         ScholardexForumView plain = new ScholardexForumView();
         plain.setId("f-plain"); plain.setPublicationName("Revista locală");
         ScholardexForumView bookVenue = new ScholardexForumView();
-        bookVenue.setId("f-book"); bookVenue.setPublicationName("Un volum colectiv"); bookVenue.setPublisher("Polirom"); bookVenue.setIsbn("978-1");
+        bookVenue.setId("f-book"); bookVenue.setPublicationName("A collective volume"); bookVenue.setPublisher("Routledge"); bookVenue.setIsbn("978-1");
+        ScholardexForumView romanianVenue = new ScholardexForumView();
+        romanianVenue.setId("f-ro"); romanianVenue.setPublicationName("Un volum colectiv"); romanianVenue.setPublisher("Polirom");
         when(userReportFacade.buildCnfisSheet(EMAIL, CnfisEdition.EDITION_2025)).thenReturn(Optional.of(
-                new UserReportFacade.CnfisSheetData(List.of(article, nonScopus, chapter), List.of(r1, r2, r3),
-                        Map.of("f-scopus", scopus, "f-plain", plain, "f-book", bookVenue), List.of("a-ana"))));
+                new UserReportFacade.CnfisSheetData(List.of(article, nonScopus, chapter, romanianChapter), List.of(r1, r2, r3, r4),
+                        Map.of("f-scopus", scopus, "f-plain", plain, "f-book", bookVenue, "f-ro", romanianVenue), List.of("a-ana"))));
         staff(List.of(user("ana@e-uvt.ro", "Ana", "a-ana", record(StaffRecord.EmploymentType.TITULAR_FUNCTIA_DE_BAZA, null, null))));
         // the 2024 article wants the 2023 list; only 2023 is loaded
         when(citeScoreQuartiles.placement("21100", 2023)).thenReturn(Optional.of(new ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles.Placement(2, 2023)));
         when(activityInstanceRepository.findAllByResearcherId(EMAIL)).thenReturn(List.of(
                 declared("Carte coordonată (Comisia 28, I17)", "Volumul nostru", "2023-06-01", Map.of("Titlu", "Volumul nostru", "N_coordonatori", "2", "Editura", "Humanitas")),
-                declared("Traducere a unei lucrări fundamentale din științele sociale (Comisia 25, I.8)", "Tr", "2019-06-01", Map.of("Titlu", "Prea veche"))));
+                declared("Traducere a unei lucrări fundamentale din științele sociale (Comisia 25, I.8)", "Tr", "2019-06-01", Map.of("Titlu", "Prea veche")),
+                declared("Traducere, ediție critică sau îngrijire redacțională (Comisia 35, DID 1.4)", "Ed", "2023-03-01",
+                        Map.of("Titlu", "Opera omnia", "Tip", "Ediție critică", "Editura", "Editura Academiei Române")),
+                declared("Traducere, ediție critică sau îngrijire redacțională (Comisia 35, DID 1.4)", "Ig", "2023-04-01",
+                        Map.of("Titlu", "Culegere", "Tip", "Îngrijire redacțională", "Editura", "Editura Academiei Române")),
+                declared("Tratat, studiu amplu sau volum de studii publicat (Comisia 35, DID 1.1)", "Tratat", "2022-05-01",
+                        Map.of("Titlu", "A treatise on harmony", "Editura", "Routledge", "ISBN", "978-0-415-00000-0")),
+                // the same chapter the list holds: reported once
+                declared("Capitol într-un volum colectiv (Comisia 35, DID 1.2)", "Dup", "2022-02-01",
+                        Map.of("Titlu", "A chapter", "Volum", "A collective volume", "Editura", "Routledge"))));
         CnfisSheetHeader header = new CnfisSheetHeader();
         header.setDomainCode("63");
         when(headerRepository.findByUserEmailAndReportingYear(EMAIL, 2025)).thenReturn(Optional.of(header));
+        when(publisherCategories.cncsCategoryInDomain(eq("Editura Academiei Române"), eq("FILOLOGIE"), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(Optional.of("A"));
+        ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.register(new ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.Lists() {
+            @Override public Optional<ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.Recognition> recognize(String p) {
+                return recognizeOn("UEFISCDI_ARTE_UMANISTE", p);
+            }
+            @Override public Optional<ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.Recognition> recognizeOn(String key, String p) {
+                return "UEFISCDI_ARTE_UMANISTE".equals(key) && "Routledge".equals(p)
+                        ? Optional.of(new ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.Recognition(key, "CNCS arte", "Routledge"))
+                        : Optional.empty();
+            }
+            @Override public boolean isRomanian(String p) { return p.startsWith("Editura") || p.equals("Polirom") || p.equals("Humanitas"); }
+            @Override public List<String> names() { return List.of("Routledge"); }
+        });
 
-        CnfisSheetViewModel sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+        CnfisSheetViewModel sheet;
+        try {
+            sheet = facade.buildSheet(EMAIL, 2025).orElseThrow();
+        } finally {
+            ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.reset();
+        }
 
         assertTrue(sheet.humanities().applies());
         List<CnfisSheetViewModel.HumanitiesRow> rows = sheet.humanities().rows();
-        assertEquals(List.of("CHAPTER", "EDITED_VOLUME", "SCOPUS_Q2"), rows.stream().map(CnfisSheetViewModel.HumanitiesRow::category).toList());
+        assertEquals(List.of("CHAPTER", "BOOK", "CRITICAL_EDITION", "SCOPUS_Q2"),
+                rows.stream().map(CnfisSheetViewModel.HumanitiesRow::category).toList());
         CnfisSheetViewModel.HumanitiesRow ch = rows.get(0);
-        assertEquals("Un volum colectiv", ch.containerTitle());
+        assertEquals("A collective volume", ch.containerTitle());
         assertEquals("A chapter", ch.itemTitle());
-        assertEquals("Polirom", ch.publisher());
+        assertEquals("Routledge", ch.publisher());
         assertEquals("978-1", ch.isbn());
         assertEquals(1, ch.universityAuthorCount());
-        CnfisSheetViewModel.HumanitiesRow volume = rows.get(1);
-        assertEquals("Humanitas", volume.publisher());
-        assertEquals(2, volume.authorCount());
-        CnfisSheetViewModel.HumanitiesRow art = rows.get(2);
+        assertEquals("978-0-415-00000-0", rows.get(1).isbn(), "Music DID 1.1, with its ISBN");
+        CnfisSheetViewModel.HumanitiesRow art = rows.get(3);
         assertEquals("1234-5678", art.issnOnline());
         assertEquals(2023, art.listYear());
         assertTrue(art.classifiedBy().startsWith("CiteScore Q2 · list 2023"));
-        assertEquals(1, sheet.humanities().leftOut().size());
-        assertTrue(sheet.humanities().leftOut().getFirst().reason().contains("not one"));
+        List<String> reasons = sheet.humanities().leftOut().stream().map(CnfisSheetViewModel.LeftOut::reason).toList();
+        assertEquals(4, reasons.size(), reasons.toString());
+        assertTrue(reasons.stream().anyMatch(r -> r.contains("not one")), "the article outside Scopus");
+        assertEquals(2, reasons.stream().filter(r -> r.contains("foreign publishers of international prestige")).count(),
+                "H145: a Romanian house's chapter and edited volume are not reported");
+        assertTrue(reasons.stream().anyMatch(r -> r.contains("editorial care")), "editorial care has no column");
     }
 
     private static ActivityInstance declared(String type, String name, String date, Map<String, String> fields) {

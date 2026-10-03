@@ -125,14 +125,11 @@ behind a gate, not at all.
   admin page. Full suite green (3,867 tests); CI's guardrails green.
 - **Prod (read-only, 2026-10-03):** the 25 types and 35 formulas are as before H144; no registry entries; the only
   records of the changed types are the two leadership positions (Tip National), which keep their 2 points.
-- **Prod script** `rke2-overmind/feaa-2026-scripts/h144_slice1_registries.js` (guard `H144_IMAGE_IS_DEPLOYED`, run
-  with `--restart`): sets the 25 types (fields, reference fields), the 35 formulas with their hashes and the 35
-  descriptions, by name, and inserts the 16 bodies when missing; writes nothing when a type or formula is neither as
-  before nor as committed. Rehearsed on a scratch database holding the pre-H144 seed (the leadership type re-keyed,
-  two records): the guarded run writes nothing, the first run applies everything, the second changes nothing, the
-  result equals the committed seed and the records are untouched.
-- **Prod order (with H142 slice 3):** push and deploy; copy the 4.1 template to the data volume; flip and run
-  `h142_slice3_events.js`; flip and run `h144_slice1_registries.js --restart`; on `/admin/registry/experts` map
+- **Prod script** — superseded by ONE script for H144 and H145, `rke2-overmind/feaa-2026-scripts/h144_h145_release.js`
+  (guard `RELEASE_IMAGE_IS_DEPLOYED`, run with `--restart`; see `h145-input-integrity-sweep.md`, Rollout). The slice-1
+  script `h144_slice1_registries.js` was never run and is withdrawn: H145 changes the same types and formulas.
+- **Prod order (with H142 slice 3 and H145):** push and deploy; copy the 4.1 template to the data volume; flip and run
+  `h142_slice3_events.js`; flip and run `h144_h145_release.js --restart`; on `/admin/registry/experts` map
   Muzică → Departamentul de Muzică and Teatru şi artele spectacolului → Departamentul de Teatru, add the other
   standards' domains (Psihologie, Științe ale educației, Sociologie, …) and map FPSE's and FSAS's departments, name
   experts where a faculty has no heads (FMT); optionally seed FMT's Anexa 6.1.

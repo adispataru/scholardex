@@ -23,6 +23,8 @@ public class RegistryScoringLookups implements RegistryScoringSupport.Lookups {
 
     private final UniversityRankingLookupService universityRankingLookupService;
     private final ReportingLookupPort reportingLookupPort;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
+    private final ro.uvt.pokedex.core.service.openalex.OpenAlexSourceCountryService sourceCountryService;
 
     @PostConstruct
     void register() {
@@ -67,8 +69,26 @@ public class RegistryScoringLookups implements RegistryScoringSupport.Lookups {
                 databases.addAll(indexed);
             }
         }
-        return Optional.of(new RegistryScoringSupport.JournalFacts(fee, wos, core, scopus, databases.size(),
-                impactFactor(issn, y)));
+        return Optional.of(new RegistryScoringSupport.JournalFacts(fee, wos, core, scopus, databases,
+                impactFactor(issn, y), country(forums)));
+    }
+
+    /** H145 — the country where the journal is published (OpenAlex's, as stored), for the coefficient m. */
+    private String country(List<String> forumIds) {
+        try {
+            for (var forum : forumFactRepository.findAllById(forumIds)) {
+                for (String sourceId : forum.getOpenAlexIds() == null ? List.<String>of() : forum.getOpenAlexIds()) {
+                    String id = sourceId == null ? null : sourceId.replaceFirst("^https://openalex\\.org/", "");
+                    Optional<String> country = sourceCountryService.countryOf(id);
+                    if (country.isPresent()) {
+                        return country.get();
+                    }
+                }
+            }
+        } catch (RuntimeException e) {
+            return null; // unknown place: m resolves downward
+        }
+        return null;
     }
 
     /** The journal's impact factor of the year, else of the latest year before it that has one; null without any. */

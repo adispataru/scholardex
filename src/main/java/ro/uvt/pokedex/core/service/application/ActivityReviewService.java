@@ -52,13 +52,13 @@ public class ActivityReviewService {
                     touched |= fields.remove(field.getName()) != null;
                     continue;
                 }
-                if (field.isNumber() && !isNumber(v)) {
-                    addOnce(problems, field.getName() + ": «" + v + "»");
+                String problem = ActivityRecordValidator.problem(field, v); // H145: the same rules as a single save
+                if (problem != null) {
+                    addOnce(problems, problem);
                     continue;
                 }
-                if (field.getAllowedValues() != null && !field.getAllowedValues().isEmpty() && !field.getAllowedValues().contains(v)) {
-                    addOnce(problems, field.getName() + ": «" + v + "»");
-                    continue;
+                if (field.isNumber()) {
+                    v = v.replace(',', '.');
                 }
                 if (!v.equals(fields.get(field.getName()))) {
                     fields.put(field.getName(), v);
@@ -118,15 +118,6 @@ public class ActivityReviewService {
             return null;
         }
         return type.getFields().stream().filter(f -> f.getName().equals(name)).findFirst().orElse(null);
-    }
-
-    private static boolean isNumber(String v) {
-        try {
-            Double.parseDouble(v);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
     }
 
     private static void addOnce(List<String> problems, String problem) {

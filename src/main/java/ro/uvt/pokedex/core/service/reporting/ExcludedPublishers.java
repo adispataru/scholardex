@@ -15,9 +15,13 @@ final class ExcludedPublishers {
     private ExcludedPublishers() {
     }
 
-    /** Whether the name, as typed or indexed, is that of an excluded house ("LAP Lambert Academic Publishing", …). */
+    /**
+     * Whether the name, as typed or indexed, is that of an excluded house ("LAP Lambert Academic Publishing", …). H145:
+     * any name that contains the excluded one — the strict rule of the lists (extra words only as an address) is for
+     * granting a category, never for escaping an exclusion.
+     */
     static boolean isExcluded(String publisher) {
         Set<String> tokens = WosMasterBookListService.canonicalTokens(publisher);
-        return !tokens.isEmpty() && InternationalPublisherListService.matches(tokens, LAMBERT);
+        return !tokens.isEmpty() && !LAMBERT.isEmpty() && tokens.containsAll(LAMBERT);
     }
 }

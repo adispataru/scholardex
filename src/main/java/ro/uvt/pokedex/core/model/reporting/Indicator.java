@@ -396,13 +396,17 @@ public class Indicator {
      * at most {@code n} positive items are kept per forum (FSP I9/I10 "cel mult două contribuţii/ediţie conferinţă").
      */
     public boolean isPerForumCapSelector() {
-        return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerForumCap;
+        return getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerForumCap
+                || getEffectiveSelector() instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerEditionCapAfterPrincipal;
     }
 
     /** The per-forum cap {@code n} for a {@code PerForumCap} selector; {@code Integer.MAX_VALUE} otherwise (no cap). */
     public int perForumCapLimit() {
         ro.uvt.pokedex.core.model.reporting.scoring.Selector s = getEffectiveSelector();
         if (s instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerForumCap cap) {
+            return cap.n();
+        }
+        if (s instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.PerEditionCapAfterPrincipal cap) {
             return cap.n();
         }
         return Integer.MAX_VALUE;

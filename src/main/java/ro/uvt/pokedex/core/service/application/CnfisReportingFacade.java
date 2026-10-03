@@ -38,8 +38,9 @@ import java.util.Set;
 
 /**
  * H129 — the CNFIS page: the editions of the reporting, and for one edition the person's Anexa 5 as the
- * platform fills it (rows, left-out publications, patents), the head of the sheet the person fills in
- * (domain, CNATDCU score, Hirsch values), the frozen copies, and the download of either.
+ * platform fills it (rows, left-out publications, patents), the head of the sheet (the domain and the CNATDCU report
+ * the person picks; the score, the unmet criteria and the Hirsch values the platform derives — H145), the frozen
+ * copies, and the download of either.
  */
 @Service
 @RequiredArgsConstructor
@@ -48,7 +49,6 @@ public class CnfisReportingFacade {
     /** The declared activity type whose instances are the patents of Anexa 5. */
     static final String PATENT_ACTIVITY = "Brevet";
     static final String FIELD_AUTHORS = "N_autori";
-    static final String FIELD_TYPE = "Tip";
     static final String FIELD_CODE = "Cod brevet";
     static final String FIELD_OFFICE = "Oficiu";
     static final String FIELD_UNIVERSITY_AUTHORS = "N_autori_universitate";
@@ -67,6 +67,9 @@ public class CnfisReportingFacade {
     static final String FIELD_CITATION_WORK_DETAILS = "Detalii_creatie";
     static final String FIELD_CITATION_PUBLICATION = "Publicatie";
     static final String FIELD_CITATION_ISSUE = "Numar_publicatie";
+    /** H145: the Google Scholar values of a researcher, which count once a head approved them (Comisia 28 I12, I14). */
+    static final String GOOGLE_SCHOLAR_ACTIVITY = "Profil Google Scholar (Comisia 28, I12 și I14)";
+    static final String FIELD_GOOGLE_SCHOLAR_H = "h_GS";
 
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
@@ -80,6 +83,8 @@ public class CnfisReportingFacade {
     private final CNFISReportExportService exportService;
     private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     private final ro.uvt.pokedex.core.service.reporting.CiteScoreQuartiles citeScoreQuartiles;
+    private final UserPublicationFacade userPublicationFacade;
+    private final ro.uvt.pokedex.core.service.reporting.PublisherCategoryService publisherCategories;
 
     public List<CnfisEditionViewModel> editions() {
         return CnfisEdition.known().stream()
@@ -141,7 +146,8 @@ public class CnfisReportingFacade {
                     CnfisSheetViewModel.category(r), r.getClassifiedBy(), r.getListYear(),
                     r.getNumarAutori(), r.getNumarAutoriUniversitate()));
         }
-        List<CnfisSheetViewModel.Patent> patents = patents(userEmail, edition);
+        PatentsSheet patentsSheet = patents(userEmail, edition);
+        List<CnfisSheetViewModel.Patent> patents = patentsSheet.rows();
         ArtsSheet artsSheet = arts(userEmail, edition);
         CitationsSheet citationsSheet = citations(userEmail, edition);
         HumanitiesSheet humanitiesSheet = humanities(userEmail, edition, data);
@@ -157,12 +163,8 @@ public class CnfisReportingFacade {
                 ro.uvt.pokedex.core.service.reporting.CnfisDomains.fillsSport(header.getDomainCode()) || !sportSheet.rows().isEmpty(),
                 sportSheet.rows(), sportSheet.leftOut());
 
-        List<CnfisSheetViewModel.ReportChoice> reports = userReportFacade.buildIndividualReportsListView(userEmail)
-                .individualReports().stream()
-                .filter(r -> r.effectiveAuthority() == ReportAuthority.CNATDCU)
-                .map(r -> new CnfisSheetViewModel.ReportChoice(r.getId(), r.getTitle()))
-                .toList();
-        Double score = cnatdcuScore(userEmail, header);
+        List<CnfisSheetViewModel.ReportChoice> reports = cnatdcuReports(userEmail);
+        CnatdcuStanding standing = cnatdcuStanding(userEmail, header);
 
         List<CnfisSheetViewModel.Snapshot> snapshots = snapshotRepository
                 .findByUserEmailAndReportingYearOrderByCreatedAtDesc(userEmail, edition.reportingYear()).stream()
@@ -171,13 +173,46 @@ public class CnfisReportingFacade {
                 .toList();
 
         return Optional.of(new CnfisSheetViewModel(toViewModel(edition), header, domainCatalog.domains(), reports,
-                score, rows, leftOut, patents, arts, sport, humanities, staff.missingRecords, snapshots, counts(data.reports(), patents)));
+                standing.score(), standing.unmet(), hirsch(userEmail), rows, leftOut, patents, patentsSheet.leftOut(),
+                arts, sport, humanities, staff.missingRecords, snapshots, counts(data.reports(), patents)));
+    }
+
+    /**
+     * H145 — the Hirsch values of the head of the sheet, never typed: Web of Science and Scopus over the publications the
+     * platform counts as the person's (citations from venues each source indexes), Google Scholar from the person's
+     * Google Scholar record once a head approved it (null without one).
+     */
+    private CnfisSheetViewModel.Hirsch hirsch(String userEmail) {
+        HIndexCalculator.HIndexBreakdown h = userPublicationFacade.hIndices(userEmail);
+        Integer googleScholar = null;
+        for (ActivityInstance instance : activityInstanceRepository.findAllByResearcherId(userEmail)) {
+            if (instance.getActivity() == null || !GOOGLE_SCHOLAR_ACTIVITY.equals(instance.getActivity().getName())) {
+                continue;
+            }
+            Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
+            if (ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.approvedRequest(instance, f) == null
+                    || f.get(FIELD_GOOGLE_SCHOLAR_H) == null || f.get(FIELD_GOOGLE_SCHOLAR_H).isBlank()) {
+                continue;
+            }
+            int value = parseInt(f.get(FIELD_GOOGLE_SCHOLAR_H));
+            googleScholar = googleScholar == null ? value : Math.max(googleScholar, value);
+        }
+        return new CnfisSheetViewModel.Hirsch(googleScholar, h.wosVenue(), h.scopusVenue());
     }
 
     // ── the head of the sheet ────────────────────────────────────────────────
 
-    public record HeaderForm(String domainCode, String scoreReportId, Double scoreTyped, String unmetCriterion,
-                             Integer hirschGoogleScholar, Integer hirschWebOfScience, Integer hirschScopus) {
+    /** The CNATDCU reports the person sees: the score comes from one of them. */
+    private List<CnfisSheetViewModel.ReportChoice> cnatdcuReports(String userEmail) {
+        return userReportFacade.buildIndividualReportsListView(userEmail)
+                .individualReports().stream()
+                .filter(r -> r.effectiveAuthority() == ReportAuthority.CNATDCU)
+                .map(r -> new CnfisSheetViewModel.ReportChoice(r.getId(), r.getTitle()))
+                .toList();
+    }
+
+    /** H145: the domain and the report only; the score, the unmet criteria and the Hirsch values are derived. */
+    public record HeaderForm(String domainCode, String scoreReportId) {
     }
 
     /** Empty when no edition reports that year. */
@@ -193,12 +228,10 @@ public class CnfisReportingFacade {
         Optional<CnfisDomainCatalog.CnfisDomain> domain = domainCatalog.byCode(form.domainCode());
         header.setDomainCode(domain.map(CnfisDomainCatalog.CnfisDomain::code).orElse(null));
         header.setDomainName(domain.map(CnfisDomainCatalog.CnfisDomain::name).orElse(null));
-        header.setScoreReportId(blankToNull(form.scoreReportId()));
-        header.setScoreTyped(header.getScoreReportId() == null ? form.scoreTyped() : null);
-        header.setUnmetCriterion(blankToNull(form.unmetCriterion()));
-        header.setHirschGoogleScholar(form.hirschGoogleScholar());
-        header.setHirschWebOfScience(form.hirschWebOfScience());
-        header.setHirschScopus(form.hirschScopus());
+        String reportId = blankToNull(form.scoreReportId());
+        // H145: only a CNATDCU report the person sees, never one picked by id from elsewhere (another faculty's, an FV one)
+        header.setScoreReportId(reportId != null && cnatdcuReports(userEmail).stream().anyMatch(r -> r.id().equals(reportId))
+                ? reportId : null);
         header.setUpdatedAt(Instant.now());
         return headerRepository.save(header);
     }
@@ -239,7 +272,7 @@ public class CnfisReportingFacade {
         snapshot.setCreatedBy(createdBy);
         CnfisSheetHeader header = headerRepository.findByUserEmailAndReportingYear(userEmail, edition.reportingYear()).orElse(null);
         snapshot.setHeader(header);
-        snapshot.setCnatdcuScore(cnatdcuScore(userEmail, header));
+        snapshot.setCnatdcuScore(cnatdcuStanding(userEmail, header).score());
         for (int i = 0; i < data.publications().size(); i++) {
             ScoringPublicationReadModel p = data.publications().get(i);
             CNFISReport2025 r = data.reports().get(i);
@@ -269,7 +302,7 @@ public class CnfisReportingFacade {
             row.setClassification(r);
             snapshot.getRows().add(row);
         }
-        for (CnfisSheetViewModel.Patent p : patents(userEmail, edition)) {
+        for (CnfisSheetViewModel.Patent p : patents(userEmail, edition).rows()) {
             CnfisSheetSnapshot.Patent patent = new CnfisSheetSnapshot.Patent();
             patent.setActivityInstanceId(p.activityInstanceId());
             patent.setYear(p.year());
@@ -353,7 +386,7 @@ public class CnfisReportingFacade {
         UserReportFacade.CnfisSheetData data = dataOpt.get();
         countUniversityAuthors(data, edition.referenceDate());
         return Optional.of(exportService.generateAnexa5(data.publications(), data.reports(), data.forumMap(),
-                patents(userEmail, edition).stream().map(CnfisReportingFacade::toExportPatent).toList()));
+                patents(userEmail, edition).rows().stream().map(CnfisReportingFacade::toExportPatent).toList()));
     }
 
     /** Anexa 5.1 of the live data; empty when the edition is unknown or the person has no profile. */
@@ -548,23 +581,35 @@ public class CnfisReportingFacade {
     // ── pieces ──────────────────────────────────────────────────────────────
 
     /**
-     * The CNATDCU score the head of the sheet asks for: the chosen report's latest total, or what was typed.
-     * The total is the one the evaluation page shows for the researcher's position — the position of the
-     * department's staff list (staff import, roster), not a position picked on the page: each contributing
-     * criterion at its position-effective value (threshold-cap additions, {@code Poz} formulas) where one
-     * exists, canonical otherwise. A researcher without a position gets the canonical sum.
+     * The score of the chosen CNATDCU report at the person's position and the criteria not met there (null when no
+     * report is chosen or the position is unknown: nothing to judge them by).
      */
-    private Double cnatdcuScore(String userEmail, CnfisSheetHeader header) {
-        if (header == null) {
-            return null;
-        }
-        if (header.getScoreReportId() == null) {
-            return header.getScoreTyped();
+    record CnatdcuStanding(Double score, List<String> unmet) {
+        static final CnatdcuStanding NONE = new CnatdcuStanding(null, null);
+    }
+
+    /**
+     * The CNATDCU score the head of the sheet asks for: the chosen report's latest total, never typed (H145; no report
+     * chosen, no score). The total is the one the evaluation page shows for the researcher's position — the position of
+     * the department's staff list (staff import, roster), not a position picked on the page: each contributing
+     * criterion at its position-effective value (threshold-cap additions, {@code Poz} formulas) where one exists,
+     * canonical otherwise. A researcher without a position gets the canonical sum.
+     * <p>
+     * The unmet criteria follow the evaluation page's rule at that position: a criterion outside every perspective
+     * with a threshold for the position that no threshold of it is met, and a perspective that applies there and
+     * fails. Unknown without a position.
+     */
+    private CnatdcuStanding cnatdcuStanding(String userEmail, CnfisSheetHeader header) {
+        if (header == null || header.getScoreReportId() == null) {
+            return CnatdcuStanding.NONE;
         }
         Optional<IndividualReport> report = userReportFacade.findIndividualReportById(header.getScoreReportId());
+        if (report.isEmpty() || report.get().getCriteria() == null || report.get().effectiveAuthority() != ReportAuthority.CNATDCU) {
+            return CnatdcuStanding.NONE;
+        }
         Optional<IndividualReportRunDto> run = userIndividualReportRunService.getOrCreateLatestRun(userEmail, header.getScoreReportId());
-        if (report.isEmpty() || run.isEmpty() || report.get().getCriteria() == null) {
-            return null;
+        if (run.isEmpty()) {
+            return CnatdcuStanding.NONE;
         }
         String position = userRepository.findById(userEmail)
                 .map(User::getResearcherProfile)
@@ -575,19 +620,41 @@ public class CnfisReportingFacade {
                 report.get().getCriteria(), report.get().getIndicators(), run.get().indicatorScoresByIndicatorId(),
                 canonical, run.get().indicatorScoresByPositionByIndicatorId());
         List<AbstractReport.Criterion> criteria = report.get().getCriteria();
+        Set<Integer> bundled = ReportingComputationSupport.bundledCriterionIndices(report.get().getPerspectives());
+        List<String> unmet = new ArrayList<>();
         boolean any = false;
         double total = 0.0;
         for (int i = 0; i < criteria.size(); i++) {
-            if (!criteria.get(i).isContributesToTotal()) {
-                continue;
-            }
-            any = true;
+            AbstractReport.Criterion criterion = criteria.get(i);
             Map<String, Double> effective = byPosition.get(i);
-            total += position != null && effective != null && effective.containsKey(position)
+            double value = position != null && effective != null && effective.containsKey(position)
                     ? effective.get(position)
                     : canonical.getOrDefault(i, 0.0);
+            if (criterion.isContributesToTotal()) {
+                any = true;
+                total += value;
+            }
+            if (position == null || criterion.getThresholds() == null || bundled.contains(i)) {
+                continue;
+            }
+            List<AbstractReport.Threshold> atPosition = criterion.getThresholds().stream()
+                    .filter(t -> t.getPosition() != null && t.getPosition().name().equals(position) && t.getValue() != null)
+                    .toList();
+            if (!atPosition.isEmpty() && atPosition.stream().noneMatch(t -> value >= t.getValue())) {
+                unmet.add(criterion.getName());
+            }
         }
-        return any ? total : null;
+        if (position != null && report.get().getPerspectives() != null) {
+            Map<Integer, Map<String, Boolean>> verdicts = ReportingComputationSupport.computePerspectiveVerdicts(
+                    report.get().getPerspectives(), criteria, canonical, byPosition);
+            for (int p = 0; p < report.get().getPerspectives().size(); p++) {
+                Map<String, Boolean> verdict = verdicts.get(p);
+                if (verdict != null && Boolean.FALSE.equals(verdict.get(position))) {
+                    unmet.add(report.get().getPerspectives().get(p).getName());
+                }
+            }
+        }
+        return new CnatdcuStanding(any ? total : null, position == null ? null : unmet);
     }
 
     private record StaffCount(List<String> missingRecords) {
@@ -642,6 +709,8 @@ public class CnfisReportingFacade {
     HumanitiesSheet humanities(String userEmail, CnfisEdition edition, UserReportFacade.CnfisSheetData data) {
         List<CnfisSheetViewModel.HumanitiesRow> rows = new ArrayList<>();
         List<CnfisSheetViewModel.LeftOut> leftOut = new ArrayList<>();
+        String domainCode = headerRepository.findByUserEmailAndReportingYear(userEmail, edition.reportingYear())
+                .map(CnfisSheetHeader::getDomainCode).orElse(null);
         org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(getClass());
         for (int i = 0; i < data.publications().size(); i++) {
             ScoringPublicationReadModel p = data.publications().get(i);
@@ -680,6 +749,11 @@ public class CnfisReportingFacade {
                         : forum == null ? "" : nz(forum.getIsbn());
                 String bookTitle = book != null && book.getTitle() != null ? book.getTitle() : container;
                 boolean chapter = "ch".equals(subtype);
+                String refused = publisherRefusal(chapter ? "CHAPTER" : "BOOK", publisher, domainCode, edition);
+                if (refused != null) {
+                    leftOut.add(new CnfisSheetViewModel.LeftOut(p.getId(), yearText, p.getTitle(), publisher, p.getDoi(), refused));
+                    continue;
+                }
                 rows.add(new CnfisSheetViewModel.HumanitiesRow(p.getId(), yearText,
                         chapter ? bookTitle : nz(p.getTitle()), publisher, isbn, "", "", nz(p.getDoi()),
                         chapter ? nz(p.getTitle()) : "", chapter ? "CHAPTER" : "BOOK", null,
@@ -687,16 +761,28 @@ public class CnfisReportingFacade {
                         null, r.getNumarAutori(), r.getNumarAutoriUniversitate()));
             }
         }
+        // H145: a work the list holds is not reported again from a declared record
+        Set<String> listed = new java.util.HashSet<>();
+        rows.forEach(r -> {
+            listed.add(titleKey("CHAPTER".equals(r.category()) ? r.itemTitle() : r.containerTitle()));
+        });
         for (ActivityInstance instance : activityInstanceRepository.findAllByResearcherId(userEmail)) {
             String type = instance.getActivity() == null || instance.getActivity().getName() == null ? "" : instance.getActivity().getName();
             Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
+            String kind = nz(f.get("Tip")).toLowerCase(java.util.Locale.ROOT);
             String category;
             if (type.startsWith("Carte coordonat")) {
                 category = "EDITED_VOLUME";
             } else if (type.startsWith("Traducere")) {
-                category = "TRANSLATION";
+                // H145: a critical edition has its own column (the guide's note 8); editorial care has none
+                category = kind.startsWith("ediți") || kind.startsWith("editi") ? "CRITICAL_EDITION"
+                        : kind.startsWith("îngrijire") || kind.startsWith("ingrijire") ? "EDITORIAL_CARE" : "TRANSLATION";
             } else if (type.startsWith("Carte sau capitol")) {
-                category = nz(f.get("Tip")).toLowerCase(java.util.Locale.ROOT).startsWith("capitol") ? "CHAPTER" : "BOOK";
+                category = kind.startsWith("capitol") ? "CHAPTER" : "BOOK";
+            } else if (type.startsWith("Tratat, studiu amplu")) {
+                category = "BOOK"; // Music DID 1.1
+            } else if (type.startsWith("Capitol într-un volum colectiv")) {
+                category = "CHAPTER"; // Music DID 1.2
             } else {
                 continue;
             }
@@ -705,9 +791,24 @@ public class CnfisReportingFacade {
                 continue;
             }
             String title = f.getOrDefault("Titlu", instance.getName());
+            String container = "CHAPTER".equals(category) ? nz(f.get("Volum")) : nz(title);
+            String publisher = nz(f.get("Editura"));
+            if ("EDITORIAL_CARE".equals(category)) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), String.valueOf(year), title, publisher, null,
+                        "editorial care has no column in Anexa 5.3 (only a critical edition, by the guide's note 8, or a translation)"));
+                continue;
+            }
+            if (listed.contains(titleKey("CHAPTER".equals(category) ? title : container))) {
+                continue;
+            }
+            String refused = publisherRefusal(category, publisher, domainCode, edition);
+            if (refused != null) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), String.valueOf(year), title, publisher, null, refused));
+                continue;
+            }
             int authors = Math.max(1, parseInt(f.getOrDefault("N_autori", f.getOrDefault("N_coordonatori", "1"))));
             rows.add(new CnfisSheetViewModel.HumanitiesRow(instance.getId(), String.valueOf(year),
-                    "CHAPTER".equals(category) ? nz(f.get("Volum")) : nz(title), nz(f.get("Editura")), "", "", "", "",
+                    container, publisher, nz(f.getOrDefault("ISBN", f.get("ISMN_sau_ISBN"))), "", "", "",
                     "CHAPTER".equals(category) ? nz(title) : "", category, null,
                     "declared: " + type, null, authors, 1));
         }
@@ -717,6 +818,42 @@ public class CnfisReportingFacade {
 
     private static String nz(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String titleKey(String title) {
+        String key = ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService.normalizeTitle(title);
+        return key == null ? "" : key;
+    }
+
+    /** H145 — the CNCS domain of each humanities CNATDCU domain of the guide (3.3). */
+    static final Map<String, String> CNCS_DOMAIN = Map.of("63", "FILOLOGIE", "64", "FILOLOGIE", "65", "FILOSOFIE",
+            "66", "ISTORIE", "67", "ISTORIE", "69", "ISTORIE", "68", "TEOLOGIE", "721", "ARTE_VIZUALE", "751", "MUZICA");
+    static final String PRESTIGE_LIST = "UEFISCDI_ARTE_UMANISTE";
+
+    /**
+     * H145 — the guide's publisher condition (3.3), null when the row may be reported: a book, an edited volume or a
+     * chapter at a FOREIGN publisher of international prestige (the CNCS list for the arts and humanities; the KVK
+     * holdings stay the person's evidence); a critical edition or a translation at a publisher CNCS rates A or B in the
+     * domain, on the latest list before the edition. The platform never takes the researcher's word for either.
+     */
+    String publisherRefusal(String category, String publisher, String domainCode, CnfisEdition edition) {
+        if (publisher == null || publisher.isBlank()) {
+            return "no publisher: Anexa 5.3 counts a work by its publisher";
+        }
+        if ("CRITICAL_EDITION".equals(category) || "TRANSLATION".equals(category)) {
+            String domain = domainCode == null ? null : CNCS_DOMAIN.get(domainCode.trim());
+            if (domain == null) {
+                return "a critical edition or a translation counts at a publisher CNCS rates A or B in the domain: choose a humanities CNATDCU domain on the sheet";
+            }
+            Optional<String> category2 = publisherCategories.cncsCategoryInDomain(publisher, domain, edition.referenceDate().getYear());
+            return category2.filter(c -> "A".equals(c) || "B".equals(c)).isPresent() ? null
+                    : "the publisher is not rated A or B by CNCS in the domain (latest list); Anexa 5.3 counts only those";
+        }
+        if (ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.isRomanian(publisher)
+                || ro.uvt.pokedex.core.service.reporting.InternationalPublisherSupport.recognizeOn(PRESTIGE_LIST, publisher).isEmpty()) {
+            return "Anexa 5.3 counts books and chapters at foreign publishers of international prestige (the CNCS list for the arts and humanities); this publisher is not on it";
+        }
+        return null;
     }
 
     record ArtsSheet(List<CnfisSheetViewModel.ArtsRow> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {
@@ -921,8 +1058,16 @@ public class CnfisReportingFacade {
         return null;
     }
 
-    private List<CnfisSheetViewModel.Patent> patents(String userEmail, CnfisEdition edition) {
+    record PatentsSheet(List<CnfisSheetViewModel.Patent> rows, List<CnfisSheetViewModel.LeftOut> leftOut) {
+    }
+
+    /**
+     * The patents of the window. H145: the kind (the column of the form) only from the codes and the office the record
+     * gives; a record that names no granted code or office gets no row, and says why.
+     */
+    private PatentsSheet patents(String userEmail, CnfisEdition edition) {
         List<CnfisSheetViewModel.Patent> out = new ArrayList<>();
+        List<CnfisSheetViewModel.LeftOut> leftOut = new ArrayList<>();
         for (ActivityInstance instance : activityInstanceRepository.findAllByResearcherId(userEmail)) {
             if (instance.getActivity() == null || !PATENT_ACTIVITY.equals(instance.getActivity().getName())) {
                 continue;
@@ -932,23 +1077,30 @@ public class CnfisReportingFacade {
                 continue;
             }
             Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
+            String type = patentType(f);
+            if (type.isEmpty()) {
+                leftOut.add(new CnfisSheetViewModel.LeftOut(instance.getId(), String.valueOf(year), instance.getName(),
+                        (f.getOrDefault(FIELD_CODE, "") + " " + f.getOrDefault(FIELD_OFFICE, "")).trim(), null,
+                        "no granted patent code or office recognised (for example RO 123456 B1, EP 1234567 B1, US 9,876,543 B2)"));
+                continue;
+            }
             out.add(new CnfisSheetViewModel.Patent(instance.getId(), String.valueOf(year), instance.getName(),
-                    f.getOrDefault(FIELD_CODE, ""), f.getOrDefault(FIELD_OFFICE, ""), patentType(f),
+                    f.getOrDefault(FIELD_CODE, ""), f.getOrDefault(FIELD_OFFICE, ""), type,
                     parseInt(f.get(FIELD_AUTHORS)), parseInt(f.get(FIELD_UNIVERSITY_AUTHORS))));
         }
         out.sort(Comparator.comparing(CnfisSheetViewModel.Patent::year).thenComparing(CnfisSheetViewModel.Patent::title));
-        return out;
+        return new PatentsSheet(out, leftOut);
     }
 
     /**
      * H144 — the patent's kind by CNFIS's definitions, from the codes and the office the record gives (triadic, European,
-     * international, national); a record of before H144 that carries a declared kind and no recognisable code keeps it.
+     * international, national); empty when nothing names a granted patent's office (H145: a declared kind never counts).
      */
     static String patentType(Map<String, String> fields) {
         String derived = ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport
                 .patentType(fields.get(FIELD_CODE), fields.get(FIELD_OFFICE));
         if (derived == null) {
-            return fields.getOrDefault(FIELD_TYPE, "");
+            return "";
         }
         return switch (derived) {
             case "TRIADIC" -> "Triadic";

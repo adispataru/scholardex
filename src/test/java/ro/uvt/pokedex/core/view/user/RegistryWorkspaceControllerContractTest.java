@@ -53,7 +53,7 @@ class RegistryWorkspaceControllerContractTest {
         var rejected = new RegistryLookupFacade.EntityLevel(RegistryKind.AWARD, "Diplomă", "REJECTED", null, null,
                 "Nu este un premiu.", null, List.of(), null);
         var facts = new RegistryLookupFacade.ListFacts("1234-5678",
-                new RegistryScoringSupport.JournalFacts(false, true, true, true, 4, 1.25), "University of Helsinki",
+                new RegistryScoringSupport.JournalFacts(false, true, true, true, java.util.Set.of("SSCI", "SCOPUS", "ERIH", "DBLP"), 1.25), "University of Helsinki",
                 new RegistryScoringSupport.UniversityFacts(101, 115, "Finland"));
         when(lookup.levelsFor("ion@e-uvt.ro")).thenReturn(Map.of(
                 "a1", new RegistryLookupFacade.RecordLevels(List.of(ecer), null),

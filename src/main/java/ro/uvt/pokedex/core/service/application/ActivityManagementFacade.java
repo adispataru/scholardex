@@ -20,7 +20,21 @@ public class ActivityManagementFacade {
         return activityRepository.findAll();
     }
 
+    /**
+     * H145: the admin form does not carry the type's scoring flags (one record per researcher, a declared publication);
+     * an edit keeps the stored ones instead of wiping them.
+     */
     public Activity saveActivity(Activity activity) {
+        if (activity.getId() != null && !activity.getId().isBlank()) {
+            activityRepository.findById(activity.getId()).ifPresent(stored -> {
+                if (activity.getSinglePerResearcher() == null) {
+                    activity.setSinglePerResearcher(stored.getSinglePerResearcher());
+                }
+                if (activity.getPublicationRecord() == null) {
+                    activity.setPublicationRecord(stored.getPublicationRecord());
+                }
+            });
+        }
         return activityRepository.save(activity);
     }
 

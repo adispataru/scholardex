@@ -147,6 +147,20 @@ class ActivityReportingServiceTest {
     }
 
     @Test
+    void aRecordThatRepeatsAPublicationOfTheListCountsNothingAndSaysWhy() {
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator indicator = indicator("GENERIC_COUNT", "S");
+        ActivityInstance own = activity("a1", Map.of(), false);
+        ActivityInstance copy = activity("a2", Map.of(), false);
+
+        ActivityReportingService.ScoredActivityResult result =
+                service.calculateActivityScoresDetailed(List.of(own, copy), indicator, java.util.Set.of("a2"));
+
+        assertEquals(1.0, result.scores().get("total").getAuthorScore());
+        assertEquals("IN_PUBLICATION_LIST", result.excludedItems().get("a2").getScoringInfo().get("zeroReason"));
+    }
+
+    @Test
     void physicsDidacticActivityScoresKOverNefFromNAutori() {
         // H65: A1 = 4/Nef. A manual book with 6 authors → Nef = (6+5)/2 = 5.5 → 4/5.5.
         ActivityReportingService service = new ActivityReportingService(
@@ -577,7 +591,29 @@ class ActivityReportingServiceTest {
                 () -> service.calculateActivityScores(List.of(held), perYear).get("f2").getAuthorScore());
         assertEquals(60.0, heldScore, 1e-9, "2021 to 2026 while still held: six years");
         assertEquals(10.0, service.calculateActivityScores(List.of(undated), perYear).get("f3").getAuthorScore(), 1e-9);
-        assertEquals(10.0, service.calculateActivityScores(List.of(inverted), perYear).get("f4").getAuthorScore(), 1e-9);
+        // H145: years that are not those of a career count nothing (one record once paid 20,260 for "since year 1")
+        assertFalse(service.calculateActivityScores(List.of(inverted), perYear).containsKey("f4"), "end before start");
+        ActivityInstance sinceYearOne = editionsActivity("f5", Map.of("Rol", "Director", "An_inceput", "1"));
+        ActivityInstance future = editionsActivity("f6", Map.of("Rol", "Director", "An_inceput", "2030"));
+        ActivityInstance farEnd = editionsActivity("f7", Map.of("Rol", "Director", "An_inceput", "2020", "An_sfarsit", "9999"));
+        ScoringReferenceYearContext.with(2026, () -> {
+            assertFalse(service.calculateActivityScores(List.of(sinceYearOne), perYear).containsKey("f5"));
+            assertFalse(service.calculateActivityScores(List.of(future), perYear).containsKey("f6"), "starts after the reference year");
+            assertEquals(70.0, service.calculateActivityScores(List.of(farEnd), perYear).get("f7").getAuthorScore(), 1e-9,
+                    "an end year counts no further than the reference year: 2020–2026");
+            return null;
+        });
+    }
+
+    @Test
+    void anInfiniteScoreCountsNothing() {
+        ActivityReportingService service = new ActivityReportingService(
+                scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator(), scholardexProjectReadPort);
+        Indicator squared = indicator("GENERIC_ACTIVITY", "N_ani * 1e308 * 10");
+
+        ActivityInstance record = editionsActivity("f1", Map.of("Rol", "Director", "An_inceput", "2016", "An_sfarsit", "2020"));
+
+        assertFalse(service.calculateActivityScores(List.of(record), squared).containsKey("f1"));
     }
 
     @Test
@@ -595,9 +631,11 @@ class ActivityReportingServiceTest {
 
             // written without the quotes and diacritics of the registry: still the same festival
             ActivityInstance enescu = performance("p1", "Festivalul George Enescu (Romania)", Map.of("Rol", "Dirijor"));
-            ActivityInstance georgescu = performance("p2", "Festivalul Remus Georgescu (Timisoara)", Map.of());
+            ActivityInstance georgescu = performance("p2", "Festivalul Remus Georgescu (Timisoara)", Map.of("Rol", "Solist"));
             // a national festival is regional/local for the standard
-            ActivityInstance early = performance("p3", "Festivalul de muzică veche (Timișoara)", Map.of());
+            ActivityInstance early = performance("p3", "Festivalul de muzică veche (Timișoara)", Map.of("Rol", "Solist"));
+            // H145: a record that names no role tells nothing about the person's part
+            ActivityInstance noRole = performance("p4", "Festivalul George Enescu (Romania)", Map.of());
 
             Score enescuTop = service.calculateActivityScores(List.of(enescu), top).get("p1");
             assertEquals(20.0, enescuTop.getAuthorScore(), 1e-9);
@@ -606,6 +644,7 @@ class ActivityReportingServiceTest {
             assertEquals(20.0, service.calculateActivityScores(List.of(georgescu), top).get("p2").getAuthorScore(), 1e-9);
             assertEquals(10.0, service.calculateActivityScores(List.of(early), regional).get("p3").getAuthorScore(), 1e-9);
             assertNull(service.calculateActivityScores(List.of(early), top).get("p3"));
+            assertNull(service.calculateActivityScores(List.of(noRole), top).get("p4"));
         } finally {
             ArtisticEventRankSupport.reset();
         }
@@ -638,13 +677,13 @@ class ActivityReportingServiceTest {
         Indicator prize = indicator("GENERIC_ACTIVITY", "Rezultat_eveniment == 'PREMIU' ? 40 : 0");
 
         ActivityInstance won = performance("x1", "Concursul Internațional Remember Enescu", Map.of("Rezultat", "Premiu"));
-        // a record made before H142 says "prize" through its CNFIS kind
+        // H145: a kind picked on a record made before H142 says nothing; the migration writes it as the result
         ActivityInstance legacyPrize = performance("x2", "Concursul Național Eduard Caudella", Map.of("Tip", "Premiu individual"));
         ActivityInstance nominated = performance("x3", "Gala UCMR", Map.of("Rezultat", "Nominalizare"));
         ActivityInstance tutti = performance("x4", "Stagiunea orchestrei", Map.of("Rol", ArtisticPerformanceSupport.ROLE_LARGE_ENSEMBLE_MEMBER));
 
         assertEquals(40.0, service.calculateActivityScores(List.of(won), prize).get("x1").getAuthorScore(), 1e-9);
-        assertEquals(40.0, service.calculateActivityScores(List.of(legacyPrize), prize).get("x2").getAuthorScore(), 1e-9);
+        assertNull(service.calculateActivityScores(List.of(legacyPrize), prize).get("x2"));
         assertNull(service.calculateActivityScores(List.of(won), concert).get("x1"));
         assertNull(service.calculateActivityScores(List.of(nominated), concert).get("x3"));
         assertNull(service.calculateActivityScores(List.of(nominated), prize).get("x3"));

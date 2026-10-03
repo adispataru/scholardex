@@ -64,16 +64,19 @@ class CnfisWorkspaceControllerContractTest {
     void thePageShowsTheSheetOfTheChosenEdition() throws Exception {
         CnfisSheetHeader header = new CnfisSheetHeader();
         header.setDomainCode("2");
-        header.setHirschScopus(7);
+        header.setScoreReportId("rep-fv");
         CnfisSheetViewModel sheet = new CnfisSheetViewModel(
                 new CnfisEditionViewModel(2025, 2021, 2024, 2023, false), header,
                 List.of(new CnfisDomainCatalog.CnfisDomain("2", "Informatică", "Matematică")),
                 List.of(new CnfisSheetViewModel.ReportChoice("rep-fv", "FV Info 2026")), 123.5,
+                List.of("C2 Articole Q1"), new CnfisSheetViewModel.Hirsch(null, 9, 7),
                 List.of(new CnfisSheetViewModel.Row("spub_1", "2023", "A reported paper", "Journal of Testing", "10.1/one", "WOS:1",
                         "ISI Q1", "AIS Q1 · MATHEMATICS-SCIE · list 2023", 2023, 3, 2)),
                 List.of(new CnfisSheetViewModel.LeftOut("spub_2", "2022", "A letter", "Journal of Testing", "10.1/two",
                         "document type 'le': reported are Article, Review and Proceedings Paper")),
                 List.of(new CnfisSheetViewModel.Patent("act-1", "2023", "Sistem de răcire", "EP123", "EPO", "European", 3, 2)),
+                List.of(new CnfisSheetViewModel.LeftOut("act-9", "2024", "Dispozitiv nedeclarat", "cerere 2024", null,
+                        "no granted patent code or office recognised")),
                 new CnfisSheetViewModel.Arts(true,
                         List.of(new CnfisSheetViewModel.ArtsRow("act-2", "2023", "Expoziție personală", "Bienala de la Veneția", "INTERNATIONAL_TOP", "INDIVIDUAL", 0)),
                         List.of(),
@@ -103,6 +106,15 @@ class CnfisWorkspaceControllerContractTest {
         assertTrue(html.contains("EP123") && html.contains("EPO"));
         assertTrue(html.contains("Ion Popescu"), "the co-author without an employment record is named");
         assertTrue(html.contains("123.50") || html.contains("123,50"), "the CNATDCU score of the chosen report");
+        assertTrue(html.contains("C2 Articole Q1"), "the unmet criteria, from the run");
+        assertTrue(html.contains("id=\"cnfis-hirsch-wos\">9<") && html.contains("id=\"cnfis-hirsch-scopus\">7<"),
+                "the Hirsch values the platform derives");
+        assertTrue(html.contains("fără profil Google Scholar aprobat") || html.contains("no approved Google Scholar profile"),
+                "no Google Scholar value without an approved record");
+        assertTrue(!html.contains("name=\"scoreTyped\"") && !html.contains("name=\"hirschScopus\"")
+                && !html.contains("name=\"unmetCriterion\""), "H145: nothing of the score is typed in");
+        assertTrue(html.contains("Dispozitiv nedeclarat") && html.contains("no granted patent code or office recognised"),
+                "a patent without a recognised code is left out, with the reason");
         assertTrue(html.contains("value=\"2\" selected") || html.contains("selected=\"selected\" value=\"2\"") || html.contains("value=\"2\"\n"),
                 "the stored domain is the selected one");
         assertTrue(html.contains("/user/cnfis/2025/export"));
@@ -124,11 +136,11 @@ class CnfisWorkspaceControllerContractTest {
     void savingTheHeaderGoesThroughTheFacadeAndBack() throws Exception {
         mockMvc.perform(post("/user/cnfis/2025/header").with(authenticated(user))
                         .param("domainCode", "2").param("scoreReportId", "rep-fv")
-                        .param("hirschGoogleScholar", "12").param("hirschWebOfScience", "9").param("hirschScopus", "10"))
+                        .param("scoreTyped", "300").param("hirschScopus", "10"))
                 .andExpect(redirectedUrl("/user/cnfis?edition=2025"));
 
         verify(cnfisReportingFacade).saveHeader(eq("u@e-uvt.ro"), eq(2025),
-                eq(new CnfisReportingFacade.HeaderForm("2", "rep-fv", null, null, 12, 9, 10)));
+                eq(new CnfisReportingFacade.HeaderForm("2", "rep-fv")));
     }
 
     @Test

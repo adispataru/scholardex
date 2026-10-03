@@ -35,9 +35,17 @@ public final class PublisherClaimSupport {
             clearDecision(claim);
             return true;
         }
+        String facts = PublisherClaim.factsOf(instance);
         if (claim != null && claim.getStatus() != null && requested.equals(claim.getRequested())
                 && Objects.equals(evidence, claim.getEvidence())) {
-            return false;
+            if (facts.equals(claim.getFacts())) {
+                return false;
+            }
+            if (claim.getFacts() == null) {
+                claim.setFacts(facts); // a request made before H145: its facts are the record's as it is now
+                return true;
+            }
+            // H145: the facts the decision was about changed — the head decides again
         }
         if (claim == null) {
             claim = new PublisherClaim();
@@ -46,6 +54,7 @@ public final class PublisherClaimSupport {
         claim.setStatus(PublisherClaim.Status.PENDING);
         claim.setRequested(requested);
         claim.setEvidence(evidence);
+        claim.setFacts(facts);
         claim.setRequestedAt(Instant.now());
         clearDecision(claim);
         claim.getHistory().add(PublisherClaim.Event.of(PublisherClaim.Action.REQUESTED, actor, requested));

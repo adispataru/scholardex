@@ -44,6 +44,10 @@ public class RegistryLookupFacade {
     /** What the app's lists say about the journal and the university a record names (null when it names none). */
     public record ListFacts(String issn, RegistryScoringSupport.JournalFacts journal, String university,
                             RegistryScoringSupport.UniversityFacts universityFacts) {
+        /** The databases indexing the journal that the general rule counts (Web of Science once). */
+        public List<String> databaseNames() {
+            return journal == null ? List.of() : RegistryScoringSupport.recognisedDatabaseNames(journal.databases());
+        }
     }
 
     /** Per record: the registries' entities, and the lists' facts. */

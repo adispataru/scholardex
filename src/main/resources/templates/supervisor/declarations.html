@@ -178,6 +178,10 @@
                                     <span th:if="${standard.listedCategory() == null}" th:text="#{supervisor.claims.notListed}">not on the lists</span><span th:unless="${iter.last}">; </span>
                                 </th:block>
                             </p>
+                            <p class="mb-1" th:if="${claim.facts() != null and !claim.facts().isEmpty()}" data-claim-facts>
+                                <span class="text-muted" th:text="#{supervisor.claims.facts}">What the record states</span>:
+                                <span th:text="${#strings.listJoin(claim.facts(), '; ')}">Titlu: …; Editura: …</span>
+                            </p>
                             <p class="mb-1" th:if="${claim.record() != null and claim.record().claim() != null}">
                                 <span class="text-muted" th:text="#{supervisor.claims.requested}">Asks for</span>:
                                 <strong th:text="${claim.record().claim().requested()}">A1 — WorldCat</strong>
@@ -254,6 +258,130 @@
                                         <form th:if="${claim.record() != null and claim.record().claim() != null and claim.record().claim().status() == 'APPROVED'}"
                                               method="post" th:action="@{/supervisor/declarations/publisher-claims/{id}/revoke(id=${claim.activityId()})}"
                                               style="display:flex; gap:0.4rem;">
+                                            <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
+                                                   th:placeholder="#{supervisor.declarations.note.required}"
+                                                   th:attr="aria-label=#{supervisor.declarations.note.required}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                    th:text="#{supervisor.declarations.revoke}">Revoke</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── H145: publications added through the wizard ───────────────────────────── -->
+                <section class="app-summary-panel mt-4 mb-4" id="wizard-publications">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title">
+                            <span th:text="#{supervisor.wizard.pending.title}">Publications added by hand — waiting for a decision</span>
+                            (<span th:text="${wizardPending.size()}">0</span>)
+                        </h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p class="text-muted" style="font-size:0.85rem;" th:text="#{supervisor.wizard.intro}">
+                            A publication a researcher adds by hand counts once checked.
+                        </p>
+                        <p th:if="${wizardPending.isEmpty()}" class="text-muted mb-0"
+                           th:text="#{supervisor.wizard.pending.empty}">Nothing is waiting.</p>
+
+                        <div th:each="w : ${wizardPending}" data-wizard-publication
+                             style="border-top:1px solid var(--bs-border-color, #dee2e6); padding:0.9rem 0;">
+                            <p class="mb-1">
+                                <strong th:text="${names.getOrDefault(w.submitterEmail(), w.submitterEmail())}">Researcher</strong>
+                                ·
+                                <span th:text="${w.type()}">Book</span>
+                                ·
+                                <span th:text="${w.year()}">2001</span>
+                            </p>
+                            <p class="mb-1"><strong th:text="${w.title()}">Title</strong></p>
+                            <p class="mb-1">
+                                <span class="text-muted" th:text="#{supervisor.wizard.venue}">Venue</span>:
+                                <span th:text="${w.venue() != '' ? w.venue() : '—'}">Journal or book</span>
+                                <span th:if="${w.venueIdentifiers() != ''}" class="text-muted" th:text="${'(' + w.venueIdentifiers() + ')'}">(ISSN)</span>
+                                <span th:if="${w.publisher() != ''}" th:text="${'· ' + w.publisher()}">· Publisher</span>
+                            </p>
+                            <p class="mb-1">
+                                <span class="text-muted" th:text="#{supervisor.wizard.authors}">Authors, in order</span>:
+                                <span th:text="${#strings.listJoin(w.authors(), '; ')}">A; B</span>
+                            </p>
+                            <p class="mb-1">
+                                <span class="text-muted">DOI</span>:
+                                <a th:if="${w.doi() != null and w.doi() != ''}" target="_blank" rel="noopener"
+                                   th:href="${'https://doi.org/' + w.doi()}" th:text="${w.doi()}">10.1/x</a>
+                                <span th:unless="${w.doi() != null and w.doi() != ''}">—</span>
+                            </p>
+                            <p class="mb-2" th:if="${w.verificationNote() != null}" data-wizard-crossref>
+                                <span class="text-muted" th:text="#{supervisor.wizard.crossref}">Crossref</span>:
+                                <span th:text="${w.verificationNote()}">what did not match</span>
+                            </p>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <form method="post" th:action="@{/supervisor/declarations/wizard-publications/approve}"
+                                      style="display:flex; gap:0.4rem;">
+                                    <input type="hidden" name="id" th:value="${w.id()}">
+                                    <input type="hidden" name="facts" th:value="${w.facts()}">
+                                    <input type="text" name="note" class="form-control form-control-sm" maxlength="1000"
+                                           th:placeholder="#{supervisor.declarations.note.optional}"
+                                           th:attr="aria-label=#{supervisor.declarations.note.optional}">
+                                    <button type="submit" class="btn btn-sm btn-success"
+                                            th:text="#{supervisor.declarations.approve}">Approve</button>
+                                </form>
+                                <form method="post" th:action="@{/supervisor/declarations/wizard-publications/reject}"
+                                      style="display:flex; gap:0.4rem;">
+                                    <input type="hidden" name="id" th:value="${w.id()}">
+                                    <input type="hidden" name="facts" th:value="${w.facts()}">
+                                    <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
+                                           th:placeholder="#{supervisor.declarations.note.required}"
+                                           th:attr="aria-label=#{supervisor.declarations.note.required}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            th:text="#{supervisor.declarations.reject}">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="app-summary-panel">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title" th:text="#{supervisor.wizard.decided.title}">Publications added by hand — decisions</h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p th:if="${wizardDecided.isEmpty()}" class="text-muted mb-0"
+                           th:text="#{supervisor.declarations.decided.empty}">Nothing was decided yet.</p>
+                        <div th:unless="${wizardDecided.isEmpty()}" class="table-responsive">
+                            <table class="table table-sm align-middle" id="wizard-publications-decided">
+                                <thead>
+                                <tr>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.researcher}">Researcher</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.publication}">Publication</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.decision}">Decision</th>
+                                    <th scope="col" th:text="#{supervisor.declarations.col.by}">By</th>
+                                    <th scope="col"></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="w : ${wizardDecided}">
+                                    <td th:text="${names.getOrDefault(w.submitterEmail(), w.submitterEmail())}">Researcher</td>
+                                    <td>
+                                        <span th:text="${w.title()}">Title</span>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:text="${w.type() + ' · ' + w.year() + (w.venue() != '' ? ' · ' + w.venue() : '')}">Book · 2001</div>
+                                    </td>
+                                    <td>
+                                        <span th:text="#{${'supervisor.wizard.status.' + w.status()}}">status</span>
+                                        <div th:if="${w.decisionNote() != null}" class="text-muted" style="font-size:0.8rem;" th:text="${w.decisionNote()}">note</div>
+                                    </td>
+                                    <td>
+                                        <span th:text="${w.decidedBy() == 'crossref' ? 'Crossref' : names.getOrDefault(w.decidedBy(), w.decidedBy())}">head</span>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:text="${decidedOn.get(w.id())}">date</div>
+                                    </td>
+                                    <td>
+                                        <form th:if="${w.status() == 'APPROVED' or w.status() == 'VERIFIED'}"
+                                              method="post" th:action="@{/supervisor/declarations/wizard-publications/revoke}"
+                                              style="display:flex; gap:0.4rem;">
+                                            <input type="hidden" name="id" th:value="${w.id()}">
+                                            <input type="hidden" name="facts" th:value="${w.facts()}">
                                             <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
                                                    th:placeholder="#{supervisor.declarations.note.required}"
                                                    th:attr="aria-label=#{supervisor.declarations.note.required}">

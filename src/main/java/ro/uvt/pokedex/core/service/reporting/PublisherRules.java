@@ -55,7 +55,9 @@ public enum PublisherRules {
 
     private static final Map<String, String> SOCIOLOGY_OPTIONS = Map.of(
             "Editură de prestigiu internațional (Lista A1)", "A1",
-            "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)", "A2");
+            "Minimum 6 biblioteci în WorldCat (asimilat Listei A2)", "A2",
+            // H145: a translation's request is first about the work being fundamental; the WorldCat route also gives A2
+            "Lucrare fundamentală, în cel puțin 6 biblioteci din WorldCat", "A2");
     private static final Map<String, String> COMISIA_28_OPTIONS = Map.of(
             "A1 — minimum 25 de biblioteci universitare din UE/OCDE în WorldCat", "A1",
             "A2 — cel puțin două criterii din ruta complementară", "A2",

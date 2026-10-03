@@ -179,6 +179,72 @@ class CnfisUnitFacadeTest {
     }
 
     @Test
+    void aPatentOrAConcertTwoColleaguesDeclaredAppearsOnce() throws Exception {
+        CnfisUnitSheet table = new CnfisUnitSheet();
+        table.setId("t2");
+        table.setUnitKind(CnfisUnitSheet.UnitKind.DEPARTMENT);
+        table.setUnitId("dept");
+        CnfisUnitSheet.Member m1 = new CnfisUnitSheet.Member();
+        m1.setSnapshotId("a1");
+        m1.setUserEmail("ana@uvt.ro");
+        CnfisUnitSheet.Member m2 = new CnfisUnitSheet.Member();
+        m2.setSnapshotId("i1");
+        m2.setUserEmail("ion@uvt.ro");
+        table.getMembers().addAll(List.of(m1, m2));
+        CnfisSheetSnapshot ana = snapshot("a1", "ana@uvt.ro", false, "2026-09-20T00:00:00Z");
+        ana.getPatents().add(patent("act-a", "Sistem de răcire", "RO 128500 B1", 3, 2));
+        ana.getArtsRows().add(arts("act-a2", "Concert de deschidere", "Festivalul Enescu", 1));
+        CnfisSheetSnapshot ion = snapshot("i1", "ion@uvt.ro", false, "2026-09-29T00:00:00Z");
+        ion.getPatents().add(patent("act-i", "Sistem de racire (brevet)", "RO128500B1", 3, 1));
+        ion.getPatents().add(patent("act-i2", "Alt dispozitiv", "RO 130001 B1", 1, 1));
+        ion.getArtsRows().add(arts("act-i3", "Concert de deschidere", "Festivalul ENESCU", 1));
+        when(unitSheetRepository.findById("t2")).thenReturn(Optional.of(table));
+        when(snapshotRepository.findById("a1")).thenReturn(Optional.of(ana));
+        when(snapshotRepository.findById("i1")).thenReturn(Optional.of(ion));
+        when(projectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
+        when(exportService.generateAnexa6(any(), any(), any(), any())).thenReturn(new byte[]{1});
+        when(exportService.generateAnexa61(any())).thenReturn(new byte[]{1});
+
+        facade.exportTable(CnfisUnitSheet.UnitKind.DEPARTMENT, "dept", "t2");
+        facade.exportArtsTable(CnfisUnitSheet.UnitKind.DEPARTMENT, "dept", "t2");
+
+        org.mockito.ArgumentCaptor<List<ro.uvt.pokedex.core.model.reporting.CNFISReport2025>> patents =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(exportService).generateAnexa6(any(), any(), any(), patents.capture());
+        assertEquals(2, patents.getValue().size(), "the shared patent once, by its granted code");
+        assertEquals(2, patents.getValue().getFirst().getNumarAutoriUniversitate(), "the larger count of university authors");
+        org.mockito.ArgumentCaptor<List<ro.uvt.pokedex.core.service.reporting.CNFISReportExportService.ArtsExportRow>> arts =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(exportService).generateAnexa61(arts.capture());
+        assertEquals(1, arts.getValue().size(), "the same concert once");
+    }
+
+    private static CnfisSheetSnapshot.Patent patent(String id, String title, String code, int authors, int university) {
+        CnfisSheetSnapshot.Patent p = new CnfisSheetSnapshot.Patent();
+        p.setActivityInstanceId(id);
+        p.setTitle(title);
+        p.setCode(code);
+        p.setOffice("OSIM");
+        p.setYear("2023");
+        p.setType("National");
+        p.setAuthorCount(authors);
+        p.setUniversityAuthorCount(university);
+        return p;
+    }
+
+    private static CnfisSheetSnapshot.ArtsRow arts(String id, String work, String event, int participants) {
+        CnfisSheetSnapshot.ArtsRow r = new CnfisSheetSnapshot.ArtsRow();
+        r.setActivityInstanceId(id);
+        r.setWork(work);
+        r.setEvent(event);
+        r.setYear("2023");
+        r.setLevel("INTERNATIONAL_TOP");
+        r.setKind("INDIVIDUAL");
+        r.setUniversityParticipants(participants);
+        return r;
+    }
+
+    @Test
     void aFacultyGathersTheMembersOfAllItsDepartments() {
         OrgDivision faculty = new OrgDivision();
         faculty.setId("fac");

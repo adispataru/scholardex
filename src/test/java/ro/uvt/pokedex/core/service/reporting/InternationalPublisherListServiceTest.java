@@ -70,6 +70,13 @@ class InternationalPublisherListServiceTest {
     }
 
     @Test
+    void anotherHousesNameNextToAListedOneIsNotThatHouse() {
+        // H145: "Eurostampa, Berghahn Books" is no Berghahn book; "Berghahn Books, New York" is
+        assertEquals(java.util.Optional.empty(), lists.recognize("Eurostampa, Berghahn Books"));
+        assertEquals("UEFISCDI_STIINTE_SOCIALE", key("Berghahn Books, New York"));
+    }
+
+    @Test
     void theUefiscdiListsHoldTheSocialSciencesAndTheArtsAndHumanities() {
         assertEquals("UEFISCDI_STIINTE_SOCIALE", key("L'Harmattan, Paris"));
         assertEquals("UEFISCDI_STIINTE_SOCIALE", key("Berghahn Books"));

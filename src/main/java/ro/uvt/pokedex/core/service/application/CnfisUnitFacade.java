@@ -174,7 +174,8 @@ public class CnfisUnitFacade {
 
     /**
      * The workbook of a table, from the sheets it was built from. A paper two members share appears once;
-     * so does a patent (the sheets are individual, the table is the unit's).
+     * so does a patent (the sheets are individual, the table is the unit's) — H145: the same patent declared by two
+     * colleagues too (the same granted codes, else the same title and year), with the larger count of authors.
      */
     public Optional<byte[]> exportTable(CnfisUnitSheet.UnitKind kind, String unitId, String tableId) throws IOException {
         Optional<CnfisUnitSheet> tableOpt = unitSheetRepository.findById(tableId)
@@ -205,7 +206,11 @@ public class CnfisUnitFacade {
                 }
             }
             for (CnfisSheetSnapshot.Patent p : s.get().getPatents()) {
-                if (patents.containsKey(p.getActivityInstanceId())) {
+                String key = patentKey(p);
+                CNFISReport2025 known = patents.get(key);
+                if (known != null) {
+                    known.setNumarAutori(Math.max(known.getNumarAutori(), p.getAuthorCount()));
+                    known.setNumarAutoriUniversitate(Math.max(known.getNumarAutoriUniversitate(), p.getUniversityAuthorCount()));
                     continue;
                 }
                 CNFISReport2025 r = new CNFISReport2025();
@@ -216,7 +221,7 @@ public class CnfisUnitFacade {
                 CnfisReportingFacade.setPatentType(r, p.getType());
                 r.setNumarAutori(p.getAuthorCount());
                 r.setNumarAutoriUniversitate(p.getUniversityAuthorCount());
-                patents.put(p.getActivityInstanceId(), r);
+                patents.put(key, r);
             }
         }
         Map<String, ScholardexForumView> forumMap = new HashMap<>();
@@ -225,7 +230,11 @@ public class CnfisUnitFacade {
                 new ArrayList<>(reports.values()), forumMap, new ArrayList<>(patents.values())));
     }
 
-    /** Anexa 6.1 of a table: the artistic performances of its members' sheets, each performance once. */
+    /**
+     * Anexa 6.1 of a table: the artistic performances of its members' sheets, each performance once — H145: also when
+     * several colleagues declared it (the same work at the same event in the same year), counting them among its
+     * university participants.
+     */
     public Optional<byte[]> exportArtsTable(CnfisUnitSheet.UnitKind kind, String unitId, String tableId) throws IOException {
         Optional<CnfisUnitSheet> tableOpt = unitSheetRepository.findById(tableId)
                 .filter(t -> t.getUnitKind() == kind && unitId.equals(t.getUnitId()));
@@ -233,14 +242,22 @@ public class CnfisUnitFacade {
             return Optional.empty();
         }
         Map<String, CnfisSheetSnapshot.ArtsRow> rows = new LinkedHashMap<>();
+        Map<String, Set<String>> declarers = new HashMap<>();
         for (CnfisUnitSheet.Member member : tableOpt.get().getMembers()) {
-            snapshotRepository.findById(member.getSnapshotId())
-                    .ifPresent(s -> s.getArtsRows().forEach(r -> rows.putIfAbsent(r.getActivityInstanceId(), r)));
+            snapshotRepository.findById(member.getSnapshotId()).ifPresent(s -> s.getArtsRows().forEach(r -> {
+                String key = factKey(r.getWork(), r.getEvent(), r.getYear());
+                declarers.computeIfAbsent(key, k -> new LinkedHashSet<>()).add(member.getUserEmail());
+                CnfisSheetSnapshot.ArtsRow known = rows.putIfAbsent(key, copy(r));
+                if (known != null) {
+                    known.setUniversityParticipants(Math.max(known.getUniversityParticipants(), r.getUniversityParticipants()));
+                }
+            }));
         }
+        rows.forEach((key, r) -> r.setUniversityParticipants(Math.max(r.getUniversityParticipants(), declarers.get(key).size())));
         return Optional.of(exportService.generateAnexa61(CnfisReportingFacade.toExportArts(new ArrayList<>(rows.values()))));
     }
 
-    /** Anexa 6.2 of a table: the sport performances of its members' sheets, each performance once. */
+    /** Anexa 6.2 of a table: the sport performances of its members' sheets, each performance once (H145: by its facts). */
     public Optional<byte[]> exportSportTable(CnfisUnitSheet.UnitKind kind, String unitId, String tableId) throws IOException {
         Optional<CnfisUnitSheet> tableOpt = unitSheetRepository.findById(tableId)
                 .filter(t -> t.getUnitKind() == kind && unitId.equals(t.getUnitId()));
@@ -248,11 +265,20 @@ public class CnfisUnitFacade {
             return Optional.empty();
         }
         Map<String, CnfisSheetSnapshot.SportRow> rows = new LinkedHashMap<>();
+        Map<String, Set<String>> declarers = new HashMap<>();
         for (CnfisUnitSheet.Member member : tableOpt.get().getMembers()) {
             snapshotRepository.findById(member.getSnapshotId())
                     .ifPresent(s -> (s.getSportRows() == null ? List.<CnfisSheetSnapshot.SportRow>of() : s.getSportRows())
-                            .forEach(r -> rows.putIfAbsent(r.getActivityInstanceId(), r)));
+                            .forEach(r -> {
+                                String key = factKey(r.getActivity(), r.getChampionship(), r.getYear()) + "|" + r.getPlace();
+                                declarers.computeIfAbsent(key, k -> new LinkedHashSet<>()).add(member.getUserEmail());
+                                CnfisSheetSnapshot.SportRow known = rows.putIfAbsent(key, copy(r));
+                                if (known != null) {
+                                    known.setUniversityParticipants(Math.max(known.getUniversityParticipants(), r.getUniversityParticipants()));
+                                }
+                            }));
         }
+        rows.forEach((key, r) -> r.setUniversityParticipants(Math.max(r.getUniversityParticipants(), declarers.get(key).size())));
         return Optional.of(exportService.generateAnexa62(CnfisReportingFacade.toExportSport(new ArrayList<>(rows.values()))));
     }
 
@@ -265,13 +291,67 @@ public class CnfisUnitFacade {
         }
         Map<String, CnfisSheetSnapshot.HumanitiesRow> rows = new LinkedHashMap<>();
         for (CnfisUnitSheet.Member member : tableOpt.get().getMembers()) {
+            // H145: a work two colleagues declared (no shared publication id) is the same work by its DOI, else its titles
             snapshotRepository.findById(member.getSnapshotId())
-                    .ifPresent(s -> s.getHumanitiesRows().forEach(r -> rows.putIfAbsent(r.getSourceId(), r)));
+                    .ifPresent(s -> s.getHumanitiesRows().forEach(r -> rows.putIfAbsent(humanitiesKey(r), r)));
         }
         return Optional.of(exportService.generateAnexa63(CnfisReportingFacade.toExportHumanities(new ArrayList<>(rows.values()))));
     }
 
     // ── pieces ──────────────────────────────────────────────────────────────
+
+    /** H145: one patent, whoever declared it — its granted codes, else its title and year. */
+    static String patentKey(CnfisSheetSnapshot.Patent p) {
+        Set<String> codes = ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport
+                .grantedPatentCodes(p.getCode(), p.getOffice());
+        return codes.isEmpty() ? "title:" + factKey(p.getTitle(), null, p.getYear()) : "codes:" + String.join(",", codes);
+    }
+
+    static String humanitiesKey(CnfisSheetSnapshot.HumanitiesRow r) {
+        String doi = ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService.normalizeDoi(r.getDoi());
+        if (doi != null && doi.startsWith("10.")) { // a source's placeholder ("null") is no DOI
+            return "doi:" + doi;
+        }
+        String title = ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService.normalizeTitle(r.getItemTitle());
+        return title == null && r.getSourceId() != null ? "id:" + r.getSourceId()
+                : "title:" + factKey(r.getItemTitle(), r.getContainerTitle(), r.getYear());
+    }
+
+    /** Normalised titles and the year, so a colleague's spelling of the same entry lands on the same key. */
+    static String factKey(String what, String where, String year) {
+        return nz(ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService.normalizeTitle(what))
+                + "|" + nz(ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService.normalizeTitle(where))
+                + "|" + nz(year);
+    }
+
+    private static String nz(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static CnfisSheetSnapshot.ArtsRow copy(CnfisSheetSnapshot.ArtsRow r) {
+        CnfisSheetSnapshot.ArtsRow c = new CnfisSheetSnapshot.ArtsRow();
+        c.setActivityInstanceId(r.getActivityInstanceId());
+        c.setYear(r.getYear());
+        c.setWork(r.getWork());
+        c.setEvent(r.getEvent());
+        c.setLevel(r.getLevel());
+        c.setKind(r.getKind());
+        c.setUniversityParticipants(r.getUniversityParticipants());
+        return c;
+    }
+
+    private static CnfisSheetSnapshot.SportRow copy(CnfisSheetSnapshot.SportRow r) {
+        CnfisSheetSnapshot.SportRow c = new CnfisSheetSnapshot.SportRow();
+        c.setActivityInstanceId(r.getActivityInstanceId());
+        c.setYear(r.getYear());
+        c.setActivity(r.getActivity());
+        c.setChampionship(r.getChampionship());
+        c.setLevel(r.getLevel());
+        c.setPlace(r.getPlace());
+        c.setRecord(r.getRecord());
+        c.setUniversityParticipants(r.getUniversityParticipants());
+        return c;
+    }
 
     private Optional<Unit> unit(CnfisUnitSheet.UnitKind kind, String unitId) {
         if (kind == CnfisUnitSheet.UnitKind.DEPARTMENT) {

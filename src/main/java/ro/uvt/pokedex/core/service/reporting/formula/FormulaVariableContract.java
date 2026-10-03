@@ -131,10 +131,17 @@ public final class FormulaVariableContract {
         // `scieIndexed && !feeJournal`. Bound lazily (one indexed coverage lookup) only for formulas that
         // reference it, so nothing else pays for it. Always allowed — publications and citations alike.
         allowed.add("scieIndexed");
+        // H145 Math 2026: citedScieIndexed / citedFeeJournal (booleans) — the same two facts for the CITED article (the
+        // candidate's), so C1/C2 count only citations of articles in list A (L = SCIE minus fee journals). Bound lazily.
+        allowed.add("citedScieIndexed");
+        allowed.add("citedFeeJournal");
         // H98 physics: wosBookPublisher (boolean) — the book/chapter's publisher is on the WoS Master Book
         // List ("edituri internaționale recunoscute Web of Science", A1–A3); its negation is the A4/A5
         // "national or other publishers" complement. Bound lazily, false when no publisher resolves.
         allowed.add("wosBookPublisher");
+        // H145 physics: proceedings (boolean) — the item is a paper in a conference proceedings volume (subtype,
+        // venue class or a volume/series named "… Proceedings …"), which precizare 5 keeps out of A2/A5. Bound lazily.
+        allowed.add("proceedings");
         // H79: topAB (boolean) — category-based eligibility for the 2026 "top A*/A/B" indicators. True when the scored
         // item's forum category is in {A*,A,B} (workshop-authoritative; S>=4 otherwise). Always allowed.
         allowed.add("topAB");

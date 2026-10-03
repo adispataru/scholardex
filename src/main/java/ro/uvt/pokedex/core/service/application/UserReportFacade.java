@@ -310,14 +310,18 @@ public class UserReportFacade {
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("indicator", indicator);
 
+        List<ScholardexPublicationView> confirmed = findConfirmedPublicationsForScoring(userEmail);
+        List<ActivityInstance> allActivities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
+        // H145: a publication declared and also in the list counts once
+        DeclaredPublicationCopies.Resolution copies = DeclaredPublicationCopies.resolve(allActivities, confirmed);
         if (indicator != null && indicator.isActivityOutput()) {
-            List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
-            activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
-            return handleActivities(indicator, activities, attrs);
+            List<ActivityInstance> activities = allActivities.stream()
+                    .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
+            return handleActivities(indicator, activities, attrs, copies.declaredCopies());
         }
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
-        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
+        List<ScholardexPublicationView> publications = copies.publications(confirmed);
         if (requiresPublicationScoring(indicator)) {
             attrs.put("confirmedPublicationScoringWarning", publications.isEmpty());
         }
@@ -463,7 +467,9 @@ public class UserReportFacade {
      */
     private ReportScopedIndividualReportComputation scoreReport(IndividualReport report, AuthorshipContext context) {
         List<ScholardexAuthorView> authors = context.authors();
-        List<ScholardexPublicationView> publications = applyAffiliationFilter(report, context.publications());
+        // H145: a publication declared and also in the list counts once (DeclaredPublicationCopies)
+        DeclaredPublicationCopies.Resolution copies = DeclaredPublicationCopies.resolve(context.activities(), context.publications());
+        List<ScholardexPublicationView> publications = applyAffiliationFilter(report, copies.publications(context.publications()));
         List<ActivityInstance> activities = context.activities();
 
         // H138: a domain-selectable report scores against the researcher's chosen competition domain
@@ -495,7 +501,8 @@ public class UserReportFacade {
                 List<ActivityInstance> filteredActivities = activities.stream()
                         .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
                         .toList();
-                indicatorScore = activityReportingService.calculateActivityScores(filteredActivities, indicator)
+                indicatorScore = activityReportingService.calculateActivityScores(filteredActivities, indicator,
+                                copies.declaredCopies())
                         .get("total")
                         .getAuthorScore();
             }
@@ -645,22 +652,23 @@ public class UserReportFacade {
 
         User user = userOpt.get();
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
-        List<ScholardexPublicationView> publications = applyAffiliationFilter(
-                report,
-                findConfirmedPublicationsForScoring(userEmail)
-        );
+        List<ScholardexPublicationView> confirmed = findConfirmedPublicationsForScoring(userEmail);
+        List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
+        // H145: as in the run — a publication declared and also in the list counts once
+        DeclaredPublicationCopies.Resolution copies = DeclaredPublicationCopies.resolve(activities, confirmed);
+        List<ScholardexPublicationView> publications = applyAffiliationFilter(report, copies.publications(confirmed));
 
         Map<String, Object> rawGraph = new HashMap<>();
         rawGraph.put("indicator", indicator);
 
         if (indicator != null && indicator.isActivityOutput()) {
-            List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
             final String activityName = indicator.getActivity().getName();
             List<ActivityInstance> filteredActivities = activities.stream()
                     .filter(act -> act.getActivity().getName().equals(activityName))
                     .toList();
             ActivityReportingService.ScoredActivityResult detailedActivities =
-                    activityReportingService.calculateActivityScoresDetailed(filteredActivities, indicator);
+                    activityReportingService.calculateActivityScoresDetailed(filteredActivities, indicator,
+                            copies.declaredCopies());
             Map<String, Score> scores = new HashMap<>(detailedActivities.scores());
             Score totalScore = scores.remove("total");
             double total = totalScore != null ? totalScore.getAuthorScore() : 0.0;
@@ -933,9 +941,10 @@ public class UserReportFacade {
         return new UserIndicatorApplyViewModel("user/indicators-apply", attrs);
     }
 
-    private UserIndicatorApplyViewModel handleActivities(Indicator indicator, List<ActivityInstance> activities, Map<String, Object> attrs) {
+    private UserIndicatorApplyViewModel handleActivities(Indicator indicator, List<ActivityInstance> activities, Map<String, Object> attrs,
+                                                         Set<String> inPublicationList) {
         ActivityReportingService.ScoredActivityResult detailedActivities =
-                activityReportingService.calculateActivityScoresDetailed(activities, indicator);
+                activityReportingService.calculateActivityScoresDetailed(activities, indicator, inPublicationList);
         Map<String, Score> scores = new HashMap<>(detailedActivities.scores());
         attrs.put("total", String.format("%.2f", scores.get("total").getAuthorScore()));
         scores.remove("total");

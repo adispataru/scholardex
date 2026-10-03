@@ -73,6 +73,14 @@ class PsihologiePublisherServiceTest {
     // ── 2026 lists (OM 3019/2025, Comisia 28) — read from the classpath, independent of Mongo ──
 
     @Test
+    void anotherHousesNameNextToAListedOneIsNotThatHouse() {
+        // H145: the listed name inside the typed one counts only with an imprint's dress around it
+        PsihologiePublisherService s = serviceWith();
+        assertNull(s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Mirton, distribuită de Polirom"));
+        assertEquals("A2", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Polirom, Iași, 2019"));
+    }
+
+    @Test
     void the2026ListKeepsTheA2PublishersAndAddsTheNewTierBOnes() {
         PsihologiePublisherService s = serviceWith(pub("Editura All", "B"));
         assertEquals("A2", s.tierFor2026(Comisia28Rules.PSIHOLOGIE, "Editura Polirom, Iași"));

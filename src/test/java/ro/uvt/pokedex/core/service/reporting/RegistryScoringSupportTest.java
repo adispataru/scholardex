@@ -15,13 +15,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** H144 — what a formula reads instead of a level the researcher picked. */
+/** H144, H145 — what a formula reads instead of a level the researcher picked. */
 class RegistryScoringSupportTest {
 
     private final List<RegistryEntry> entries = new ArrayList<>();
@@ -44,8 +45,18 @@ class RegistryScoringSupportTest {
         RegistrySupport.register(entries);
     }
 
+    /** A record whose type declares exactly the references it fills. */
     private static Map<String, Object> bind(Map<Activity.ReferenceField, String> refs, Map<String, String> fields) {
+        return bind(List.copyOf(refs.keySet()), refs, fields);
+    }
+
+    private static Map<String, Object> bind(List<Activity.ReferenceField> declared, Map<Activity.ReferenceField, String> refs,
+                                            Map<String, String> fields) {
+        Activity type = new Activity();
+        type.setId("t");
+        type.setReferenceFields(declared);
         ActivityInstance record = new ActivityInstance();
+        record.setActivity(type);
         record.setDate("2024-05-01");
         record.setReferenceFields(new HashMap<>(refs));
         record.setFields(new HashMap<>(fields));
@@ -55,7 +66,7 @@ class RegistryScoringSupportTest {
     }
 
     @Test
-    void aConferenceWaitingForTheExpertsCountsNationalAndARejectedOneCountsNothing() {
+    void onlyARankedNameHasALevelAndARejectedOneIsNotValid() {
         entry(RegistryKind.SCIENTIFIC_EVENT, "ECER 2024", RegistryStatus.CONFIRMED, "INTERNATIONAL", "CONFERENCE", "Cyprus");
         entry(RegistryKind.SCIENTIFIC_EVENT, "Webinar", RegistryStatus.REJECTED, null, null, null);
 
@@ -63,49 +74,68 @@ class RegistryScoringSupportTest {
         assertEquals("INTERNATIONAL", ranked.get("Nivel_entitate"));
         assertEquals(true, ranked.get("International"));
         assertEquals(true, ranked.get("In_strainatate"), "its country is the registry's");
+        assertEquals(true, ranked.get("Entitate_valida"));
 
         Map<String, Object> waiting = bind(Map.of(Activity.ReferenceField.CONFERENCE_NAME, "Simpozionul de la Iași"), Map.of());
-        assertEquals("NATIONAL", waiting.get("Nivel_entitate"), "Comisia 28: national until shown international");
-        assertEquals(false, waiting.get("International"));
-        assertEquals(true, waiting.get("Recunoscut"));
+        assertNull(waiting.get("Nivel_entitate"), "no floor: a standard that counts a waiting name says so itself");
+        assertEquals(false, waiting.get("Recunoscut"));
+        assertEquals(true, waiting.get("Entitate_valida"), "Comisia 28 counts it national through Entitate_valida");
 
-        Map<String, Object> rejected = bind(Map.of(Activity.ReferenceField.CONFERENCE_NAME, "webinar"), Map.of());
+        Map<String, Object> rejected = bind(Map.of(Activity.ReferenceField.CONFERENCE_NAME, "Webinar"), Map.of());
         assertNull(rejected.get("Nivel_entitate"));
-        assertEquals(false, rejected.get("Recunoscut"));
+        assertEquals(false, rejected.get("Entitate_valida"));
+        assertEquals(true, rejected.get("Entitate_numita"));
+
+        Map<String, Object> blank = bind(Map.of(), Map.of());
+        assertEquals(false, blank.get("Entitate_numita"));
+        assertEquals(false, blank.get("Entitate_valida"));
     }
 
     @Test
-    void anOrganisationOrAnAwardWaitingForTheExpertsPassesNoGate() {
+    void anOrganisationOrAnAwardCountsOnceRanked() {
         entry(RegistryKind.ORGANIZATION, "UCMR", RegistryStatus.CONFIRMED, "NATIONAL", "ASSOCIATION", "România");
-        entry(RegistryKind.AWARD, "EERA Award", RegistryStatus.CONFIRMED, "INTERNATIONAL", "SCIENTIFIC", null);
-
+        entry(RegistryKind.AWARD, "Premiul EERA", RegistryStatus.CONFIRMED, "INTERNATIONAL", "SCIENTIFIC", null);
+        entry(RegistryKind.AWARD, "Ordinul Meritul Cultural", RegistryStatus.CONFIRMED, "NATIONAL", "STATE", "România");
         assertEquals(true, bind(Map.of(Activity.ReferenceField.ORGANIZATION_NAME, "ucmr"), Map.of()).get("Recunoscut"));
         assertEquals(false, bind(Map.of(Activity.ReferenceField.ORGANIZATION_NAME, "UCMR"), Map.of()).get("In_strainatate"));
-        Map<String, Object> waiting = bind(Map.of(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația nouă"), Map.of());
+        Map<String, Object> waiting = bind(Map.of(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația X"), Map.of());
         assertEquals(false, waiting.get("Recunoscut"));
-        assertEquals(true, waiting.get("Entitate_numita"));
-
-        Map<String, Object> award = bind(Map.of(Activity.ReferenceField.AWARD_NAME, "EERA Award"), Map.of());
+        Map<String, Object> award = bind(Map.of(Activity.ReferenceField.AWARD_NAME, "Premiul EERA"), Map.of());
         assertEquals(true, award.get("International"));
         assertEquals(true, award.get("Premiu_stiintific"));
-        assertEquals(false, bind(Map.of(), Map.of()).get("Entitate_numita"));
+        assertEquals(false, award.get("Premiu_de_stat"));
+        assertEquals(true, bind(Map.of(Activity.ReferenceField.AWARD_NAME, "Ordinul Meritul Cultural"), Map.of()).get("Premiu_de_stat"));
     }
 
     @Test
-    void anArtisticEventCountsAtItsRankAndTheBestNamedEntityWins() {
-        ArtisticEventRankSupport.register(List.of(event("Festivalul George Enescu", ArtisticEvent.Rank.INTERNATIONAL_TOP),
-                event("Serile din cartier", ArtisticEvent.Rank.LOCAL)));
-        assertEquals("INTERNATIONAL", bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Festivalul George Enescu"), Map.of())
-                .get("Nivel_entitate"));
+    void anArtisticEventCountsAtItsRankAndARecordNamesOneEntity() {
+        ArtisticEventRankSupport.register(List.of(
+                event("Festivalul George Enescu", ArtisticEvent.Rank.INTERNATIONAL_TOP, ArtisticEvent.Kind.FESTIVAL),
+                event("Concursul Enescu", ArtisticEvent.Rank.INTERNATIONAL_TOP, ArtisticEvent.Kind.COMPETITION),
+                event("Serile din cartier", ArtisticEvent.Rank.LOCAL, ArtisticEvent.Kind.SEASON)));
+        Map<String, Object> festival = bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Festivalul George Enescu"), Map.of());
+        assertEquals("INTERNATIONAL", festival.get("Nivel_entitate"));
+        assertEquals(false, festival.get("Concurs"));
+        assertEquals(true, bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Concursul Enescu"), Map.of()).get("Concurs"));
         Map<String, Object> local = bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Serile din cartier"), Map.of());
         assertEquals("LOCAL", local.get("Nivel_entitate"));
         assertEquals(false, local.get("Recunoscut"));
-        assertNull(bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Un festival nou"), Map.of()).get("Nivel_entitate"),
-                "an artistic event waiting for the experts has no level");
+        assertNull(bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Un festival nou"), Map.of()).get("Nivel_entitate"));
 
-        Map<String, Object> both = bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Serile din cartier",
+        // H145: a second name never lifts the first — two named entities count as none
+        Map<String, Object> both = bind(Map.of(Activity.ReferenceField.EVENT_NAME, "Festivalul George Enescu",
                 Activity.ReferenceField.CONFERENCE_NAME, "Simpozionul de la Iași"), Map.of());
-        assertEquals("NATIONAL", both.get("Nivel_entitate"));
+        assertNull(both.get("Nivel_entitate"));
+        assertEquals(false, both.get("Entitate_valida"));
+    }
+
+    @Test
+    void aReferenceTheTypeDoesNotDeclareIsNeverRead() {
+        entry(RegistryKind.ORGANIZATION, "UNESCO", RegistryStatus.CONFIRMED, "INTERNATIONAL", "AGENCY", null);
+        Map<String, Object> keynote = bind(List.of(Activity.ReferenceField.CONFERENCE_NAME),
+                Map.of(Activity.ReferenceField.ORGANIZATION_NAME, "UNESCO"), Map.of());
+        assertEquals(false, keynote.get("International"));
+        assertEquals(false, keynote.get("Entitate_numita"));
     }
 
     @Test
@@ -123,13 +153,15 @@ class RegistryScoringSupportTest {
 
             @Override
             public Optional<String> universityCountry(String university) {
-                return "University of Helsinki".equals(university) ? Optional.of("Finland") : Optional.of("Romania");
+                return "University of Helsinki".equals(university) ? Optional.of("Finland")
+                        : "West University of Timisoara".equals(university) ? Optional.of("Romania") : Optional.empty();
             }
 
             @Override
             public Optional<RegistryScoringSupport.JournalFacts> journal(String issn, int year) {
                 return "1234-567X".equals(issn)
-                        ? Optional.of(new RegistryScoringSupport.JournalFacts(true, false, true, true, 3, 0.8))
+                        ? Optional.of(new RegistryScoringSupport.JournalFacts(true, false, true, true,
+                        Set.of("ESCI", "SCOPUS", "DOAJ", "DBLP", "OPENALEX"), 0.8))
                         : Optional.empty();
             }
         });
@@ -138,20 +170,32 @@ class RegistryScoringSupportTest {
         assertEquals(true, helsinki.get("Top1000_mondial"));
         assertEquals(true, helsinki.get("In_strainatate"));
         assertEquals(true, helsinki.get("Universitate_numita"));
-        Map<String, Object> other = bind(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "Universitatea X"), Map.of());
-        assertEquals(false, other.get("Top500_URAP"));
-        assertEquals(false, other.get("In_strainatate"));
+        Map<String, Object> made = bind(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "Universitatea X"), Map.of());
+        assertEquals(false, made.get("Universitate_numita"), "a name no ranking knows is not a university the lists vouch for");
+        assertEquals(false, made.get("Entitate_valida"));
+        Map<String, Object> own = bind(Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "West University of Timisoara"), Map.of());
+        assertEquals(true, own.get("Universitate_proprie"));
+        assertEquals(false, own.get("Universitate_numita"), "a visit to one's own university is no visit");
 
         Map<String, Object> journal = bind(Map.of(Activity.ReferenceField.FORUM_ISSN, "1234567x"), Map.of());
         assertEquals(true, journal.get("Revista_cu_taxa"));
         assertEquals(false, journal.get("Revista_WoS"));
         assertEquals(true, journal.get("Revista_WoS_CC"));
         assertEquals(true, journal.get("Revista_Scopus"));
-        assertEquals(3, journal.get("N_baze_date"));
+        assertEquals(3, journal.get("N_baze_date"), "Web of Science once, Scopus, DOAJ — never DBLP or OpenAlex");
         assertEquals(0.8, journal.get("IF_revista"));
         Map<String, Object> unknown = bind(Map.of(Activity.ReferenceField.FORUM_ISSN, "0000-0000"), Map.of());
         assertNull(unknown.get("Revista_cu_taxa"));
-        assertFalse(unknown.containsKey("IF_revista"), "a record that names no known journal keeps whatever it typed");
+        assertNull(unknown.get("IF_revista"), "no journal the lists know: no impact factor — nobody types one");
+        assertTrue(unknown.containsKey("IF_revista"));
+    }
+
+    @Test
+    void eachStandardCountsTheDatabasesItRecognises() {
+        Set<String> dbs = Set.of("SCIE", "ESCI", "SCOPUS", "ERIH", "DOAJ", "DBLP", "OPENALEX");
+        assertEquals(4, RegistryScoringSupport.recognisedDatabases(dbs, null), "WoS once, Scopus, ERIH, DOAJ");
+        assertEquals(List.of("Web of Science", "DOAJ", "ERIH", "SCOPUS"), RegistryScoringSupport.recognisedDatabaseNames(dbs));
+        assertEquals(0, RegistryScoringSupport.recognisedDatabases(Set.of("DBLP", "OPENALEX"), null));
     }
 
     @Test
@@ -165,7 +209,18 @@ class RegistryScoringSupportTest {
         assertEquals("EUROPEAN", RegistryScoringSupport.patentType("RO 123456; EP 1234567", null), "the most favourable");
         assertNull(RegistryScoringSupport.patentType("nr. 123456", null), "a number names no office");
         assertNull(RegistryScoringSupport.patentType("No. 123456", ""));
-        assertEquals("TRIADIC", bind(Map.of(), Map.of("Cod brevet", "EP1; US2; JP3")).get("Tip_brevet"));
+        assertEquals("TRIADIC", bind(Map.of(), Map.of("Cod brevet", "EP 1234567 B1; US 9876543 B2; JP 6789012 B2")).get("Tip_brevet"));
+    }
+
+    @Test
+    void proseAndApplicationsAreNotPatentsOfAnOffice() {
+        // H145: the old parser read these as Germany, India, Australia, the EPO and WIPO
+        assertEquals("NATIONAL", RegistryScoringSupport.patentType("RO 123456 B1", "OSIM, acordat in 2020, data de 15.06.2021"));
+        assertNull(RegistryScoringSupport.patentType("au 3 autori", "depozit la Iasi, compilatie de documente"));
+        assertNull(RegistryScoringSupport.patentType("EP 1234567 A1", null), "an application is not a granted patent");
+        assertNull(RegistryScoringSupport.patentType("US 2021/0123456 A1", null));
+        assertEquals("NATIONAL", RegistryScoringSupport.patentType("RO 123456 B1; PCT/RO2019/000123", null),
+                "a PCT application is neither a Romanian patent nor a WIPO registration");
     }
 
     @Test
@@ -195,12 +250,16 @@ class RegistryScoringSupportTest {
         assertTrue(RegistryScoringSupport.isAbroad("Austria"));
         assertFalse(RegistryScoringSupport.isAbroad("România"));
         assertFalse(RegistryScoringSupport.isAbroad(null));
+        assertTrue(RegistryScoringSupport.isOwnUniversity("Universitatea de Vest din Timișoara"));
+        assertFalse(RegistryScoringSupport.isOwnUniversity("Universitatea din București"));
     }
 
-    private static ArtisticEvent event(String name, ArtisticEvent.Rank rank) {
+    private static ArtisticEvent event(String name, ArtisticEvent.Rank rank, ArtisticEvent.Kind kind) {
         ArtisticEvent e = new ArtisticEvent();
         e.setName(name);
         e.setRank(rank);
+        e.setKind(kind);
+        e.setDomainId("Muzică");
         return e;
     }
 }

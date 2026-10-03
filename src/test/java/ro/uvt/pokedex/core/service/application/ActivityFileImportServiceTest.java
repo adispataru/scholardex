@@ -202,14 +202,16 @@ class ActivityFileImportServiceTest {
         assertEquals(2, report.created());
         List<ActivityInstance> saved = saved();
         ActivityInstance recital = find(saved, "Recital cameral");
-        assertEquals("Proiect de grup (2-4)", recital.getFields().get("Tip"));
+        // H145: the sheet's kind is kept as the ensemble's size (a fact); the CNFIS kind is derived from it
+        assertEquals("2", recital.getFields().get("Marime_formatie"));
+        assertFalse(recital.getFields().containsKey("Tip"));
         assertTrue(recital.getEventLevelSuggestion().startsWith("Fișa CNFIS 5.1: internațional"), recital.getEventLevelSuggestion());
         assertFalse(recital.getFields().containsKey("Vizibilitate"));
         assertEquals("1", recital.getFields().get("N_participanti_universitate"));
         assertEquals("Festivalul muzicii românești, Iași", recital.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME));
         assertEquals("2024-01-01", recital.getDate());
         ActivityInstance prize = find(saved, "Premiu pentru acompaniament");
-        assertEquals("Premiu individual", prize.getFields().get("Tip"));
+        assertFalse(prize.getFields().containsKey("Tip"));
         assertEquals("Premiu", prize.getFields().get("Rezultat"));
         assertEquals("Fișa CNFIS 5.1: național", prize.getEventLevelSuggestion());
     }

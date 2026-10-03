@@ -733,7 +733,7 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(indicatorRepository.findById("ind-act")).thenReturn(Optional.of(indicator));
         when(activityInstanceRepository.findAllByResearcherId("user@uvt.ro")).thenReturn(List.of());
-        when(activityReportingService.calculateActivityScoresDetailed(anyList(), eq(indicator)))
+        when(activityReportingService.calculateActivityScoresDetailed(anyList(), eq(indicator), any()))
                 .thenReturn(new ro.uvt.pokedex.core.service.reporting.ActivityReportingService.ScoredActivityResult(
                         new java.util.LinkedHashMap<>(Map.of("total", totalScore(0.0))), Map.of()));
 
@@ -1041,7 +1041,7 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(individualReportRepository.findById("rep-act")).thenReturn(Optional.of(report));
         when(activityInstanceRepository.findAllByResearcherId("user@uvt.ro")).thenReturn(List.of(match, other));
-        when(activityReportingService.calculateActivityScoresDetailed(anyList(), eq(indicator)))
+        when(activityReportingService.calculateActivityScoresDetailed(anyList(), eq(indicator), any()))
                 .thenReturn(new ro.uvt.pokedex.core.service.reporting.ActivityReportingService.ScoredActivityResult(
                         new LinkedHashMap<>(Map.of("total", totalScore(2.0), "Mentoring", totalScore(2.0))), Map.of()));
         when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of());

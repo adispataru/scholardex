@@ -14,6 +14,26 @@ public class Activity {
     protected String name;
     private List<Field> fields;
     private List<ReferenceField> referenceFields;
+    /**
+     * H145 — a researcher holds at most one record of this type (a Google Scholar profile: its citations and h-index
+     * are counted once). A second one is refused when saved; scoring counts only the best of any that exist.
+     */
+    private Boolean singlePerResearcher;
+
+    public boolean isSingle() {
+        return Boolean.TRUE.equals(singlePerResearcher);
+    }
+
+    /**
+     * H145 — a record of this type declares a publication (an article, a book, a chapter, a coordinated volume, a
+     * course): when the same publication is in the researcher's list (same DOI, or same title within a year), it counts
+     * once — from the list, or from the record when a head approved the record's category.
+     */
+    private Boolean publicationRecord;
+
+    public boolean isPublication() {
+        return Boolean.TRUE.equals(publicationRecord);
+    }
 
     @Data
     public static class Field {

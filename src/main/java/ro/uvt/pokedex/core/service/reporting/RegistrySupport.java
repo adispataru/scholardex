@@ -108,8 +108,9 @@ public final class RegistrySupport {
             return Optional.empty();
         }
         if (kind == RegistryKind.ARTISTIC_EVENT) {
+            String[] detail = ArtisticEventRankSupport.detailsOf(name).orElse(new String[]{null, null});
             return ArtisticEventRankSupport.rankOf(name)
-                    .map(rank -> new Ranked(name, rank.name(), null, null, List.of(), null));
+                    .map(rank -> new Ranked(name, rank.name(), detail[0], detail[1], List.of(), null));
         }
         String key = ArtisticEventRankSupport.normalize(name);
         if (key.isEmpty()) {
@@ -140,19 +141,11 @@ public final class RegistrySupport {
 
     /**
      * The level the scoring reads for a named entity — INTERNATIONAL, NATIONAL or LOCAL ({@link RegistryKind#scoringLevel}):
-     * its rank when ranked; while it waits, the kind's floor (a conference counts national); null when the experts
-     * rejected the name, or when the kind has no floor (a gate needs their decision).
+     * its rank once the experts ranked it; null while it waits or when they rejected it (H145: no floor — a standard
+     * that counts a waiting name says so in its own formulas).
      */
     public static String scoringLevel(RegistryKind kind, String name) {
-        Optional<Ranked> ranked = ranked(kind, name);
-        if (ranked.isPresent()) {
-            return RegistryKind.scoringLevel(ranked.get().level());
-        }
-        Optional<EntryStatus> status = statusOf(kind, name);
-        if (status.isEmpty() || status.get() == EntryStatus.REJECTED) {
-            return null;
-        }
-        return RegistryKind.scoringLevel(kind.floor());
+        return ranked(kind, name).map(r -> RegistryKind.scoringLevel(r.level())).orElse(null);
     }
 
     private static List<String> namesOf(RegistryEntry entry) {

@@ -53,27 +53,91 @@ class UserActivityInstanceFacadeTest {
         assertEquals(1, vm.activityLabels().size());
     }
 
-    @Test
-    void updateActivityInstanceUpdatesFieldsOnly() {
+    private static Activity typeWithRole() {
+        Activity type = new Activity();
+        type.setId("t1");
+        Activity.Field role = new Activity.Field();
+        role.setName("Rol");
+        role.setAllowedValues(List.of("Membru", "Director"));
+        Activity.Field budget = new Activity.Field();
+        budget.setName("Buget");
+        budget.setNumber(true);
+        type.setFields(List.of(role, budget));
+        return type;
+    }
+
+    private static ActivityInstance owned(String owner) {
         ActivityInstance existing = new ActivityInstance();
         existing.setId("i1");
+        existing.setResearcherId(owner);
+        existing.setActivity(typeWithRole());
+        return existing;
+    }
+
+    @Test
+    void updateActivityInstanceUpdatesFieldsOnly() {
+        ActivityInstance existing = owned("r1@uvt.ro");
         ActivityInstance incoming = new ActivityInstance();
         incoming.setId("i1");
-        incoming.setFields(Map.of());
+        incoming.setFields(Map.of("Rol", "Membru"));
         incoming.setReferenceFields(Map.of());
         when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(existing));
 
-        facade.updateActivityInstance(incoming);
+        assertTrue(facade.updateActivityInstance(incoming, "R1@uvt.ro"));
 
         verify(activityInstanceRepository).save(existing);
+        assertEquals("Membru", existing.getFields().get("Rol"));
     }
 
     @Test
     void findAndDeleteDelegateToRepository() {
-        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(new ActivityInstance()));
+        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(owned("r1@uvt.ro")));
         assertTrue(facade.findActivityInstance("i1").isPresent());
-        facade.deleteActivityInstance("i1");
+        assertTrue(facade.deleteActivityInstance("i1", "r1@uvt.ro"));
         verify(activityInstanceRepository).deleteById("i1");
+    }
+
+    @Test
+    void anotherResearchersRecordIsNeitherChangedNorRemoved() {
+        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(owned("owner@uvt.ro")));
+        ActivityInstance incoming = new ActivityInstance();
+        incoming.setId("i1");
+        incoming.setFields(Map.of("Rol", "Director"));
+
+        org.junit.jupiter.api.Assertions.assertFalse(facade.updateActivityInstance(incoming, "intruder@uvt.ro"));
+        org.junit.jupiter.api.Assertions.assertFalse(facade.deleteActivityInstance("i1", "intruder@uvt.ro"));
+        org.junit.jupiter.api.Assertions.assertFalse(facade.deleteActivityInstance("i1", null));
+        verify(activityInstanceRepository, never()).save(any());
+        verify(activityInstanceRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void aValueTheTypeDoesNotAcceptStopsTheSave() {
+        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(owned("r1@uvt.ro")));
+        ActivityInstance incoming = new ActivityInstance();
+        incoming.setId("i1");
+        incoming.setFields(Map.of("Buget", "Infinity"));
+
+        ActivityValidationException e = org.junit.jupiter.api.Assertions.assertThrows(ActivityValidationException.class,
+                () -> facade.updateActivityInstance(incoming, "r1@uvt.ro"));
+        assertEquals(List.of("Buget: «Infinity»"), e.getProblems());
+        verify(activityInstanceRepository, never()).save(any());
+    }
+
+    @Test
+    void aNewRecordNeverCarriesAnApprovalFromTheCaller() {
+        ActivityInstance fresh = new ActivityInstance();
+        fresh.setResearcherId("r1@uvt.ro");
+        fresh.setActivity(typeWithRole());
+        fresh.setFields(Map.of("Rol", "Director"));
+        ro.uvt.pokedex.core.model.activities.PublisherClaim forged = new ro.uvt.pokedex.core.model.activities.PublisherClaim();
+        forged.setStatus(ro.uvt.pokedex.core.model.activities.PublisherClaim.Status.APPROVED);
+        fresh.setPublisherClaim(forged);
+        when(activityInstanceRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        ActivityInstance saved = facade.saveActivityInstance(fresh);
+
+        org.junit.jupiter.api.Assertions.assertNull(saved.getPublisherClaim());
     }
 
     // ── H110: journals named by ISSN ───────────────────────────────────────────────────────────────────────

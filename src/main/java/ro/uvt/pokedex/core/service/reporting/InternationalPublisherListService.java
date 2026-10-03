@@ -199,7 +199,10 @@ public class InternationalPublisherListService implements InternationalPublisher
             return true;
         }
         if (typed.containsAll(listed)) {
-            return !identifying(listed).isEmpty();
+            // H145: the typed name holds the listed one — only an imprint's dress may come with it
+            Set<String> extras = new java.util.HashSet<>(typed);
+            extras.removeAll(listed);
+            return !identifying(listed).isEmpty() && WosMasterBookListService.onlyAddress(extras);
         }
         if (listed.containsAll(typed)) {
             Set<String> words = identifying(typed);

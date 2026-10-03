@@ -652,8 +652,8 @@
    "$oid": "682100ba04e38843635e0cb8"
   },
   "name": "Info_D_xv",
-  "description": "D(xv): poziții de conducere în organizații profesionale — 4 puncte pentru organizații internaționale, 2 pentru naționale, pe organizație. Nivelul nu se alege: se numește organizația, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "International ? 4 : 2",
+  "description": "D(xv): poziții de conducere în organizații profesionale — 4 puncte pentru organizații internaționale, 2 pentru naționale, pe organizație. Nivelul nu se alege: se numește organizația, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică; una respinsă nu se punctează.",
+  "formula": "Recunoscut ? (International ? 4 : 2) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Computer Science"
@@ -668,7 +668,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6ddeda573a4d0e553e6657a59b4872ac32910e383498e4456019061877975a45",
+  "formulaHash": "a47c8cf43f2c35a2b78ee46d0169b911054a02ada1a8870114be658473a4cc23",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -816,8 +816,8 @@
    "$oid": "682342d67123387ec34394b0"
   },
   "name": "Mate_C3_UVT",
-  "description": "Indicator suplimentar UVT C3: participarea la granturi de cercetare, punctată după calitate — 2 puncte pentru fiecare grant în calitate de director și 1 punct pentru fiecare participare ca membru. Pragurile (4 pentru Profesor, 2 pentru Conferențiar) exprimă astfel cerințele standardului: Profesorul are nevoie de două granturi ca director, iar Conferențiarul fie de două participări ca membru, fie de un singur grant în calitate de director. Granturile se declară la activități.",
-  "formula": "Rol == 'Membru' ? 1 : 2",
+  "description": "Indicator suplimentar UVT C3: participarea la granturi de cercetare, punctată după calitate — 2 puncte pentru fiecare grant în calitate de director și 1 punct pentru fiecare participare ca membru; o înregistrare fără rol nu se punctează. Pragurile (4 pentru Profesor, 2 pentru Conferențiar) exprimă astfel cerințele standardului: Profesorul are nevoie de două granturi ca director, iar Conferențiarul fie de două participări ca membru, fie de un singur grant în calitate de director. Granturile se declară la activități.",
+  "formula": "Rol == 'Membru' ? 1 : ((Rol == 'Director (proiect internațional)' || Rol == 'Director (proiect național)' || Rol == 'Coordonator local (proiect internațional)' || Rol == 'Coordonator local (proiect național)') ? 2 : 0)",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -832,7 +832,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "934c045d11b412815ffd6f4ea220394c1328a66c039dc8c2c46d334e6f786a37",
+  "formulaHash": "24d029e9bf9252f9edf8fd1fd111bf53d23e30e6970e5035a6c03db44065df02",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2115,8 +2115,8 @@
    "$oid": "6a626d02a4be38276d5a28d6"
   },
   "name": "FEEA_Grant_Director",
-  "description": "Numărul proiectelor/granturilor de cercetare câștigate în competiții naționale sau internaționale în calitate de director de proiect sau responsabil partener (rolul «Membru» nu se numără). Aceleași excluderi ca la numărul total de granturi: POS-DRU, POS-CCE, POCU, SIPOCA, POCA, POC, ERASMUS sau similare. Proiectele se declară la activități («Grant Cercetare»).",
-  "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); (!excluded && Rol != \"Membru\") ? 1 : 0",
+  "description": "Numărul proiectelor/granturilor de cercetare câștigate în competiții naționale sau internaționale în calitate de director de proiect sau responsabil partener (rolul «Membru» nu se numără, iar o înregistrare fără rol nu este a unui director). Aceleași excluderi ca la numărul total de granturi: POS-DRU, POS-CCE, POCU, SIPOCA, POCA, POC, ERASMUS sau similare. Proiectele se declară la activități («Grant Cercetare»).",
+  "formula": "funder = proj_funder != null ? proj_funder.toUpperCase() : \"\"; excluded = funder.contains(\"POS-DRU\") || funder.contains(\"POS-CCE\") || funder.contains(\"POS-CEE\") || funder.contains(\"POCU\") || funder.contains(\"SIPOCA\") || funder.contains(\"POCA\") || funder.contains(\"POC\") || funder.contains(\"ERASMUS\"); (!excluded && (Rol == 'Director (proiect internațional)' || Rol == 'Director (proiect național)' || Rol == 'Coordonator local (proiect internațional)' || Rol == 'Coordonator local (proiect național)')) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Economie"
@@ -2131,7 +2131,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "b849093e542257222dcbc130c0c906091e1f828a2b4f2e45c413e589296c992c",
+  "formulaHash": "770dd6ceaef706b89b2866f91ab705a431a95e742dd5886ec944ab5a414078d1",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2906,19 +2906,19 @@
    "$oid": "6a6f6d8fe4f3ce0eb0d30710"
   },
   "name": "Mate26_C1",
-  "description": "Indicatorul C1: numărul citărilor articolelor candidatului care provin din articole publicate în reviste din lista M1 — reviste indexate SCIE, fără taxă de publicare, aflate în quartilele Q1, Q2 sau Q3. Nu se iau în considerare citările provenind din articole care îl au ca autor sau coautor pe candidat (se exclud deci și citările semnate împreună cu colaboratorii). Praguri: 16 pentru Conferențiar, 32 pentru Profesor, 20 pentru atestatul de abilitare.",
-  "formula": "(scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\" || Q == \"Q3\")) ? 1 : 0",
+  "description": "Indicatorul C1: numărul citărilor articolelor candidatului din lista A — articolele publicate în reviste din L (indexate SCIE, fără taxă de publicare) — care provin din articole publicate în reviste din lista M1: reviste din L aflate în quartilele Q1, Q2 sau Q3. Citările cărților, ale lucrărilor de conferință sau ale articolelor din reviste doar SSCI/ESCI ori cu taxă nu se numără. Nu se iau în considerare citările provenind din articole care îl au ca autor sau coautor pe candidat. Praguri: 16 pentru Conferențiar, 32 pentru Profesor, 20 pentru atestatul de abilitare.",
+  "formula": "(citedScieIndexed && !citedFeeJournal && scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\" || Q == \"Q3\")) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
   "version": 2,
   "kind": {
-   "policy": "ANY_COAUTHOR",
+   "policy": "CANDIDATE_ONLY",
    "strategy": "AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
-  "formulaHash": "d5e31799c944102134c06ae713f5fdbea611ac4f59b59975e2f259f91ec8f397",
+  "formulaHash": "5e99ad4c0d0d1beb822b726daf8e105c7fc73bc137d7a2f33097c5952ea3e7e3",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2936,19 +2936,19 @@
    "$oid": "6a6f6d8fe4f3ce0eb0d30711"
   },
   "name": "Mate26_C2",
-  "description": "Indicatorul C2: numărul citărilor provenite din reviste din lista M2 — reviste din L aflate în quartilele Q1 sau Q2 — cu aceeași excludere a citărilor semnate de candidat sau de coautorii lucrării citate. Praguri: 8 pentru Conferențiar, 16 pentru Profesor, 10 pentru atestatul de abilitare.",
-  "formula": "(scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\")) ? 1 : 0",
+  "description": "Indicatorul C2: numărul citărilor articolelor candidatului din lista A care provin din reviste din lista M2 — reviste din L aflate în quartilele Q1 sau Q2 — cu aceeași excludere a citărilor din articole care îl au ca autor sau coautor pe candidat. Praguri: 8 pentru Conferențiar, 16 pentru Profesor, 10 pentru atestatul de abilitare.",
+  "formula": "(citedScieIndexed && !citedFeeJournal && scieIndexed && !feeJournal && (Q == \"Q1\" || Q == \"Q2\")) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
   },
   "version": 2,
   "kind": {
-   "policy": "ANY_COAUTHOR",
+   "policy": "CANDIDATE_ONLY",
    "strategy": "AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
-  "formulaHash": "68753b519b7fbbd6a67dfc25b8d1ad73dd40a7b9cc716129233a23b871a42bff",
+  "formulaHash": "3d2ca1c5321978b35e68b7ae205f6dc6e2c90d6213e23c0b92535aa945aa89e8",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2966,8 +2966,8 @@
    "$oid": "6a6f9f3f5eddb84fbc28ffb3"
   },
   "name": "Fiz26_I",
-  "description": "Indicatorul I: suma valorilor AISᵢ/nᵢᵉᶠ peste articolele științifice originale in extenso ale candidatului, unde AISᵢ este scorul de influență absolut al revistei în anul publicării articolului, iar nᵢᵉᶠ este numărul EFECTIV de autori: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Când anul publicării nu are clasament disponibil se folosește cea mai apropiată valoare cunoscută. Praguri: 2 pentru Conferențiar, 4 pentru Profesor și pentru atestatul de abilitare. Excepția HEPP (numărul de autori din nota internă a experimentului) rămâne în aprecierea comisiei.",
-  "formula": "S/Nef",
+  "description": "Indicatorul I: suma valorilor AISᵢ/nᵢᵉᶠ peste articolele științifice originale in extenso ale candidatului (tipul «article»; articolele de sinteză — «review» — se punctează la A2, ca în standard), unde AISᵢ este scorul de influență absolut al revistei în anul publicării articolului, iar nᵢᵉᶠ este numărul EFECTIV de autori: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Când anul publicării nu are clasament disponibil se folosește cea mai apropiată valoare cunoscută. Praguri: 2 pentru Conferențiar, 4 pentru Profesor și pentru atestatul de abilitare. Excepția HEPP (numărul de autori din nota internă a experimentului) rămâne în aprecierea comisiei.",
+  "formula": "docType == \"ar\" ? S/Nef : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -2978,7 +2978,7 @@
    "strategy": "AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "6dac7a661b2286f133086935248bf6a10ad515080587382e5bbf08728b57c4ac",
+  "formulaHash": "9fc42fb79d6423af697af293cbc8eea6f8a7a6ff91da0f7c3729059ab0d55e26",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -2995,8 +2995,8 @@
    "$oid": "6a6f9f3f5eddb84fbc28ffb4"
   },
   "name": "Fiz26_P",
-  "description": "Indicatorul P: suma scorurilor AISᵢ ale articolelor în care candidatul este prim autor sau autor corespondent, conform mențiunilor de pe articol — de această dată FĂRĂ împărțire la numărul de autori. Standardul exclude articolele în care autorii apar în ordine alfabetică și candidatul este prim-autor doar din acest motiv; verificarea acestei excepții, ca și regula HEPP privind nota internă, rămâne în sarcina comisiei. Praguri: 2 pentru Conferențiar, 4 pentru Profesor și pentru atestatul de abilitare.",
-  "formula": "S",
+  "description": "Indicatorul P: suma scorurilor AISᵢ ale articolelor originale (tipul «article»; articolele de sinteză se punctează la A2) în care candidatul este prim autor sau autor corespondent, conform mențiunilor de pe articol — de această dată FĂRĂ împărțire la numărul de autori. Standardul exclude articolele în care autorii apar în ordine alfabetică și candidatul este prim-autor doar din acest motiv; verificarea acestei excepții, ca și regula HEPP privind nota internă, rămâne în sarcina comisiei. Praguri: 2 pentru Conferențiar, 4 pentru Profesor și pentru atestatul de abilitare.",
+  "formula": "docType == \"ar\" ? S : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -3007,7 +3007,7 @@
    "strategy": "AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "8de0b3c47f112c59745f717a626932264c422a7563954872e237b223af4ad643",
+  "formulaHash": "8371bd9c420cd7d003fdb309d58f9a9a80bacef48291aac3ca950b989f10bb4e",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3032,7 +3032,7 @@
   },
   "version": 2,
   "kind": {
-   "policy": "ANY_COAUTHOR",
+   "policy": "CANDIDATE_ONLY",
    "strategy": "AIS",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Citations"
   },
@@ -3082,8 +3082,8 @@
    "$oid": "6a6f9f3f5eddb84fbc28ffb7"
   },
   "name": "Fiz26_A9",
-  "description": "Indicatorul A9 din activitatea profesională: 0,5 puncte pentru fiecare program de studii, program de formare continuă, proiect educațional obținut prin competiție sau proiect de infrastructură în care candidatul este director sau responsabil (proiectele de cercetare se punctează separat, la A10). Standardul precizează că poziția de director de programe de studii se punctează o singură dată, indiferent de numărul de programe coordonate — o ajustare care rămâne în sarcina comisiei. Proiectele se declară la activități.",
-  "formula": "Rol == \"Director\" ? 0.5 : 0",
+  "description": "Indicatorul A9 din activitatea profesională: 0,5 puncte pentru fiecare program de studii, program de formare continuă, proiect educațional obținut prin competiție sau proiect de infrastructură în care candidatul este director sau responsabil (proiectele de cercetare se punctează separat, la A10). Standardul precizează că poziția de director de programe de studii se punctează o singură dată, indiferent de numărul de programe coordonate. Proiectele se declară la activități; obținerea prin competiție nu poate fi verificată de platformă: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "(Rol == 'Director' && Incadrare_aprobata != null) ? 0.5 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -3098,7 +3098,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "301a63d208bdc66ab5a9d8335ed3be43649e95e14106ccf517ffd3ffb6752366",
+  "formulaHash": "d936e4c4ee7d34750252ac49e8e02d864d325a13f1eaeeb1d10da9af5c455dce",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3115,8 +3115,8 @@
    "$oid": "6a6f9f3f5eddb84fbc28ffb8"
   },
   "name": "Fiz26_A10",
-  "description": "Indicatorul A10 din activitatea profesională: valoarea proiectelor de cercetare conduse de candidat, împărțită la 50.000 EUR (în standardul din 2016 divizorul era 100.000). Se punctează proiectele câștigate prin competiție națională sau internațională ori obținute de la mediul privat, în calitate de director sau responsabil; proiectele instituționale sau de tip Nucleu se exclud, iar pentru responsabilii de partener se ia în calcul doar suma echipei conduse. Suma în EUR se determină în ordine de încredere: bugetul CORDIS al proiectului legat (autoritar), apoi câmpul «Buget» al activității când concordă cu intervalul declarat, apoi limita inferioară a intervalului declarat (conservator — sumele în lei sau formatate greșit nu se împart la praguri în euro), apoi «Buget» singur. Un grant fără nicio informație de buget contează 0, deci merită completat; sumele se introduc în EUR.",
-  "formula": "Rol != \"Membru\" ? (Buget_eur == null ? 0 : Buget_eur/50000) : 0",
+  "description": "Indicatorul A10 din activitatea profesională: valoarea proiectelor de cercetare conduse de candidat, împărțită la 50.000 EUR (în standardul din 2016 divizorul era 100.000). Se punctează proiectele câștigate prin competiție națională sau internațională ori obținute de la mediul privat, în calitate de director sau responsabil (o înregistrare fără rol nu se punctează); proiectele instituționale sau de tip Nucleu se exclud, iar pentru responsabilii de partener se ia în calcul doar suma echipei conduse. Suma în EUR se determină în ordine de încredere: bugetul CORDIS al proiectului legat (autoritar), apoi câmpul «Buget» al activității când concordă cu intervalul declarat, apoi limita inferioară a intervalului declarat (conservator — sumele în lei sau formatate greșit nu se împart la praguri în euro), apoi «Buget» singur. Un grant fără nicio informație de buget contează 0, deci merită completat; sumele se introduc în EUR.",
+  "formula": "(Rol == 'Director (proiect internațional)' || Rol == 'Director (proiect național)' || Rol == 'Coordonator local (proiect internațional)' || Rol == 'Coordonator local (proiect național)') ? (Buget_eur == null ? 0 : Buget_eur / 50000) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -3131,7 +3131,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "164be576e0a26576e56492c84881713c9dbe713cb60594521d84b555dd427d98",
+  "formulaHash": "09001efb3f3fad83cc2c3107301a7004bad0136428862334f89105596a28da61",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3177,8 +3177,8 @@
    "$oid": "6a6fac5df3abf9a934e5936e"
   },
   "name": "Fiz26_A2_capitole",
-  "description": "Prima jumătate a indicatorului A2: 1 punct împărțit la numărul efectiv de autori pentru fiecare capitol de carte publicat la o editură internațională recunoscută Web of Science. Capitolele apărute în volume de proceedings nu se punctează aici — standardul le trimite la A6. Lista editurilor recunoscute Web of Science («Master Book List») a fost desființată de Clarivate, iar standardul trimite în continuare la adresa care nu mai există; platforma folosește arhiva paginii oficiale (834 de edituri, februarie 2026). Fiind o listă înghețată, o editură admisă ulterior nu poate apărea în ea — în acest caz decizia rămâne a comisiei. Numele editurilor sunt comparate după cuvintele cheie, astfel încât «OXFORD UNIV PRESS» din listă să corespundă cu «Oxford University Press» din datele bibliografice.",
-  "formula": "(docType == \"ch\" && wosBookPublisher) ? 1/Nef : 0",
+  "description": "Prima jumătate a indicatorului A2: 1 punct împărțit la numărul efectiv de autori pentru fiecare capitol de carte publicat la o editură internațională recunoscută Web of Science. Capitolele apărute în volume de proceedings nu se punctează aici (precizarea 5 a standardului): platforma le recunoaște după tipul lucrării (conference paper), după clasa sursei (conference proceedings) sau după numele volumului ori al seriei («… Proceedings …»). Standardul le trimite la A6, pe care platforma nu îl calculează încă. Lista editurilor recunoscute Web of Science («Master Book List») a fost desființată de Clarivate, iar standardul trimite în continuare la adresa care nu mai există; platforma folosește arhiva paginii oficiale (834 de edituri, februarie 2026). Fiind o listă înghețată, o editură admisă ulterior nu poate apărea în ea — în acest caz decizia rămâne a comisiei. Numele editurilor sunt comparate după cuvintele cheie, astfel încât «OXFORD UNIV PRESS» din listă să corespundă cu «Oxford University Press» din datele bibliografice.",
+  "formula": "(docType == \"ch\" && wosBookPublisher && !proceedings) ? 1/Nef : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -3189,7 +3189,7 @@
    "strategy": "FEAA_BOOK",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "b37d1ceb4357c99e94da174b4ba1f3b2a39e51dd548427a4c82b106d547f2698",
+  "formulaHash": "1e4ee83dc61805a9846b042fdc9a01d0fc1904b50f5726fe3f2aa813bdb3f2a0",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3264,8 +3264,8 @@
    "$oid": "6a6fac5df3abf9a934e59371"
   },
   "name": "Fiz26_A5",
-  "description": "Indicatorul A5: 0,2 puncte împărțite la numărul efectiv de autori pentru capitole de carte publicate la edituri naționale sau la alte edituri internaționale, adică în afara listei Web of Science.",
-  "formula": "(docType == \"ch\" && !wosBookPublisher) ? 0.2/Nef : 0",
+  "description": "Indicatorul A5: 0,2 puncte împărțite la numărul efectiv de autori pentru capitole de carte publicate la edituri naționale sau la alte edituri internaționale, adică în afara listei Web of Science. Capitolele din volume de proceedings nu se punctează aici (precizarea 5 a standardului), ci la A6, pe care platforma nu îl calculează încă.",
+  "formula": "(docType == \"ch\" && !wosBookPublisher && !proceedings) ? 0.2/Nef : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -3276,7 +3276,7 @@
    "strategy": "FEAA_BOOK",
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$Publications"
   },
-  "formulaHash": "591dfdee7d83b53898b4c9a7effb14ca706e8f4efd26afc9c1fb7beaa9eb5c56",
+  "formulaHash": "402f2cf352f068b79940420a3cb9544e0d987eb6128d3f7b98abda04c18718e3",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3293,8 +3293,8 @@
    "$oid": "6a95cf7d9fd399a649ace604"
   },
   "name": "Fiz26_A7",
-  "description": "Indicatorul A7: 3 puncte pentru fiecare brevet de invenție internațional ACORDAT — triadic, european sau internațional. Punctajul se împarte la numărul efectiv de autori (nᵢᵉᶠ), calculat din câmpul «N_autori» al activității: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Dacă numărul de autori nu este completat, se consideră 1. Brevetele se declară la activități, împreună cu dovezile aferente. Tipul brevetului nu se alege: rezultă din codurile și oficiul declarate, după definițiile CNFIS — OSIM (RO) național, EPO (EP) european, OMPI (WO) sau alt oficiu internațional, triadic când aceeași invenție e brevetată la EPO, USPTO (US) și JPO (JP); se scriu toate codurile.",
-  "formula": "(Tip_brevet == \"TRIADIC\" || Tip_brevet == \"EUROPEAN\" || Tip_brevet == \"INTERNATIONAL\") ? 3/Nef : 0",
+  "description": "Indicatorul A7: 3 puncte pentru fiecare brevet de invenție internațional ACORDAT — triadic, european sau internațional. Punctajul se împarte la numărul efectiv de autori (nᵢᵉᶠ), calculat din câmpul «N_autori» al activității: nᵢᵉᶠ este numărul EFECTIV de autori: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Fără numărul de autori completat, brevetul nu se punctează. Brevetele se declară la activități, împreună cu dovezile aferente. Tipul brevetului nu se alege: rezultă din codurile și oficiul declarate, după definițiile CNFIS — OSIM (RO) național, EPO (EP) european, OMPI (WO) sau alt oficiu internațional, triadic când aceeași invenție e brevetată la EPO, USPTO (US) și JPO (JP); se scriu toate codurile.",
+  "formula": "(N_autori != null && N_autori >= 1 && (Tip_brevet == \"TRIADIC\" || Tip_brevet == \"EUROPEAN\" || Tip_brevet == \"INTERNATIONAL\")) ? 3/Nef : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -3309,7 +3309,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "1434fbfc32efeec5a423d08b3b14163ba85acc45d6d90d110797d227696f9638",
+  "formulaHash": "f5a0dd780b71a2456c84bc60af7df779da674c5c62d9cc3b7f8f6b30362bb8c5",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3326,8 +3326,8 @@
    "$oid": "6a95cf7d9fd399a649ace605"
   },
   "name": "Fiz26_A8",
-  "description": "Indicatorul A8: 0,5 puncte pentru fiecare brevet de invenție național acordat. Punctajul se împarte la numărul efectiv de autori (nᵢᵉᶠ), calculat din câmpul «N_autori» al activității: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Dacă numărul de autori nu este completat, se consideră 1. Brevetele se declară la activități, împreună cu dovezile aferente. Tipul brevetului nu se alege: rezultă din codurile și oficiul declarate, după definițiile CNFIS — OSIM (RO) național, EPO (EP) european, OMPI (WO) sau alt oficiu internațional, triadic când aceeași invenție e brevetată la EPO, USPTO (US) și JPO (JP); se scriu toate codurile.",
-  "formula": "Tip_brevet == \"NATIONAL\" ? 0.5/Nef : 0",
+  "description": "Indicatorul A8: 0,5 puncte pentru fiecare brevet de invenție național acordat. Punctajul se împarte la numărul efectiv de autori (nᵢᵉᶠ), calculat din câmpul «N_autori» al activității: nᵢᵉᶠ este numărul EFECTIV de autori: nᵢ dacă nᵢ ≤ 5; (nᵢ+5)/2 dacă 5 < nᵢ ≤ 15; (nᵢ+15)/3 dacă 15 < nᵢ ≤ 75; (nᵢ+45)/4 dacă nᵢ > 75. Fără numărul de autori completat, brevetul nu se punctează. Brevetele se declară la activități, împreună cu dovezile aferente. Tipul brevetului nu se alege: rezultă din codurile și oficiul declarate, după definițiile CNFIS — OSIM (RO) național, EPO (EP) european, OMPI (WO) sau alt oficiu internațional, triadic când aceeași invenție e brevetată la EPO, USPTO (US) și JPO (JP); se scriu toate codurile.",
+  "formula": "(N_autori != null && N_autori >= 1 && Tip_brevet == \"NATIONAL\") ? 0.5/Nef : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -3342,7 +3342,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "92d924fead3652d3967677dbf291c709fc5b4d3ac46545075d1ff58b952fd195",
+  "formulaHash": "be1a156cc7254edabc0969ed96465aabf2f9ae23bf970adec4d804aa8c3aa91b",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3389,8 +3389,8 @@
    "$oid": "6abb7bad05b6723f97a63762"
   },
   "name": "Psiho26_I1A_bonus",
-  "description": "Bonusul indicatorului I1A: 1 punct pentru fiecare articol empiric sau meta-analiză, publicat ca autor principal într-o revistă fără taxă de publicare, care îndeplinește cumulativ trei condiții — studiul a fost preînregistrat (Open Science Framework, AsPredicted sau o arhivă specializată), baza de date, sintaxa și celelalte materiale sunt disponibile în acces deschis, iar articolul conține linkurile care dovedesc cele două condiții. Bonusul nu poate fi detectat automat: se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei. Taxa nu se alege: rezultă din DOAJ (o revistă cu acces deschis condiționat de plata unei taxe e o revistă cu taxă); o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1A în criteriile C1, C2 și C3.",
-  "formula": "Revista_cu_taxa == false ? 1 : 0",
+  "description": "Bonusul indicatorului I1A: 1 punct pentru fiecare articol empiric sau meta-analiză, publicat ca autor principal într-o revistă fără taxă de publicare, care îndeplinește cumulativ trei condiții — studiul a fost preînregistrat (Open Science Framework, AsPredicted sau o arhivă specializată), baza de date, sintaxa și celelalte materiale sunt disponibile în acces deschis, iar articolul conține linkurile care dovedesc cele două condiții. Bonusul se adaugă unui articol punctat la I1A: se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei, și cele trei condiții, cu linkurile, se verifică: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. Taxa nu se alege: rezultă din DOAJ (o revistă cu acces deschis condiționat de plata unei taxe e o revistă cu taxă); o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1A în criteriile C1, C2 și C3.",
+  "formula": "(Incadrare_aprobata != null && Revista_cu_taxa == false) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3399,7 +3399,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "61f07c144059c3633fb49299fb550708055ba0315d742bdcb8206c3233af6277",
+  "formulaHash": "0ebf422932c3ce5a038a57b17bdf21d602bb95a1223072e0b09de5fecfe1d178",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3452,8 +3452,8 @@
    "$oid": "6abb7bad05b6723f97a63764"
   },
   "name": "Psiho26_I1B_bonus",
-  "description": "Bonusul indicatorului I1B: 1 punct pentru fiecare articol empiric sau meta-analiză preînregistrat, cu date și materiale în acces deschis și cu linkurile doveditoare în articol, publicat ca autor principal într-o revistă cu taxă de publicare. Se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei. Taxa nu se alege: rezultă din DOAJ (o revistă cu acces deschis condiționat de plata unei taxe); o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1B în criteriile C2 și C3.",
-  "formula": "Revista_cu_taxa == true ? 1 : 0",
+  "description": "Bonusul indicatorului I1B: 1 punct pentru fiecare articol empiric sau meta-analiză preînregistrat, cu date și materiale în acces deschis și cu linkurile doveditoare în articol, publicat ca autor principal într-o revistă cu taxă de publicare și punctat la I1B. Se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei; condițiile se verifică: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. Taxa nu se alege: rezultă din DOAJ; o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1B în criteriile C2 și C3.",
+  "formula": "(Incadrare_aprobata != null && Revista_cu_taxa == true) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3462,7 +3462,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a5e8bde3f1e0beae85d4cca166fb8b7b846987edccdede8e2dca5285d3ef40d0",
+  "formulaHash": "5554afb463263f87885f0ab72487466012672d4a6f4f725b73f48fb2d5a6ec61",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3695,8 +3695,8 @@
    "$oid": "6abb7bad05b6723f97a6376c"
   },
   "name": "Psiho26_I7",
-  "description": "Indicatorul I7 (aria A1): materiale curriculare, teste psihologice avizate de Colegiul Psihologilor din România, teste educaționale acreditate, softuri specializate pentru care există brevet de invenție sau drepturi de autor ori mărci înregistrate OSIM/ORDA, ca urmare a unui demers de inovare științifică. Fiecare realizare aduce 5 / n puncte, unde n este numărul de autori. Se declară la activități («Material curricular, test sau soft înregistrat»); fără numărul de autori completat se consideră n = 1.",
-  "formula": "(N_autori == null || N_autori < 1) ? 5 : 5/N_autori",
+  "description": "Indicatorul I7 (aria A1): materiale curriculare, teste psihologice avizate de Colegiul Psihologilor din România, teste educaționale acreditate, softuri specializate pentru care există brevet de invenție sau drepturi de autor ori mărci înregistrate OSIM/ORDA, ca urmare a unui demers de inovare științifică. Fiecare realizare aduce 5 / n puncte, unde n este numărul de autori. Se declară la activități («Material curricular, test sau soft înregistrat»), cu numărul de autori (fără numărul de autori completat, înregistrarea nu se punctează). Avizul, acreditarea sau înregistrarea nu pot fi verificate de platformă: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "(Incadrare_aprobata != null && N_autori != null && N_autori >= 1) ? 5 / N_autori : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3705,7 +3705,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "cda92ee5aff4cae70df7f16b68fc00b66a6f89bd387137350c9160546ba87d61",
+  "formulaHash": "13b50b44660774d2461813522d7e95b7a6ed2452c761cc9b00f3ec8b320b50bb",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3757,8 +3757,8 @@
    "$oid": "6abb7bad05b6723f97a6376e"
   },
   "name": "Psiho26_I12",
-  "description": "Indicatorul I12 (aria A2): citări în Google Scholar, altele decât cele de la I11, cu 0,05 puncte pe citare. Numărul de citări este diferența dintre totalul din Google Scholar și numărul de citări Web of Science. Platforma nu are acces la Google Scholar: valorile se declară la activități («Profil Google Scholar»), completând totalul citărilor Google Scholar și numărul citărilor Web of Science fără autocitări. Se păstrează o singură înregistrare, actualizată la nevoie; mai multe înregistrări s-ar aduna.",
-  "formula": "Citari_GS == null ? 0 : 0.05 * max(Citari_GS - (Citari_WoS == null ? 0 : Citari_WoS), 0)",
+  "description": "Indicatorul I12 (aria A2): citări în Google Scholar, altele decât cele de la I11, cu 0,05 puncte pe citare. Numărul de citări este diferența dintre totalul din Google Scholar și numărul de citări Web of Science. Platforma nu are acces la Google Scholar: valorile se declară la activități («Profil Google Scholar»), cu totalul citărilor Google Scholar, numărul citărilor Web of Science fără autocitări și linkul profilului, iar dovada (o captură a profilului) se trimite conducerii: valorile contează după ce conducerea departamentului sau a facultății le aprobă, și se întorc la ea dacă se modifică. Fiecare cercetător are o singură înregistrare de acest tip, actualizată la nevoie.",
+  "formula": "(Incadrare_aprobata != null && Citari_GS != null && Citari_WoS != null) ? 0.05 * max(Citari_GS - Citari_WoS, 0) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3767,7 +3767,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "f02eae6fcb88098eef60481cab744defd04124561c712481251dc55f1f6cb7a8",
+  "formulaHash": "b7dc5a64670bb57f4be2fbb14a2544363d66f1e1b0d16801b242552fc569d621",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3820,8 +3820,8 @@
    "$oid": "6abb7bad05b6723f97a63770"
   },
   "name": "Psiho26_I14",
-  "description": "Indicatorul I14 (aria A2): indicele Hirsch din Google Scholar, ridicat la pătrat și înmulțit cu m = 0,25 pentru domeniul Psihologie. Valoarea se declară la activități («Profil Google Scholar», câmpul h_GS). Pentru Psihologie nu există prag separat, dar punctele intră în totalul A2 (criteriul C6).",
-  "formula": "h_GS == null ? 0 : 0.25 * h_GS * h_GS",
+  "description": "Indicatorul I14 (aria A2): indicele Hirsch din Google Scholar, ridicat la pătrat și înmulțit cu m = 0,25 pentru domeniul Psihologie. Valoarea se declară la activități («Profil Google Scholar», câmpul h_GS) și contează după ce conducerea departamentului sau a facultății o aprobă, pe baza capturii profilului; o singură înregistrare de acest tip pe cercetător. Pentru Psihologie nu există prag separat, dar punctele intră în totalul A2 (criteriul C6).",
+  "formula": "(Incadrare_aprobata != null && h_GS != null) ? 0.25 * h_GS * h_GS : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3830,7 +3830,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "985ea2984647d07b121db02c2efb0c5be92960f26d596532f1d908c8ae00c2ce",
+  "formulaHash": "01b24a72d9c089fab028187bdbe590828027615c62d305aaf961e21df4462a6e",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3853,8 +3853,8 @@
    "$oid": "6abb7bad05b6723f97a63771"
   },
   "name": "Psiho26_I15",
-  "description": "Indicatorul I15 (aria A2): calitatea de redactor-șef (e = 3), editor asociat (e = 2) sau membru (e = 1) în comitetul editorial al unei reviste cu comitet științific și evaluare colegială, cu condiția ca revista să fi fost indexată în baza de date respectivă pe durata mandatului. Punctaj: 4 × e × m, cu m = 3 pentru reviste Web of Science cu IF de cel puțin 1,00 și m = 1 pentru reviste Web of Science cu IF mai mic sau pentru reviste dintr-o altă bază de date recunoscută. Se punctează o singură calitate pe revistă, cea mai favorabilă. Se declară la activități («Membru în comitetul editorial al unei reviste»). Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în Web of Science (Core Collection, inclusiv ESCI), în ce alte baze de date și cu ce factor de impact în anul respectiv; pentru o revistă indexată într-o bază pe care platforma nu o cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă.",
-  "formula": "e = Rol == 'Redactor-șef' ? 3 : (Rol == 'Editor asociat' ? 2 : 1); m = (Revista_WoS_CC && IF_revista != null && IF_revista >= 1) ? 3 : 1; (Revista_WoS_CC || N_baze_date >= 1 || Incadrare_aprobata == 'Revistă indexată într-o BDI recunoscută') ? 4 * e * m : 0",
+  "description": "Indicatorul I15 (aria A2): calitatea de redactor-șef (e = 3), editor asociat (e = 2) sau membru (e = 1) în comitetul editorial al unei reviste cu comitet științific și evaluare colegială, cu condiția ca revista să fi fost indexată în baza de date respectivă pe durata mandatului. Punctaj: 4 × e × m, cu m = 3 pentru reviste Web of Science cu IF de cel puțin 1,00 și m = 1 pentru reviste Web of Science cu IF mai mic sau pentru reviste dintr-o altă bază de date recunoscută. Se punctează o singură calitate pe revistă, cea mai favorabilă; o înregistrare fără calitate completată nu se punctează. Se declară la activități («Membru în comitetul editorial al unei reviste»). Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în Web of Science (Core Collection, inclusiv ESCI), în care dintre bazele recunoscute de standard și cu ce factor de impact în anul respectiv; pentru o revistă indexată într-o bază pe care platforma nu o cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "e = Rol == 'Redactor-șef' ? 3 : (Rol == 'Editor asociat' ? 2 : (Rol == 'Membru' ? 1 : 0)); m = (Revista_WoS_CC && IF_revista != null && IF_revista >= 1) ? 3 : 1; (Revista_WoS_CC || N_baze_date >= 1 || Incadrare_aprobata == 'Revistă indexată într-o BDI recunoscută') ? 4 * e * m : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3863,7 +3863,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "5d5208ba4666f25df919cbcca918db9dc341b9681bdfe875ef1407b27cd219ea",
+  "formulaHash": "23e368ba11f393c3b145693c467685e6031d1b9892d895fb25245c4abeb7355c",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3886,8 +3886,8 @@
    "$oid": "6abb7bad05b6723f97a63772"
   },
   "name": "Psiho26_I16",
-  "description": "Indicatorul I16 (aria A2): comunicare științifică în plen (keynote speaker), cu 2 × m puncte pe conferință — 6 puncte pentru conferințe internaționale (m = 3) și 2 puncte pentru conferințe naționale (m = 1). O conferință este internațională dacă îndeplinește cel puțin două dintre condițiile standardului: organizator internațional, program și volum publicate într-o limbă de circulație internațională, lucrări desfășurate exclusiv într-o astfel de limbă. Se declară la activități («Keynote speaker, comunicare în plen»). Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională — experții domeniului (conducerea facultății și a departamentelor, plus experții numiți) o clasifică o singură dată, pentru toți, după criteriile Comisiei 28. O conferință pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "International ? 6 : 2",
+  "description": "Indicatorul I16 (aria A2): comunicare științifică în plen (keynote speaker), cu 2 × m puncte pe conferință — 6 puncte pentru conferințe internaționale (m = 3) și 2 puncte pentru conferințe naționale (m = 1). O conferință este internațională dacă îndeplinește cel puțin două dintre condițiile standardului: organizator internațional, program și volum publicate într-o limbă de circulație internațională, lucrări desfășurate exclusiv într-o astfel de limbă. Se declară la activități («Keynote speaker, comunicare în plen»). Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională — experții domeniului (conducerea facultății și a departamentelor, plus experții numiți) o clasifică o singură dată, pentru toți, după criteriile Comisiei 28. O conferință pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională, cum prevede standardul; una respinsă de experți nu se punctează.",
+  "formula": "Entitate_valida ? (International ? 6 : 2) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3896,7 +3896,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "bf5a2f06ace42f93d9daefb31681a2ce689ccff367ae1fa6fb66e19f206ce03c",
+  "formulaHash": "f060f3108114e76decd475dd9af9b019c1a88ec4aba38af8302e450442f67e92",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -3986,8 +3986,8 @@
    "$oid": "6abb7bad05b6723f97a63775"
   },
   "name": "Psiho26_I25",
-  "description": "Indicatorul I25 (aria A3): 9 × m puncte pentru director sau coordonator partener al unui grant de dezvoltare instituțională (de tip FSE, FDI, Erasmus+) ori al unui grant de cercetare aplicativă cu relevanță specifică, de exemplu finanțat de o companie (m = 0,5 pentru Psihologie, adică 4,5 puncte), precum și pentru fellowship-uri (m = 0,5) sau chair-uri (m = 1, adică 9 puncte) obținute prin competiții internaționale. Se declară la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair»). Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon. Bursele postdoctorale obținute prin proiecte instituționale și granturile instituționale interne nu se punctează.",
-  "formula": "Tip == 'Chair' ? 9 : (Tip == 'Fellowship' ? 4.5 : ((Rol != 'Membru' && (Buget_eur != null && Buget_eur >= 20000)) ? 4.5 : 0))",
+  "description": "Indicatorul I25 (aria A3): 9 × m puncte pentru director sau coordonator partener al unui grant de dezvoltare instituțională (de tip FSE, FDI, Erasmus+) ori al unui grant de cercetare aplicativă cu relevanță specifică, de exemplu finanțat de o companie (m = 0,5 pentru Psihologie, adică 4,5 puncte), precum și pentru fellowship-uri (m = 0,5) sau chair-uri (m = 1, adică 9 puncte) obținute prin competiții internaționale. Se declară la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair»), numind finanțatorul sau organismul care a acordat fellowship-ul ori chair-ul. Acesta vine din registrul de organizații: un grant contează când experții domeniului l-au clasificat național sau internațional (granturile instituționale interne nu se punctează), un fellowship sau un chair când l-au clasificat internațional; unul pe care registrul nu îl cunoaște nu se punctează până nu îl clasifică. Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon. Bursele postdoctorale obținute prin proiecte instituționale nu se punctează.",
+  "formula": "!Recunoscut ? 0 : (Tip == 'Chair' ? (International ? 9 : 0) : (Tip == 'Fellowship' ? (International ? 4.5 : 0) : (((Rol == 'Director' || Rol == 'Coordonator partener') && Buget_eur != null && Buget_eur >= 20000) ? 4.5 : 0)))",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -3996,7 +3996,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "8ec47baeaa66582713d86c508d95a973086334ffd608d5d1b05b480059c76562",
+  "formulaHash": "416b5a10cdf38c70b91e6840bd4af731875b5c5bc2a674cf6f810634a3075f30",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4052,8 +4052,8 @@
    "$oid": "6abb7bad05b6723f97a63777"
   },
   "name": "Psiho26_I26_2",
-  "description": "Indicatorul I26.2 (aria A3): membru în echipa unui grant de dezvoltare instituțională sau de cercetare aplicativă, de tipul celor de la I25, cu 1,5 puncte pe grant (3 × m, m = 0,5). Se punctează înregistrările de la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair») cu rolul «Membru». Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon.",
-  "formula": "(Rol == 'Membru' && Tip != 'Chair' && Tip != 'Fellowship' && (Buget_eur != null && Buget_eur >= 20000)) ? 1.5 : 0",
+  "description": "Indicatorul I26.2 (aria A3): membru în echipa unui grant de dezvoltare instituțională sau de cercetare aplicativă, de tipul celor de la I25, cu 1,5 puncte pe grant (3 × m, m = 0,5). Se punctează înregistrările de la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair») cu rolul «Membru», al căror finanțator l-au clasificat experții domeniului în registrul de organizații. Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat.",
+  "formula": "(Recunoscut && Rol == 'Membru' && Tip != 'Chair' && Tip != 'Fellowship' && (Buget_eur != null && Buget_eur >= 20000)) ? 1.5 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "Psychology"
@@ -4062,7 +4062,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "07dfb893c75086f96d238193d6df760e45cfad1893684bce956fad70cb2adc44",
+  "formulaHash": "fd8fd09bade24e9ca7f1f099504d37a1eb2c00f9cfcddfc8bbebc8c450437ec7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4348,12 +4348,12 @@
    "$oid": "6abb957433192ec40a8e0706"
   },
   "name": "Edu26_I1A_bonus",
-  "description": "Bonusul indicatorului I1A: 1 punct pentru fiecare articol empiric sau meta-analiză, publicat ca autor principal într-o revistă fără taxă de publicare, care îndeplinește cumulativ trei condiții — studiul a fost preînregistrat (Open Science Framework, AsPredicted sau o arhivă specializată), baza de date, sintaxa și celelalte materiale sunt disponibile în acces deschis, iar articolul conține linkurile care dovedesc cele două condiții. Bonusul nu poate fi detectat automat: se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei. Taxa nu se alege: rezultă din DOAJ (o revistă cu acces deschis condiționat de plata unei taxe e o revistă cu taxă); o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1A în criteriile C1, C2 și C3.",
-  "formula": "Revista_cu_taxa == false ? 1 : 0",
+  "description": "Bonusul indicatorului I1A: 1 punct pentru fiecare articol empiric sau meta-analiză, publicat ca autor principal într-o revistă fără taxă de publicare, care îndeplinește cumulativ trei condiții — studiul a fost preînregistrat (Open Science Framework, AsPredicted sau o arhivă specializată), baza de date, sintaxa și celelalte materiale sunt disponibile în acces deschis, iar articolul conține linkurile care dovedesc cele două condiții. Bonusul se adaugă unui articol punctat la I1A: se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei, și cele trei condiții, cu linkurile, se verifică: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. Taxa nu se alege: rezultă din DOAJ (o revistă cu acces deschis condiționat de plata unei taxe e o revistă cu taxă); o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1A în criteriile C1, C2 și C3.",
+  "formula": "(Incadrare_aprobata != null && Revista_cu_taxa == false) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "61f07c144059c3633fb49299fb550708055ba0315d742bdcb8206c3233af6277",
+  "formulaHash": "0ebf422932c3ce5a038a57b17bdf21d602bb95a1223072e0b09de5fecfe1d178",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4411,12 +4411,12 @@
    "$oid": "6abb957433192ec40a8e0708"
   },
   "name": "Edu26_I1B_bonus",
-  "description": "Bonusul indicatorului I1B: 1 punct pentru fiecare articol empiric sau meta-analiză preînregistrat, cu date și materiale în acces deschis și cu linkurile doveditoare în articol, publicat ca autor principal într-o revistă cu taxă de publicare. Se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei. Taxa nu se alege: rezultă din DOAJ (o revistă cu acces deschis condiționat de plata unei taxe); o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1B în criteriile C2 și C3.",
-  "formula": "Revista_cu_taxa == true ? 1 : 0",
+  "description": "Bonusul indicatorului I1B: 1 punct pentru fiecare articol empiric sau meta-analiză preînregistrat, cu date și materiale în acces deschis și cu linkurile doveditoare în articol, publicat ca autor principal într-o revistă cu taxă de publicare și punctat la I1B. Se declară la activități («Articol preînregistrat, cu date deschise»), cu ISSN-ul revistei; condițiile se verifică: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. Taxa nu se alege: rezultă din DOAJ; o revistă pe care platforma nu o găsește după ISSN nu primește bonusul. Punctele se adună la I1B în criteriile C2 și C3.",
+  "formula": "(Incadrare_aprobata != null && Revista_cu_taxa == true) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a5e8bde3f1e0beae85d4cca166fb8b7b846987edccdede8e2dca5285d3ef40d0",
+  "formulaHash": "5554afb463263f87885f0ab72487466012672d4a6f4f725b73f48fb2d5a6ec61",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4654,12 +4654,12 @@
    "$oid": "6abb957433192ec40a8e0710"
   },
   "name": "Edu26_I7",
-  "description": "Indicatorul I7 (aria A1): materiale curriculare, teste psihologice avizate de Colegiul Psihologilor din România, teste educaționale acreditate, softuri specializate pentru care există brevet de invenție sau drepturi de autor ori mărci înregistrate OSIM/ORDA, ca urmare a unui demers de inovare științifică. Fiecare realizare aduce 5 / n puncte, unde n este numărul de autori. Se declară la activități («Material curricular, test sau soft înregistrat»); fără numărul de autori completat se consideră n = 1.",
-  "formula": "(N_autori == null || N_autori < 1) ? 5 : 5/N_autori",
+  "description": "Indicatorul I7 (aria A1): materiale curriculare, teste psihologice avizate de Colegiul Psihologilor din România, teste educaționale acreditate, softuri specializate pentru care există brevet de invenție sau drepturi de autor ori mărci înregistrate OSIM/ORDA, ca urmare a unui demers de inovare științifică. Fiecare realizare aduce 5 / n puncte, unde n este numărul de autori. Se declară la activități («Material curricular, test sau soft înregistrat»), cu numărul de autori (fără numărul de autori completat, înregistrarea nu se punctează). Avizul, acreditarea sau înregistrarea nu pot fi verificate de platformă: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "(Incadrare_aprobata != null && N_autori != null && N_autori >= 1) ? 5 / N_autori : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "cda92ee5aff4cae70df7f16b68fc00b66a6f89bd387137350c9160546ba87d61",
+  "formulaHash": "13b50b44660774d2461813522d7e95b7a6ed2452c761cc9b00f3ec8b320b50bb",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4687,7 +4687,7 @@
    "$oid": "6abb957433192ec40a8e0711"
   },
   "name": "Edu26_I8",
-  "description": "Indicatorul I8 (aria A1, autor principal): lucrări in extenso de tip proceedings, indexate Web of Science sau într-o altă bază de date recunoscută, publicate în volumele unor conferințe internaționale cu relevanță pentru domeniu, cu 1 punct pe lucrare. La I8 și I9 se pot puncta cumulat cel mult două contribuții pe ediție de conferință; platforma aplică plafonul de două lucrări pe ediție separat pentru fiecare dintre cei doi indicatori, deci un candidat cu lucrări și ca autor principal, și ca coautor la aceeași ediție poate primi mai mult decât permite standardul. Caracterul internațional al conferinței nu este verificat automat.",
+  "description": "Indicatorul I8 (aria A1, autor principal): lucrări in extenso de tip proceedings, indexate Web of Science sau într-o altă bază de date recunoscută, publicate în volumele unor conferințe internaționale cu relevanță pentru domeniu, cu 1 punct pe lucrare. La I8 și I9 se pot puncta cumulat cel mult două contribuții pe ediție de conferință (aceeași serie de proceedings, același an): lucrările ca autor principal ocupă întâi locurile, iar la I9 rămân doar cele care mai încap. Caracterul internațional al conferinței nu este verificat automat.",
   "formula": "S",
   "kind": {
    "role": "FIRST_OR_CORRESPONDING",
@@ -4717,7 +4717,7 @@
    "$oid": "6abb957433192ec40a8e0712"
   },
   "name": "Edu26_I9",
-  "description": "Indicatorul I9 (aria A1, coautor): lucrări in extenso de tip proceedings, indexate Web of Science sau într-o altă bază de date recunoscută, publicate în volumele unor conferințe internaționale, realizate în calitate de coautor, cu 1 / n puncte pe lucrare, unde n este numărul total de autori. Se aplică plafonul de cel mult două contribuții pe ediție de conferință descris la I8.",
+  "description": "Indicatorul I9 (aria A1, coautor): lucrări in extenso de tip proceedings, indexate Web of Science sau într-o altă bază de date recunoscută, publicate în volumele unor conferințe internaționale, realizate în calitate de coautor, cu 1 / n puncte pe lucrare, unde n este numărul total de autori. Plafonul de cel mult două contribuții pe ediție de conferință se aplică împreună cu I8: lucrările ca autor principal de la aceeași ediție ocupă întâi locurile, iar dintre lucrările ca coautor rămân cele care mai încap, întâi cele cu mai puțini autori.",
   "formula": "S/N",
   "kind": {
    "role": "NOT_FIRST_NOR_CORRESPONDING",
@@ -4733,7 +4733,7 @@
   },
   "selectorSpec": {
    "n": 2,
-   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerForumCap"
+   "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$PerEditionCapAfterPrincipal"
   },
   "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
   "domain": {
@@ -4747,12 +4747,12 @@
    "$oid": "6abb957433192ec40a8e0713"
   },
   "name": "Edu26_I10",
-  "description": "Indicatorul I10 (aria A1): autor sau coautor de rapoarte de analiză de politici ori strategii educaționale, cu 8 × m / n puncte pe raport, unde n este numărul de autori, m = 3 pentru rapoarte internaționale și m = 1 pentru rapoarte naționale. Un raport este internațional dacă este redactat la solicitarea și sub sigla unei organizații internaționale de prestigiu (UNICEF, UNESCO, Banca Mondială, OECD, Comisia Europeană), integral într-o limbă de circulație internațională, cu o analiză relevantă internațional; național, dacă este redactat la solicitarea și sub sigla unei organizații cu prestigiu național. Se declară la activități («Raport de analiză de politici sau strategii educaționale»), numind organizația care l-a solicitat; fără numărul de autori se consideră n = 1. Nivelul nu se alege: se numește organizația, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "m = International ? 3 : 1; n = (N_autori == null || N_autori < 1) ? 1 : N_autori; 8 * m / n",
+  "description": "Indicatorul I10 (aria A1): autor sau coautor de rapoarte de analiză de politici ori strategii educaționale, cu 8 × m / n puncte pe raport, unde n este numărul de autori, m = 3 pentru rapoarte internaționale și m = 1 pentru rapoarte naționale. Un raport este internațional dacă este redactat la solicitarea și sub sigla unei organizații internaționale de prestigiu (UNICEF, UNESCO, Banca Mondială, OECD, Comisia Europeană), integral într-o limbă de circulație internațională, cu o analiză relevantă internațional; național, dacă este redactat la solicitarea și sub sigla unei organizații cu prestigiu național. Se declară la activități («Raport de analiză de politici sau strategii educaționale»), numind organizația care l-a solicitat, cu numărul de autori (fără numărul de autori completat, înregistrarea nu se punctează). Nivelul nu se alege: se numește organizația, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică; una respinsă nu se punctează.",
+  "formula": "m = International ? 3.0 : (Recunoscut ? 1.0 : 0.0); (N_autori == null || N_autori < 1) ? 0 : 8 * m / N_autori",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "d6ae01499310864ed6bab1c4e33d36b5360eda740e7f8e6c2c29554b3e50c465",
+  "formulaHash": "ca359ca96a4644539902a01170d015ccd677d8c41553cf7c00960bb8ab03eca7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4809,12 +4809,12 @@
    "$oid": "6abb957433192ec40a8e0715"
   },
   "name": "Edu26_I12",
-  "description": "Indicatorul I12 (aria A2): citări în Google Scholar, altele decât cele de la I11, cu 0,05 puncte pe citare. Numărul de citări este diferența dintre totalul din Google Scholar și numărul de citări Web of Science. Platforma nu are acces la Google Scholar: valorile se declară la activități («Profil Google Scholar»), completând totalul citărilor Google Scholar și numărul citărilor Web of Science fără autocitări. Se păstrează o singură înregistrare, actualizată la nevoie; mai multe înregistrări s-ar aduna.",
-  "formula": "Citari_GS == null ? 0 : 0.05 * max(Citari_GS - (Citari_WoS == null ? 0 : Citari_WoS), 0)",
+  "description": "Indicatorul I12 (aria A2): citări în Google Scholar, altele decât cele de la I11, cu 0,05 puncte pe citare. Numărul de citări este diferența dintre totalul din Google Scholar și numărul de citări Web of Science. Platforma nu are acces la Google Scholar: valorile se declară la activități («Profil Google Scholar»), cu totalul citărilor Google Scholar, numărul citărilor Web of Science fără autocitări și linkul profilului, iar dovada (o captură a profilului) se trimite conducerii: valorile contează după ce conducerea departamentului sau a facultății le aprobă, și se întorc la ea dacă se modifică. Fiecare cercetător are o singură înregistrare de acest tip, actualizată la nevoie.",
+  "formula": "(Incadrare_aprobata != null && Citari_GS != null && Citari_WoS != null) ? 0.05 * max(Citari_GS - Citari_WoS, 0) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "f02eae6fcb88098eef60481cab744defd04124561c712481251dc55f1f6cb7a8",
+  "formulaHash": "b7dc5a64670bb57f4be2fbb14a2544363d66f1e1b0d16801b242552fc569d621",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4872,12 +4872,12 @@
    "$oid": "6abb957433192ec40a8e0717"
   },
   "name": "Edu26_I14",
-  "description": "Indicatorul I14 (aria A2): indicele Hirsch din Google Scholar, ridicat la pătrat, cu m = 1 pentru Științe ale Educației (hGS × hGS). Platforma nu are acces la Google Scholar: valoarea se declară la activități («Profil Google Scholar», câmpul h_GS) și se verifică de comisie. Se păstrează o singură înregistrare, actualizată la nevoie. Punctajul afișat este pătratul indicelui: 16 înseamnă h = 4. Praguri (criteriul C6): 16 pentru Conferențiar, 49 pentru Profesor și pentru abilitare, adică h = 4, respectiv h = 7.",
-  "formula": "h_GS == null ? 0 : h_GS * h_GS",
+  "description": "Indicatorul I14 (aria A2): indicele Hirsch din Google Scholar, ridicat la pătrat, cu m = 1 pentru Științe ale Educației (hGS × hGS). Platforma nu are acces la Google Scholar: valoarea se declară la activități («Profil Google Scholar», câmpul h_GS) și contează după ce conducerea departamentului sau a facultății o aprobă, pe baza capturii profilului; o singură înregistrare de acest tip pe cercetător. Punctajul afișat este pătratul indicelui: 16 înseamnă h = 4. Praguri (criteriul C6): 16 pentru Conferențiar, 49 pentru Profesor și pentru abilitare, adică h = 4, respectiv h = 7.",
+  "formula": "(Incadrare_aprobata != null && h_GS != null) ? h_GS * h_GS : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "69396769f0c1596595a9382db07b97be057de563863f69e6a000ea15625f0230",
+  "formulaHash": "4743041f09008a9524a254e6304f124753e90f3795c9193eec97b4297d8d51bd",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4905,12 +4905,12 @@
    "$oid": "6abb957433192ec40a8e0718"
   },
   "name": "Edu26_I15",
-  "description": "Indicatorul I15 (aria A2): calitatea de redactor-șef (e = 3), editor asociat (e = 2) sau membru (e = 1) în comitetul editorial al unei reviste cu comitet științific și evaluare colegială, cu condiția ca revista să fi fost indexată în baza de date respectivă pe durata mandatului. Punctaj: 4 × e × m, cu m = 3 pentru reviste Web of Science cu IF de cel puțin 0,10 și m = 1 pentru reviste Web of Science cu IF mai mic sau pentru reviste dintr-o altă bază de date recunoscută. Se punctează o singură calitate pe revistă, cea mai favorabilă. Se declară la activități («Membru în comitetul editorial al unei reviste»). Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în Web of Science (Core Collection, inclusiv ESCI), în ce alte baze de date și cu ce factor de impact în anul respectiv; pentru o revistă indexată într-o bază pe care platforma nu o cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă.",
-  "formula": "e = Rol == 'Redactor-șef' ? 3 : (Rol == 'Editor asociat' ? 2 : 1); m = (Revista_WoS_CC && IF_revista != null && IF_revista >= 0.1) ? 3 : 1; (Revista_WoS_CC || N_baze_date >= 1 || Incadrare_aprobata == 'Revistă indexată într-o BDI recunoscută') ? 4 * e * m : 0",
+  "description": "Indicatorul I15 (aria A2): calitatea de redactor-șef (e = 3), editor asociat (e = 2) sau membru (e = 1) în comitetul editorial al unei reviste cu comitet științific și evaluare colegială, cu condiția ca revista să fi fost indexată în baza de date respectivă pe durata mandatului. Punctaj: 4 × e × m, cu m = 3 pentru reviste Web of Science cu IF de cel puțin 0,10 și m = 1 pentru reviste Web of Science cu IF mai mic sau pentru reviste dintr-o altă bază de date recunoscută. Se punctează o singură calitate pe revistă, cea mai favorabilă; o înregistrare fără calitate completată nu se punctează. Se declară la activități («Membru în comitetul editorial al unei reviste»). Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în Web of Science (Core Collection, inclusiv ESCI), în care dintre bazele recunoscute de standard și cu ce factor de impact în anul respectiv; pentru o revistă indexată într-o bază pe care platforma nu o cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "e = Rol == 'Redactor-șef' ? 3 : (Rol == 'Editor asociat' ? 2 : (Rol == 'Membru' ? 1 : 0)); m = (Revista_WoS_CC && IF_revista != null && IF_revista >= 0.1) ? 3 : 1; (Revista_WoS_CC || N_baze_date >= 1 || Incadrare_aprobata == 'Revistă indexată într-o BDI recunoscută') ? 4 * e * m : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "50ed8794b54c692d2815eb89386e8a7d4b78e72a2de34a4229aee0466f802bb9",
+  "formulaHash": "1ad915f20f1a40d0fa72887f20489de2055baff54dedd719b232a68f153d4325",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -4938,12 +4938,12 @@
    "$oid": "6abb957433192ec40a8e0719"
   },
   "name": "Edu26_I16",
-  "description": "Indicatorul I16 (aria A2): comunicare științifică în plen (keynote speaker), cu 2 × m puncte pe conferință — 6 puncte pentru conferințe internaționale (m = 3) și 2 puncte pentru conferințe naționale (m = 1). O conferință este internațională dacă îndeplinește cel puțin două dintre condițiile standardului: organizator internațional, program și volum publicate într-o limbă de circulație internațională, lucrări desfășurate exclusiv într-o astfel de limbă. Se declară la activități («Keynote speaker, comunicare în plen»). Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională — experții domeniului (conducerea facultății și a departamentelor, plus experții numiți) o clasifică o singură dată, pentru toți, după criteriile Comisiei 28. O conferință pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "International ? 6 : 2",
+  "description": "Indicatorul I16 (aria A2): comunicare științifică în plen (keynote speaker), cu 2 × m puncte pe conferință — 6 puncte pentru conferințe internaționale (m = 3) și 2 puncte pentru conferințe naționale (m = 1). O conferință este internațională dacă îndeplinește cel puțin două dintre condițiile standardului: organizator internațional, program și volum publicate într-o limbă de circulație internațională, lucrări desfășurate exclusiv într-o astfel de limbă. Se declară la activități («Keynote speaker, comunicare în plen»). Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională — experții domeniului (conducerea facultății și a departamentelor, plus experții numiți) o clasifică o singură dată, pentru toți, după criteriile Comisiei 28. O conferință pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională, cum prevede standardul; una respinsă de experți nu se punctează.",
+  "formula": "Entitate_valida ? (International ? 6 : 2) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "bf5a2f06ace42f93d9daefb31681a2ce689ccff367ae1fa6fb66e19f206ce03c",
+  "formulaHash": "f060f3108114e76decd475dd9af9b019c1a88ec4aba38af8302e450442f67e92",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5005,12 +5005,12 @@
    "$oid": "6abb957433192ec40a8e071b"
   },
   "name": "Edu26_I18",
-  "description": "Indicatorul I18 (aria A2): membru în comitetul științific, referent științific pentru evaluarea și selecția lucrărilor, membru în comitetul de organizare sau coordonator de simpozion la o conferință, cu 1 × m puncte pe conferință — 3 puncte pentru conferințe internaționale, 1 punct pentru conferințe naționale. Se punctează o singură calitate pe conferință. Se declară la activități («Comitet științific, de organizare sau de evaluare la o conferință»), câte o înregistrare pe conferință. Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională — experții domeniului (conducerea facultății și a departamentelor, plus experții numiți) o clasifică o singură dată, pentru toți, după criteriile Comisiei 28. O conferință pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "International ? 3 : 1",
+  "description": "Indicatorul I18 (aria A2): membru în comitetul științific, referent științific pentru evaluarea și selecția lucrărilor, membru în comitetul de organizare sau coordonator de simpozion la o conferință, cu 1 × m puncte pe conferință — 3 puncte pentru conferințe internaționale, 1 punct pentru conferințe naționale. Se punctează o singură calitate pe conferință. Se declară la activități («Comitet științific, de organizare sau de evaluare la o conferință»), câte o înregistrare pe conferință. Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională — experții domeniului (conducerea facultății și a departamentelor, plus experții numiți) o clasifică o singură dată, pentru toți, după criteriile Comisiei 28. O conferință pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională, cum prevede standardul; una respinsă de experți nu se punctează.",
+  "formula": "Entitate_valida ? (International ? 3 : 1) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "b776ef224274d7bc6bcef326e55c4abf69f6b6696ca09c94826fca6f3fbf3355",
+  "formulaHash": "ae265a340b115a1490a447281bd7939b42fb239d5e5c6f596e297d495f7caba0",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5038,12 +5038,12 @@
    "$oid": "6abb957433192ec40a8e071c"
   },
   "name": "Edu26_I19",
-  "description": "Indicatorul I19 (aria A2): apartenența la asociații profesionale, cu 2 × m puncte pe asociație. Președinte sau membru în comitetul executiv: m = 3 pentru o asociație internațională (6 puncte), m = 1 pentru una națională (2 puncte). Membru: m = 1 pentru o asociație internațională (2 puncte), m = 0,5 pentru una națională (1 punct). Se declară la activități («Asociație profesională»). Nivelul nu se alege: se numește asociația, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "Rol == 'Membru' ? (International ? 2 : 1) : (International ? 6 : 2)",
+  "description": "Indicatorul I19 (aria A2): apartenența la asociații profesionale, cu 2 × m puncte pe asociație. Președinte sau membru în comitetul executiv: m = 3 pentru o asociație internațională (6 puncte), m = 1 pentru una națională (2 puncte). Membru: m = 1 pentru o asociație internațională (2 puncte), m = 0,5 pentru una națională (1 punct). Se declară la activități («Asociație profesională»), cu rolul (o înregistrare fără rol nu se punctează). Nivelul nu se alege: se numește asociația, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică; una respinsă nu se punctează.",
+  "formula": "!Recunoscut ? 0 : (Rol == 'Membru' ? (International ? 2 : 1) : (Rol == 'Președinte sau membru în comitetul executiv' ? (International ? 6 : 2) : 0))",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "c101e33b2efb5d64341949a71fd2573e68b8bf79bf90bf1887c03a5057aa53f9",
+  "formulaHash": "c4ce402ef6475fde83ab5e1c0eee9c19684fe7c0471b9e451d0eb3706d7b3582",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5071,12 +5071,12 @@
    "$oid": "6abb957433192ec40a8e071d"
   },
   "name": "Edu26_I20",
-  "description": "Indicatorul I20 (aria A2): premii și distincții, cu 4 × m puncte pe premiu. Premii pentru activitatea științifică acordate de instituții sau asociații științifice ori profesionale internaționale: m = 3 (12 puncte); acordate de instituții naționale de prestigiu: m = 1 (4 puncte). Premii pentru activitatea didactică și rezultate de prestigiu privind promovarea țării și a învățământului românesc: m = 1 (4 puncte). Nu se includ granturile de deplasare și nici premierea articolelor. Se declară la activități («Premiu sau distincție»). Nivelul și natura nu se aleg: se numește premiul, iar registrul de premii le dă — experții domeniului îl clasifică o singură dată, pentru toți. Unul pe care registrul nu îl cunoaște ajunge la ei și, până îl clasifică, contează 4 puncte.",
-  "formula": "(International && Premiu_stiintific) ? 12 : 4",
+  "description": "Indicatorul I20 (aria A2): premii și distincții, cu 4 × m puncte pe premiu. Premii pentru activitatea științifică acordate de instituții sau asociații științifice ori profesionale internaționale: m = 3 (12 puncte); acordate de instituții naționale de prestigiu: m = 1 (4 puncte). Premii pentru activitatea didactică și rezultate de prestigiu privind promovarea țării și a învățământului românesc: m = 1 (4 puncte). Nu se includ granturile de deplasare și nici premierea articolelor. Se declară la activități («Premiu sau distincție»). Nivelul și natura nu se aleg: se numește premiul, iar registrul de premii le dă — experții domeniului îl clasifică o singură dată, pentru toți. Unul pe care registrul nu îl cunoaște ajunge la ei și nu se punctează până nu îl clasifică, fiindcă standardul cere premii de prestigiu; unul respins nu se punctează.",
+  "formula": "!Recunoscut ? 0 : ((International && Premiu_stiintific) ? 12 : 4)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "eb31ef432274a5e22dd6b7cc22eb6083e0b347f539d61f9e7255ff0f1b7e7e06",
+  "formulaHash": "5ec6a3364244ea0293eb1c260edb4eca99dc5bd0579f91659171d81f945f4b25",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5171,12 +5171,12 @@
    "$oid": "6abb957433192ec40a8e0720"
   },
   "name": "Edu26_I23",
-  "description": "Indicatorul I23 (aria A2): profesor asociat sau visiting scholar pentru cel puțin o lună, ori susținerea unei conferințe sau prelegeri în fața cadrelor didactice sau a doctoranzilor, cu 0,5 × m puncte pe instituție. La o universitate din TOP 500 URAP: m = 3 (1,5 puncte); la o altă universitate, ca urmare a unei invitații nominale: m = 1 (0,5 puncte); la asociații profesionale internaționale: m = 1; la asociații profesionale naționale: m = 0,5 (0,25 puncte). Se punctează un singur aspect pe universitate, iar schimburile Erasmus nu se includ. Se declară la activități («Profesor asociat, visiting scholar sau prelegere invitată»), numind universitatea din listă sau asociația. Încadrarea nu se alege: locul în TOP 500 rezultă din clasamentul URAP, iar nivelul asociației din registrul de organizații (una pe care registrul nu o cunoaște contează ca națională până o clasifică experții domeniului).",
-  "formula": "Universitate_numita ? (Top500_URAP ? 1.5 : 0.5) : (International ? 0.5 : 0.25)",
+  "description": "Indicatorul I23 (aria A2): profesor asociat sau visiting scholar pentru cel puțin o lună, ori susținerea unei conferințe sau prelegeri în fața cadrelor didactice sau a doctoranzilor, cu 0,5 × m puncte pe instituție. La o universitate din TOP 500 URAP: m = 3 (1,5 puncte); la o altă universitate, ca urmare a unei invitații nominale: m = 1 (0,5 puncte); la asociații profesionale internaționale: m = 1; la asociații profesionale naționale: m = 0,5 (0,25 puncte). Se punctează un singur aspect pe universitate, iar schimburile Erasmus nu se includ. Se declară la activități («Profesor asociat, visiting scholar sau prelegere invitată»), numind universitatea din listă sau asociația. Încadrarea nu se alege: universitatea trebuie să fie în clasamentele pe care platforma le are (URAP, QS, Shanghai), locul în TOP 500 rezultă din URAP, iar o vizită la propria universitate nu se punctează; nivelul asociației vine din registrul de organizații, iar una pe care registrul nu o cunoaște nu se punctează până o clasifică experții domeniului. O universitate pe care clasamentele nu o cuprind se numește ca instituție, din registrul de organizații.",
+  "formula": "Universitate_numita ? (Top500_URAP ? 1.5 : 0.5) : (Recunoscut ? (International ? 0.5 : 0.25) : 0.0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "399a37e41cff2c4b9526a037950b4fe6fb44d8ea29ba25275cf42c10ff7421e2",
+  "formulaHash": "9217e68f6355bef75e4ab0728d8a33d992b5690a84369acfbd6b6f5e04a78c35",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5237,12 +5237,12 @@
    "$oid": "6abb957433192ec40a8e0722"
   },
   "name": "Edu26_I25",
-  "description": "Indicatorul I25 (aria A3): 9 × m puncte pentru director sau coordonator partener al unui grant de dezvoltare instituțională (de tip FSE, FDI, Erasmus+) ori al unui grant de cercetare aplicativă cu relevanță specifică, de exemplu finanțat de o companie (m = 1 pentru Științe ale Educației, adică 9 puncte), precum și pentru fellowship-uri (m = 0,5, adică 4,5 puncte) sau chair-uri (m = 1, adică 9 puncte) obținute prin competiții internaționale. Se declară la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair»). Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon. Bursele postdoctorale obținute prin proiecte instituționale și granturile instituționale interne nu se punctează. Intră, împreună cu I24, în criteriul C8.",
-  "formula": "Tip == 'Chair' ? 9 : (Tip == 'Fellowship' ? 4.5 : ((Rol != 'Membru' && (Buget_eur != null && Buget_eur >= 20000)) ? 9 : 0))",
+  "description": "Indicatorul I25 (aria A3): 9 × m puncte pentru director sau coordonator partener al unui grant de dezvoltare instituțională (de tip FSE, FDI, Erasmus+) ori al unui grant de cercetare aplicativă cu relevanță specifică, de exemplu finanțat de o companie (m = 1 pentru Științe ale Educației, adică 9 puncte), precum și pentru fellowship-uri (m = 0,5) sau chair-uri (m = 1, adică 9 puncte) obținute prin competiții internaționale. Se declară la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair»), numind finanțatorul sau organismul care a acordat fellowship-ul ori chair-ul. Acesta vine din registrul de organizații: un grant contează când experții domeniului l-au clasificat național sau internațional (granturile instituționale interne nu se punctează), un fellowship sau un chair când l-au clasificat internațional; unul pe care registrul nu îl cunoaște nu se punctează până nu îl clasifică. Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon. Bursele postdoctorale obținute prin proiecte instituționale nu se punctează.",
+  "formula": "!Recunoscut ? 0 : (Tip == 'Chair' ? (International ? 9 : 0) : (Tip == 'Fellowship' ? (International ? 4.5 : 0) : (((Rol == 'Director' || Rol == 'Coordonator partener') && Buget_eur != null && Buget_eur >= 20000) ? 9 : 0)))",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "d7f1193525f2ffe1130354f15f5351503fc75583a9bd0adff462e6d897b5fd09",
+  "formulaHash": "dd0f528672b61d7b3ba3bb07da815f13cd74a5107dbec39e43461d04c7786a39",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5303,12 +5303,12 @@
    "$oid": "6abb957433192ec40a8e0724"
   },
   "name": "Edu26_I26_2",
-  "description": "Indicatorul I26.2 (aria A3): membru în echipa unui grant de dezvoltare instituțională sau de cercetare aplicativă, de tipul celor de la I25, cu 1,5 puncte pe grant (3 × m, m = 0,5). Se punctează înregistrările de la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair») cu rolul «Membru». Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat. Fellowship-urile și chair-urile nu au plafon.",
-  "formula": "(Rol == 'Membru' && Tip != 'Chair' && Tip != 'Fellowship' && (Buget_eur != null && Buget_eur >= 20000)) ? 1.5 : 0",
+  "description": "Indicatorul I26.2 (aria A3): membru în echipa unui grant de dezvoltare instituțională sau de cercetare aplicativă, de tipul celor de la I25, cu 1,5 puncte pe grant (3 × m, m = 0,5). Se punctează înregistrările de la activități («Grant instituțional, de cercetare aplicativă, fellowship sau chair») cu rolul «Membru», al căror finanțator l-au clasificat experții domeniului în registrul de organizații. Granturile se punctează de la 20.000 EUR în sus: completați câmpul «Buget» cu suma în EUR; fără buget declarat grantul nu este punctat.",
+  "formula": "(Recunoscut && Rol == 'Membru' && Tip != 'Chair' && Tip != 'Fellowship' && (Buget_eur != null && Buget_eur >= 20000)) ? 1.5 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "07dfb893c75086f96d238193d6df760e45cfad1893684bce956fad70cb2adc44",
+  "formulaHash": "fd8fd09bade24e9ca7f1f099504d37a1eb2c00f9cfcddfc8bbebc8c450437ec7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5569,12 +5569,12 @@
    "$oid": "6abb957433192ec40a8e072c"
   },
   "name": "Edu26_I29",
-  "description": "Indicatorul I29 (aria A3): evaluator de proiecte sau membru în panel în competiții de granturi de cercetare, cu 1 × m puncte pe ediție de competiție — 3 puncte pentru competiții internaționale, 1 punct pentru competiții naționale. O competiție este internațională dacă e gestionată de o autoritate contractantă de nivel internațional și pune în competiție entități din țări diferite. Se declară la activități («Evaluator de proiecte sau membru în panel»), câte o înregistrare pe ediție, numind organismul care gestionează competiția. Nivelul nu se alege: se numește organismul, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "International ? 3 : 1",
+  "description": "Indicatorul I29 (aria A3): evaluator de proiecte sau membru în panel în competiții de granturi de cercetare, cu 1 × m puncte pe ediție de competiție — 3 puncte pentru competiții internaționale, 1 punct pentru competiții naționale. O competiție este internațională dacă e gestionată de o autoritate contractantă de nivel internațional și pune în competiție entități din țări diferite. Se declară la activități («Evaluator de proiecte sau membru în panel»), câte o înregistrare pe ediție, numind organismul care gestionează competiția. Nivelul nu se alege: se numește organismul, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică; una respinsă nu se punctează.",
+  "formula": "Recunoscut ? (International ? 3 : 1) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "b776ef224274d7bc6bcef326e55c4abf69f6b6696ca09c94826fca6f3fbf3355",
+  "formulaHash": "9805c78fb467170ab92dca8b8f6a219728db674fb30ee9c3cf7f482ae877e3ec",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5602,12 +5602,12 @@
    "$oid": "6abb957433192ec40a8e072d"
   },
   "name": "Edu26_I30",
-  "description": "Indicatorul I30 (aria A3): membru în grupuri de experți, comisii sau consilii științifice, cu 1 × m puncte pe comisie — 3 puncte pentru organisme internaționale (de exemplu UNESCO, UNICEF), 1 punct pentru organisme naționale (CNATDCU, CNCS, ARACIS sau un grup de lucru constituit prin ordin de ministru). Se declară la activități («Membru în grup de experți, comisie sau consiliu științific»), numind organismul. Nivelul nu se alege: se numește organismul, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "International ? 3 : 1",
+  "description": "Indicatorul I30 (aria A3): membru în grupuri de experți, comisii sau consilii științifice, cu 1 × m puncte pe comisie — 3 puncte pentru organisme internaționale (de exemplu UNESCO, UNICEF), 1 punct pentru organisme naționale (CNATDCU, CNCS, ARACIS sau un grup de lucru constituit prin ordin de ministru). Se declară la activități («Membru în grup de experți, comisie sau consiliu științific»), numind organismul. Nivelul nu se alege: se numește organismul, iar registrul de organizații spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. Una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică; una respinsă nu se punctează.",
+  "formula": "Recunoscut ? (International ? 3 : 1) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "b776ef224274d7bc6bcef326e55c4abf69f6b6696ca09c94826fca6f3fbf3355",
+  "formulaHash": "9805c78fb467170ab92dca8b8f6a219728db674fb30ee9c3cf7f482ae877e3ec",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5728,12 +5728,12 @@
    "$oid": "6abbfc460faa5f42002d72b8"
   },
   "name": "Soc26_I2_decl",
-  "description": "Indicatorul I.2, articole declarate de candidat: articole în reviste indexate în cel puțin 3 baze de date internaționale recunoscute, pe care platforma nu le poate verifica. Fiecare aduce 2 × m / n. Bazele de date se trec în câmpul dedicat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; 2 * m / n",
+  "description": "Indicatorul I.2, articole declarate de candidat: articole în reviste indexate în SCOPUS (4 × m / n) sau în cel puțin 3 baze de date internaționale recunoscute (2 × m / n), pe care platforma nu le găsește printre publicațiile candidatului. Un articol într-o revistă cu factor de impact ține de I.1: se adaugă ca publicație, nu aici. Se declară cu ISSN-ul revistei, limba articolului și numărul de autori (fără numărul de autori completat, înregistrarea nu se punctează). Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în ISI/Web of Science (SCIE, SSCI, AHCI), în SCOPUS și în câte dintre bazele recunoscute pe care le cunoaște (Web of Science socotit o singură dată, SCOPUS, ERIH PLUS, DOAJ); pentru o revistă indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "(N_autori == null || N_autori < 1 || IF_revista != null) ? 0 : (Revista_Scopus ? 4.0 : ((N_baze_date >= 3 || Incadrare_aprobata == 'Revistă indexată în cel puțin 3 baze de date') ? 2.0 : 0.0)) * Coef_m / N_autori",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "0b438eefd5a3bf4907c671d5dcd104bbba7a1c78095dfcb50682258f8bac58eb",
+  "formulaHash": "d465cba1ed8bb1b66eac5387d9ef7b734027e1a733e218004ebaa4a233d40920",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5791,12 +5791,12 @@
    "$oid": "6abbfc460faa5f42002d72ba"
   },
   "name": "Soc26_I3_decl",
-  "description": "Indicatorul I.3, cărți declarate de candidat: cărți cu cel mult 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 10 × m / n. Încadrarea editurii nu se alege: rezultă din editura scrisă la declarare — Lista A2 a comisiei (coloana Sociologie) și Lista A1 («în vigoare», netipărită în standard): lista CNCS a editurilor cu prestigiu internațional în științele sociale (199 de edituri, stabilită pentru Panelul 4 al CNATDCU în 2011); în plus, ca A1, editurile din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B), de pe lista UEFISCDI pentru științele sociale (PD/TE 2026, Anexa 7c) și de pe lista CNCS pentru arte și științe umaniste. Numele unei edituri străine se scrie fără «Editura». O carte declarată ca apărută înainte de 1 octombrie 2026 la o editură din lista anterioară — Lista A2 a Panelului 4 (Științe sociale) al CNATDCU, din 2011, la care trimite standardul («lista de edituri din Anexa 2») — contează și ea ca A2. Lambert Academic Publishing, deși apare pe această listă, nu se punctează. Standardul spune «anterior datei intrării în vigoare a prezentei liste»; platforma ia 1 octombrie 2026, data de la care se aplică noile standarde. Cele 6 biblioteci WorldCat și o editură de prestigiu internațional de pe nicio listă se cer ca încadrare, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura != null && n <= 3) ? 10 * m / n : 0",
+  "description": "Indicatorul I.3, cărți declarate de candidat: cărți cu cel mult 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 10 × m / n; fără numărul de autori completat, înregistrarea nu se punctează. Încadrarea editurii nu se alege: rezultă din editura scrisă la declarare — Lista A2 a comisiei (coloana Sociologie) și Lista A1 («în vigoare», netipărită în standard): lista CNCS a editurilor cu prestigiu internațional în științele sociale (199 de edituri, stabilită pentru Panelul 4 al CNATDCU în 2011); în plus, ca A1, editurile din Web of Science Master Book List, din clasamentul SENSE (categoriile A și B), de pe lista UEFISCDI pentru științele sociale (PD/TE 2026, Anexa 7c) și de pe lista CNCS pentru arte și științe umaniste. Numele unei edituri străine se scrie fără «Editura». O carte declarată ca apărută înainte de 1 octombrie 2026 la o editură din lista anterioară — Lista A2 a Panelului 4 (Științe sociale) al CNATDCU, din 2011, la care trimite standardul («lista de edituri din Anexa 2») — contează și ea ca A2. Lambert Academic Publishing, deși apare pe această listă, nu se punctează. Standardul spune «anterior datei intrării în vigoare a prezentei liste»; platforma ia 1 octombrie 2026, data de la care se aplică noile standarde. Cele 6 biblioteci WorldCat și o editură de prestigiu internațional de pe nicio listă se cer ca încadrare, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "(N_autori == null || N_autori < 1) ? 0 : ((Tip == 'Carte' && Categorie_editura != null && N_autori <= 3) ? 10 * Coef_m / N_autori : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6092542f34726f21edfd694898dcc44875b68b3674f6e28e09e4fd63b8f74e8f",
+  "formulaHash": "86544845bdcba06aee500b29e4d8054b090eecd72e9790e3b14f1bdef2303fcb",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5855,12 +5855,12 @@
    "$oid": "6abbfc460faa5f42002d72bc"
   },
   "name": "Soc26_I4_decl",
-  "description": "Indicatorul I.4, cărți declarate de candidat: cărți cu mai mult de 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 6 × m / n. Încadrarea editurii: ca la I.3 declarat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura != null && n > 3) ? 6 * m / n : 0",
+  "description": "Indicatorul I.4, cărți declarate de candidat: cărți cu mai mult de 3 autori, la edituri din Lista A1 sau A2, ori cuprinse în cel puțin 6 biblioteci din worldcat.org. Fiecare aduce 6 × m / n; fără numărul de autori completat, înregistrarea nu se punctează. Încadrarea editurii: ca la I.3 declarat. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "(N_autori == null || N_autori < 1) ? 0 : ((Tip == 'Carte' && Categorie_editura != null && N_autori > 3) ? 6 * Coef_m / N_autori : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a7936e0fb9827eccd95687eae210417e28b5d29c10d6b4bb9604c9a3b28d0556",
+  "formulaHash": "eb28c32614b3d03e4e92f83f747e46e262a82673972f0557a3429ac4f34d9de7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5889,12 +5889,12 @@
    "$oid": "6abbfc460faa5f42002d72bd"
   },
   "name": "Soc26_I5",
-  "description": "Indicatorul I.5: cărți coordonate (inclusiv manuale). Fiecare aduce 6 × m / n, unde n este numărul de coordonatori. Se declară de candidat, pentru că platforma nu distinge un coordonator de un autor. Contează o carte la o editură din Lista A1 sau A2 (definiția [4]); încadrarea editurii: ca la I.3 declarat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_coordonatori == null || N_coordonatori < 1) ? 1 : N_coordonatori; Categorie_editura != null ? 6 * m / n : 0",
+  "description": "Indicatorul I.5: cărți coordonate (inclusiv manuale). Fiecare aduce 6 × m / n, unde n este numărul de coordonatori (fără el completat, înregistrarea nu se punctează). Se declară de candidat, pentru că platforma nu distinge un coordonator de un autor. Contează o carte la o editură din Lista A1 sau A2 (definiția [4]); încadrarea editurii: ca la I.3 declarat. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă.",
+  "formula": "(N_coordonatori == null || N_coordonatori < 1) ? 0 : (Categorie_editura != null ? 6 * Coef_m / N_coordonatori : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a8bc15dfbdd097a1adcd250cbb359447f69f1a3c802263a0dc8f594f38e9e767",
+  "formulaHash": "326fd9dea75ed9adc533e0479fb1f1068ad193ec8de27749d2aca3b86da9fb3c",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5953,12 +5953,12 @@
    "$oid": "6abbfc470faa5f42002d72bf"
   },
   "name": "Soc26_I6_decl",
-  "description": "Indicatorul I.6, capitole declarate de candidat: 6 × m / n pentru o editură din Lista A1; 3 × m / n pentru o editură din Lista A2 sau pentru un volum cuprins în cel puțin 6 biblioteci din worldcat.org. Încadrarea editurii: ca la I.3 declarat. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Capitol în volum colectiv' && Categorie_editura != null) ? (Categorie_editura == 'A1' ? 6 : 3) * m / n : 0",
+  "description": "Indicatorul I.6, capitole declarate de candidat: 6 × m / n pentru o editură din Lista A1; 3 × m / n pentru o editură din Lista A2 sau pentru un volum cuprins în cel puțin 6 biblioteci din worldcat.org; fără numărul de autori completat, înregistrarea nu se punctează. Încadrarea editurii: ca la I.3 declarat. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "(N_autori == null || N_autori < 1) ? 0 : ((Tip == 'Capitol în volum colectiv' && Categorie_editura != null) ? (Categorie_editura == 'A1' ? 6 : 3) * Coef_m / N_autori : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "03a293e11deaf383b1055cea45bbdace1415845f6da80a204badb9e5b8b3ff43",
+  "formulaHash": "51f5b84ed9191c7812f2f9e2087b2841d059ca0a2f6c170798e334f84e6eb199",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -5987,12 +5987,12 @@
    "$oid": "6abbfc470faa5f42002d72c0"
   },
   "name": "Soc26_I7",
-  "description": "Indicatorul I.7: recenzie publicată într-o revistă indexată ISI/Web of Science: 3 × m / n. Recenzie într-o revistă indexată în cel puțin 3 baze de date recunoscute sau termen de minimum o pagină într-o enciclopedie ori într-un dicționar de specialitate: 1 × m / n. Se declară de candidat, cu ISSN-ul revistei pentru o recenzie. Încadrarea revistei nu se alege: valorează 3 × m / n când revista e în Web of Science (SCIE, SSCI sau AHCI) și 1 × m / n când platforma o știe în cel puțin 3 baze de date; pentru o revistă indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; t = Tip == 'Recenzie' ? (Revista_WoS ? 3.0 : ((N_baze_date >= 3 || Incadrare_aprobata == 'Revistă indexată în cel puțin 3 baze de date') ? 1.0 : 0.0)) : 1.0; t * m / n",
+  "description": "Indicatorul I.7: recenzie publicată într-o revistă indexată ISI/Web of Science: 3 × m / n. Recenzie într-o revistă indexată în cel puțin 3 baze de date recunoscute sau termen de minimum o pagină într-o enciclopedie ori într-un dicționar de specialitate, la o editură din Lista A1 sau A2 (definiția [4]): 1 × m / n. Se declară de candidat, cu ISSN-ul revistei pentru o recenzie și cu editura pentru un termen, cu numărul de autori (fără numărul de autori completat, înregistrarea nu se punctează); o înregistrare fără tip nu se punctează. Încadrarea nu se alege: o recenzie valorează 3 × m / n când revista e în Web of Science (SCIE, SSCI sau AHCI) și 1 × m / n când platforma o știe în cel puțin 3 baze recunoscute; pentru o revistă indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. Editura unui termen se încadrează ca la I.3 declarat. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă.",
+  "formula": "t = Tip == 'Recenzie' ? (Revista_WoS ? 3.0 : ((N_baze_date >= 3 || Incadrare_aprobata == 'Revistă indexată în cel puțin 3 baze de date') ? 1.0 : 0.0)) : (Tip == 'Termen în enciclopedie sau dicționar' ? (Categorie_editura != null ? 1.0 : 0.0) : 0.0); (N_autori == null || N_autori < 1) ? 0 : t * Coef_m / N_autori",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "cddb03df7122ad799bfe9d0d24b21f40a5a1239ccbce92fa7ec695726d64efb8",
+  "formulaHash": "86373666b1652388bde6a0ac2e186f86d546d86632f21594def31644d4b3e48d",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6013,7 +6013,8 @@
     "$oid": "6abbfc460faa5f42002d72a7"
    }
   },
-  "version": 0
+  "version": 0,
+  "sociologie2026": true
  },
  {
   "_id": {
@@ -6050,12 +6051,12 @@
    "$oid": "6abbfc470faa5f42002d72c2"
   },
   "name": "Soc26_I8_decl",
-  "description": "Indicatorul I.8, lucrări declarate de candidat: lucrări în volumele unor conferințe, cu ISSN sau ISBN, care nu apar în platformă. Fiecare aduce 1 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; 1 * m / n",
+  "description": "Indicatorul I.8, lucrări declarate de candidat: lucrări în volumele unor conferințe, cu ISSN sau ISBN, care nu apar în platformă. Fiecare aduce 1 × m / n. ISSN-ul sau ISBN-ul se verifică după cifra de control: o lucrare fără un identificator valid nu se punctează; fără numărul de autori completat, înregistrarea nu se punctează. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "(Identificator_valid && N_autori != null && N_autori >= 1) ? Coef_m / N_autori : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "d35a57e3f17505f1b3011dad45fb41516a443e258139ffe1a5cc921dbd2ae976",
+  "formulaHash": "29f43e2f76e7e4d95655cd29c9b1bf4b63db068a60550304b566c3e6825bde69",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6083,12 +6084,12 @@
    "$oid": "6abbfc470faa5f42002d72c3"
   },
   "name": "Soc26_I8_trad",
-  "description": "Indicatorul I.8, traduceri: traducerea unei lucrări fundamentale din domeniul științelor sociale, la o editură din Lista A2: 2 puncte; însoțită de aparat critic: 4 puncte. Se declară de candidat. Contează editurile din Lista A2 (ori o traducere cuprinsă în cel puțin 6 biblioteci din worldcat.org), nu și cele din Lista A1, cum spune standardul; încadrarea editurii: ca la I.3 declarat.",
-  "formula": "Categorie_editura == 'A2' ? (Tip == 'Cu aparat critic' ? 4 : 2) : 0",
+  "description": "Indicatorul I.8, traduceri: traducerea unei lucrări fundamentale din domeniul științelor sociale, la o editură din Lista A2: 2 puncte; însoțită de aparat critic: 4 puncte. Se declară de candidat. Contează editurile din Lista A2 (ori o traducere cuprinsă în cel puțin 6 biblioteci din worldcat.org), nu și cele din Lista A1, cum spune standardul; încadrarea editurii: ca la I.3 declarat. Caracterul fundamental al lucrării traduse nu poate fi stabilit de platformă: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "(Incadrare_aprobata != null && Categorie_editura == 'A2') ? (Tip == 'Cu aparat critic' ? 4 : 2) : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a169a735df88f71081b3f6d9e08f3c9104cf78cbc26d502e9cb95b849f69d814",
+  "formulaHash": "c97371b070bafa6a544c43decc3dddffece6cedef6fb1ded8fa96e0444f98d07",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6147,12 +6148,12 @@
    "$oid": "6abbfc470faa5f42002d72c5"
   },
   "name": "Soc26_I9_decl",
-  "description": "Indicatorul I.9, citări declarate de candidat: citări care nu apar în platformă și recenzii la cărțile candidatului, pe care standardul le asimilează citărilor. Fiecare aduce (0,2 + 4 × f) × 2 / n, cu f factorul de impact al sursei care citează (gol dacă nu are) și n numărul de autori ai lucrării citate. Câte o înregistrare pentru fiecare citare. Se declară doar ce nu este deja punctat automat de platformă.",
-  "formula": "fi = (IF_sursa == null || IF_sursa < 0) ? 0 : IF_sursa; n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (0.2 + 4 * fi) * 2 / n",
+  "description": "Indicatorul I.9, citări declarate de candidat: citări care nu apar în platformă și recenzii la cărțile candidatului, pe care standardul le asimilează citărilor. Fiecare aduce (0,2 + 4 × f) × 2 / n, cu f factorul de impact al sursei care citează și n numărul de autori ai lucrării citate (fără numărul de autori completat, înregistrarea nu se punctează). Factorul de impact nu se scrie: se dă ISSN-ul sursei care citează, iar platforma îl ia din listele Web of Science pentru anul citării; o sursă fără factor de impact (o carte, o revistă necotată) contează cu f = 0. Câte o înregistrare pentru fiecare citare. Se declară doar ce nu este deja punctat automat de platformă.",
+  "formula": "fi = IF_revista == null ? 0.0 : IF_revista; (N_autori == null || N_autori < 1) ? 0 : (0.2 + 4 * fi) * 2 / N_autori",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "7c165d4edcd12f6b05df507deaac87ed76c1a181e1df00d6df35e17b513ea41b",
+  "formulaHash": "ac45481117632bac0f0a5ee1c25a3a2c2faa003ae4eb36fe402992c5a79ee584",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6180,12 +6181,12 @@
    "$oid": "6abbfc470faa5f42002d72c6"
   },
   "name": "Soc26_I10",
-  "description": "Indicatorul I.10: reviste indexate ISI/Web of Science sau SCOPUS. Editor, redactor-șef sau redactor delegat: 5 puncte pe an. Membru în comitetul de redacție sau științific: 3 puncte pe an. Editor invitat: 2 puncte pentru fiecare număr special. Numărul de ani rezultă din anul de început și anul de sfârșit. Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în ISI/Web of Science (SCIE, SSCI, AHCI), în SCOPUS și în câte alte baze de date; pentru o revistă indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă.",
-  "formula": "k = (N_numere_speciale == null || N_numere_speciale < 1) ? 1 : N_numere_speciale; (Revista_WoS || Revista_Scopus) ? (Rol == 'Editor, redactor-șef sau redactor delegat' ? 5 * N_editii : (Rol == 'Membru în comitetul de redacție sau științific' ? 3 * N_editii : (Rol == 'Editor invitat al unui număr special' ? 2 * k : 0))) : 0",
+  "description": "Indicatorul I.10: reviste indexate ISI/Web of Science sau SCOPUS. Editor, redactor-șef sau redactor delegat: 5 puncte pe an. Membru în comitetul de redacție sau științific: 3 puncte pe an. Editor invitat: 2 puncte pentru fiecare număr special (cel mult 20). Se punctează doar anii mandatului, de la anul de început la anul de sfârșit (fără an de sfârșit, până în anul raportului), în care revista era în Web of Science (SCIE, SSCI, AHCI) sau în SCOPUS; pentru SCOPUS platforma nu are istoricul, așa că starea de azi stă pentru toți anii. Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în ISI/Web of Science (SCIE, SSCI, AHCI), în SCOPUS și în câte dintre bazele recunoscute pe care le cunoaște (Web of Science socotit o singură dată, SCOPUS, ERIH PLUS, DOAJ); pentru o revistă indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "k = (N_numere_speciale == null || N_numere_speciale < 1) ? 1 : N_numere_speciale; Rol == 'Editor, redactor-șef sau redactor delegat' ? 5 * N_ani_WoS_Scopus : (Rol == 'Membru în comitetul de redacție sau științific' ? 3 * N_ani_WoS_Scopus : ((Rol == 'Editor invitat al unui număr special' && (Revista_WoS || Revista_Scopus)) ? 2 * k : 0))",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "b2db28d9309f8a142c0797c39c26cb4e283c70ad72309d162e138dc111b974de",
+  "formulaHash": "e2beb432925076fd141bb856cac6325efea7540b7e5e9a2dc9c3903cbfc0be5a",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6213,12 +6214,12 @@
    "$oid": "6abbfc470faa5f42002d72c7"
   },
   "name": "Soc26_I11",
-  "description": "Indicatorul I.11: reviste indexate în trei baze de date recunoscute, altele decât ISI/Web of Science și SCOPUS. Editor: 2 puncte pe an. Membru în comitetul de redacție sau științific: 1 punct pe an. Editor invitat: 1 punct pentru fiecare număr special. Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în ISI/Web of Science (SCIE, SSCI, AHCI), în SCOPUS și în câte alte baze de date; pentru o revistă indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă.",
-  "formula": "k = (N_numere_speciale == null || N_numere_speciale < 1) ? 1 : N_numere_speciale; (!(Revista_WoS || Revista_Scopus) && (N_baze_date >= 3 || Incadrare_aprobata == 'Revistă indexată în cel puțin 3 baze de date')) ? (Rol == 'Editor, redactor-șef sau redactor delegat' ? 2 * N_editii : (Rol == 'Membru în comitetul de redacție sau științific' ? 1 * N_editii : (Rol == 'Editor invitat al unui număr special' ? 1 * k : 0))) : 0",
+  "description": "Indicatorul I.11: reviste indexate în trei baze de date recunoscute, altele decât ISI/Web of Science și SCOPUS. Editor: 2 puncte pe an. Membru în comitetul de redacție sau științific: 1 punct pe an. Editor invitat: 1 punct pentru fiecare număr special (cel mult 20). Se punctează doar anii mandatului în care revista era în cel puțin trei baze recunoscute pe care platforma le cunoaște (Web of Science socotit o singură dată, ERIH PLUS, DOAJ); pentru una indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere (atunci contează toți anii mandatului). Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află din listele ei dacă e în ISI/Web of Science (SCIE, SSCI, AHCI), în SCOPUS și în câte dintre bazele recunoscute pe care le cunoaște (Web of Science socotit o singură dată, SCOPUS, ERIH PLUS, DOAJ); pentru o revistă indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "k = (N_numere_speciale == null || N_numere_speciale < 1) ? 1 : N_numere_speciale; b = (Revista_WoS || Revista_Scopus) ? 0 : (Incadrare_aprobata == 'Revistă indexată în cel puțin 3 baze de date' ? N_editii : N_ani_BDI); Rol == 'Editor, redactor-șef sau redactor delegat' ? 2 * b : (Rol == 'Membru în comitetul de redacție sau științific' ? 1 * b : ((Rol == 'Editor invitat al unui număr special' && !(Revista_WoS || Revista_Scopus) && (N_baze_date >= 3 || Incadrare_aprobata == 'Revistă indexată în cel puțin 3 baze de date')) ? 1 * k : 0))",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e2e94c2af0bea16a22228b11e832f303926077afbeb73b7b79bada2271870350",
+  "formulaHash": "56f70244120dff7b4c21e7f80a2611e4aa90e51f7b0366ab9df9266159f39d5c",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6246,12 +6247,12 @@
    "$oid": "6abbfc470faa5f42002d72c8"
   },
   "name": "Soc26_I12",
-  "description": "Indicatorul I.12: colecții (serii de volume). Editură din Lista A1: coordonator 8 puncte, membru în comitetul științific 4 puncte. Editură din Lista A2: coordonator 4 puncte, membru 2 puncte. Punctajul se acordă pentru fiecare colecție. Se declară de candidat; încadrarea rezultă din editura scrisă, după aceleași liste ca la I.3 declarat, iar pentru o editură de prestigiu internațional de pe nicio listă se cere, cu dovada.",
-  "formula": "Categorie_editura == 'A1' ? (Rol == 'Coordonator' ? 8 : 4) : (Categorie_editura == 'A2' ? (Rol == 'Coordonator' ? 4 : 2) : 0)",
+  "description": "Indicatorul I.12: colecții (serii de volume). Editură din Lista A1: coordonator 8 puncte, membru în comitetul științific 4 puncte. Editură din Lista A2: coordonator 4 puncte, membru 2 puncte. Punctajul se acordă pentru fiecare colecție; o înregistrare fără rol nu se punctează. Se declară de candidat; încadrarea rezultă din editura scrisă, după aceleași liste ca la I.3 declarat, iar pentru o editură de prestigiu internațional de pe nicio listă se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "Categorie_editura == 'A1' ? (Rol == 'Coordonator' ? 8 : (Rol == 'Membru în comitetul științific' ? 4 : 0)) : (Categorie_editura == 'A2' ? (Rol == 'Coordonator' ? 4 : (Rol == 'Membru în comitetul științific' ? 2 : 0)) : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "08435129663bbdb29ead9712458fa73cd0ef674bf835d99095730caf7aca4b94",
+  "formulaHash": "f39c3113420c61016ddf540e58fb7e4d038137126b1323edc25d6f5db8c7f5ea",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6280,12 +6281,12 @@
    "$oid": "6abbfc470faa5f42002d72c9"
   },
   "name": "Soc26_I13",
-  "description": "Indicatorul I.13: coordonarea sau participarea ca membru la un proiect de cercetare ori contract câștigat prin competiție (fără burse postdoctorale). Până la 10.000 EUR: coordonare 5, membru 2. Între 10.000 și 20.000 EUR: 10, respectiv 3. Între 20.000 și 30.000 EUR: 15, respectiv 4. Peste 30.000 EUR: coordonare 20. Pentru un membru al unui proiect de peste 30.000 EUR standardul nu dă o valoare; platforma acordă 4 puncte, ca la treapta anterioară. Bugetul se trece în EUR, la cursul BNR din data semnării contractului; un proiect fără buget completat este punctat la prima treaptă.",
-  "formula": "c = (Rol != null && Rol != 'Membru'); (Buget_eur == null || Buget_eur <= 10000) ? (c ? 5 : 2) : (Buget_eur <= 20000 ? (c ? 10 : 3) : (Buget_eur <= 30000 ? (c ? 15 : 4) : (c ? 20 : 4)))",
+  "description": "Indicatorul I.13: coordonarea sau participarea ca membru la un proiect de cercetare ori contract câștigat prin competiție (fără burse postdoctorale). Până la 10.000 EUR: coordonare 5, membru 2. Între 10.000 și 20.000 EUR: 10, respectiv 3. Între 20.000 și 30.000 EUR: 15, respectiv 4. Peste 30.000 EUR: coordonare 20. Pentru un membru al unui proiect de peste 30.000 EUR standardul nu dă o valoare; platforma acordă 4 puncte, ca la treapta anterioară. Bugetul se trece în EUR, la cursul BNR din data semnării contractului; un proiect fără buget completat este punctat la prima treaptă, iar unul fără rol nu se punctează.",
+  "formula": "c = (Rol == 'Director (proiect internațional)' || Rol == 'Director (proiect național)' || Rol == 'Coordonator local (proiect internațional)' || Rol == 'Coordonator local (proiect național)'); (!c && Rol != 'Membru') ? 0 : ((Buget_eur == null || Buget_eur <= 10000) ? (c ? 5 : 2) : (Buget_eur <= 20000 ? (c ? 10 : 3) : (Buget_eur <= 30000 ? (c ? 15 : 4) : (c ? 20 : 4))))",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e4130f4f6bf77f320bfe7c3da93f2f4f09f6daf72dcbca133994420adad384a3",
+  "formulaHash": "1737d7ae48857e3f336132d25889a1ff6c640b5f28580f7c4debcba98b9544d7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6346,12 +6347,12 @@
    "$oid": "6abbfc470faa5f42002d72cb"
   },
   "name": "Soc26_I15",
-  "description": "Indicatorul I.15: lucrări prezentate la conferințe științifice organizate în străinătate: 1 punct pentru fiecare conferință. Este nevoie de link la program sau de altă dovadă. Locul nu se alege: se numește conferința, iar țara ei o dă registrul de conferințe, în care experții domeniului o clasifică o singură dată, pentru toți; o conferință pe care registrul nu o cunoaște contează ca organizată în țară până o clasifică ei.",
-  "formula": "In_strainatate ? 1 : 0",
+  "description": "Indicatorul I.15: lucrări prezentate la conferințe științifice organizate în străinătate: 1 punct pentru fiecare conferință. Este nevoie de link la program sau de altă dovadă. Locul nu se alege: se numește conferința, iar țara ei o dă registrul de conferințe, în care experții domeniului o clasifică o singură dată, pentru toți; o conferință pe care registrul nu o cunoaște contează ca organizată în țară (I.16) până o clasifică ei, iar una respinsă nu se punctează.",
+  "formula": "(Entitate_valida && In_strainatate) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "73344716781a4aa22b99dc77c9bb8847f052336968c9dc00d2496b90fc71cb23",
+  "formulaHash": "b36f04b4d90403902d5f383fa37384dc052ffcc5390f19073bdffbdd2f30f291",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6379,12 +6380,12 @@
    "$oid": "6abbfc470faa5f42002d72cc"
   },
   "name": "Soc26_I16",
-  "description": "Indicatorul I.16: lucrări prezentate la conferințe organizate în țară: 0,5 puncte pentru fiecare conferință. Este nevoie de link la program sau de altă dovadă. Locul nu se alege: se numește conferința, iar țara ei o dă registrul de conferințe, în care experții domeniului o clasifică o singură dată, pentru toți; o conferință pe care registrul nu o cunoaște contează ca organizată în țară până o clasifică ei.",
-  "formula": "(Entitate_numita && !In_strainatate) ? 0.5 : 0",
+  "description": "Indicatorul I.16: lucrări prezentate la conferințe organizate în țară: 0,5 puncte pentru fiecare conferință. Este nevoie de link la program sau de altă dovadă. Locul nu se alege: se numește conferința, iar țara ei o dă registrul de conferințe, în care experții domeniului o clasifică o singură dată, pentru toți; o conferință pe care registrul nu o cunoaște contează ca organizată în țară până o clasifică ei, iar una respinsă nu se punctează.",
+  "formula": "(Entitate_valida && !In_strainatate) ? 0.5 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "27b90bc77c473a0ed35fb0181f5f248a08e57fa2e246393c2859384630bf6adf",
+  "formulaHash": "f88a4fb501230bb66ac555fabc61b1f20e289f608162e71101f672f97c9023cd",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6412,12 +6413,12 @@
    "$oid": "6abbfc470faa5f42002d72cd"
   },
   "name": "Soc26_I17",
-  "description": "Indicatorul I.17: studiu, individual sau colectiv, de evaluare și fundamentare de politici publice, realizat prin contract cu transfer de cunoaștere, pentru instituții publice, organizații naționale sau internaționale ori centre de cercetare: 2 × m. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); 2 * m",
+  "description": "Indicatorul I.17: studiu, individual sau colectiv, de evaluare și fundamentare de politici publice, realizat prin contract cu transfer de cunoaștere, pentru instituții publice, organizații naționale sau internaționale ori centre de cercetare: 2 × m. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă.",
+  "formula": "2 * Coef_m",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "f7b9afdee827da8aac8ce6c7c461fd66972acfcbec4b0bdb3df798318501baa4",
+  "formulaHash": "3ac9353755a9c6cba0cc928e3031b3ec68adc3b06966293409a696a37cd9c63c",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6511,12 +6512,12 @@
    "$oid": "6abbfc470faa5f42002d72d0"
   },
   "name": "Soc26_I19_2",
-  "description": "Indicatorul I.19: suport de curs sau de seminar de minimum 20 de pagini, cu ISBN sau diseminat pe internet: 4 × m / n. Capitol într-un asemenea suport: 1 × m / n. Coeficientul m se alege de candidat: 2 pentru o publicație apărută în străinătate, cu peer review internațional, într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă); 1,5 pentru o publicație într-o asemenea limbă, apărută în țară; 1 în celelalte cazuri.",
-  "formula": "m = Coeficient_m == 'm = 2' ? 2.0 : (Coeficient_m == 'm = 1.5' ? 1.5 : 1.0); n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Suport de curs sau de seminar, minimum 20 de pagini' ? 4 : 1) * m / n",
+  "description": "Indicatorul I.19: suport de curs sau de seminar de minimum 20 de pagini, cu ISBN sau diseminat pe internet: 4 × m / n. Capitol într-un asemenea suport: 1 × m / n. O înregistrare fără tip nu se punctează; fără numărul de autori completat, înregistrarea nu se punctează. Coeficientul m nu se alege: rezultă din limba publicației, declarată, și din locul apariției, aflat de platformă — 2 pentru o publicație într-o limbă de circulație internațională (engleză, franceză, germană, italiană, spaniolă) apărută în străinătate (țara revistei, ori o editură străină de pe listele internaționale); 1,5 pentru o asemenea limbă cu apariție în țară sau într-un loc pe care platforma nu îl poate stabili; 1 în celelalte cazuri. Evaluarea internațională (peer review), pe care o cere definiția [6], nu poate fi verificată de platformă.",
+  "formula": "(N_autori == null || N_autori < 1) ? 0 : (Tip == 'Suport de curs sau de seminar, minimum 20 de pagini' ? 4 : (Tip == 'Capitol în suport de curs sau de seminar' ? 1 : 0)) * Coef_m / N_autori",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "47aee3e3a4e2091b24c311f23cc56356470ba6d9e6b629b24d77dbb50fd2f66e",
+  "formulaHash": "da97da31761c369c68f47d8c626e620020ac07078d13d5d7f39e15a40ed60e78",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6700,12 +6701,12 @@
    "$oid": "6abbfc470faa5f42002d72d6"
   },
   "name": "Soc26_C4_articole_decl",
-  "description": "Numărul articolelor declarate de candidat la I.2. Intră în criteriul C.4.",
-  "formula": "1",
+  "description": "Numărul articolelor declarate de candidat la I.2 care se punctează acolo (revistă în SCOPUS sau în cel puțin 3 baze de date recunoscute, ori încadrare aprobată). Intră în criteriul C.4.",
+  "formula": "(N_autori == null || N_autori < 1 || IF_revista != null) ? 0 : ((Revista_Scopus || N_baze_date >= 3 || Incadrare_aprobata == 'Revistă indexată în cel puțin 3 baze de date') ? 1 : 0)",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "formulaHash": "34c8cfbd956900ebd77fb2c20416487e691d2343289cea5e12281443c04c274b",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6857,12 +6858,12 @@
    "$oid": "6abbfc470faa5f42002d72db"
   },
   "name": "Soc26_C5_A1_decl",
-  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A1 (încadrarea: ca la I.3 declarat). Intră în criteriul C.5.",
-  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura == 'A1' && n <= 3) ? 1 : 0",
+  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori (numărul de autori completat), la edituri din Lista A1 (încadrarea: ca la I.3 declarat). Intră în criteriul C.5.",
+  "formula": "(N_autori != null && N_autori >= 1 && Tip == 'Carte' && Categorie_editura == 'A1' && N_autori <= 3) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "35acace97190f33452cc6557f488bb6d76750d90dfb0c86f61249590ec45f0e6",
+  "formulaHash": "5d2bf706d9136a1385410bb451ffeed4e865fb5ff49d85a5a65f26e8a61a9bc6",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6891,12 +6892,12 @@
    "$oid": "6abbfc470faa5f42002d72dc"
   },
   "name": "Soc26_C5_A2_decl",
-  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori, la edituri din Lista A2 sau cuprinse în cel puțin 6 biblioteci din worldcat.org (încadrarea: ca la I.3 declarat). Intră în criteriul C.5.",
-  "formula": "n = (N_autori == null || N_autori < 1) ? 1 : N_autori; (Tip == 'Carte' && Categorie_editura == 'A2' && n <= 3) ? 1 : 0",
+  "description": "Numărul cărților declarate de candidat, cu cel mult 3 autori (numărul de autori completat), la edituri din Lista A2 sau cuprinse în cel puțin 6 biblioteci din worldcat.org (încadrarea: ca la I.3 declarat). Intră în criteriul C.5.",
+  "formula": "(N_autori != null && N_autori >= 1 && Tip == 'Carte' && Categorie_editura == 'A2' && N_autori <= 3) ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "4b84c7232c244848b6644ace34f93aac3811a34647be59c60b029a3942cf143d",
+  "formulaHash": "edcf43bdb450e47aface968cf02c40fc0bea6aa45f568c7c025162e1236a5512",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -6988,12 +6989,12 @@
    "$oid": "6abbfc470faa5f42002d72df"
   },
   "name": "Soc26_C10",
-  "description": "Criteriul C.10, doar pentru profesor: după obținerea abilitării, candidatul coordonează cel puțin un doctorand, cu afiliere la o școală doctorală, sau a publicat un articol într-o revistă ISI/Web of Science din nucleul disciplinei ori din domeniile conexe. Se declară de candidat; o singură condiție îndeplinită este de ajuns.",
-  "formula": "1",
+  "description": "Criteriul C.10, doar pentru profesor: după obținerea abilitării, candidatul coordonează cel puțin un doctorand, cu afiliere la o școală doctorală, sau a publicat un articol într-o revistă ISI/Web of Science din nucleul disciplinei ori din domeniile conexe. Se declară de candidat, alegând condiția îndeplinită, cu dovada: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. O singură condiție îndeplinită este de ajuns.",
+  "formula": "Incadrare_aprobata != null ? 1 : 0",
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "formulaHash": "31bf7f6da4b1497a04c780343f9f4bd95452d360c32ae063360d1914abc0f0a0",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7377,8 +7378,8 @@
    "$oid": "6abfc79210e2c7537f4c8bfb"
   },
   "name": "Muz26_DID_1_2",
-  "description": "DID 1.2: capitol într-un volum colectiv: 15 puncte.",
-  "formula": "15",
+  "description": "DID 1.2: capitol într-un volum colectiv publicat: 15 puncte. «Publicat» înseamnă, în tot standardul, la o editură clasificată CNCS în categoria A sau B, ori la o editură străină echivalentă; încadrarea nu se alege: rezultă din editura scrisă la declarare, ca la DID 1.1.",
+  "formula": "Categorie_editura != null ? 15 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7393,7 +7394,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+  "formulaHash": "92fd804aa7dcb29e90980d7129b179df4fcc09bd2a353d48d407c1af242a6197",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7403,7 +7404,8 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "muzica2026": true
  },
  {
   "_id": {
@@ -7443,8 +7445,8 @@
    "$oid": "6abfc79210e2c7537f4c8bfd"
   },
   "name": "Muz26_DID_1_4",
-  "description": "DID 1.4: traducere, editare critică sau îngrijire redacțională a unei opere muzicale ori teoretice fundamentale, a unei antologii, crestomații sau colecții de specialitate publicate: 20 de puncte.",
-  "formula": "20",
+  "description": "DID 1.4: traducere, editare critică sau îngrijire redacțională a unei opere muzicale ori teoretice fundamentale, a unei antologii, crestomații sau colecții de specialitate publicate: 20 de puncte. «Publicat» înseamnă, în tot standardul, la o editură clasificată CNCS în categoria A sau B, ori la o editură străină echivalentă; încadrarea nu se alege: rezultă din editura scrisă la declarare, ca la DID 1.1.",
+  "formula": "Categorie_editura != null ? 20 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7459,7 +7461,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "f5ca38f748a1d6eaf726b8a42fb575c3c71f1864a8143301782de13da2d9202b",
+  "formulaHash": "e1309f078aa33e716bd94741a0a07bc839c2d82f6252cfbffe6be8f4e219745d",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7469,15 +7471,16 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "muzica2026": true
  },
  {
   "_id": {
    "$oid": "6abfc79210e2c7537f4c8bfe"
   },
   "name": "Muz26_DID_2_1",
-  "description": "DID 2.1: înregistrare a lucrărilor sau a prestațiilor interpretative proprii, pe CD, DVD sau disc de vinil cu cod de autentificare, ori în format digital distribuit prin streaming (înregistrare video din concert public, cu dovada difuzării): 30 de puncte. Programe diferite, de cel puțin 45 de minute; o înregistrare cu o durată declarată mai mică nu se punctează. CD-urile și DVD-urile fără cod sunt acceptate când sunt realizate sub egida unei televiziuni, case de film sau case de discuri.",
-  "formula": "(Durata_minute == null || Durata_minute >= 45) ? 30 : 0",
+  "description": "DID 2.1: înregistrare a lucrărilor sau a prestațiilor interpretative proprii, pe CD, DVD sau disc de vinil cu cod de autentificare, ori în format digital distribuit prin streaming (înregistrare video din concert public, cu dovada difuzării): 30 de puncte. Programe diferite, de cel puțin 45 de minute: durata și codul de autentificare se completează, iar o înregistrare fără ele nu se punctează. Casa de discuri, televiziunea sau casa de film se numește din registrul de organizații: înregistrarea contează când experții domeniului au clasificat-o națională sau internațională (o autoeditare nu se punctează); una pe care registrul nu o cunoaște nu se punctează până nu o clasifică.",
+  "formula": "(Durata_minute != null && Durata_minute >= 45 && Cod_autentificare != null && Recunoscut) ? 30 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7492,7 +7495,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "9850495602ed691947bf9f9db11b827da2d06ae0b74a3d01eac999912abb9464",
+  "formulaHash": "bd5b3f1a4714207d8b0406a2b595a4b3213e90e1b4849a37257b614fba56bad8",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7509,7 +7512,7 @@
    "$oid": "6abfc79210e2c7537f4c8bff"
   },
   "name": "Muz26_CS_1_1",
-  "description": "CS 1.1: prestație în condiții de vizibilitate internațională sau națională de vârf — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; aceeași înregistrare servește și fișei CNFIS. Vizibilitatea nu se alege: rezultă din rangul pe care registrul de evenimente artistice îl dă evenimentului sau instituției — de vârf pentru un eveniment internațional de vârf, internațional sau național de vârf (un festival sau o instituție din țară cu vizibilitate internațională), regională sau locală pentru unul național sau local. Registrul cuprinde lista CNFIS și evenimentele clasificate de experții domeniului (conducerea facultății și a departamentelor, plus experții numiți); un eveniment pe care registrul nu îl cunoaște încă ajunge la ei, iar până îl clasifică, concertul contează ca prestație de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 20 de puncte.",
+  "description": "CS 1.1: prestație în condiții de vizibilitate internațională sau națională de vârf — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; o înregistrare fără rol nu se punctează, iar un membru de formație camerală cu o formație declarată de peste 10 persoane nu se punctează aici. Aceeași înregistrare servește și fișei CNFIS, al cărei tip de proiect rezultă din rezultat, din mărimea formației și din rol. Vizibilitatea nu se alege: rezultă din rangul pe care registrul de evenimente artistice îl dă evenimentului sau instituției — de vârf pentru un eveniment internațional de vârf, internațional sau național de vârf (un festival sau o instituție din țară cu vizibilitate internațională), regională sau locală pentru unul național sau local. Registrul cuprinde lista CNFIS și evenimentele clasificate de experții domeniului (conducerea facultății și a departamentelor, plus experții numiți); un eveniment pe care registrul nu îl cunoaște încă ajunge la ei, iar până îl clasifică, concertul contează ca prestație de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 20 de puncte.",
   "formula": "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && Vizibilitate_varf) ? 20 : 0",
   "domain": {
    "$ref": "domains",
@@ -7542,7 +7545,7 @@
    "$oid": "6abfc79210e2c7537f4c8c00"
   },
   "name": "Muz26_CS_1_2",
-  "description": "CS 1.2: prestație în condiții de vizibilitate regională sau locală — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; aceeași înregistrare servește și fișei CNFIS. Vizibilitatea nu se alege: rezultă din rangul pe care registrul de evenimente artistice îl dă evenimentului sau instituției — de vârf pentru un eveniment internațional de vârf, internațional sau național de vârf (un festival sau o instituție din țară cu vizibilitate internațională), regională sau locală pentru unul național sau local. Registrul cuprinde lista CNFIS și evenimentele clasificate de experții domeniului (conducerea facultății și a departamentelor, plus experții numiți); un eveniment pe care registrul nu îl cunoaște încă ajunge la ei, iar până îl clasifică, concertul contează ca prestație de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 10 puncte.",
+  "description": "CS 1.2: prestație în condiții de vizibilitate regională sau locală — concert, recital sau spectacol ca dirijor, compozitor, regizor, maestru de balet, solist, concert-maestru sau membru al unei formații camerale de cel mult 10 persoane. Se declară ca «Participare eveniment artistic», alegând evenimentul, rolul și mărimea formației; o înregistrare fără rol nu se punctează, iar un membru de formație camerală cu o formație declarată de peste 10 persoane nu se punctează aici. Aceeași înregistrare servește și fișei CNFIS, al cărei tip de proiect rezultă din rezultat, din mărimea formației și din rol. Vizibilitatea nu se alege: rezultă din rangul pe care registrul de evenimente artistice îl dă evenimentului sau instituției — de vârf pentru un eveniment internațional de vârf, internațional sau național de vârf (un festival sau o instituție din țară cu vizibilitate internațională), regională sau locală pentru unul național sau local. Registrul cuprinde lista CNFIS și evenimentele clasificate de experții domeniului (conducerea facultății și a departamentelor, plus experții numiți); un eveniment pe care registrul nu îl cunoaște încă ajunge la ei, iar până îl clasifică, concertul contează ca prestație de vizibilitate regională sau locală. Membrii ansamblurilor de peste 10 persoane nu se punctează aici. 10 puncte.",
   "formula": "(Rezultat_eveniment == 'PARTICIPARE' && Rol_eligibil && !Vizibilitate_varf) ? 10 : 0",
   "domain": {
    "$ref": "domains",
@@ -7604,8 +7607,8 @@
    "$oid": "6abfc79210e2c7537f4c8c02"
   },
   "name": "Muz26_CS_2_1_decl",
-  "description": "CS 2.1, declarate: studiu sau articol într-o revistă ori într-un volum de conferință indexat într-una dintre celelalte baze de date ale listei (Cambridge Core, CEEOL, EBSCO, JSTOR, Oxford Academic, Project MUSE, ProQuest, RILM, Sciendo, Taylor & Francis): 15 puncte. Nu se declară din nou articolele pe care platforma le găsește singură.",
-  "formula": "15",
+  "description": "CS 2.1, declarate: studiu sau articol într-o revistă ori într-un volum de conferință indexat în baze de date internaționale: 15 puncte. Indexarea nu se alege: se dă ISSN-ul revistei, iar platforma află dacă e în Web of Science, SCOPUS, ERIH PLUS sau DOAJ; pentru o revistă indexată într-una dintre celelalte baze ale listei (Cambridge Core, CEEOL, EBSCO, JSTOR, Oxford Academic, Project MUSE, ProQuest, RILM, Sciendo, Taylor & Francis) sau pentru un volum de conferință, baza se alege în cererea de încadrare, cu dovada: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. Nu se declară din nou articolele pe care platforma le găsește singură.",
+  "formula": "(N_baze_date >= 1 || Incadrare_aprobata != null) ? 15 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7620,7 +7623,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+  "formulaHash": "45dadb9e58eda43d2c320941cdd57c59649ebe9c0fcebd21ea7ba130ff7ebde5",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7637,8 +7640,8 @@
    "$oid": "6abfc79210e2c7537f4c8c03"
   },
   "name": "Muz26_CS_2_2",
-  "description": "CS 2.2: articol în lexicoane și dicționare muzicale internaționale, articol online pe site-ul unui festival internațional de vârf, rezumat pentru indexarea publicațiilor românești în RIPM, RILM, RISM sau RIDIM: 10 puncte. Pentru un articol pe site-ul unui festival, festivalul se numește din registrul de evenimente artistice și trebuie să fie clasificat internațional de vârf; unul pe care registrul nu îl cunoaște ajunge la experții domeniului și nu se punctează până nu îl clasifică.",
-  "formula": "(Tip != 'Articol online pe site-ul unui festival internațional de vârf' || Nivel_eveniment == 'INTERNATIONAL_TOP') ? 10 : 0",
+  "description": "CS 2.2: articol în lexicoane și dicționare muzicale internaționale, articol online pe site-ul unui festival internațional de vârf, rezumat pentru indexarea publicațiilor românești în RIPM, RILM, RISM sau RIDIM: 10 puncte. Pentru un articol pe site-ul unui festival, festivalul se numește din registrul de evenimente artistice și trebuie să fie clasificat internațional de vârf; unul pe care registrul nu îl cunoaște ajunge la experții domeniului și nu se punctează până nu îl clasifică. Pentru un lexicon sau un rezumat, caracterul internațional al lexiconului și publicarea rezumatului nu pot fi verificate de platformă: se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. O înregistrare fără tip nu se punctează.",
+  "formula": "Tip == 'Articol online pe site-ul unui festival internațional de vârf' ? (Nivel_eveniment == 'INTERNATIONAL_TOP' ? 10 : 0) : ((Tip != null && Incadrare_aprobata != null) ? 10 : 0)",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7653,7 +7656,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "84c0c95ada47c8b235821c877b542e97a859cc2444b871c72a6c889beed80a1c",
+  "formulaHash": "f3cdb588238cd7c1f51245994f87ec6be4a80e0801dab45d2dc545297fef39af",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7670,8 +7673,8 @@
    "$oid": "6abfc79210e2c7537f4c8c04"
   },
   "name": "Muz26_CS_2_3",
-  "description": "CS 2.3: comunicare susținută la o conferință, simpozion, reuniune științifică sau workshop cu comitet de selecție ori sistem peer-review: 15 puncte.",
-  "formula": "15",
+  "description": "CS 2.3: comunicare susținută la o conferință, simpozion, reuniune științifică sau workshop cu comitet de selecție ori sistem peer-review: 15 puncte. Se numește conferința din registrul de conferințe: experții domeniului bifează o singură dată, pentru toți, dacă are comitet de selecție sau evaluare colegială; una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică.",
+  "formula": "Comitet_selectie ? 15 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7686,7 +7689,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+  "formulaHash": "a8d535f34aa2e0a0032707e26ee20801a979fcf47e07af35d2c1add8b045c018",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7736,8 +7739,8 @@
    "$oid": "6abfc79210e2c7537f4c8c06"
   },
   "name": "Muz26_CS_4_1",
-  "description": "CS 4.1: compoziții ample, cicluri sau albume de lucrări publicate la edituri de profil din țară sau din străinătate (compozitori): 15 puncte.",
-  "formula": "15",
+  "description": "CS 4.1: compoziții ample, cicluri sau albume de lucrări publicate la edituri de profil din țară sau din străinătate (compozitori): 15 puncte. «Publicat» înseamnă, în tot standardul, la o editură clasificată CNCS în categoria A sau B, ori la o editură străină echivalentă; încadrarea nu se alege: rezultă din editura scrisă la declarare, ca la DID 1.1.",
+  "formula": "Categorie_editura != null ? 15 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7752,7 +7755,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+  "formulaHash": "92fd804aa7dcb29e90980d7129b179df4fcc09bd2a353d48d407c1af242a6197",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7762,15 +7765,16 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "muzica2026": true
  },
  {
   "_id": {
    "$oid": "6abfc79210e2c7537f4c8c07"
   },
   "name": "Muz26_RIA_1_1",
-  "description": "RIA 1.1: funcție de management deținută: 10 puncte pe an și pe funcție. Anii se socotesc de la anul de început la anul de sfârșit, inclusiv; fără an de sfârșit, până în anul curent.",
-  "formula": "10 * N_ani",
+  "description": "RIA 1.1: funcție de management deținută: 10 puncte pe an și pe funcție. Anii se socotesc de la anul de început la anul de sfârșit, inclusiv; fără an de sfârșit, până în anul raportului; un an înainte de 1950 sau un an de sfârșit dinaintea celui de început nu se acceptă. Funcția nu poate fi verificată de platformă (o funcție deținută azi la universitate se vede în structura facultății, una trecută nu): se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere.",
+  "formula": "Incadrare_aprobata != null ? 10 * N_ani : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7785,7 +7789,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "9414829a0e0c4a503ef6e48848c28b15b3bcaf9e721e6d56678bc6cba79691e3",
+  "formulaHash": "3c3ebc33cb78cc994cdce67685acf5331109e70cfb72ad5ead6a8f0c0850d4b6",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7802,8 +7806,8 @@
    "$oid": "6abfc79210e2c7537f4c8c08"
   },
   "name": "Muz26_RIA_1_2",
-  "description": "RIA 1.2: director sau coordonator al unui grant ori proiect obținut prin atragere de finanțare sau câștigat prin competiție: 30 de puncte. Se declară ca «Grant Cercetare»; proiectele pe care platforma le cunoaște sunt propuse automat directorului.",
-  "formula": "(Rol != null && Rol != 'Membru') ? 30 : 0",
+  "description": "RIA 1.2: director sau coordonator al unui grant ori proiect obținut prin atragere de finanțare sau câștigat prin competiție: 30 de puncte. Se declară ca «Grant Cercetare», cu rolul de director sau coordonator (o înregistrare fără rol nu se punctează); proiectele pe care platforma le cunoaște sunt propuse automat directorului.",
+  "formula": "(Rol == 'Director (proiect internațional)' || Rol == 'Director (proiect național)' || Rol == 'Coordonator local (proiect internațional)' || Rol == 'Coordonator local (proiect național)') ? 30 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7818,7 +7822,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "058f075961ecc53f3913d747a583d42a9f2d4e92f012651e57cf8bdac92af772",
+  "formulaHash": "6333ba91f19f1be952f17a1213bff59be5ed6e7a2a4a290744c83293012977fc",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7835,8 +7839,8 @@
    "$oid": "6abfc79210e2c7537f4c8c09"
   },
   "name": "Muz26_RIA_1_3",
-  "description": "RIA 1.3: membru în colectivul de redacție sau recenzor al unei publicații ori edituri indexate în baze de date internaționale: 10 puncte.",
-  "formula": "10",
+  "description": "RIA 1.3: membru în colectivul de redacție sau recenzor al unei publicații ori edituri indexate în baze de date internaționale: 10 puncte. Indexarea nu se alege: pentru o revistă se dă ISSN-ul, iar platforma află dacă e în Web of Science, SCOPUS, ERIH PLUS sau DOAJ; pentru o editură, încadrarea rezultă din numele ei, ca la DID 1.1; pentru o publicație sau o editură indexată în baze pe care platforma nu le cunoaște se cere încadrarea, cu dovada, și contează după ce conducerea departamentului sau a facultății o aprobă; dacă înregistrarea se modifică după aprobare, cererea se întoarce la conducere. O înregistrare fără rol nu se punctează.",
+  "formula": "(Rol != null && (N_baze_date >= 1 || Categorie_editura != null || Incadrare_aprobata != null)) ? 10 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7851,7 +7855,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "4a44dc15364204a80fe80e9039455cc1608281820fe2b24f1e5233ade6af1dd5",
+  "formulaHash": "b84e106fff52c752df30c2644807007770de1a3440c065e70c046b379068225c",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7861,7 +7865,8 @@
   "selectorSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.Selector$All"
   },
-  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator"
+  "_class": "ro.uvt.pokedex.core.model.reporting.Indicator",
+  "muzica2026": true
  },
  {
   "_id": {
@@ -7901,7 +7906,7 @@
    "$oid": "6abfc79210e2c7537f4c8c0b"
   },
   "name": "Muz26_RIA_1_5",
-  "description": "RIA 1.5: organizator al unei manifestări științifice sau artistice de nivel național: 10 puncte. Nivelul nu se alege: se numește manifestarea — o conferință din registrul de conferințe sau un eveniment din registrul de evenimente artistice — iar registrul spune dacă e internațională sau națională; experții domeniului o clasifică o singură dată, pentru toți. O conferință pe care registrul nu o cunoaște contează ca națională până o clasifică; un eveniment artistic necunoscut sau clasificat local nu se punctează.",
+  "description": "RIA 1.5: organizator al unei manifestări științifice sau artistice de nivel național: 10 puncte. Nivelul nu se alege: se numește manifestarea — o conferință din registrul de conferințe sau un eveniment din registrul de evenimente artistice — iar registrul spune dacă e internațională sau națională; experții domeniului o clasifică o singură dată, pentru toți. O manifestare pe care registrul nu o cunoaște nu se punctează până o clasifică experții; una clasificată locală sau respinsă nu se punctează.",
   "formula": "(Recunoscut && !International) ? 10 : 0",
   "domain": {
    "$ref": "domains",
@@ -7934,8 +7939,8 @@
    "$oid": "6abfc79210e2c7537f4c8c0c"
   },
   "name": "Muz26_RIA_2_1",
-  "description": "RIA 2.1: distincție sau premiu de stat, în România sau în străinătate: 40 de puncte.",
-  "formula": "40",
+  "description": "RIA 2.1: distincție sau premiu de stat, în România sau în străinătate: 40 de puncte. Se numește distincția din registrul de premii, în care experții domeniului o clasifică o singură dată, pentru toți, ca distincție de stat; una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică.",
+  "formula": "Premiu_de_stat ? 40 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7950,7 +7955,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "d59eced1ded07f84c145592f65bdf854358e009c5cd705f5215bf18697fed103",
+  "formulaHash": "d20f6b8c5a86014330a2fc8a211207bfc38e8cb4ee6cc56c46eba7b3ce8796f4",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -7967,8 +7972,8 @@
    "$oid": "6abfc79210e2c7537f4c8c0d"
   },
   "name": "Muz26_RIA_2_2",
-  "description": "RIA 2.2: distincție sau premiu acordat de o organizație profesională, de media (internaționale sau naționale) ș.a.: 30 de puncte.",
-  "formula": "30",
+  "description": "RIA 2.2: distincție sau premiu acordat de o organizație profesională, de media (internaționale sau naționale) ș.a.: 30 de puncte. Se numește distincția din registrul de premii: contează când experții domeniului au clasificat-o națională sau internațională; una pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică.",
+  "formula": "Recunoscut ? 30 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -7983,7 +7988,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "624b60c58c9d8bfb6ff1886c2fd605d2adeb6ea4da576068201b6c6958ce93f4",
+  "formulaHash": "9482ed82253098006d3ded20f4363f4d33e7a39eff544f8ba51bd9611aef28a7",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -8000,8 +8005,8 @@
    "$oid": "6abfc79210e2c7537f4c8c0e"
   },
   "name": "Muz26_RIA_2_3",
-  "description": "RIA 2.3: premiu obținut la un concurs de creație sau de interpretare de prestigiu, internațional ori național: 40 de puncte. Se declară ca «Participare eveniment artistic» cu rezultatul «Premiu»; aceeași înregistrare servește și fișei CNFIS.",
-  "formula": "Rezultat_eveniment == 'PREMIU' ? 40 : 0",
+  "description": "RIA 2.3: premiu obținut la un concurs de creație sau de interpretare de prestigiu, internațional ori național: 40 de puncte. Se declară ca «Participare eveniment artistic» cu rezultatul «Premiu», numind concursul din registrul de evenimente artistice: premiul contează când experții domeniului l-au clasificat drept concurs de nivel național sau internațional; aceeași înregistrare servește și fișei CNFIS.",
+  "formula": "(Rezultat_eveniment == 'PREMIU' && Concurs && Recunoscut) ? 40 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -8016,7 +8021,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "a537de07496f091318493cbbf394cf1bcf2f4de5c5bbf324500772d65fb641b7",
+  "formulaHash": "aa111461a8311fa5be57635f860a6c4da896e88da19b9fbdf4c60eca584f268c",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -8165,8 +8170,8 @@
    "$oid": "6abfc79210e2c7537f4c8c13"
   },
   "name": "Muz26_RIA_3_5",
-  "description": "RIA 3.5: curs, masterclass sau conferință susținută în altă instituție de profil ori în cadrul unei manifestări de profil: 20 de puncte în țară, 30 în străinătate, în limbi străine. Locul nu se alege: se numește universitatea (din listă) sau instituția (din registrul de organizații), iar țara ei decide; o instituție pe care registrul nu o cunoaște contează în țară până o clasifică experții domeniului.",
-  "formula": "In_strainatate ? 30 : 20",
+  "description": "RIA 3.5: curs, masterclass sau conferință susținută în altă instituție de profil ori în cadrul unei manifestări de profil: 20 de puncte în țară, 30 în străinătate, în limbi străine. Se numește universitatea (din clasamentele pe care platforma le are) sau instituția (din registrul de organizații), iar țara ei decide; propria universitate nu se punctează, iar o instituție pe care registrul nu o cunoaște nu se punctează până o clasifică experții domeniului.",
+  "formula": "(Universitate_numita || Recunoscut) ? (In_strainatate ? 30 : 20) : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -8181,7 +8186,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "425e6ad02419fdfb5f76ffc53d5dfaf070528c77ddb0e1d21d183cb0034b5a0a",
+  "formulaHash": "14cdaff436fb2be5c2a7068d9c33904257d2b17f759f48e834509eb2baf28b6c",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -8231,8 +8236,8 @@
    "$oid": "6abfc79210e2c7537f4c8c15"
   },
   "name": "Muz26_RIA_3_7",
-  "description": "RIA 3.7: keynote speaker la o manifestare științifică: 20 de puncte la nivel național, 30 la nivel internațional. Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională — experții domeniului (conducerea facultății și a departamentelor, plus experții numiți) o clasifică o singură dată, pentru toți, după criteriile Comisiei 28. O conferință pe care registrul nu o cunoaște ajunge la ei și, până o clasifică, contează ca națională.",
-  "formula": "International ? 30 : 20",
+  "description": "RIA 3.7: keynote speaker la o manifestare științifică: 20 de puncte la nivel național, 30 la nivel internațional. Nivelul nu se alege: se numește conferința, iar registrul de conferințe spune dacă e internațională sau națională — experții domeniului o clasifică o singură dată, pentru toți. O conferință pe care registrul nu o cunoaște ajunge la ei și nu se punctează până nu o clasifică (standardul Comisiei 35 nu o socotește națională până atunci); una respinsă nu se punctează.",
+  "formula": "International ? 30 : (Recunoscut ? 20 : 0)",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -8247,7 +8252,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "81fe79201c04a951219be3ff8f20fe8eb9b6743585292e00ed703577eaa96f10",
+  "formulaHash": "bf90758aa463d95d3096cfd17506924e3fa8df7396df76e56f33a80f2d2065c5",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -8331,8 +8336,8 @@
    "$oid": "6abfc79210e2c7537f4c8c18"
   },
   "name": "Muz26_N_inregistrari",
-  "description": "Numără înregistrările de la DID 2.1 (compozitori și interpreți: 1 la conferențiar și abilitare, 2 la profesor; un CD, DVD sau disc de vinil, ori o înregistrare video din concert public difuzată prin streaming).",
-  "formula": "(Durata_minute == null || Durata_minute >= 45) ? 1 : 0",
+  "description": "Numără înregistrările de la DID 2.1 care se punctează acolo (compozitori și interpreți: 1 la conferențiar și abilitare, 2 la profesor).",
+  "formula": "(Durata_minute != null && Durata_minute >= 45 && Cod_autentificare != null && Recunoscut) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -8347,7 +8352,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "92fd0129df33d1ead621ac9a9ba46a6802250089195dc593f966b254520f9551",
+  "formulaHash": "d889de58d721f0631a91c44a23dbe49199ee09c10d29d63535cfa6c1ac202db8",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -8426,8 +8431,8 @@
    "$oid": "6abfc79210e2c7537f4c8c1b"
   },
   "name": "Muz26_N_articole_decl",
-  "description": "Numără articolele de la CS 2.1 declarate, alături de cele găsite automat.",
-  "formula": "1",
+  "description": "Numără articolele de la CS 2.1 declarate care se punctează acolo, alături de cele găsite automat.",
+  "formula": "(N_baze_date >= 1 || Incadrare_aprobata != null) ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -8442,7 +8447,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "formulaHash": "69eee0d7e52a88d440769b97a782691948953824807c78fb5963995989bfb4d4",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },
@@ -8459,8 +8464,8 @@
    "$oid": "6abfc79210e2c7537f4c8c1c"
   },
   "name": "Muz26_N_comunicari",
-  "description": "Numără comunicările de la CS 2.3 (teoreticieni: 5 / 8 / 6; compozitori: 1 / 2 / 1; interpreți: — / 1 / 1, la conferențiar / profesor / abilitare).",
-  "formula": "1",
+  "description": "Numără comunicările de la CS 2.3 care se punctează acolo (teoreticieni: 5 / 8 / 6; compozitori: 1 / 2 / 1; interpreți: — / 1 / 1, la conferențiar / profesor / abilitare).",
+  "formula": "Comitet_selectie ? 1 : 0",
   "domain": {
    "$ref": "domains",
    "$id": "ALL"
@@ -8475,7 +8480,7 @@
   "kind": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind$GenericActivity"
   },
-  "formulaHash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+  "formulaHash": "858004183283e842c8327639a2d906fe824c7a3dd10c7edd3f98a1a5f15a5e05",
   "yearRangeSpec": {
    "_class": "ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec$AllYears"
   },

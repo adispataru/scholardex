@@ -130,12 +130,15 @@ class StiinteEducatiei2026ReportDefinitionTest {
     }
 
     @Test
-    void proceedingsAreCappedAtTwoPerConferenceEdition() {
+    void proceedingsAreCappedAtTwoPerConferenceEditionTogether() {
         for (String proceedings : List.of("I8", "I9")) {
             assertEquals("INDEXED_PROCEEDINGS", edu.kindField(proceedings, "strategy"));
-            assertTrue(edu.indicator(proceedings).get("selectorSpec").get("_class").asText().endsWith("PerForumCap"));
             assertEquals(2, edu.indicator(proceedings).get("selectorSpec").get("n").asInt());
         }
+        // H145: "se pot puncta cumulat cel mult două contribuţii / ediţie" — the principal-author papers (I8) take an
+        // edition's places first, the co-authored ones (I9) keep what is left
+        assertTrue(edu.indicator("I8").get("selectorSpec").get("_class").asText().endsWith("PerForumCap"));
+        assertTrue(edu.indicator("I9").get("selectorSpec").get("_class").asText().endsWith("PerEditionCapAfterPrincipal"));
     }
 
     @Test
@@ -176,24 +179,30 @@ class StiinteEducatiei2026ReportDefinitionTest {
 
     @Test
     void theGoogleScholarHirschIndexIsNotReducedToAQuarter() {
-        assertEquals(16.0, edu.activity("I14", fields("h_GS", "4")), 1e-9);
-        assertEquals(49.0, edu.activity("I14", fields("h_GS", "7")), 1e-9);
-        assertEquals(4.0, psy.activity("I14", fields("h_GS", "4")), 1e-9);
+        String verified = "Valorile din profilul Google Scholar, verificate";
+        assertEquals(16.0, edu.approved("I14", fields("h_GS", "4", "Incadrare_solicitata", verified)), 1e-9);
+        assertEquals(49.0, edu.approved("I14", fields("h_GS", "7", "Incadrare_solicitata", verified)), 1e-9);
+        assertEquals(4.0, psy.approved("I14", fields("h_GS", "4", "Incadrare_solicitata", verified)), 1e-9);
+        assertEquals(0.0, edu.activity("I14", fields("h_GS", "15")), 1e-9, "H145: a typed h-index counts only once approved");
     }
 
     @Test
     void institutionalGrantsAreWorthDouble() {
-        assertEquals(9.0, edu.activity("I25",
-                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000")), 1e-9);
-        assertEquals(4.5, psy.activity("I25",
-                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000")), 1e-9);
+        // H145: the funder or awarding body is named and ranked; fellowships and chairs need an international one
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "Fondul Social European", "INTERNATIONAL", "FUNDER", null);
+        var fse = named(Activity.ReferenceField.ORGANIZATION_NAME, "Fondul Social European");
+        assertEquals(9.0, edu.activityNaming("I25",
+                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000"), fse), 1e-9);
+        assertEquals(4.5, psy.activityNaming("I25",
+                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "60000"), fse), 1e-9);
         // The floor and the fellowship/chair values are the annex's, the same for both domains.
-        assertEquals(0.0, edu.activity("I25",
-                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "19000")), 1e-9);
-        assertEquals(4.5, edu.activity("I25", fields("Tip", "Fellowship")), 1e-9);
-        assertEquals(9.0, edu.activity("I25", fields("Tip", "Chair")), 1e-9);
-        assertEquals(1.5, edu.activity("I26_2",
-                fields("Tip", "Cercetare aplicativă", "Rol", "Membru", "Buget", "25000")), 1e-9);
+        assertEquals(0.0, edu.activityNaming("I25",
+                fields("Tip", "Dezvoltare instituțională", "Rol", "Director", "Buget", "19000"), fse), 1e-9);
+        assertEquals(4.5, edu.activityNaming("I25", fields("Tip", "Fellowship"), fse), 1e-9);
+        assertEquals(9.0, edu.activityNaming("I25", fields("Tip", "Chair"), fse), 1e-9);
+        assertEquals(1.5, edu.activityNaming("I26_2",
+                fields("Tip", "Cercetare aplicativă", "Rol", "Membru", "Buget", "25000"), fse), 1e-9);
+        assertEquals(0.0, edu.activity("I25", fields("Tip", "Chair")), 1e-9, "nothing named");
     }
 
     @AfterEach
@@ -212,9 +221,9 @@ class StiinteEducatiei2026ReportDefinitionTest {
     @Test
     void editorialRolesUseTheDomainsOwnThreshold() {
         // A Web of Science journal with IF 0.6: m = 3 here, m = 1 for Psychology (H144: indexing and IF from the lists).
-        SeedReportDefinition.journal("1111-1111", false, true, true, true, 3, 0.6);
-        SeedReportDefinition.journal("2222-2222", false, true, true, true, 3, 0.05);
-        SeedReportDefinition.journal("3333-3333", false, false, false, true, 2, null);
+        SeedReportDefinition.journal("1111-1111", false, 0.6, "SSCI", "SCOPUS", "ERIH");
+        SeedReportDefinition.journal("2222-2222", false, 0.05, "SSCI", "SCOPUS", "ERIH");
+        SeedReportDefinition.journal("3333-3333", false, null, "SCOPUS", "DOAJ");
         assertEquals(36.0, edu.activityNaming("I15", fields("Rol", "Redactor-șef"), issn("1111-1111")), 1e-9);
         assertEquals(12.0, psy.activityNaming("I15", fields("Rol", "Redactor-șef"), issn("1111-1111")), 1e-9);
         assertEquals(4.0, edu.activityNaming("I15", fields("Rol", "Membru"), issn("2222-2222")), 1e-9);
@@ -231,15 +240,18 @@ class StiinteEducatiei2026ReportDefinitionTest {
         assertEquals(2.0, edu.publication("I4B", 0.5, null, false, 6, "B", "ch"), 1e-9);
         assertEquals(0.5, edu.onScore("I11", 1.0), 1e-9);
         assertEquals(49.0, edu.onScore("I13", 7.0), 1e-9);
-        assertEquals(2.5, edu.activity("I7", fields("N_autori", "2")), 1e-9);
-        assertEquals(0.05 * 300, edu.activity("I12", fields("Citari_GS", "420", "Citari_WoS", "120")), 1e-9);
+        assertEquals(2.5, edu.approved("I7", fields("N_autori", "2",
+                "Incadrare_solicitata", "Avizat, acreditat sau înregistrat (CPR, MEN, OSIM, ORDA)")), 1e-9);
+        assertEquals(0.05 * 300, edu.approved("I12", fields("Citari_GS", "420", "Citari_WoS", "120",
+                "Incadrare_solicitata", "Valorile din profilul Google Scholar, verificate")), 1e-9);
         SeedReportDefinition.rank(RegistryKind.SCIENTIFIC_EVENT, "ECER 2024", "INTERNATIONAL", "CONFERENCE", "Cyprus");
         assertEquals(6.0, edu.activityNaming("I16", fields(), named(Activity.ReferenceField.CONFERENCE_NAME, "ECER 2024")), 1e-9);
         assertEquals(12.0, edu.activity("I17", fields("Editura", "Routledge", "N_coordonatori", "2")), 1e-9);
-        SeedReportDefinition.journal("4444-4444", false, true, true, true, 3, 1.2);
-        SeedReportDefinition.journal("5555-5555", true, false, true, true, 2, null);
-        assertEquals(1.0, edu.activityNaming("I1A_bonus", fields(), issn("4444-4444")), 1e-9);
-        assertEquals(1.0, edu.activityNaming("I1B_bonus", fields(), issn("5555-5555")), 1e-9);
+        SeedReportDefinition.journal("4444-4444", false, 1.2, "SSCI", "SCOPUS", "ERIH");
+        SeedReportDefinition.journal("5555-5555", true, null, "ESCI", "SCOPUS");
+        var asked = fields("Incadrare_solicitata", "Articol punctat la I1A sau I1B, preînregistrat, cu date deschise");
+        assertEquals(1.0, edu.approvedNaming("I1A_bonus", asked, issn("4444-4444")), 1e-9);
+        assertEquals(1.0, edu.approvedNaming("I1B_bonus", asked, issn("5555-5555")), 1e-9);
         String budget = "50.000 – 99.999 EUR";
         assertEquals(81.0, edu.activity("I24",
                 fields("Rol", "Director (proiect internațional)", "Interval_buget", budget)), 1e-9);
@@ -301,13 +313,14 @@ class StiinteEducatiei2026ReportDefinitionTest {
         SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "UNESCO", "INTERNATIONAL", "AGENCY", null);
         SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "Ministerul Educației", "NATIONAL", "AGENCY", "România");
         var unesco = named(Activity.ReferenceField.ORGANIZATION_NAME, "UNESCO");
-        assertEquals(24.0, edu.activityNaming("I10", fields(), unesco), 1e-9);
+        assertEquals(24.0, edu.activityNaming("I10", fields("N_autori", "1"), unesco), 1e-9);
         assertEquals(8.0, edu.activityNaming("I10", fields("N_autori", "3"), unesco), 1e-9);
         assertEquals(4.0, edu.activityNaming("I10", fields("N_autori", "2"),
                 named(Activity.ReferenceField.ORGANIZATION_NAME, "Ministerul Educației")), 1e-9);
-        assertEquals(4.0, edu.activityNaming("I10", fields("N_autori", "2"),
-                named(Activity.ReferenceField.ORGANIZATION_NAME, "Inspectoratul Școlar")), 1e-9,
-                "an organisation the experts have not ranked counts as national");
+        // H145: an organisation the experts have not ranked counts nothing, nor does a report with no author count
+        assertEquals(0.0, edu.activityNaming("I10", fields("N_autori", "2"),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Inspectoratul Școlar")), 1e-9);
+        assertEquals(0.0, edu.activityNaming("I10", fields(), unesco), 1e-9);
     }
 
     @Test
@@ -320,12 +333,17 @@ class StiinteEducatiei2026ReportDefinitionTest {
 
         SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "EERA", "INTERNATIONAL", "ASSOCIATION", null);
         var eera = named(Activity.ReferenceField.ORGANIZATION_NAME, "EERA");
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "Asociația Profesorilor din Timiș", "NATIONAL", "ASSOCIATION", "România");
         var local = named(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația Profesorilor din Timiș");
         String board = "Președinte sau membru în comitetul executiv";
         assertEquals(6.0, edu.activityNaming("I19", fields("Rol", board), eera), 1e-9);
         assertEquals(2.0, edu.activityNaming("I19", fields("Rol", board), local), 1e-9);
         assertEquals(2.0, edu.activityNaming("I19", fields("Rol", "Membru"), eera), 1e-9);
         assertEquals(1.0, edu.activityNaming("I19", fields("Rol", "Membru"), local), 1e-9);
+        // H145: an association the experts have not ranked, or a role nobody states, counts nothing
+        assertEquals(0.0, edu.activityNaming("I19", fields("Rol", board),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația nouă")), 1e-9);
+        assertEquals(0.0, edu.activityNaming("I19", fields(), eera), 1e-9);
 
         SeedReportDefinition.rank(RegistryKind.AWARD, "EERA Best Paper Award", "INTERNATIONAL", "SCIENTIFIC", null);
         SeedReportDefinition.rank(RegistryKind.AWARD, "Premiul Academiei Române", "NATIONAL", "SCIENTIFIC", "România");
@@ -334,8 +352,9 @@ class StiinteEducatiei2026ReportDefinitionTest {
         assertEquals(4.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "Premiul Academiei Române")), 1e-9);
         assertEquals(4.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "Profesorul anului")), 1e-9,
                 "a teaching award counts 4 whatever its reach");
-        assertEquals(4.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "Un premiu nou")), 1e-9,
-                "an award the experts have not ranked counts 4");
+        assertEquals(0.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "Un premiu nou")), 1e-9,
+                "H145: the standard counts prestigious awards — one the experts have not ranked counts nothing");
+        assertEquals(0.0, edu.activity("I20", fields()), 1e-9, "no award named");
     }
 
     @Test
@@ -343,9 +362,9 @@ class StiinteEducatiei2026ReportDefinitionTest {
         assertEquals(6.0, edu.activity("I21", fields("Editura", "Polirom")), 1e-9);
         assertEquals(0.0, edu.activity("I21", fields()), 1e-9, "a collection counts at a classified publisher");
 
-        SeedReportDefinition.journal("1111-1111", false, false, true, true, 2, null); // ESCI counts as Web of Science here
-        SeedReportDefinition.journal("2222-2222", false, false, false, false, 1, null);
-        SeedReportDefinition.journal("3333-3333", false, false, false, false, 0, null);
+        SeedReportDefinition.journal("1111-1111", false, null, "ESCI", "SCOPUS"); // ESCI counts as Web of Science here
+        SeedReportDefinition.journal("2222-2222", false, null, "DOAJ");
+        SeedReportDefinition.journal("3333-3333", false, null);
         assertEquals(0.3, edu.activityNaming("I22", fields(), issn("1111-1111")), 1e-9);
         assertEquals(1.5, edu.activityNaming("I22", fields("N_articole", "5"), issn("1111-1111")), 1e-9);
         assertEquals(0.4, edu.activityNaming("I22", fields("N_articole", "2"), issn("2222-2222")), 1e-9);
@@ -359,8 +378,15 @@ class StiinteEducatiei2026ReportDefinitionTest {
         assertEquals(1.5, edu.activityNaming("I23", fields(), named(Activity.ReferenceField.UNIVERSITY_NAME, "University of Helsinki")), 1e-9);
         assertEquals(0.5, edu.activityNaming("I23", fields(), named(Activity.ReferenceField.UNIVERSITY_NAME, "Universitatea din Craiova")), 1e-9);
         assertEquals(0.5, edu.activityNaming("I23", fields(), named(Activity.ReferenceField.ORGANIZATION_NAME, "EERA")), 1e-9);
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "Asociația Profesorilor din Timiș", "NATIONAL", "ASSOCIATION", "România");
         assertEquals(0.25, edu.activityNaming("I23", fields(),
                 named(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația Profesorilor din Timiș")), 1e-9);
+        // H145: a university no ranking knows, or an association the experts have not ranked, counts nothing
+        assertEquals(0.0, edu.activityNaming("I23", fields(),
+                named(Activity.ReferenceField.UNIVERSITY_NAME, "Universitatea Inventată")), 1e-9);
+        assertEquals(0.0, edu.activityNaming("I23", fields(),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația nouă")), 1e-9);
+        assertEquals(0.0, edu.activity("I23", fields()), 1e-9, "nothing named");
     }
 
     @Test

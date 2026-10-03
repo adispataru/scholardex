@@ -604,7 +604,9 @@
     'MULTIPLE_GATES':       'multipleGates',
     'ISSN_NOT_FOUND':       'issnNotFound',
     'ISSN_INVALID':         'issnInvalid',
-    'PUBLISHER_NOT_CLASSIFIED': 'publisherNotClassified'
+    'PUBLISHER_NOT_CLASSIFIED': 'publisherNotClassified',
+    'IN_PUBLICATION_LIST':  'inPublicationList',
+    'ONE_PER_RESEARCHER':   'onePerResearcher'
   };
 
   /** Full explanatory sentence for a zeroReason; falls back to the raw marker for an unknown code. */

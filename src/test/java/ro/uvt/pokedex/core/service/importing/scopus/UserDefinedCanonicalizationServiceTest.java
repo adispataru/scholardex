@@ -654,4 +654,65 @@ class UserDefinedCanonicalizationServiceTest {
         String shortHash = ReflectionTestUtils.invokeMethod(service, "shortHash", "material");
         assertEquals(24, shortHash.length());
     }
+
+    // ── H145: the wizard links to what other sources hold, it never rewrites it ──────────────────────────
+
+    @Test
+    void aWizardEntryWhoseDoiAnotherSourceHoldsLinksToItAndNeverRewritesIt() {
+        when(userDefinedForumFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
+        UserDefinedPublicationFact copy = new UserDefinedPublicationFact();
+        copy.setSourceRecordId("USER_DEFINED:PUBLICATION:copy");
+        copy.setEid("USER_DEFINED:EID:copy");
+        copy.setDoi("10.1000/HELD");
+        copy.setTitle("A copy");
+        copy.setAuthorIds(List.of("sauth_me"));
+        when(userDefinedPublicationFactRepository.findAll()).thenReturn(List.of(copy));
+        ScholardexPublicationFact held = new ScholardexPublicationFact();
+        held.setId("spub_1");
+        held.setEid("2-s2.0-1");
+        held.setTitle("The original");
+        held.setAuthorIds(List.of("sauth_a", "sauth_b"));
+        when(scholardexPublicationFactRepository.findByUserSourceId("USER_DEFINED:PUBLICATION:copy")).thenReturn(Optional.empty());
+        when(scholardexPublicationFactRepository.findByEid("USER_DEFINED:EID:copy")).thenReturn(Optional.empty());
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/held")).thenReturn(List.of(held));
+
+        service.rebuildCanonicalFacts();
+
+        verify(scholardexPublicationFactRepository, never()).save(any());
+        assertEquals(List.of("sauth_a", "sauth_b"), held.getAuthorIds());
+        assertEquals("2-s2.0-1", held.getEid());
+        assertEquals("The original", held.getTitle());
+        verify(sourceLinkService).link(eq(ScholardexEntityType.PUBLICATION), eq("USER_DEFINED"),
+                eq("USER_DEFINED:PUBLICATION:copy"), eq("spub_1"),
+                eq(UserDefinedCanonicalizationService.REASON_USER_DEFINED_LINK_ONLY), any(), any(), any(), eq(false));
+    }
+
+    @Test
+    void aWizardJournalWhoseIssnAnotherSourceHoldsIsLinkedNotRewritten() {
+        UserDefinedForumFact typed = new UserDefinedForumFact();
+        typed.setSourceRecordId("USER_DEFINED:FORUM:typed");
+        typed.setPublicationName("A name I typed");
+        typed.setIssn("1234-5678");
+        typed.setPublisher("Me");
+        typed.setAggregationType("Journal");
+        when(userDefinedForumFactRepository.findAll()).thenReturn(List.of(typed));
+        ScholardexForumFact journal = new ScholardexForumFact();
+        journal.setId("sforum_1");
+        journal.setName("Journal of Things");
+        journal.setIssn("1234-5678");
+        journal.setPublisher("Elsevier");
+        journal.setAggregationType("Journal");
+        journal.setScopusForumIds(List.of("123"));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of(journal));
+        when(userDefinedPublicationFactRepository.findAll()).thenReturn(List.of());
+
+        service.rebuildCanonicalFacts();
+
+        assertEquals("Journal of Things", journal.getName());
+        assertEquals("Elsevier", journal.getPublisher());
+        assertEquals(List.of("USER_DEFINED:FORUM:typed"), journal.getUserSourceForumIds());
+        verify(sourceLinkService).link(eq(ScholardexEntityType.FORUM), eq("USER_DEFINED"), eq("USER_DEFINED:FORUM:typed"),
+                eq("sforum_1"), eq(UserDefinedCanonicalizationService.REASON_USER_DEFINED_LINK_ONLY), any(), any(), any(), eq(false));
+    }
 }

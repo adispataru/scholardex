@@ -2606,11 +2606,11 @@
      },
      {
       "position": "PROF_UNIV",
-      "value": 1
+      "value": 2
      },
      {
       "position": "HABIL",
-      "value": 1
+      "value": 2
      }
     ]
    },
@@ -5654,7 +5654,7 @@
       "value": 85
      }
     ],
-    "contributesToTotal": false
+    "contributesToTotal": true
    },
    {
     "name": "Tabelul 2 — CS: cercetare științifică și creație artistică",
@@ -5682,7 +5682,7 @@
       "value": 210
      }
     ],
-    "contributesToTotal": false
+    "contributesToTotal": true
    },
    {
     "name": "Tabelul 3 — RIA: recunoașterea și impactul activității",
@@ -5717,7 +5717,7 @@
       "value": 75
      }
     ],
-    "contributesToTotal": false
+    "contributesToTotal": true
    },
    {
     "name": "Punctaj total (DID + CS + RIA)",

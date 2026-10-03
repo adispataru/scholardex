@@ -37,9 +37,7 @@ class ArtisticPerformanceSupportTest {
 
     @ParameterizedTest(name = "{0}")
     @CsvSource(delimiter = '|', value = {
-            "declared individual project wins over a conductor's role | Tip=Proiect individual;Rol=Dirijor | INDIVIDUAL",
-            "declared group project | Tip=Proiect de grup (2-4) | GROUP",
-            "declared collective project | Tip=Proiect colectiv (5+) | COLLECTIVE",
+            "H145: a kind picked on the record says nothing, the conductor's role decides | Tip=Proiect individual;Rol=Dirijor | COLLECTIVE",
             "a prize, by result | Rezultat=Premiu;Rol=Solist | PRIZE",
             "a nomination, by result | Rezultat=Nominalizare | NOMINATION",
             "a soloist alone on stage, by size | Marime_formatie=1;Rol=Membru într-o formație camerală (până la 10 persoane) | INDIVIDUAL",
@@ -53,7 +51,7 @@ class ArtisticPerformanceSupportTest {
             "a concertmaster | Rol=Concert-maestru | COLLECTIVE",
             "an orchestra member | Rol=Membru într-un ansamblu de peste 10 persoane | COLLECTIVE",
     })
-    void theCnfisKindIsDeclaredOrDerived(String what, String declared, String expected) {
+    void theCnfisKindIsDerivedFromTheFacts(String what, String declared, String expected) {
         Map<String, String> f = new HashMap<>();
         for (String pair : declared.split(";")) {
             String[] kv = pair.split("=", 2);
@@ -67,29 +65,35 @@ class ArtisticPerformanceSupportTest {
         assertNull(ArtisticPerformanceSupport.cnfisKind(fields("Rol", "Membru într-o formație camerală (până la 10 persoane)")));
         assertNull(ArtisticPerformanceSupport.cnfisKind(fields()));
         assertNull(ArtisticPerformanceSupport.cnfisKind(fields("Marime_formatie", "câțiva")));
+        // H145: a kind picked on a record made before H142 is no fact
+        assertNull(ArtisticPerformanceSupport.cnfisKind(fields("Tip", "Proiect de grup (2-4)")));
+        assertNull(ArtisticPerformanceSupport.cnfisKind(fields("Tip", "Proiect colectiv (5+)")));
     }
 
     // ── the result and the role ──
 
     @Test
-    void theResultIsDeclaredOrReadFromALegacyCnfisKind() {
+    void theResultIsTheDeclaredOneNeverAPickedKind() {
         assertEquals(ArtisticPerformanceSupport.PRIZE, ArtisticPerformanceSupport.result(fields("Rezultat", "Premiu")));
-        assertEquals(ArtisticPerformanceSupport.NOMINATION, ArtisticPerformanceSupport.result(fields("Tip", "Nominalizare individuală")));
-        assertEquals(ArtisticPerformanceSupport.PRIZE, ArtisticPerformanceSupport.result(fields("Tip", "Premiu individual")));
-        assertEquals(ArtisticPerformanceSupport.PARTICIPATION, ArtisticPerformanceSupport.result(fields("Tip", "Proiect individual")));
+        assertEquals(ArtisticPerformanceSupport.NOMINATION, ArtisticPerformanceSupport.result(fields("Rezultat", "Nominalizare")));
+        // H145: the kind of a record made before H142 is not the result (the migration writes it as the result)
+        assertEquals(ArtisticPerformanceSupport.PARTICIPATION, ArtisticPerformanceSupport.result(fields("Tip", "Nominalizare individuală")));
+        assertEquals(ArtisticPerformanceSupport.PARTICIPATION, ArtisticPerformanceSupport.result(fields("Tip", "Premiu individual")));
         assertEquals(ArtisticPerformanceSupport.PARTICIPATION, ArtisticPerformanceSupport.result(fields()));
-        // the declared result wins over the legacy kind
         assertEquals(ArtisticPerformanceSupport.PARTICIPATION,
                 ArtisticPerformanceSupport.result(fields("Rezultat", "Participare", "Tip", "Premiu individual")));
     }
 
     @Test
-    void theStandardCountsTheNamedRolesAndARecordWithoutARole() {
+    void theStandardCountsTheNamedRolesOnly() {
         for (String role : List.of("Compozitor", "Dirijor", "Regizor", "Maestru de balet", "Solist", "Concert-maestru",
                 "Membru într-o formație camerală (până la 10 persoane)")) {
             assertTrue(ArtisticPerformanceSupport.roleCounts(fields("Rol", role)), role);
         }
-        assertTrue(ArtisticPerformanceSupport.roleCounts(fields()));
+        // H145: a record that names no role tells nothing about the person's part
+        assertFalse(ArtisticPerformanceSupport.roleCounts(fields()));
+        assertFalse(ArtisticPerformanceSupport.roleCounts(fields("Rol", "Membru într-o formație camerală (până la 10 persoane)",
+                "Marime_formatie", "14")), "a chamber ensemble has at most ten players");
         assertFalse(ArtisticPerformanceSupport.roleCounts(fields("Rol", ArtisticPerformanceSupport.ROLE_LARGE_ENSEMBLE_MEMBER)));
         assertFalse(ArtisticPerformanceSupport.roleCounts(fields("Rol", ArtisticPerformanceSupport.ROLE_OTHER)));
     }
