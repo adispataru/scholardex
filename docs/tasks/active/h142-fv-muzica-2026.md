@@ -743,6 +743,29 @@ first list naming them, those come from EBSCO (9,838), ProQuest (7,341), RILM (6
 
 **Still to download in a browser:** OUP's 2026 current-collection and 2025 A–Z ZIPs.
 
+**Rollout, done 2026-10-03.** Adrian pushed and deployed image `f98af4d8`.
+- **Script.** `h142_slice4_journal_databases.js` (guard flipped) ran: 5 of 5 flags, 5 of 5 descriptions.
+- **Lists.** The eight folders were copied to the data volume. The loop's eighth copy failed because the helper pod
+  of the previous run was still terminating; `copy-to-data-pvc.sh` now waits for it to go first.
+- **Import.** «Import journal databases' title lists» loaded 77,556 journals (the same counts as locally). The
+  forum matching created 26,916 forums (registry 75,340 → 102,255); 56,166 forums carry a list id. Adrian's browser
+  lost the connection during the step, but the server finished it.
+- **Projection.** Scopus → 3 took 7 minutes (689,213 rows, 0 errors). The read model holds the memberships:
+
+  | Database | Forums |
+  |---|---|
+  | EBSCO | 27,666 |
+  | ProQuest | 26,039 |
+  | RILM | 11,850 |
+  | JSTOR | 4,618 |
+  | Taylor & Francis | 4,268 |
+  | CEEOL | 1,252 |
+  | Project MUSE | 868 |
+  | Cambridge Core | 737 |
+
+  That is 55,922 forums with a list membership.
+- **Left:** refresh the FMT Music and FSAS Sociology reports; OUP's two ZIPs.
+
 **Rollout order.**
 1. Push and deploy.
 2. Flip the guard and run `h142_slice4_journal_databases.js`.
