@@ -296,3 +296,49 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* ── Registry review (H142): the merge list as a search ─────────────────────── */
+.app-registry-merge {
+  position: relative;
+}
+
+.app-registry-merge__results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  max-height: 20rem;
+  overflow-y: auto;
+  background: var(--app-color-card-bg, #fff);
+  border: 1px solid var(--app-color-border, #d0d5dd);
+  border-radius: 0.4rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.app-registry-merge__item {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--app-color-text-strong, #1d2939);
+}
+
+.app-registry-merge__item:hover,
+.app-registry-merge__item.is-active {
+  background: var(--app-color-card-bg-muted, #f2f4f7);
+}
+
+.app-registry-merge__meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--app-color-text-muted, #667085);
+}
+
+.app-registry-merge__empty {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  color: var(--app-color-text-muted, #667085);
+}

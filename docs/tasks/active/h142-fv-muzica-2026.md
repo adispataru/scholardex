@@ -579,6 +579,17 @@ see `docs/tasks/active/h144-self-picked-levels.md`): the classes, paths and coll
   artele spectacolului → Departamentul de Teatru, name experts or record FMT's heads; optionally upload FMT's
   Anexa 6.1 to seed the queue.
 
+**The merge list as a search (2026-10-03).** Adrian found the dropdown of every ranked event unusable (303 locally,
+several hundred in prod). The select stays, as the submitted field and the no-JavaScript fallback, but
+`registryMergeSearch.js` turns it into a search box:
+- it ignores diacritics, case and punctuation (the registry's own normalisation), so «garana» finds «Gărâna Jazz
+  Festival»;
+- every word typed must match, in any order;
+- it also searches the entry's other spellings, and shows which one matched («Scris și: …»);
+- it lists at most 15 results; arrows and Enter pick one, and Enter never submits the ranking form.
+
+`node scripts/test-registry-merge-search.js` covers the matching.
+
 ## Slice 4 as built (2026-10-03) — journal databases from their title lists
 
 Built 2026-10-03, not yet committed at the time of writing. **Decisions (Adrian, 2026-10-03):**

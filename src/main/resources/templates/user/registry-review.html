@@ -144,10 +144,14 @@
                             <div style="flex-basis:100%; height:0;"></div>
                             <div style="flex:1 1 24rem;">
                                 <label class="form-label mb-0" for="merge-target" th:text="#{registry.merge.hint}">Or: the ticked names are spellings of a ranked entry</label>
-                                <select id="merge-target" name="target" class="form-select form-select-sm">
+                                <!-- every ranked entry of the viewer's domains: the script turns it into a search (H142) -->
+                                <select id="merge-target" name="target" class="form-select form-select-sm" data-registry-merge-search
+                                        th:data-search-placeholder="#{registry.merge.search}" th:data-search-empty="#{registry.merge.searchEmpty}"
+                                        th:data-search-also="#{registry.queue.spellings}">
                                     <option value="" th:text="#{registry.merge.target}">Same entry as…</option>
                                     <optgroup th:each="group : ${mergeGroups}" th:label="${group.key}">
-                                        <option th:each="t : ${group.value}" th:value="${t.id()}"
+                                        <option th:each="t : ${group.value}" th:value="${t.id()}" th:data-name="${t.name()}"
+                                                th:data-aliases="${#strings.listJoin(t.aliases(), ' | ')}"
                                                 th:text="${t.name() + ' (' + #messages.msg('registry.level.' + k + '.' + t.level()) + ')'}">Entry</option>
                                     </optgroup>
                                 </select>

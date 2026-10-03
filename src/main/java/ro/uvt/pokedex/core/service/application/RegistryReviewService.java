@@ -75,8 +75,8 @@ public class RegistryReviewService {
                                String note, String itemId, RegistryStatus status) {
     }
 
-    /** A ranked entry a waiting name can be merged into, as the merge list shows it. */
-    public record MergeTarget(String id, String name, String domain, String level) {
+    /** A ranked entry a waiting name can be merged into, as the merge list shows it; its spellings are searched too. */
+    public record MergeTarget(String id, String name, String domain, String level, List<String> aliases) {
     }
 
     /** A registry and how many names wait in it for the viewer. */
@@ -137,7 +137,7 @@ public class RegistryReviewService {
                 .filter(RegistryItem::isConfirmed)
                 .filter(e -> e.getLevel() != null && e.getId() != null)
                 .filter(e -> admin || e.getDomainId() == null || mine.contains(e.getDomainId()))
-                .map(e -> new MergeTarget(e.getId(), e.getName(), e.getDomainId(), e.getLevel()))
+                .map(e -> new MergeTarget(e.getId(), e.getName(), e.getDomainId(), e.getLevel(), aliases(e)))
                 .sorted(Comparator.comparing((MergeTarget t) -> t.domain() == null ? "" : t.domain())
                         .thenComparing(t -> t.name() == null ? "" : t.name(), String.CASE_INSENSITIVE_ORDER))
                 .toList();

@@ -91,7 +91,8 @@ class RegistryPagesContractTest {
                 "Muzică", "INTERNATIONAL_TOP", null, List.of(), null, "CNFIS_LIST", null, null, null, true);
         var decision = new RegistryReviewService.DecisionView(Instant.parse("2026-10-03T08:00:00Z"), "dean@uvt.ro",
                 "RANKED", "Filarmonica Banatul", null, "NATIONAL", "Stagiune", "e2", RegistryStatus.CONFIRMED);
-        var meridian = new RegistryReviewService.MergeTarget("e9", "Festivalul Internațional „Meridian”", "Muzică", "INTERNATIONAL");
+        var meridian = new RegistryReviewService.MergeTarget("e9", "Festivalul Internațional „Meridian”", "Muzică", "INTERNATIONAL",
+                List.of("Festivalul Meridian", "Meridian <Timișoara>"));
         return new RegistryReviewService.ReviewPage(RegistryKind.ARTISTIC_EVENT, tabs(2, 1), List.of(entry, own), List.of(enescu),
                 List.of(decision), List.of("Muzică"), false, List.of(meridian));
     }
@@ -116,6 +117,12 @@ class RegistryPagesContractTest {
         assertTrue(html.contains("/user/registry/review/ARTISTIC_EVENT/items/e1/edit"));
         assertTrue(html.contains("value=\"e9\"") && html.contains("Festivalul Internațional „Meridian”"),
                 "the merge list offers every ranked entry of the domain");
+        assertTrue(html.contains("data-registry-merge-search"), "the merge list is searched, not scrolled");
+        assertTrue(html.contains("data-name=\"Festivalul Internațional „Meridian”\""));
+        assertTrue(html.contains("data-aliases=\"Festivalul Meridian | Meridian &lt;Timișoara&gt;\""),
+                "its other spellings are searched too, as text");
+        assertTrue(html.contains("data-search-placeholder=\"Caută după nume sau grafie…\"")
+                || html.contains("data-search-placeholder=\"Search by name or spelling…\""));
         assertTrue(html.contains("03.10.2026 11:00"), "decided at, in the university's time");
         assertTrue(html.contains("/user/registry/review?kind=SCIENTIFIC_EVENT"), "a tab per registry");
         assertTrue(html.contains("/user/registry/review\""), "the sidebar offers the page");
