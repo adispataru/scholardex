@@ -870,9 +870,56 @@ Fixed at the same time: with Music in two uploads, a second batch saw the first 
 batch of the same report adds up (same level: the counts grow) or sends the event to the experts (another level),
 and an event an earlier batch left to the experts stays theirs.
 
+**In prod (image `18f6bf01`, 2026-10-03).** The three uploads brought 1,638 confirmed records (415 performances,
+1,182 citations, 41 articles) for 39 people; Cinc's sheets are empty. 124 events were ranked and 41 waited for the
+experts: 7 reported at different levels and 34 "likely spellings".
+
+**Re-check (2026-10-03).** The upload had two faults:
+- **The spelling check matched one common word.** «teatru» took every concert of the «Facultatea de Muzică și
+  Teatru» for the National Theatre Festival. «iasi» took every recital in Iași for FITPTI, and «noi» took the
+  Orăștie sacred-music festival («Cu noi este Dumnezeu») for Zilele Muzicii Noi. The check now needs at least two
+  distinctive words: those outside the parentheses, or all of them when fewer than two are outside.
+- **The upload recorded the uploader as the proposer of its 165 events.** The experts' page refuses a proposer
+  their own names, so the uploader could decide none of them. An upload's new events now have no proposer; the
+  source says where they came from.
+
+`h142_slice7_recheck.js` (ops scripts, run with `--restart`) repairs prod:
+- clears the proposer of the upload's events;
+- ranks the 12 names that are no spelling at the single level reported (concerts named by venue, the Orăștie
+  festival, a symposium, the WePerform season);
+- merges 16 spellings into their listed event, as the experts' page would, and only where the registry gives the
+  level the faculty reported.
+
+The tightened check misses five of the 16: in each, the listed name has one distinctive word and its city in
+parentheses. Their records name them:
+- Meridian (concerts in București and Timișoara), twice;
+- SIMN (Radio București);
+- TESZT;
+- FITPTI ("…Publicul Tanar, Iasi. FITPTI").
+
+Left for the experts (13):
+- **Reported at different levels (7):**
+  - George Enescu: 8 × top international, 1 × national; the CNFIS list ranks it top international.
+  - Meridian «de Muzică Contemporană»: 4 × international, 3 × national.
+  - Remus Georgescu «de Muzică Nouă»: 4 × international, 2 × national.
+  - Intrada: 2 × international, 2 × national.
+  - Timișoara Muzicală: 1 × international, 2 × national.
+  - The Brave New Music: 1 × international, 1 × national.
+  - The ICONS national tour: 1 × international, 10 × national.
+- **Three links:** two pages on FMT's chamber-music festival and one Gărâna Jazz page.
+- **«Iași, 17-19 noiembrie 2022»:** a place and dates that name two events: the national Caudella competition and an
+  international conference at UNAGE Iași.
+- **The «Elite musicians» jury:** reported national, while the same report ranks the competition international.
+- **«Orchestra simfonică Remus Georgescu»:** the Banatul Philharmonic's orchestra in a May concert, not the October
+  festival, though it holds the festival's words.
+
+Some events the faculty spelled two ways became two entries, each ranked at the level reported, so scores do not
+change: «Festivalul Internațional BRAVE NEW MUSIC» and «Festivalul BRAVE NEW MUSIC», for example.
+
 **Waiting for the faculty (Adrian asks Simona):** five teachers sent files but have no account in prod: Fănel Ignat,
 Vlad Popescu and Manuela Mihăilescu (Music), Otilia Huzum and Florin Vidam (Theatre). Their files are in
-`_fara_cont/`. Once they are added with the staff import, one more upload with the same option brings them in.
+`_fara_cont/`. Once they are added with the staff import, one more upload with the same option brings them in;
+deploy the re-check's code first, so the upload proposes nothing in the uploader's name.
 
 ## Still to decide
 

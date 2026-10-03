@@ -119,7 +119,8 @@ public class ArtisticEventFacultyRanking {
                 event.setName(nameByKey.get(entry.getKey()));
                 event.setDomainId(domain);
                 event.setSource(source);
-                event.setProposedBy(actor);
+                // no proposer: the uploader only carries the faculty's report, and the experts' page refuses a
+                // proposer their own names (the first upload kept the uploader from deciding any of its 41)
                 event.setProposedAt(now);
             } else if (event.getDomainId() == null) {
                 event.setDomainId(domain);
@@ -154,7 +155,10 @@ public class ArtisticEventFacultyRanking {
         return new Outcome(ranked, conflicting, already, leftAlone, List.copyOf(conflicts));
     }
 
-    private record Distinctive(String name, Set<String> words) {
+    record Distinctive(String name, Set<String> words) {
+        static Distinctive of(String name) {
+            return new Distinctive(name, distinctive(name));
+        }
     }
 
     /** Words that name no particular event: its kind, its reach, the art, the connectors. */
@@ -163,21 +167,34 @@ public class ArtisticEventFacultyRanking {
             "contemporana", "concursul", "concursului", "concurs", "stagiunea", "gala", "editia", "romania", "the", "of", "and",
             "music", "festivalul-concurs", "zilele", "saptamana");
 
-    /** The words of a name that tell its event apart (the parenthesised place dropped). */
+    /**
+     * The words of a name that tell its event apart: those outside the parentheses ("Festivalul «George Enescu»
+     * (România)" → george, enescu), or all of them when fewer than two are outside ("Iaşi (Festivalul Internaţional de
+     * Teatru pentru Publicul Tânăr FITPTI)" → iasi, teatru, publicul, tanar, fitpti — not iasi alone).
+     */
     static Set<String> distinctive(String name) {
-        String withoutPlace = name == null ? "" : name.replaceAll("\\([^)]*\\)", " ");
+        String full = name == null ? "" : name;
+        Set<String> outside = words(full.replaceAll("\\([^)]*\\)", " "));
+        return outside.size() >= 2 ? outside : words(full.replace('(', ' ').replace(')', ' '));
+    }
+
+    private static Set<String> words(String text) {
         Set<String> out = new java.util.LinkedHashSet<>();
-        for (String w : ArtisticEventRankSupport.normalize(withoutPlace).split(" ")) {
+        for (String w : ArtisticEventRankSupport.normalize(text).split(" ")) {
             if (w.length() >= 3 && !GENERIC.contains(w)) out.add(w);
         }
         return out;
     }
 
-    /** The ranked event whose distinctive words the name holds, all of them — likely a spelling of it; else null. */
-    private static String likelySpellingOf(String name, List<Distinctive> ranked) {
+    /**
+     * The ranked event whose distinctive words the name holds, all of them and at least two — likely a spelling of
+     * it; else null. One word is too little: «teatru», «iasi» or «noi» name no particular event (a first upload took
+     * every concert of the «Facultatea de Muzică și Teatru» for the National Theatre Festival).
+     */
+    static String likelySpellingOf(String name, List<Distinctive> ranked) {
         Set<String> words = new java.util.HashSet<>(List.of(ArtisticEventRankSupport.normalize(name).split(" ")));
         for (Distinctive d : ranked) {
-            if (words.containsAll(d.words())) return d.name();
+            if (d.words().size() >= 2 && words.containsAll(d.words())) return d.name();
         }
         return null;
     }

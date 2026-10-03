@@ -78,6 +78,7 @@ class ArtisticEventFacultyRankingTest {
         ArtisticEvent disputed = byName.get("Festivalul Disputat");
         assertEquals(RegistryStatus.PROPOSED, disputed.getStatus(), "reported at two levels: the experts decide");
         assertEquals(null, disputed.getRank());
+        assertEquals(null, disputed.getProposedBy(), "the uploader proposes nothing, so the uploader may decide it");
         assertTrue(disputed.getNote().contains("1 × internațional") && disputed.getNote().contains("1 × național"));
         assertEquals(List.of("Festivalul Disputat (" + disputed.getNote() + ")"), outcome.conflicts());
         verify(registrar).refresh();
@@ -99,6 +100,31 @@ class ArtisticEventFacultyRankingTest {
         assertEquals(RegistryStatus.PROPOSED, spelling.getStatus());
         assertTrue(spelling.getNote().endsWith("poate fi «Festivalul „George Enescu” (România)» din registru"), spelling.getNote());
         assertEquals(java.util.Set.of("george", "enescu"), ArtisticEventFacultyRanking.distinctive(enescu.getName()));
+    }
+
+    @Test
+    void aSingleCommonWordIsNoSpellingOfARankedEvent() {
+        List<ArtisticEventFacultyRanking.Distinctive> ranked = List.of(
+                ArtisticEventFacultyRanking.Distinctive.of("Festivalul Naţional de Teatru (FNT, Bucureşti)"),
+                ArtisticEventFacultyRanking.Distinctive.of("Iaşi (Festivalul Internaţional de Teatru pentru Publicul Tânăr FITPTI)"),
+                ArtisticEventFacultyRanking.Distinctive.of("Zilele Muzicii Noi (Chișinău)"),
+                ArtisticEventFacultyRanking.Distinctive.of("Festivalul „Remus Georgescu” (Timișoara)"),
+                ArtisticEventFacultyRanking.Distinctive.of("Sibiu (Festivalul Internaţional de Teatru)"),
+                ArtisticEventFacultyRanking.Distinctive.of("Festivalul Meridian (București)"));
+        // false alarms of the first upload
+        assertEquals(null, ArtisticEventFacultyRanking.likelySpellingOf(
+                "Concertul de Crăciun, Ansamblul coral al Facultății de Muzică și Teatru – UVT, Biserica din Cenad", ranked));
+        assertEquals(null, ArtisticEventFacultyRanking.likelySpellingOf(
+                "Recital vocal – instrumental, Sala Henry Coandă, Palatul Culturii, Iași", ranked));
+        assertEquals(null, ArtisticEventFacultyRanking.likelySpellingOf(
+                "Festivalul Concurs Național de Muzică Sacră de la Orăștie Cu noi este Dumnezeu", ranked));
+        // spellings it still finds
+        assertEquals("Festivalul „Remus Georgescu” (Timișoara)", ArtisticEventFacultyRanking.likelySpellingOf(
+                "Festivalul Internațional de Muzică Nouă Remus Georgescu", ranked));
+        assertEquals("Sibiu (Festivalul Internaţional de Teatru)", ArtisticEventFacultyRanking.likelySpellingOf(
+                "Festivalul Internațional de Teatru de la Sibiu", ranked));
+        assertEquals(java.util.Set.of("meridian", "bucuresti"), ArtisticEventFacultyRanking.distinctive("Festivalul Meridian (București)"),
+                "one word outside the parentheses: the place counts too");
     }
 
     @Test
