@@ -764,7 +764,15 @@ first list naming them, those come from EBSCO (9,838), ProQuest (7,341), RILM (6
   | Cambridge Core | 737 |
 
   That is 55,922 forums with a list membership.
-- **Left:** refresh the FMT Music and FSAS Sociology reports; OUP's two ZIPs.
+- **Refresh.** Adrian refreshed both reports at 13:26–13:34 UTC: 54 Music runs and 39 Sociology runs, the first
+  either report ever had.
+- **No visible change yet.** None of the 54 Music staff and only 1 of the 39 Sociology staff have confirmed
+  publications (the "no confirmed publications" warning); the declared CS 2.1, I.2 and I.11 types have no records in
+  prod.
+- **What the lists will add**, once staff confirm their publications or declare articles by ISSN (prod read model):
+  - 27,377 journals count for Music CS 2.1 only through a list (they are in none of WoS, Scopus, ERIH, DOAJ);
+  - 2,065 journals outside Scopus reach Sociology I.2's three databases only with the lists (398 did before).
+- **Left:** OUP's two ZIPs.
 
 **Rollout order.**
 1. Push and deploy.
