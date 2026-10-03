@@ -708,8 +708,40 @@ identity conflicts. Of the new forums:
 
 After Scopus → 3, 37,961 forums carry a title-list membership, and 18,373 of them are in Scopus or WoS too.
 
-**Still to download in a browser:** EBSCO's seven files, JSTOR's KBART, OUP's 2026 and 2025 A–Z ZIPs, and
-optionally T&F's own full KBART (GOKb's Jisc list covers 2,443 titles).
+**Downloaded by Adrian in a browser (2026-10-03).**
+
+| File | Journals | Rows skipped |
+|---|---|---|
+| EBSCO `asn-journals.xls` (Academic Search Ultimate) | 20,176 | 323 |
+| EBSCO `hsi-coverage.xls` (Humanities Source Ultimate) | 4,062 | 897 |
+| EBSCO `hus-coverage.xls` (Humanities Source) | 4,061 | 897 |
+| EBSCO `e5h-coverage.xls` (Central & Eastern European Academic Source) | 4,045 | 136 |
+| EBSCO `aft-coverage.xls` (Art Full Text) | 1,971 | 495 |
+| EBSCO `mah-coverage.xls` (Music Index) | 879 | 60 |
+| EBSCO `mft-coverage.xls` (Music Index with Full Text) | 879 | 60 |
+| `JSTOR_Global_AllArchiveTitles_2026-10-03.txt` | 5,021 | 0 |
+| `tandf_Global_AllTitles_2026-10-03.txt` | 6,103 | 6 |
+
+Five of the EBSCO workbooks label the identifier column "ISSN / ISBN"; the parser now recognises it.
+
+**With every list loaded (local, 2026-10-03).** The import read 77,556 journals in 43 s:
+
+| Database | Journals | Lists |
+|---|---|---|
+| EBSCO | 27,712 | 7 |
+| ProQuest | 26,090 | 2 |
+| RILM | 11,989 | 2 |
+| JSTOR | 4,630 | 1 |
+| Taylor & Francis | 4,275 | 2 |
+| CEEOL | 1,255 | 1 |
+| Project MUSE | 868 | 1 |
+| Cambridge Core | 737 | 1 |
+
+The registry grew from 75,302 to **102,192 forums**: 26,891 of them now exist only because of the lists. By the
+first list naming them, those come from EBSCO (9,838), ProQuest (7,341), RILM (6,627), JSTOR (1,894) and the rest
+(1,191).
+
+**Still to download in a browser:** OUP's 2026 current-collection and 2025 A–Z ZIPs.
 
 **Rollout order.**
 1. Push and deploy.
@@ -721,8 +753,8 @@ optionally T&F's own full KBART (GOKb's Jisc list covers 2,443 titles).
 6. Refresh the FMT Music and FSAS Sociology reports («Reîmprospătează tot»).
 
 **Open.**
-- **Size of the forum registry.** The general lists (ProQuest Central, RILM's non-music periodicals) bring about
-  17,500 new venues, the way DOAJ brought its own. To keep the registry smaller, new forums could be created only
+- **Size of the forum registry.** The general lists (EBSCO Academic Search Ultimate, ProQuest Central, RILM's
+  non-music periodicals) bring about 27,000 new venues, the way DOAJ brought its own. To keep the registry smaller, new forums could be created only
   for the subject lists, leaving the general ones to tag existing forums. Adrian's call.
 - **Terms of use.** Is this use of the lists covered? KBART lists exist to be loaded into library systems, and
   the platform uses them the same way (matching ISSNs for an internal evaluation). But EBSCO's, MUSE's, T&F's and
