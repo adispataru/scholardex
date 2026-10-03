@@ -897,6 +897,10 @@ parentheses. Their records name them:
 - TESZT;
 - FITPTI ("…Publicul Tanar, Iasi. FITPTI").
 
+**Run in prod (Adrian, 2026-10-03, with `--restart`).** The run cleared 165 proposers, ranked 12 names and merged
+16, as rehearsed. A read afterwards showed the upload's events at 136 confirmed, 16 merged and 13 waiting; the 13
+are named by 47 records.
+
 Left for the experts (13):
 - **Reported at different levels (7):**
   - George Enescu: 8 × top international, 1 × national; the CNFIS list ranks it top international.
