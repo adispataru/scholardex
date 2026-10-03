@@ -1,7 +1,8 @@
 # H142 — FV Muzică 2026 (Comisia 35) and the CNFIS gaps for music
 
 Status: **Slices 0, 1 and 2 in prod 2026-10-02 (slice 2: image 1922a5eb, `h142_muzica_export.js` run by Adrian,
-verified read-only); slices 3–6 open.** Scoped, decided and reassessed the same day. Asked by FMT (vice-dean for research,
+verified read-only); slice 3 in prod 2026-10-03 (image fd205487; the 4.1 template on the data volume,
+`h142_slice3_events.js` run by Adrian); slices 4–6 open.** Scoped, decided and reassessed the same day. Asked by FMT (vice-dean for research,
 email of 2026-10-02 in the thread "Intalnire platforma de raportare a cercetarii"). The faculty is the first
 vocational one on the platform.
 

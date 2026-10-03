@@ -1,6 +1,7 @@
 # H145 — input integrity: users enter data, the platform and the experts rank and score
 
-Status: **BUILT 2026-10-03 — committed, not pushed.** Everything ships in ONE push with H144 and H142 slice 3
+Status: **IN PROD 2026-10-03** (image fd205487; Adrian ran `h142_slice3_events.js` and `h144_h145_release.js --restart`;
+prod verified read-only — see "Rollout, done"). Everything shipped in ONE push with H144 and H142 slice 3
 (Adrian, 2026-10-03, "with everything": no separate hotfix; the access holes stay open in prod until that release).
 What was built: "As built" below; what remains: "Open"; how it reaches prod: "Rollout".
 
@@ -270,3 +271,20 @@ and name experts (H144).
   Mathematics 2026: C1/C2 lose citations of articles outside list A and regain co-authors' citations; Education:
   proceedings counted per edition (more papers count where a series spans years, fewer where I8 and I9 shared an
   edition).
+
+### Rollout, done (2026-10-03)
+
+- Image fd205487 deployed; at startup the core opened the 8 pending wizard reviews (no head approvals existed to stamp).
+- The 4.1 template copied to the data volume; `h142_slice3_events.js`: `Vizibilitate` removed from the performance type
+  (no record carried it), the 4.1 type added, 3 Music descriptions.
+- Precheck re-run read-only after slice 3: every precondition held. `h144_h145_release.js --restart`: 50 of 50 types,
+  86 of 86 formulas, 5 of 5 flags, 4 of 4 settings, 90 of 90 descriptions, 4 of 4 criteria, 16 of 16 registry entries;
+  the core restarted cleanly.
+- Verified read-only against the committed seed: every field the release touches matches (formulas, hashes,
+  descriptions, kinds, selectors, flags, types, criteria, registry entries). Left as they are: the optimistic-lock
+  `version` counter (48 indicators) and FV Muzică 2026's indicator ids, which prod minted itself and which resolve to its
+  35 `Muz26_` indicators.
+- **Still to do (UI):** «Reîmprospătează tot» for the reports with stored runs — Informatica: FV Info 2026, FV Info 2016,
+  FV Matematică, FV Matematică 2026; Fizică și Matematică: FV Info 2026, FV Matematică, FV Matematică 2026; FPSE: FV
+  Psihologie 2026; ICAM: FV Psihologie 2016 ("stale" does not see formula changes). Registries: map the domains to
+  departments and name experts. Heads: decide the 8 wizard books and the Google Scholar record.

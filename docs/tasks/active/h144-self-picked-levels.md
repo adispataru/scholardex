@@ -1,8 +1,8 @@
 # H144 — self-picked levels → registries ranked by experts, or derived from data
 
-Status: **Slice 1 BUILT 2026-10-03 (committed on local main, not pushed).** Ships together with H142 slice 3: one
-push, then every script (Adrian, 2026-10-03: "we can push after the next task and run everything then"). Slices 2
-(grants) and 3 (sport) open.
+Status: **Slice 1 IN PROD 2026-10-03** (image fd205487, with H142 slice 3 and H145; the combined
+`h144_h145_release.js --restart` run by Adrian, 16 organisations in the registry, prod verified read-only). Still to do:
+map the domains to departments and name experts on `/admin/registry/experts`. Slices 2 (grants) and 3 (sport) open.
 
 The rule (Adrian, 2026-10-02, H143 and H142 slice 3): a researcher NAMES the thing — conference, organisation,
 body, award, event, university, journal, patent — and never picks its level. The level comes from the lists the app

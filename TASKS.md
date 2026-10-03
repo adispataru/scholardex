@@ -9,8 +9,9 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H145` Input integrity: users enter data, the platform and the experts rank and score — **BUILT 2026-10-03
-  (committed, not pushed; ships in ONE push with H144 and H142 slice 3) — see
+- [ ] `H145` Input integrity: users enter data, the platform and the experts rank and score — **IN PROD 2026-10-03
+  (image fd205487, with H144 and H142 slice 3; `h144_h145_release.js --restart` run by Adrian, prod verified read-only
+  against the committed seed; report refreshes and the registries' experts still to do) — see
   `docs/tasks/active/h145-input-integrity-sweep.md`.** Adrian, 2026-10-03: "Users just input data, not ranking and
   scoring data." Four adversarial reviewers swept every FV except Informatică; three more checked the formulas against
   OM 3019/2025 and the CNFIS guide. Built: one server-side validator for every activity write (422), owner checks on
@@ -25,7 +26,8 @@ Done history moved to `TASKS-done.md`.
   `RELEASE_IMAGE_IS_DEPLOYED`, `--restart`), rehearsed on prod's own chain and prechecked read-only. Open: identity
   (B1, B2), Comisia 28 principal-author N, the CNFIS domain/report choice, legacy Matematică 2016 items.
 - [ ] `H144` Self-picked levels → registries ranked by experts — **SLICE 1 BUILT 2026-10-03 (committed, not pushed;
-  ships with H142 slice 3 in one push) — see `docs/tasks/active/h144-self-picked-levels.md`.** One engine with kinds
+  ships with H142 slice 3 in one push) — IN PROD 2026-10-03 with H145 (image fd205487) — see
+  `docs/tasks/active/h144-self-picked-levels.md`.** One engine with kinds
   (artistic events, conferences, organisations and bodies, awards): one experts' page `/user/registry/review` with a
   tab per kind, one admin page `/admin/registry/experts`, one picker API; conferences ranked by Comisia 28's
   criteria. The researcher names the conference, organisation, award, university or journal (by ISSN); formulas read
@@ -72,7 +74,8 @@ Done history moved to `TASKS-done.md`.
   **Prod order (done):** push and deploy; flip the guard; run with `--restart`.
 - [ ] `H142` FV Muzică 2026 (Comisia 35), CNFIS for music, onboarding from the faculty's files — **SLICES 0 AND 1
   IN PROD, SLICE 2 IN PROD 2026-10-02; slice 3 REDESIGNED with Adrian the same day (experts rank events into the
-  registry; the researcher's own visibility pick goes) and BUILT 2026-10-03, not yet deployed — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
+  registry; the researcher's own visibility pick goes) and BUILT 2026-10-03, IN PROD 2026-10-03 (image fd205487; 4.1
+  template on the data volume, `h142_slice3_events.js` run by Adrian) — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027
