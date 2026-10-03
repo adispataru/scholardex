@@ -863,3 +863,80 @@
 .app-ws-acts__publisher-claim {
   color: var(--app-color-text-strong);
 }
+
+/* ── H142 slice 7 — what a record lacks to count, its history, the move to another type ── */
+.app-ws-acts__gap-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--app-color-danger) 12%, transparent);
+  color: var(--app-color-danger);
+}
+
+.app-ws-acts__gaps-toggle {
+  border-color: color-mix(in srgb, var(--app-color-danger) 40%, var(--app-color-border));
+}
+
+.app-ws-acts__gaps-toggle:hover {
+  background: color-mix(in srgb, var(--app-color-danger) 6%, transparent);
+}
+
+.app-ws-acts__gaps-toggle--active {
+  background: color-mix(in srgb, var(--app-color-danger) 12%, transparent);
+  color: var(--app-color-danger);
+}
+
+.app-ws-acts__gaps {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.65rem;
+  border-left: 3px solid var(--app-color-danger);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--app-color-danger) 6%, transparent);
+}
+
+.app-ws-acts__gaps-line {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.app-ws-acts__history {
+  margin-top: 0.75rem;
+}
+
+.app-ws-acts__history-line {
+  margin: 0 0 0.2rem;
+  font-size: 0.8rem;
+}
+
+.app-ws-acts__history-when {
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__move {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--app-color-border);
+}
+
+.app-ws-acts__move-hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-ws-acts__move-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.app-ws-acts__move-type {
+  flex: 1 1 18rem;
+  min-width: 0;
+}

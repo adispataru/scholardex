@@ -178,6 +178,8 @@ public class UserActivityInstanceFacade {
             return false;
         }
         ActivityInstance existingInstance = byId.get();
+        Map<String, String> beforeFields = ActivityChangeLog.copy(existingInstance.getFields());
+        Map<Activity.ReferenceField, String> beforeReferences = ActivityChangeLog.copyReferences(existingInstance.getReferenceFields());
         applyChecked(existingInstance, existingInstance.getActivity(), activityInstance.getFields(),
                 activityInstance.getReferenceFields());
         validateJournalIssns(existingInstance);
@@ -185,8 +187,78 @@ public class UserActivityInstanceFacade {
             existingInstance.setNeedsReview(Boolean.FALSE); // H142 — saving an imported record is checking it
         }
         PublisherClaimSupport.reconcile(existingInstance, existingInstance.getResearcherId()); // H143
+        ActivityChangeLog.edited(existingInstance, actorEmail, beforeFields, beforeReferences); // H142 slice 7
         activityInstanceRepository.save(existingInstance);
         return true;
+    }
+
+    /** What a move did: the values the new type has no field for (kept in the record's history). */
+    public record MoveResult(boolean moved, List<String> dropped) {
+        static final MoveResult NOT_FOUND = new MoveResult(false, List.of());
+    }
+
+    /** The field a record's evidence goes in: most types have it, so what a move cannot place is kept there. */
+    static final String EVIDENCE_FIELD = "Dovezi";
+    private static final int EVIDENCE_MAX = 4000;
+
+    /**
+     * H142 slice 7 — moves a record of the researcher's own to another activity type (a critical edition the faculty
+     * filed as an article). Its name, date, source and import key stay, so a re-import of the same file does not bring
+     * it back under the old type. The values the new type accepts go with it; the rest go to its evidence when it has
+     * that field, and are kept in the record's history either way. A request to a head lapses when the new type has no
+     * field for it. False when there is no such record of theirs or no such type.
+     *
+     * @throws ActivitySingleRecordException when the new type is held once and the researcher already holds one
+     * @throws ro.uvt.pokedex.core.service.issn.InvalidIssnException when the ISSN the record carries is not a real one
+     */
+    public MoveResult moveActivityInstance(String id, String typeId, String actorEmail) {
+        Optional<ActivityInstance> byId = id == null ? Optional.empty() : activityInstanceRepository.findById(id);
+        Optional<Activity> target = typeId == null ? Optional.empty() : activityRepository.findById(typeId);
+        if (byId.isEmpty() || !owns(byId.get(), actorEmail) || target.isEmpty()) {
+            return MoveResult.NOT_FOUND;
+        }
+        ActivityInstance record = byId.get();
+        Activity from = record.getActivity();
+        Activity to = target.get();
+        if (from != null && to.getId().equals(from.getId())) {
+            return new MoveResult(true, List.of());
+        }
+        if (to.isSingle() && activityInstanceRepository.findAllByResearcherId(record.getResearcherId()).stream()
+                .anyMatch(r -> !r.getId().equals(record.getId()) && r.getActivity() != null
+                        && to.getId().equals(r.getActivity().getId()))) {
+            throw new ActivitySingleRecordException(to.getName());
+        }
+        Map<String, String> fields = record.getFields() == null ? Map.of() : record.getFields();
+        Map<Activity.ReferenceField, String> references = record.getReferenceFields() == null ? Map.of() : record.getReferenceFields();
+        java.util.Set<String> declared = to.getFields() == null ? java.util.Set.of()
+                : to.getFields().stream().map(Activity.Field::getName).collect(Collectors.toSet());
+        List<Activity.ReferenceField> allowed = to.getReferenceFields() == null ? List.of() : to.getReferenceFields();
+        Map<String, String> carried = new java.util.LinkedHashMap<>();
+        fields.forEach((k, v) -> { if (declared.contains(k)) carried.put(k, v); });
+        Map<Activity.ReferenceField, String> carriedReferences = new java.util.EnumMap<>(Activity.ReferenceField.class);
+        references.forEach((k, v) -> { if (k != null && allowed.contains(k)) carriedReferences.put(k, v); });
+        ActivityRecordValidator.Result checked = ActivityRecordValidator.validate(to, carried, carriedReferences);
+        Map<String, String> kept = new java.util.LinkedHashMap<>(checked.fields());
+        Map<Activity.ReferenceField, String> keptReferences = new java.util.EnumMap<>(Activity.ReferenceField.class);
+        keptReferences.putAll(checked.references());
+        List<String> dropped = new java.util.ArrayList<>();
+        fields.forEach((k, v) -> { if (v != null && !v.isBlank() && !kept.containsKey(k)) dropped.add(k + ": " + v.trim()); });
+        references.forEach((k, v) -> {
+            if (k != null && v != null && !v.isBlank() && !keptReferences.containsKey(k)) dropped.add(k.name() + ": " + v.trim());
+        });
+        if (!dropped.isEmpty() && declared.contains(EVIDENCE_FIELD)) {
+            String evidence = java.util.stream.Stream.concat(java.util.stream.Stream.ofNullable(kept.get(EVIDENCE_FIELD)), dropped.stream())
+                    .collect(Collectors.joining(" | "));
+            kept.put(EVIDENCE_FIELD, evidence.length() <= EVIDENCE_MAX ? evidence : evidence.substring(0, EVIDENCE_MAX - 1) + "…");
+        }
+        record.setActivity(to);
+        record.setFields(new java.util.HashMap<>(kept));
+        record.setReferenceFields(keptReferences);
+        validateJournalIssns(record);
+        PublisherClaimSupport.reconcile(record, record.getResearcherId()); // H143: a request the new type has no field for lapses
+        ActivityChangeLog.moved(record, actorEmail, from == null ? null : from.getName(), to.getName(), dropped);
+        activityInstanceRepository.save(record);
+        return new MoveResult(true, List.copyOf(dropped));
     }
 
     public Optional<ActivityInstance> findActivityInstance(String id) {

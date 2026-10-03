@@ -25,7 +25,8 @@
 
 import { csrfHeaders, postJsonHeaders } from '../shared/fetchUtils';
 import { buildPaginationHtml, wirePaginationClicks } from '../shared/clientPagination';
-import { t, tPlural } from '../shared/i18n';
+import { t, tPlural, currentLocale } from '../shared/i18n';
+import { enhanceSearchableSelect } from '../shared/registryMergeSearch';
 
 const PAGE_SIZE = 20;
 
@@ -64,6 +65,9 @@ let _bulkMessage   = null;
 let _publisherInfo = {};
 // H142 slice 3: per record naming an artistic event, what the registry says (its rank, or that experts have not ranked it)
 let _registryLevels = {};
+// H142 slice 7: per record, what it lacks to count; and the «Nu se punctează încă» view
+let _gaps     = {};
+let _gapsOnly = false;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -184,6 +188,7 @@ function _renderAll() {
     _renderBulkBar();
     _loadPublisherInfo();
     _loadRegistryLevels();
+    _loadGaps();
 
 
     // Render table
@@ -211,6 +216,10 @@ function _renderPage() {
     const filtered = _filtered();
     if (_reviewOnly && filtered.length === 0) {
         wrap.innerHTML = `<p class="app-ws-acts__review-empty">${t('workspace.activities.review.empty')}</p>`;
+        return;
+    }
+    if (_gapsOnly && filtered.length === 0) {
+        wrap.innerHTML = `<p class="app-ws-acts__review-empty">${t('workspace.activities.gaps.empty')}</p>`;
         return;
     }
     const allSelected = _reviewOnly && filtered.every(inst => _selected.has(inst.id));
@@ -383,6 +392,19 @@ function _insertDetailRow(inst, tr) {
     _wireRegistryPickers(detailTr);
 
     detailTr.querySelector('[data-save-inst]')?.addEventListener('click', () => _saveInst(inst.id, detailTr));
+
+    // H142 slice 7 — move to another type: the type list is a search, built when first opened
+    const moveForm = detailTr.querySelector('[data-move-form]');
+    detailTr.querySelector('[data-move-toggle]')?.addEventListener('click', e => {
+        if (!moveForm) return;
+        moveForm.hidden = !moveForm.hidden;
+        e.currentTarget.setAttribute('aria-expanded', String(!moveForm.hidden));
+        if (!moveForm.hidden) {
+            enhanceSearchableSelect(moveForm.querySelector('[data-move-type]'));
+            moveForm.querySelector('input[type="search"], select')?.focus();
+        }
+    });
+    detailTr.querySelector('[data-move-submit]')?.addEventListener('click', () => _moveInst(inst, detailTr));
 
     // Delete flow
     detailTr.querySelector('[data-delete-inst]')?.addEventListener('click', e => {
@@ -1091,8 +1113,10 @@ function _buildDetailPanel(inst) {
               ${inst.importSource
                   ? `<p class="app-ws-acts__source">${_esc(t('workspace.activities.review.source', inst.importSource))}</p>`
                   : ''}
+              <div data-gaps-host="${_esc(inst.id)}">${_gapsBlock(inst)}</div>
               <div data-publisher-host="${_esc(inst.id)}">${_publisherBlock(inst)}</div>
               <div data-registry-host="${_esc(inst.id)}">${_registryBlock(inst)}</div>
+              <div data-history-host="${_esc(inst.id)}">${_historyBlock(inst)}</div>
             </div>
             <!-- Right: edit -->
             <div>
@@ -1102,7 +1126,25 @@ function _buildDetailPanel(inst) {
                 <button class="btn btn-sm btn-outline-danger" type="button" data-delete-inst="${_esc(inst.id)}">
                   <i class="fa-solid fa-trash" aria-hidden="true"></i> ${t('common.delete')}
                 </button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-move-toggle aria-expanded="false">
+                  <i class="fa-solid fa-right-left" aria-hidden="true"></i> ${t('workspace.activities.move.open')}
+                </button>
                 <span class="app-ws-acts__feedback" role="status" aria-live="polite"></span>
+              </div>
+              <div class="app-ws-acts__move" data-move-form hidden>
+                <p class="app-ws-acts__move-hint">${t('workspace.activities.move.hint')}</p>
+                <div class="app-ws-acts__move-row">
+                  <div class="app-ws-acts__move-type">
+                    <select id="ws-acts-move-type" class="app-ws-acts__select" data-move-type
+                            aria-label="${_esc(t('workspace.activities.move.open'))}"
+                            data-search-placeholder="${_esc(t('workspace.activities.move.search'))}"
+                            data-search-empty="${_esc(t('workspace.activities.move.none'))}">
+                      <option value="">—</option>${_moveOptions(inst)}
+                    </select>
+                  </div>
+                  <button class="btn btn-sm btn-primary" type="button" data-move-submit>${t('workspace.activities.move.submit')}</button>
+                </div>
+                <span class="app-ws-acts__feedback" data-move-feedback role="status" aria-live="polite"></span>
               </div>
             </div>
           </div>
@@ -1141,6 +1183,8 @@ function _saveInst(id, detailTr) {
             }
             _loadPublisherInfo();
             _loadRegistryLevels();
+            _loadGaps();
+            _refreshHistory(id);
             if (feedback) {
                 feedback.textContent = t('workspace.activities.saved');
                 feedback.classList.remove('app-ws-acts__feedback--error');
@@ -1444,6 +1488,7 @@ function _onMountClick(e) {
 function _filtered() {
     let list = _instances;
     if (_reviewOnly) list = list.filter(inst => inst.needsReview === true);
+    if (_gapsOnly) list = list.filter(inst => _hasGaps(inst));
     if (_searchQuery) {
         const q = _searchQuery;
         list = list.filter(inst => {
@@ -1468,7 +1513,181 @@ function _importBadges(inst) {
     if (inst.needsReview === true) {
         html += `<span class="app-ws-acts__review-badge">${_esc(t('workspace.activities.review.badge'))}</span>`;
     }
-    return html;
+    return html + _gapBadge(inst);
+}
+
+// ── H142 slice 7: what a record lacks to count ──────────────────────────────
+
+function _hasGaps(inst) {
+    return Array.isArray(_gaps[inst.id]) && _gaps[inst.id].length > 0;
+}
+
+function _gapsCount() {
+    return _instances.filter(_hasGaps).length;
+}
+
+function _gapBadge(inst) {
+    if (!_hasGaps(inst)) return '';
+    return `<span class="app-ws-acts__gap-badge" data-gap-badge title="${_esc(_gaps[inst.id].join(' '))}">` +
+           `${_esc(t('workspace.activities.gaps.badge'))}</span>`;
+}
+
+function _loadGaps() {
+    fetch('/user/workspace/activities/gaps', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => (r.ok ? r.json() : {}))
+        .then(map => {
+            _gaps = map && typeof map === 'object' ? map : {};
+            if (_gapsOnly && _gapsCount() === 0) _gapsOnly = false;
+            _refreshGapsToggle();
+            if (_gapsOnly) {
+                // a record whose data is now complete leaves the view: say so, since its open panel goes with it
+                const active = _activeId ? _instances.find(i => i.id === _activeId) : null;
+                if (active && !_hasGaps(active)) {
+                    _importNotice = { lines: [t('workspace.activities.gaps.resolved', active.name ?? active.activity?.name ?? '')], error: false };
+                    _renderImportNotice();
+                    _activeId = null;
+                }
+                _renderPage();
+            } else {
+                // in place, so an open record stays open
+                document.querySelectorAll('tr[data-inst-id]').forEach(tr => {
+                    tr.querySelector('[data-gap-badge]')?.remove();
+                    const inst = _instances.find(i => i.id === tr.dataset.instId);
+                    if (inst && _hasGaps(inst)) tr.querySelector('.app-ws-acts__col-name')?.insertAdjacentHTML('beforeend', _gapBadge(inst));
+                });
+            }
+            if (_activeId) {
+                const host = document.querySelector(`[data-gaps-host="${CSS.escape(_activeId)}"]`);
+                const inst = _instances.find(i => i.id === _activeId);
+                if (host && inst) host.innerHTML = _gapsBlock(inst);
+            }
+        })
+        .catch(() => { _gaps = {}; });
+}
+
+function _gapsBlock(inst) {
+    if (!_hasGaps(inst)) return '';
+    return `<div class="app-ws-acts__gaps" role="note">
+        <p class="app-ws-acts__detail-section-title">${t('workspace.activities.gaps.title')}</p>
+        ${_gaps[inst.id].map(line => `<p class="app-ws-acts__gaps-line">${_esc(line)}</p>`).join('')}
+    </div>`;
+}
+
+function _gapsToggleHtml() {
+    const count = _gapsCount();
+    if (count === 0 && !_gapsOnly) return '';
+    return `<button type="button" id="ws-acts-gaps-btn"
+                    class="app-ws-acts__review-toggle app-ws-acts__gaps-toggle${_gapsOnly ? ' app-ws-acts__gaps-toggle--active' : ''}"
+                    aria-pressed="${_gapsOnly}">
+              <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> ${_esc(t('workspace.activities.gaps.filter', count))}
+            </button>`;
+}
+
+function _refreshGapsToggle() {
+    const host = document.getElementById('ws-acts-gaps-toggle-host');
+    if (!host) return;
+    host.innerHTML = _gapsToggleHtml();
+    host.querySelector('#ws-acts-gaps-btn')?.addEventListener('click', _toggleGaps);
+}
+
+/** The two views exclude each other: the records to check carry the bulk bar, the records that lack data do not. */
+function _toggleGaps() {
+    _gapsOnly = !_gapsOnly;
+    if (_gapsOnly) _reviewOnly = false;
+    _selected = new Set();
+    _bulkMessage = null;
+    _page = 1;
+    _closeDetail();
+    _refreshReviewToggle();
+    _refreshGapsToggle();
+    _renderBulkBar();
+    _renderPage();
+}
+
+/** After a save: the record's history as the server keeps it, shown in place. */
+function _refreshHistory(id) {
+    const src = _mount?.dataset.src;
+    if (!src) return;
+    fetch(src, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+            const fresh = (data?.activityInstances ?? []).find(i => i.id === id);
+            const inst = _instances.find(i => i.id === id);
+            if (!fresh || !inst) return;
+            inst.changes = fresh.changes;
+            const host = document.querySelector(`[data-history-host="${CSS.escape(id)}"]`);
+            if (host) host.innerHTML = _historyBlock(inst);
+        })
+        .catch(() => {});
+}
+
+/** What the owner changed on the record, the latest first (H142 slice 7). */
+function _historyBlock(inst) {
+    const changes = Array.isArray(inst.changes) ? inst.changes.slice(-10).reverse() : [];
+    if (changes.length === 0) return '';
+    return `<div class="app-ws-acts__history">
+        <p class="app-ws-acts__detail-section-title">${t('workspace.activities.history.title')}</p>
+        ${changes.map(c => {
+            const what = c.action === 'MOVED'
+                ? t('workspace.activities.history.moved', c.from || '—', c.to || '—')
+                  + (c.note ? ' — ' + t('workspace.activities.history.dropped', c.note) : '')
+                : (c.note || '');
+            return `<p class="app-ws-acts__history-line"><span class="app-ws-acts__history-when">${_esc(_when(c.at))}` +
+                   `${c.by ? ' · ' + _esc(c.by) : ''}</span> ${_esc(what)}</p>`;
+        }).join('')}
+    </div>`;
+}
+
+function _when(at) {
+    if (at == null || at === '') return '';
+    const date = typeof at === 'number' ? new Date(at * 1000) : new Date(at);
+    if (Number.isNaN(date.getTime())) return String(at);
+    return date.toLocaleString(currentLocale() === 'ro' ? 'ro-RO' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+/** The types a record can move to: every other one, by name. */
+function _moveOptions(inst) {
+    const current = inst.activity?.id;
+    return (_data?.activities ?? [])
+        .filter(a => a && a.id && a.id !== current)
+        .slice()
+        .sort((a, b) => String(a.name).localeCompare(String(b.name), 'ro'))
+        .map(a => `<option value="${_esc(a.id)}" data-name="${_esc(a.name)}">${_esc(a.name)}</option>`)
+        .join('');
+}
+
+function _moveInst(inst, detailTr) {
+    const select   = detailTr.querySelector('[data-move-type]');
+    const feedback = detailTr.querySelector('[data-move-feedback]');
+    const button   = detailTr.querySelector('[data-move-submit]');
+    const show = (text, error) => {
+        if (!feedback) return;
+        feedback.textContent = text;
+        feedback.classList.toggle('app-ws-acts__feedback--error', !!error);
+        feedback.classList.add('app-ws-acts__feedback--visible');
+    };
+    const typeId = select ? select.value : '';
+    if (!typeId) { show(t('workspace.activities.move.choose'), true); return; }
+    const typeName = select.selectedOptions[0]?.dataset.name || select.selectedOptions[0]?.textContent?.trim() || '';
+    if (button) button.disabled = true;
+    fetch('/user/workspace/activities/move', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postJsonHeaders(),
+        body: JSON.stringify({ id: inst.id, typeId }),
+    })
+        .then(r => (r.ok ? r.json() : _rejectWithServerMessage(r)))
+        .then(body => {
+            const dropped = Array.isArray(body?.dropped) ? body.dropped : [];
+            _importNotice = { lines: [dropped.length
+                ? t('workspace.activities.move.dropped', typeName, dropped.join('; '))
+                : t('workspace.activities.move.done', typeName)], error: false };
+            _init(_panel); // the record now has the new type's fields
+        })
+        .catch(err => {
+            show((err && err.userMessage) || t('workspace.activities.move.failed'), true);
+            if (button) button.disabled = false;
+        });
 }
 
 function _reviewToggleHtml() {
@@ -1490,6 +1709,7 @@ function _refreshReviewToggle() {
 
 function _toggleReview() {
     _reviewOnly = !_reviewOnly;
+    if (_reviewOnly && _gapsOnly) { _gapsOnly = false; _refreshGapsToggle(); }
     _selected = new Set();
     _bulkMessage = null;
     _page = 1;
@@ -1802,6 +2022,7 @@ function _buildToolbar() {
           </button>
           <input type="file" id="ws-acts-import-input" accept=".xlsx" hidden>
           <span id="ws-acts-review-toggle-host">${_reviewToggleHtml()}</span>
+          <span id="ws-acts-gaps-toggle-host">${_gapsToggleHtml()}</span>
         </div>
         <div id="ws-acts-import-notice"></div>
         <div id="ws-acts-participant-import" hidden></div>`;

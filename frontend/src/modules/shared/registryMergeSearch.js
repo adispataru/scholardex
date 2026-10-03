@@ -64,7 +64,13 @@ function entriesOf(select) {
         });
 }
 
-function enhance(select) {
+/**
+ * Turns one <select> into the search box (idempotent): its options are the entries, its data-search-* attributes the
+ * texts. The activities panel uses it too, for the type a record moves to (H142 slice 7).
+ */
+export function enhanceSearchableSelect(select) {
+    if (!select || select.dataset.searchEnhanced === '1') return;
+    select.dataset.searchEnhanced = '1';
     const entries = entriesOf(select);
     const input = document.createElement('input');
     input.type = 'search';
@@ -189,5 +195,5 @@ function enhance(select) {
 }
 
 export function initRegistryMergeSearch() {
-    document.querySelectorAll('select[data-registry-merge-search]').forEach(enhance);
+    document.querySelectorAll('select[data-registry-merge-search]').forEach(enhanceSearchableSelect);
 }

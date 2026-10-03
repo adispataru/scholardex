@@ -34,6 +34,11 @@ public class ActivityInstance {
     /** H142 — true until the person has looked at an imported record ("de verificat"); null for typed records. */
     private Boolean needsReview;
     /**
+     * H142 slice 7 — what its owner changed after the record was made, oldest first (null when nothing was): the
+     * faculty's submitted records are corrected by their owners at once, so each change is kept.
+     */
+    private java.util.List<ActivityChange> changes;
+    /**
      * H143 — the request to classify this book's publisher where no list decides, and the head's decision on it;
      * null when the record never asked.
      */

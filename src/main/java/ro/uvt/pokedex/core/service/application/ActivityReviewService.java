@@ -66,7 +66,9 @@ public class ActivityReviewService {
                 }
             }
             if (touched) {
+                Map<String, String> before = ActivityChangeLog.copy(instance.getFields());
                 instance.setFields(fields);
+                ActivityChangeLog.edited(instance, researcherEmail, before, instance.getReferenceFields()); // H142 slice 7
                 PublisherClaimSupport.reconcile(instance, researcherEmail); // H143: a request set many at once
                 toSave.add(instance);
                 changed++;

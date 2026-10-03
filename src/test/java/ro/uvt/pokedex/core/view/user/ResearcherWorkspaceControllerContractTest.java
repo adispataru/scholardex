@@ -421,4 +421,24 @@ class ResearcherWorkspaceControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
                         .value(org.hamcrest.Matchers.containsString("1234-5678")));
     }
+
+    @Test
+    void aRecordMovesToAnotherTypeAndThePersonLearnsWhatHadNoField() throws Exception {
+        when(userActivityInstanceFacade.moveActivityInstance("a1", "t-ed", "u@uvt.ro"))
+                .thenReturn(new UserActivityInstanceFacade.MoveResult(true, java.util.List.of("FORUM_ISSN: 2734-6897")));
+        when(userActivityInstanceFacade.moveActivityInstance("a2", "t-ed", "u@uvt.ro"))
+                .thenReturn(new UserActivityInstanceFacade.MoveResult(false, java.util.List.of()));
+
+        mockMvc.perform(post("/user/workspace/activities/move")
+                        .with(authenticatedUser("u@uvt.ro"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"id\":\"a1\",\"typeId\":\"t-ed\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dropped[0]").value("FORUM_ISSN: 2734-6897"));
+        mockMvc.perform(post("/user/workspace/activities/move")
+                        .with(authenticatedUser("u@uvt.ro"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"id\":\"a2\",\"typeId\":\"t-ed\"}"))
+                .andExpect(status().isNotFound());
+    }
 }

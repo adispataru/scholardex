@@ -402,6 +402,30 @@ public class ResearcherWorkspaceController {
         return ResponseEntity.ok().build();
     }
 
+    // ── JSON: move an activity record to another type (H142 slice 7) ─────
+    @PostMapping("/activities/move")
+    @ResponseBody
+    public ResponseEntity<?> moveActivityInstance(
+            @RequestBody ActivityInstanceMoveRequest request,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        try {
+            UserActivityInstanceFacade.MoveResult result =
+                    userActivityInstanceFacade.moveActivityInstance(request.id(), request.typeId(), userOpt.get().getEmail());
+            if (!result.moved()) {
+                return ResponseEntity.notFound().build(); // not a record of theirs, or no such type
+            }
+            return ResponseEntity.ok(Map.of("dropped", result.dropped()));
+        } catch (ro.uvt.pokedex.core.service.issn.InvalidIssnException e) {
+            return invalidIssn(e);
+        } catch (ro.uvt.pokedex.core.service.application.ActivitySingleRecordException e) {
+            String message = messageSource.getMessage("workspace.activities.single", new Object[]{e.getTypeName()},
+                    org.springframework.context.i18n.LocaleContextHolder.getLocale());
+            return ResponseEntity.unprocessableEntity().body(Map.of("message", message));
+        }
+    }
+
     // ── JSON: delete activity instance ────────────────────────────────────
     @PostMapping("/activities/delete/{id}")
     @ResponseBody
@@ -1272,6 +1296,9 @@ public class ResearcherWorkspaceController {
             String date,
             Map<String, String> fields,
             Map<String, String> referenceFields) {}
+
+    record ActivityInstanceMoveRequest(String id, String typeId) {
+    }
 
     record ActivityInstanceUpdateRequest(
             String id,

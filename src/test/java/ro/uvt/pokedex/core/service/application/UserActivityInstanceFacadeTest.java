@@ -194,4 +194,98 @@ class UserActivityInstanceFacadeTest {
 
         facade.validateJournalIssns(journalEntry("2068-3227")); // must not throw
     }
+
+    // ── H142 slice 7: the change log and the move to another type ──
+
+    private static Activity type(String id, String name, List<String> fields, List<Activity.ReferenceField> references) {
+        Activity a = new Activity();
+        a.setId(id);
+        a.setName(name);
+        a.setFields(fields.stream().map(n -> { Activity.Field f = new Activity.Field(); f.setName(n); return f; }).toList());
+        a.setReferenceFields(references);
+        return a;
+    }
+
+    @Test
+    void anEditIsLoggedOnTheRecordValueByValue() {
+        ActivityInstance existing = owned("r1@uvt.ro");
+        existing.setFields(new java.util.HashMap<>(Map.of("Rol", "Membru")));
+        ActivityInstance incoming = new ActivityInstance();
+        incoming.setId("i1");
+        incoming.setFields(Map.of("Rol", "Director"));
+        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(existing));
+
+        assertTrue(facade.updateActivityInstance(incoming, "r1@uvt.ro"));
+        assertTrue(facade.updateActivityInstance(incoming, "r1@uvt.ro"), "the same values again");
+
+        assertEquals(1, existing.getChanges().size(), "nothing changed the second time: nothing logged");
+        assertEquals("EDITED", existing.getChanges().getFirst().getAction());
+        assertEquals("r1@uvt.ro", existing.getChanges().getFirst().getBy());
+        assertEquals("Rol: «Membru» → «Director»", existing.getChanges().getFirst().getNote());
+    }
+
+    @Test
+    void aMovedRecordKeepsItsDateSourceAndImportKeyAndWhatTheNewTypeHasNoFieldForGoesToItsEvidence() {
+        Activity article = type("t-art", "Articol (CS 2.1)", List.of("Titlu", "Revista_sau_volumul", "Dovezi"),
+                List.of(Activity.ReferenceField.FORUM_ISSN));
+        Activity edition = type("t-ed", "Ediție critică (DID 1.4)", List.of("Titlu", "Editura", "Dovezi"), List.of());
+        ActivityInstance record = new ActivityInstance();
+        record.setId("i1");
+        record.setResearcherId("r1@uvt.ro");
+        record.setActivity(article);
+        record.setName("Sabin V. Drăgoi, 303 Colinde");
+        record.setDate("2024-01-01");
+        record.setImportSource("Raportare CNFIS 2025 (depusă de facultate) — Anexa 5 CNFIS: x.xlsx");
+        record.setImportKey("key-1");
+        record.setFields(new java.util.HashMap<>(Map.of("Titlu", "303 Colinde", "Revista_sau_volumul", "Eurostampa")));
+        record.setReferenceFields(new java.util.EnumMap<>(Map.of(Activity.ReferenceField.FORUM_ISSN, "2734-6897")));
+        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(record));
+        when(activityRepository.findById("t-ed")).thenReturn(Optional.of(edition));
+
+        UserActivityInstanceFacade.MoveResult result = facade.moveActivityInstance("i1", "t-ed", "r1@uvt.ro");
+
+        assertTrue(result.moved());
+        assertEquals(List.of("Revista_sau_volumul: Eurostampa", "FORUM_ISSN: 2734-6897"), result.dropped());
+        assertEquals("t-ed", record.getActivity().getId());
+        assertEquals("2024-01-01", record.getDate());
+        assertEquals("Sabin V. Drăgoi, 303 Colinde", record.getName());
+        assertEquals("key-1", record.getImportKey(), "a re-import of the same file does not bring it back");
+        assertTrue(record.getImportSource().startsWith("Raportare CNFIS 2025"));
+        assertEquals("303 Colinde", record.getFields().get("Titlu"));
+        assertEquals("Revista_sau_volumul: Eurostampa | FORUM_ISSN: 2734-6897", record.getFields().get("Dovezi"));
+        assertTrue(record.getReferenceFields().isEmpty());
+        var change = record.getChanges().getLast();
+        assertEquals("MOVED", change.getAction());
+        assertEquals("Articol (CS 2.1)", change.getFrom());
+        assertEquals("Ediție critică (DID 1.4)", change.getTo());
+        assertEquals("Revista_sau_volumul: Eurostampa; FORUM_ISSN: 2734-6897", change.getNote());
+        verify(activityInstanceRepository).save(record);
+    }
+
+    @Test
+    void onlyItsOwnerMovesARecordAndOnlyToATypeThatExists() {
+        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(owned("owner@uvt.ro")));
+        when(activityRepository.findById("t-x")).thenReturn(Optional.of(type("t-x", "X", List.of(), List.of())));
+
+        org.junit.jupiter.api.Assertions.assertFalse(facade.moveActivityInstance("i1", "t-x", "intruder@uvt.ro").moved());
+        org.junit.jupiter.api.Assertions.assertFalse(facade.moveActivityInstance("i1", "t-none", "owner@uvt.ro").moved());
+        verify(activityInstanceRepository, never()).save(any());
+    }
+
+    @Test
+    void aTypeHeldOnceIsNotTakenASecondTimeByAMove() {
+        Activity scholar = type("t-gs", "Google Scholar", List.of(), List.of());
+        scholar.setSinglePerResearcher(true);
+        ActivityInstance record = owned("r1@uvt.ro");
+        ActivityInstance held = new ActivityInstance();
+        held.setId("i2");
+        held.setActivity(scholar);
+        when(activityInstanceRepository.findById("i1")).thenReturn(Optional.of(record));
+        when(activityRepository.findById("t-gs")).thenReturn(Optional.of(scholar));
+        when(activityInstanceRepository.findAllByResearcherId("r1@uvt.ro")).thenReturn(List.of(record, held));
+
+        org.junit.jupiter.api.Assertions.assertThrows(ActivitySingleRecordException.class,
+                () -> facade.moveActivityInstance("i1", "t-gs", "r1@uvt.ro"));
+        verify(activityInstanceRepository, never()).save(any());
+    }
 }

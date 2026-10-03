@@ -79,8 +79,9 @@ Done history moved to `TASKS-done.md`.
   lists) IN PROD 2026-10-03 (image f98af4d8; 77,556 journals, 55,922 forums with a list membership); slice 7 (the
   faculty's CNFIS 2025 reports imported as confirmed, events ranked at the reported level) IN PROD 2026-10-03 (image
   18f6bf01; 1,638 confirmed records for 39 people; repair `h142_slice7_recheck.js --restart` RUN by Adrian the same
-  day; 13 names, 47 records, wait for the experts; five teachers without an account wait for the faculty) — see the
-  doc** (plan SCOPED and
+  day; 13 names, 47 records, wait for the experts; five teachers without an account wait for the faculty; roleless
+  performances and prizes scored by `6ca975f8` + `h142_slice7_scoring.js` (run); the «Nu se punctează încă» filter,
+  «Mută la alt tip» and the record history BUILT the same day) — see the doc** (plan SCOPED and
   REASSESSED the same day with Adrian; four smaller decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027

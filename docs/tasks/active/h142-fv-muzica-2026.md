@@ -953,6 +953,30 @@ people scored 0 in FV Muzică 2026. A read of prod gave the reasons:
 - **No records (15 people).** Eleven in Theatre (no Theatre report yet, slice 6) and four in Music: Cinc's sheets
   were empty, and three have no file in the submission.
 
+**What a record lacks, supplied by its owner (2026-10-03).** Adrian chose that people supply what is missing
+themselves, rather than the platform guessing it from text (for example an ISSN written in a title).
+- **Decisions:**
+  - A correction applies at once: it is data the person enters (H145).
+  - Each change is kept on the record.
+  - Built now: the filter with its reasons, and the move to another type.
+  - Not now: bulk edit outside «de verificat», and notifications.
+- **«Nu se punctează încă».** A filter on the activities panel, with a badge per record and the reasons in the open
+  record (`ActivityGapsFacade`, `GET /user/workspace/activities/gaps`). The reasons follow the scoring's own rules:
+  - a performance in an ensemble of 5+, or of unknown size, without a role;
+  - an article without an ISSN;
+  - an ISSN that no list covers. The fix is the classification request that already existed («Încadrare
+    solicitată», with evidence, decided on `/supervisor/declarations`). A request the head is deciding is no gap.
+
+  A type a standard does not score (citations in Music) is no gap either.
+- **«Mută la alt tip».** For a record filed under the wrong type, e.g. a critical edition filed as an article
+  (`POST /user/workspace/activities/move`).
+  - The name, date, source and import key stay, so a re-import does not bring the record back.
+  - The values the new type declares go with it. The others go to «Dovezi» and to the history.
+  - A request the new type has no field for lapses.
+  - The type list is a search (the merge list's).
+- **History.** `ActivityInstance.changes` holds `EDITED` entries (each value, old → new; single and bulk saves) and
+  `MOVED` entries (from, to, the values that had no field). The open record shows the last 10.
+
 **Waiting for the faculty (Adrian asks Simona):** five teachers sent files but have no account in prod: Fănel Ignat,
 Vlad Popescu and Manuela Mihăilescu (Music), Otilia Huzum and Florin Vidam (Theatre). Their files are in
 `_fara_cont/`. Once they are added with the staff import, one more upload with the same option brings them in;
