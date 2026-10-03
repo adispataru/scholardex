@@ -155,4 +155,43 @@ class TitleListParserTest {
         assertEquals(true, TitleListParser.notSerial("Dissertations & Theses"));
         assertEquals(true, TitleListParser.notSerial("Blogs, Podcasts, & Websites"));
     }
+
+    @Test
+    void proQuestsTabExportInsidePreInWindows1252Reads() throws IOException {
+        String text = "<html><body><pre>\nMusic Periodicals Database\nAccurate as of 26 September 2026\n"
+                + "Title\tEdition\tPublisher\tISSN\teISSN\tCit/Abs (combined) First\tCit/Abs (combined) Last\tPub Type\n"
+                + "Revue de musicologie\t\tSoci\u00e9t\u00e9 fran\u00e7aise\t0035-1601\t1958-5632\t01-Jan-1922\tCurrent\tScholarly Journals\n"
+                + "Le Monde\t\t\t0395-2037\t\t01-Jan-1990\tCurrent\tNewspapers\n"
+                + "</pre></body></html>\n";
+
+        TitleListParser.Parsed parsed = TitleListParser.parse(new ByteArrayInputStream(text.getBytes(java.nio.charset.Charset.forName("windows-1252"))));
+
+        assertEquals(1, parsed.rows().size());
+        assertEquals(Set.of("00351601", "19585632"), parsed.rows().getFirst().issns());
+        assertEquals(1922, parsed.rows().getFirst().from());
+        assertNull(parsed.rows().getFirst().to(), "Current: still covered");
+        assertEquals(1, parsed.skipped(), "a newspaper is no journal");
+        assertEquals("Soci\u00e9t\u00e9 fran\u00e7aise", TitleListParser.decode("Soci\u00e9t\u00e9 fran\u00e7aise".getBytes(
+                java.nio.charset.Charset.forName("windows-1252"))), "bytes that are no UTF-8 are read as Windows-1252");
+    }
+
+    @Test
+    void rilmsListWithoutAHeaderIsReadInTheOrderOfItsTable() throws IOException {
+        TitleListParser.Parsed parsed = parse("core|periodical|0001-6241|1663-2427|Acta musicologica|IMS|Switzerland|1928||\n"
+                + "tertiary|periodical|||128: Das Magazin der Berliner Philharmoniker|BPO|Germany|2012||\n"
+                + "secondary|newspaper|0028-7806||The New Yorker|Cond\u00e9 Nast|United States|1925||\n"
+                + "core|magazine|1221-9649||Muzica \"Nou\u0103\"|UCMR|Romania|1990|2001|\n");
+
+        assertEquals(List.of("Acta musicologica", "Muzica \"Nou\u0103\""), parsed.rows().stream().map(TitleListParser.TitleRow::title).toList());
+        assertEquals("16632427", parsed.rows().getFirst().onlineIssn());
+        assertEquals(2001, parsed.rows().get(1).to());
+        assertEquals(2, parsed.skipped(), "the journal without an ISSN, the newspaper");
+    }
+
+    @Test
+    void aQuoteInsideAFieldIsText() {
+        assertEquals(List.of("Le \"Courrier\" musical", "1234-5679"), TitleListParser.split("Le \"Courrier\" musical|1234-5679", '|'));
+        assertEquals(List.of("Studia, Musica", "1844-4369"), TitleListParser.split("\"Studia, Musica\",1844-4369", ','));
+        assertEquals(List.of("say \"hi\"", "x"), TitleListParser.split("\"say \"\"hi\"\"\",x", ','));
+    }
 }

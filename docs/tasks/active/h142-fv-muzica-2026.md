@@ -668,6 +668,49 @@ flags (`muzica2026` on `Muz26_CS_2_1_decl` and `Muz26_N_articole_decl`; `sociolo
 | `CEEOL` | GOKb, German consortium package: gokb.org/gokb/packages/kbart/35c3a7d9-d507-44f3-8339-952baa6edf13?exportType=title (1,304 of ~3,100 journals); CEEOL publishes none | KBART | GOKb: CC0 |
 | `SCIENDO` | none public (KBART behind a librarian login at reference-global.com) | — | ask the library to request it |
 
+**Downloaded 2026-10-03.** With Adrian's go-ahead, these lists were downloaded to the local
+`data/journal-databases/` (git-ignored). The server answered a plain request each time, with no challenge, and no
+robot clause applies to them:
+
+| File | Journals | Rows skipped (no ISSN, or not a serial) |
+|---|---|---|
+| `CAMBRIDGE_CORE/cambridge-journals-all-journals-2026-10-03.txt` | 884 rows → 737 journals | 1 |
+| `PROJECT_MUSE/muse_journal_metadata_2026.tsv` | 868 | 0 |
+| `PROQUEST/music-periodicals-database-2026-10-03.txt` | 600 | 69 |
+| `PROQUEST/proquest-central-2026-10-03.txt` (11.8 MB) | 26,073 | 9,958 |
+| `RILM/rilm-abstracts-music-journals-2026-10-03.txt` | 2,603 | 900 |
+| `RILM/rilm-abstracts-nonmusic-journals-2026-10-03.txt` | 10,634 | 3,697 |
+| `TAYLOR_FRANCIS/gokb-jisc-taylor-francis-read-and-publish-2026-10-01.txt` | 2,443 | 0 |
+| `CEEOL/gokb-ceeol-t10-nationalkonsortium-2026-09-23.txt` | 1,272 | 34 |
+
+Three of the files needed parser work:
+- **Project MUSE:** notes come before the header.
+- **ProQuest:** the tab export is wrapped in `<pre>` and encoded as Windows-1252. Its non-serials are skipped:
+  reports, newspapers, blogs, wire feeds, books, working papers.
+- **RILM:** there is no header row.
+
+**The local run.** The import step processed 43,382 journals in 32 s:
+
+| Database | Journals |
+|---|---|
+| ProQuest | 26,090 |
+| RILM | 11,989 |
+| Taylor & Francis | 2,443 |
+| CEEOL | 1,255 |
+| Project MUSE | 868 |
+| Cambridge Core | 737 |
+
+It tagged 25,898 existing forums and created **17,483 new ones**, so the registry grew from 75,302 to 92,784, with no
+identity conflicts. Of the new forums:
+- 8,737 come from ProQuest only, mostly ProQuest Central's trade journals and magazines;
+- 7,313 come from RILM only;
+- the rest come from CEEOL (423), Cambridge (144), MUSE (112), T&F (71) and combinations.
+
+After Scopus → 3, 37,961 forums carry a title-list membership, and 18,373 of them are in Scopus or WoS too.
+
+**Still to download in a browser:** EBSCO's seven files, JSTOR's KBART, OUP's 2026 and 2025 A–Z ZIPs, and
+optionally T&F's own full KBART (GOKb's Jisc list covers 2,443 titles).
+
 **Rollout order.**
 1. Push and deploy.
 2. Flip the guard and run `h142_slice4_journal_databases.js`.
@@ -678,6 +721,9 @@ flags (`muzica2026` on `Muz26_CS_2_1_decl` and `Muz26_N_articole_decl`; `sociolo
 6. Refresh the FMT Music and FSAS Sociology reports («Reîmprospătează tot»).
 
 **Open.**
+- **Size of the forum registry.** The general lists (ProQuest Central, RILM's non-music periodicals) bring about
+  17,500 new venues, the way DOAJ brought its own. To keep the registry smaller, new forums could be created only
+  for the subject lists, leaving the general ones to tag existing forums. Adrian's call.
 - **Terms of use.** Is this use of the lists covered? KBART lists exist to be loaded into library systems, and
   the platform uses them the same way (matching ISSNs for an internal evaluation). But EBSCO's, MUSE's, T&F's and
   CEEOL's site terms are restrictive. A question for the library (which of these UVT subscribes to) and for
