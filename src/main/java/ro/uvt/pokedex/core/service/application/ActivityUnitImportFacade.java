@@ -55,6 +55,19 @@ public class ActivityUnitImportFacade {
     private final ActivityFileImportService importService;
     private final DepartmentRepository departmentRepository;
     private final OrgDivisionRepository divisionRepository;
+    private final ro.uvt.pokedex.core.repository.RegistryDomainExpertsRepository domainExpertsRepository;
+    private final ArtisticEventFacultyRanking facultyRanking;
+
+    /** H142 slice 7 — the source a faculty's submitted CNFIS files are recorded under. */
+    public static final String FACULTY_REPORT_SOURCE = "Raportare CNFIS 2025 (depusă de facultate)";
+
+    /** The domains whose experts rank artistic events, and the one mapped to the unit (a department), if any. */
+    public record FacultyImportForm(List<String> domains, String defaultDomain) {
+    }
+
+    /** What a faculty's submitted files did: each file's result, and the events ranked at the level reported. */
+    public record FacultyImportResult(List<FileResult> files, ArtisticEventFacultyRanking.Outcome ranking) {
+    }
 
     public Optional<UnitPage> page(String kind, String unitId) {
         String name = unitName(kind, unitId);
@@ -98,6 +111,68 @@ public class ActivityUnitImportFacade {
             results.add(new FileResult(file.name(), member.email(), member.displayName(), "IMPORTED", report));
         }
         return results;
+    }
+
+    public FacultyImportForm facultyImportForm(String kind, String unitId) {
+        List<String> domains = new ArrayList<>();
+        String mapped = null;
+        for (ro.uvt.pokedex.core.model.registry.RegistryDomainExperts d : domainExpertsRepository.findAll()) {
+            if (d.getDomain() == null) continue;
+            domains.add(d.getDomain());
+            if ("departments".equals(kind) && d.getDepartmentIds() != null && d.getDepartmentIds().contains(unitId)) {
+                mapped = d.getDomain();
+            }
+        }
+        domains.sort(Comparator.naturalOrder());
+        return new FacultyImportForm(domains, mapped);
+    }
+
+    /**
+     * H142 slice 7 — files the faculty already submitted (its CNFIS report): each is imported as its member's, the records
+     * checked rather than "to check"; then the artistic events the Anexa 5.1 sheets name are ranked once, at the level
+     * the faculty reported ({@link ArtisticEventFacultyRanking}), in {@code domain}.
+     */
+    public FacultyImportResult importFacultySubmission(String kind, String unitId, List<UploadedFile> files, String uploadedBy,
+                                                       String domain) {
+        List<Member> members = members(kind, unitId);
+        ActivityFileImportService.ImportOptions options = new ActivityFileImportService.ImportOptions(true, FACULTY_REPORT_SOURCE);
+        List<FileResult> results = new ArrayList<>();
+        List<ActivityFileImportService.ReportedLevel> levels = new ArrayList<>();
+        for (UploadedFile file : files) {
+            Optional<Member> member = match(members, file, results);
+            if (member.isEmpty()) continue;
+            ActivityFileImportService.ImportReport report = importService.importFile(member.get().email(), file.name(),
+                    new ByteArrayInputStream(file.bytes()), uploadedBy, options);
+            results.add(new FileResult(file.name(), member.get().email(), member.get().displayName(), "IMPORTED", report));
+            levels.addAll(report.reportedLevels());
+        }
+        ArtisticEventFacultyRanking.Outcome ranking = domain == null || domain.isBlank()
+                ? ArtisticEventFacultyRanking.Outcome.NONE
+                : facultyRanking.rank(levels, domain.trim(), uploadedBy, FACULTY_REPORT_SOURCE);
+        return new FacultyImportResult(results, ranking);
+    }
+
+    /** The member a file names (its heading, its name); a refused, unmatched or ambiguous file is reported instead. */
+    private static Optional<Member> match(List<Member> members, UploadedFile file, List<FileResult> results) {
+        String heading;
+        ActivityFileImportService.FileKind fileKind;
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(file.bytes()))) {
+            fileKind = ActivityFileImportService.kindOf(workbook);
+            heading = ActivityFileImportService.headingOf(workbook);
+        } catch (Exception unreadable) {
+            fileKind = ActivityFileImportService.FileKind.UNSUPPORTED;
+            heading = null;
+        }
+        if (!fileKind.importable()) {
+            results.add(new FileResult(file.name(), null, null, "REFUSED", null));
+            return Optional.empty();
+        }
+        List<Member> matched = matching(members, (heading == null ? "" : heading) + " " + file.name());
+        if (matched.size() != 1) {
+            results.add(new FileResult(file.name(), null, null, matched.isEmpty() ? "NOT_MATCHED" : "AMBIGUOUS", null));
+            return Optional.empty();
+        }
+        return Optional.of(matched.getFirst());
     }
 
     /** The members a text names: every token of their last name and one of their first names. */

@@ -10,8 +10,10 @@ import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
+import ro.uvt.pokedex.core.service.importing.grid.CnfisArticlesSheetParser;
 import ro.uvt.pokedex.core.service.importing.grid.CnfisArtsSheetParser;
 import ro.uvt.pokedex.core.service.importing.grid.CnfisCitationSheetParser;
+import ro.uvt.pokedex.core.service.importing.grid.CnfisSheets;
 import ro.uvt.pokedex.core.service.importing.grid.GridItemSplitter;
 import ro.uvt.pokedex.core.service.importing.grid.MusicGridLayout;
 import ro.uvt.pokedex.core.service.importing.grid.MusicGridParser;
@@ -40,12 +42,14 @@ import java.util.stream.Collectors;
  * H142 slice 2 — turns a file a colleague already has into their activities, so nobody types again what is
  * written in their fișă de verificare: the Music grid of the faculty (each row's items become activities of the
  * row's type), a person's CNFIS Anexa 5.1 (each performance becomes a «Participare eveniment artistic» with its
- * kind and level) or a person's CNFIS Anexa 4.1 (each citation of an artistic work becomes a «Citare sau cronică a unei
- * creații artistice (CNFIS 4.1)»).
+ * kind and level), a person's CNFIS Anexa 4.1 (each citation of an artistic work becomes a «Citare sau cronică a unei
+ * creații artistice (CNFIS 4.1)») or, since H142 slice 7, a person's CNFIS Anexa 5 (each article becomes a declared CS 2.1
+ * article, its journal named by ISSN).
  *
  * <p>An import only ADDS records, marked as imported and "to check"; a record already brought by an earlier import
  * of the same text is skipped, so importing a file twice changes nothing. Roles and ensemble sizes are filled only
- * where a word makes them obvious ("dirijor", "duo"); everything else is left to the person's review.</p>
+ * where a word makes them obvious ("dirijor", "duo"); everything else is left to the person's review. Files the
+ * faculty already submitted ({@link ImportOptions#facultySubmitted}, H142 slice 7) land checked.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -53,12 +57,24 @@ public class ActivityFileImportService {
 
     private static final Logger log = LoggerFactory.getLogger(ActivityFileImportService.class);
 
-    public enum FileKind { MUSIC_GRID, CNFIS_ARTS, CNFIS_CITATIONS, INSTITUTIONAL_TABLE, UNSUPPORTED;
+    public enum FileKind { MUSIC_GRID, CNFIS_ARTS, CNFIS_CITATIONS, CNFIS_ARTICLES, INSTITUTIONAL_TABLE, UNSUPPORTED;
 
         /** A file that holds one person's activities and may be imported as theirs. */
         public boolean importable() {
-            return this == MUSIC_GRID || this == CNFIS_ARTS || this == CNFIS_CITATIONS;
+            return this == MUSIC_GRID || this == CNFIS_ARTS || this == CNFIS_CITATIONS || this == CNFIS_ARTICLES;
         }
+    }
+
+    /**
+     * H142 slice 7 — how a file is imported. {@code facultySubmitted}: the file is one the faculty already submitted (its
+     * CNFIS report), so the records land checked rather than "to check", their source says so ({@code sourceLabel}).
+     */
+    public record ImportOptions(boolean facultySubmitted, String sourceLabel) {
+        public static final ImportOptions PERSONAL = new ImportOptions(false, null);
+    }
+
+    /** An event a CNFIS Anexa 5.1 row names that the registry does not list, with the level the file gave it. */
+    public record ReportedLevel(String eventName, String level) {
     }
 
     /**
@@ -68,9 +84,16 @@ public class ActivityFileImportService {
      */
     public record ImportReport(FileKind kind, int created, int alreadyImported, int withoutYear, int eventsRecognised,
                                Map<String, Integer> byRow, List<String> unrecognisedRows, List<String> missingTypes,
-                               String heading, int unmarkedRows) {
+                               String heading, int unmarkedRows, List<ReportedLevel> reportedLevels) {
+        public ImportReport(FileKind kind, int created, int alreadyImported, int withoutYear, int eventsRecognised,
+                            Map<String, Integer> byRow, List<String> unrecognisedRows, List<String> missingTypes,
+                            String heading, int unmarkedRows) {
+            this(kind, created, alreadyImported, withoutYear, eventsRecognised, byRow, unrecognisedRows, missingTypes,
+                    heading, unmarkedRows, List.of());
+        }
+
         static ImportReport of(FileKind kind) {
-            return new ImportReport(kind, 0, 0, 0, 0, Map.of(), List.of(), List.of(), null, 0);
+            return new ImportReport(kind, 0, 0, 0, 0, Map.of(), List.of(), List.of(), null, 0, List.of());
         }
     }
 
@@ -86,18 +109,28 @@ public class ActivityFileImportService {
         if (MusicGridParser.looksLikeGrid(workbook)) {
             return FileKind.MUSIC_GRID;
         }
-        if (CnfisCitationSheetParser.looksLikeCitationSheet(workbook)) {
+        boolean citations = CnfisCitationSheetParser.looksLikeCitationSheet(workbook);
+        boolean arts = CnfisArtsSheetParser.looksLikeArtsSheet(workbook);
+        boolean articles = CnfisArticlesSheetParser.looksLikeArticlesSheet(workbook);
+        // an institutional table (Anexa 6, 6.1) holds the whole faculty: never one person's records, whatever its columns
+        if ((citations || arts || articles) && CnfisArtsSheetParser.isInstitutionalTable(workbook)) {
+            return FileKind.INSTITUTIONAL_TABLE;
+        }
+        if (citations) {
             return FileKind.CNFIS_CITATIONS;
         }
-        if (CnfisArtsSheetParser.looksLikeArtsSheet(workbook)) {
-            return CnfisArtsSheetParser.isInstitutionalTable(workbook) ? FileKind.INSTITUTIONAL_TABLE : FileKind.CNFIS_ARTS;
+        if (arts) {
+            return FileKind.CNFIS_ARTS;
         }
-        return FileKind.UNSUPPORTED;
+        return articles ? FileKind.CNFIS_ARTICLES : FileKind.UNSUPPORTED;
     }
 
-    /** Reads the heading of a grid (for matching a file to a person), or null. */
+    /** Who the file is about (for matching it to a person): the grid's heading, a CNFIS sheet's name; or null. */
     public static String headingOf(Workbook workbook) {
-        return MusicGridParser.looksLikeGrid(workbook) ? MusicGridParser.parse(workbook).heading() : null;
+        if (MusicGridParser.looksLikeGrid(workbook)) {
+            return MusicGridParser.parse(workbook).heading();
+        }
+        return CnfisSheets.personName(workbook).orElse(null);
     }
 
     /**
@@ -105,8 +138,13 @@ public class ActivityFileImportService {
      * not the researcher (a head or an admin), recorded with the source.
      */
     public ImportReport importFile(String researcherEmail, String fileName, InputStream input, String uploadedBy) {
+        return importFile(researcherEmail, fileName, input, uploadedBy, ImportOptions.PERSONAL);
+    }
+
+    public ImportReport importFile(String researcherEmail, String fileName, InputStream input, String uploadedBy,
+                                   ImportOptions options) {
         try (Workbook workbook = new XSSFWorkbook(input)) {
-            return importWorkbook(researcherEmail, fileName, workbook, uploadedBy);
+            return importWorkbook(researcherEmail, fileName, workbook, uploadedBy, options);
         } catch (IOException | RuntimeException e) {
             log.info("Activity import of {} for {} refused: {}", fileName, researcherEmail, e.getMessage());
             return ImportReport.of(FileKind.UNSUPPORTED);
@@ -114,15 +152,25 @@ public class ActivityFileImportService {
     }
 
     ImportReport importWorkbook(String researcherEmail, String fileName, Workbook workbook, String uploadedBy) {
+        return importWorkbook(researcherEmail, fileName, workbook, uploadedBy, ImportOptions.PERSONAL);
+    }
+
+    ImportReport importWorkbook(String researcherEmail, String fileName, Workbook workbook, String uploadedBy,
+                                ImportOptions options) {
         FileKind kind = kindOf(workbook);
         String source = switch (kind) {
             case MUSIC_GRID -> "Fișa de verificare: " + fileName;
             case CNFIS_ARTS -> "Anexa 5.1 CNFIS: " + fileName;
             case CNFIS_CITATIONS -> "Anexa 4.1 CNFIS: " + fileName;
+            case CNFIS_ARTICLES -> "Anexa 5 CNFIS: " + fileName;
             default -> null;
         };
         if (source == null) {
             return ImportReport.of(kind);
+        }
+        boolean facultySubmitted = options != null && options.facultySubmitted();
+        if (facultySubmitted && options.sourceLabel() != null && !options.sourceLabel().isBlank()) {
+            source = options.sourceLabel().trim() + " — " + source;
         }
         if (uploadedBy != null && !uploadedBy.equalsIgnoreCase(researcherEmail)) {
             source += " (încărcată de " + uploadedBy + ")";
@@ -131,9 +179,18 @@ public class ActivityFileImportService {
         List<String> missingTypes = new ArrayList<>();
         List<Draft> drafts = new ArrayList<>();
         List<String> unrecognised = List.of();
+        List<ReportedLevel> reportedLevels = new ArrayList<>();
         String heading = null;
         int unmarked = 0;
-        if (kind == FileKind.MUSIC_GRID) {
+        if (kind == FileKind.CNFIS_ARTICLES) {
+            CnfisArticlesSheetParser.ParsedArticles articles = CnfisArticlesSheetParser.parse(workbook);
+            for (CnfisArticlesSheetParser.ArticleRow row : articles.rows()) {
+                drafts.add(articleDraft(row));
+            }
+            if (articles.patents() > 0) {
+                unrecognised = List.of("Anexa 5: " + articles.patents() + " brevet(e), neimportate");
+            }
+        } else if (kind == FileKind.MUSIC_GRID) {
             MusicGridParser.ParsedGrid grid = MusicGridParser.parse(workbook);
             heading = grid.heading();
             unrecognised = grid.unrecognised();
@@ -150,7 +207,12 @@ public class ActivityFileImportService {
             CnfisArtsSheetParser.ParsedArts arts = CnfisArtsSheetParser.parse(workbook);
             unmarked = arts.unmarked();
             for (CnfisArtsSheetParser.ArtsRow row : arts.rows()) {
-                drafts.add(artsDraft(row));
+                Draft draft = artsDraft(row);
+                drafts.add(draft);
+                String event = draft.references().get(Activity.ReferenceField.EVENT_NAME);
+                if (!draft.eventRecognised() && event != null && row.level() != null) {
+                    reportedLevels.add(new ReportedLevel(event, row.level()));
+                }
             }
         }
 
@@ -185,7 +247,7 @@ public class ActivityFileImportService {
             instance.setReferenceFields(new HashMap<>(draft.references()));
             instance.setImportSource(source);
             instance.setImportKey(entry.getKey());
-            instance.setNeedsReview(Boolean.TRUE);
+            instance.setNeedsReview(facultySubmitted ? Boolean.FALSE : Boolean.TRUE);
             instance.setEventLevelSuggestion(draft.eventLevelSuggestion());
             toSave.add(instance);
             byRow.merge(draft.rowLabel(), 1, Integer::sum);
@@ -199,7 +261,7 @@ public class ActivityFileImportService {
         log.info("Activity import {} for {}: created {}, already imported {}, rows not recognised {}",
                 source, researcherEmail, toSave.size(), alreadyImported, unrecognised.size());
         return new ImportReport(kind, toSave.size(), alreadyImported, withoutYear, recognised, byRow, unrecognised,
-                missingTypes, heading, unmarked);
+                missingTypes, heading, unmarked, List.copyOf(reportedLevels));
     }
 
     // ── what each row's item becomes ──────────────────────────────────────────
@@ -242,6 +304,35 @@ public class ActivityFileImportService {
         fields.put("Publicatie", row.citation().replaceAll("\\s+", " ").trim());
         return new Draft(CITATION_TYPE, "CNFIS 4.1", work, row.citationYear() == null ? null : row.citationYear() + "-01-01",
                 fields, Map.of(), false, null, row.work() + " | " + row.citation());
+    }
+
+    /**
+     * H142 slice 7 — a row of Anexa 5: a declared CS 2.1 article, its journal named by ISSN (the first the row gives), so
+     * its databases come from the lists (H145, H142 slice 4); the DOI when the row gives a valid one, the rest (the WoS
+     * code, the ISBNs, a malformed DOI) kept as evidence. The same title twice is one record.
+     */
+    static Draft articleDraft(CnfisArticlesSheetParser.ArticleRow row) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("Titlu", row.title());
+        if (row.journal() != null) fields.put("Revista_sau_volumul", row.journal());
+        if (row.doi() != null) fields.put("DOI", row.doi());
+        List<String> evidence = new ArrayList<>();
+        if (row.wosCode() != null) evidence.add("WoS: " + row.wosCode());
+        if (!row.isbns().isEmpty()) evidence.add("ISBN: " + String.join(", ", row.isbns()));
+        if (row.issns().size() > 1) evidence.add("ISSN: " + row.issns().stream().map(ActivityFileImportService::hyphenated)
+                .collect(Collectors.joining(", ")));
+        if (!evidence.isEmpty()) fields.put("Dovezi", String.join("; ", evidence));
+        Map<Activity.ReferenceField, String> references = new LinkedHashMap<>();
+        if (!row.issns().isEmpty()) {
+            references.put(Activity.ReferenceField.FORUM_ISSN, hyphenated(row.issns().getFirst()));
+        }
+        return new Draft(MusicGridLayout.Row.CS_2_1.activityType(), "CNFIS 5", row.title(),
+                row.year() == null ? null : row.year() + "-01-01", fields, references, false, null,
+                row.title() + (row.doi() == null ? "" : " | " + row.doi()));
+    }
+
+    private static String hyphenated(String issn) {
+        return issn.length() == 8 ? issn.substring(0, 4) + "-" + issn.substring(4) : issn;
     }
 
     /** The visibility rows of the Music grid, as the experts read them. */
@@ -357,7 +448,9 @@ public class ActivityFileImportService {
         if (listed.isPresent()) {
             references.put(Activity.ReferenceField.EVENT_NAME, listed.get());
         } else if (!row.event().isEmpty()) {
-            references.put(Activity.ReferenceField.EVENT_NAME, abbreviate(row.event(), 200));
+            // H142 slice 7: the event's own name, cut from the cell like the institutional table's ("Festivalul …,
+            // ediția a XXVI-a, Iași, 14-20 octombrie 2023" → "Festivalul …"), so the experts and the ranking read one name
+            references.put(Activity.ReferenceField.EVENT_NAME, eventNameOf(row.event()));
         }
         // the level the faculty gave the event: a suggestion for the experts, never a score (H142 slice 3)
         String suggestion = switch (row.level() == null ? "" : row.level()) {
@@ -366,8 +459,27 @@ public class ActivityFileImportService {
             case "NATIONAL" -> "Fișa CNFIS 5.1: național";
             default -> null;
         };
-        return new Draft(MusicGridLayout.EVENT_TYPE, "CNFIS 5.1", text + " | " + row.event(), row.year() + "-01-01",
-                fields, references, listed.isPresent(), suggestion);
+        return new Draft(MusicGridLayout.EVENT_TYPE, "CNFIS 5.1", text + " | " + row.event(),
+                row.year() == null ? null : row.year() + "-01-01", fields, references, listed.isPresent(), suggestion);
+    }
+
+    /** A date at the start of a cell ("03.11.2022 – ", "01-04.06.2023 – ", "15 octombrie 2022, "), dropped from a name. */
+    private static final Pattern LEADING_DATE = Pattern.compile(
+            "^\\s*(\\d{1,2}(\\s*[-–]\\s*\\d{1,2})?\\s*[./]\\s*\\d{1,2}\\s*[./]\\s*\\d{2,4}|\\d{1,2}\\s+\\p{L}+\\s+\\d{4})\\s*[-–—,:]?\\s*");
+
+    /**
+     * H142 slice 7 — the name an Anexa 5.1 cell gives its event: the festival, series or host the cell names (cut like
+     * the institutional table's), else the cell without its leading date — the same concert reported for several
+     * years is then one name.
+     */
+    static String eventNameOf(String cell) {
+        Optional<String> named = ArtisticEventSeedService.eventName(cell);
+        if (named.isPresent()) {
+            return named.get();
+        }
+        String text = LEADING_DATE.matcher(cell == null ? "" : cell.replaceAll("\\s+", " ").trim()).replaceFirst("")
+                .replaceAll("[;.,\\s]+$", "");
+        return abbreviate(text.isEmpty() ? cell : text, 200);
     }
 
     private static Optional<String> roleOf(String lower) {

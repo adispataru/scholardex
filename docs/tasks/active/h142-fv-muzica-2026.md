@@ -798,6 +798,74 @@ first list naming them, those come from EBSCO (9,838), ProQuest (7,341), RILM (6
 - **Sciendo.** It has no public list; its journals count through DOAJ (most are open access) or a request a head
   approves.
 
+## Slice 7 as built (2026-10-03) — the faculty's CNFIS 2025 reports
+
+Simona Negru sent FMT's CNFIS 2025 submission, one folder per teacher: 41 in Music and 6 in Theatre. Each holds
+Anexa 5 (articles and patents), 5.1 (artistic performance) and 4.1 (citations of artistic works), plus the signed
+PDFs and the proofs. **Decisions (Adrian, 2026-10-03):**
+- The files were already submitted, so their records are imported as confirmed.
+- The levels the faculty reported rank the events in the registry.
+- The sheets' "Toma Iulia-Magdalena" is the platform's Tecu Iulia-Magdalena.
+- Five people without an account are left out until Adrian asks the faculty.
+
+Slice 5 (lookups by identifier) is postponed. ISBN lookup belongs in the researcher workspace for every faculty, as
+would an import of ORCID works.
+
+**Built:**
+- **The name inside a CNFIS sheet.** `CnfisSheets.personName` reads the value under "Nume şi prenume". It skips the
+  guidance line of Anexa 5.1 and stops at a label, note or job title, so a blank name stays blank. `headingOf`
+  returns it, so the bulk import matches a file by the name inside, not only by its file name.
+- **Anexa 5 → declared CS 2.1 articles.** `CnfisArticlesSheetParser` reads year, title, DOI (a resolver URL
+  stripped), WoS code, journal, ISSNs and ISBNs. It skips patents, and the person's classification marks are not
+  read (H145). Each article becomes a «… (Comisia 35, CS 2.1)» record: its journal named by the first ISSN, so the
+  title lists and the corpus decide its databases; the other ISSNs, the WoS code and the ISBNs go to the evidence.
+- **5.1 rows without a year.** A numbered row with an empty year takes the last year its texts name; guidance rows
+  have no number.
+- **Event names.** A 5.1 row's event is the festival, series or host the cell names, cut like Anexa 6.1's. Otherwise
+  it is the cell without its leading date, so the Christmas concert reported for four years is one name.
+- **The faculty's submitted files** (`ActivityUnitImportFacade.importFacultySubmission`; an option on the unit
+  import page, for platform admins only, with the domain of new events). Records land checked (no "to check"), with
+  the source "Raportare CNFIS 2025 (depusă de facultate) — Anexa …". Then `ArtisticEventFacultyRanking` ranks the
+  events once per batch:
+  - **one level reported:** confirmed at that level, basis `FACULTY_CNFIS_REPORT`, the counts in its note;
+  - **different levels reported:** a proposal for the experts;
+  - **a new name holding every distinctive word of a ranked event** ("Festivalul Internațional GEORGE ENESCU" vs the
+    CNFIS list's "Festivalul «George Enescu»"): a proposal, noted as a likely spelling;
+  - **already ranked** (the CNFIS list, an expert): unchanged;
+  - **rejected or merged:** unchanged.
+- **Faculty tables.** An institutional table (Anexa 6, 6.1) is never one person's file, whatever its columns (the
+  Music Anexa 6.1 used to read as a citations sheet).
+
+**Dry run** (the real files through the real code, against the prod roster of the two departments: 39 Music, 15
+Theatre):
+- All 120 files of the upload set match exactly one person: 40 people, none unmatched, none ambiguous.
+- They hold 416 performances and prizes, 1,187 citations and 41 articles.
+- 166 distinct events are outside the CNFIS list: 158 reported at one level (76 international, 4 top
+  international, 78 national), and 8 at different levels.
+- The 8: Eufonia, Meridian, Intrada, Remus Georgescu, George Enescu, The Brave New Music, Timișoara Muzicală and the
+  ICONS tour. The experts (admins, as long as FMT has no heads) decide them on `/user/registry/review`.
+
+**Upload set.** In `~/Downloads/Raportare CNFIS 2025/_de_incarcat/`:
+- **The upload folders:** `Muzica_1` (54 files, 18 people), `Muzica_2` (54 files, 18 people) and `Teatru` (12 files,
+  4 people). Each file is copied as «Nume Prenume - original.xlsx» after the roster, so initials-only file names
+  match too.
+- **Duplicates:** one copy per annex; the newer of Ioachimescu's duplicates and Rădoiaș's resubmitted set.
+- **Not uploaded:** the faculty tables, the index file and Dorobanțu's unreadable `DOROBANTU_I_5 2021-2024 (2025).xlsx`
+  (not a workbook; his three annexes are in).
+- **Set aside:** `_fara_cont/` holds the files of the five without an account.
+
+**Prod steps** (after the push and deploy):
+1. On `/supervisor/departments/6abb58092fb0d9482997fab4/activity-import` (Departamentul de Muzică), tick «Fișe pe
+   care facultatea le-a depus deja», keep the domain Muzică, and upload `Muzica_1`, then `Muzica_2`.
+2. On `/supervisor/departments/6abb58092fb0d9482997fab5/activity-import` (Departamentul de Teatru), do the same
+   with `Teatru` and the domain «Teatru şi artele spectacolului».
+3. Rank the 8 conflicting events on `/user/registry/review`.
+4. Refresh the Music report («Reîmprospătează tot»).
+
+**Waiting for the faculty (Adrian asks Simona):** five teachers sent files but have no account in prod: Fănel Ignat,
+Vlad Popescu and Manuela Mihăilescu (Music), Otilia Huzum and Florin Vidam (Theatre). Their files are in
+`_fara_cont/`. Once they are added with the staff import, one more upload with the same option brings them in.
+
 ## Still to decide
 
 1. ~~Which EBSCO and ProQuest databases count~~ — decided 2026-10-03: the subject databases and the general ones

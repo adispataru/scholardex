@@ -65,7 +65,8 @@ class ActivityFileImportServiceTest {
         List<Activity.Field> fields = new ArrayList<>();
         for (String f : List.of("Titlu", "Dovezi", "Link", "Suport", "Rol", "Marime_formatie", "Rezultat", "Tip",
                 "N_participanti_universitate", "Nume Proiect", "Functia", "Organizatia", "An_inceput", "An_sfarsit", "Nivel",
-                "Concursul", "Denumire", "DOI", "Publicatia_sau_editura", "Manifestarea", "Lucrarea", "Publicatia_sau_postul")) {
+                "Concursul", "Denumire", "DOI", "Publicatia_sau_editura", "Manifestarea", "Lucrarea", "Publicatia_sau_postul",
+                "Revista_sau_volumul")) {
             Activity.Field field = new Activity.Field();
             field.setName(f);
             field.setNumber(List.of("Marime_formatie", "N_participanti_universitate", "An_inceput", "An_sfarsit").contains(f));
@@ -208,7 +209,10 @@ class ActivityFileImportServiceTest {
         assertTrue(recital.getEventLevelSuggestion().startsWith("Fișa CNFIS 5.1: internațional"), recital.getEventLevelSuggestion());
         assertFalse(recital.getFields().containsKey("Vizibilitate"));
         assertEquals("1", recital.getFields().get("N_participanti_universitate"));
-        assertEquals("Festivalul muzicii românești, Iași", recital.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME));
+        // H142 slice 7: the event's own name, cut from the cell, as the experts and the ranking read it
+        assertEquals("Festivalul muzicii românești", recital.getReferenceFields().get(Activity.ReferenceField.EVENT_NAME));
+        assertEquals(List.of(new ActivityFileImportService.ReportedLevel("Festivalul muzicii românești", "INTERNATIONAL"),
+                new ActivityFileImportService.ReportedLevel("Concursul Eduard Caudella", "NATIONAL")), report.reportedLevels());
         assertEquals("2024-01-01", recital.getDate());
         ActivityInstance prize = find(saved, "Premiu pentru acompaniament");
         assertFalse(prize.getFields().containsKey("Tip"));
@@ -294,6 +298,64 @@ class ActivityFileImportServiceTest {
         assertEquals(ActivityFileImportService.FileKind.UNSUPPORTED,
                 service.importFile(EMAIL, "x.xlsx", new ByteArrayInputStream("not a workbook".getBytes()), null).kind());
         verify(instanceRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void aFileTheFacultySubmittedLandsCheckedUnderItsReport() throws IOException {
+        XSSFWorkbook wb = ro.uvt.pokedex.core.service.importing.grid.GridWorkbooks.cnfisArts(
+                "Anexa 5.1. Fişa individuală", List.of(
+                        new ro.uvt.pokedex.core.service.importing.grid.GridWorkbooks.ArtsLine(2024, "Recital", "Festivalul X", 2, null)));
+
+        service.importFile(EMAIL, "PCA.xlsx", stream(wb), "admin@uvt.ro",
+                new ActivityFileImportService.ImportOptions(true, "Raportare CNFIS 2025 (depusă de facultate)"));
+
+        ActivityInstance recital = saved().getFirst();
+        assertEquals(Boolean.FALSE, recital.getNeedsReview(), "the faculty already submitted it: no «to check»");
+        assertEquals("Raportare CNFIS 2025 (depusă de facultate) — Anexa 5.1 CNFIS: PCA.xlsx (încărcată de admin@uvt.ro)",
+                recital.getImportSource());
+    }
+
+    @Test
+    void anArticlesSheetBecomesDeclaredArticlesNamedByTheirJournalsIssn() throws IOException {
+        XSSFWorkbook wb = ro.uvt.pokedex.core.service.importing.grid.GridWorkbooks.anexa5Filled();
+        assertEquals("Almași Gabriel-Vicențiu", ActivityFileImportService.headingOf(wb));
+
+        ActivityFileImportService.ImportReport report = service.importFile(EMAIL, "AB.xlsx", stream(wb), null);
+
+        assertEquals(ActivityFileImportService.FileKind.CNFIS_ARTICLES, report.kind());
+        assertEquals(2, report.created());
+        assertEquals(List.of("Anexa 5: 1 brevet(e), neimportate"), report.unrecognisedRows());
+        List<ActivityInstance> saved = saved();
+        ActivityInstance article = find(saved, "Instrumente gestuale");
+        assertEquals(MusicGridLayout.Row.CS_2_1.activityType(), article.getActivity().getName());
+        assertEquals("2069-665X", article.getReferenceFields().get(Activity.ReferenceField.FORUM_ISSN));
+        assertEquals("10.47809/ICTMF.2021.1", article.getFields().get("DOI"));
+        assertEquals("Tehnologii Informatice și de Comunicație în domeniul Muzical", article.getFields().get("Revista_sau_volumul"));
+        assertEquals("ISSN: 2069-665X, 2067-9408", article.getFields().get("Dovezi"));
+        assertEquals("2021-01-01", article.getDate());
+        ActivityInstance volume = find(saved, "Muzica bănățeană");
+        assertNull(volume.getReferenceFields().get(Activity.ReferenceField.FORUM_ISSN), "a volume with an ISBN names no journal");
+        assertEquals("WoS: WOS:000123; ISBN: 978-973-0-12345-6", volume.getFields().get("Dovezi"));
+    }
+
+    @Test
+    void anEventWithoutAFestivalNameIsTheCellWithoutItsDate() {
+        assertEquals("Festivalul Internațional Meridian",
+                ActivityFileImportService.eventNameOf("Festivalul Internațional Meridian, ediția a XIX-a, 3-10 nov. 2024"));
+        String christmas = "Concertul de Crăciun, Ansamblul coral al FMT – UVT, Biserica Romano-Catolică din Cenad";
+        assertEquals(christmas, ActivityFileImportService.eventNameOf("17.12.2021 – " + christmas));
+        assertEquals(christmas, ActivityFileImportService.eventNameOf("17.12.2022 – " + christmas + ";"),
+                "the same concert reported for two years is one name");
+        assertEquals("Turneu de concerte în 8 orașe din România",
+                ActivityFileImportService.eventNameOf("11-23.3.2023 Turneu de concerte în 8 orașe din România"));
+        assertEquals("participare cu lucrarea AlterEcho", ActivityFileImportService.eventNameOf("15 octombrie 2022, participare cu lucrarea AlterEcho"));
+    }
+
+    @Test
+    void anInstitutionalTableIsNeverOnePersonsWhateverItsColumns() throws IOException {
+        XSSFWorkbook wb = ro.uvt.pokedex.core.service.importing.grid.GridWorkbooks.officialForm(
+                "AC2025_Anexa6.1-Tabel_institutional_creatie_artistica-2025.xlsx");
+        assertEquals(ActivityFileImportService.FileKind.INSTITUTIONAL_TABLE, ActivityFileImportService.kindOf(wb));
     }
 
     private static ActivityInstance find(List<ActivityInstance> saved, String fragment) {

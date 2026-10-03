@@ -82,6 +82,8 @@ public class ArtisticEvent implements RegistryItem {
         TOP_FESTIVAL_ROMANIA,
         TOP_INSTITUTION_ROMANIA,
         REGIONAL_OR_LOCAL,
+        /** H142 slice 7: the level the faculty reported in its submitted CNFIS report (Anexa 5.1). */
+        FACULTY_CNFIS_REPORT,
         OTHER
     }
 

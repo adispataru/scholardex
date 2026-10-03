@@ -76,7 +76,9 @@ Done history moved to `TASKS-done.md`.
   IN PROD, SLICE 2 IN PROD 2026-10-02; slice 3 REDESIGNED with Adrian the same day (experts rank events into the
   registry; the researcher's own visibility pick goes) and BUILT 2026-10-03, IN PROD 2026-10-03 (image fd205487; 4.1
   template on the data volume, `h142_slice3_events.js` run by Adrian); slice 4 (journal databases from their title
-  lists) IN PROD 2026-10-03 (image f98af4d8; 77,556 journals, 55,922 forums with a list membership) — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
+  lists) IN PROD 2026-10-03 (image f98af4d8; 77,556 journals, 55,922 forums with a list membership); slice 7 (the
+  faculty's CNFIS 2025 reports imported as confirmed, events ranked at the reported level) BUILT 2026-10-03, not
+  pushed — see the doc** (plan SCOPED and REASSESSED the same day with Adrian; four smaller
   decisions open).
   **Slice 0:** `rke2-overmind/feaa-2026-scripts/h142_fmt_data.js` (no release needed) writes only what is missing
   for the 54 FMT staff: one ORCID, 49 Google Scholar ids (`scholarId`), the CNFIS domain of editions 2025 and 2027

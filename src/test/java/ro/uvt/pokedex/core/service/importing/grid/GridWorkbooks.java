@@ -1,11 +1,13 @@
 package ro.uvt.pokedex.core.service.importing.grid;
 
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -90,6 +92,39 @@ public final class GridWorkbooks {
             if (line.participants() != null) row.createCell(19).setCellValue(line.participants());
         }
         sheet.createRow(r).createCell(0).setCellValue("Total general (nr.proiecte/nominalizări/premii)");
+        return wb;
+    }
+
+    /** H142 slice 7 — an official CNFIS form of the test fixtures, blank. */
+    public static XSSFWorkbook officialForm(String name) throws IOException {
+        try (InputStream in = GridWorkbooks.class.getResourceAsStream("/fixtures/templates/" + name)) {
+            return new XSSFWorkbook(in);
+        }
+    }
+
+    public static void set(Sheet sheet, int r, int c, Object value) {
+        Row row = sheet.getRow(r) == null ? sheet.createRow(r) : sheet.getRow(r);
+        Cell cell = row.getCell(c) == null ? row.createCell(c) : row.getCell(c);
+        if (value instanceof Number n) cell.setCellValue(n.doubleValue());
+        else cell.setCellValue(String.valueOf(value));
+    }
+
+    /** Anexa 5 as Almași filled it: the name under the label, then one row per article (from row 17 of the sheet). */
+    public static XSSFWorkbook anexa5Filled() throws IOException {
+        XSSFWorkbook wb = officialForm("AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx");
+        Sheet s = wb.getSheetAt(0);
+        set(s, 3, 1, "Almași Gabriel-Vicențiu");
+        Object[][] rows = {
+                {1, 2021, "Instrumente gestuale - între inovație și ready-made", "10.47809/ICTMF.2021.1", "", "",
+                        "Tehnologii Informatice și de Comunicație în domeniul Muzical", "2069-665X", "2067-9408"},
+                {2, 2022, "Dispozitiv pentru acordaj", "", "", "RO 133456", "OSIM", "", ""},
+                {3, "", "Muzica bănățeană în anii 2023 și după", "https://doi.org/10.1234/abc.5.", "WOS:000123", "",
+                        "Volumul conferinței MUSIQ", "978-973-0-12345-6", ""}};
+        for (int i = 0; i < rows.length; i++) {
+            for (int c = 0; c < rows[i].length; c++) {
+                if (!"".equals(rows[i][c])) set(s, 16 + i, c, rows[i][c]);
+            }
+        }
         return wb;
     }
 

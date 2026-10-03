@@ -20,6 +20,7 @@ import ro.uvt.pokedex.core.repository.org.OrgDivisionRepository;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.application.ActivityFileImportService;
 import ro.uvt.pokedex.core.service.application.ActivityUnitImportFacade;
+import ro.uvt.pokedex.core.service.application.ArtisticEventFacultyRanking;
 import ro.uvt.pokedex.core.service.security.OrgUnitAccessService;
 
 import java.util.ArrayList;
@@ -171,5 +172,66 @@ class ActivityUnitImportControllerContractTest {
                         .with(user("director@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
                 .andExpect(status().isOk());
         verify(facade).importFiles(eq("departments"), eq(DEPARTMENT), anyList(), eq("ana.ionescu@e-uvt.ro"), eq("director@uvt.ro"));
+    }
+
+    @Test
+    void onlyAPlatformAdminSeesTheFacultyReportOption() throws Exception {
+        when(facade.facultyImportForm("departments", DEPARTMENT)).thenReturn(new ActivityUnitImportFacade.FacultyImportForm(
+                List.of("Muzică", "Teatru şi artele spectacolului"), "Muzică"));
+
+        String admin = mockMvc.perform(get("/supervisor/departments/" + DEPARTMENT + "/activity-import")
+                        .with(user("admin@uvt.ro").authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String director = mockMvc.perform(get("/supervisor/departments/" + DEPARTMENT + "/activity-import")
+                        .with(user("director@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(admin.contains("id=\"activity-import-faculty\"") && admin.contains("name=\"facultySubmitted\""));
+        assertTrue(admin.matches("(?s).*<option value=\"Muzică\"[^>]*selected[^>]*>Muzică</option>.*"),
+                "the department's domain is proposed");
+        assertTrue(!director.contains("activity-import-faculty"), "a head imports the usual way only");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void theFacultyReportOptionImportsCheckedAndRanksTheEventsForAnAdminOnly() throws Exception {
+        when(facade.facultyImportForm(anyString(), anyString())).thenReturn(
+                new ActivityUnitImportFacade.FacultyImportForm(List.of("Muzică"), "Muzică"));
+        ActivityFileImportService.ImportReport report = new ActivityFileImportService.ImportReport(
+                ActivityFileImportService.FileKind.CNFIS_ARTS, 4, 0, 0, 0, Map.of("CNFIS 5.1", 4), List.of(), List.of(),
+                "POPESCU Ion", 0);
+        when(facade.importFacultySubmission(eq("departments"), eq(DEPARTMENT), anyList(), eq("admin@uvt.ro"), eq("Muzică")))
+                .thenReturn(new ActivityUnitImportFacade.FacultyImportResult(
+                        List.of(new ActivityUnitImportFacade.FileResult("Popescu_I_PCA.xlsx", "ion.popescu@e-uvt.ro", "Ion Popescu",
+                                "IMPORTED", report)),
+                        new ArtisticEventFacultyRanking.Outcome(3, 1, 2, 0,
+                                List.of("Festivalul Disputat (Raportare CNFIS 2025: 1 × internațional, 1 × național)"))));
+
+        String html = mockMvc.perform(multipart("/supervisor/departments/" + DEPARTMENT + "/activity-import")
+                        .file(new MockMultipartFile("files", "Popescu_I_PCA.xlsx", XLSX, new byte[]{1, 2, 3}))
+                        .param("facultySubmitted", "true")
+                        .param("domain", "Muzică")
+                        .with(csrf())
+                        .with(user("admin@uvt.ro").authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        verify(facade).importFacultySubmission(eq("departments"), eq(DEPARTMENT), anyList(), eq("admin@uvt.ro"), eq("Muzică"));
+        verify(facade, never()).importFiles(anyString(), anyString(), anyList(), any(), anyString());
+        assertTrue(html.contains("id=\"activity-import-ranking\"") && html.contains("Festivalul Disputat"));
+        assertTrue(html.contains("Ion Popescu"));
+
+        when(facade.importFiles(eq("departments"), eq(DEPARTMENT), anyList(), isNull(), eq("director@uvt.ro"))).thenReturn(List.of());
+        mockMvc.perform(multipart("/supervisor/departments/" + DEPARTMENT + "/activity-import")
+                        .file(new MockMultipartFile("files", "Popescu_I_PCA.xlsx", XLSX, new byte[]{1, 2, 3}))
+                        .param("facultySubmitted", "true")
+                        .param("domain", "Muzică")
+                        .with(csrf())
+                        .with(user("director@uvt.ro").authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().isOk());
+        verify(facade).importFiles(eq("departments"), eq(DEPARTMENT), anyList(), isNull(), eq("director@uvt.ro"));
+        verify(facade, org.mockito.Mockito.times(1)).importFacultySubmission(anyString(), anyString(), anyList(), anyString(), any());
     }
 }

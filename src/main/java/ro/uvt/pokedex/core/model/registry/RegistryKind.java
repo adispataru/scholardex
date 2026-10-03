@@ -21,7 +21,7 @@ public enum RegistryKind {
             List.of("FESTIVAL", "COMPETITION", "SEASON", "TOUR", "OTHER"), List.of(),
             List.of("CNFIS_LIST", "CNFIS_CAPITAL_INSTITUTION", "CNFIS_UNION_PARTNERSHIP", "CNFIS_MINISTRY_FUNDING",
                     "TOP_FESTIVAL_ABROAD", "TOP_INSTITUTION_ABROAD", "TOP_FESTIVAL_ROMANIA", "TOP_INSTITUTION_ROMANIA",
-                    "REGIONAL_OR_LOCAL", "OTHER")),
+                    "REGIONAL_OR_LOCAL", "FACULTY_CNFIS_REPORT", "OTHER")),
 
     /** Conferences, congresses, symposia: international by Comisia 28's rule (two of its three criteria), else national. */
     SCIENTIFIC_EVENT(Activity.ReferenceField.CONFERENCE_NAME, List.of("INTERNATIONAL", "NATIONAL"),

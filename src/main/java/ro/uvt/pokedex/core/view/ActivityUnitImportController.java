@@ -36,12 +36,13 @@ public class ActivityUnitImportController {
     @GetMapping
     @PreAuthorize("(#kind == 'departments' and @orgUnitAccess.canManageDepartment(#unitId, authentication))"
             + " or (#kind == 'divisions' and @orgUnitAccess.canManageDivision(#unitId, authentication))")
-    public String show(@PathVariable String kind, @PathVariable String unitId, Model model) {
+    public String show(@PathVariable String kind, @PathVariable String unitId, Authentication authentication, Model model) {
         Optional<ActivityUnitImportFacade.UnitPage> page = facade.page(kind, unitId);
         if (page.isEmpty()) {
             return "redirect:/supervisor";
         }
         model.addAttribute("unit", page.get());
+        addFacultyImportForm(kind, unitId, authentication, model);
         return "supervisor/activity-import";
     }
 
@@ -51,6 +52,8 @@ public class ActivityUnitImportController {
     public String upload(@PathVariable String kind, @PathVariable String unitId,
                          @RequestParam(name = "files", required = false) List<MultipartFile> files,
                          @RequestParam(name = "member", required = false) String member,
+                         @RequestParam(name = "facultySubmitted", defaultValue = "false") boolean facultySubmitted,
+                         @RequestParam(name = "domain", required = false) String domain,
                          Authentication authentication, Model model) throws IOException {
         Optional<ActivityUnitImportFacade.UnitPage> page = facade.page(kind, unitId);
         if (page.isEmpty()) {
@@ -69,8 +72,29 @@ public class ActivityUnitImportController {
             }
             uploaded.add(new ActivityUnitImportFacade.UploadedFile(name, file.getBytes()));
         }
-        model.addAttribute("results", facade.importFiles(kind, unitId, uploaded, member, authentication.getName()));
+        addFacultyImportForm(kind, unitId, authentication, model);
+        if (facultySubmitted && isPlatformAdmin(authentication)) {
+            // H142 slice 7: the faculty's submitted CNFIS files — checked records, events ranked at the reported level
+            ActivityUnitImportFacade.FacultyImportResult result = facade.importFacultySubmission(kind, unitId, uploaded,
+                    authentication.getName(), domain);
+            model.addAttribute("results", result.files());
+            model.addAttribute("ranking", result.ranking());
+        } else {
+            model.addAttribute("results", facade.importFiles(kind, unitId, uploaded, member, authentication.getName()));
+        }
         model.addAttribute("refusedFiles", refused);
         return "supervisor/activity-import";
+    }
+
+    /** Only a platform admin imports a faculty's submitted files (they rank events): the form is shown to them alone. */
+    private void addFacultyImportForm(String kind, String unitId, Authentication authentication, Model model) {
+        if (isPlatformAdmin(authentication)) {
+            model.addAttribute("facultyImport", facade.facultyImportForm(kind, unitId));
+        }
+    }
+
+    private static boolean isPlatformAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "PLATFORM_ADMIN".equals(a.getAuthority()));
     }
 }

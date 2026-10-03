@@ -45,6 +45,18 @@
                                 </select>
                                 <small class="form-text text-muted" th:text="#{activity.unitImport.member.hint}">Only for a single file whose heading and name do not identify the member.</small>
                             </div>
+                            <fieldset th:if="${facultyImport != null}" class="form-group app-form-field" id="activity-import-faculty">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="activity-import-faculty-submitted" name="facultySubmitted" value="true">
+                                    <label class="form-check-label" for="activity-import-faculty-submitted" th:text="#{activity.unitImport.faculty.label}">Files the faculty already submitted</label>
+                                </div>
+                                <small class="form-text text-muted" th:text="#{activity.unitImport.faculty.hint}">The records land checked; the events of Annex 5.1 are ranked at the level the faculty reported.</small>
+                                <label for="activity-import-domain" class="mt-2" th:text="#{activity.unitImport.faculty.domain}">Domain of the events</label>
+                                <select class="form-control" id="activity-import-domain" name="domain">
+                                    <option th:each="d : ${facultyImport.domains()}" th:value="${d}" th:text="${d}"
+                                            th:selected="${d == facultyImport.defaultDomain()}">Muzică</option>
+                                </select>
+                            </fieldset>
                             <div class="app-form-actions">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fa-solid fa-file-import fa-sm" aria-hidden="true"></i>
@@ -61,6 +73,11 @@
                                 <h2 id="activity-import-results-title" class="app-university-detail__section-title" th:text="#{activity.unitImport.results.title}">Result</h2>
                                 <p class="text-muted small mb-0 mt-1" th:text="#{activity.unitImport.results.hint}">The records are added to each member's activities, marked to check; importing a file again adds nothing.</p>
                             </div>
+                        </div>
+                        <div th:if="${ranking != null}" class="alert alert-info" role="status" id="activity-import-ranking">
+                            <span th:text="#{activity.unitImport.faculty.ranking(${ranking.ranked()}, ${ranking.conflicting()}, ${ranking.alreadyRanked()})}">ranked</span>
+                            <div th:if="${!#lists.isEmpty(ranking.conflicts())}" class="small mt-1"
+                                 th:text="#{activity.unitImport.faculty.conflicts(${#strings.listJoin(ranking.conflicts(), '; ')})}">conflicts</div>
                         </div>
                         <div th:if="${refusedFiles != null and !#lists.isEmpty(refusedFiles)}" class="alert alert-warning" role="status"
                              th:text="#{activity.unitImport.refusedFiles(${#strings.listJoin(refusedFiles, ', ')})}">Not accepted: …</div>

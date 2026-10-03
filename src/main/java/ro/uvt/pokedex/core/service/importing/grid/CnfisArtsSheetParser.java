@@ -79,8 +79,17 @@ public final class CnfisArtsSheetParser {
                 Integer year = yearOf(MusicGridParser.text(row.getCell(firstMark - 3)));
                 String work = MusicGridParser.text(row.getCell(firstMark - 2)).trim();
                 String event = MusicGridParser.text(row.getCell(firstMark - 1)).trim();
-                if (year == null || (work.isEmpty() && event.isEmpty())) {
-                    continue; // a guidance row, the column numbers, or an empty template row
+                if (work.isEmpty() && event.isEmpty()) {
+                    continue; // an empty template row
+                }
+                if (year == null) {
+                    // H142 slice 7: a numbered row whose year was left empty takes the year its texts name (null when
+                    // they name none); an unnumbered one is the guidance row or the column numbers
+                    String number = MusicGridParser.text(row.getCell(firstMark - 4)).trim();
+                    if (firstMark < 4 || !number.matches("\\d{1,3}(\\.0)?")) {
+                        continue;
+                    }
+                    year = CnfisSheets.lastYear(event + " " + work);
                 }
                 int marked = -1, marks = 0;
                 for (int k = 0; k < 15; k++) {

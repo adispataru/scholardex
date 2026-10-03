@@ -16,7 +16,9 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -34,8 +36,11 @@ class ActivityUnitImportFacadeTest {
     private final ActivityFileImportService importService = mock(ActivityFileImportService.class);
     private final DepartmentRepository departmentRepository = mock(DepartmentRepository.class);
     private final OrgDivisionRepository divisionRepository = mock(OrgDivisionRepository.class);
-    private final ActivityUnitImportFacade facade =
-            new ActivityUnitImportFacade(rosterService, importService, departmentRepository, divisionRepository);
+    private final ro.uvt.pokedex.core.repository.RegistryDomainExpertsRepository domainExpertsRepository =
+            mock(ro.uvt.pokedex.core.repository.RegistryDomainExpertsRepository.class);
+    private final ArtisticEventFacultyRanking facultyRanking = mock(ArtisticEventFacultyRanking.class);
+    private final ActivityUnitImportFacade facade = new ActivityUnitImportFacade(rosterService, importService,
+            departmentRepository, divisionRepository, domainExpertsRepository, facultyRanking);
 
     private static final ActivityFileImportService.ImportReport REPORT = new ActivityFileImportService.ImportReport(
             ActivityFileImportService.FileKind.MUSIC_GRID, 5, 0, 0, 0, Map.of(), List.of(), List.of(), null, 0);
@@ -131,6 +136,56 @@ class ActivityUnitImportFacadeTest {
         assertEquals("REFUSED", results.get(0).outcome());
         assertEquals("REFUSED", results.get(1).outcome());
         verify(importService, never()).importFile(anyString(), anyString(), any(), anyString());
+    }
+
+    @Test
+    void aFacultysSubmittedFilesLandCheckedAndTheirEventsAreRankedOnce() throws IOException {
+        XSSFWorkbook pca = GridWorkbooks.officialForm("AC2025_Anexa5.1-Performanta_creatie_artistica-2025.xlsx");
+        GridWorkbooks.set(pca.getSheetAt(0), 4, 1, "POPESCU Ion");
+        XSSFWorkbook ab = GridWorkbooks.anexa5Filled();
+        GridWorkbooks.set(ab.getSheetAt(0), 3, 1, "Ionescu Ana-Maria");
+        ActivityFileImportService.ImportReport withLevels = new ActivityFileImportService.ImportReport(
+                ActivityFileImportService.FileKind.CNFIS_ARTS, 2, 0, 0, 0, Map.of(), List.of(), List.of(), null, 0,
+                List.of(new ActivityFileImportService.ReportedLevel("Festivalul X", "INTERNATIONAL")));
+        when(importService.importFile(anyString(), anyString(), any(), eq(HEAD), any(ActivityFileImportService.ImportOptions.class)))
+                .thenReturn(withLevels);
+        when(facultyRanking.rank(anyList(), eq("Muzică"), eq(HEAD), eq(ActivityUnitImportFacade.FACULTY_REPORT_SOURCE)))
+                .thenReturn(new ArtisticEventFacultyRanking.Outcome(1, 0, 0, 0, List.of()));
+
+        ActivityUnitImportFacade.FacultyImportResult result = facade.importFacultySubmission("departments", DEPARTMENT, List.of(
+                new ActivityUnitImportFacade.UploadedFile("Popescu_I_PCA.xlsx", GridWorkbooks.bytes(pca)),
+                new ActivityUnitImportFacade.UploadedFile("Ionescu_A_AB.xlsx", GridWorkbooks.bytes(ab))), HEAD, "Muzică");
+
+        assertEquals(List.of("ion.popescu@e-uvt.ro", "ana.ionescu@e-uvt.ro"),
+                result.files().stream().map(ActivityUnitImportFacade.FileResult::memberEmail).toList(),
+                "each file goes to the person its sheet names, initials in the file name notwithstanding");
+        org.mockito.ArgumentCaptor<ActivityFileImportService.ImportOptions> options =
+                org.mockito.ArgumentCaptor.forClass(ActivityFileImportService.ImportOptions.class);
+        verify(importService, org.mockito.Mockito.times(2)).importFile(anyString(), anyString(), any(), eq(HEAD), options.capture());
+        assertTrue(options.getAllValues().stream().allMatch(ActivityFileImportService.ImportOptions::facultySubmitted));
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<List<ActivityFileImportService.ReportedLevel>> levels =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(facultyRanking).rank(levels.capture(), eq("Muzică"), eq(HEAD), eq(ActivityUnitImportFacade.FACULTY_REPORT_SOURCE));
+        assertEquals(2, levels.getValue().size(), "the levels of every file, ranked once");
+        assertEquals(1, result.ranking().ranked());
+    }
+
+    @Test
+    void theDomainOfTheDepartmentIsProposedForItsEvents() {
+        ro.uvt.pokedex.core.model.registry.RegistryDomainExperts music = new ro.uvt.pokedex.core.model.registry.RegistryDomainExperts();
+        music.setDomain("Muzică");
+        music.setDepartmentIds(List.of(DEPARTMENT));
+        ro.uvt.pokedex.core.model.registry.RegistryDomainExperts theatre = new ro.uvt.pokedex.core.model.registry.RegistryDomainExperts();
+        theatre.setDomain("Teatru şi artele spectacolului");
+        theatre.setDepartmentIds(List.of("dept-teatru"));
+        when(domainExpertsRepository.findAll()).thenReturn(List.of(theatre, music));
+
+        ActivityUnitImportFacade.FacultyImportForm form = facade.facultyImportForm("departments", DEPARTMENT);
+
+        assertEquals(List.of("Muzică", "Teatru şi artele spectacolului"), form.domains());
+        assertEquals("Muzică", form.defaultDomain());
+        assertNull(facade.facultyImportForm("divisions", "div-fmt").defaultDomain(), "a faculty spans domains: the admin chooses");
     }
 
     @Test
