@@ -336,12 +336,12 @@ final class SeedReportDefinition {
         PublisherClaim claim = new PublisherClaim();
         claim.setStatus(status);
         claim.setRequested(entered.get(PublisherRules.FIELD_CLAIM));
-        return activity(shortName, entered, null, claim, DEFAULT_DATE);
+        return activity(shortName, entered, (String) null, claim, DEFAULT_DATE);
     }
 
     /** Points for ONE declared activity dated {@code date} (the other helpers date it {@value #DEFAULT_DATE}). */
     double activityOn(String date, String shortName, Map<String, String> entered) {
-        return activity(shortName, entered, null, null, date);
+        return activity(shortName, entered, (String) null, null, date);
     }
 
     private static final String DEFAULT_DATE = "2024-01-01";
@@ -350,8 +350,22 @@ final class SeedReportDefinition {
         return activity(shortName, entered, eventName, claim, DEFAULT_DATE);
     }
 
+    /**
+     * H144 — points for ONE declared activity that names entities of the registries (a conference, an organisation, an
+     * award, an artistic event, a university, a journal by ISSN); the formula reads what the registries say of them.
+     */
+    double activityNaming(String shortName, Map<String, String> entered, Map<Activity.ReferenceField, String> named) {
+        return activity(shortName, entered, named, null, DEFAULT_DATE);
+    }
+
     private double activity(String shortName, Map<String, String> entered, String eventName, PublisherClaim claim,
                             String date) {
+        return activity(shortName, entered, eventName == null ? Map.of() : Map.of(Activity.ReferenceField.EVENT_NAME, eventName),
+                claim, date);
+    }
+
+    private double activity(String shortName, Map<String, String> entered, Map<Activity.ReferenceField, String> named,
+                            PublisherClaim claim, String date) {
         JsonNode node = indicator(shortName);
         JsonNode definition = activitiesById.get(node.get("activity").get("$id").get("$oid").asText());
         assertNotNull(definition, prefix + shortName + " is bound to an activity missing from the seed");
@@ -390,14 +404,91 @@ final class SeedReportDefinition {
         instance.setActivity(activity);
         instance.setFields(new HashMap<>(entered));
         instance.setPublisherClaim(claim);
-        instance.setReferenceFields(new HashMap<>());
-        if (eventName != null) {
-            instance.getReferenceFields().put(Activity.ReferenceField.EVENT_NAME, eventName);
+        instance.setReferenceFields(new HashMap<>(named));
+        for (Activity.ReferenceField field : named.keySet()) {
+            assertTrue(references.contains(field), prefix + shortName + ": the activity names no " + field);
         }
 
         Map<String, Score> scores =
                 activityReportingService.calculateActivityScores(List.of(instance), asIndicator(shortName));
         return scores.get("total").getAuthorScore();
+    }
+
+    // ------------------------------------------------------------------ H144: the registries and the app's lists
+
+    private static final List<ro.uvt.pokedex.core.model.registry.RegistryEntry> RANKED = new ArrayList<>();
+    private static final Map<String, ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.JournalFacts> JOURNALS = new HashMap<>();
+    private static final Map<String, Integer> URAP = new HashMap<>();
+    private static final Map<String, Integer> WORLD = new HashMap<>();
+    private static final Map<String, String> COUNTRIES = new HashMap<>();
+
+    /** An entry the experts ranked; every name not ranked this way waits for them. */
+    static void rank(ro.uvt.pokedex.core.model.registry.RegistryKind kind, String name, String level, String category,
+                     String country) {
+        ro.uvt.pokedex.core.model.registry.RegistryEntry entry = ro.uvt.pokedex.core.model.registry.RegistryEntry.of(kind);
+        entry.setName(name);
+        entry.setStatus(ro.uvt.pokedex.core.model.registry.RegistryStatus.CONFIRMED);
+        entry.setLevel(level);
+        entry.setCategory(category);
+        entry.setCountry(country);
+        RANKED.add(entry);
+        ro.uvt.pokedex.core.service.reporting.RegistrySupport.register(RANKED);
+    }
+
+    /** What the app's lists know of a journal (by its canonical ISSN). */
+    static void journal(String issn, boolean fee, boolean wos, boolean wosCore, boolean scopus, int databases, Double impactFactor) {
+        JOURNALS.put(issn, new ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.JournalFacts(
+                fee, wos, wosCore, scopus, databases, impactFactor));
+        registerLookups();
+    }
+
+    /** A university of the rankings: its URAP position (null when URAP does not rank it) and country. */
+    static void university(String name, Integer urapRank, String country) {
+        university(name, urapRank, null, country);
+    }
+
+    /** A university with its URAP position and its best QS, THE or Shanghai position (null when unranked). */
+    static void university(String name, Integer urapRank, Integer worldRank, String country) {
+        if (urapRank != null) URAP.put(name, urapRank);
+        if (worldRank != null) WORLD.put(name, worldRank);
+        COUNTRIES.put(name, country);
+        registerLookups();
+    }
+
+    static void resetRegistries() {
+        RANKED.clear();
+        JOURNALS.clear();
+        URAP.clear();
+        WORLD.clear();
+        COUNTRIES.clear();
+        ro.uvt.pokedex.core.service.reporting.RegistrySupport.reset();
+        ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.reset();
+    }
+
+    private static void registerLookups() {
+        ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.register(
+                new ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.Lookups() {
+                    @Override
+                    public java.util.Optional<Integer> urapRank(String university, int year) {
+                        return java.util.Optional.ofNullable(URAP.get(university));
+                    }
+
+                    @Override
+                    public java.util.Optional<Integer> worldRank(String university, int year) {
+                        return java.util.Optional.ofNullable(WORLD.get(university));
+                    }
+
+                    @Override
+                    public java.util.Optional<String> universityCountry(String university) {
+                        return java.util.Optional.ofNullable(COUNTRIES.get(university));
+                    }
+
+                    @Override
+                    public java.util.Optional<ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport.JournalFacts> journal(
+                            String issn, int year) {
+                        return java.util.Optional.ofNullable(JOURNALS.get(issn));
+                    }
+                });
     }
 
     static Map<String, String> fields(String... pairs) {
@@ -429,6 +520,10 @@ final class SeedReportDefinition {
                     ro.uvt.pokedex.core.service.reporting.ArtisticPerformanceSupport.PRIZE));
             for (PublisherRules rules : PublisherRules.values()) {
                 options.addAll(rules.categories());
+            }
+            // H144: the levels of the registries experts rank, which the engine derives from the named entity
+            for (ro.uvt.pokedex.core.model.registry.RegistryKind kind : ro.uvt.pokedex.core.model.registry.RegistryKind.values()) {
+                options.addAll(kind.levels());
             }
             Matcher matcher = literal.matcher(entry.getValue().get("formula").asText());
             while (matcher.find()) {

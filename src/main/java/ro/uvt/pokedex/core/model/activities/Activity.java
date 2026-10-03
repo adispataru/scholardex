@@ -30,6 +30,10 @@ public class Activity {
         FORUM_PUBLISHER,
         PROJECT_GRANT_ID,
         UNIVERSITY_NAME,
-        EVENT_NAME
+        EVENT_NAME,
+        /** H144 — the registries experts rank: a conference, an organisation (body, institution, media), an award. */
+        CONFERENCE_NAME,
+        ORGANIZATION_NAME,
+        AWARD_NAME
     }
 }

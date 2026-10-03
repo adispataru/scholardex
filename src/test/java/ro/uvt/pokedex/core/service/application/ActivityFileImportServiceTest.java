@@ -158,7 +158,9 @@ class ActivityFileImportServiceTest {
         assertNull(office.getFields().get("An_sfarsit"), "still held");
 
         ActivityInstance jury = find(saved, "juriului");
-        assertEquals("Internațional", jury.getFields().get("Nivel"));
+        assertEquals(null, jury.getFields().get("Nivel"), "H144: the researcher never picks the level");
+        assertEquals(ActivityFileImportService.SUGGESTED_JURY_INTERNATIONAL, jury.getEventLevelSuggestion(),
+                "the grid's word is a suggestion for the experts");
     }
 
     @Test

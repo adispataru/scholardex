@@ -247,6 +247,20 @@ public class ActivityFileImportService {
     /** The visibility rows of the Music grid, as the experts read them. */
     static final String SUGGESTED_TOP = "Fișa de verificare: CS 1.1 — vizibilitate internațională sau națională de vârf";
     static final String SUGGESTED_REGIONAL = "Fișa de verificare: CS 1.2 — vizibilitate regională sau locală";
+    /** H144 — what the other rows of the grid imply about the entity a record names, as the experts read it. */
+    static final String SUGGESTED_ORGANISER_INTERNATIONAL = "Fișa de verificare: RIA 1.4 — manifestare internațională";
+    static final String SUGGESTED_ORGANISER_NATIONAL = "Fișa de verificare: RIA 1.5 — manifestare națională";
+    static final String SUGGESTED_JURY_INTERNATIONAL = "Fișa de verificare: RIA 3.3 — concurs sau distincție internațională";
+    static final String SUGGESTED_JURY_NATIONAL = "Fișa de verificare: RIA 3.3 — concurs sau distincție națională";
+    static final String SUGGESTED_KEYNOTE_INTERNATIONAL = "Fișa de verificare: RIA 3.7 — manifestare științifică internațională";
+    static final String SUGGESTED_KEYNOTE_NATIONAL = "Fișa de verificare: RIA 3.7 — manifestare științifică națională";
+
+    /** The artistic event of the registry the text names, as the record's EVENT_NAME; whether one was found. */
+    private static boolean putArtisticEvent(String text, Map<Activity.ReferenceField, String> references) {
+        Optional<String> event = ArtisticEventRankSupport.findIn(text);
+        event.ifPresent(name -> references.put(Activity.ReferenceField.EVENT_NAME, name));
+        return event.isPresent();
+    }
 
     static Draft gridDraft(MusicGridLayout.Row row, GridItemSplitter.Item item) {
         String text = item.text();
@@ -255,7 +269,9 @@ public class ActivityFileImportService {
         Map<Activity.ReferenceField, String> references = new LinkedHashMap<>();
         boolean eventRecognised = false;
         String levelSuggestion = null;
-        fields.put(row.textField(), text);
+        if (row.textField() != null) {
+            fields.put(row.textField(), text);
+        }
         // H143: a book's publisher, when the line names one the lists know — its category follows without typing
         ro.uvt.pokedex.core.service.reporting.PublisherCategorySupport.findIn(text)
                 .ifPresent(publisher -> fields.put(ro.uvt.pokedex.core.service.reporting.PublisherRules.FIELD_PUBLISHER, publisher));
@@ -291,19 +307,27 @@ public class ActivityFileImportService {
             case RIA_1_2 -> fields.put("Rol", "Director (proiect național)");
             case RIA_1_1 -> putYears(text, fields);
             case RIA_1_3 -> fields.put("Rol", lower.contains("recenz") ? "Recenzor" : "Membru în colectivul de redacție");
-            case RIA_1_4 -> fields.put("Nivel", "Internațional");
-            case RIA_1_5 -> fields.put("Nivel", "Național");
+            // H144: the level a row of the grid implies is a suggestion for the experts who rank the named entity,
+            // never a field; an artistic event the text names is taken from the registry
+            case RIA_1_4, RIA_1_5 -> {
+                levelSuggestion = row == MusicGridLayout.Row.RIA_1_4 ? SUGGESTED_ORGANISER_INTERNATIONAL : SUGGESTED_ORGANISER_NATIONAL;
+                eventRecognised = putArtisticEvent(text, references);
+            }
             case RIA_3_1 -> fields.put("Rol", "Membru");
             case RIA_3_2 -> {
                 fields.put("Rol", "Funcție de conducere");
                 fields.put("Functia", text);
                 putYears(text, fields);
             }
-            case RIA_3_3 -> fields.put("Nivel", lower.contains("internationa") ? "Internațional" : "Național");
-            case RIA_3_7 -> fields.put("Nivel", lower.contains("internationa") ? "Internațional" : "Național");
+            case RIA_3_3 -> {
+                levelSuggestion = lower.contains("internationa") ? SUGGESTED_JURY_INTERNATIONAL : SUGGESTED_JURY_NATIONAL;
+                eventRecognised = putArtisticEvent(text, references);
+            }
+            case RIA_3_4, CS_2_2 -> eventRecognised = putArtisticEvent(text, references);
+            case RIA_3_7 -> levelSuggestion = lower.contains("internationa") ? SUGGESTED_KEYNOTE_INTERNATIONAL : SUGGESTED_KEYNOTE_NATIONAL;
             default -> { }
         }
-        if (firstLink != null && !fields.containsKey("Link") && row.textField().equals("Dovezi") == false) {
+        if (firstLink != null && !fields.containsKey("Link") && !"Dovezi".equals(row.textField())) {
             fields.putIfAbsent("Dovezi", String.join(" ", item.links()));
         }
         return new Draft(row.activityType(), row.label(), text, item.date(), fields, references, eventRecognised,

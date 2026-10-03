@@ -1,5 +1,9 @@
 package ro.uvt.pokedex.core.reporting;
 
+import org.junit.jupiter.api.AfterEach;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.registry.RegistryKind;
+import java.util.Map;
 import ro.uvt.pokedex.core.model.activities.PublisherClaim;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -192,16 +196,29 @@ class StiinteEducatiei2026ReportDefinitionTest {
                 fields("Tip", "Cercetare aplicativă", "Rol", "Membru", "Buget", "25000")), 1e-9);
     }
 
+    @AfterEach
+    void resetRegistries() {
+        SeedReportDefinition.resetRegistries();
+    }
+
+    private static Map<Activity.ReferenceField, String> named(Activity.ReferenceField field, String name) {
+        return Map.of(field, name);
+    }
+
+    private static Map<Activity.ReferenceField, String> issn(String issn) {
+        return Map.of(Activity.ReferenceField.FORUM_ISSN, issn);
+    }
+
     @Test
     void editorialRolesUseTheDomainsOwnThreshold() {
-        // A Web of Science journal with IF 0.6: m = 3 here, m = 1 for Psychology.
-        assertEquals(36.0, edu.activity("I15",
-                fields("Rol", "Redactor-șef", "Indexare", "Web of Science", "IF_revista", "0.6")), 1e-9);
-        assertEquals(12.0, psy.activity("I15",
-                fields("Rol", "Redactor-șef", "Indexare", "Web of Science", "IF_revista", "0.6")), 1e-9);
-        assertEquals(4.0, edu.activity("I15",
-                fields("Rol", "Membru", "Indexare", "Web of Science", "IF_revista", "0.05")), 1e-9);
-        assertEquals(8.0, edu.activity("I15", fields("Rol", "Editor asociat", "Indexare", "Altă BDI recunoscută")), 1e-9);
+        // A Web of Science journal with IF 0.6: m = 3 here, m = 1 for Psychology (H144: indexing and IF from the lists).
+        SeedReportDefinition.journal("1111-1111", false, true, true, true, 3, 0.6);
+        SeedReportDefinition.journal("2222-2222", false, true, true, true, 3, 0.05);
+        SeedReportDefinition.journal("3333-3333", false, false, false, true, 2, null);
+        assertEquals(36.0, edu.activityNaming("I15", fields("Rol", "Redactor-șef"), issn("1111-1111")), 1e-9);
+        assertEquals(12.0, psy.activityNaming("I15", fields("Rol", "Redactor-șef"), issn("1111-1111")), 1e-9);
+        assertEquals(4.0, edu.activityNaming("I15", fields("Rol", "Membru"), issn("2222-2222")), 1e-9);
+        assertEquals(8.0, edu.activityNaming("I15", fields("Rol", "Editor asociat"), issn("3333-3333")), 1e-9);
     }
 
     // ------------------------------------------------------------------ what both domains share
@@ -216,10 +233,13 @@ class StiinteEducatiei2026ReportDefinitionTest {
         assertEquals(49.0, edu.onScore("I13", 7.0), 1e-9);
         assertEquals(2.5, edu.activity("I7", fields("N_autori", "2")), 1e-9);
         assertEquals(0.05 * 300, edu.activity("I12", fields("Citari_GS", "420", "Citari_WoS", "120")), 1e-9);
-        assertEquals(6.0, edu.activity("I16", fields("Nivel", "Internațională")), 1e-9);
+        SeedReportDefinition.rank(RegistryKind.SCIENTIFIC_EVENT, "ECER 2024", "INTERNATIONAL", "CONFERENCE", "Cyprus");
+        assertEquals(6.0, edu.activityNaming("I16", fields(), named(Activity.ReferenceField.CONFERENCE_NAME, "ECER 2024")), 1e-9);
         assertEquals(12.0, edu.activity("I17", fields("Editura", "Routledge", "N_coordonatori", "2")), 1e-9);
-        assertEquals(1.0, edu.activity("I1A_bonus", fields("Tip_revista", "Fără taxă de publicare")), 1e-9);
-        assertEquals(1.0, edu.activity("I1B_bonus", fields("Tip_revista", "Cu taxă de publicare")), 1e-9);
+        SeedReportDefinition.journal("4444-4444", false, true, true, true, 3, 1.2);
+        SeedReportDefinition.journal("5555-5555", true, false, true, true, 2, null);
+        assertEquals(1.0, edu.activityNaming("I1A_bonus", fields(), issn("4444-4444")), 1e-9);
+        assertEquals(1.0, edu.activityNaming("I1B_bonus", fields(), issn("5555-5555")), 1e-9);
         String budget = "50.000 – 99.999 EUR";
         assertEquals(81.0, edu.activity("I24",
                 fields("Rol", "Director (proiect internațional)", "Interval_buget", budget)), 1e-9);
@@ -277,28 +297,45 @@ class StiinteEducatiei2026ReportDefinitionTest {
 
     @Test
     void policyReports() {
-        assertEquals(24.0, edu.activity("I10", fields("Nivel", "Internațional")), 1e-9);
-        assertEquals(8.0, edu.activity("I10", fields("Nivel", "Internațional", "N_autori", "3")), 1e-9);
-        assertEquals(4.0, edu.activity("I10", fields("Nivel", "Național", "N_autori", "2")), 1e-9);
+        // H144: the organisation that commissioned the report, ranked in the registry
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "UNESCO", "INTERNATIONAL", "AGENCY", null);
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "Ministerul Educației", "NATIONAL", "AGENCY", "România");
+        var unesco = named(Activity.ReferenceField.ORGANIZATION_NAME, "UNESCO");
+        assertEquals(24.0, edu.activityNaming("I10", fields(), unesco), 1e-9);
+        assertEquals(8.0, edu.activityNaming("I10", fields("N_autori", "3"), unesco), 1e-9);
+        assertEquals(4.0, edu.activityNaming("I10", fields("N_autori", "2"),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Ministerul Educației")), 1e-9);
+        assertEquals(4.0, edu.activityNaming("I10", fields("N_autori", "2"),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Inspectoratul Școlar")), 1e-9,
+                "an organisation the experts have not ranked counts as national");
     }
 
     @Test
     void conferenceCommitteesAssociationsAndAwards() {
-        assertEquals(3.0, edu.activity("I18",
-                fields("Calitate", "Membru în comitetul științific", "Nivel", "Internațională")), 1e-9);
-        assertEquals(1.0, edu.activity("I18",
-                fields("Calitate", "Coordonator de simpozion", "Nivel", "Națională")), 1e-9);
+        SeedReportDefinition.rank(RegistryKind.SCIENTIFIC_EVENT, "ECER 2024", "INTERNATIONAL", "CONFERENCE", "Cyprus");
+        assertEquals(3.0, edu.activityNaming("I18", fields("Calitate", "Membru în comitetul științific"),
+                named(Activity.ReferenceField.CONFERENCE_NAME, "ECER 2024")), 1e-9);
+        assertEquals(1.0, edu.activityNaming("I18", fields("Calitate", "Coordonator de simpozion"),
+                named(Activity.ReferenceField.CONFERENCE_NAME, "Simpozionul Educația azi")), 1e-9);
 
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "EERA", "INTERNATIONAL", "ASSOCIATION", null);
+        var eera = named(Activity.ReferenceField.ORGANIZATION_NAME, "EERA");
+        var local = named(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația Profesorilor din Timiș");
         String board = "Președinte sau membru în comitetul executiv";
-        assertEquals(6.0, edu.activity("I19", fields("Rol", board, "Nivel", "Internațională")), 1e-9);
-        assertEquals(2.0, edu.activity("I19", fields("Rol", board, "Nivel", "Națională")), 1e-9);
-        assertEquals(2.0, edu.activity("I19", fields("Rol", "Membru", "Nivel", "Internațională")), 1e-9);
-        assertEquals(1.0, edu.activity("I19", fields("Rol", "Membru", "Nivel", "Națională")), 1e-9);
+        assertEquals(6.0, edu.activityNaming("I19", fields("Rol", board), eera), 1e-9);
+        assertEquals(2.0, edu.activityNaming("I19", fields("Rol", board), local), 1e-9);
+        assertEquals(2.0, edu.activityNaming("I19", fields("Rol", "Membru"), eera), 1e-9);
+        assertEquals(1.0, edu.activityNaming("I19", fields("Rol", "Membru"), local), 1e-9);
 
-        assertEquals(12.0, edu.activity("I20", fields("Tip", "Științific internațional")), 1e-9);
-        assertEquals(4.0, edu.activity("I20", fields("Tip", "Științific național")), 1e-9);
-        assertEquals(4.0, edu.activity("I20", fields("Tip", "Didactic")), 1e-9);
-        assertEquals(4.0, edu.activity("I20", fields("Tip", "Promovarea țării")), 1e-9);
+        SeedReportDefinition.rank(RegistryKind.AWARD, "EERA Best Paper Award", "INTERNATIONAL", "SCIENTIFIC", null);
+        SeedReportDefinition.rank(RegistryKind.AWARD, "Premiul Academiei Române", "NATIONAL", "SCIENTIFIC", "România");
+        SeedReportDefinition.rank(RegistryKind.AWARD, "Profesorul anului", "INTERNATIONAL", "DIDACTIC", null);
+        assertEquals(12.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "EERA Best Paper Award")), 1e-9);
+        assertEquals(4.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "Premiul Academiei Române")), 1e-9);
+        assertEquals(4.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "Profesorul anului")), 1e-9,
+                "a teaching award counts 4 whatever its reach");
+        assertEquals(4.0, edu.activityNaming("I20", fields(), named(Activity.ReferenceField.AWARD_NAME, "Un premiu nou")), 1e-9,
+                "an award the experts have not ranked counts 4");
     }
 
     @Test
@@ -306,23 +343,37 @@ class StiinteEducatiei2026ReportDefinitionTest {
         assertEquals(6.0, edu.activity("I21", fields("Editura", "Polirom")), 1e-9);
         assertEquals(0.0, edu.activity("I21", fields()), 1e-9, "a collection counts at a classified publisher");
 
-        assertEquals(0.3, edu.activity("I22", fields("Indexare", "Web of Science")), 1e-9);
-        assertEquals(1.5, edu.activity("I22", fields("Indexare", "Web of Science", "N_articole", "5")), 1e-9);
-        assertEquals(0.4, edu.activity("I22", fields("Indexare", "Altă BDI recunoscută", "N_articole", "2")), 1e-9);
+        SeedReportDefinition.journal("1111-1111", false, false, true, true, 2, null); // ESCI counts as Web of Science here
+        SeedReportDefinition.journal("2222-2222", false, false, false, false, 1, null);
+        SeedReportDefinition.journal("3333-3333", false, false, false, false, 0, null);
+        assertEquals(0.3, edu.activityNaming("I22", fields(), issn("1111-1111")), 1e-9);
+        assertEquals(1.5, edu.activityNaming("I22", fields("N_articole", "5"), issn("1111-1111")), 1e-9);
+        assertEquals(0.4, edu.activityNaming("I22", fields("N_articole", "2"), issn("2222-2222")), 1e-9);
+        assertEquals(0.0, edu.activityNaming("I22", fields("N_articole", "2"), issn("3333-3333")), 1e-9,
+                "a journal in no database the lists know needs an approved request");
 
-        assertEquals(1.5, edu.activity("I23", fields("Tip", "Universitate din TOP 500 URAP")), 1e-9);
-        assertEquals(0.5, edu.activity("I23", fields("Tip", "Altă universitate, invitație nominală")), 1e-9);
-        assertEquals(0.5, edu.activity("I23", fields("Tip", "Asociație profesională internațională")), 1e-9);
-        assertEquals(0.25, edu.activity("I23", fields("Tip", "Asociație profesională națională")), 1e-9);
+        // H144: the URAP position of the named university, the level of the named association
+        SeedReportDefinition.university("University of Helsinki", 101, "Finland");
+        SeedReportDefinition.university("Universitatea din Craiova", 1450, "Romania");
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "EERA", "INTERNATIONAL", "ASSOCIATION", null);
+        assertEquals(1.5, edu.activityNaming("I23", fields(), named(Activity.ReferenceField.UNIVERSITY_NAME, "University of Helsinki")), 1e-9);
+        assertEquals(0.5, edu.activityNaming("I23", fields(), named(Activity.ReferenceField.UNIVERSITY_NAME, "Universitatea din Craiova")), 1e-9);
+        assertEquals(0.5, edu.activityNaming("I23", fields(), named(Activity.ReferenceField.ORGANIZATION_NAME, "EERA")), 1e-9);
+        assertEquals(0.25, edu.activityNaming("I23", fields(),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația Profesorilor din Timiș")), 1e-9);
     }
 
     @Test
     void centresEvaluationExpertGroupsAndTraining() {
         assertEquals(2.0, edu.activity("I28", fields()), 1e-9);
-        assertEquals(3.0, edu.activity("I29", fields("Nivel", "Internațională")), 1e-9);
-        assertEquals(1.0, edu.activity("I29", fields("Nivel", "Națională")), 1e-9);
-        assertEquals(3.0, edu.activity("I30", fields("Nivel", "Internațional")), 1e-9);
-        assertEquals(1.0, edu.activity("I30", fields("Nivel", "Național")), 1e-9);
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "European Research Council", "INTERNATIONAL", "FUNDER", null);
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "UEFISCDI", "NATIONAL", "FUNDER", "România");
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "UNESCO", "INTERNATIONAL", "AGENCY", null);
+        SeedReportDefinition.rank(RegistryKind.ORGANIZATION, "ARACIS", "NATIONAL", "AGENCY", "România");
+        assertEquals(3.0, edu.activityNaming("I29", fields(), named(Activity.ReferenceField.ORGANIZATION_NAME, "European Research Council")), 1e-9);
+        assertEquals(1.0, edu.activityNaming("I29", fields(), named(Activity.ReferenceField.ORGANIZATION_NAME, "UEFISCDI")), 1e-9);
+        assertEquals(3.0, edu.activityNaming("I30", fields(), named(Activity.ReferenceField.ORGANIZATION_NAME, "UNESCO")), 1e-9);
+        assertEquals(1.0, edu.activityNaming("I30", fields(), named(Activity.ReferenceField.ORGANIZATION_NAME, "ARACIS")), 1e-9);
         assertEquals(0.5, edu.activity("I31", fields()), 1e-9);
     }
 

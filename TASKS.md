@@ -9,8 +9,18 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H144` Self-picked levels → registries ranked by experts — **OPEN (decided 2026-10-02 with Adrian, after H142
-  slice 3).** About a dozen activity types across standards take a level the researcher picks (keynote at an
+- [ ] `H144` Self-picked levels → registries ranked by experts — **SLICE 1 BUILT 2026-10-03 (committed, not pushed;
+  ships with H142 slice 3 in one push) — see `docs/tasks/active/h144-self-picked-levels.md`.** One engine with kinds
+  (artistic events, conferences, organisations and bodies, awards): one experts' page `/user/registry/review` with a
+  tab per kind, one admin page `/admin/registry/experts`, one picker API; conferences ranked by Comisia 28's
+  criteria. The researcher names the conference, organisation, award, university or journal (by ISSN); formulas read
+  derived variables (`International`, `Recunoscut`, `Top500_URAP`, `Top1000_mondial`, `Tip_brevet`, `Revista_WoS`,
+  `N_baze_date`, …): 25 types, 35 formulas and descriptions across Comisia 28, 25, 35, Info, Fizică and CNFIS
+  patents; a waiting conference counts national, Music's gated items count only once ranked; 16 shared bodies seed
+  the organisations registry. Prod script `h144_slice1_registries.js` (guard `H144_IMAGE_IS_DEPLOYED`,
+  `--restart`), rehearsed; prod checked read-only (no records to migrate). **Prod order:** push and deploy; H142
+  slice 3's steps; flip and run the H144 script; map the domains to departments and name experts. Next: grants
+  (slice 2), sport (slice 3). Opened 2026-10-02 with Adrian, after H142 slice 3. About a dozen activity types across standards take a level the researcher picks (keynote at an
   international/national conference, jury, conference committee, professional association, evaluation panel, expert
   group, CNFIS 5.2 sports level, …), the same flaw as H143's publisher category and H142's concert visibility. Apply
   slice 3's pattern once it has proven itself: the researcher names the conference / association / body, a registry
@@ -91,7 +101,7 @@ Done history moved to `TASKS-done.md`.
   the CNFIS list plus what experts rank (rank gains national-top and local; aliases, kind, basis, note, history);
   `Vizibilitate` leaves the record type, an imported file's level is a suggestion for the experts; an unranked event
   counts CS 1.2 and stays out of CNFIS 5.1 until ranked. Experts = admins, the heads of the departments mapped to a
-  domain, named experts (`/admin/artistic-events/experts`); their page `/user/artistic-events/review` (queue from
+  domain, named experts (`/admin/registry/experts`); their page `/user/registry/review` (queue from
   proposals and records, bulk rank, merge as a spelling, reject with a note, edit, reopen; never one's own events).
   The workspace picks events from the registry and shows each record's level. An admin seeds proposals from an
   institutional Anexa 6.1 (event names only). CNFIS Anexa 4.1: a citation record type, the page section, frozen

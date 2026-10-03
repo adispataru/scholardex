@@ -63,11 +63,15 @@ public class PublisherCategoryFacade {
     public RecordView view(ActivityInstance instance, Map<String, Set<PublisherRules>> rulesByType) {
         Activity type = instance.getActivity();
         if (type == null || type.getId() == null || !hasField(type, PublisherRules.FIELD_PUBLISHER)) {
-            return null;
+            // H144: a request that is not about a publisher (a review's journal indexed in three databases, …) still
+            // shows what is asked and on what evidence
+            return instance.getPublisherClaim() == null ? null
+                    : new RecordView(instance.getId(), null, List.of(), claimView(instance.getPublisherClaim()));
         }
         Set<PublisherRules> rules = rulesByType.get(type.getId());
         if (rules == null || rules.isEmpty()) {
-            return null;
+            return instance.getPublisherClaim() == null ? null
+                    : new RecordView(instance.getId(), null, List.of(), claimView(instance.getPublisherClaim()));
         }
         Map<String, String> fields = instance.getFields() == null ? Map.of() : instance.getFields();
         String publisher = fields.get(PublisherRules.FIELD_PUBLISHER);

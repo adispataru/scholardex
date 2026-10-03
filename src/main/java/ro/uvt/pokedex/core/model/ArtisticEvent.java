@@ -3,6 +3,10 @@ package ro.uvt.pokedex.core.model;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import ro.uvt.pokedex.core.model.registry.RegistryChange;
+import ro.uvt.pokedex.core.model.registry.RegistryItem;
+import ro.uvt.pokedex.core.model.registry.RegistryKind;
+import ro.uvt.pokedex.core.model.registry.RegistryStatus;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,11 +19,13 @@ import java.util.List;
  * which an expert of its domain ranks (CONFIRMED), merges into another as a spelling variant (MERGED) or rejects
  * (REJECTED). A researcher names the event; nobody picks its level for a record.
  *
- * <p>A document without a status is one of the CNFIS list: confirmed, basis {@link Basis#CNFIS_LIST}.</p>
+ * <p>A document without a status is one of the CNFIS list: confirmed, basis {@link Basis#CNFIS_LIST}. Since H144 the
+ * event is one kind of the registries experts rank ({@link RegistryItem}): its rank is the level, its kind the
+ * category.</p>
  */
 @Data
 @Document(collection = "scholardex.artisticEvent")
-public class ArtisticEvent {
+public class ArtisticEvent implements RegistryItem {
     @Id
     private String id;
     private String name;
@@ -31,7 +37,7 @@ public class ArtisticEvent {
     private Kind kind;
     private String country;
     private String organiser;
-    private Status status;
+    private RegistryStatus status;
     /** Why the rank: one of {@link Basis}, by name. */
     private String basis;
     private String note;
@@ -43,7 +49,7 @@ public class ArtisticEvent {
     private Instant decidedAt;
     /** The confirmed event a MERGED proposal now spells. */
     private String mergedInto;
-    private List<Change> history = new ArrayList<>();
+    private List<RegistryChange> history = new ArrayList<>();
 
     /**
      * Best first. CNFIS Anexa 5.1 knows three levels (top international, international, national); the Music standard
@@ -65,8 +71,6 @@ public class ArtisticEvent {
 
     public enum Kind { FESTIVAL, COMPETITION, SEASON, TOUR, OTHER }
 
-    public enum Status { CONFIRMED, PROPOSED, REJECTED, MERGED }
-
     /** The grounds an expert ranks on: the CNFIS list and its rules, and the footnotes of the Music standard. */
     public enum Basis {
         CNFIS_LIST,
@@ -81,19 +85,53 @@ public class ArtisticEvent {
         OTHER
     }
 
-    /** One decision on the event: who, when, what, the rank before and after, why. */
-    @Data
-    public static class Change {
-        private Instant at;
-        private String by;
-        private String action;
-        private Rank fromRank;
-        private Rank toRank;
-        private String note;
+    /** Confirmed: ranked, and counted. The CNFIS list carries no status. */
+    @Override
+    public boolean isConfirmed() {
+        return status == null || status == RegistryStatus.CONFIRMED;
     }
 
-    /** Confirmed: ranked, and counted. The CNFIS list carries no status. */
-    public boolean isConfirmed() {
-        return status == null || status == Status.CONFIRMED;
+    @Override
+    public RegistryKind registryKind() {
+        return RegistryKind.ARTISTIC_EVENT;
+    }
+
+    /** The rank, as the registries name levels. */
+    @Override
+    public String getLevel() {
+        return rank == null ? null : rank.name();
+    }
+
+    @Override
+    public void setLevel(String level) {
+        this.rank = level == null || level.isBlank() ? null : Rank.valueOf(level);
+    }
+
+    /** The kind of event (festival, competition, season, tour), as the registries name categories. */
+    @Override
+    public String getCategory() {
+        return kind == null ? null : kind.name();
+    }
+
+    @Override
+    public void setCategory(String category) {
+        this.kind = category == null || category.isBlank() ? null : Kind.valueOf(category);
+    }
+
+    /** Artistic events are ranked on a basis, without criteria to tick. */
+    @Override
+    public List<String> getCriteria() {
+        return List.of();
+    }
+
+    @Override
+    public void setCriteria(List<String> criteria) {
+        // no criteria for artistic events
+    }
+
+    @Override
+    public String effectiveBasis() {
+        if (basis != null) return basis;
+        return status == null ? Basis.CNFIS_LIST.name() : null;
     }
 }

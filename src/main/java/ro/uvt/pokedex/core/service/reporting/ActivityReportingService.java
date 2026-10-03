@@ -166,6 +166,10 @@ public class ActivityReportingService {
         // vs 1.2), Rezultat_eveniment (PARTICIPARE / NOMINALIZARE / PREMIU) and Rol_eligibil (the roles the
         // standard counts) — see ArtisticPerformanceSupport.
         injectArtisticPerformanceVariables(activity, variables, result, rawformula);
+        // H144: what the record NAMES decides, never a level the researcher picked — the registries experts rank
+        // (International, Recunoscut, Premiu_stiintific, In_strainatate, …) and the app's lists (Top500_URAP,
+        // Tip_brevet, Revista_cu_taxa, Revista_WoS, N_baze_date); see RegistryScoringSupport.
+        RegistryScoringSupport.bind(activity, variables);
         // H143: Categorie_editura — the category of a declared book's publisher under the indicator's standard, from
         // the lists that standard names, or from a request a head approved (PublisherRules); null when nothing counts.
         injectPublisherCategoryVariable(activity, indicator, variables, result, rawformula);

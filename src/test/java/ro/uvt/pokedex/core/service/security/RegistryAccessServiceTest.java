@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import ro.uvt.pokedex.core.model.ArtisticEventDomainExperts;
+import ro.uvt.pokedex.core.model.registry.RegistryDomainExperts;
 import ro.uvt.pokedex.core.model.org.DepartmentAffiliation;
-import ro.uvt.pokedex.core.repository.ArtisticEventDomainExpertsRepository;
+import ro.uvt.pokedex.core.repository.RegistryDomainExpertsRepository;
 import ro.uvt.pokedex.core.repository.org.DepartmentAffiliationRepository;
 
 import java.util.List;
@@ -20,20 +20,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /** H142 slice 3 — the experts of a domain: heads of the departments that answer for it, named experts, admins. */
-class ArtisticEventAccessServiceTest {
+class RegistryAccessServiceTest {
 
-    private final ArtisticEventDomainExpertsRepository settings = mock(ArtisticEventDomainExpertsRepository.class);
+    private final RegistryDomainExpertsRepository settings = mock(RegistryDomainExpertsRepository.class);
     private final DepartmentAffiliationRepository affiliations = mock(DepartmentAffiliationRepository.class);
     private final OrgUnitAccessService units = mock(OrgUnitAccessService.class);
-    private final ArtisticEventAccessService access = new ArtisticEventAccessService(settings, affiliations, units);
+    private final RegistryAccessService access = new RegistryAccessService(settings, affiliations, units);
 
     private static Authentication as(String email, String... roles) {
         return UsernamePasswordAuthenticationToken.authenticated(email, null,
                 java.util.Arrays.stream(roles).map(SimpleGrantedAuthority::new).toList());
     }
 
-    private static ArtisticEventDomainExperts domain(String name, List<String> departments, List<String> experts) {
-        ArtisticEventDomainExperts d = new ArtisticEventDomainExperts();
+    private static RegistryDomainExperts domain(String name, List<String> departments, List<String> experts) {
+        RegistryDomainExperts d = new RegistryDomainExperts();
         d.setDomain(name);
         d.setDepartmentIds(new java.util.ArrayList<>(departments));
         d.setExpertEmails(new java.util.ArrayList<>(experts));
@@ -61,7 +61,7 @@ class ArtisticEventAccessServiceTest {
         DepartmentAffiliation affiliation = new DepartmentAffiliation();
         affiliation.setDepartmentId("dep-music");
         when(affiliations.findByUserIdAndValidToIsNull("ana@uvt.ro")).thenReturn(List.of(affiliation));
-        List<ArtisticEventDomainExperts> all = List.of(domain("Muzică", List.of("dep-music"), List.of()),
+        List<RegistryDomainExperts> all = List.of(domain("Muzică", List.of("dep-music"), List.of()),
                 domain("Teatru şi artele spectacolului", List.of("dep-theatre"), List.of()));
         assertEquals(Set.of("Muzică"), access.domainsOfResearcher("ana@uvt.ro", all));
         assertEquals(Set.of(), access.domainsOfResearcher("nobody@uvt.ro", all));

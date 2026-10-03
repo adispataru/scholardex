@@ -1,5 +1,9 @@
 package ro.uvt.pokedex.core.reporting;
 
+import org.junit.jupiter.api.AfterEach;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.registry.RegistryKind;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.service.reporting.formula.FormulaVariableContract;
@@ -185,12 +189,26 @@ class Psihologie2026ReportDefinitionTest {
 
     // ------------------------------------------------------------------ activity formulas
 
+    @AfterEach
+    void resetRegistries() {
+        SeedReportDefinition.resetRegistries();
+    }
+
+    private static Map<Activity.ReferenceField, String> issn(String issn) {
+        return Map.of(Activity.ReferenceField.FORUM_ISSN, issn);
+    }
+
     @Test
-    void preregistrationBonusFollowsTheJournalType() {
-        assertEquals(1.0, psy.activity("I1A_bonus", fields("Tip_revista", "Fără taxă de publicare")), 1e-9);
-        assertEquals(0.0, psy.activity("I1B_bonus", fields("Tip_revista", "Fără taxă de publicare")), 1e-9);
-        assertEquals(1.0, psy.activity("I1B_bonus", fields("Tip_revista", "Cu taxă de publicare")), 1e-9);
-        assertEquals(0.0, psy.activity("I1A_bonus", fields("Tip_revista", "Cu taxă de publicare")), 1e-9);
+    void preregistrationBonusFollowsTheJournalsFeeAsDoajKnowsIt() {
+        // H144: the fee is the journal's (DOAJ), never the researcher's pick
+        SeedReportDefinition.journal("1111-1111", false, true, true, true, 3, 2.1);
+        SeedReportDefinition.journal("2222-2222", true, false, true, true, 2, null);
+        assertEquals(1.0, psy.activityNaming("I1A_bonus", fields(), issn("1111-1111")), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I1B_bonus", fields(), issn("1111-1111")), 1e-9);
+        assertEquals(1.0, psy.activityNaming("I1B_bonus", fields(), issn("22222222")), 1e-9, "an ISSN typed without its hyphen");
+        assertEquals(0.0, psy.activityNaming("I1A_bonus", fields(), issn("2222-2222")), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I1A_bonus", fields(), issn("9999-9999")), 1e-9, "a journal the lists do not know");
+        assertEquals(0.0, psy.activityNaming("I1B_bonus", fields(), issn("9999-9999")), 1e-9);
     }
 
     @Test
@@ -213,25 +231,33 @@ class Psihologie2026ReportDefinitionTest {
 
     @Test
     void editorialRolesMultiplyRoleAndJournalWeight() {
-        // m = 3 only for a Web of Science journal whose impact factor reaches p = 1,00.
-        assertEquals(36.0, psy.activity("I15",
-                fields("Rol", "Redactor-șef", "Indexare", "Web of Science", "IF_revista", "2.4")), 1e-9);
-        assertEquals(24.0, psy.activity("I15",
-                fields("Rol", "Editor asociat", "Indexare", "Web of Science", "IF_revista", "1")), 1e-9);
-        assertEquals(12.0, psy.activity("I15",
-                fields("Rol", "Membru", "Indexare", "Web of Science", "IF_revista", "1.0")), 1e-9);
-        assertEquals(12.0, psy.activity("I15",
-                fields("Rol", "Redactor-șef", "Indexare", "Web of Science", "IF_revista", "0.6")), 1e-9);
-        assertEquals(12.0, psy.activity("I15",
-                fields("Rol", "Redactor-șef", "Indexare", "Web of Science")), 1e-9);
-        assertEquals(4.0, psy.activity("I15",
-                fields("Rol", "Membru", "Indexare", "Altă BDI recunoscută", "IF_revista", "3")), 1e-9);
+        // m = 3 only for a Web of Science journal whose impact factor reaches p = 1,00 — both from the lists (H144)
+        SeedReportDefinition.journal("1111-1111", false, true, true, true, 3, 2.4);
+        SeedReportDefinition.journal("3333-3333", false, false, true, false, 1, 1.0); // ESCI with an impact factor
+        SeedReportDefinition.journal("4444-4444", false, true, true, true, 3, 0.6);
+        SeedReportDefinition.journal("5555-5555", false, false, false, false, 2, null); // other databases only
+        SeedReportDefinition.journal("6666-6666", false, false, false, false, 0, null); // indexed nowhere we know
+        assertEquals(36.0, psy.activityNaming("I15", fields("Rol", "Redactor-șef"), issn("1111-1111")), 1e-9);
+        assertEquals(24.0, psy.activityNaming("I15", fields("Rol", "Editor asociat"), issn("3333-3333")), 1e-9,
+                "the Core Collection, ESCI included");
+        assertEquals(12.0, psy.activityNaming("I15", fields("Rol", "Redactor-șef"), issn("4444-4444")), 1e-9);
+        assertEquals(4.0, psy.activityNaming("I15", fields("Rol", "Membru"), issn("5555-5555")), 1e-9);
+        assertEquals(0.0, psy.activityNaming("I15", fields("Rol", "Membru"), issn("6666-6666")), 1e-9,
+                "a journal in no database the lists know needs an approved request");
+        assertEquals(4.0, psy.activityWithDecision("I15", fields("Rol", "Membru",
+                        "Incadrare_solicitata", "Revistă indexată într-o BDI recunoscută"),
+                ro.uvt.pokedex.core.model.activities.PublisherClaim.Status.APPROVED), 1e-9, "a head approved it");
     }
 
     @Test
     void keynotesAndCoordinatedBooks() {
-        assertEquals(6.0, psy.activity("I16", fields("Nivel", "Internațională")), 1e-9);
-        assertEquals(2.0, psy.activity("I16", fields("Nivel", "Națională")), 1e-9);
+        // H144: the conference is named; the registry says whether it is international
+        SeedReportDefinition.rank(RegistryKind.SCIENTIFIC_EVENT, "European Congress of Psychology", "INTERNATIONAL", "CONGRESS", "Slovenia");
+        assertEquals(6.0, psy.activityNaming("I16", fields(),
+                Map.of(Activity.ReferenceField.CONFERENCE_NAME, "European Congress of Psychology")), 1e-9);
+        assertEquals(2.0, psy.activityNaming("I16", fields(),
+                Map.of(Activity.ReferenceField.CONFERENCE_NAME, "Conferința Națională de Psihologie")), 1e-9,
+                "a conference the experts have not ranked counts as national");
         // H143: the category comes from the publisher typed — the Master Book List (A1), the 2026 list (A2, B)
         assertEquals(12.0, psy.activity("I17", fields("Editura", "Routledge", "N_coordonatori", "2")), 1e-9);
         assertEquals(8.0, psy.activity("I17", fields("Editura", "Polirom")), 1e-9);

@@ -53,6 +53,42 @@ public class UniversityRankingLookupService {
                         .thenComparing(BestRank::source));
     }
 
+    /**
+     * H144 — the best position among the world rankings a standard names (QS, THE, Shanghai/ARWU for Comisia 25 I.14),
+     * URAP left out; each at its closest data year.
+     */
+    public Optional<BestRank> worldRank(String name, int year) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+        return universityRankingRepository.findByNameIgnoreCase(name).stream()
+                .flatMap(generic -> closestGenericYear(generic, year).stream())
+                .min(Comparator.comparingInt(BestRank::rank).thenComparing(BestRank::source));
+    }
+
+    /** H144 — the URAP position alone (Comisia 28 I23 names URAP's top 500), at the closest data year. */
+    public Optional<BestRank> urapRank(String name, int year) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+        return urapUniversityRankingRepository.findByNameIgnoreCase(name).stream().findFirst()
+                .flatMap(urap -> closestUrapYear(urap, year));
+    }
+
+    /** H144 — the country the rankings give the university (URAP first), if any. */
+    public Optional<String> countryOf(String name) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<String> urap = urapUniversityRankingRepository.findByNameIgnoreCase(name).stream()
+                .map(URAPUniversityRanking::getCountry).filter(c -> c != null && !c.isBlank()).findFirst();
+        if (urap.isPresent()) {
+            return urap;
+        }
+        return universityRankingRepository.findByNameIgnoreCase(name).stream()
+                .map(UniversityRanking::getCountry).filter(c -> c != null && !c.isBlank()).findFirst();
+    }
+
     private Optional<BestRank> closestUrapYear(URAPUniversityRanking ranking, int year) {
         Map<Integer, URAPUniversityRanking.Score> scores = ranking.getScores();
         if (scores == null || scores.isEmpty()) {

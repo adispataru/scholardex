@@ -31,18 +31,19 @@ public final class MusicGridLayout {
         RIA_1_1(Table.RIA, "Funcție de management (Comisia 35, RIA 1.1)", "Functia"),
         RIA_1_2(Table.RIA, MusicGridLayout.GRANT_TYPE, "Nume Proiect"),
         RIA_1_3(Table.RIA, "Membru în colectivul de redacție sau recenzor al unei publicații ori edituri indexate (Comisia 35, RIA 1.3)", "Publicatia_sau_editura"),
-        RIA_1_4(Table.RIA, "Organizator al unei manifestări științifice sau artistice (Comisia 35, RIA 1.4 și 1.5)", "Manifestarea"),
-        RIA_1_5(Table.RIA, "Organizator al unei manifestări științifice sau artistice (Comisia 35, RIA 1.4 și 1.5)", "Manifestarea"),
+        // H144: the rows whose entity is named through a registry carry their text in the record's name only
+        RIA_1_4(Table.RIA, "Organizator al unei manifestări științifice sau artistice (Comisia 35, RIA 1.4 și 1.5)", null),
+        RIA_1_5(Table.RIA, "Organizator al unei manifestări științifice sau artistice (Comisia 35, RIA 1.4 și 1.5)", null),
         RIA_2_1(Table.RIA, "Distincție sau premiu de stat (Comisia 35, RIA 2.1)", "Denumire"),
         RIA_2_2(Table.RIA, "Distincție sau premiu acordat de o organizație profesională sau de media (Comisia 35, RIA 2.2)", "Denumire"),
         RIA_2_3(Table.RIA, MusicGridLayout.EVENT_TYPE, "Dovezi"),
-        RIA_3_1(Table.RIA, "Membru sau funcție într-o academie, organizație ori asociație profesională (Comisia 35, RIA 3.1 și 3.2)", "Organizatia"),
-        RIA_3_2(Table.RIA, "Membru sau funcție într-o academie, organizație ori asociație profesională (Comisia 35, RIA 3.1 și 3.2)", "Organizatia"),
-        RIA_3_3(Table.RIA, "Membru în juriul unui concurs sau pentru acordarea unor distincții (Comisia 35, RIA 3.3)", "Concursul"),
+        RIA_3_1(Table.RIA, "Membru sau funcție într-o academie, organizație ori asociație profesională (Comisia 35, RIA 3.1 și 3.2)", null),
+        RIA_3_2(Table.RIA, "Membru sau funcție într-o academie, organizație ori asociație profesională (Comisia 35, RIA 3.1 și 3.2)", null),
+        RIA_3_3(Table.RIA, "Membru în juriul unui concurs sau pentru acordarea unor distincții (Comisia 35, RIA 3.3)", null),
         RIA_3_4(Table.RIA, "Lucrare achiziționată sau comandată (Comisia 35, RIA 3.4)", "Lucrarea"),
         RIA_3_5(Table.RIA, "Curs, masterclass sau conferință la altă instituție (Comisia 35, RIA 3.5)", "Denumire"),
-        RIA_3_6(Table.RIA, "Portret sau interviu ca invitat unic în media (Comisia 35, RIA 3.6)", "Publicatia_sau_postul"),
-        RIA_3_7(Table.RIA, "Keynote speaker la o manifestare științifică (Comisia 35, RIA 3.7)", "Manifestarea");
+        RIA_3_6(Table.RIA, "Portret sau interviu ca invitat unic în media (Comisia 35, RIA 3.6)", null),
+        RIA_3_7(Table.RIA, "Keynote speaker la o manifestare științifică (Comisia 35, RIA 3.7)", null);
 
         private final Table table;
         private final String activityType;

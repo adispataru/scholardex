@@ -18,4 +18,14 @@ public interface ActivityInstanceRepository extends MongoRepository<ActivityInst
     /** H142 slice 3 — every record that names an artistic event (the experts' queue is built from them). */
     @org.springframework.data.mongodb.repository.Query("{'referenceFields.EVENT_NAME': {$exists: true, $nin: [null, '']}}")
     List<ActivityInstance> findAllNamingAnEvent();
+
+    /** H144 — every record that names a conference, an organisation or an award (the experts' queues). */
+    @org.springframework.data.mongodb.repository.Query("{'referenceFields.CONFERENCE_NAME': {$exists: true, $nin: [null, '']}}")
+    List<ActivityInstance> findAllNamingAConference();
+
+    @org.springframework.data.mongodb.repository.Query("{'referenceFields.ORGANIZATION_NAME': {$exists: true, $nin: [null, '']}}")
+    List<ActivityInstance> findAllNamingAnOrganization();
+
+    @org.springframework.data.mongodb.repository.Query("{'referenceFields.AWARD_NAME': {$exists: true, $nin: [null, '']}}")
+    List<ActivityInstance> findAllNamingAnAward();
 }

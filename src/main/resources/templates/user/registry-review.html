@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{registry.meta.title}">Rankings by experts</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('registry-review')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(#{registry.meta.title})}"></div>
+            <div class="container-fluid app-page-content" th:with="k=${kind.name()}">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro" th:text="#{registry.intro}">
+                        Researchers name the entity; experts rank it once, for everyone.
+                    </p>
+                </div>
+
+                <nav class="mb-3" aria-label="registries" style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                    <a th:each="tab : ${page.tabs()}" th:href="@{/user/registry/review(kind=${tab.kind().name()})}"
+                       class="btn btn-sm" th:classappend="${tab.kind() == kind} ? ' btn-primary' : ' btn-outline-primary'"
+                       th:attr="aria-current=${tab.kind() == kind} ? 'page' : null" data-registry-tab>
+                        <span th:text="#{${'registry.kind.' + tab.kind().name()}}">Conferences</span>
+                        <span class="badge bg-light text-dark ms-1" th:if="${tab.waiting() > 0}" th:text="${tab.waiting()}">3</span>
+                    </a>
+                </nav>
+
+                <div th:if="${doneKey}" class="app-feedback app-feedback--success" role="status">
+                    <p class="app-feedback__body" th:text="#{${doneKey}}">Done.</p>
+                </div>
+                <div th:if="${refusedKey}" class="app-feedback app-feedback--danger" role="alert">
+                    <p class="app-feedback__body" th:text="#{${refusedKey}}">Refused.</p>
+                </div>
+
+                <!-- ── Names waiting for a level ──────────────────────────────── -->
+                <section class="app-summary-panel mb-4" id="queue">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title">
+                            <span th:text="#{registry.queue.title}">Waiting for a level</span>
+                            (<span th:text="${page.queue().size()}">0</span>)
+                        </h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p class="text-muted" style="font-size:0.85rem;" th:text="#{registry.queue.how}">
+                            Tick the names to rank alike, then choose the level below.
+                        </p>
+                        <p th:if="${page.queue().isEmpty()}" class="text-muted mb-0"
+                           th:text="#{registry.queue.empty}">Nothing is waiting.</p>
+
+                        <div th:each="entry : ${page.queue()}" data-registry-proposal
+                             style="border-top:1px solid var(--bs-border-color, #dee2e6); padding:0.9rem 0;">
+                            <p class="mb-1">
+                                <label style="display:inline-flex; gap:0.5rem; align-items:center;">
+                                    <input type="checkbox" name="keys" form="bulk-rank" th:value="${entry.key()}"
+                                           th:disabled="${!entry.canDecide()}">
+                                    <strong th:text="${entry.name()}">Conferința X</strong>
+                                </label>
+                                <span class="text-muted" th:if="${!entry.domains().isEmpty()}"
+                                      th:text="${'· ' + #strings.listJoin(entry.domains(), ', ')}">· Muzică</span>
+                            </p>
+                            <p class="mb-1" th:if="${entry.spellings().size() > 1}">
+                                <span class="text-muted" th:text="#{registry.queue.spellings}">Also written</span>:
+                                <span th:text="${#strings.listJoin(entry.spellings(), ' · ')}">spellings</span>
+                            </p>
+                            <p class="mb-1">
+                                <span th:text="#{registry.queue.counts(${entry.records()}, ${entry.researchers()})}">3 records, 2 researchers</span>
+                                <span th:if="${!entry.years().isEmpty()}" th:text="${'· ' + #strings.listJoin(entry.years(), ', ')}">· 2023</span>
+                                <span class="text-muted" th:text="${'· ' + (#strings.startsWith(entry.source(), 'registry.') ? #messages.msg(entry.source()) : entry.source())}">· source</span>
+                            </p>
+                            <p class="mb-1" th:if="${!entry.suggestions().isEmpty()}">
+                                <span class="text-muted" th:text="#{registry.queue.suggested}">The files suggested</span>:
+                                <th:block th:each="s, iter : ${entry.suggestions()}">
+                                    <span th:text="${s.key + ' (' + s.value + ')'}">CS 1.1 (2)</span><span th:unless="${iter.last}">; </span>
+                                </th:block>
+                            </p>
+                            <p class="mb-2" th:if="${!entry.evidence().isEmpty()}">
+                                <span class="text-muted" th:text="#{registry.queue.evidence}">Evidence</span>:
+                                <th:block th:each="ev, iter : ${entry.evidence()}">
+                                    <a th:if="${#strings.startsWith(ev, 'http')}" target="_blank" rel="noopener" th:href="${ev}"
+                                       th:text="${#strings.abbreviate(ev, 80)}">link</a>
+                                    <span th:unless="${#strings.startsWith(ev, 'http')}" th:text="${#strings.abbreviate(ev, 120)}">text</span><span th:unless="${iter.last}"> · </span>
+                                </th:block>
+                            </p>
+                            <p class="mb-2 text-muted" th:if="${!entry.canDecide()}" th:text="#{${entry.refusalKey()}}">Not yours to decide.</p>
+                            <form th:if="${entry.canDecide()}" method="post" th:action="@{/user/registry/review/{k}/reject(k=${k})}"
+                                  style="display:flex; gap:0.4rem; max-width:40rem;">
+                                <input type="hidden" name="key" th:value="${entry.key()}">
+                                <input type="text" name="note" class="form-control form-control-sm" maxlength="1000" required
+                                       th:placeholder="#{registry.reject.note}" th:attr="aria-label=#{registry.reject.note}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" th:text="#{registry.reject}">Reject</button>
+                            </form>
+                        </div>
+
+                        <form id="bulk-rank" method="post" th:action="@{/user/registry/review/{k}/rank(k=${k})}" th:if="${!page.queue().isEmpty()}"
+                              style="border-top:2px solid var(--bs-border-color, #dee2e6); padding-top:0.9rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
+                            <div>
+                                <label class="form-label mb-0" for="rank-level" th:text="#{registry.form.level}">Level</label>
+                                <select id="rank-level" name="level" class="form-select form-select-sm" required>
+                                    <option value=""></option>
+                                    <option th:each="l : ${kind.levels()}" th:value="${l}" th:text="#{${'registry.level.' + k + '.' + l}}">level</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label mb-0" for="rank-basis" th:text="#{registry.form.basis}">Basis</label>
+                                <select id="rank-basis" name="basis" class="form-select form-select-sm" required>
+                                    <option value=""></option>
+                                    <option th:each="b : ${kind.bases()}" th:value="${b}" th:text="#{${'registry.basis.' + k + '.' + b}}">basis</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label mb-0" for="rank-category" th:text="#{registry.form.category}">Kind</label>
+                                <select id="rank-category" name="category" class="form-select form-select-sm">
+                                    <option value=""></option>
+                                    <option th:each="c : ${kind.categories()}" th:value="${c}" th:text="#{${'registry.category.' + k + '.' + c}}">category</option>
+                                </select>
+                            </div>
+                            <fieldset th:if="${!kind.criteria().isEmpty()}" style="flex-basis:100%;" data-registry-criteria>
+                                <legend class="form-label mb-0" style="font-size:inherit;" th:text="#{registry.form.criteria}">Criteria met</legend>
+                                <label th:each="c : ${kind.criteria()}" style="display:flex; gap:0.4rem; align-items:flex-start; font-size:0.85rem;">
+                                    <input type="checkbox" name="criteria" th:value="${c}">
+                                    <span th:text="#{${'registry.criterion.' + c}}">criterion</span>
+                                </label>
+                            </fieldset>
+                            <div>
+                                <label class="form-label mb-0" for="rank-country" th:text="#{registry.form.country}">Country</label>
+                                <input id="rank-country" type="text" name="country" class="form-control form-control-sm" maxlength="80">
+                            </div>
+                            <div>
+                                <label class="form-label mb-0" for="rank-domain" th:text="#{registry.form.domain}">Domain</label>
+                                <select id="rank-domain" name="domain" class="form-select form-select-sm">
+                                    <option value="" th:text="#{registry.form.domain.auto}">The proposal's</option>
+                                    <option th:each="d : ${page.domains()}" th:value="${d}" th:text="${d}">Muzică</option>
+                                </select>
+                            </div>
+                            <div style="flex:1 1 16rem;">
+                                <label class="form-label mb-0" for="rank-note" th:text="#{registry.form.note}">Note</label>
+                                <input id="rank-note" type="text" name="note" class="form-control form-control-sm" maxlength="1000">
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-success" th:text="#{registry.form.submit}">Rank the ticked names</button>
+                            <div style="flex-basis:100%; height:0;"></div>
+                            <div style="flex:1 1 24rem;">
+                                <label class="form-label mb-0" for="merge-target" th:text="#{registry.merge.hint}">Or: the ticked names are spellings of a ranked entry</label>
+                                <select id="merge-target" name="target" class="form-select form-select-sm">
+                                    <option value="" th:text="#{registry.merge.target}">Same entry as…</option>
+                                    <optgroup th:each="group : ${mergeGroups}" th:label="${group.key}">
+                                        <option th:each="t : ${group.value}" th:value="${t.id()}"
+                                                th:text="${t.name() + ' (' + #messages.msg('registry.level.' + k + '.' + t.level()) + ')'}">Entry</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" formnovalidate
+                                    th:formaction="@{/user/registry/review/{k}/merge(k=${k})}" th:text="#{registry.merge}">Merge</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ── Ranked entries ───────────────────────────────────────────── -->
+                <section class="app-summary-panel mb-4" id="items">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title" th:text="#{registry.items.title}">Ranked entries</h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <form method="get" th:action="@{/user/registry/review}" class="mb-2" style="display:flex; gap:0.4rem; max-width:32rem;">
+                            <input type="hidden" name="kind" th:value="${k}">
+                            <input type="search" name="q" class="form-control form-control-sm" th:value="${q}"
+                                   th:placeholder="#{registry.items.search}" th:attr="aria-label=#{registry.items.search}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" th:text="#{registry.items.find}">Find</button>
+                        </form>
+                        <p th:if="${page.items().isEmpty()}" class="text-muted mb-0" th:text="#{registry.items.empty}">No entry.</p>
+                        <div th:unless="${page.items().isEmpty()}" class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                <tr>
+                                    <th scope="col" th:text="#{registry.col.name}">Name</th>
+                                    <th scope="col" th:text="#{registry.col.level}">Level</th>
+                                    <th scope="col" th:text="#{registry.col.basis}">Basis</th>
+                                    <th scope="col" th:text="#{registry.col.by}">By</th>
+                                    <th scope="col"></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="ev : ${page.items()}" data-ranked-entry>
+                                    <td>
+                                        <strong th:text="${ev.name()}">Conferința X</strong>
+                                        <span class="text-muted" th:if="${ev.domain() != null}" th:text="${' · ' + ev.domain()}">· Muzică</span>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:if="${ev.category() != null or ev.country() != null}">
+                                            <span th:if="${ev.category() != null}" th:text="#{${'registry.category.' + k + '.' + ev.category()}}">Festival</span>
+                                            <span th:if="${ev.country() != null}" th:text="${' · ' + ev.country()}">· România</span>
+                                        </div>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:if="${!ev.aliases().isEmpty()}"
+                                             th:text="${#strings.listJoin(ev.aliases(), ' · ')}">aliases</div>
+                                    </td>
+                                    <td th:text="#{${'registry.level.' + k + '.' + ev.level()}}">International</td>
+                                    <td>
+                                        <span th:if="${ev.basis() != null}" th:text="#{${'registry.basis.' + k + '.' + ev.basis()}}">basis</span>
+                                        <ul class="text-muted mb-0" style="font-size:0.8rem; padding-left:1rem;" th:if="${ev.criteria() != null and !ev.criteria().isEmpty()}">
+                                            <li th:each="c : ${ev.criteria()}" th:text="#{${'registry.criterion.' + c}}">criterion</li>
+                                        </ul>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:if="${ev.note() != null}" th:text="${ev.note()}">note</div>
+                                    </td>
+                                    <td>
+                                        <span th:text="${ev.decidedBy() == null ? '—' : names.getOrDefault(ev.decidedBy(), ev.decidedBy())}">expert</span>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:text="${when.get(ev.id())}">date</div>
+                                    </td>
+                                    <td>
+                                        <details th:if="${ev.canEdit()}">
+                                            <summary th:text="#{registry.edit}">Change</summary>
+                                            <form method="post" th:action="@{/user/registry/review/{k}/items/{id}/edit(k=${k},id=${ev.id()})}"
+                                                  style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.4rem;">
+                                                <select name="level" class="form-select form-select-sm" required th:attr="aria-label=#{registry.form.level}">
+                                                    <option th:each="l : ${kind.levels()}" th:value="${l}" th:selected="${l == ev.level()}"
+                                                            th:text="#{${'registry.level.' + k + '.' + l}}">level</option>
+                                                </select>
+                                                <select name="basis" class="form-select form-select-sm" required th:attr="aria-label=#{registry.form.basis}">
+                                                    <option th:each="b : ${kind.bases()}" th:value="${b}" th:selected="${b == ev.basis()}"
+                                                            th:text="#{${'registry.basis.' + k + '.' + b}}">basis</option>
+                                                </select>
+                                                <select name="category" class="form-select form-select-sm" th:attr="aria-label=#{registry.form.category}">
+                                                    <option value=""></option>
+                                                    <option th:each="c : ${kind.categories()}" th:value="${c}" th:selected="${c == ev.category()}"
+                                                            th:text="#{${'registry.category.' + k + '.' + c}}">category</option>
+                                                </select>
+                                                <label th:each="c : ${kind.criteria()}" style="display:flex; gap:0.3rem; align-items:center; font-size:0.8rem; flex-basis:100%;">
+                                                    <input type="checkbox" name="criteria" th:value="${c}" th:checked="${ev.criteria() != null and ev.criteria().contains(c)}">
+                                                    <span th:text="#{${'registry.criterion.' + c}}">criterion</span>
+                                                </label>
+                                                <input type="text" name="country" class="form-control form-control-sm" maxlength="80"
+                                                       th:value="${ev.country()}" th:placeholder="#{registry.form.country}" th:attr="aria-label=#{registry.form.country}">
+                                                <input type="text" name="note" class="form-control form-control-sm" maxlength="1000"
+                                                       th:placeholder="#{registry.form.note}" th:attr="aria-label=#{registry.form.note}">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary" th:text="#{registry.edit.save}">Save</button>
+                                            </form>
+                                        </details>
+                                        <span class="text-muted" th:unless="${ev.canEdit()}" style="font-size:0.8rem;"
+                                              th:text="#{registry.refused.own}">Your own</span>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── Decisions ────────────────────────────────────────────────── -->
+                <section class="app-summary-panel" id="decisions">
+                    <div class="app-summary-panel__header">
+                        <h6 class="app-summary-panel__title" th:text="#{registry.decisions.title}">Recent decisions</h6>
+                    </div>
+                    <div class="app-summary-panel__body">
+                        <p th:if="${page.decisions().isEmpty()}" class="text-muted mb-0" th:text="#{registry.decisions.empty}">Nothing yet.</p>
+                        <div th:unless="${page.decisions().isEmpty()}" class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                <tr>
+                                    <th scope="col" th:text="#{registry.col.when}">When</th>
+                                    <th scope="col" th:text="#{registry.col.by}">By</th>
+                                    <th scope="col" th:text="#{registry.col.name}">Name</th>
+                                    <th scope="col" th:text="#{registry.col.decision}">Decision</th>
+                                    <th scope="col"></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="d : ${page.decisions()}">
+                                    <td th:text="${when.get(d.itemId() + '|' + d.at())}">date</td>
+                                    <td th:text="${d.by() == null ? '—' : names.getOrDefault(d.by(), d.by())}">expert</td>
+                                    <td th:text="${d.item()}">name</td>
+                                    <td>
+                                        <span th:text="#{${'registry.action.' + d.action()}}">Ranked</span>
+                                        <span th:if="${d.toLevel() != null}" th:text="${'→ ' + #messages.msg('registry.level.' + k + '.' + d.toLevel())}">→ International</span>
+                                        <div class="text-muted" style="font-size:0.8rem;" th:if="${d.note() != null}" th:text="${d.note()}">note</div>
+                                    </td>
+                                    <td>
+                                        <form th:if="${d.action() == 'REJECTED' and d.status() != null and d.status().name() == 'REJECTED'}" method="post"
+                                              th:action="@{/user/registry/review/{k}/items/{id}/reopen(k=${k},id=${d.itemId()})}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" th:text="#{registry.reopen}">Reopen</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

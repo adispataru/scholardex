@@ -6,7 +6,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.service.security.ArtisticEventAccessService;
+import ro.uvt.pokedex.core.service.security.RegistryAccessService;
 
 import java.util.Optional;
 
@@ -14,18 +14,18 @@ import java.util.Optional;
 public class GlobalControllerAdvice {
 
     /** Optional, so that web-slice tests need no mock for it (H142 slice 3). */
-    private final ObjectProvider<ArtisticEventAccessService> artisticEventAccess;
+    private final ObjectProvider<RegistryAccessService> registryAccess;
 
-    public GlobalControllerAdvice(ObjectProvider<ArtisticEventAccessService> artisticEventAccess) {
-        this.artisticEventAccess = artisticEventAccess;
+    public GlobalControllerAdvice(ObjectProvider<RegistryAccessService> registryAccess) {
+        this.registryAccess = registryAccess;
     }
 
     /**
-     * H142 slice 3 — whether the sidebar offers the page of artistic events to rank: admins, named experts, heads of the
-     * departments that answer for a domain. Asked for page loads only, not for API calls or form posts.
+     * H142 slice 3, H144 — whether the sidebar offers the experts' page of the registries: admins, named experts, heads
+     * of the departments that answer for a domain. Asked for page loads only, not for API calls or form posts.
      */
-    @ModelAttribute("canRankArtisticEvents")
-    public boolean canRankArtisticEvents(HttpServletRequest request) {
+    @ModelAttribute("canRankRegistries")
+    public boolean canRankRegistries(HttpServletRequest request) {
         String path = request.getRequestURI();
         if (!"GET".equalsIgnoreCase(request.getMethod()) || path == null || path.startsWith("/api/")) {
             return false;
@@ -34,7 +34,7 @@ public class GlobalControllerAdvice {
         if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
             return false;
         }
-        ArtisticEventAccessService access = artisticEventAccess.getIfAvailable();
+        RegistryAccessService access = registryAccess.getIfAvailable();
         try {
             return access != null && access.canReviewAny(authentication);
         } catch (RuntimeException e) {

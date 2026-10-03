@@ -501,6 +501,9 @@ when it lands. Slice 5 last, source by source.
 
 ## Slice 3 as built (2026-10-03)
 
+Generalised by H144 slice 1 before it shipped (one engine for every registry, artistic events one of its kinds;
+see `docs/tasks/active/h144-self-picked-levels.md`): the classes, paths and collection below carry H144's names.
+
 - **Registry.** `ArtisticEvent` gained aliases, kind (festival, competition, season, tour, other), country, organiser,
   status (none or `CONFIRMED` = the CNFIS list; `PROPOSED`, `REJECTED`, `MERGED`), basis (the CNFIS list or one of
   its rules, or the standard's footnote the expert applied), note, source, who proposed and decided it and when, and
@@ -515,11 +518,11 @@ when it lands. Slice 5 last, source by source.
   `NO_EVENT`). CNFIS 5.1: national-top is national, a local event is no CNFIS level, a waiting or rejected one is left
   out and says why. An imported grid's CS 1.1 / 1.2 row and a CNFIS 5.1 level become `eventLevelSuggestion` on the
   record — shown to the experts, never scored. The rankings hub lists confirmed events only.
-- **Experts.** `ArtisticEventAccessService` (`@artisticEventAccess`): a platform admin; the experts an admin names
+- **Experts.** `RegistryAccessService` (`@registryAccess`): a platform admin; the experts an admin names
   per domain; the heads of the departments an admin maps to the domain (directors, and the faculty's dean and
-  vice-deans through `canManageDepartment`). Admin page `/admin/artistic-events/experts` (collection
-  `scholardex.artistic_event_domain_experts`, one document per registry domain). Experts' page
-  `/user/artistic-events/review` (sidebar item for whoever can rank): the queue — stored proposals plus every name
+  vice-deans through `canManageDepartment`). Admin page `/admin/registry/experts` (collection
+  `scholardex.registry_domain_experts`, one document per registry domain). Experts' page
+  `/user/registry/review?kind=ARTISTIC_EVENT` (sidebar item for whoever can rank): the queue — stored proposals plus every name
   records use that the registry does not know, grouped by normalised name, with counts, researchers, years, evidence
   links and the suggestions of imported files —, bulk ranking (rank, basis, kind, country, domain, note), bulk merge
   of the ticked names into any ranked event of one's domains as its spellings (aliases; the list holds every ranked
@@ -528,9 +531,9 @@ when it lands. Slice 5 last, source by source.
   proposed from a file is no decision and is not listed). Nobody decides on an event their own records name or that they proposed; a
   domain outside one's own is refused.
 - **Workspace.** `EVENT_NAME` is a picker over confirmed events, aliases and waiting proposals
-  (`/api/entities/artistic-events?q=`), showing the rank or "waiting"; free text stays allowed and joins the queue.
+  (`/api/entities/registry?kind=ARTISTIC_EVENT&q=`), showing the rank or "waiting"; free text stays allowed and joins the queue.
   The record panel shows the event's level, its basis and note, "waiting" (counted regional/local meanwhile) or
-  "rejected" with the experts' note (`/user/workspace/activities/event-levels`). The picker inputs (event and
+  "rejected" with the experts' note (`/user/workspace/activities/registry-levels`). The picker inputs (event and
   university) now fill their field.
 - **Seeding.** `ArtisticEventSeedService`, from the admin page: reads only the event column of an institutional
   Anexa 6.1 ("Date de identificare ale evenimentului") and cuts each cell to the event's name — a festival or a
@@ -571,7 +574,7 @@ when it lands. Slice 5 last, source by source.
   writes nothing, the first run applies all three, the second changes nothing; the result equals the committed seed,
   records untouched. **Prod order:** push and deploy; copy the 4.1 template to the data volume
   (`copy-to-data-pvc.sh templates data/templates/AC2025_Anexa4.1-Impact_creatie_artistica-2025.xlsx`); flip the
-  guard, run the script; on `/admin/artistic-events/experts` map Muzică → Departamentul de Muzică and Teatru şi
+  guard, run the script; on `/admin/registry/experts` map Muzică → Departamentul de Muzică and Teatru şi
   artele spectacolului → Departamentul de Teatru, name experts or record FMT's heads; optionally upload FMT's
   Anexa 6.1 to seed the queue.
 

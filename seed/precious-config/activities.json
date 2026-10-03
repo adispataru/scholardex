@@ -322,16 +322,6 @@
     "number": true
    },
    {
-    "name": "Tip",
-    "allowedValues": [
-     "Triadic",
-     "European",
-     "International",
-     "National"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    },
@@ -374,19 +364,14 @@
   "name": "Poziţii de conducere în organizaţii profesionale",
   "fields": [
    {
-    "name": "Tip",
-    "allowedValues": [
-     "National",
-     "International"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -478,19 +463,14 @@
     "number": false
    },
    {
-    "name": "Tip_revista",
-    "allowedValues": [
-     "Fără taxă de publicare",
-     "Cu taxă de publicare"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi (linkuri preînregistrare și date)",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ]
  },
  {
   "_id": {
@@ -549,10 +529,6 @@
     "number": false
    },
    {
-    "name": "ISSN",
-    "number": false
-   },
-   {
     "name": "Rol",
     "allowedValues": [
      "Redactor-șef",
@@ -562,23 +538,25 @@
     "number": false
    },
    {
-    "name": "Indexare",
+    "name": "Dovezi",
+    "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
     "allowedValues": [
-     "Web of Science",
-     "Altă BDI recunoscută"
+     "Revistă indexată într-o BDI recunoscută"
     ],
     "number": false
    },
    {
-    "name": "IF_revista",
-    "number": true
-   },
-   {
-    "name": "Dovezi",
+    "name": "Dovada_incadrarii",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ]
  },
  {
   "_id": {
@@ -587,23 +565,14 @@
   "name": "Keynote speaker, comunicare în plen (Comisia 28, I16)",
   "fields": [
    {
-    "name": "Conferinta",
-    "number": false
-   },
-   {
-    "name": "Nivel",
-    "allowedValues": [
-     "Internațională",
-     "Națională"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "CONFERENCE_NAME"
+  ]
  },
  {
   "_id": {
@@ -788,14 +757,6 @@
     "number": false
    },
    {
-    "name": "Nivel",
-    "allowedValues": [
-     "Internațional",
-     "Național"
-    ],
-    "number": false
-   },
-   {
     "name": "N_autori",
     "number": true
    },
@@ -804,7 +765,10 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -812,10 +776,6 @@
   },
   "name": "Comitet științific, de organizare sau de evaluare la o conferință (Comisia 28, I18)",
   "fields": [
-   {
-    "name": "Conferinta",
-    "number": false
-   },
    {
     "name": "Calitate",
     "allowedValues": [
@@ -827,19 +787,14 @@
     "number": false
    },
    {
-    "name": "Nivel",
-    "allowedValues": [
-     "Internațională",
-     "Națională"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "CONFERENCE_NAME"
+  ]
  },
  {
   "_id": {
@@ -847,10 +802,6 @@
   },
   "name": "Asociație profesională (Comisia 28, I19)",
   "fields": [
-   {
-    "name": "Asociatie",
-    "number": false
-   },
    {
     "name": "Rol",
     "allowedValues": [
@@ -860,19 +811,14 @@
     "number": false
    },
    {
-    "name": "Nivel",
-    "allowedValues": [
-     "Internațională",
-     "Națională"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -881,25 +827,14 @@
   "name": "Premiu sau distincție (Comisia 28, I20)",
   "fields": [
    {
-    "name": "Denumire",
-    "number": false
-   },
-   {
-    "name": "Tip",
-    "allowedValues": [
-     "Științific internațional",
-     "Științific național",
-     "Didactic",
-     "Promovarea țării"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "AWARD_NAME"
+  ]
  },
  {
   "_id": {
@@ -944,23 +879,29 @@
     "number": false
    },
    {
-    "name": "Indexare",
-    "allowedValues": [
-     "Web of Science",
-     "Altă BDI recunoscută"
-    ],
-    "number": false
-   },
-   {
     "name": "N_articole",
     "number": true
    },
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Revistă indexată într-o BDI recunoscută"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ]
  },
  {
   "_id": {
@@ -969,25 +910,15 @@
   "name": "Profesor asociat, visiting scholar sau prelegere invitată (Comisia 28, I23)",
   "fields": [
    {
-    "name": "Institutie",
-    "number": false
-   },
-   {
-    "name": "Tip",
-    "allowedValues": [
-     "Universitate din TOP 500 URAP",
-     "Altă universitate, invitație nominală",
-     "Asociație profesională internațională",
-     "Asociație profesională națională"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "UNIVERSITY_NAME",
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -1017,19 +948,14 @@
     "number": false
    },
    {
-    "name": "Nivel",
-    "allowedValues": [
-     "Internațională",
-     "Națională"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -1038,23 +964,14 @@
   "name": "Membru în grup de experți, comisie sau consiliu științific (Comisia 28, I30)",
   "fields": [
    {
-    "name": "Organism",
-    "number": false
-   },
-   {
-    "name": "Nivel",
-    "allowedValues": [
-     "Internațional",
-     "Național"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -1228,9 +1145,8 @@
    {
     "name": "Tip",
     "allowedValues": [
-     "Recenzie în revistă ISI/WoS",
-     "Recenzie în revistă indexată în cel puțin 3 baze de date",
-     "Termen de minimum o pagină în enciclopedie sau dicționar"
+     "Recenzie",
+     "Termen în enciclopedie sau dicționar"
     ],
     "number": false
    },
@@ -1250,9 +1166,23 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Revistă indexată în cel puțin 3 baze de date"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ]
  },
  {
   "_id": {
@@ -1372,18 +1302,6 @@
     "number": false
    },
    {
-    "name": "ISSN",
-    "number": false
-   },
-   {
-    "name": "Indexare",
-    "allowedValues": [
-     "ISI/WoS sau SCOPUS",
-     "Trei baze de date recunoscute, altele decât ISI/WoS și SCOPUS"
-    ],
-    "number": false
-   },
-   {
     "name": "Rol",
     "allowedValues": [
      "Editor, redactor-șef sau redactor delegat",
@@ -1407,9 +1325,23 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Revistă indexată în cel puțin 3 baze de date"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "FORUM_ISSN"
+  ]
  },
  {
   "_id": {
@@ -1458,14 +1390,10 @@
   "name": "Profesor visiting, cercetător invitat sau stagiu Erasmus (Comisia 25, I.14)",
   "fields": [
    {
-    "name": "Institutie",
-    "number": false
-   },
-   {
     "name": "Tip",
     "allowedValues": [
-     "Profesor visiting, universitate din primele 1000",
-     "Cercetător invitat cel puțin o lună, universitate din primele 1000",
+     "Profesor visiting",
+     "Cercetător invitat cel puțin o lună",
      "Stagiu Erasmus"
     ],
     "number": false
@@ -1473,9 +1401,23 @@
    {
     "name": "Dovezi",
     "number": false
+   },
+   {
+    "name": "Incadrare_solicitata",
+    "allowedValues": [
+     "Universitate din primele 1000 în clasamentul Times Higher Education"
+    ],
+    "number": false
+   },
+   {
+    "name": "Dovada_incadrarii",
+    "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "UNIVERSITY_NAME"
+  ]
  },
  {
   "_id": {
@@ -1484,19 +1426,7 @@
   "name": "Lucrare prezentată la o conferință științifică (Comisia 25, I.15 și I.16)",
   "fields": [
    {
-    "name": "Conferinta",
-    "number": false
-   },
-   {
     "name": "Titlu",
-    "number": false
-   },
-   {
-    "name": "Loc",
-    "allowedValues": [
-     "În străinătate",
-     "În țară"
-    ],
     "number": false
    },
    {
@@ -1504,7 +1434,10 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "CONFERENCE_NAME"
+  ]
  },
  {
   "_id": {
@@ -2048,7 +1981,10 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "EVENT_NAME"
+  ]
  },
  {
   "_id": {
@@ -2165,23 +2101,15 @@
   "name": "Organizator al unei manifestări științifice sau artistice (Comisia 35, RIA 1.4 și 1.5)",
   "fields": [
    {
-    "name": "Manifestarea",
-    "number": false
-   },
-   {
-    "name": "Nivel",
-    "allowedValues": [
-     "Internațional",
-     "Național"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "CONFERENCE_NAME",
+   "EVENT_NAME"
+  ]
  },
  {
   "_id": {
@@ -2232,10 +2160,6 @@
   "name": "Membru sau funcție într-o academie, organizație ori asociație profesională (Comisia 35, RIA 3.1 și 3.2)",
   "fields": [
    {
-    "name": "Organizatia",
-    "number": false
-   },
-   {
     "name": "Rol",
     "allowedValues": [
      "Membru",
@@ -2260,7 +2184,10 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -2269,23 +2196,15 @@
   "name": "Membru în juriul unui concurs sau pentru acordarea unor distincții (Comisia 35, RIA 3.3)",
   "fields": [
    {
-    "name": "Concursul",
-    "number": false
-   },
-   {
-    "name": "Nivel",
-    "allowedValues": [
-     "Național",
-     "Internațional"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "EVENT_NAME",
+   "AWARD_NAME"
+  ]
  },
  {
   "_id": {
@@ -2298,16 +2217,6 @@
     "number": false
    },
    {
-    "name": "Beneficiar",
-    "allowedValues": [
-     "UCMR",
-     "Instituție de spectacole sau concerte",
-     "Festival de prestigiu",
-     "Alt organism"
-    ],
-    "number": false
-   },
-   {
     "name": "Contract",
     "number": false
    },
@@ -2316,7 +2225,11 @@
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME",
+   "EVENT_NAME"
+  ]
  },
  {
   "_id": {
@@ -2329,23 +2242,15 @@
     "number": false
    },
    {
-    "name": "Institutia",
-    "number": false
-   },
-   {
-    "name": "Loc",
-    "allowedValues": [
-     "În țară",
-     "În străinătate, în limbă străină"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "UNIVERSITY_NAME",
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -2354,23 +2259,14 @@
   "name": "Portret sau interviu ca invitat unic în media (Comisia 35, RIA 3.6)",
   "fields": [
    {
-    "name": "Publicatia_sau_postul",
-    "number": false
-   },
-   {
-    "name": "Difuzare",
-    "allowedValues": [
-     "Națională",
-     "Internațională"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "ORGANIZATION_NAME"
+  ]
  },
  {
   "_id": {
@@ -2379,22 +2275,13 @@
   "name": "Keynote speaker la o manifestare științifică (Comisia 35, RIA 3.7)",
   "fields": [
    {
-    "name": "Manifestarea",
-    "number": false
-   },
-   {
-    "name": "Nivel",
-    "allowedValues": [
-     "Național",
-     "Internațional"
-    ],
-    "number": false
-   },
-   {
     "name": "Dovezi",
     "number": false
    }
   ],
-  "_class": "ro.uvt.pokedex.core.model.activities.Activity"
+  "_class": "ro.uvt.pokedex.core.model.activities.Activity",
+  "referenceFields": [
+   "CONFERENCE_NAME"
+  ]
  }
 ]

@@ -24,6 +24,7 @@ JSON, sorted by `_id` for stable, reviewable diffs.
 | `domains.json` | `domains` | seed |
 | `activities.json` | `activities` | admin activity-type catalog |
 | `scholardex.artisticEvent.json` | `scholardex.artisticEvent` | admin artistic-event catalog |
+| `scholardex.registry_entries.json` | `scholardex.registry_entries` | registries experts rank (H144): conferences, organisations, awards |
 | `scholardex.departments.json` | `scholardex.departments` | org structure |
 | `scholardex.org_divisions.json` | `scholardex.org_divisions` | org structure |
 | `scholardex.division_report_selections.json` | … | org reporting config |

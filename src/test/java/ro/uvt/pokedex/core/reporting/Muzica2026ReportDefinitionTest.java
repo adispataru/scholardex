@@ -5,6 +5,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.registry.RegistryKind;
 import ro.uvt.pokedex.core.model.activities.PublisherClaim;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingBlock;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
@@ -43,6 +45,20 @@ class Muzica2026ReportDefinitionTest {
     @AfterEach
     void resetRegistry() {
         ArtisticEventRankSupport.reset();
+        SeedReportDefinition.resetRegistries();
+    }
+
+    /** H144 — the registries experts rank: these entries are ranked, every other name waits. */
+    private static void ranked(RegistryKind kind, String name, String level, String category, String country) {
+        SeedReportDefinition.rank(kind, name, level, category, country);
+    }
+
+    private static Map<Activity.ReferenceField, String> named(Object... pairs) {
+        Map<Activity.ReferenceField, String> map = new java.util.HashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            map.put((Activity.ReferenceField) pairs[i], (String) pairs[i + 1]);
+        }
+        return map;
     }
 
     // ------------------------------------------------------------------ criteria and thresholds
@@ -228,23 +244,68 @@ class Muzica2026ReportDefinitionTest {
         assertEquals(30.0, muz.activity("RIA_1_2", fields("Rol", "Coordonator local (proiect internațional)")), 1e-9);
         assertEquals(0.0, muz.activity("RIA_1_2", fields("Rol", "Membru")), 1e-9);
         assertEquals(10.0, muz.activity("RIA_1_3", fields("Rol", "Recenzor")), 1e-9);
-        assertEquals(30.0, muz.activity("RIA_1_4", fields("Nivel", "Internațional")), 1e-9);
-        assertEquals(0.0, muz.activity("RIA_1_5", fields("Nivel", "Internațional")), 1e-9);
-        assertEquals(10.0, muz.activity("RIA_1_5", fields("Nivel", "Național")), 1e-9);
-        assertEquals(10.0, muz.activity("RIA_1_5", fields()), 1e-9, "no level declared: national");
+        // H144: the organised event is named; its level is the registry's
+        ranked(RegistryKind.SCIENTIFIC_EVENT, "Congresul Internațional de Muzicologie", "INTERNATIONAL", "CONGRESS", "Austria");
+        ArtisticEventRankSupport.register(List.of(event("Festivalul Remus Georgescu", ArtisticEvent.Rank.NATIONAL),
+                event("Serile muzicale din cartier", ArtisticEvent.Rank.LOCAL)));
+        var congress = named(Activity.ReferenceField.CONFERENCE_NAME, "Congresul Internațional de Muzicologie");
+        assertEquals(30.0, muz.activityNaming("RIA_1_4", fields(), congress), 1e-9);
+        assertEquals(0.0, muz.activityNaming("RIA_1_5", fields(), congress), 1e-9);
+        assertEquals(10.0, muz.activityNaming("RIA_1_5", fields(),
+                named(Activity.ReferenceField.EVENT_NAME, "Festivalul Remus Georgescu")), 1e-9);
+        assertEquals(10.0, muz.activityNaming("RIA_1_5", fields(),
+                named(Activity.ReferenceField.CONFERENCE_NAME, "Simpozionul de la Timișoara")), 1e-9,
+                "a conference the experts have not ranked counts as national");
+        assertEquals(0.0, muz.activityNaming("RIA_1_5", fields(),
+                named(Activity.ReferenceField.EVENT_NAME, "Un festival necunoscut")), 1e-9,
+                "an artistic event waiting for the experts does not count");
+        assertEquals(0.0, muz.activityNaming("RIA_1_5", fields(),
+                named(Activity.ReferenceField.EVENT_NAME, "Serile muzicale din cartier")), 1e-9, "a local event is no national one");
         assertEquals(40.0, muz.activity("RIA_2_1", fields()), 1e-9);
         assertEquals(30.0, muz.activity("RIA_2_2", fields()), 1e-9);
-        assertEquals(5.0, muz.activity("RIA_3_1", fields("Rol", "Membru")), 1e-9);
-        assertEquals(0.0, muz.activity("RIA_3_1", fields("Rol", "Funcție de conducere", "An_inceput", "2020")), 1e-9);
-        assertEquals(60.0, muz.activity("RIA_3_2", fields("Rol", "Funcție de conducere", "An_inceput", "2019",
-                "An_sfarsit", "2024")), 1e-9);
-        assertEquals(10.0, muz.activity("RIA_3_3", fields("Nivel", "Internațional")), 1e-9);
-        assertEquals(10.0, muz.activity("RIA_3_4", fields("Beneficiar", "UCMR")), 1e-9);
-        assertEquals(20.0, muz.activity("RIA_3_5", fields("Loc", "În țară")), 1e-9);
-        assertEquals(30.0, muz.activity("RIA_3_5", fields("Loc", "În străinătate, în limbă străină")), 1e-9);
-        assertEquals(5.0, muz.activity("RIA_3_6", fields("Difuzare", "Națională")), 1e-9);
-        assertEquals(20.0, muz.activity("RIA_3_7", fields("Nivel", "Național")), 1e-9);
-        assertEquals(30.0, muz.activity("RIA_3_7", fields("Nivel", "Internațional")), 1e-9);
+        ranked(RegistryKind.ORGANIZATION, "UCMR", "NATIONAL", "ASSOCIATION", "România");
+        ranked(RegistryKind.ORGANIZATION, "Radio România Muzical", "NATIONAL", "MEDIA", "România");
+        ranked(RegistryKind.ORGANIZATION, "Universität Mozarteum Salzburg", "INTERNATIONAL", "INSTITUTION", "Austria");
+        ranked(RegistryKind.ORGANIZATION, "Cenaclul de cartier", "LOCAL", "ASSOCIATION", "România");
+        ranked(RegistryKind.AWARD, "Premiul UCMR", "NATIONAL", "ARTISTIC", "România");
+        var ucmr = named(Activity.ReferenceField.ORGANIZATION_NAME, "UCMR");
+        assertEquals(5.0, muz.activityNaming("RIA_3_1", fields("Rol", "Membru"), ucmr), 1e-9);
+        assertEquals(0.0, muz.activityNaming("RIA_3_1", fields("Rol", "Membru"),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Asociația nouă")), 1e-9, "not counted until ranked");
+        assertEquals(0.0, muz.activityNaming("RIA_3_1", fields("Rol", "Membru"),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Cenaclul de cartier")), 1e-9, "no prestige");
+        assertEquals(0.0, muz.activityNaming("RIA_3_1", fields("Rol", "Funcție de conducere", "An_inceput", "2020"), ucmr), 1e-9);
+        assertEquals(60.0, muz.activityNaming("RIA_3_2", fields("Rol", "Funcție de conducere", "An_inceput", "2019",
+                "An_sfarsit", "2024"), ucmr), 1e-9);
+        assertEquals(10.0, muz.activityNaming("RIA_3_3", fields(),
+                named(Activity.ReferenceField.EVENT_NAME, "Festivalul Remus Georgescu")), 1e-9, "a national contest");
+        assertEquals(10.0, muz.activityNaming("RIA_3_3", fields(),
+                named(Activity.ReferenceField.AWARD_NAME, "Premiul UCMR")), 1e-9, "a national distinction");
+        assertEquals(0.0, muz.activityNaming("RIA_3_3", fields(),
+                named(Activity.ReferenceField.EVENT_NAME, "Concursul școlii")), 1e-9, "not counted until ranked");
+        assertEquals(10.0, muz.activityNaming("RIA_3_4", fields(), ucmr), 1e-9);
+        assertEquals(20.0, muz.activityNaming("RIA_3_5", fields(),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Liceul de Artă Ion Vidu")), 1e-9, "unknown: at home");
+        assertEquals(30.0, muz.activityNaming("RIA_3_5", fields(),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Universität Mozarteum Salzburg")), 1e-9, "abroad");
+        assertEquals(5.0, muz.activityNaming("RIA_3_6", fields(),
+                named(Activity.ReferenceField.ORGANIZATION_NAME, "Radio România Muzical")), 1e-9);
+        assertEquals(20.0, muz.activityNaming("RIA_3_7", fields(),
+                named(Activity.ReferenceField.CONFERENCE_NAME, "Simpozionul de la Timișoara")), 1e-9);
+        assertEquals(30.0, muz.activityNaming("RIA_3_7", fields(), congress), 1e-9);
+    }
+
+    @Test
+    void anArticleOnAFestivalsSiteCountsOnlyForATopInternationalFestival() {
+        ArtisticEventRankSupport.register(List.of(event("Festivalul George Enescu", ArtisticEvent.Rank.INTERNATIONAL_TOP),
+                event("Festivalul Remus Georgescu", ArtisticEvent.Rank.INTERNATIONAL)));
+        String onSite = "Articol online pe site-ul unui festival internațional de vârf";
+        assertEquals(10.0, muz.activityNaming("CS_2_2", fields("Tip", onSite),
+                named(Activity.ReferenceField.EVENT_NAME, "Festivalul George Enescu")), 1e-9);
+        assertEquals(0.0, muz.activityNaming("CS_2_2", fields("Tip", onSite),
+                named(Activity.ReferenceField.EVENT_NAME, "Festivalul Remus Georgescu")), 1e-9, "international, not top");
+        assertEquals(10.0, muz.activityNaming("CS_2_2", fields("Tip", "Articol în lexicon sau dicționar muzical internațional"),
+                Map.of()), 1e-9, "a lexicon article names no festival");
     }
 
     @Test
@@ -258,10 +319,15 @@ class Muzica2026ReportDefinitionTest {
         double cs = 14 * muz.activity("CS_1_1", fields("Rol", "Dirijor"), "Festival din străinătate")
                 + 139 * muz.activity("CS_1_2", fields("Rol", "Dirijor"), "Concert local")
                 + 2 * muz.activity("CS_2_3", fields());
+        // the organisation and the contests the grid names, as the experts ranked them (H144)
+        ranked(RegistryKind.ORGANIZATION, "UCMR", "NATIONAL", "ASSOCIATION", "România");
+        ranked(RegistryKind.AWARD, "Premiul Concursului Național", "NATIONAL", "ARTISTIC", "România");
         double ria = ScoringReferenceYearContext.with(2026, () -> 12 * muz.activity("RIA_2_2", fields())
                 + 8 * muz.activity("RIA_2_3", fields("Rezultat", "Premiu"), "Concurs")
-                + muz.activity("RIA_3_2", fields("Rol", "Funcție de conducere", "An_inceput", "2021"))
-                + 3 * muz.activity("RIA_3_3", fields()));
+                + muz.activityNaming("RIA_3_2", fields("Rol", "Funcție de conducere", "An_inceput", "2021"),
+                        named(Activity.ReferenceField.ORGANIZATION_NAME, "UCMR"))
+                + 3 * muz.activityNaming("RIA_3_3", fields(),
+                        named(Activity.ReferenceField.AWARD_NAME, "Premiul Concursului Național")));
         assertEquals(400.0, did, 1e-9);
         assertEquals(1700.0, cs, 1e-9);
         assertEquals(770.0, ria, 1e-9);

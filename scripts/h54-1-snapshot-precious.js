@@ -24,6 +24,7 @@ const CONFIG_GIT = [
   "domains",
   "activities",
   "scholardex.artisticEvent",
+  "scholardex.registry_entries",
   "scholardex.departments",
   "scholardex.org_divisions",
   "scholardex.division_report_selections",

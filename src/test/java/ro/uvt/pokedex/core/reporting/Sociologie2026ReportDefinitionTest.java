@@ -1,5 +1,9 @@
 package ro.uvt.pokedex.core.reporting;
 
+import org.junit.jupiter.api.AfterEach;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.registry.RegistryKind;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.activities.PublisherClaim;
@@ -346,17 +350,33 @@ class Sociologie2026ReportDefinitionTest {
                 fields("Tip", "Capitol în volum colectiv", "Editura", "Polirom")), 1e-9);
     }
 
+    @AfterEach
+    void resetRegistries() {
+        SeedReportDefinition.resetRegistries();
+    }
+
+    private static Map<Activity.ReferenceField, String> issn(String issn) {
+        return Map.of(Activity.ReferenceField.FORUM_ISSN, issn);
+    }
+
     @Test
     void coordinatedBooksReviewsProceedingsAndTranslations() {
         assertEquals(6.0, soc.activity("I5", fields("Editura", "Humanitas", "N_coordonatori", "2", "Coeficient_m", "m = 2")), 1e-9);
         assertEquals(6.0, soc.activity("I5", fields("Editura", "Polirom")), 1e-9);
         assertEquals(0.0, soc.activity("I5", fields()), 1e-9, "definition [4]: only books at a listed publisher count");
 
-        assertEquals(3.0, soc.activity("I7", fields("Tip", "Recenzie în revistă ISI/WoS")), 1e-9);
-        assertEquals(1.0, soc.activity("I7",
-                fields("Tip", "Recenzie în revistă indexată în cel puțin 3 baze de date")), 1e-9);
-        assertEquals(0.75, soc.activity("I7", fields("Tip",
-                "Termen de minimum o pagină în enciclopedie sau dicționar", "N_autori", "2",
+        // H144: the review's journal is named by ISSN; the lists say where it is indexed
+        SeedReportDefinition.journal("1111-1111", false, true, true, true, 4, 1.4);   // SSCI
+        SeedReportDefinition.journal("2222-2222", false, false, true, true, 3, null);  // ESCI: not ISI, three databases
+        SeedReportDefinition.journal("3333-3333", false, false, false, false, 2, null);
+        assertEquals(3.0, soc.activityNaming("I7", fields("Tip", "Recenzie"), issn("1111-1111")), 1e-9);
+        assertEquals(1.0, soc.activityNaming("I7", fields("Tip", "Recenzie"), issn("2222-2222")), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I7", fields("Tip", "Recenzie"), issn("3333-3333")), 1e-9,
+                "two databases the lists know: a request, or nothing");
+        assertEquals(1.0, soc.activityWithDecision("I7", fields("Tip", "Recenzie",
+                        "Incadrare_solicitata", "Revistă indexată în cel puțin 3 baze de date"),
+                ro.uvt.pokedex.core.model.activities.PublisherClaim.Status.APPROVED), 1e-9, "a head approved the third database");
+        assertEquals(0.75, soc.activity("I7", fields("Tip", "Termen în enciclopedie sau dicționar", "N_autori", "2",
                 "Coeficient_m", "m = 1.5")), 1e-9);
 
         assertEquals(1.0, soc.activity("I8_decl", fields()), 1e-9);
@@ -377,29 +397,25 @@ class Sociologie2026ReportDefinitionTest {
 
     @Test
     void editorialRolesAreCountedPerYearAndGuestIssuesPerIssue() {
-        String wos = "ISI/WoS sau SCOPUS";
-        String other = "Trei baze de date recunoscute, altele decât ISI/WoS și SCOPUS";
+        SeedReportDefinition.journal("4444-4444", false, false, true, true, 2, null);   // Scopus (and ESCI)
+        SeedReportDefinition.journal("5555-5555", false, false, false, false, 3, null); // three other databases
+        var wos = issn("4444-4444");
+        var other = issn("5555-5555");
         String editor = "Editor, redactor-șef sau redactor delegat";
         String member = "Membru în comitetul de redacție sau științific";
         String guest = "Editor invitat al unui număr special";
 
-        assertEquals(20.0, soc.activity("I10", fields("Indexare", wos, "Rol", editor,
-                "An_inceput", "2020", "An_sfarsit", "2023")), 1e-9);
-        assertEquals(12.0, soc.activity("I10", fields("Indexare", wos, "Rol", member,
-                "An_inceput", "2020", "An_sfarsit", "2023")), 1e-9);
-        assertEquals(3.0, soc.activity("I10", fields("Indexare", wos, "Rol", member)), 1e-9);
-        assertEquals(4.0, soc.activity("I10", fields("Indexare", wos, "Rol", guest,
-                "N_numere_speciale", "2")), 1e-9);
-        assertEquals(2.0, soc.activity("I10", fields("Indexare", wos, "Rol", guest)), 1e-9);
-        assertEquals(0.0, soc.activity("I10", fields("Indexare", other, "Rol", editor)), 1e-9);
+        assertEquals(20.0, soc.activityNaming("I10", fields("Rol", editor, "An_inceput", "2020", "An_sfarsit", "2023"), wos), 1e-9);
+        assertEquals(12.0, soc.activityNaming("I10", fields("Rol", member, "An_inceput", "2020", "An_sfarsit", "2023"), wos), 1e-9);
+        assertEquals(3.0, soc.activityNaming("I10", fields("Rol", member), wos), 1e-9);
+        assertEquals(4.0, soc.activityNaming("I10", fields("Rol", guest, "N_numere_speciale", "2"), wos), 1e-9);
+        assertEquals(2.0, soc.activityNaming("I10", fields("Rol", guest), wos), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I10", fields("Rol", editor), other), 1e-9);
 
-        assertEquals(8.0, soc.activity("I11", fields("Indexare", other, "Rol", editor,
-                "An_inceput", "2020", "An_sfarsit", "2023")), 1e-9);
-        assertEquals(4.0, soc.activity("I11", fields("Indexare", other, "Rol", member,
-                "An_inceput", "2020", "An_sfarsit", "2023")), 1e-9);
-        assertEquals(3.0, soc.activity("I11", fields("Indexare", other, "Rol", guest,
-                "N_numere_speciale", "3")), 1e-9);
-        assertEquals(0.0, soc.activity("I11", fields("Indexare", wos, "Rol", editor)), 1e-9);
+        assertEquals(8.0, soc.activityNaming("I11", fields("Rol", editor, "An_inceput", "2020", "An_sfarsit", "2023"), other), 1e-9);
+        assertEquals(4.0, soc.activityNaming("I11", fields("Rol", member, "An_inceput", "2020", "An_sfarsit", "2023"), other), 1e-9);
+        assertEquals(3.0, soc.activityNaming("I11", fields("Rol", guest, "N_numere_speciale", "3"), other), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I11", fields("Rol", editor), wos), 1e-9);
         // One declared entry feeds both indicators; it scores in exactly one of them.
         assertEquals(soc.activityName("I10"), soc.activityName("I11"));
     }
@@ -453,17 +469,31 @@ class Sociologie2026ReportDefinitionTest {
 
     @Test
     void visitsConferencesStudiesAndProjects() {
-        assertEquals(10.0, soc.activity("I14",
-                fields("Tip", "Profesor visiting, universitate din primele 1000")), 1e-9);
-        assertEquals(5.0, soc.activity("I14",
-                fields("Tip", "Cercetător invitat cel puțin o lună, universitate din primele 1000")), 1e-9);
+        // H144: the university is named; QS or Shanghai say whether it is among the first 1000
+        SeedReportDefinition.university("University of Vienna", 130, 137, "Austria");
+        SeedReportDefinition.university("Universitatea din Oradea", 2100, null, "Romania");
+        var vienna = Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "University of Vienna");
+        var oradea = Map.of(Activity.ReferenceField.UNIVERSITY_NAME, "Universitatea din Oradea");
+        assertEquals(10.0, soc.activityNaming("I14", fields("Tip", "Profesor visiting"), vienna), 1e-9);
+        assertEquals(5.0, soc.activityNaming("I14", fields("Tip", "Cercetător invitat cel puțin o lună"), vienna), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I14", fields("Tip", "Cercetător invitat cel puțin o lună"), oradea), 1e-9);
+        assertEquals(5.0, soc.activityWithDecision("I14", fields("Tip", "Cercetător invitat cel puțin o lună",
+                        "Incadrare_solicitata", "Universitate din primele 1000 în clasamentul Times Higher Education"),
+                ro.uvt.pokedex.core.model.activities.PublisherClaim.Status.APPROVED), 1e-9, "THE only: a head approved it");
         assertEquals(0.5, soc.activity("I14", fields("Tip", "Stagiu Erasmus")), 1e-9);
         assertEquals(0.0, soc.activity("I14", fields()), 1e-9);
 
-        assertEquals(1.0, soc.activity("I15", fields("Loc", "În străinătate")), 1e-9);
-        assertEquals(0.0, soc.activity("I15", fields("Loc", "În țară")), 1e-9);
-        assertEquals(0.5, soc.activity("I16", fields("Loc", "În țară")), 1e-9);
-        assertEquals(0.0, soc.activity("I16", fields("Loc", "În străinătate")), 1e-9);
+        // H144: where the conference was held is its country in the registry
+        SeedReportDefinition.rank(RegistryKind.SCIENTIFIC_EVENT, "ESA Conference 2023", "INTERNATIONAL", "CONFERENCE", "Germany");
+        SeedReportDefinition.rank(RegistryKind.SCIENTIFIC_EVENT, "Conferința SRS 2023", "NATIONAL", "CONFERENCE", "România");
+        var abroad = Map.of(Activity.ReferenceField.CONFERENCE_NAME, "ESA Conference 2023");
+        var home = Map.of(Activity.ReferenceField.CONFERENCE_NAME, "Conferința SRS 2023");
+        var unknown = Map.of(Activity.ReferenceField.CONFERENCE_NAME, "Colocviul de sociologie");
+        assertEquals(1.0, soc.activityNaming("I15", fields(), abroad), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I15", fields(), home), 1e-9);
+        assertEquals(0.5, soc.activityNaming("I16", fields(), home), 1e-9);
+        assertEquals(0.0, soc.activityNaming("I16", fields(), abroad), 1e-9);
+        assertEquals(0.5, soc.activityNaming("I16", fields(), unknown), 1e-9, "a conference the experts have not ranked: at home");
         assertEquals(soc.activityName("I15"), soc.activityName("I16"));
 
         assertEquals(2.0, soc.activity("I17", fields()), 1e-9);

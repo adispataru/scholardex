@@ -1,0 +1,329 @@
+[
+ {
+  "_id": {
+   "$oid": "6ac04b1b57d2dd8d4e92cf70"
+  },
+  "kind": "ORGANIZATION",
+  "name": "UNESCO",
+  "aliases": [
+   "Organizația Națiunilor Unite pentru Educație, Știință și Cultură",
+   "United Nations Educational, Scientific and Cultural Organization"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "AGENCY",
+  "criteria": [],
+  "basis": "SCOPE",
+  "note": "Organizație a ONU.",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b1c56da9a61d391b3d7"
+  },
+  "kind": "ORGANIZATION",
+  "name": "UNICEF",
+  "aliases": [
+   "Fondul Națiunilor Unite pentru Copii",
+   "United Nations Children's Fund"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "AGENCY",
+  "criteria": [],
+  "basis": "SCOPE",
+  "note": "Organizație a ONU.",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b1d03f07a1ccb3bc720"
+  },
+  "kind": "ORGANIZATION",
+  "name": "Banca Mondială",
+  "aliases": [
+   "World Bank",
+   "The World Bank",
+   "Grupul Băncii Mondiale",
+   "World Bank Group"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "AGENCY",
+  "criteria": [],
+  "basis": "SCOPE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b1e676d7d7714ba424e"
+  },
+  "kind": "ORGANIZATION",
+  "name": "OECD",
+  "aliases": [
+   "OCDE",
+   "Organizația pentru Cooperare și Dezvoltare Economică",
+   "Organisation for Economic Co-operation and Development"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "AGENCY",
+  "criteria": [],
+  "basis": "SCOPE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b1f08c1ec2c08913b5b"
+  },
+  "kind": "ORGANIZATION",
+  "name": "Comisia Europeană",
+  "aliases": [
+   "European Commission"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "COMMISSION",
+  "criteria": [],
+  "basis": "SCOPE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b2059c70c984dbd75db"
+  },
+  "kind": "ORGANIZATION",
+  "name": "European Research Council",
+  "aliases": [
+   "ERC",
+   "Consiliul European pentru Cercetare"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "FUNDER",
+  "criteria": [],
+  "basis": "SCOPE",
+  "note": "Finanțator al Uniunii Europene.",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b210e78e2654440ef8e"
+  },
+  "kind": "ORGANIZATION",
+  "name": "Consiliul Europei",
+  "aliases": [
+   "Council of Europe"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "AGENCY",
+  "criteria": [],
+  "basis": "SCOPE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b2238e3ab2184be0995"
+  },
+  "kind": "ORGANIZATION",
+  "name": "COST",
+  "aliases": [
+   "European Cooperation in Science and Technology",
+   "Cooperarea europeană în domeniul științei și tehnologiei"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "FUNDER",
+  "criteria": [],
+  "basis": "SCOPE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b23a1841ddc3071d037"
+  },
+  "kind": "ORGANIZATION",
+  "name": "Comitetul Internațional Olimpic",
+  "aliases": [
+   "International Olympic Committee",
+   "CIO",
+   "IOC"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "INTERNATIONAL",
+  "category": "FEDERATION",
+  "criteria": [],
+  "basis": "SCOPE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b24af6260c3e1b36263"
+  },
+  "kind": "ORGANIZATION",
+  "name": "CNATDCU",
+  "aliases": [
+   "Consiliul Național de Atestare a Titlurilor, Diplomelor și Certificatelor Universitare"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "NATIONAL",
+  "category": "COMMISSION",
+  "criteria": [],
+  "country": "România",
+  "basis": "STATUTE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b254e75296391e2e0ba"
+  },
+  "kind": "ORGANIZATION",
+  "name": "CNCS",
+  "aliases": [
+   "Consiliul Național al Cercetării Științifice"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "NATIONAL",
+  "category": "COMMISSION",
+  "criteria": [],
+  "country": "România",
+  "basis": "STATUTE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b267fac4521d9d5a22b"
+  },
+  "kind": "ORGANIZATION",
+  "name": "ARACIS",
+  "aliases": [
+   "Agenția Română de Asigurare a Calității în Învățământul Superior"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "NATIONAL",
+  "category": "AGENCY",
+  "criteria": [],
+  "country": "România",
+  "basis": "STATUTE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b27815f55000c91a9b8"
+  },
+  "kind": "ORGANIZATION",
+  "name": "UEFISCDI",
+  "aliases": [
+   "Unitatea Executivă pentru Finanțarea Învățământului Superior, a Cercetării, Dezvoltării și Inovării"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "NATIONAL",
+  "category": "FUNDER",
+  "criteria": [],
+  "country": "România",
+  "basis": "STATUTE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b28416f7da0bd7f0a7b"
+  },
+  "kind": "ORGANIZATION",
+  "name": "Ministerul Educației",
+  "aliases": [
+   "Ministerul Educației Naționale",
+   "Ministerul Educației și Cercetării"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "NATIONAL",
+  "category": "AGENCY",
+  "criteria": [],
+  "country": "România",
+  "basis": "STATUTE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b29e5c00d7c0f2b941d"
+  },
+  "kind": "ORGANIZATION",
+  "name": "Academia Română",
+  "aliases": [
+   "Romanian Academy"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "NATIONAL",
+  "category": "ACADEMY",
+  "criteria": [],
+  "country": "România",
+  "basis": "STATUTE",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ },
+ {
+  "_id": {
+   "$oid": "6ac04b2ac89cb1c08270db7f"
+  },
+  "kind": "ORGANIZATION",
+  "name": "UCMR",
+  "aliases": [
+   "Uniunea Compozitorilor și Muzicologilor din România"
+  ],
+  "domainId": null,
+  "status": "CONFIRMED",
+  "level": "NATIONAL",
+  "category": "ASSOCIATION",
+  "criteria": [],
+  "country": "România",
+  "basis": "PRESTIGE",
+  "note": "Numită de standardul de Muzică (RIA 3.4).",
+  "source": "Lista inițială (H144)",
+  "history": [],
+  "_class": "ro.uvt.pokedex.core.model.registry.RegistryEntry"
+ }
+]

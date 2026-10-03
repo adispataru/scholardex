@@ -11,26 +11,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GlobalControllerAdviceTest {
 
     @SuppressWarnings("unchecked")
-    private final org.springframework.beans.factory.ObjectProvider<ro.uvt.pokedex.core.service.security.ArtisticEventAccessService> eventAccess =
+    private final org.springframework.beans.factory.ObjectProvider<ro.uvt.pokedex.core.service.security.RegistryAccessService> eventAccess =
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
     private final GlobalControllerAdvice advice = new GlobalControllerAdvice(eventAccess);
 
     @Test
     void theArtisticEventsPageIsOfferedOnPageLoadsToPeopleWhoRankEvents() {
-        var access = org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.security.ArtisticEventAccessService.class);
+        var access = org.mockito.Mockito.mock(ro.uvt.pokedex.core.service.security.RegistryAccessService.class);
         org.mockito.Mockito.when(eventAccess.getIfAvailable()).thenReturn(access);
         User user = new User();
         user.setEmail("dean@uvt.ro");
         SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken(user, null));
         org.mockito.Mockito.when(access.canReviewAny(org.mockito.ArgumentMatchers.any())).thenReturn(true);
         var page = new org.springframework.mock.web.MockHttpServletRequest("GET", "/user/workspace");
-        assertTrue(advice.canRankArtisticEvents(page));
-        org.junit.jupiter.api.Assertions.assertFalse(advice.canRankArtisticEvents(
+        assertTrue(advice.canRankRegistries(page));
+        org.junit.jupiter.api.Assertions.assertFalse(advice.canRankRegistries(
                 new org.springframework.mock.web.MockHttpServletRequest("GET", "/api/entities/forums")), "not for API calls");
-        org.junit.jupiter.api.Assertions.assertFalse(advice.canRankArtisticEvents(
+        org.junit.jupiter.api.Assertions.assertFalse(advice.canRankRegistries(
                 new org.springframework.mock.web.MockHttpServletRequest("POST", "/user/workspace")), "not for form posts");
         org.mockito.Mockito.when(eventAccess.getIfAvailable()).thenReturn(null);
-        org.junit.jupiter.api.Assertions.assertFalse(advice.canRankArtisticEvents(page), "web-slice tests have no access service");
+        org.junit.jupiter.api.Assertions.assertFalse(advice.canRankRegistries(page), "web-slice tests have no access service");
     }
 
     @AfterEach

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.registry.RegistryStatus;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
 import ro.uvt.pokedex.core.service.reporting.ArtisticEventRankRegistrar;
 import ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport;
@@ -102,7 +103,7 @@ class ArtisticEventSeedServiceTest {
         enescu.setRank(ArtisticEvent.Rank.INTERNATIONAL_TOP);
         ArtisticEvent rejected = new ArtisticEvent();
         rejected.setName("Gala UVT");
-        rejected.setStatus(ArtisticEvent.Status.REJECTED);
+        rejected.setStatus(RegistryStatus.REJECTED);
         when(repository.findAll()).thenReturn(List.of(enescu, rejected));
 
         byte[] xlsx = anexa61(
@@ -123,7 +124,7 @@ class ArtisticEventSeedServiceTest {
         ArgumentCaptor<ArtisticEvent> saved = ArgumentCaptor.forClass(ArtisticEvent.class);
         verify(repository, times(2)).save(saved.capture());
         ArtisticEvent first = saved.getAllValues().getFirst();
-        assertEquals(ArtisticEvent.Status.PROPOSED, first.getStatus());
+        assertEquals(RegistryStatus.PROPOSED, first.getStatus());
         assertEquals("Muzică", first.getDomainId());
         assertEquals("Anexa 6.1: FMT_Anexa6.1.xlsx", first.getSource());
         assertEquals(null, first.getRank(), "an expert ranks it");

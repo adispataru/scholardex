@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.registry.RegistryChange;
+import ro.uvt.pokedex.core.model.registry.RegistryStatus;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
 import ro.uvt.pokedex.core.service.reporting.ArtisticEventRankRegistrar;
 import ro.uvt.pokedex.core.service.reporting.ArtisticEventRankSupport;
@@ -91,7 +93,7 @@ public class ArtisticEventSeedService {
         List<String> cells = eventCells(xlsx);
         Set<String> known = new HashSet<>();
         for (ArtisticEvent e : eventRepository.findAll()) {
-            known.addAll(ArtisticEventReviewService.keysOf(e));
+            known.addAll(RegistryReviewService.keysOf(e));
         }
         Map<String, String> fresh = new LinkedHashMap<>();
         int skipped = 0, knownCount = 0;
@@ -114,10 +116,10 @@ public class ArtisticEventSeedService {
             ArtisticEvent proposal = new ArtisticEvent();
             proposal.setName(name);
             proposal.setDomainId(domain.trim());
-            proposal.setStatus(ArtisticEvent.Status.PROPOSED);
+            proposal.setStatus(RegistryStatus.PROPOSED);
             proposal.setSource(source);
             proposal.setProposedAt(now);
-            ArtisticEvent.Change change = new ArtisticEvent.Change();
+            RegistryChange change = new RegistryChange();
             change.setAt(now);
             change.setBy(adminEmail);
             change.setAction("PROPOSED");

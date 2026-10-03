@@ -68,9 +68,9 @@ public final class ArtisticEventRankSupport {
                     if (core.split(" ").length >= 2) {
                         found.add(new String[]{core, name});
                     }
-                } else if (event.getStatus() == ArtisticEvent.Status.REJECTED) {
+                } else if (event.getStatus() == ro.uvt.pokedex.core.model.registry.RegistryStatus.REJECTED) {
                     rejectedNames.add(key);
-                } else if (event.getStatus() == ArtisticEvent.Status.PROPOSED) {
+                } else if (event.getStatus() == ro.uvt.pokedex.core.model.registry.RegistryStatus.PROPOSED) {
                     proposedNames.add(key);
                 }
             }

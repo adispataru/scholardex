@@ -933,11 +933,29 @@ public class CnfisReportingFacade {
             }
             Map<String, String> f = instance.getFields() == null ? Map.of() : instance.getFields();
             out.add(new CnfisSheetViewModel.Patent(instance.getId(), String.valueOf(year), instance.getName(),
-                    f.getOrDefault(FIELD_CODE, ""), f.getOrDefault(FIELD_OFFICE, ""), f.getOrDefault(FIELD_TYPE, ""),
+                    f.getOrDefault(FIELD_CODE, ""), f.getOrDefault(FIELD_OFFICE, ""), patentType(f),
                     parseInt(f.get(FIELD_AUTHORS)), parseInt(f.get(FIELD_UNIVERSITY_AUTHORS))));
         }
         out.sort(Comparator.comparing(CnfisSheetViewModel.Patent::year).thenComparing(CnfisSheetViewModel.Patent::title));
         return out;
+    }
+
+    /**
+     * H144 — the patent's kind by CNFIS's definitions, from the codes and the office the record gives (triadic, European,
+     * international, national); a record of before H144 that carries a declared kind and no recognisable code keeps it.
+     */
+    static String patentType(Map<String, String> fields) {
+        String derived = ro.uvt.pokedex.core.service.reporting.RegistryScoringSupport
+                .patentType(fields.get(FIELD_CODE), fields.get(FIELD_OFFICE));
+        if (derived == null) {
+            return fields.getOrDefault(FIELD_TYPE, "");
+        }
+        return switch (derived) {
+            case "TRIADIC" -> "Triadic";
+            case "EUROPEAN" -> "European";
+            case "INTERNATIONAL" -> "International";
+            default -> "National";
+        };
     }
 
     private static CNFISReport2025 toExportPatent(CnfisSheetViewModel.Patent p) {
