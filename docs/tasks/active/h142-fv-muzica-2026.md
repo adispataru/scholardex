@@ -776,9 +776,9 @@ first list naming them, those come from EBSCO (9,838), ProQuest (7,341), RILM (6
 6. Refresh the FMT Music and FSAS Sociology reports («Reîmprospătează tot»).
 
 **Open.**
-- **Size of the forum registry.** The general lists (EBSCO Academic Search Ultimate, ProQuest Central, RILM's
-  non-music periodicals) bring about 27,000 new venues, the way DOAJ brought its own. To keep the registry smaller, new forums could be created only
-  for the subject lists, leaving the general ones to tag existing forums. Adrian's call.
+- ~~Size of the forum registry~~ — **decided 2026-10-03 (Adrian): keep them all.** The general lists (EBSCO
+  Academic Search Ultimate, ProQuest Central, RILM's non-music periodicals) bring about 27,000 new venues, the way
+  DOAJ brought its own, so that a journal any list knows can be named by ISSN.
 - **Terms of use.** Is this use of the lists covered? KBART lists exist to be loaded into library systems, and
   the platform uses them the same way (matching ISSNs for an internal evaluation). But EBSCO's, MUSE's, T&F's and
   CEEOL's site terms are restrictive. A question for the library (which of these UVT subscribes to) and for
