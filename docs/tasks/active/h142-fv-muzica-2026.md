@@ -862,6 +862,14 @@ Theatre):
 3. Rank the 8 conflicting events on `/user/registry/review`.
 4. Refresh the Music report («Reîmprospătează tot»).
 
+**First upload, refused (2026-10-03).** Image `002365e4` refused the 54 files of `Muzica_1` with HTTP 413. Tomcat
+allows 50 parts per multipart request (`server.tomcat.max-part-count`); nothing was written. The limit is now 250,
+and a local run took 60 files at once.
+
+Fixed at the same time: with Music in two uploads, a second batch saw the first batch's ranks as final. Now a later
+batch of the same report adds up (same level: the counts grow) or sends the event to the experts (another level),
+and an event an earlier batch left to the experts stays theirs.
+
 **Waiting for the faculty (Adrian asks Simona):** five teachers sent files but have no account in prod: Fănel Ignat,
 Vlad Popescu and Manuela Mihăilescu (Music), Otilia Huzum and Florin Vidam (Theatre). Their files are in
 `_fara_cont/`. Once they are added with the staff import, one more upload with the same option brings them in.

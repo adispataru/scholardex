@@ -27,7 +27,8 @@ import java.util.stream.Collectors;
  * expert) keeps its rank; one the files report at different levels becomes — or stays — a proposal for the experts,
  * the levels in its note; so does a new name that holds every distinctive word of a ranked event ("Festivalul
  * Internațional GEORGE ENESCU" and the CNFIS list's "Festivalul «George Enescu»"), a spelling for the experts to merge
- * rather than a second rank; a rejected or merged name is left alone.
+ * rather than a second rank; a rejected or merged name is left alone. A report uploaded in several batches adds up: an
+ * event an earlier batch ranked keeps its rank when the levels agree, and goes to the experts when they do not.
  */
 @Service
 @RequiredArgsConstructor
@@ -78,8 +79,39 @@ public class ArtisticEventFacultyRanking {
                 leftAlone++;
                 continue;
             }
+            boolean earlierBatch = event != null && event.getNote() != null && event.getNote().startsWith(source);
+            String counts = levels.entrySet().stream().map(l -> l.getValue() + " × " + label(l.getKey()))
+                    .collect(Collectors.joining(", "));
             if (event != null && event.isConfirmed() && event.getRank() != null) {
+                if (earlierBatch && ArtisticEvent.Basis.FACULTY_CNFIS_REPORT.name().equals(event.getBasis())) {
+                    // ranked by an earlier batch of the same report: the levels add up
+                    String later = event.getNote() + " + " + counts;
+                    if (levels.keySet().stream().map(ArtisticEventFacultyRanking::rankOf).allMatch(event.getRank()::equals)) {
+                        event.setNote(later);
+                        eventRepository.save(event);
+                        already++;
+                    } else {
+                        String from = event.getRank().name();
+                        event.setStatus(RegistryStatus.PROPOSED);
+                        event.setRank(null);
+                        event.setBasis(null);
+                        event.setNote(later);
+                        event.getHistory().add(RegistryReviewService.change(now, actor, "PROPOSED", from, null, later));
+                        eventRepository.save(event);
+                        conflicting++;
+                        conflicts.add(event.getName() + " (" + later + ")");
+                    }
+                    continue;
+                }
                 already++;
+                continue;
+            }
+            if (earlierBatch && event.getStatus() == RegistryStatus.PROPOSED) {
+                // an earlier batch found different levels: still the experts'
+                event.setNote(event.getNote() + " + " + counts);
+                eventRepository.save(event);
+                conflicting++;
+                conflicts.add(event.getName() + " (" + event.getNote() + ")");
                 continue;
             }
             if (event == null) {

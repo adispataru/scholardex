@@ -102,6 +102,47 @@ class ArtisticEventFacultyRankingTest {
     }
 
     @Test
+    void aReportUploadedInBatchesAddsUpAndADisagreementGoesToTheExperts() {
+        List<ArtisticEvent> store = new java.util.ArrayList<>();
+        ArtisticEvent byExperts = event("Festivalul Ales", RegistryStatus.CONFIRMED, ArtisticEvent.Rank.NATIONAL_TOP);
+        byExperts.setBasis("TOP_FESTIVAL_ROMANIA");
+        store.add(byExperts);
+        when(repository.findAll()).thenAnswer(inv -> new java.util.ArrayList<>(store));
+        when(repository.save(org.mockito.ArgumentMatchers.any(ArtisticEvent.class))).thenAnswer(inv -> {
+            ArtisticEvent e = inv.getArgument(0);
+            if (e.getId() == null) e.setId("new-" + store.size());
+            store.removeIf(x -> x.getId().equals(e.getId()));
+            store.add(e);
+            return e;
+        });
+        String source = "Raportare CNFIS 2025 (FMT)";
+
+        ArtisticEventFacultyRanking.Outcome first = ranking.rank(List.of(reported("Festivalul Meridian Nou", "INTERNATIONAL"),
+                reported("Festivalul Constant", "NATIONAL")), "Muzică", "admin@uvt.ro", source);
+        ArtisticEventFacultyRanking.Outcome second = ranking.rank(List.of(reported("Festivalul Meridian Nou", "NATIONAL"),
+                reported("Festivalul Constant", "NATIONAL"), reported("Festivalul Ales", "INTERNATIONAL")), "Muzică", "admin@uvt.ro", source);
+        ArtisticEventFacultyRanking.Outcome third = ranking.rank(List.of(reported("Festivalul Meridian Nou", "INTERNATIONAL")),
+                "Muzică", "admin@uvt.ro", source);
+
+        assertEquals(2, first.ranked());
+        assertEquals(1, second.conflicting(), "the second batch reports Meridian at another level");
+        assertEquals(2, second.alreadyRanked(), "Constant at the same level; the experts' festival untouched");
+        assertEquals(1, third.conflicting(), "a later batch does not rank it back: the experts decide");
+        Map<String, ArtisticEvent> byName = store.stream().collect(Collectors.toMap(ArtisticEvent::getName, Function.identity()));
+        ArtisticEvent meridian = byName.get("Festivalul Meridian Nou");
+        assertEquals(RegistryStatus.PROPOSED, meridian.getStatus());
+        assertEquals(null, meridian.getRank());
+        assertEquals(null, meridian.getBasis());
+        assertEquals(source + ": 1 × internațional + 1 × național + 1 × internațional", meridian.getNote());
+        assertEquals("INTERNATIONAL", meridian.getHistory().getLast().getFromLevel());
+        ArtisticEvent constant = byName.get("Festivalul Constant");
+        assertEquals(ArtisticEvent.Rank.NATIONAL, constant.getRank());
+        assertEquals(source + ": 1 × național + 1 × național", constant.getNote());
+        assertEquals(ArtisticEvent.Rank.NATIONAL_TOP, byName.get("Festivalul Ales").getRank());
+        assertEquals("TOP_FESTIVAL_ROMANIA", byName.get("Festivalul Ales").getBasis());
+    }
+
+    @Test
     void nothingReportedChangesNothing() {
         assertEquals(ArtisticEventFacultyRanking.Outcome.NONE, ranking.rank(List.of(reported("  ", "NATIONAL"),
                 reported("Festivalul Z", "LOCAL")), "Muzică", "admin@uvt.ro", "x"));
